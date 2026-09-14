@@ -1776,6 +1776,41 @@ fn local_teams(header: &Value) -> Vec<LocalReplayTeam> {
         .unwrap_or_default()
 }
 
+/// The teams as the replay body has them, which is the seating the game was
+/// played with.
+///
+/// Civilian armies are dropped: every map has one or two of them, they are on
+/// team 1 with nobody in particular, and they are not players. Everything else
+/// is kept, AI included, because an army that was in the game belongs in the
+/// list of who was in the game. Teams come out in the engine's own numbering,
+/// and the players inside one keep their slot order.
+fn body_teams(armies: &[LocalBodyArmy]) -> Vec<LocalReplayTeam> {
+    let mut teams: Vec<LocalReplayTeam> = Vec::new();
+    for army in armies.iter().filter(|army| !army.civilian) {
+        let key = army
+            .team
+            .map(|team| team.to_string())
+            .unwrap_or_else(|| "1".to_string());
+        let player = LocalReplayPlayer {
+            name: army.name.clone(),
+            faction: army.faction,
+            rating: army.rating,
+        };
+        match teams.iter_mut().find(|team| team.team == key) {
+            Some(team) => team.players.push(player),
+            None => teams.push(LocalReplayTeam {
+                team: key,
+                players: vec![player],
+            }),
+        }
+    }
+    teams.sort_by(|left, right| {
+        let number = |team: &LocalReplayTeam| team.team.parse::<i32>().unwrap_or(i32::MAX);
+        number(left).cmp(&number(right))
+    });
+    teams
+}
+
 fn local_sim_mods(header: &Value) -> Vec<String> {
     header
         .get("sim_mods")
@@ -1806,8 +1841,31 @@ const LOCAL_REPLAY_BODY_READ_BYTES: usize = 4 * 1024 * 1024;
 #[derive(Default)]
 struct LocalBodyInfo {
     player_stats: HashMap<String, (Option<i32>, Option<i32>)>,
+    /// The armies as the engine loaded them, in slot order: `(team, name)`.
+    ///
+    /// This is the seating the game was actually played with, which is not
+    /// what the `.fafreplay` envelope says. The envelope carries the lobby
+    /// listing as it stood when whoever recorded the file sent the launch, so
+    /// a player who joined late is missing from it and a player who switched
+    /// team is in the old one -- 1v4 and 4v2 lineups for games that were 4v4,
+    /// which is what "not all players show up" looked like. Observers are not
+    /// armies and so are not here, and neither is the neutral civilian army,
+    /// which is filtered out where this is read.
+    armies: Vec<LocalBodyArmy>,
     map_name: Option<String>,
     game_version: Option<i32>,
+}
+
+/// One army of the replay body's army table.
+struct LocalBodyArmy {
+    name: String,
+    /// The engine's team number. 1 is "no team" (free-for-all, and the
+    /// civilian armies); a team game numbers its sides from 2.
+    team: Option<i32>,
+    /// `Civilian` in the army table: the map's neutral armies, never a player.
+    civilian: bool,
+    faction: Option<i32>,
+    rating: Option<i32>,
 }
 
 fn extract_map_folder(path: &str) -> String {
@@ -1980,52 +2038,61 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
 
     let Some(source_count) = replay_u8(&mut cursor) else {
         return LocalBodyInfo {
-            player_stats: HashMap::new(),
             map_name,
             game_version,
+            ..Default::default()
         };
     };
     let mut sources = Vec::with_capacity(source_count as usize);
     for _ in 0..source_count {
         let Some(name) = replay_string(&mut cursor) else {
             return LocalBodyInfo {
-                player_stats: HashMap::new(),
                 map_name,
                 game_version,
+                ..Default::default()
             };
         };
         let Some(_) = replay_u32(&mut cursor) else {
             return LocalBodyInfo {
-                player_stats: HashMap::new(),
                 map_name,
                 game_version,
+                ..Default::default()
             };
         };
         sources.push(name);
     }
     if replay_u8(&mut cursor).is_none() {
         return LocalBodyInfo {
-            player_stats: HashMap::new(),
             map_name,
             game_version,
+            ..Default::default()
         };
     }
     let Some(army_count) = replay_u8(&mut cursor) else {
         return LocalBodyInfo {
-            player_stats: HashMap::new(),
             map_name,
             game_version,
+            ..Default::default()
         };
     };
     let mut stats = HashMap::new();
+    let mut armies = Vec::new();
+    // Whether the army table was read to the end. A file that stops in the
+    // middle of it still yields the armies before the cut, and those are a
+    // believable-looking lineup that is missing players: exactly the thing
+    // this reads the table to avoid. A partial table answers nothing.
+    let mut armies_complete = true;
     for _ in 0..army_count {
         if replay_u32(&mut cursor).is_none() {
+            armies_complete = false;
             break;
         }
         let Some(Value::Object(data)) = parse_replay_lua(&mut cursor, 0) else {
+            armies_complete = false;
             break;
         };
         let Some(source) = replay_u8(&mut cursor) else {
+            armies_complete = false;
             break;
         };
         if source != u8::MAX {
@@ -2039,10 +2106,21 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
         let Some(name) = name else { continue };
         let faction = data.get("Faction").and_then(replay_i32_value);
         let rating = replay_displayed_rating(&data);
+        armies.push(LocalBodyArmy {
+            name: name.clone(),
+            team: data.get("Team").and_then(replay_i32_value),
+            civilian: data
+                .get("Civilian")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            faction,
+            rating,
+        });
         stats.insert(name, (faction, rating));
     }
     LocalBodyInfo {
         player_stats: stats,
+        armies: if armies_complete { armies } else { Vec::new() },
         map_name,
         game_version,
     }
@@ -2774,12 +2852,19 @@ async fn read_local_metadata(
     let body_info = local_body_player_stats(&body, compression);
     let playable = playable_body(body_info.as_ref());
     let body_info = body_info.unwrap_or_default();
-    let mut teams = local_teams(&header);
-    for team in &mut teams {
-        for player in &mut team.players {
-            if let Some((faction, rating)) = body_info.player_stats.get(&player.name) {
-                player.faction = *faction;
-                player.rating = *rating;
+    // The body's own army table first, and the envelope only when there is no
+    // body left to read: see `LocalBodyInfo::armies` for why the envelope
+    // cannot be trusted with this.
+    let mut teams = body_teams(&body_info.armies);
+    let teams_from_body = !teams.is_empty();
+    if teams.is_empty() {
+        teams = local_teams(&header);
+        for team in &mut teams {
+            for player in &mut team.players {
+                if let Some((faction, rating)) = body_info.player_stats.get(&player.name) {
+                    player.faction = *faction;
+                    player.rating = *rating;
+                }
             }
         }
     }
@@ -2854,12 +2939,19 @@ async fn read_local_metadata(
         start_time,
         modified_time: unix_seconds(modified),
         file_size_bytes: file_size.min(u32::MAX as u64) as u32,
-        num_players: header
-            .get("num_players")
-            .and_then(Value::as_i64)
-            .and_then(|value| i32::try_from(value).ok())
-            .filter(|value| *value >= 0)
-            .unwrap_or(team_player_count),
+        // The envelope's count is the lobby listing's count, and it is wrong
+        // in exactly the games whose teams it also has wrong. When the body
+        // named the armies, they are what was in the game.
+        num_players: if teams_from_body {
+            team_player_count
+        } else {
+            header
+                .get("num_players")
+                .and_then(Value::as_i64)
+                .and_then(|value| i32::try_from(value).ok())
+                .filter(|value| *value >= 0)
+                .unwrap_or(team_player_count)
+        },
         teams,
         average_rating,
         sim_mods: local_sim_mods(&header),
@@ -4362,10 +4454,18 @@ mod tests {
         bytes
     }
 
-    fn lua_army() -> Vec<u8> {
+    /// One army of the replay body's table, the way the engine writes it:
+    /// the player's name, their seat's team, and the TrueSkill pair the
+    /// displayed rating is derived from.
+    fn lua_army_named(name: &str, team: f32, civilian: bool) -> Vec<u8> {
         let mut bytes = vec![4];
         bytes.extend(lua_string("PlayerName"));
-        bytes.extend(lua_string("TestPlayer"));
+        bytes.extend(lua_string(name));
+        bytes.extend(lua_string("Team"));
+        bytes.extend(lua_number(team));
+        bytes.extend(lua_string("Civilian"));
+        bytes.push(3);
+        bytes.push(u8::from(civilian));
         bytes.extend(lua_string("Faction"));
         bytes.extend(lua_number(1.0));
         bytes.extend(lua_string("MEAN"));
@@ -4390,10 +4490,19 @@ mod tests {
         body.extend_from_slice(b"TestPlayer\0");
         body.extend_from_slice(&u32::MAX.to_le_bytes());
         body.push(0);
-        body.push(1);
-        body.extend_from_slice(&1_u32.to_le_bytes());
-        body.extend(lua_army());
-        body.extend_from_slice(&[0, 0]);
+        // Three armies: the two players the envelope also knows about, on the
+        // two teams the engine seated them in, and the neutral civilian army
+        // every map carries and no listing should show.
+        body.push(3);
+        for army in [
+            lua_army_named("TestPlayer", 2.0, false),
+            lua_army_named("Guest", 3.0, false),
+            lua_army_named("civilian", 1.0, true),
+        ] {
+            body.extend_from_slice(&1_u32.to_le_bytes());
+            body.extend(army);
+            body.extend_from_slice(&[0, 0]);
+        }
         body
     }
 
@@ -4503,8 +4612,24 @@ mod tests {
         // `mapname` and is what the archive shows when both are there.
         assert_eq!(complete.map, "SCMP_009");
         assert_eq!(complete.recorder, "host");
+        // From the body's army table, not the envelope's listing: two players
+        // on two teams, and the map's civilian army left out of both.
         assert_eq!(complete.num_players, 2);
         assert_eq!(complete.teams.len(), 2);
+        assert_eq!(
+            complete
+                .teams
+                .iter()
+                .map(|team| (
+                    team.team.as_str(),
+                    team.players
+                        .iter()
+                        .map(|player| player.name.as_str())
+                        .collect::<Vec<_>>()
+                ))
+                .collect::<Vec<_>>(),
+            [("2", vec!["TestPlayer"]), ("3", vec!["Guest"])]
+        );
         assert_eq!(complete.sim_mods, vec!["UI Party"]);
         assert_eq!(complete.start_time, Some(1_700_000_000));
 
@@ -5539,5 +5664,54 @@ mod tests {
     fn an_empty_message_is_not_a_message() {
         let stream = delivered("   ", "Vindex", 1.0, &[], &[]);
         assert!(extract(&stream).is_empty());
+    }
+
+    fn army(name: &str, team: i32, civilian: bool) -> LocalBodyArmy {
+        LocalBodyArmy {
+            name: name.to_string(),
+            team: Some(team),
+            civilian,
+            faction: Some(2),
+            rating: Some(1_500),
+        }
+    }
+
+    #[test]
+    fn the_replay_body_seats_the_players_the_envelope_gets_wrong() {
+        // Taken from a real file: the envelope listed five of the eight who
+        // played, split 3-2, because that is how the lobby stood when the
+        // recorder sent its launch. The armies are the game.
+        let teams = body_teams(&[
+            army("SpeculariiNoob", 3, false),
+            army("Seraphim-Noob", 2, false),
+            army("hard_not_to_fart", 3, false),
+            army("CumCitron", 2, false),
+            army("civilian", 1, true),
+        ]);
+
+        assert_eq!(
+            teams
+                .iter()
+                .map(|team| (
+                    team.team.as_str(),
+                    team.players
+                        .iter()
+                        .map(|player| player.name.as_str())
+                        .collect::<Vec<_>>()
+                ))
+                .collect::<Vec<_>>(),
+            [
+                ("2", vec!["Seraphim-Noob", "CumCitron"]),
+                ("3", vec!["SpeculariiNoob", "hard_not_to_fart"]),
+            ]
+        );
+        assert_eq!(teams[0].players[0].rating, Some(1_500));
+        assert_eq!(teams[0].players[0].faction, Some(2));
+    }
+
+    #[test]
+    fn a_body_with_nothing_in_it_leaves_the_envelope_to_answer() {
+        assert!(body_teams(&[]).is_empty());
+        assert!(body_teams(&[army("civilian", 1, true)]).is_empty());
     }
 }
