@@ -28,8 +28,14 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
         status: { type: "failed", payload: { reason: event.payload.reason } },
         downloadStatus: clearTransientDownload(state.downloadStatus),
       };
+    // And so does a start that was called off: the download it had begun has
+    // nothing left to finish it either.
     case "closed":
-      return { ...state, status: { type: "idle" } };
+      return {
+        ...state,
+        status: { type: "idle" },
+        downloadStatus: clearTransientDownload(state.downloadStatus),
+      };
     case "liveTrackingScheduled":
       return { ...state, liveTracking: event.payload.tracking };
     case "liveTrackingCleared":
