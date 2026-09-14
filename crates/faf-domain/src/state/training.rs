@@ -2290,6 +2290,7 @@ mod tests {
             title: "game".into(),
             recorder: "Ada".into(),
             start_time: Some(1_800_000_000),
+            duration_seconds: Some(900),
             modified_time: 1_800_000_000,
             file_size_bytes: 1,
             num_players: players,

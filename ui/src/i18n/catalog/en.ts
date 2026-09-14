@@ -2183,6 +2183,7 @@ export const en = {
   "replays.local.noSimMods": "No simulation mods",
   "replays.local.simModCount": { one: "{count} simulation mod", other: "{count} simulation mods" },
   "replays.local.notRecorded": "Not recorded locally",
+  "replays.local.realTime": "Real time",
   "replays.local.deleteAria": "Delete {name}",
   "replays.local.delete": "Delete replay",
   "replays.local.footerCount": "Showing {shown} of {total} replays",

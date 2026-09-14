@@ -27887,6 +27887,7 @@
                   "title": "Downloaded replay",
                   "recorder": "Host",
                   "startTime": null,
+                  "durationSeconds": 1337,
                   "modifiedTime": 1,
                   "fileSizeBytes": 100,
                   "numPlayers": 2,
@@ -27919,6 +27920,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28020,6 +28022,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28123,6 +28126,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28224,6 +28228,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28323,6 +28328,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28427,6 +28433,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28528,6 +28535,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,

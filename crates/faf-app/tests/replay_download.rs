@@ -56,6 +56,7 @@ impl ReplayPort for DownloadReplay {
             title: "Downloaded replay".into(),
             recorder: "Host".into(),
             start_time: None,
+            duration_seconds: None,
             modified_time: 1,
             file_size_bytes: 100,
             num_players: 2,

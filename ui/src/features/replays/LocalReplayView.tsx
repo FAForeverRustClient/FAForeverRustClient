@@ -12,6 +12,7 @@ import { loadStatusNote } from "../../shared/loadStatusNote";
 import { loadStoredSet, saveStoredSet } from "../../shared/storage";
 import { mapPresentation } from "../../shared/mapPresentation";
 import { formatShortDate } from "../../shared/dates";
+import { formatDuration } from "../../shared/durations";
 import { LocalReplaySearch } from "./LocalReplaySearch";
 import {
   ReplayLibraryCard,
@@ -133,8 +134,10 @@ function localReplayCard(
     startTime: timestamp > 0 ? new Date(timestamp).toISOString() : "",
     teams: localReplayTeams(replay),
     averageRating: replay.averageRating,
+    // The envelope gives the wall clock; the sim's own length would mean
+    // walking the command stream of every file in the folder.
     gameDurationSeconds: null,
-    durationSeconds: null,
+    durationSeconds: replay.durationSeconds,
     reviewsAverage: null,
     reviewsCount: null,
     footerNote: localStatusLabel(replay.status),
@@ -437,8 +440,10 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                     secondary: simModLabel,
                   },
                   duration: {
-                    primary: "N/A",
-                    secondary: t("replays.local.notRecorded"),
+                    primary: formatDuration(replay.durationSeconds, "N/A"),
+                    secondary: replay.durationSeconds === null
+                      ? t("replays.local.notRecorded")
+                      : t("replays.local.realTime"),
                   },
                   replay: {
                     primary: localStatusLabel(replay.status),

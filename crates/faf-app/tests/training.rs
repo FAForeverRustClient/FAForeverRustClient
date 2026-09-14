@@ -163,6 +163,7 @@ fn local(uid: i32, map: &str, players: i32, faction: i32, rating: i32) -> LocalR
         title: "all welcome".into(),
         recorder: ME.into(),
         start_time: Some(1_800_000_000),
+        duration_seconds: Some(900),
         modified_time: 1_800_000_000,
         file_size_bytes: 1,
         num_players: players,

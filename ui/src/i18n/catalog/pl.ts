@@ -1453,6 +1453,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
     other: "{count} moda symulacji",
   },
   "replays.local.notRecorded": "Nie nagrano lokalnie",
+  "replays.local.realTime": "Czas rzeczywisty",
   "replays.local.deleteAria": "Usuń {name}",
   "replays.local.delete": "Usuń powtórkę",
   "replays.local.footerCount": "Pokazano {shown} z {total} powtórek",

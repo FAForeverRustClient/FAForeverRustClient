@@ -135,6 +135,13 @@ async fn record(
     let mut buffer = vec![0u8; 64 * 1024];
     let mut body: Vec<u8> = Vec::new();
     let mut header_done = false;
+    // When FA reached the recorder, which is within a second or two of the
+    // game starting. It stands in for a launch time the lobby never reported,
+    // and the point of it is that it is taken *now* rather than when the file
+    // is written: the fallback used to be the write time, while `game_end` is
+    // also the write time, so every replay this client recorded claimed to
+    // have lasted no time at all and the archive showed it with no duration.
+    let opened_at = unix_seconds();
     // A stream that stops early still holds a watchable game; it is the header's
     // `complete` flag, and so the archive's status badge, that has to say so.
     let mut complete = false;
@@ -177,7 +184,7 @@ async fn record(
         .map_err(|error| format!("could not create {}: {error}", directory.display()))?;
     let path = directory.join(replay_file_name(metadata));
     let raw_bytes = body.len();
-    let file = build_fafreplay(metadata, body, complete)?;
+    let file = build_fafreplay(metadata, body, complete, opened_at)?;
     let bytes = file.len();
     tokio::fs::write(&path, file)
         .await
@@ -213,10 +220,16 @@ fn replay_file_name(metadata: &ReplayMetadata) -> String {
 }
 
 /// JSON header line, `\n`, zstd body.
+///
+/// `started_at` is only reached for when the lobby never gave a launch time,
+/// which is the matchmaker path and any game that had already left the public
+/// listing. Taking it from the recorder rather than from this call is what
+/// makes `game_end - launched_at` a duration rather than zero.
 pub(crate) fn build_fafreplay(
     metadata: &ReplayMetadata,
     body: Vec<u8>,
     complete: bool,
+    started_at: f64,
 ) -> Result<Vec<u8>, String> {
     let now = unix_seconds();
     let mut header = serde_json::json!({
@@ -227,7 +240,7 @@ pub(crate) fn build_fafreplay(
         "mapname": metadata.map_name,
         "game_type": metadata.game_type,
         "host": metadata.host,
-        "launched_at": metadata.launched_at.map(f64::from).unwrap_or(now),
+        "launched_at": metadata.launched_at.map(f64::from).unwrap_or(started_at),
         "game_end": now,
         "num_players": metadata.num_players,
         "teams": metadata.teams,
@@ -355,7 +368,8 @@ mod tests {
 
     #[test]
     fn the_file_is_a_header_line_then_a_zstd_body() {
-        let file = build_fafreplay(&metadata(), b"replay body".to_vec(), true).unwrap();
+        let file =
+            build_fafreplay(&metadata(), b"replay body".to_vec(), true, 1_788_000_000.0).unwrap();
         let (header, body) = parse(&file);
         assert_eq!(body, b"replay body");
         assert_eq!(header["uid"], 4711);
@@ -374,7 +388,8 @@ mod tests {
     /// was cut short must not claim to be a complete recording.
     #[test]
     fn a_truncated_stream_is_marked_incomplete() {
-        let file = build_fafreplay(&metadata(), b"partial".to_vec(), false).unwrap();
+        let file =
+            build_fafreplay(&metadata(), b"partial".to_vec(), false, 1_788_000_000.0).unwrap();
         let (header, _) = parse(&file);
         assert_eq!(header["complete"], false);
     }
@@ -385,7 +400,7 @@ mod tests {
     fn a_missing_launch_time_falls_back_to_now() {
         let mut metadata = metadata();
         metadata.launched_at = None;
-        let file = build_fafreplay(&metadata, b"body".to_vec(), true).unwrap();
+        let file = build_fafreplay(&metadata, b"body".to_vec(), true, 1_788_000_000.0).unwrap();
         let (header, _) = parse(&file);
         assert!(header["launched_at"].as_f64().unwrap() > 1_700_000_000.0);
     }

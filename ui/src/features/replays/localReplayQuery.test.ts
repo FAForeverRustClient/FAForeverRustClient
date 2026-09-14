@@ -16,6 +16,7 @@ function replay(overrides: Partial<LocalReplay> = {}): LocalReplay {
     title: "Team game",
     recorder: "TestPlayer",
     startTime: 1_767_225_600,
+    durationSeconds: 1_530,
     modifiedTime: 1_767_225_600,
     fileSizeBytes: 25_000,
     numPlayers: 4,

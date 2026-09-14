@@ -1526,6 +1526,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
     other: "{count} мода симуляции",
   },
   "replays.local.notRecorded": "Локально не записан",
+  "replays.local.realTime": "Реальное время",
   "replays.local.deleteAria": "Удалить {name}",
   "replays.local.delete": "Удалить реплей",
   "replays.local.footerCount": "Показано {shown} из {total} реплеев",

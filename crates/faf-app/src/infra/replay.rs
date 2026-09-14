@@ -2819,6 +2819,7 @@ fn empty_local_replay(
         title,
         recorder: String::new(),
         start_time: None,
+        duration_seconds: None,
         modified_time: unix_seconds(modified),
         file_size_bytes: file_size.min(u32::MAX as u64) as u32,
         num_players: 0,
@@ -2917,6 +2918,19 @@ async fn read_local_metadata(
         .filter(|value| *value > 0.0)
         .map(|value| value.min(u32::MAX as f64).round() as u32);
 
+    // Both ends or nothing. A recording interrupted before the game ended has
+    // no `game_end`, and one this client wrote before the recorder learned the
+    // launch time has the two equal; neither is a duration, and a confident
+    // "0m 00s" is worse than saying nothing.
+    let duration_seconds = header
+        .get("game_end")
+        .and_then(Value::as_f64)
+        .filter(|end| *end > 0.0)
+        .zip(start_time.map(f64::from))
+        .map(|(end, start)| end - start)
+        .filter(|seconds| *seconds > 0.0)
+        .map(|seconds| seconds.min(f64::from(i32::MAX)).round() as i32);
+
     let header_map = header
         .get("mapname")
         .and_then(Value::as_str)
@@ -2961,6 +2975,7 @@ async fn read_local_metadata(
             .unwrap_or("")
             .to_string(),
         start_time,
+        duration_seconds,
         modified_time: unix_seconds(modified),
         file_size_bytes: file_size.min(u32::MAX as u64) as u32,
         // The envelope's count is the lobby listing's count, and it is wrong
@@ -4865,7 +4880,9 @@ mod tests {
         body.extend_from_slice(b"\r\n\0");
         body.extend_from_slice(b"Replay v1.9\r\n/maps/scmp_009/scmp_009_scenario.lua\0");
         body.extend_from_slice(b"\r\n\x1a\0");
-        let file = crate::infra::replay_recorder::build_fafreplay(&metadata, body, true).unwrap();
+        let file =
+            crate::infra::replay_recorder::build_fafreplay(&metadata, body, true, 1_788_000_000.0)
+                .unwrap();
         let path = dir.join("27619486-Nory.fafreplay");
         tokio::fs::write(&path, &file).await.unwrap();
 

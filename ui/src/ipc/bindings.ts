@@ -3386,6 +3386,20 @@ export type LocalReplay = {
 	title: string,
 	recorder: string,
 	startTime: number | null,
+	/**
+	 *  How long the game ran, in seconds, from the envelope's own `launched_at`
+	 *  and `game_end`.
+	 *
+	 *  Wall-clock, not sim time: the number of seconds the people in it spent
+	 *  playing, which is what the vault calls a replay's real-time duration.
+	 *  The sim's own length would mean walking the whole command stream
+	 *  counting ticks, and the archive lists thousands of files.
+	 *
+	 *  `None` when the envelope does not carry both ends, or carries them
+	 *  equal. The listing used to show "N/A" for every local replay whatever
+	 *  the file said, which is what the report was about.
+	 */
+	durationSeconds: number | null,
 	modifiedTime: number,
 	fileSizeBytes: number,
 	numPlayers: number,
@@ -5770,8 +5784,10 @@ export type ReplayEvent = { type: "connecting" } |
 	reason: string,
 } } |
 /**
- *  The replay session ended (game process exited / stream closed): back
- *  to idle so the UI can start another one.
+ *  The replay session ended (game process exited / stream closed), or the
+ *  start of one was called off before the game had it: back to idle so the
+ *  UI can start another one. A cancelled start is deliberately not a
+ *  [`Self::Failed`] -- nothing went wrong.
  */
 { type: "closed" } | { type: "liveTrackingScheduled"; payload: {
 	tracking: LiveReplayTracking,

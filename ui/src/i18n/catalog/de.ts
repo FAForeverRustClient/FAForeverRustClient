@@ -1922,6 +1922,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
     other: "{count} Simulationsmods",
   },
   "replays.local.notRecorded": "Nicht lokal aufgezeichnet",
+  "replays.local.realTime": "Echtzeit",
   "replays.local.deleteAria": "{name} löschen",
   "replays.local.delete": "Replay löschen",
   "replays.local.footerCount": "{shown} von {total} Replays",

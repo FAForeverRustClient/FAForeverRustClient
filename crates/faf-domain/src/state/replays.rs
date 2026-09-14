@@ -577,6 +577,18 @@ pub struct LocalReplay {
     pub title: String,
     pub recorder: String,
     pub start_time: Option<u32>,
+    /// How long the game ran, in seconds, from the envelope's own `launched_at`
+    /// and `game_end`.
+    ///
+    /// Wall-clock, not sim time: the number of seconds the people in it spent
+    /// playing, which is what the vault calls a replay's real-time duration.
+    /// The sim's own length would mean walking the whole command stream
+    /// counting ticks, and the archive lists thousands of files.
+    ///
+    /// `None` when the envelope does not carry both ends, or carries them
+    /// equal. The listing used to show "N/A" for every local replay whatever
+    /// the file said, which is what the report was about.
+    pub duration_seconds: Option<i32>,
     pub modified_time: u32,
     pub file_size_bytes: u32,
     pub num_players: i32,
@@ -1542,6 +1554,7 @@ mod tests {
             title: "1700+ !!!".into(),
             recorder: "host".into(),
             start_time: Some(1_700_000_000),
+            duration_seconds: Some(1_530),
             modified_time: 1_700_000_100,
             file_size_bytes: 1_024,
             num_players: 2,

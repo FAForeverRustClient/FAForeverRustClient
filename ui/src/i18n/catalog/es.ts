@@ -1472,6 +1472,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.local.noSimMods": "Sin mods de simulación",
   "replays.local.simModCount": { one: "{count} mod de simulación", other: "{count} mods de simulación" },
   "replays.local.notRecorded": "No grabada localmente",
+  "replays.local.realTime": "Tiempo real",
   "replays.local.deleteAria": "Eliminar {name}",
   "replays.local.delete": "Eliminar la repetición",
   "replays.local.footerCount": "Mostrando {shown} de {total} repeticiones",
