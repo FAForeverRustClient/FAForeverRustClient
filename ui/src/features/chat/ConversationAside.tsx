@@ -17,6 +17,7 @@ import { ipc } from "../../ipc/client";
 import { joinGame } from "../lobby/joinGame";
 import { GameSummaryCard } from "./GameSummaryCard";
 import { gamePresenceForPlayer } from "./gameSummary";
+import type { RosterTier } from "./RosterResizeHandle";
 
 interface Props {
   /** The person on the other side; a private channel is named after them. */
@@ -31,6 +32,14 @@ interface Props {
   onOpenConversation: (nickname: string) => void;
   /** Their player menu, the same one the roster and the messages open. */
   onPlayerContextMenu: (nickname: string, event: React.MouseEvent) => void;
+  /**
+   * How much room the lineup has, from the width the panel was dragged to.
+   *
+   * Stamped on the panel rather than read from it: the stylesheet needs the
+   * answer before it lays anything out, and a container query would make the
+   * three steps a property of whichever element happened to be the container.
+   */
+  tier: RosterTier;
 }
 
 export function ConversationAside({
@@ -42,13 +51,18 @@ export function ConversationAside({
   now,
   onOpenConversation,
   onPlayerContextMenu,
+  tier,
 }: Props) {
   const { t } = useTranslation();
   const presence = gamePresenceForPlayer(openGames, liveGames, peer, now);
 
   if (!presence) {
     return (
-      <aside className="chat-conversation-aside" aria-label={t("chat.aside.title", { name: peer })}>
+      <aside
+        className="chat-conversation-aside"
+        data-tier={tier}
+        aria-label={t("chat.aside.title", { name: peer })}
+      >
         <p className="chat-conversation-aside-empty muted">
           <Icon name="users" size={16} /> {t("chat.aside.notInGame", { name: peer })}
         </p>
@@ -76,7 +90,11 @@ export function ConversationAside({
   };
 
   return (
-    <aside className="chat-conversation-aside" aria-label={t("chat.aside.title", { name: peer })}>
+    <aside
+      className="chat-conversation-aside"
+      data-tier={tier}
+      aria-label={t("chat.aside.title", { name: peer })}
+    >
       <div className="chat-conversation-aside-card">
         <GameSummaryCard
           presence={presence}

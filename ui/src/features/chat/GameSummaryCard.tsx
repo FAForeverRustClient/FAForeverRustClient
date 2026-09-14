@@ -10,12 +10,17 @@ import { MapThumbnail } from "../../shared/MapThumbnail";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { GLOBAL_LEADERBOARD, gameLeaderboard, leaderboardLabel } from "../../shared/playerRatings";
 import { displayName } from "./chatFormat";
-import { rosterRatingSummary } from "./ratingSummary";
+import { usePlayerRatingCard } from "./PlayerRatingCard";
 import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/useCountryLabel";
 import { formatGameTime } from "../../shared/durations";
 import { mapPresentation } from "../../shared/mapPresentation";
-import { gameElapsedSeconds, gameTeamSummaries, type GamePresence } from "./gameSummary";
+import {
+  gameElapsedSeconds,
+  gameTeamSummaries,
+  type GamePresence,
+  type GameSummaryPlayer,
+} from "./gameSummary";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -37,17 +42,73 @@ interface Props {
   /** Drawn beside the title where the card is not already next to a badge. */
   showMap?: boolean;
   /**
-   * Makes the names in the lineup behave the way a name in the roster does:
-   * hover for the rating summary, click for the profile card, double-click
-   * for a private conversation, right-click for the player menu.
+   * Makes the names in the lineup clickable: profile card on a click, private
+   * conversation on a double click, player menu on a right click.
    *
-   * Optional, and absent in the popover on purpose. That card is a tooltip
-   * that closes when the pointer leaves the badge it hangs off, so nothing in
-   * it can be reached to be clicked; offering buttons there would be a
-   * promise the surface cannot keep.
+   * Optional, and absent where the lineup has nowhere to host a menu. The
+   * rating card on hover is offered either way, since it is not a control.
    */
   onOpenConversation?: (nickname: string) => void;
   onPlayerContextMenu?: (nickname: string, event: React.MouseEvent) => void;
+}
+
+/**
+ * One name in a lineup, with the same hover card the channel roster shows.
+ *
+ * Its own component because the card is a hook, and a hook cannot be called
+ * from inside the `map` over a team. Worth the component: this used to be a
+ * native `title`, which is the one surface the theme cannot reach, so the
+ * rating summary was a white operating-system slab in Aeolus' roster and a
+ * white operating-system slab here, and only the roster got fixed.
+ *
+ * The card is `pointer-events: none`, so opening one over the panel this name
+ * sits in cannot take the pointer away from it.
+ */
+function GameSummaryPlayerName({
+  player,
+  onOpenConversation,
+  onPlayerContextMenu,
+}: {
+  player: GameSummaryPlayer;
+  onOpenConversation?: (nickname: string) => void;
+  onPlayerContextMenu?: (nickname: string, event: React.MouseEvent) => void;
+}) {
+  const { cardProps, anchorRef, card } = usePlayerRatingCard(
+    displayName(player.login, player.profile),
+    player.profile,
+  );
+  if (!onPlayerContextMenu) {
+    // Nowhere to put a menu, so the name is not a control. The hover card still
+    // is not a control either, so it can be offered anyway.
+    return (
+      <>
+        <span
+          className="chat-game-player-static"
+          ref={anchorRef}
+          {...cardProps}
+        >
+          {player.login}
+        </span>
+        {card}
+      </>
+    );
+  }
+  return (
+    <>
+      <button
+        ref={anchorRef as React.RefObject<HTMLButtonElement>}
+        type="button"
+        className="chat-game-player"
+        onClick={() => void openPlayerCard(player.profile?.id ?? null, player.login)}
+        onDoubleClick={() => onOpenConversation?.(player.login)}
+        onContextMenu={(event) => onPlayerContextMenu(player.login, event)}
+        {...cardProps}
+      >
+        {player.login}
+      </button>
+      {card}
+    </>
+  );
 }
 
 export function GameSummaryCard({
@@ -120,6 +181,26 @@ export function GameSummaryCard({
               <ul>
                 {team.players.map((player) => (
                   <li key={player.login}>
+                    {/* The avatar the replay tab's lineup shows. FAF avatars
+                        are 40 by 20, which is a lot of a narrow column, so the
+                        panel drops it again at its narrowest step: see
+                        `rosterTier`. An empty slot rather than none, or a team
+                        where one player has an avatar would have its names
+                        indented differently from the rest. */}
+                    <span className="chat-game-player-avatar" aria-hidden="true">
+                      {player.profile?.avatarUrl ? (
+                        <img
+                          src={player.profile.avatarUrl}
+                          alt=""
+                          title={player.profile.avatarTooltip || undefined}
+                          width={40}
+                          height={20}
+                          loading="lazy"
+                          decoding="async"
+                          draggable={false}
+                        />
+                      ) : null}
+                    </span>
                     {player.country ? (
                       <img
                         src={flagSrc(player.country)}
@@ -132,23 +213,11 @@ export function GameSummaryCard({
                         onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
                       />
                     ) : <span className="chat-game-flag-placeholder" />}
-                    {onPlayerContextMenu ? (
-                      <button
-                        type="button"
-                        className="chat-game-player"
-                        title={rosterRatingSummary(
-                          displayName(player.login, player.profile),
-                          player.profile,
-                        )}
-                        onClick={() => void openPlayerCard(player.profile?.id ?? null, player.login)}
-                        onDoubleClick={() => onOpenConversation?.(player.login)}
-                        onContextMenu={(event) => onPlayerContextMenu(player.login, event)}
-                      >
-                        {player.login}
-                      </button>
-                    ) : (
-                      <span>{player.login}</span>
-                    )}
+                    <GameSummaryPlayerName
+                      player={player}
+                      onOpenConversation={onOpenConversation}
+                      onPlayerContextMenu={onPlayerContextMenu}
+                    />
                     {player.rating !== null && <small>({player.rating})</small>}
                   </li>
                 ))}

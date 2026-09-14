@@ -1,10 +1,10 @@
 // The rating table behind a roster hover, as data rather than as a string.
 //
-// `rosterRatingSummary` folds the same facts into the newline-separated text a
-// native `title` attribute wants. That was the only reader until the hover card
-// (see `PlayerRatingCard`) needed the rows themselves, and a card built by
-// splitting a tooltip string back apart is a card that breaks the first time a
-// leaderboard name contains a colon.
+// These used to be folded into the newline-separated text a native `title`
+// attribute wants, which is how every rating summary in chat was shown until
+// the hover card (see `PlayerRatingCard`) replaced it. The rows are the shape
+// the card wants; a card built by splitting a tooltip string back apart is one
+// that breaks the first time a leaderboard name contains a colon.
 
 import type { PlayerLobbyRating, PlayerProfile } from "../../ipc/bindings";
 import { LEADERBOARD_ORDER } from "../../shared/playerRatings";

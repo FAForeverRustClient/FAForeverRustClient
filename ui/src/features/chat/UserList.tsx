@@ -350,7 +350,7 @@ const RosterRow = memo(function RosterRow({
         onContextMenu={(e) => onContextMenu(user.name, e)}
       >
         <button
-          ref={anchorRef}
+          ref={anchorRef as React.RefObject<HTMLButtonElement>}
           type="button"
           className="chat-roster-identity"
           onDoubleClick={() => onOpenConversation(user.name)}

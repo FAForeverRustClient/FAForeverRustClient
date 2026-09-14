@@ -26,7 +26,7 @@ import { Composer } from "./Composer";
 import { ConversationAside } from "./ConversationAside";
 import { MessageList, type MessageReactionsMap } from "./MessageList";
 import { visibleChatMessages } from "./messageFilters";
-import { RosterResizeHandle, clampRosterWidth } from "./RosterResizeHandle";
+import { RosterResizeHandle, clampRosterWidth, rosterTier } from "./RosterResizeHandle";
 import { UserList } from "./UserList";
 import { usePlayerMenu } from "./usePlayerMenu";
 import "./chat.css";
@@ -395,6 +395,7 @@ export function ChatView() {
             now={minuteNow}
             onOpenConversation={openConversation}
             onPlayerContextMenu={openPlayerMenu}
+            tier={rosterTier(rosterWidth)}
           />
         </div>
       )}

@@ -111,12 +111,14 @@ export function usePlayerRatingCard(
     onBlur: () => void;
     "aria-describedby": string | undefined;
   };
-  anchorRef: React.RefObject<HTMLButtonElement>;
+  anchorRef: React.RefObject<HTMLElement>;
   card: React.ReactNode;
 } {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 8, right: 8 });
-  const anchorRef = useRef<HTMLButtonElement>(null);
+  // `HTMLElement`, not `HTMLButtonElement`: a lineup that has nowhere to put a
+  // menu renders its names as spans, and they want the card just the same.
+  const anchorRef = useRef<HTMLElement>(null);
   const timer = useRef<number | undefined>(undefined);
   const cardId = useId();
 
