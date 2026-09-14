@@ -1351,3 +1351,25 @@
   font-style: normal;
   font-variant-numeric: tabular-nums;
 }
+
+/* A band holding somebody who would actually take this player, and the band
+   this player's own rating sits in. Both exist because the list was being read
+   as an answer to "is anybody near me": a band of one, an apparently nearby
+   rating, and "0 in your range" on the card underneath it. The bands are the
+   matchmaker's own mean and the card's rating is the conservative number, so
+   the two never did line up by eye. */
+.matchmaker-queue-breakdown > span.is-in-range i {
+  color: var(--color-ok);
+  font-weight: 600;
+}
+
+.matchmaker-queue-breakdown > span.is-mine em {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.matchmaker-queue-breakdown small {
+  margin-top: 2px;
+  color: var(--color-subtle);
+  font-size: 11px;
+}

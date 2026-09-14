@@ -80,9 +80,9 @@ describe("the queue breakdown by rating", () => {
   it("groups searches by the middle of their window", () => {
     // Middles of 1000, 1300 and 1800: the 800 band, the 1200 band, the 1600.
     expect(queueRatingBuckets(queue())).toEqual([
-      { min: 800, max: 1200, count: 1 },
-      { min: 1200, max: 1600, count: 1 },
-      { min: 1600, max: 2000, count: 1 },
+      { min: 800, max: 1200, count: 1, inRange: 0, mine: false },
+      { min: 1200, max: 1600, count: 1, inRange: 0, mine: false },
+      { min: 1600, max: 2000, count: 1, inRange: 0, mine: false },
     ]);
   });
 
@@ -94,12 +94,16 @@ describe("the queue breakdown by rating", () => {
         { min: 950, max: 1050 },
       ],
     });
-    expect(queueRatingBuckets(crowded)).toEqual([{ min: 800, max: 1200, count: 3 }]);
+    expect(queueRatingBuckets(crowded)).toEqual([
+      { min: 800, max: 1200, count: 3, inRange: 0, mine: false },
+    ]);
   });
 
   it("leaves out the bands nobody is waiting in", () => {
     const sparse = queue({ boundary80s: [{ min: 1900, max: 2100 }] });
-    expect(queueRatingBuckets(sparse)).toEqual([{ min: 2000, max: 2400, count: 1 }]);
+    expect(queueRatingBuckets(sparse)).toEqual([
+      { min: 2000, max: 2400, count: 1, inRange: 0, mine: false },
+    ]);
   });
 
   it("falls back to the wider windows when the narrow ones are absent", () => {
@@ -109,5 +113,40 @@ describe("the queue breakdown by rating", () => {
 
   it("says nothing about an empty queue", () => {
     expect(queueRatingBuckets(queue({ boundary80s: [], boundary75s: [] }))).toEqual([]);
+  });
+
+  it("says which of a band would take you, and which band you are in", () => {
+    // The report: a band with somebody in it, a rating that looks like it
+    // belongs there, and 0 in range underneath.
+    const buckets = queueRatingBuckets(queue(), rating(1150, 60), 0);
+    expect(buckets).toEqual([
+      { min: 800, max: 1200, count: 1, inRange: 1, mine: true },
+      { min: 1200, max: 1600, count: 1, inRange: 1, mine: false },
+      { min: 1600, max: 2000, count: 1, inRange: 0, mine: false },
+    ]);
+  });
+
+  it("adds up to the number on the card", () => {
+    for (const [mean, deviation] of [
+      [1150, 60],
+      [1050, 150],
+      [2500, 60],
+    ]) {
+      const summary = rating(mean, deviation);
+      const total = queueRatingBuckets(queue(), summary, 1)
+        .map((bucket) => bucket.inRange)
+        .reduce((sum, value) => sum + value, 0);
+      expect(total).toBe(playersInRatingRange(queue(), summary, 1));
+    }
+  });
+
+  it("claims nothing about a rating the server is unsure of", () => {
+    const buckets = queueRatingBuckets(queue(), rating(1150, 201), 0);
+    expect(buckets.every((bucket) => bucket.inRange === 0 && !bucket.mine)).toBe(true);
+    // And the same windows as with no rating at all, so the list itself holds
+    // still when the deviation crosses the line.
+    expect(buckets.map((bucket) => bucket.min)).toEqual(
+      queueRatingBuckets(queue()).map((bucket) => bucket.min),
+    );
   });
 });

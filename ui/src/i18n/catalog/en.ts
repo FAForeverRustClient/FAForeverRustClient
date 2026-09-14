@@ -620,6 +620,8 @@ export const en = {
   "lobby.galacticWar.how.client.body": "Galactic War runs as its own application with its own login. This client installs it, keeps it current and starts it; everything after that happens in the Galactic War window.",
   "lobby.matchmaker.inRange": "{count} in your range",
   "lobby.matchmaker.queueByRating": "Players in queue by rating",
+  "lobby.matchmaker.someOfBand": "{inRange} of {count}",
+  "lobby.matchmaker.yourBand": "Highlighted: your rating band, and who in it would take you.",
   "lobby.matchmaker.inRangeHint": "Players waiting in this queue whose rating range overlaps yours, excluding your own search. Outside 1v1 the server derives this from each party's first player.",
   "lobby.matchmaker.mapPool": "Map pool",
   // What a queue actually does to your game. The questions it answers are the
@@ -2227,6 +2229,12 @@ export const en = {
   "replays.source.online": "Online",
   "replays.source.local": "Local",
   "replays.status.connecting": "Connecting to the replay…",
+  "replays.starting.title": "Starting the replay",
+  "replays.starting.detail": "Fetching the replay and opening Forged Alliance.",
+  "replays.starting.failedTitle": "The replay did not start",
+  "replays.starting.hide": "Hide",
+  "replays.starting.close": "Close",
+  "replays.starting.hideNote": "Hiding this does not stop anything. The status line keeps the same progress.",
   "replays.status.failed": "Replay failed: {reason}",
   "replays.status.launchedWarning":
     "Launched, but: {warning}. FA may get stuck loading if this doesn't resolve itself.",
