@@ -256,6 +256,15 @@ pub enum GalacticWarCommand {
     /// Re-read what is installed, what the gateway advertises, and the season
     /// statistics. Cheap enough to run on entering the tab.
     Refresh,
+    /// Re-read the season statistics and nothing else.
+    ///
+    /// The headline of those statistics -- how many people are in Galactic War
+    /// right now -- is printed on the Play tab's mode strip, where it used to
+    /// stand at whatever it was when the tab was last entered. "It says x
+    /// players online, I open it and there is nobody" is what a number that
+    /// never moves looks like. The install half is deliberately not repeated:
+    /// a poll must not put the Play button back into "checking" every minute.
+    RefreshStatistics,
     /// Install the current target without starting anything.
     Install,
     /// Get the user into the game: install or update first if needed, then

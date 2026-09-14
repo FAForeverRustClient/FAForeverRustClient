@@ -2004,6 +2004,17 @@ export type GalacticWarCommand =
  *  statistics. Cheap enough to run on entering the tab.
  */
 { type: "refresh" } |
+/**
+ *  Re-read the season statistics and nothing else.
+ *
+ *  The headline of those statistics -- how many people are in Galactic War
+ *  right now -- is printed on the Play tab's mode strip, where it used to
+ *  stand at whatever it was when the tab was last entered. "It says x
+ *  players online, I open it and there is nobody" is what a number that
+ *  never moves looks like. The install half is deliberately not repeated:
+ *  a poll must not put the Play button back into "checking" every minute.
+ */
+{ type: "refreshStatistics" } |
 /**  Install the current target without starting anything. */
 { type: "install" } |
 /**
@@ -3548,7 +3559,12 @@ export type MapGeneratorState = {
 	 *  `GeneratorPrefs`.
 	 */
 	options: GeneratorOptions,
-	/**  Data URLs of newly generated map previews (`map_name` -> `data:image/png;base64,...`). */
+	/**
+	 *  Data URLs of newly generated map previews (`map_name` -> `data:image/png;base64,...`).
+	 *
+	 *  Capped at [`MAX_KEPT_PREVIEWS`]: every entry is a PNG file carried as
+	 *  text, in this state and again in the frontend's mirror of it.
+	 */
 	previews?: { [key in string]: string },
 	/**
 	 *  Problems with the current options, from the pure rule checks. Refreshed
@@ -4630,10 +4646,11 @@ export type NotificationSound =
  *  UI. Everything without a switch of its own (server notices, errors, a
  *  finished map, a new client version) shares [`Self::other`].
  *
- *  **One row is not [`NotificationSound::Chime`]: a found match plays
- *  [`NotificationSound::FafMatch`].** Everything else keeps the tone the
- *  client played before this existed, so installing an update changes one
- *  sound and not the rest.
+ *  **Two rows are not [`NotificationSound::Chime`]: a found match plays
+ *  [`NotificationSound::FafMatch`] and a filled lobby plays
+ *  [`NotificationSound::Alert`].** Everything else keeps the tone the client
+ *  played before this existed, so installing an update changes those two
+ *  sounds and not the rest.
  *
  *  That is a reversal. The original note here argued that shipping choices
  *  nobody made was the wrong answer to "all notifications sound the same", and
@@ -4642,7 +4659,9 @@ export type NotificationSound =
  *  notice costs nothing, and telling the two apart is not a preference so much
  *  as the point of having a sound at all. Nobody who had not already opened
  *  this page could tell them apart, and the report that followed said exactly
- *  that. The remaining eleven rows are still one tone and still a preference.
+ *  that. A lobby filling up expires the same way -- the game launches without
+ *  whoever was looking elsewhere -- and was asked for by name. The remaining
+ *  ten rows are still one tone and still a preference.
  *
  *  [`NotificationSound::Silent`] is available on every row, which is how a kind
  *  is seen and not heard.

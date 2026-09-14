@@ -185,9 +185,15 @@
   color: var(--color-warn);
 }
 
+/* The detail column is wider than it was. The report was about a mod's
+   description, which had a hundred-odd pixels of a 350 px column to be read
+   in and was cut mid-sentence on anything longer than a paragraph: "a complete
+   disaster for my mod with its description". The grid still gives the browser
+   everything else, and the column stops growing at 440 px so the cards beside
+   it keep their own width. */
 .vault-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 350px);
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
   align-items: start;
   gap: var(--space-4);
   min-width: 0;
@@ -237,6 +243,17 @@
     grid-template-columns: 1fr;
   }
 
+  /* Stacked under the browser rather than beside it: there is no column to
+     fit the window's height any more, and a scroll inside a panel that is
+     already scrolling with the page is two scrollbars for one list. */
+  .vault-detail-panel {
+    max-height: none;
+  }
+
+  .vault-detail-description p {
+    max-height: 220px;
+  }
+
   .vault-filters {
     grid-template-columns: repeat(3, minmax(110px, 1fr));
   }
@@ -267,11 +284,15 @@
 
 /* ── Unified Vault Detail Panel ────────────────────────────────────────── */
 
+/* As tall as the window allows, so the space the description gets is the space
+   there is rather than a number picked once. The panel itself never scrolls:
+   the description inside it does, and the actions stay on screen. */
 .vault-detail-panel {
   position: sticky;
   top: 0;
   display: flex;
   flex-direction: column;
+  max-height: calc(100vh - 2 * var(--space-4));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
@@ -315,6 +336,10 @@
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-3);
+  /* Takes what the preview leaves, and may shrink below its content so the
+     description's own scroll is the one that runs. */
+  flex: 1;
+  min-height: 0;
 }
 
 .vault-detail-header {
@@ -424,6 +449,10 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* The one part of the panel that grows: everything else is a line or two of
+     known length, and this is the part people came to read. */
+  flex: 1;
+  min-height: 0;
 }
 
 .vault-detail-description h3 {
@@ -440,7 +469,10 @@
   color: var(--color-muted);
   font-size: 12.5px;
   line-height: 1.45;
-  max-height: 90px;
+  /* Six lines was the cap, whatever the window's height. It is the panel's
+     leftover room now, with a floor so a short window still shows a paragraph
+     rather than a scrollbar over two lines. */
+  min-height: 88px;
   overflow-y: auto;
   word-break: break-word;
 }
@@ -449,6 +481,7 @@
 .vault-detail-actions {
   display: flex;
   flex-wrap: wrap;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 6px;

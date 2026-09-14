@@ -24,6 +24,23 @@ const UNCERTAIN_ABOVE = 200;
 const CONFIDENT_BELOW = 100;
 
 /**
+ * The windows this queue publishes for the rating the server has for you.
+ *
+ * Which of the two sets applies is a question about *your* deviation, so the
+ * count and the breakdown have to ask it the same way or they answer the same
+ * question differently.
+ */
+function windowsFor(
+  queue: MatchmakerQueue,
+  rating: PlayerRatingSummary | null,
+): { min: number; max: number }[] {
+  if (rating && rating.mean !== null && rating.deviation !== null && rating.deviation <= UNCERTAIN_ABOVE) {
+    return rating.deviation < CONFIDENT_BELOW ? queue.boundary80s : queue.boundary75s;
+  }
+  return queue.boundary80s.length > 0 ? queue.boundary80s : queue.boundary75s;
+}
+
+/**
  * The number of queued searches whose window contains your rating, or `null`
  * when that cannot honestly be said.
  *
@@ -43,7 +60,7 @@ export function playersInRatingRange(
   if (!rating || rating.mean === null || rating.deviation === null) return null;
   if (rating.deviation > UNCERTAIN_ABOVE) return null;
 
-  const windows = rating.deviation < CONFIDENT_BELOW ? queue.boundary80s : queue.boundary75s;
+  const windows = windowsFor(queue, rating);
   if (windows.length === 0) return null;
 
   // The mean, not the displayed rating: the server builds these windows from
@@ -68,6 +85,21 @@ export interface RatingBucket {
   min: number;
   max: number;
   count: number;
+  /**
+   * How many of this band's searches would actually take you, your own search
+   * excluded. These sum to the number the card prints as "in your range".
+   *
+   * They are not the same question as `count`, and a report came from the two
+   * being read as though they were: a band of one, a rating apparently inside
+   * it, and "0 in your range" underneath. The bands are the matchmaker's mean,
+   * the rating on the card is the conservative number every client displays,
+   * and a search only takes you if its window contains your *mean*. Saying per
+   * band which of them do settles it without printing a second rating nobody
+   * recognises.
+   */
+  inRange: number;
+  /** The band your own rating sits in, on the same scale as the bands. */
+  mine: boolean;
 }
 
 /**
@@ -82,16 +114,46 @@ export interface RatingBucket {
  * The narrow windows are preferred for that reason. Empty bands are left out
  * entirely, so the breakdown is as long as the queue is varied.
  */
-export function queueRatingBuckets(queue: MatchmakerQueue): RatingBucket[] {
-  const windows = queue.boundary80s.length > 0 ? queue.boundary80s : queue.boundary75s;
-  const counts = new Map<number, number>();
+export function queueRatingBuckets(
+  queue: MatchmakerQueue,
+  rating: PlayerRatingSummary | null = null,
+  ownSearches = 0,
+): RatingBucket[] {
+  const windows = windowsFor(queue, rating);
+  // The same test `playersInRatingRange` makes, and only when it would make
+  // it: an uncertain or absent rating has no answer, and a band cannot claim
+  // one either.
+  const mean =
+    playersInRatingRange(queue, rating, 0) === null ? null : (rating?.mean ?? null);
+  const bandOf = (value: number) => Math.floor(Math.max(0, value) / RATING_BUCKET) * RATING_BUCKET;
+
+  const counts = new Map<number, { count: number; inRange: number }>();
   for (const window of windows) {
     const middle = (window.min + window.max) / 2;
     if (!Number.isFinite(middle)) continue;
-    const band = Math.floor(Math.max(0, middle) / RATING_BUCKET) * RATING_BUCKET;
-    counts.set(band, (counts.get(band) ?? 0) + 1);
+    const band = bandOf(middle);
+    const tally = counts.get(band) ?? { count: 0, inRange: 0 };
+    tally.count += 1;
+    if (mean !== null && window.min < mean && mean < window.max) tally.inRange += 1;
+    counts.set(band, tally);
   }
+
+  // Your own search is in the server's numbers, it is centred on you, and it
+  // is therefore in your own band. Taking it off there is what keeps these
+  // adding up to the count on the card.
+  const myBand = mean === null ? null : bandOf(mean);
+  if (myBand !== null && ownSearches > 0) {
+    const tally = counts.get(myBand);
+    if (tally) tally.inRange = Math.max(0, tally.inRange - ownSearches);
+  }
+
   return [...counts.entries()]
     .sort(([left], [right]) => left - right)
-    .map(([min, count]) => ({ min, max: min + RATING_BUCKET, count }));
+    .map(([min, tally]) => ({
+      min,
+      max: min + RATING_BUCKET,
+      count: tally.count,
+      inRange: tally.inRange,
+      mine: min === myBand,
+    }));
 }

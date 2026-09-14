@@ -47,6 +47,10 @@ interface Props {
    * worth a number.
    */
   inRange: number | null;
+  /** Your own search in this queue, which the server counts and you are not
+   *  looking for. The breakdown has to subtract it in the same place the
+   *  headline count does. */
+  ownSearches: number;
   /** This queue's league placement, for the badge under the rating. */
   placement: PlayerLeaguePlacement | null;
   onToggle: () => void;
@@ -63,6 +67,7 @@ export function MatchmakerQueueCard({
   secondsUntilPop,
   rating,
   inRange,
+  ownSearches,
   placement,
   onToggle,
   onOpenMapPool,
@@ -71,7 +76,7 @@ export function MatchmakerQueueCard({
   // any of them is near you, and "in range: 0" says only that none is: the
   // question both leave open is whether the queue is empty around your rating
   // or empty everywhere, which decides whether waiting is worth it.
-  const buckets = queueRatingBuckets(queue);
+  const buckets = queueRatingBuckets(queue, rating, ownSearches);
   return (
     <article
       className={
@@ -133,7 +138,7 @@ export function MatchmakerQueueCard({
         <span className="matchmaker-queue-facts">
           <span><Icon name="hourglass" size={14} /> {formatClockDuration(secondsUntilPop)}</span>
           <span className="matchmaker-queue-queued">
-            <Icon name="users" size={14} /> {queue.numPlayers} queued
+            <Icon name="users" size={14} /> {t("lobby.matchmaker.queuedCount", { count: queue.numPlayers })}
             {buckets.length > 0 && (
               // Shown while the pointer is anywhere on the card, and anchored
               // here because this is the count it breaks down. Hover-only and
@@ -143,15 +148,30 @@ export function MatchmakerQueueCard({
               <span className="matchmaker-queue-breakdown" aria-hidden>
                 <b>{t("lobby.matchmaker.queueByRating")}</b>
                 {buckets.map((bucket) => (
-                  <span key={bucket.min}>
+                  <span
+                    key={bucket.min}
+                    className={[
+                      bucket.inRange > 0 ? "is-in-range" : "",
+                      bucket.mine ? "is-mine" : "",
+                    ].filter(Boolean).join(" ")}
+                  >
                     <em>{bucket.min} – {bucket.max}</em>
-                    <i>{bucket.count}</i>
+                    {/* Which of the band is a fair match, when that differs
+                        from how many are in it. Without this the band read as
+                        an answer to "is anybody near me", which it is not:
+                        see `RatingBucket.inRange`. */}
+                    <i>{bucket.inRange > 0 && bucket.inRange < bucket.count
+                      ? t("lobby.matchmaker.someOfBand", { inRange: bucket.inRange, count: bucket.count })
+                      : bucket.count}</i>
                   </span>
                 ))}
+                {buckets.some((bucket) => bucket.mine) && (
+                  <small>{t("lobby.matchmaker.yourBand")}</small>
+                )}
               </span>
             )}
           </span>
-          <span><Icon name="play" size={14} /> {activeGames} active</span>
+          <span><Icon name="play" size={14} /> {t("lobby.matchmaker.activeCount", { count: activeGames })}</span>
           {inRange !== null && (
             <span title={t("lobby.matchmaker.inRangeHint")}>
               <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange })}

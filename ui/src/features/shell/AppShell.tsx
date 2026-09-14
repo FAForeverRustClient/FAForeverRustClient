@@ -20,6 +20,7 @@ import { PlayerCardModal } from "../player-card/PlayerCardModal";
 import { ReviewsPanel } from "../reviews/ReviewsPanel";
 import { JoinDownloadDialog } from "../lobby/JoinDownloadDialog";
 import { JoinPreparationDialog } from "../lobby/JoinPreparationDialog";
+import { ReplayStartDialog } from "../replays/ReplayStartDialog";
 import { ModReplacementDialog } from "../lobby/ModReplacementDialog";
 import { UploadDialog } from "../uploads/UploadDialog";
 import { openPlayerCard } from "../player-card/playerCardActions";
@@ -268,6 +269,7 @@ export function AppShell() {
       <ModReplacementDialog />
       <JoinDownloadDialog />
       <JoinPreparationDialog />
+      <ReplayStartDialog />
       <PlayerCardModal />
       <ReviewsPanel />
       <UploadDialog />

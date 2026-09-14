@@ -890,10 +890,7 @@ impl GameNotificationTracker {
                 None => signals.push(GameNotificationSignal::NewGame(game.clone())),
                 Some(old) => {
                     if let Some(player_name) = player_name {
-                        if old.host.eq_ignore_ascii_case(player_name)
-                            && old.players < old.max_players
-                            && game.players >= game.max_players
-                        {
+                        if filled_up(&old, game, player_name) {
                             signals.push(GameNotificationSignal::GameFull(game.clone()));
                         }
                     }
@@ -979,10 +976,7 @@ impl GameNotificationTracker {
                 signals.push(GameNotificationSignal::NewGame(game.clone()));
             }
             if let (Some(player_name), Some(old)) = (player_name, previous.get(&game.id)) {
-                if old.host.eq_ignore_ascii_case(player_name)
-                    && old.players < old.max_players
-                    && game.players >= game.max_players
-                {
+                if filled_up(old, game, player_name) {
                     signals.push(GameNotificationSignal::GameFull(game.clone()));
                 }
             }
@@ -1124,6 +1118,19 @@ fn participants(game: &Game) -> impl Iterator<Item = &str> {
     game.teams.values().flatten().map(String::as_str)
 }
 
+/// Did this update fill the last slot of a lobby the player is sitting in?
+///
+/// Hosting is not the question it was. The request was for the warning "even
+/// when we're not the host", and it is the same fact for everybody in the
+/// lobby: the game is about to launch, and anybody still on another screen
+/// wants to know. Whoever is not in the lobby is not told, which is what keeps
+/// this from being a notification about every full game on the server.
+fn filled_up(old: &Game, game: &Game, player_name: &str) -> bool {
+    old.players < old.max_players
+        && game.players >= game.max_players
+        && (game_has_player(game, player_name) || game_has_player(old, player_name))
+}
+
 fn game_has_player(game: &Game, player_name: &str) -> bool {
     game.host.eq_ignore_ascii_case(player_name)
         || participants(game).any(|name| name.eq_ignore_ascii_case(player_name))
@@ -1231,6 +1238,38 @@ mod tests {
         assert!(signals
             .iter()
             .any(|signal| matches!(signal, GameNotificationSignal::NewGame(game) if game.id == 2)));
+    }
+
+    #[test]
+    fn a_lobby_filling_up_is_reported_to_everybody_in_it() {
+        let mut tracker = GameNotificationTracker::default();
+        // Somebody else's lobby, with us in it, and one somebody else's with
+        // us nowhere near it.
+        tracker.observe_open(
+            &[
+                game(1, "Host", &["Host", "Me"], 2, 3),
+                game(2, "Host", &["Host"], 1, 2),
+            ],
+            Some("me"),
+        );
+
+        let signals = tracker.observe_open(
+            &[
+                game(1, "Host", &["Host", "Me", "Third"], 3, 3),
+                game(2, "Host", &["Host", "Other"], 2, 2),
+            ],
+            Some("me"),
+        );
+        assert_eq!(
+            signals
+                .iter()
+                .filter(|signal| matches!(signal, GameNotificationSignal::GameFull(_)))
+                .count(),
+            1
+        );
+        assert!(signals.iter().any(
+            |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
+        ));
     }
 
     #[test]

@@ -471,10 +471,11 @@ pub enum NotificationSound {
 /// UI. Everything without a switch of its own (server notices, errors, a
 /// finished map, a new client version) shares [`Self::other`].
 ///
-/// **One row is not [`NotificationSound::Chime`]: a found match plays
-/// [`NotificationSound::FafMatch`].** Everything else keeps the tone the
-/// client played before this existed, so installing an update changes one
-/// sound and not the rest.
+/// **Two rows are not [`NotificationSound::Chime`]: a found match plays
+/// [`NotificationSound::FafMatch`] and a filled lobby plays
+/// [`NotificationSound::Alert`].** Everything else keeps the tone the client
+/// played before this existed, so installing an update changes those two
+/// sounds and not the rest.
 ///
 /// That is a reversal. The original note here argued that shipping choices
 /// nobody made was the wrong answer to "all notifications sound the same", and
@@ -483,7 +484,9 @@ pub enum NotificationSound {
 /// notice costs nothing, and telling the two apart is not a preference so much
 /// as the point of having a sound at all. Nobody who had not already opened
 /// this page could tell them apart, and the report that followed said exactly
-/// that. The remaining eleven rows are still one tone and still a preference.
+/// that. A lobby filling up expires the same way -- the game launches without
+/// whoever was looking elsewhere -- and was asked for by name. The remaining
+/// ten rows are still one tone and still a preference.
 ///
 /// [`NotificationSound::Silent`] is available on every row, which is how a kind
 /// is seen and not heard.
@@ -511,7 +514,7 @@ pub struct NotificationSoundChoices {
 
 /// Bump when a default in [`NotificationSoundChoices`] changes and the change
 /// should reach people whose settings already name the old one.
-const NOTIFICATION_SOUND_CHOICE_VERSION: u8 = 1;
+const NOTIFICATION_SOUND_CHOICE_VERSION: u8 = 2;
 
 impl Default for NotificationSoundChoices {
     fn default() -> Self {
@@ -525,7 +528,12 @@ impl Default for NotificationSoundChoices {
             friend_offline: NotificationSound::Chime,
             friend_playing: NotificationSound::Chime,
             new_custom_game: NotificationSound::Chime,
-            game_full: NotificationSound::Chime,
+            // The second graded default. A lobby that has just filled is about
+            // to launch with or without the person looking at another screen,
+            // so this is the other row where a tone that can be told apart is
+            // the point rather than a preference. The request asked for a
+            // strong sound, and `Alert` is the strongest thing here.
+            game_full: NotificationSound::Alert,
             game_launched: NotificationSound::Chime,
             review_reminder: NotificationSound::Chime,
             party_invite: NotificationSound::Chime,
@@ -738,15 +746,19 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
         }
 
         let wire = Wire::deserialize(deserializer)?;
-        // A file written before the version existed has `chime` in every row,
-        // put there by the old default rather than by anybody. Move that one
-        // row onto the new default; anything else is a choice somebody made,
-        // including a deliberate silence, and is left alone.
+        // A file written before a version bump has `chime` in the row that
+        // bump changed, put there by the old default rather than by anybody.
+        // Move that row onto the new default; anything else is a choice
+        // somebody made, including a deliberate silence, and is left alone.
+        // One clause per version, because somebody who saved settings between
+        // the two has to be caught by the second and not the first.
         let mut sounds = wire.sounds;
-        if wire.sound_choice_version < NOTIFICATION_SOUND_CHOICE_VERSION
-            && sounds.match_found == NotificationSound::Chime
-        {
-            sounds.match_found = NotificationSoundChoices::default().match_found;
+        let graded = NotificationSoundChoices::default();
+        if wire.sound_choice_version < 1 && sounds.match_found == NotificationSound::Chime {
+            sounds.match_found = graded.match_found;
+        }
+        if wire.sound_choice_version < 2 && sounds.game_full == NotificationSound::Chime {
+            sounds.game_full = graded.game_full;
         }
         Ok(Self {
             enabled: wire.enabled,
@@ -2830,7 +2842,7 @@ mod tests {
             );
         }
 
-        // And it leaves the other eleven rows on chime.
+        // And it leaves the other ten rows on chime.
         let settings: SettingsState =
             serde_json::from_str(r#"{"notifications":{"sounds":{"matchFound":"chime"}}}"#).unwrap();
         assert_eq!(
@@ -2839,6 +2851,31 @@ mod tests {
         );
         assert_eq!(
             settings.notifications.sounds.friend_online,
+            NotificationSound::Chime
+        );
+    }
+
+    #[test]
+    fn a_chime_written_by_the_old_default_moves_to_the_full_lobby_alert() {
+        // Version 1 is a file saved after the match sound landed and before
+        // the full-lobby one did: its `gameFull` row is the old default and
+        // nobody's choice, so it moves, and a row somebody did choose does
+        // not.
+        let settings: SettingsState = serde_json::from_str(
+            r#"{"notifications":{"soundChoiceVersion":1,"sounds":{"gameFull":"chime"}}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            settings.notifications.sounds.game_full,
+            NotificationSound::Alert
+        );
+
+        let settings: SettingsState = serde_json::from_str(
+            r#"{"notifications":{"soundChoiceVersion":2,"sounds":{"gameFull":"chime"}}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            settings.notifications.sounds.game_full,
             NotificationSound::Chime
         );
     }
