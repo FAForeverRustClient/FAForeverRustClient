@@ -23,6 +23,7 @@
 // preferences and are available for every resolved FAF account.
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Game, PlayerProfile } from "../../ipc/bindings";
 import { DEFAULT_COLOR_PICKER_VALUE } from "../../shared/nameColors";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -183,7 +184,15 @@ export function UserMenu({
     };
   }, [onClose]);
 
-  return (
+  // Rendered into `document.body`, the way every other floating layer in this
+  // client is. It is `position: fixed` and was not, which is fine for as long
+  // as it is only ever opened from the channel roster: nothing between the
+  // roster and the root paints over it. It is opened from a replay's lineup
+  // now, and that lineup lives in a modal, so the menu was being drawn inside
+  // the workspace *behind* the panel it belongs to and nothing in it could be
+  // clicked. A portal takes every ancestor out of the question: no stacking
+  // context between here and the root, and no `overflow` to be clipped by.
+  const menu = (
     <div
       ref={menuRef}
       className="chat-user-menu"
@@ -238,4 +247,6 @@ export function UserMenu({
       </div>
     </div>
   );
+
+  return typeof document === "undefined" ? menu : createPortal(menu, document.body);
 }

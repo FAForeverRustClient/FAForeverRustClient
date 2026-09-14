@@ -1396,14 +1396,16 @@ img.chat-game-map {
 .chat-game-team li {
   min-width: 0;
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
+  grid-template-columns: auto 16px minmax(0, 1fr) auto;
   align-items: center;
   gap: 5px;
   font-size: 12px;
 }
 
 .chat-game-team li > span:nth-child(2),
-.chat-game-player {
+.chat-game-player,
+.chat-game-player-static {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1652,8 +1654,48 @@ img.chat-game-map {
   align-items: center;
 }
 
+/* The lineup, at the three widths the panel can be dragged to. See
+   `rosterTier`, which decides which of them applies.
+
+   The panel used to stack its teams at every width, because it was narrow at
+   every width. It is draggable up to 600 px, and at that size a lineup laid out
+   in one column is a column of names with half the panel empty beside it. */
 .chat-conversation-aside .chat-game-teams {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* Wide: side by side, the way a replay card lays a matchup out. */
+.chat-conversation-aside[data-tier="wide"] .chat-game-teams {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+/* Narrow: the decorations come off and the name keeps the room. The avatar is
+   40 px wide and the flag 16, which together is most of the column at this
+   size, and a name truncated to four letters answers nothing. */
+.chat-conversation-aside[data-tier="narrow"] .chat-game-player-avatar,
+.chat-conversation-aside[data-tier="narrow"] .chat-game-team li > img,
+.chat-conversation-aside[data-tier="narrow"] .chat-game-flag-placeholder {
+  display: none;
+}
+
+.chat-conversation-aside[data-tier="narrow"] .chat-game-team li {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* Reserved even when empty, so one player with an avatar does not indent the
+   names of a team where nobody else has one. */
+.chat-game-player-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 40px;
+  height: 20px;
+}
+
+.chat-game-player-avatar img {
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
 }
 
 .chat-game-elapsed b {
