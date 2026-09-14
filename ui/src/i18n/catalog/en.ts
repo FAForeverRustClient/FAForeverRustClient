@@ -87,6 +87,9 @@ export const en = {
   "shell.commandError.title": "Action could not be sent",
   "shell.commandError.dismiss": "Dismiss",
   "shell.install.pickTitle": "Select FAF-managed ForgedAlliance.exe",
+  "shell.install.notDownloadedYet": "FAF has not downloaded the game yet",
+  "shell.install.notDownloadedYetHint":
+    "It arrives on its own the first time you play or watch a replay. Forged Alliance itself has to be installed, from Steam or a retail disc: FAF reads its movies, sounds and fonts and never writes to it.",
   "shell.install.noGameConfigured": "No game install configured",
   "shell.install.notFound": "Forged Alliance install not found",
   "shell.install.replayOnlyHint":
@@ -134,7 +137,7 @@ export const en = {
   "status.connection.connected": "connected",
   // "FAF" and "Chat" stay literal: they are the service names, not prose.
   "status.connection.summary": "{service} {state}",
-  "status.connection.heading": "{service} connection",
+  "status.connection.heading": "{service} connection status",
   "status.reconnect": "Reconnect",
   "status.disconnect": "Disconnect",
   "status.matchSetup.label": "Match setup:",
@@ -1047,6 +1050,7 @@ export const en = {
   "replays.roster.draw": "Draw",
   "replays.roster.combinedRating": "Combined displayed rating",
   "replays.roster.rating": "Rating",
+  "replays.roster.playerActions": "Actions for {name}",
   "replays.roster.score": "Score",
 
   // Live replay list.
@@ -1453,6 +1457,7 @@ export const en = {
   "settings.paths.gameInstallHint": "ForgedAlliance.exe used to join and play live games.",
   "settings.paths.replayInstall": "Replay install",
   "settings.paths.replayInstallHint": "ForgedAlliance.exe used for replay playback: can be a different build/version than the game install.",
+  "settings.paths.installNote": "Changes take effect immediately. FAF plays through its own patched copy of the engine, which the client downloads the first time you play; an existing one left by the Java or Python client is reused instead. Your original Steam or retail install is never written to, only read, for the game's movies, sounds and fonts. Browsing the replay and map vaults works without any install; playing and watching do not.",
   "settings.game.additionalGameLaunch": "Additional game launch arguments",
   "settings.game.confirmDownloads": "Ask before downloading mods",
   "settings.game.confirmDownloadsHint": "Joining a lobby that needs simulation mods you do not have asks first, and lists them. Off, they are fetched the moment you join, which is what the client used to do.",
@@ -1589,6 +1594,7 @@ export const en = {
   "settings.game.saveArguments": "Save arguments",
   "settings.paths.unset": "Not set",
   "settings.paths.missing": "Not usable",
+  "settings.paths.pending": "Will be downloaded here",
   "settings.paths.ok": "Found",
   "settings.updates.checking": "Checking…",
   "settings.updates.checkNow": "Check now",
@@ -1716,7 +1722,6 @@ export const en = {
   "maps.view.tab.installed": "Installed",
   "maps.view.rescan": "Rescan",
   "maps.view.clearGenerated": "Clear generated",
-  "maps.view.generateMap": "Generate map",
 
   // Player card: the profile modal and its six sections.
   "playerCard.eyebrow": "Player profile",
@@ -2240,7 +2245,6 @@ export const en = {
   "replays.starting.cancel": "Cancel",
   "replays.starting.close": "Close",
   "replays.starting.hideNote": "Hiding this does not stop anything. Cancel stops the replay from starting.",
-  "replays.status.failed": "Replay failed: {reason}",
   "replays.status.launchedWarning":
     "Launched, but: {warning}. FA may get stuck loading if this doesn't resolve itself.",
   "replays.gameType.custom": "Custom",

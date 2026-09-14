@@ -54,6 +54,9 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "shell.commandError.title": "L'action n'a pas pu être envoyée",
   "shell.commandError.dismiss": "Fermer",
   "shell.install.pickTitle": "Sélectionner le ForgedAlliance.exe géré par FAF",
+  "shell.install.notDownloadedYet": "FAF n'a pas encore téléchargé le jeu",
+  "shell.install.notDownloadedYetHint":
+    "Il arrive tout seul la première fois que vous jouez ou regardez un replay. Forged Alliance lui-même doit être installé, depuis Steam ou un disque : FAF y lit les vidéos, les sons et les polices, et n'y écrit jamais.",
   "shell.install.noGameConfigured": "Aucune installation du jeu configurée",
   "shell.install.notFound": "Installation de Forged Alliance introuvable",
   "shell.install.replayOnlyHint":
@@ -106,7 +109,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "status.connection.connecting": "connexion",
   "status.connection.connected": "connecté",
   "status.connection.summary": "{service} {state}",
-  "status.connection.heading": "Connexion {service}",
+  "status.connection.heading": "État de la connexion {service}",
   "status.reconnect": "Reconnecter",
   "status.disconnect": "Déconnecter",
   "status.matchSetup.label": "Préparation de la partie :",
@@ -632,7 +635,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "maps.view.tab.installed": "Installées",
   "maps.view.rescan": "Réanalyser",
   "maps.view.clearGenerated": "Supprimer les générées",
-  "maps.view.generateMap": "Générer une carte",
 
   "maps.vault.working": "Traitement de {folder}…",
   "maps.vault.operationFailed": "Échec de l'opération sur la carte : {reason}",
@@ -1137,8 +1139,10 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.paths.gameInstallHint": "ForgedAlliance.exe utilisé pour rejoindre et jouer des parties en direct.",
   "settings.paths.replayInstall": "Installation pour les replays",
   "settings.paths.replayInstallHint": "ForgedAlliance.exe utilisé pour la lecture des replays : peut être une version différente de celle du jeu.",
+  "settings.paths.installNote": "Les changements prennent effet immédiatement. FAF joue avec sa propre copie corrigée du moteur, que le client télécharge la première fois que vous jouez ; celle qu'un client Java ou Python a déjà laissée est réutilisée à la place. Votre installation d'origine, Steam ou disque, n'est jamais modifiée, seulement lue, pour les vidéos, les sons et les polices du jeu. Les vaults de replays et de cartes se parcourent sans aucune installation ; jouer et regarder, non.",
   "settings.paths.unset": "Non défini",
   "settings.paths.missing": "Inutilisable",
+  "settings.paths.pending": "Sera téléchargé ici",
   "settings.paths.ok": "Trouvé",
 
   "settings.game.additionalGameLaunch": "Arguments de lancement supplémentaires",
@@ -1229,6 +1233,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.roster.draw": "Match nul",
   "replays.roster.combinedRating": "Somme des classements affichés",
   "replays.roster.rating": "Classement",
+  "replays.roster.playerActions": "Actions pour {name}",
   "replays.roster.score": "Score",
 
   "replays.source.aria": "Sources de replays",
@@ -1243,7 +1248,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.starting.cancel": "Annuler",
   "replays.starting.close": "Fermer",
   "replays.starting.hideNote": "Masquer n’arrête rien. Annuler empêche l’enregistrement de démarrer.",
-  "replays.status.failed": "Échec du replay : {reason}",
   "replays.status.launchedWarning": "Lancé, mais : {warning}. FA peut rester bloqué au chargement si cela ne se résout pas.",
   "replays.gameType.custom": "Personnalisée",
   "replays.gameType.matchmaker": "Matchmaking",

@@ -72,8 +72,32 @@ async fn launch(
     }
     match result {
         Ok(warning) => out.emit(ReplayEvent::Playing { uid, warning }),
-        Err(reason) => out.emit(ReplayEvent::Failed { reason }),
+        Err(reason) => fail(out, reason),
     }
+}
+
+/// Report a replay that did not start.
+///
+/// Both halves, and both on purpose. The status keeps the tab's own state
+/// machine honest, which is what re-enables the buttons; the notification is
+/// what the user actually reads, because the status line used to be a strip of
+/// text above the search panel that a reader who had just double-clicked a game
+/// was not looking at, and that the next successful action wiped without a
+/// trace. Failures belong where every other operational message in this client
+/// already collects.
+///
+/// `add_required`, not `add`: a launch that did not happen is not an event
+/// alert, and turning match and chat notifications off must not silence the one
+/// message explaining why nothing opened.
+fn fail(out: &EventSink, reason: String) {
+    notifications::add_required(
+        out,
+        NotificationKind::Error,
+        "Replay failed",
+        reason.clone(),
+        None,
+    );
+    out.emit(ReplayEvent::Failed { reason });
 }
 
 pub(crate) fn cancel_live_tracking(out: &EventSink) {
@@ -103,13 +127,14 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
         (waiting, player)
     });
     if waiting > 0 {
-        out.emit(ReplayEvent::Failed {
-            reason: format!(
+        fail(
+            out,
+            format!(
                 "Live replays are delayed by five minutes so nobody can watch \
                  an ongoing game for an advantage. Try again in {}.",
                 describe(waiting)
             ),
-        });
+        );
         return;
     }
 
@@ -141,9 +166,10 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                     .map(|game| (game.title.clone(), game.launched_at))
             });
             let Some((title, Some(launched_at))) = game else {
-                out.emit(ReplayEvent::Failed {
-                    reason: "That live game no longer has a known start time.".into(),
-                });
+                fail(
+                    out,
+                    "That live game no longer has a known start time.".into(),
+                );
                 return;
             };
             let waiting = live_replay_delay_remaining(Some(launched_at), now);

@@ -7,6 +7,7 @@ import { loadStatusNote } from "../../shared/loadStatusNote";
 import { isUnknownVaultMap } from "../../shared/mapPresentation";
 import { isoDaysAgo, personalReplayQuery } from "../../shared/replayQuery";
 import { loadStoredSet, saveStoredSet } from "../../shared/storage";
+import { usePlayerMenu } from "../chat/usePlayerMenu";
 import { OnlineReplayList, ReplayCard, ReplayDetailPanel } from "./OnlineReplayPresentation";
 import { ReplayViewSwitch, type ReplayViewMode } from "./ReplayViewSwitch";
 import { subscribeReplaySearch, takeReplaySearch } from "./replaySearchIntent";
@@ -36,6 +37,10 @@ const downloadVault = (uid: number) =>
 
 export function OnlineReplayView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
+  // The same menu a nickname opens in chat and in the live tab. Held here
+  // rather than in the card, because the card is rendered once per replay and
+  // this hook reads five store slices.
+  const { openPlayerMenu, playerMenu } = usePlayerMenu();
   const vault = useAppStore((s) => s.state.replays.vault);
   const vaultStatus = useAppStore((s) => s.state.replays.vaultStatus);
   const resolvedMaps = useAppStore((s) => s.state.replays.resolvedMaps ?? NO_RESOLVED_MAPS);
@@ -227,6 +232,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
                 setSelectedUid(r.uid);
                 if (!busy) markWatchedAndPlay(r.uid);
               }}
+              onPlayerMenu={openPlayerMenu}
             />
           ))}
         </div>
@@ -276,8 +282,10 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
             markWatchedAndPlay(openReplay.uid);
             setOpenUid(null);
           }}
+          onPlayerMenu={openPlayerMenu}
         />
       )}
+      {playerMenu}
     </>
   );
 }

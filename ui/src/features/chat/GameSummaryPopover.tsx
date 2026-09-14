@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { SocialState, VaultMap } from "../../ipc/bindings";
+import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { MapThumbnail } from "../../shared/MapThumbnail";
 import { mapPresentation } from "../../shared/mapPresentation";
@@ -9,6 +10,16 @@ import { GameSummaryCard, STATUS_LABEL } from "./GameSummaryCard";
 import { GameStatusSword } from "./GameStatusSword";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame } from "../lobby/joinGame";
+
+/**
+ * How long the card survives the pointer leaving the badge.
+ *
+ * Long enough to cross the gap between the badge and the card, which is the
+ * whole reason the card can be reached at all: without the grace period the
+ * first pixel of empty space closes it and the button inside can never be
+ * clicked.
+ */
+const CLOSE_GRACE_MS = 140;
 
 interface Props {
   presence: GamePresence;
@@ -20,8 +31,19 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 8, right: 8 });
   const anchor = useRef<HTMLButtonElement>(null);
+  const closeTimer = useRef<number | undefined>(undefined);
   const tooltipId = useId();
   const presentation = mapPresentation(vault, presence.game.map);
+
+  const show = useCallback(() => {
+    window.clearTimeout(closeTimer.current);
+    setOpen(true);
+  }, []);
+  const hide = useCallback(() => {
+    window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setOpen(false), CLOSE_GRACE_MS);
+  }, []);
+  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
 
   const updatePosition = useCallback(() => {
     const rect = anchor.current?.getBoundingClientRect();
@@ -63,10 +85,9 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
   const { t } = useTranslation();
   const status = t(STATUS_LABEL[presence.status]);
 
-  const handleDoubleClick = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
-    if (presence.status === "playing" || presence.status === "playingDelayed") {
+  const watching = presence.status === "playing" || presence.status === "playingDelayed";
+  const act = () => {
+    if (watching) {
       ipc.send({
         kind: "Replays",
         command: {
@@ -78,9 +99,15 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
           },
         },
       });
-    } else if (presence.status === "hosting" || presence.status === "lobbying") {
+    } else {
       void joinGame(presence.game.id);
     }
+  };
+
+  const handleDoubleClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    act();
   };
 
   return (
@@ -95,10 +122,10 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
           map: presentation.displayName,
         })}
         aria-describedby={open ? tooltipId : undefined}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
         onDoubleClick={handleDoubleClick}
       >
         <GameStatusSword status={presence.status} />
@@ -116,8 +143,21 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
           role="tooltip"
           className="chat-game-popover"
           style={position}
+          onMouseEnter={show}
+          onMouseLeave={hide}
         >
-          <GameSummaryCard presence={presence} social={social} vault={vault} now={now} />
+          {/* The same card the conversation aside shows, thumbnail and all: it
+              was the one place the two drifted, and a hover card that is a
+              cut-down copy of a panel three pixels away is just a second
+              design. */}
+          <GameSummaryCard presence={presence} social={social} vault={vault} now={now} showMap />
+          {/* The card is reachable now, so the action the double-click on the
+              badge performs is spelled out here too. Nothing about a pair of
+              crossed swords says "double-click me to spectate". */}
+          <button type="button" className="chat-head-action chat-game-popover-action" onClick={act}>
+            <Icon name={watching ? "eye" : "play"} size={14} />
+            {watching ? t("chat.aside.watch") : t("chat.aside.join")}
+          </button>
         </aside>,
         document.body,
       )}

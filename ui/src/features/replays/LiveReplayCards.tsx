@@ -23,6 +23,7 @@ import { useAppStore } from "../../store/store";
 import { mapPresentation, type MapPresentation } from "../../shared/mapPresentation";
 import { ReplayMapThumb, ReplayMetaFact, replayCardTitle } from "./OnlineReplayPresentation";
 import { ReplayCardRoster } from "./ReplayRoster";
+import type { PlayerMenuOpener } from "../chat/usePlayerMenu";
 import { LiveReplayAge, LiveWatchButton } from "./LiveReplayRow";
 import { prettyGameType, replayDelayRemaining } from "./liveReplayModel";
 import "./online-replays.css";
@@ -65,6 +66,8 @@ interface Props {
   tracking: LiveReplayTracking | null;
   /** Open one game's detail panel. */
   onOpen: (id: number) => void;
+  /** Opens the chat player menu on a name in a card's lineup. */
+  onPlayerMenu: PlayerMenuOpener;
   onLoadMore: () => void;
 }
 
@@ -101,6 +104,7 @@ export function LiveReplayCards(props: Props) {
             waitSeconds={replayDelayRemaining(game, waitNow)}
             tracking={props.tracking}
             onOpen={props.onOpen}
+            onPlayerMenu={props.onPlayerMenu}
           />
         ))}
       </div>
@@ -136,6 +140,7 @@ const LiveReplayCard = memo(function LiveReplayCard({
   waitSeconds,
   tracking,
   onOpen,
+  onPlayerMenu,
 }: {
   busy: boolean;
   game: Game;
@@ -143,6 +148,7 @@ const LiveReplayCard = memo(function LiveReplayCard({
   waitSeconds: number;
   tracking: LiveReplayTracking | null;
   onOpen: (id: number) => void;
+  onPlayerMenu: PlayerMenuOpener;
 }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
@@ -241,7 +247,7 @@ const LiveReplayCard = memo(function LiveReplayCard({
             {t("replays.card.onMap", { map: presentation.displayName || game.map })}
           </span>
         </div>
-        <ReplayCardRoster teams={teams} interactive />
+        <ReplayCardRoster teams={teams} interactive onPlayerMenu={onPlayerMenu} />
         {/* Who hosts it, and the one thing to do with it. The featured mod and
             the sim mods used to close this line and are in the fact grid on
             the left, where the rest of what the game *is* lives. */}

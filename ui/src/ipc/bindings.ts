@@ -2821,6 +2821,9 @@ export type InstallEvent =
 { type: "checked"; payload: {
 	gameReady: boolean,
 	replayReady: boolean,
+	/**  See [`InstallState::game_pending`]. */
+	gamePending: boolean,
+	replayPending: boolean,
 	resolved: ResolvedPaths,
 } };
 
@@ -2829,6 +2832,20 @@ export type InstallState = {
 	gameReady: boolean,
 	/**  The configured replay-playback executable exists on disk. */
 	replayReady: boolean,
+	/**
+	 *  The live executable is not there yet, but the path names an install this
+	 *  client owns, so the updater downloads the engine into it before the
+	 *  first game.
+	 *
+	 *  A fresh machine is in exactly this state, and it needs its own name: it
+	 *  stats identically to a broken setting, and telling somebody their
+	 *  install is missing sends them looking for a folder that has never
+	 *  existed on that computer. The reference clients reach the same place by
+	 *  downloading it on first run.
+	 */
+	gamePending: boolean,
+	/**  The same for replay playback. */
+	replayPending: boolean,
 	/**
 	 *  Whether the paths have been checked at all yet.
 	 *
@@ -4516,6 +4533,17 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
 "mapGenerated" |
 /**  Game file cache exceeded user-configured threshold size. */
 "gameCacheAlert" |
+/**
+ *  Something about the local Forged Alliance install changed or needs
+ *  explaining: a path the client refused and what it used instead.
+ *
+ *  Not [`Self::Error`], because nothing failed, and not
+ *  [`Self::GameCacheAlert`], which is specifically about disk use. It keeps
+ *  in the notification centre like the rest of the operational messages: a
+ *  setting the user has just changed does not need the screen taken away
+ *  from them to be told about it.
+ */
+"gameInstall" |
 /**
  *  A newer client release exists. The banner says so too, but the banner
  *  lives at the top of one workspace and this survives a tab change.

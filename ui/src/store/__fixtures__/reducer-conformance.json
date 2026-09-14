@@ -8,6 +8,8 @@
     "install": {
       "gameReady": false,
       "replayReady": false,
+      "gamePending": false,
+      "replayPending": false,
       "checked": false,
       "resolved": {
         "vaultDir": "",
@@ -2528,6 +2530,8 @@
               "payload": {
                 "gameReady": true,
                 "replayReady": false,
+                "gamePending": false,
+                "replayPending": true,
                 "resolved": {
                   "vaultDir": "D:/faf/vault",
                   "mapsDir": "D:/faf/vault/maps",
@@ -2543,7 +2547,9 @@
           },
           "expected": {
             "checked": true,
+            "gamePending": false,
             "gameReady": true,
+            "replayPending": true,
             "replayReady": false,
             "resolved": {
               "gamePrefsPath": "C:/Users/ada/AppData/Local/Gas Powered Games/Supreme Commander Forged Alliance/game.prefs",

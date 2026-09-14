@@ -61,6 +61,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "shell.commandError.title": "Не удалось отправить действие",
   "shell.commandError.dismiss": "Закрыть",
   "shell.install.pickTitle": "Выберите ForgedAlliance.exe, управляемый FAF",
+  "shell.install.notDownloadedYet": "FAF ещё не скачал игру",
+  "shell.install.notDownloadedYetHint":
+    "Она скачается сама, когда вы впервые запустите игру или реплей. Сам Forged Alliance должен быть установлен, из Steam или с диска: FAF читает оттуда ролики, звуки и шрифты и никогда туда не пишет.",
   "shell.install.noGameConfigured": "Установка игры не настроена",
   "shell.install.notFound": "Установка Forged Alliance не найдена",
   "shell.install.replayOnlyHint":
@@ -113,7 +116,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "status.connection.connecting": "подключение",
   "status.connection.connected": "подключено",
   "status.connection.summary": "{service} {state}",
-  "status.connection.heading": "Подключение {service}",
+  "status.connection.heading": "Состояние подключения {service}",
   "status.reconnect": "Переподключить",
   "status.disconnect": "Отключить",
   "status.matchSetup.label": "Подготовка матча:",
@@ -654,7 +657,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.view.tab.installed": "Установленные",
   "maps.view.rescan": "Пересканировать",
   "maps.view.clearGenerated": "Удалить сгенерированные",
-  "maps.view.generateMap": "Сгенерировать карту",
 
   "maps.vault.working": "Обработка {folder}…",
   "maps.vault.operationFailed": "Не удалось выполнить операцию с картой: {reason}",
@@ -1159,8 +1161,10 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.paths.gameInstallHint": "ForgedAlliance.exe для входа в игры и участия в них.",
   "settings.paths.replayInstall": "Установка для реплеев",
   "settings.paths.replayInstallHint": "ForgedAlliance.exe для воспроизведения реплеев: может быть другой версии, чем установка игры.",
+  "settings.paths.installNote": "Изменения применяются сразу. FAF играет через собственную пропатченную копию движка, которую клиент скачивает при первом запуске игры; уже имеющаяся копия от Java- или Python-клиента используется вместо неё. В вашу оригинальную установку из Steam или с диска клиент никогда не пишет, только читает из неё ролики, звуки и шрифты. Хранилища реплеев и карт работают вообще без установки; игра и просмотр нет.",
   "settings.paths.unset": "Не задано",
   "settings.paths.missing": "Непригодно",
+  "settings.paths.pending": "Будет скачано сюда",
   "settings.paths.ok": "Найдено",
 
   "settings.game.additionalGameLaunch": "Дополнительные аргументы запуска",
@@ -1251,6 +1255,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.roster.draw": "Ничья",
   "replays.roster.combinedRating": "Суммарный отображаемый рейтинг",
   "replays.roster.rating": "Рейтинг",
+  "replays.roster.playerActions": "Действия для {name}",
   "replays.roster.score": "Счет",
 
   "replays.source.aria": "Источники реплеев",
@@ -1265,7 +1270,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.starting.cancel": "Отмена",
   "replays.starting.close": "Закрыть",
   "replays.starting.hideNote": "Скрытие ничего не останавливает. Отмена прерывает запуск повтора.",
-  "replays.status.failed": "Сбой реплея: {reason}",
   "replays.status.launchedWarning": "Запущено, но: {warning}. FA может зависнуть на загрузке, если это не разрешится само.",
   "replays.gameType.custom": "Пользовательская",
   "replays.gameType.matchmaker": "Подбор игр",

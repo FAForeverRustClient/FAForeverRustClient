@@ -3135,6 +3135,10 @@ fn cases() -> Vec<Case> {
             vec![InstallEvent::Checked {
                 game_ready: true,
                 replay_ready: false,
+                game_pending: false,
+                // The replay install the updater has yet to download: not
+                // ready, and not missing either.
+                replay_pending: true,
                 resolved: ResolvedPaths {
                     vault_dir: "D:/faf/vault".into(),
                     maps_dir: "D:/faf/vault/maps".into(),

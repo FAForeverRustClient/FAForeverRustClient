@@ -29,6 +29,7 @@ function PathRow({
   hint,
   path,
   ready,
+  pending,
   onPick,
 }: {
   label: string;
@@ -36,15 +37,23 @@ function PathRow({
   path: string;
   /** Whether the configured executable actually exists (checked by the backend). */
   ready: boolean;
+  /**
+   * Whether the executable is absent but the client will download it there.
+   * See the install slice: this is what a machine that has never run FAF looks
+   * like, and it stats identically to a path that is simply wrong.
+   */
+  pending: boolean;
   onPick: () => void;
 }) {
   const { t } = useTranslation();
-  // Three distinct states worth telling apart: unset, set-but-gone, and fine.
-  // "Set but gone" is what a user hits after moving or reinstalling the game,
-  // and it looks identical to "unset" unless we say so.
-  const status = !path ? "unset" : ready ? "ok" : "missing";
+  // Four distinct states worth telling apart: unset, waiting for its first
+  // download, set-but-gone, and fine. The middle two look identical on disk and
+  // mean opposite things: one needs nothing from the user at all, the other
+  // needs a different path.
+  const status = !path ? "unset" : ready ? "ok" : pending ? "pending" : "missing";
   const STATUS_LABEL = {
     unset: t("settings.paths.unset"),
+    pending: t("settings.paths.pending"),
     missing: t("settings.paths.missing"),
     ok: t("settings.paths.ok"),
   } as const;
@@ -75,6 +84,7 @@ export function GamePathsSection() {
         hint={t("settings.paths.gameInstallHint")}
         path={gamePath}
         ready={install.gameReady}
+        pending={install.gamePending}
         onPick={() => pickExe(setGamePath)}
       />
       <PathRow
@@ -82,14 +92,10 @@ export function GamePathsSection() {
         hint={t("settings.paths.replayInstallHint")}
         path={replayGamePath}
         ready={install.replayReady}
+        pending={install.replayPending}
         onPick={() => pickExe(setReplayGamePath)}
       />
-      <p className="muted">
-        Changes take effect immediately. When these are unset, an existing FAF-managed install
-        from the Java or Python client is reused automatically. The original Steam/retail game is
-        kept separate. Browsing the replay and map vaults works without an install; playing and
-        watching do not.
-      </p>
+      <p className="muted">{t("settings.paths.installNote")}</p>
     </div>
   );
 }

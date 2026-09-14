@@ -19,19 +19,39 @@ use faf_domain::state::{
 };
 
 use crate::runtime::{EventSink, ServiceCtx};
+use crate::services::notifications;
 
 pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         SettingsCommand::Load => {
             let mut settings = ctx.ports.settings.load().await.normalized();
             let discovered = ctx.ports.process.discover_install_paths();
+            // Where FAF's copy of the game goes when there is no copy yet.
+            // Only reached when nothing else answers, and deliberately last:
+            // an install another client already downloaded is a real install,
+            // and a path this one has yet to create is a promise.
+            let defaults = ctx.ports.process.default_install_paths();
+            // A default only stands in for a path nobody has set. A path the
+            // user chose that has since gone missing stays on screen as their
+            // choice: replacing it would hide the move or uninstall that broke
+            // it behind a folder they never asked for.
+            let game_fallback = if settings.game_path.is_empty() {
+                discovered.game.or(defaults.game)
+            } else {
+                discovered.game
+            };
+            let replay_fallback = if settings.replay_game_path.is_empty() {
+                discovered.replay.or(defaults.replay)
+            } else {
+                discovered.replay
+            };
             let mut imported_reference_install = false;
             if !ctx
                 .ports
                 .process
                 .install_path_is_present(&settings.game_path)
             {
-                if let Some(path) = discovered.game {
+                if let Some(path) = game_fallback {
                     settings.game_path = path;
                     imported_reference_install = true;
                 }
@@ -41,7 +61,7 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 .process
                 .install_path_is_present(&settings.replay_game_path)
             {
-                if let Some(path) = discovered.replay {
+                if let Some(path) = replay_fallback {
                     settings.replay_game_path = path;
                     imported_reference_install = true;
                 }
@@ -104,11 +124,13 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             persist(ctx, out).await;
         }
         SettingsCommand::SetGamePath { path } => {
+            let path = redirect_retail_pick(&path, ctx, out, false);
             out.emit(SettingsEvent::GamePathChanged { path });
             persist(ctx, out).await;
             sync_installs(ctx, out);
         }
         SettingsCommand::SetReplayGamePath { path } => {
+            let path = redirect_retail_pick(&path, ctx, out, true);
             out.emit(SettingsEvent::ReplayGamePathChanged { path });
             persist(ctx, out).await;
             sync_installs(ctx, out);
@@ -298,6 +320,68 @@ async fn refresh_content_after_path_change(ctx: &ServiceCtx, out: &EventSink) {
     crate::services::mods::handle(faf_domain::state::ModsCommand::LoadInstalled, ctx, out).await;
 }
 
+/// Turn a pick of the *original* game into the FAF copy the user meant.
+///
+/// The reported dead end, and the whole of it. A fresh machine has Steam's
+/// Forged Alliance and nothing else, so `steamapps/common/.../bin` is the only
+/// `bin` folder there is to point at. The client cannot use it: the updater
+/// derives its write target from the configured executable, and writing FAF's
+/// patched engine into somebody's Steam install is not a thing this client
+/// does. So it refused, said "Not usable", and left the user with no path that
+/// would have worked, because the one that would have worked did not exist yet.
+///
+/// It exists now, or will: the updater creates the managed install on the first
+/// launch. So the pick is answered rather than rejected: say what was picked
+/// and why it cannot be the target, and configure the place FAF's own copy
+/// goes. The retail install is not thrown away, it is found again by the
+/// updater, which reads `gamedata`, `movies`, `sounds` and `fonts` straight out
+/// of it (see `game_updater::retail_install_dir`).
+///
+/// A path that is already a managed install, or empty, is returned untouched:
+/// this only fires on the retail game.
+fn redirect_retail_pick(path: &str, ctx: &ServiceCtx, out: &EventSink, replay: bool) -> String {
+    if !ctx.ports.process.is_original_game_install(path) {
+        return path.to_string();
+    }
+    let defaults = ctx.ports.process.default_install_paths();
+    let target = if replay {
+        defaults.replay
+    } else {
+        defaults.game
+    };
+    let Some(target) = target.filter(|target| !target.is_empty()) else {
+        notifications::add_required(
+            out,
+            NotificationKind::Error,
+            "That is the original game, not a FAF install",
+            format!(
+                "{path} is the unmodified Supreme Commander: Forged Alliance. FAF plays \
+                 through its own patched copy of the engine and never writes into the \
+                 original install. Point this at a FAF-managed ForgedAlliance.exe instead."
+            ),
+            None,
+        );
+        return path.to_string();
+    };
+    notifications::add_required(
+        out,
+        NotificationKind::GameInstall,
+        "Using FAF's own copy of the game",
+        format!(
+            "{path} is the unmodified Supreme Commander: Forged Alliance, which FAF never \
+             writes into. The {which} install now points at {target}, where the client \
+             downloads FAF's patched engine the first time you {verb}. Your original install \
+             is still used for the game's movies, sounds and fonts.",
+            which = if replay { "replay" } else { "game" },
+            verb = if replay { "watch a replay" } else { "play" },
+        ),
+        Some(NotificationAction::OpenSettings {
+            section: Some("paths".to_string()),
+        }),
+    );
+    target
+}
+
 /// Hand the configured directories to the path resolver.
 ///
 /// Applied on load as well as on change, for the same reason as
@@ -360,6 +444,8 @@ fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
     out.emit(InstallEvent::Checked {
         game_ready: present.game,
         replay_ready: present.replay,
+        game_pending: present.game_pending,
+        replay_pending: present.replay_pending,
         resolved,
     });
 }

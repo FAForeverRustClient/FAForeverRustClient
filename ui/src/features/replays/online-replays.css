@@ -409,6 +409,13 @@ button.vault-input {
   text-overflow: ellipsis;
 }
 
+/* A name inside a card that is itself one target cannot be a button, so the
+   player menu is on the right button only. The cursor is the one thing that
+   can say so before the reader tries. */
+.replay-player-menuable {
+  cursor: context-menu;
+}
+
 .replay-player-faction {
   flex: 0 0 auto;
 }

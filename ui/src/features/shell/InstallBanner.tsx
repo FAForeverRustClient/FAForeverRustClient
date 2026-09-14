@@ -57,6 +57,14 @@ export function InstallBanner() {
   const missing = install.checked && !install.gameReady;
   if (!missing || dismissed) return null;
 
+  // A machine that has never run FAF is not missing an install; it has not
+  // downloaded one yet, and pressing Play is what downloads it. Saying "not
+  // found, go and locate it" there is what sent the reporter of #261 to the
+  // Java client and back: the only executable he had to point at was Steam's,
+  // which this client cannot use, and the folder it was asking for did not
+  // exist until something created it.
+  const pending = install.gamePending;
+
   // Replays can play from a separate install, so a half-configured client gets
   // a narrower message than a completely unconfigured one.
   const replayOnly = install.replayReady;
@@ -64,22 +72,29 @@ export function InstallBanner() {
   return (
     <div className="install-banner" role="status">
       <span className="install-banner-icon" aria-hidden="true">
-        <Icon name="lock" size={16} />
+        <Icon name={pending ? "download" : "lock"} size={16} />
       </span>
       <div className="install-banner-copy">
         <strong>
-          {replayOnly
-            ? t("shell.install.noGameConfigured")
-            : t("shell.install.notFound")}
+          {pending
+            ? t("shell.install.notDownloadedYet")
+            : replayOnly
+              ? t("shell.install.noGameConfigured")
+              : t("shell.install.notFound")}
         </strong>
         <span className="muted">
-          {replayOnly
-            ? t("shell.install.replayOnlyHint")
-            : t("shell.install.missingHint")}
+          {pending
+            ? t("shell.install.notDownloadedYetHint")
+            : replayOnly
+              ? t("shell.install.replayOnlyHint")
+              : t("shell.install.missingHint")}
         </span>
       </div>
       <div className="install-banner-actions">
-        <Button variant="primary" onClick={() => void pickInstall()}>
+        {/* Not the primary action any more when the client is about to do
+            this itself: the button is there for somebody who keeps their
+            install somewhere else, not for somebody who has to find one. */}
+        <Button variant={pending ? "ghost" : "primary"} onClick={() => void pickInstall()}>
           {t("shell.install.locate")}
         </Button>
         <Button onClick={() => void openSettings()}>{t("shell.install.settings")}</Button>
