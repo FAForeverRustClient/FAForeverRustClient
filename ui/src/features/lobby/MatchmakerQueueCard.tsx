@@ -156,13 +156,22 @@ export function MatchmakerQueueCard({
                     ].filter(Boolean).join(" ")}
                   >
                     <em>{bucket.min} – {bucket.max}</em>
-                    {/* Which of the band is a fair match, when that differs
-                        from how many are in it. Without this the band read as
-                        an answer to "is anybody near me", which it is not:
-                        see `RatingBucket.inRange`. */}
-                    <i>{bucket.inRange > 0 && bucket.inRange < bucket.count
-                      ? t("lobby.matchmaker.someOfBand", { inRange: bucket.inRange, count: bucket.count })
-                      : bucket.count}</i>
+                    {/* Which of the band is a fair match, whenever that
+                        differs from how many are in it -- *including* when
+                        none of them are.
+
+                        "0 of 5" was the one case this left out, and it is the
+                        case the whole breakdown exists for: a band printed as
+                        a bare "5" next to a headline of "0 in your range" is
+                        the same contradiction the per-band figure was added to
+                        settle, and it is the band nearest your own rating that
+                        hits it. A band is bucketed by the middle of each
+                        search's window, so five searches can sit in the band
+                        your rating is in and none of their windows reach you.
+                        See `RatingBucket.inRange`. */}
+                    <i>{bucket.inRange === bucket.count
+                      ? bucket.count
+                      : t("lobby.matchmaker.someOfBand", { inRange: bucket.inRange, count: bucket.count })}</i>
                   </span>
                 ))}
                 {buckets.some((bucket) => bucket.mine) && (
