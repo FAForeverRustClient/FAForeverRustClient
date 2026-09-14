@@ -57,6 +57,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "shell.commandError.title": "Aktion konnte nicht gesendet werden",
   "shell.commandError.dismiss": "Schließen",
   "shell.install.pickTitle": "FAF-verwaltete ForgedAlliance.exe auswählen",
+  "shell.install.notDownloadedYet": "FAF hat das Spiel noch nicht heruntergeladen",
+  "shell.install.notDownloadedYetHint":
+    "Es kommt von selbst, sobald du zum ersten Mal spielst oder ein Replay ansiehst. Forged Alliance selbst muss installiert sein, über Steam oder von DVD: FAF liest daraus Filme, Sounds und Schriften und schreibt nie hinein.",
   "shell.install.noGameConfigured": "Keine Spielinstallation konfiguriert",
   "shell.install.notFound": "Forged-Alliance-Installation nicht gefunden",
   "shell.install.replayOnlyHint":
@@ -1261,6 +1264,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.paths.gameInstallHint": "ForgedAlliance.exe zum Beitreten und Spielen laufender Partien.",
   "settings.paths.replayInstall": "Replay-Installation",
   "settings.paths.replayInstallHint": "ForgedAlliance.exe für die Replay-Wiedergabe: darf eine andere Version als die Spielinstallation sein.",
+  "settings.paths.installNote": "Änderungen wirken sofort. FAF spielt über seine eigene gepatchte Kopie der Engine, die der Client beim ersten Spielen herunterlädt; eine vorhandene Kopie vom Java- oder Python-Client wird stattdessen weiterverwendet. In deine originale Steam- oder Retail-Installation wird nie geschrieben, sie wird nur gelesen, für Filme, Sounds und Schriften des Spiels. Replay- und Karten-Vault lassen sich ganz ohne Installation durchsuchen; Spielen und Zuschauen nicht.",
   "settings.game.additionalGameLaunch": "Zusätzliche Startargumente",
   "settings.game.confirmDownloads": "Vor dem Herunterladen von Mods fragen",
   "settings.game.confirmDownloadsHint": "Der Beitritt zu einer Lobby, die dir fehlende Simulationsmods braucht, fragt vorher nach und listet sie auf. Aus werden sie beim Beitritt sofort geladen, so wie der Client es früher gemacht hat.",
@@ -1389,6 +1393,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.game.saveArguments": "Argumente speichern",
   "settings.paths.unset": "Nicht gesetzt",
   "settings.paths.missing": "Nicht nutzbar",
+  "settings.paths.pending": "Wird hierher geladen",
   "settings.paths.ok": "Gefunden",
   "settings.updates.checking": "Wird geprüft…",
   "settings.updates.checkNow": "Jetzt prüfen",

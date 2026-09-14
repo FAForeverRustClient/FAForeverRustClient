@@ -237,6 +237,8 @@ const INITIAL: AppState = {
   install: {
     gameReady: false,
     replayReady: false,
+    gamePending: false,
+    replayPending: false,
     checked: false,
     resolved: {
       vaultDir: "",

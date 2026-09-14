@@ -718,6 +718,12 @@
   color: var(--color-subtle);
 }
 
+/* Not an error: the file is not there because nothing has downloaded it yet,
+   which is the state every machine starts in. */
+.settings-path-status.is-pending {
+  color: var(--color-warn);
+}
+
 .theme-card {
   display: flex;
   flex-direction: column;

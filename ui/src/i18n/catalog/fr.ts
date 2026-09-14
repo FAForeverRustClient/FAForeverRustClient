@@ -54,6 +54,9 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "shell.commandError.title": "L'action n'a pas pu être envoyée",
   "shell.commandError.dismiss": "Fermer",
   "shell.install.pickTitle": "Sélectionner le ForgedAlliance.exe géré par FAF",
+  "shell.install.notDownloadedYet": "FAF n'a pas encore téléchargé le jeu",
+  "shell.install.notDownloadedYetHint":
+    "Il arrive tout seul la première fois que vous jouez ou regardez un replay. Forged Alliance lui-même doit être installé, depuis Steam ou un disque : FAF y lit les vidéos, les sons et les polices, et n'y écrit jamais.",
   "shell.install.noGameConfigured": "Aucune installation du jeu configurée",
   "shell.install.notFound": "Installation de Forged Alliance introuvable",
   "shell.install.replayOnlyHint":
@@ -1137,8 +1140,10 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.paths.gameInstallHint": "ForgedAlliance.exe utilisé pour rejoindre et jouer des parties en direct.",
   "settings.paths.replayInstall": "Installation pour les replays",
   "settings.paths.replayInstallHint": "ForgedAlliance.exe utilisé pour la lecture des replays : peut être une version différente de celle du jeu.",
+  "settings.paths.installNote": "Les changements prennent effet immédiatement. FAF joue avec sa propre copie corrigée du moteur, que le client télécharge la première fois que vous jouez ; celle qu'un client Java ou Python a déjà laissée est réutilisée à la place. Votre installation d'origine, Steam ou disque, n'est jamais modifiée, seulement lue, pour les vidéos, les sons et les polices du jeu. Les vaults de replays et de cartes se parcourent sans aucune installation ; jouer et regarder, non.",
   "settings.paths.unset": "Non défini",
   "settings.paths.missing": "Inutilisable",
+  "settings.paths.pending": "Sera téléchargé ici",
   "settings.paths.ok": "Trouvé",
 
   "settings.game.additionalGameLaunch": "Arguments de lancement supplémentaires",

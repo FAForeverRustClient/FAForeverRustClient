@@ -55,6 +55,9 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "shell.commandError.title": "Nie udało się wysłać działania",
   "shell.commandError.dismiss": "Zamknij",
   "shell.install.pickTitle": "Wybierz plik ForgedAlliance.exe zarządzany przez FAF",
+  "shell.install.notDownloadedYet": "FAF jeszcze nie pobrał gry",
+  "shell.install.notDownloadedYetHint":
+    "Pobierze się sama, gdy pierwszy raz zagrasz albo obejrzysz powtórkę. Sam Forged Alliance musi być zainstalowany, ze Steama albo z płyty: FAF czyta z niego filmy, dźwięki i czcionki, i nigdy do niego nie zapisuje.",
   "shell.install.noGameConfigured": "Nie skonfigurowano instalacji gry",
   "shell.install.notFound": "Nie znaleziono instalacji Forged Alliance",
   "shell.install.replayOnlyHint":
@@ -1087,6 +1090,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.paths.gameInstallHint": "Plik ForgedAlliance.exe używany do dołączania i grania.",
   "settings.paths.replayInstall": "Instalacja do powtórek",
   "settings.paths.replayInstallHint": "Plik ForgedAlliance.exe używany do odtwarzania powtórek: może to być inna kompilacja lub wersja niż instalacja gry.",
+  "settings.paths.installNote": "Zmiany działają od razu. FAF gra przez własną, spatchowaną kopię silnika, którą klient pobiera przy pierwszym uruchomieniu gry; jeśli klient Java lub Python już taką zostawił, używana jest tamta. Do oryginalnej instalacji ze Steama lub z płyty klient nigdy nie zapisuje, tylko z niej czyta filmy, dźwięki i czcionki. Magazyny powtórek i map można przeglądać bez żadnej instalacji; grać i oglądać nie.",
   "settings.game.additionalGameLaunch": "Dodatkowe argumenty uruchamiania gry",
   "settings.game.autoGenerateMaps": "Automatycznie generuj brakujące mapy",
   "settings.game.autoGenerateMapsHint": "Pobiera generator Neroxis i tworzy potrzebne wygenerowane mapy automatycznie przy dołączaniu do poczekalni.",
@@ -1194,6 +1198,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.game.saveArguments": "Zapisz argumenty",
   "settings.paths.unset": "Nie ustawiono",
   "settings.paths.missing": "Nie do użycia",
+  "settings.paths.pending": "Zostanie tu pobrane",
   "settings.paths.ok": "Znaleziono",
   "settings.updates.checking": "Sprawdzanie…",
   "settings.updates.checkNow": "Sprawdź teraz",

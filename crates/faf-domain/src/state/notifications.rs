@@ -31,6 +31,15 @@ pub enum NotificationKind {
     MapGenerated,
     /// Game file cache exceeded user-configured threshold size.
     GameCacheAlert,
+    /// Something about the local Forged Alliance install changed or needs
+    /// explaining: a path the client refused and what it used instead.
+    ///
+    /// Not [`Self::Error`], because nothing failed, and not
+    /// [`Self::GameCacheAlert`], which is specifically about disk use. It keeps
+    /// in the notification centre like the rest of the operational messages: a
+    /// setting the user has just changed does not need the screen taken away
+    /// from them to be told about it.
+    GameInstall,
     /// A newer client release exists. The banner says so too, but the banner
     /// lives at the top of one workspace and this survives a tab change.
     ClientUpdate,
@@ -245,6 +254,7 @@ mod tests {
             NotificationKind::ServerWarning,
             NotificationKind::ServerNotice,
             NotificationKind::GameCacheAlert,
+            NotificationKind::GameInstall,
             NotificationKind::ClientUpdate,
             NotificationKind::PrivateMessage,
             NotificationKind::Mention,

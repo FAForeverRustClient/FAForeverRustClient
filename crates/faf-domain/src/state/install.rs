@@ -43,6 +43,18 @@ pub struct InstallState {
     pub game_ready: bool,
     /// The configured replay-playback executable exists on disk.
     pub replay_ready: bool,
+    /// The live executable is not there yet, but the path names an install this
+    /// client owns, so the updater downloads the engine into it before the
+    /// first game.
+    ///
+    /// A fresh machine is in exactly this state, and it needs its own name: it
+    /// stats identically to a broken setting, and telling somebody their
+    /// install is missing sends them looking for a folder that has never
+    /// existed on that computer. The reference clients reach the same place by
+    /// downloading it on first run.
+    pub game_pending: bool,
+    /// The same for replay playback.
+    pub replay_pending: bool,
     /// Whether the paths have been checked at all yet.
     ///
     /// Without this the UI cannot tell "no install" from "not looked yet", and
@@ -77,6 +89,9 @@ pub enum InstallEvent {
     Checked {
         game_ready: bool,
         replay_ready: bool,
+        /// See [`InstallState::game_pending`].
+        game_pending: bool,
+        replay_pending: bool,
         resolved: ResolvedPaths,
     },
 }
@@ -86,10 +101,14 @@ pub fn reduce(state: &mut InstallState, event: &InstallEvent) {
         InstallEvent::Checked {
             game_ready,
             replay_ready,
+            game_pending,
+            replay_pending,
             resolved,
         } => {
             state.game_ready = *game_ready;
             state.replay_ready = *replay_ready;
+            state.game_pending = *game_pending;
+            state.replay_pending = *replay_pending;
             state.resolved = resolved.clone();
             state.checked = true;
         }
@@ -115,12 +134,15 @@ mod tests {
             &InstallEvent::Checked {
                 game_ready: true,
                 replay_ready: false,
+                game_pending: false,
+                replay_pending: true,
                 resolved: ResolvedPaths::default(),
             },
         );
         assert!(s.checked);
         assert!(s.game_ready);
         assert!(!s.replay_ready);
+        assert!(s.replay_pending, "a replay install the updater will create");
         assert!(!s.nothing_ready());
     }
 
@@ -129,6 +151,8 @@ mod tests {
         let mut s = InstallState {
             game_ready: true,
             replay_ready: true,
+            game_pending: false,
+            replay_pending: false,
             checked: true,
             resolved: ResolvedPaths {
                 maps_dir: "D:/old/maps".into(),
@@ -140,6 +164,8 @@ mod tests {
             &InstallEvent::Checked {
                 game_ready: false,
                 replay_ready: false,
+                game_pending: false,
+                replay_pending: false,
                 resolved: ResolvedPaths {
                     maps_dir: "D:/new/maps".into(),
                     ..ResolvedPaths::default()
