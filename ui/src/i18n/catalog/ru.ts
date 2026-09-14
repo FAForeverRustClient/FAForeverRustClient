@@ -1549,7 +1549,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.local.cancel": "Отмена",
 
   "lobby.mode.aria": "Режимы игры",
-  "lobby.mode.custom": "Лобби",
+  "lobby.mode.custom": "Пользовательские",
   "lobby.mode.matchmaking": "Подбор игроков",
   "lobby.mode.coop": "Кампания",
   "lobby.mode.galacticWar": "Галактическая война",
