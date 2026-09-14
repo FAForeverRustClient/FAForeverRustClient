@@ -467,6 +467,10 @@ async fn run_session(
     // Identity (rather than rating) side of the same `player_info` stream,
     // what chat needs to rank its roster. See `PlayerDirectory`.
     let mut directory = PlayerDirectory::default();
+    // Who this session is, from `welcome`. Only used to refuse the one
+    // `player_info` that must never be believed: our own account going
+    // offline. See the `player_info` arm.
+    let mut own_player_id: Option<i64> = None;
     let mut matchmaking = MatchmakingState::Idle;
     // The machine proof is computed off this loop. `faf-uid` needs seconds on a
     // cold first run (15s measured on a freshly installed client, ~2.4s warm),
@@ -670,6 +674,7 @@ async fn run_session(
                             break 'connection;
                         }
                         if let Some(player) = value.get("me") {
+                            own_player_id = player.get("id").and_then(Value::as_i64);
                             update_player_ratings(&mut player_ratings, player);
                             if let Some(profile) = directory.observe(player) {
                                 if tx.send(LobbyUpdate::PlayersSeen(vec![profile])).await.is_err() {
@@ -690,6 +695,25 @@ async fn run_session(
                             let mut removed = Vec::new();
                             for player in players {
                                 if player.get("state").and_then(Value::as_str) == Some("offline") {
+                                    // Never our own account. The server marks
+                                    // a dropped connection offline and
+                                    // broadcasts it, and a reconnect is
+                                    // exactly that: the old connection's
+                                    // notice arrives on the new one, after
+                                    // `welcome` has already introduced us. The
+                                    // client then forgot its own profile --
+                                    // avatar, country and clan all gone from a
+                                    // session that was plainly still online,
+                                    // which is what "my avatar got eaten"
+                                    // looked like. We are receiving this
+                                    // message, so we are not offline.
+                                    let id = player.get("id").and_then(Value::as_i64);
+                                    if id.is_some() && id == own_player_id {
+                                        tracing::debug!(
+                                            "ignoring an offline notice for our own account"
+                                        );
+                                        continue;
+                                    }
                                     if let Some(profile) = directory.remove(player) {
                                         player_ratings.remove(&profile.login);
                                         removed.push(profile);
