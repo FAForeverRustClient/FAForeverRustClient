@@ -1,7 +1,9 @@
+use std::collections::BTreeMap;
+
 use async_trait::async_trait;
 use faf_domain::state::{
-    MatchmakerPlayerProfile, PlayerCardProfile, PlayerMapStats, PlayerSummary, RatingHistoryPage,
-    RatingHistoryQuery,
+    MatchmakerPlayerProfile, PlayerCardProfile, PlayerLeaguePlacement, PlayerMapStats,
+    PlayerSummary, RatingHistoryPage, RatingHistoryQuery,
 };
 
 use super::RequestError;
@@ -40,6 +42,20 @@ pub trait PlayerCardPort: Send + Sync {
         player_id: i32,
         login: &str,
     ) -> Result<MatchmakerPlayerProfile, String>;
+
+    /// Active league placements for a batch of players, by id, highest
+    /// division first.
+    ///
+    /// One request for the whole party rather than one per seat: Java's
+    /// `PartyMemberItemController` asks per member, but a party is at most
+    /// four people and the score endpoint filters on `loginId=in=(...)`. An
+    /// id with no active placement is absent from the result; the caller
+    /// records the absence so it is not asked again.
+    async fn load_league_placements(
+        &self,
+        player_ids: &[i32],
+    ) -> Result<BTreeMap<i32, Vec<PlayerLeaguePlacement>>, String>;
+
     async fn load_rating_history(
         &self,
         query: &RatingHistoryQuery,

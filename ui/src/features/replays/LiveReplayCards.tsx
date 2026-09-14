@@ -240,12 +240,14 @@ const LiveReplayCard = memo(function LiveReplayCard({
       </div>
       <div className="replay-card-right">
         <div className="replay-card-header">
-          <span className="replay-card-title" title={title.full} aria-label={title.full}>
-            {title.display}
-          </span>
-          <span className="replay-card-submap muted">
-            {t("replays.card.onMap", { map: presentation.displayName || game.map })}
-          </span>
+          <div className="replay-card-header-main">
+            <span className="replay-card-title" title={title.full} aria-label={title.full}>
+              {title.display}
+            </span>
+            <span className="replay-card-submap muted">
+              {t("replays.card.onMap", { map: presentation.displayName || game.map })}
+            </span>
+          </div>
         </div>
         <ReplayCardRoster teams={teams} interactive onPlayerMenu={onPlayerMenu} />
         {/* Who hosts it, and the one thing to do with it. The featured mod and

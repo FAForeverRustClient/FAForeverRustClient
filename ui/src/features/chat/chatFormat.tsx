@@ -11,7 +11,7 @@ import { openHttpsUrl, optionalHttpsUrl, validateHttpsUrl } from "../../shared/e
 import { findPlayer, isModerator } from "../../store/reducer";
 import { t, type MessageKey } from "../../i18n";
 
-import { assignedPlayerColor, nickHue, nickStyle, resolvePlayerStyle } from "../../shared/nameColors";
+import { assignedPlayerColor, includesName, nickHue, nickStyle, resolvePlayerStyle } from "../../shared/nameColors";
 export { nickHue, nickStyle };
 
 export function isAdmin(user: ChatUser | undefined): boolean {
@@ -69,7 +69,7 @@ export const USER_CATEGORY_LABELS = {
   foes: "chat.category.foes",
 } as const satisfies Record<UserCategory, MessageKey>;
 
-export const USER_CATEGORY_ORDER: UserCategory[] = [
+export const USER_CATEGORY_ORDER: readonly UserCategory[] = [
   "self",
   "moderators",
   "friends",
@@ -97,9 +97,9 @@ export function categoryOf(
   socialKnown: boolean,
 ): UserCategory {
   if (self && user.name === self) return "self";
-  if (social.foes.includes(user.name)) return "foes";
+  if (includesName(social.foes, user.name)) return "foes";
   if (isModerator(user)) return "moderators";
-  if (social.friends.includes(user.name)) return "friends";
+  if (includesName(social.friends, user.name)) return "friends";
   if (!socialKnown) return "players";
   return findPlayer(social, user.name) ? "players" : "ircOnly";
 }

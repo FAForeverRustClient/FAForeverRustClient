@@ -164,8 +164,8 @@ export function usePlayerMenu(): {
         <UserMenu
           target={menu}
           self={self}
-          isFriend={social.friends.includes(menu.nickname)}
-          isFoe={social.foes.includes(menu.nickname)}
+          isFriend={includesName(social.friends, menu.profile?.login || menu.nickname)}
+          isFoe={includesName(social.foes, menu.profile?.login || menu.nickname)}
           isMuted={menuIsMuted}
           hostedGame={menuHostedGame ?? undefined}
           liveGame={menuLiveGame}

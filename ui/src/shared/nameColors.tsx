@@ -32,12 +32,12 @@ export function usePlayerStyle(name: string): CSSProperties | undefined {
       return chat.nameColors.selfColor;
     }
 
-    if (chat.nameColors.friends && includesName(state.state.social.friends, name)) {
-      return chat.nameColors.friends;
+    if (includesName(state.state.social.friends, name)) {
+      return chat.nameColors.friends || "var(--color-friend)";
     }
 
-    if (chat.nameColors.foes && includesName(state.state.social.foes, name)) {
-      return chat.nameColors.foes;
+    if (includesName(state.state.social.foes, name)) {
+      return chat.nameColors.foes || "var(--color-foe)";
     }
 
     if (chat.coloredNames) {

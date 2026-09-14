@@ -54,6 +54,11 @@ pub struct ServiceCtx {
     pub player_card_matchmaker_generation: LatestRequest,
     pub player_card_map_stats_generation: LatestRequest,
     pub player_card_history_generation: LatestRequest,
+    /// Party placement lookups run one at a time. The panel sends the whole
+    /// party on every change, and the service skips ids it already knows, so
+    /// serialising them is what turns "already known" into "asked once": two
+    /// overlapping lookups would both find the map empty and both fetch.
+    pub party_placements_mutation: SerialMutation,
     /// Global single-flight guards for operations whose adapters use a shared
     /// temporary file or whose state machine only represents one operation.
     pub uploads_active: SingleFlight,
@@ -316,6 +321,7 @@ impl App {
             player_card_matchmaker_generation: LatestRequest::default(),
             player_card_map_stats_generation: LatestRequest::default(),
             player_card_history_generation: LatestRequest::default(),
+            party_placements_mutation: SerialMutation::default(),
             uploads_active: SingleFlight::default(),
             client_update_active: SingleFlight::default(),
             galactic_war_active: SingleFlight::default(),
