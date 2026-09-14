@@ -12,15 +12,26 @@
 // game is either up or has failed. A bar that sweeps says "running" without
 // claiming to know how far along it is.
 //
-// Dismissible, like the Play tab's. Hiding it does not stop anything, and the
-// note under the button says so.
+// Two ways out, because they are different things. Hide gets the overlay off
+// the screen and leaves the launch running, which is what it always did and
+// what the note under it says. Cancel stops the launch: the client is several
+// awaits deep in fetching and preparing a file at that point, and dropping
+// that work is the only thing that ends the wait rather than covering it up.
+//
+// Cancel is gone once the game has the file, since there is nothing left to
+// call off by then -- but so is this whole overlay, which only stands while
+// the status is `connecting`.
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { useTranslation } from "../../i18n/useTranslation";
+import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import "./replays.css";
+
+const cancelWatch = () =>
+  ipc.send({ kind: "Replays", command: { type: "cancelWatch" } });
 
 export function ReplayStartDialog() {
   const { t } = useTranslation();
@@ -70,6 +81,17 @@ export function ReplayStartDialog() {
           </div>
         )}
         <div className="confirm-dialog-actions">
+          {!failed && (
+            <Button
+              variant="primary"
+              onClick={() => {
+                cancelWatch();
+                close();
+              }}
+            >
+              {t("replays.starting.cancel")}
+            </Button>
+          )}
           <Button onClick={close}>
             {t(failed ? "replays.starting.close" : "replays.starting.hide")}
           </Button>

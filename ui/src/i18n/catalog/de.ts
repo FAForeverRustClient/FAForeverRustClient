@@ -1973,8 +1973,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.starting.detail": "Das Replay wird geholt und Forged Alliance geöffnet.",
   "replays.starting.failedTitle": "Das Replay ist nicht gestartet",
   "replays.starting.hide": "Ausblenden",
+  "replays.starting.cancel": "Abbrechen",
   "replays.starting.close": "Schließen",
-  "replays.starting.hideNote": "Ausblenden stoppt nichts. Die Statuszeile zeigt denselben Fortschritt.",
+  "replays.starting.hideNote": "Ausblenden stoppt nichts. Abbrechen verhindert, dass das Replay startet.",
   "replays.status.failed": "Replay fehlgeschlagen: {reason}",
   "replays.status.launchedWarning":
     "Gestartet, aber: {warning}. FA bleibt beim Laden hängen, wenn sich das nicht von selbst löst.",

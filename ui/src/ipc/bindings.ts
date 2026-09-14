@@ -5594,6 +5594,16 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 	action: LiveReplayTrackingAction,
 } } | { type: "cancelLiveTracking" } |
 /**
+ *  Call off the replay that is starting.
+ *
+ *  Starting one is several seconds of fetching, decompressing and
+ *  preparing before Forged Alliance appears, and until now the only thing
+ *  the overlay over that wait could do was get out of the way. Once the
+ *  game has been handed the file this has nothing left to stop, and says
+ *  so by doing nothing.
+ */
+{ type: "cancelWatch" } |
+/**
  *  Play a `.fafreplay`/`.scfareplay` file by path: used both for the
  *  file-picker flow and for watching a [`LocalReplay`] row.
  */

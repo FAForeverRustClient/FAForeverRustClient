@@ -790,8 +790,10 @@ pub enum ReplayEvent {
     Failed {
         reason: String,
     },
-    /// The replay session ended (game process exited / stream closed): back
-    /// to idle so the UI can start another one.
+    /// The replay session ended (game process exited / stream closed), or the
+    /// start of one was called off before the game had it: back to idle so the
+    /// UI can start another one. A cancelled start is deliberately not a
+    /// [`Self::Failed`] -- nothing went wrong.
     Closed,
     LiveTrackingScheduled {
         tracking: LiveReplayTracking,
@@ -895,6 +897,14 @@ pub enum ReplayCommand {
         action: LiveReplayTrackingAction,
     },
     CancelLiveTracking,
+    /// Call off the replay that is starting.
+    ///
+    /// Starting one is several seconds of fetching, decompressing and
+    /// preparing before Forged Alliance appears, and until now the only thing
+    /// the overlay over that wait could do was get out of the way. Once the
+    /// game has been handed the file this has nothing left to stop, and says
+    /// so by doing nothing.
+    CancelWatch,
     /// Play a `.fafreplay`/`.scfareplay` file by path: used both for the
     /// file-picker flow and for watching a [`LocalReplay`] row.
     OpenFile {
@@ -1018,7 +1028,17 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
                 state.download_status = ReplayDownloadStatus::Idle;
             }
         }
-        ReplayEvent::Closed => state.status = ReplayStatus::Idle,
+        ReplayEvent::Closed => {
+            state.status = ReplayStatus::Idle;
+            // A `WatchVault` called off part-way leaves its download showing in
+            // the shared status task otherwise, with nothing left to finish it.
+            if matches!(
+                state.download_status,
+                ReplayDownloadStatus::Downloading { .. }
+            ) {
+                state.download_status = ReplayDownloadStatus::Idle;
+            }
+        }
         ReplayEvent::LiveTrackingScheduled { tracking } => {
             state.live_tracking = Some(tracking.clone());
         }

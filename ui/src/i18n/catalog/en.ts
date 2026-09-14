@@ -2237,8 +2237,9 @@ export const en = {
   "replays.starting.detail": "Fetching the replay and opening Forged Alliance.",
   "replays.starting.failedTitle": "The replay did not start",
   "replays.starting.hide": "Hide",
+  "replays.starting.cancel": "Cancel",
   "replays.starting.close": "Close",
-  "replays.starting.hideNote": "Hiding this does not stop anything. The status line keeps the same progress.",
+  "replays.starting.hideNote": "Hiding this does not stop anything. Cancel stops the replay from starting.",
   "replays.status.failed": "Replay failed: {reason}",
   "replays.status.launchedWarning":
     "Launched, but: {warning}. FA may get stuck loading if this doesn't resolve itself.",
