@@ -579,6 +579,12 @@ fn replay_metadata(
     }
 }
 
+/// What Forged Alliance is told when this client cannot say what the player is
+/// rated: TrueSkill's starting pair, which is what the server itself seeds a
+/// new account with and what the Python client sends in the same situation.
+const DEFAULT_MEAN: i32 = 1_500;
+const DEFAULT_DEVIATION: i32 = 500;
+
 /// Add the player and automatic-lobby arguments that the server deliberately
 /// does not own. This mirrors Java's `LaunchCommandBuilder` and Python's
 /// `handle_game_launch` rather than deriving a displayed rating from the game
@@ -596,20 +602,53 @@ fn launch_arguments(launch: &GameLaunch, profile: Option<&PlayerProfile>) -> Vec
         }
     };
 
-    if let Some(profile) = profile {
-        let rating_type = if launch.rating_type.is_empty() {
-            "global"
-        } else {
-            &launch.rating_type
-        };
-        if let Some(rating) = profile
+    // The rating pair is never omitted.
+    //
+    // A report of a rating that read wrong in the in-game lobby came with the
+    // command line: `/mean` and `/deviation` were both missing, so Forged
+    // Alliance fell back to whatever it makes of an unrated player. That is
+    // what this used to do whenever the queue named by the launch was not in
+    // the profile's table -- a queue the account has never played, a profile
+    // that arrived without its ratings, or no profile at all. Neither
+    // reference client leaves the pair out: Java sends the leaderboard's
+    // numbers or zeroes, and the Python client falls back to the TrueSkill
+    // starting values, which is what is mirrored here because it is the pair
+    // that describes an unrated player rather than one rated nothing.
+    let rating_type = if launch.rating_type.is_empty() {
+        "global"
+    } else {
+        &launch.rating_type
+    };
+    let rating = profile.and_then(|profile| {
+        profile
             .ratings
             .iter()
             .find(|rating| rating.leaderboard.eq_ignore_ascii_case(rating_type))
-        {
-            push_pair(&mut args, "/mean", rating.mean.to_string());
-            push_pair(&mut args, "/deviation", rating.deviation.to_string());
-        }
+            // A queue nobody has played yet still starts everybody at the
+            // global rating in the lobby, which is better than the default.
+            .or_else(|| {
+                profile
+                    .ratings
+                    .iter()
+                    .find(|rating| rating.leaderboard.eq_ignore_ascii_case("global"))
+            })
+    });
+    push_pair(
+        &mut args,
+        "/mean",
+        rating
+            .map_or(DEFAULT_MEAN, |rating| rating.mean)
+            .to_string(),
+    );
+    push_pair(
+        &mut args,
+        "/deviation",
+        rating
+            .map_or(DEFAULT_DEVIATION, |rating| rating.deviation)
+            .to_string(),
+    );
+
+    if let Some(profile) = profile {
         if !profile.country.is_empty() {
             push_pair(&mut args, "/country", profile.country.clone());
         }
@@ -749,6 +788,32 @@ mod tests {
         assert!(args
             .windows(2)
             .any(|pair| pair == ["/gameoptions", "Timeouts:3"]));
+    }
+
+    #[test]
+    fn a_queue_the_account_never_played_still_launches_with_its_global_rating() {
+        let mut launch = launch();
+        launch.rating_type = "tmm_2v2".into();
+        let args = launch_arguments(&launch, Some(&profile()));
+        assert!(args.windows(2).any(|pair| pair == ["/mean", "1800"]));
+        assert!(args.windows(2).any(|pair| pair == ["/deviation", "200"]));
+    }
+
+    #[test]
+    fn an_unknown_rating_still_gets_the_true_skill_starting_pair() {
+        // The report this fixes: both flags missing from the command line, and
+        // a rating that reads wrong in the in-game lobby as a result.
+        let args = launch_arguments(&launch(), None);
+        assert!(args.windows(2).any(|pair| pair == ["/mean", "1500"]));
+        assert!(args.windows(2).any(|pair| pair == ["/deviation", "500"]));
+
+        let unrated = PlayerProfile {
+            ratings: Vec::new(),
+            ..profile()
+        };
+        let args = launch_arguments(&launch(), Some(&unrated));
+        assert!(args.windows(2).any(|pair| pair == ["/mean", "1500"]));
+        assert!(args.windows(2).any(|pair| pair == ["/deviation", "500"]));
     }
 
     #[test]
