@@ -4,6 +4,7 @@ import {
   EMPTY_LOCAL_REPLAY_QUERY,
   filterLocalReplays,
   nextLocalDetailLimit,
+  type LocalReplayQuery,
 } from "./localReplayQuery";
 
 function replay(overrides: Partial<LocalReplay> = {}): LocalReplay {
@@ -66,19 +67,44 @@ describe("local replay query", () => {
     ).toEqual([]);
   });
 
-  // `faf` is a prefix of `fafbeta` and `fafdevelop`, and the control over this
-  // field is a picker across whichever of them the archive holds, so a prefix
-  // match answered "custom games" with the beta and develop games as well.
-  it("matches the featured mod exactly, not as a prefix", () => {
-    const custom = replay({ path: "C:/replays/1.fafreplay", modName: "faf" });
-    const beta = replay({ path: "C:/replays/2.fafreplay", modName: "fafbeta" });
+  // The options overlap on purpose: a custom 3v3 is both a custom game and a
+  // 3v3, and the file says both. See `localGameModes` for why picking one
+  // bucket per replay would be worse.
+  it("answers the mode a replay was played in from its mod and its roster", () => {
+    const sides = (a: number, b: number) => [
+      { team: "2", players: Array.from({ length: a }, (_, i) => ({ name: `left${i}`, faction: null, rating: null })) },
+      { team: "3", players: Array.from({ length: b }, (_, i) => ({ name: `right${i}`, faction: null, rating: null })) },
+    ];
+    const custom3v3 = replay({ path: "C:/replays/1.fafreplay", modName: "faf", teams: sides(3, 3) });
+    const beta2v2 = replay({ path: "C:/replays/2.fafreplay", modName: "fafbeta", teams: sides(2, 2) });
+    const coop = replay({ path: "C:/replays/3.fafreplay", modName: "coop", teams: sides(4, 4) });
+    const ladder = replay({ path: "C:/replays/4.fafreplay", modName: "ladder1v1", teams: sides(1, 1) });
+    const uneven = replay({ path: "C:/replays/5.fafreplay", modName: "faf", teams: sides(3, 2) });
+    const all = [custom3v3, beta2v2, coop, ladder, uneven];
+    const matching = (gameMode: LocalReplayQuery["gameMode"]) =>
+      filterLocalReplays(all, { ...EMPTY_LOCAL_REPLAY_QUERY, gameMode }).map((r) => r.path);
 
-    expect(filterLocalReplays([custom, beta], { ...EMPTY_LOCAL_REPLAY_QUERY, mod: "faf" }))
-      .toEqual([custom]);
-    expect(filterLocalReplays([custom, beta], { ...EMPTY_LOCAL_REPLAY_QUERY, mod: "fafbeta" }))
-      .toEqual([beta]);
-    expect(filterLocalReplays([custom, beta], { ...EMPTY_LOCAL_REPLAY_QUERY, mod: "" }))
-      .toHaveLength(2);
+    expect(matching("")).toHaveLength(5);
+    // Every build of the base mod is a custom game; only co-op and ladder are not.
+    expect(matching("custom")).toEqual([
+      "C:/replays/1.fafreplay", "C:/replays/2.fafreplay", "C:/replays/5.fafreplay",
+    ]);
+    expect(matching("tmm_3v3")).toEqual(["C:/replays/1.fafreplay"]);
+    expect(matching("tmm_2v2")).toEqual(["C:/replays/2.fafreplay"]);
+    expect(matching("coop")).toEqual(["C:/replays/3.fafreplay"]);
+    expect(matching("ladder_1v1")).toEqual(["C:/replays/4.fafreplay"]);
+    // A four-a-side co-op roster is a team against the map, not a 4v4.
+    expect(matching("tmm_4v4_full_share")).toEqual([]);
+  });
+
+  // An unread row has no roster, and a size guessed for it is a size invented.
+  it("puts a replay with no readable roster in no size at all", () => {
+    const unread = replay({ path: "C:/replays/9.fafreplay", modName: "faf", teams: [] });
+
+    expect(filterLocalReplays([unread], { ...EMPTY_LOCAL_REPLAY_QUERY, gameMode: "tmm_3v3" }))
+      .toEqual([]);
+    expect(filterLocalReplays([unread], { ...EMPTY_LOCAL_REPLAY_QUERY, gameMode: "custom" }))
+      .toEqual([unread]);
   });
 
   it("supports local advanced filters and sort direction", () => {
