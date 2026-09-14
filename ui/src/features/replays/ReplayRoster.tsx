@@ -94,7 +94,7 @@ export function mergeReplayTeamsWithLocal(
       team.players.map((player) => [player.name.toLocaleLowerCase(), player] as const),
     ),
   );
-  return teams.map((team) => {
+  const enriched = teams.map((team) => {
     const localTeam = localByTeam.get(String(team.team));
     return {
       ...team,
@@ -112,6 +112,52 @@ export function mergeReplayTeamsWithLocal(
       }),
     };
   });
+
+  // Everyone the file has and the listing does not, which in practice means
+  // the AI. The vault's roster is `playerStats`, one row per account, so a
+  // game against three AI arrives from the server as a lineup of one; the
+  // replay's own army table has all four. The grid card reads that table
+  // directly and showed them, the panel took the server's list and did not,
+  // and the same game therefore had two different lineups depending on where
+  // you looked at it.
+  const online = new Set(
+    enriched.flatMap((team) => team.players.map((player) => player.name.toLocaleLowerCase())),
+  );
+
+  // Which listed team each local team turned into. The two number their teams
+  // differently often enough that the key cannot be trusted, so it is derived
+  // from where the players that *are* in both ended up; a local team whose
+  // players are all missing from the listing keeps its own number.
+  const teamOf = new Map<string, number>();
+  for (const localTeam of localTeams) {
+    const landed = enriched.find((team) => team.players.some((player) =>
+      localTeam.players.some((local) =>
+        local.name.toLocaleLowerCase() === player.name.toLocaleLowerCase())));
+    if (landed) teamOf.set(localTeam.team, landed.team);
+  }
+
+  const merged = enriched.map((team) => ({ ...team, players: [...team.players] }));
+  for (const localTeam of localTeams) {
+    const missing = localTeam.players.filter(
+      (player) => !online.has(player.name.toLocaleLowerCase()),
+    );
+    if (missing.length === 0) continue;
+    const added = missing.map((player) => ({
+      name: player.name,
+      faction: player.faction,
+      rating: player.rating,
+      // The server never rated them and never will, so there is no outcome and
+      // no score to claim one from.
+      outcome: "",
+      score: null,
+    }));
+    const number = teamOf.get(localTeam.team)
+      ?? (localTeam.team === "null" ? -1 : Number.parseInt(localTeam.team, 10) || 0);
+    const target = merged.find((team) => team.team === number);
+    if (target) target.players.push(...added);
+    else merged.push({ team: number, players: added });
+  }
+  return merged;
 }
 
 /**

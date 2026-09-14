@@ -109,6 +109,68 @@ describe("ReplayRoster outcomes", () => {
     expect(merged[0].players[1].rating).toBe(1500);
   });
 
+  // The vault's roster is one row per account, so it cannot name an AI. The
+  // replay's own army table can, the grid card reads it and showed them, and
+  // the panel took the server's list instead: the same game had two different
+  // lineups depending on where it was looked at.
+  it("adds players the replay file has and the vault listing cannot", () => {
+    const teams: ReplayTeam[] = [{
+      team: 2,
+      players: [{ name: "Player1", faction: 1, rating: 1500, outcome: "", score: null }],
+    }];
+    const localTeams: LocalReplayTeam[] = [
+      // Numbered as the engine numbers them, which is not how the vault does.
+      { team: "3", players: [{ name: "Player1", faction: 1, rating: null }] },
+      { team: "4", players: [
+        { name: "Thel-Ilthow (AI: Adaptive)", faction: 4, rating: null },
+        { name: "June (AI: Adaptive)", faction: 2, rating: null },
+      ] },
+    ];
+
+    const merged = mergeReplayTeamsWithLocal(teams, localTeams);
+
+    expect(merged).toHaveLength(2);
+    expect(merged[0].players.map((player) => player.name)).toEqual(["Player1"]);
+    expect(merged[1].team).toBe(4);
+    expect(merged[1].players.map((player) => player.name))
+      .toEqual(["Thel-Ilthow (AI: Adaptive)", "June (AI: Adaptive)"]);
+    expect(merged[1].players[0].faction).toBe(4);
+  });
+
+  // The team numbers disagree between the two sources often enough that the
+  // key cannot be trusted, so where a local team landed is read off the
+  // players that are in both.
+  it("puts an AI on the listed team its human team mates ended up in", () => {
+    const teams: ReplayTeam[] = [{
+      team: 2,
+      players: [{ name: "Player1", faction: 1, rating: 1500, outcome: "", score: null }],
+    }];
+    const localTeams: LocalReplayTeam[] = [{
+      team: "7",
+      players: [
+        { name: "player1", faction: 1, rating: 1400 },
+        { name: "Shun-Ushi (AIx: random)", faction: 4, rating: null },
+      ],
+    }];
+
+    const merged = mergeReplayTeamsWithLocal(teams, localTeams);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].team).toBe(2);
+    expect(merged[0].players.map((player) => player.name))
+      .toEqual(["Player1", "Shun-Ushi (AIx: random)"]);
+  });
+
+  it("leaves an online-only lineup alone", () => {
+    const teams: ReplayTeam[] = [{
+      team: 2,
+      players: [{ name: "Player1", faction: 1, rating: 1500, outcome: "", score: null }],
+    }];
+
+    expect(mergeReplayTeamsWithLocal(teams, undefined)).toEqual(teams);
+    expect(mergeReplayTeamsWithLocal(teams, [])).toEqual(teams);
+  });
+
   it("renders a player rating in the detail lineup", () => {
     const teams: ReplayTeam[] = [{
       team: 2,
