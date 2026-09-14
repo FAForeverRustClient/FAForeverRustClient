@@ -135,6 +135,8 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
   const vaultMods = useAppStore((state) => state.state.mods.vault);
   const friendLogins = useAppStore((state) => state.state.social.friends);
   const friendSet = useMemo(() => friendKeys(friendLogins), [friendLogins]);
+  const foeLogins = useAppStore((state) => state.state.social.foes);
+  const foeSet = useMemo(() => friendKeys(foeLogins), [foeLogins]);
 
   const catalogNote = loadStatusNote(
     coop.catalogStatus,
@@ -184,6 +186,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                   vault={maps.vault}
                   vaultMods={vaultMods}
                   friendSet={friendSet}
+                  foeSet={foeSet}
                   columnStyle={columns.style}
                   selected={selectedGameId === game.id}
                   onSelect={() => setSelectedGameId(game.id)}
@@ -200,6 +203,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                   vault={maps.vault}
                   vaultMods={vaultMods}
                   friendSet={friendSet}
+                  foeSet={foeSet}
                   selected={selectedGameId === game.id}
                   now={now}
                   onSelect={() => setSelectedGameId(game.id)}

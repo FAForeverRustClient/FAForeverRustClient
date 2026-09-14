@@ -1,4 +1,4 @@
-/* The sidebar's Game folders disclosure. The toggle borrows `.tab` so it sits
+/* The sidebar's Game folders menu. The toggle borrows `.tab` so it sits
    in the navigation without looking like a visitor. */
 .game-folders {
   display: flex;
@@ -8,24 +8,35 @@
 
 .game-folders-toggle.is-open {
   color: var(--color-text);
+  background: var(--color-surface);
 }
 
 .game-folders-caret {
   margin-left: auto;
   color: var(--color-subtle);
+  transition: transform 150ms ease, color 120ms ease;
 }
 
-.game-folders-list {
+.game-folders-toggle.is-open .game-folders-caret {
+  color: var(--color-text);
+  transform: translateX(2px);
+}
+
+.game-folders-popover {
+  position: fixed;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  width: 200px;
+  max-height: calc(100vh - 16px);
   overflow-y: auto;
-  max-height: 40vh;
-  margin: var(--space-2) 0 2px;
   padding: var(--space-2);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+  box-sizing: border-box;
 }
 
 .game-folders-group {
@@ -35,25 +46,29 @@
 }
 
 .game-folders-group-title {
-  margin: 0 0 var(--space-1);
-  padding: 0 6px;
+  margin: 0 0 4px;
+  padding: 0 8px;
   color: var(--color-subtle);
   font-size: 11px;
   font-weight: 650;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .game-folders-entry {
-  padding: 5px 6px;
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
   color: var(--color-muted);
   font: inherit;
   font-size: 12px;
+  font-weight: 450;
   text-align: left;
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
 }
 
 .game-folders-entry:hover {
@@ -68,7 +83,7 @@
 
 .game-folders-error {
   margin: 0;
-  padding: 0 6px;
+  padding: 4px 8px;
   color: var(--color-error);
   font-size: 11px;
   line-height: 1.4;

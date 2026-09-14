@@ -104,5 +104,39 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
                 Err(reason) => out.emit(PlayerCardEvent::MapStatsLoadFailed { reason }),
             }
         }
+        PlayerCardCommand::LoadPartyPlacements { player_ids } => {
+            // Held across the read of what is known and the fetch, so a second
+            // party change arriving mid-lookup waits and then finds the ids it
+            // shares already recorded.
+            let _serial = ctx.party_placements_mutation.acquire().await;
+            let mut wanted: Vec<i32> = out.with_state(|state| {
+                player_ids
+                    .iter()
+                    .copied()
+                    .filter(|id| !state.player_card.party_placements.contains_key(id))
+                    .collect()
+            });
+            wanted.sort_unstable();
+            wanted.dedup();
+            if wanted.is_empty() {
+                return;
+            }
+            match ctx.ports.player_card.load_league_placements(&wanted).await {
+                Ok(mut placements) => {
+                    // Record the unplaced too, or the panel would ask about
+                    // them again on the next party change.
+                    for id in &wanted {
+                        placements.entry(*id).or_default();
+                    }
+                    out.emit(PlayerCardEvent::PartyPlacementsLoaded { placements });
+                }
+                // Decorative: a seat without an emblem is Java's fallback as
+                // well (`leagueImageView` stays hidden), and the next party
+                // change asks again. Not worth a failure state of its own.
+                Err(error) => {
+                    tracing::warn!(%error, "could not load the party's league placements")
+                }
+            }
+        }
     }
 }

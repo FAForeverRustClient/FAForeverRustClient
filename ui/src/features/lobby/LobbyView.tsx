@@ -422,8 +422,10 @@ export function LobbyView() {
   const hidePrivate = gameBrowser.hidePrivate;
   const hideModded = gameBrowser.hideModded;
   const hideUnranked = gameBrowser.hideUnranked;
+  const hideFoes = gameBrowser.hideFoes;
   const applyFilters = gameBrowser.applyFilters;
   const rules: GameFilterRule[] = gameBrowser.rules;
+  const foeSet = useMemo(() => new Set(social.foes.map((f) => f.toLowerCase())), [social.foes]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [previewGame, setPreviewGame] = useState<Game | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -544,9 +546,10 @@ export function LobbyView() {
       .filter((game) => !hidePrivate || !game.passwordProtected)
       .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
       .filter((game) => !hideUnranked || isCustomGameRanked(game, maps.vault, mods.vault))
+      .filter((game) => !hideFoes || !foeSet.has(game.host.toLowerCase()))
       .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
       .sort((left, right) => compareGames(sort, sortReversed, left, right));
-  }, [applyFilters, customGames, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort, sortReversed]);
+  }, [applyFilters, customGames, foeSet, hideFoes, hideModded, hidePrivate, hideUnranked, maps.vault, mods.vault, rules, search, sort, sortReversed]);
 
   const filteredCoopGames = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -565,11 +568,12 @@ export function LobbyView() {
       )
       .filter((game) => !hidePrivate || !game.passwordProtected)
       .filter((game) => !hideModded || Object.keys(game.simMods).length === 0)
+      .filter((game) => !hideFoes || !foeSet.has(game.host.toLowerCase()))
       .filter((game) => !applyFilters || !rules.some((rule) => matchesRule(game, rule, maps.vault)))
       .sort((left, right) => compareGames(sort, sortReversed, left, right));
     // No ranked filter here, and no checkbox for one in the co-op toolbar: a
     // mission is never rated, so hiding the unranked games hid all of them.
-  }, [applyFilters, coopGames, hideModded, hidePrivate, maps.vault, rules, search, sort, sortReversed]);
+  }, [applyFilters, coopGames, foeSet, hideFoes, hideModded, hidePrivate, maps.vault, rules, search, sort, sortReversed]);
 
   const selected = filtered.find((game) => game.id === selectedId) ?? filtered[0] ?? null;
   const inGame = (list: Game[], nickname: string) =>
@@ -730,6 +734,7 @@ export function LobbyView() {
               viewMode={gameView}
               hidePrivate={hidePrivate}
               hideModded={hideModded}
+              hideFoes={hideFoes}
               applyFilters={applyFilters}
               filterCount={rules.length}
               connected={connected}
@@ -738,6 +743,7 @@ export function LobbyView() {
               onViewMode={selectGameView}
               onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
               onHideModded={(value) => updateGameBrowser({ hideModded: value })}
+              onHideFoes={(value) => updateGameBrowser({ hideFoes: value })}
               onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
               onOpenFilters={() => setFiltersOpen(true)}
               onHost={() => handleHostCoop()}
@@ -758,6 +764,7 @@ export function LobbyView() {
             hidePrivate={hidePrivate}
             hideModded={hideModded}
             hideUnranked={hideUnranked}
+            hideFoes={hideFoes}
             applyFilters={applyFilters}
             filterCount={rules.length}
             connected={connected}
@@ -767,6 +774,7 @@ export function LobbyView() {
             onHidePrivate={(value) => updateGameBrowser({ hidePrivate: value })}
             onHideModded={(value) => updateGameBrowser({ hideModded: value })}
             onHideUnranked={(value) => updateGameBrowser({ hideUnranked: value })}
+            onHideFoes={(value) => updateGameBrowser({ hideFoes: value })}
             onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
             onOpenFilters={() => setFiltersOpen(true)}
             onHost={() => {
@@ -853,8 +861,8 @@ export function LobbyView() {
         <UserMenu
           target={menu}
           self={self}
-          isFriend={social.friends.includes(menu.nickname)}
-          isFoe={social.foes.includes(menu.nickname)}
+          isFriend={includesName(social.friends, menu.profile?.login || menu.nickname)}
+          isFoe={includesName(social.foes, menu.profile?.login || menu.nickname)}
           isMuted={menuIsMuted}
           hostedGame={menuHostedGame ?? undefined}
           liveGame={menuLiveGame}

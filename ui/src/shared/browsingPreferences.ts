@@ -135,6 +135,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
     hidePrivate: false,
     hideModded: false,
     hideUnranked: false,
+    hideFoes: false,
     applyFilters: false,
     rules: [],
     columnWidths: [],
@@ -282,6 +283,7 @@ function normalizeCustomGamesBrowser(
     hidePrivate: Boolean(preferences.hidePrivate),
     hideModded: Boolean(preferences.hideModded),
     hideUnranked: Boolean(preferences.hideUnranked),
+    hideFoes: Boolean(preferences.hideFoes),
     applyFilters: Boolean(preferences.applyFilters),
     rules,
     columnWidths: (preferences.columnWidths ?? [])

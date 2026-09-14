@@ -85,11 +85,11 @@ pub struct SocialState {
 
 impl SocialState {
     pub fn is_friend(&self, login: &str) -> bool {
-        self.friends.iter().any(|f| f == login)
+        self.friends.iter().any(|f| f.eq_ignore_ascii_case(login))
     }
 
     pub fn is_foe(&self, login: &str) -> bool {
-        self.foes.iter().any(|f| f == login)
+        self.foes.iter().any(|f| f.eq_ignore_ascii_case(login))
     }
 
     /// The profile for a nickname, or `None` if it isn't a known FAF account.
@@ -98,6 +98,11 @@ impl SocialState {
             .binary_search_by(|p| p.login.as_str().cmp(login))
             .ok()
             .map(|i| &self.players[i])
+            .or_else(|| {
+                self.players
+                    .iter()
+                    .find(|p| p.login.eq_ignore_ascii_case(login))
+            })
     }
 }
 
@@ -170,12 +175,12 @@ pub fn reduce(state: &mut SocialState, event: &SocialEvent) {
                 Relation::Friend => (&mut state.friends, &mut state.foes),
                 Relation::Foe => (&mut state.foes, &mut state.friends),
             };
-            target.retain(|l| l != login);
+            target.retain(|l| !l.eq_ignore_ascii_case(login));
             if *member {
                 target.push(login.clone());
                 target.sort();
                 // The server treats the two lists as mutually exclusive.
-                opposite.retain(|l| l != login);
+                opposite.retain(|l| !l.eq_ignore_ascii_case(login));
             }
         }
         SocialEvent::PlayersSeen { players } => {
@@ -190,9 +195,11 @@ pub fn reduce(state: &mut SocialState, event: &SocialEvent) {
             }
         }
         SocialEvent::PlayersRemoved { logins } => {
-            state
-                .players
-                .retain(|profile| !logins.iter().any(|login| login == &profile.login));
+            state.players.retain(|profile| {
+                !logins
+                    .iter()
+                    .any(|login| login.eq_ignore_ascii_case(&profile.login))
+            });
         }
         SocialEvent::Cleared => *state = SocialState::default(),
     }
@@ -379,5 +386,44 @@ mod tests {
         };
         reduce(&mut s, &SocialEvent::Cleared);
         assert_eq!(s, SocialState::default());
+    }
+
+    #[test]
+    fn relations_case_insensitive_matching() {
+        let mut s = SocialState::default();
+        reduce(
+            &mut s,
+            &SocialEvent::RelationsUpdated {
+                friends: names(&["Aurora"]),
+                foes: names(&["Griefer"]),
+            },
+        );
+        assert!(s.is_friend("aurora"));
+        assert!(s.is_friend("AURORA"));
+        assert!(s.is_foe("griefer"));
+
+        // Removing with different casing works.
+        reduce(
+            &mut s,
+            &SocialEvent::RelationSet {
+                login: "aurora".into(),
+                relation: Relation::Friend,
+                member: false,
+            },
+        );
+        assert!(!s.is_friend("Aurora"));
+    }
+
+    #[test]
+    fn player_case_insensitive_lookup() {
+        let mut s = SocialState::default();
+        reduce(
+            &mut s,
+            &SocialEvent::PlayersSeen {
+                players: vec![profile(1, "Aurora")],
+            },
+        );
+        assert_eq!(s.player("aurora").map(|p| p.id), Some(1));
+        assert_eq!(s.player("AURORA").map(|p| p.id), Some(1));
     }
 }

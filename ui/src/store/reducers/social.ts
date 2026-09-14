@@ -45,7 +45,7 @@ export function playersByNickname(players: PlayerProfile[]): Map<string, PlayerP
 
 /** The profile for a nickname, or undefined if it isn't a known FAF account. */
 export const findPlayer = (social: SocialState, login: string): PlayerProfile | undefined =>
-  exactIndex(social.players).get(login);
+  exactIndex(social.players).get(login) ?? playersByNickname(social.players).get(login.toLowerCase());
 
 export function reduceSocial(state: SocialState, event: SocialEvent): SocialState {
   switch (event.type) {
@@ -57,8 +57,9 @@ export function reduceSocial(state: SocialState, event: SocialEvent): SocialStat
       };
     case "relationSet": {
       const { login, relation, member } = event.payload;
-      const add = (list: string[]) => sortedUnique([...list, login]);
-      const drop = (list: string[]) => list.filter((entry) => entry !== login);
+      const lower = login.toLowerCase();
+      const drop = (list: string[]) => list.filter((entry) => entry.toLowerCase() !== lower);
+      const add = (list: string[]) => sortedUnique([...drop(list), login]);
       if (relation === "friend") {
         return member
           ? { ...state, friends: add(state.friends), foes: drop(state.foes) }

@@ -474,6 +474,7 @@
       "matchmakerProfile": null,
       "matchmakerProfileStatus": "idle",
       "matchmakerProfileError": "",
+      "partyPlacements": {},
       "mapStats": null,
       "mapStatsStatus": "idle",
       "mapStatsError": ""
@@ -807,6 +808,7 @@
           "hidePrivate": false,
           "hideModded": false,
           "hideUnranked": false,
+          "hideFoes": false,
           "applyFilters": false,
           "rules": [],
           "columnWidths": [],
@@ -1187,6 +1189,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
             "open": false,
+            "partyPlacements": {},
             "profile": null,
             "profileError": "",
             "profileStatus": "idle",
@@ -1258,6 +1261,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
             "open": false,
+            "partyPlacements": {},
             "profile": null,
             "profileError": "",
             "profileStatus": "idle",
@@ -1289,6 +1293,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
             "open": false,
+            "partyPlacements": {},
             "profile": null,
             "profileError": "",
             "profileStatus": "idle",
@@ -1320,6 +1325,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
             "open": false,
+            "partyPlacements": {},
             "profile": null,
             "profileError": "",
             "profileStatus": "idle",
@@ -2014,6 +2020,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -26740,6 +26747,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
             "open": true,
+            "partyPlacements": {},
             "profile": null,
             "profileError": "",
             "profileStatus": "loading",
@@ -26771,6 +26779,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
             "open": true,
+            "partyPlacements": {},
             "profile": null,
             "profileError": "no such player",
             "profileStatus": "failed",
@@ -26799,6 +26808,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
             "open": false,
+            "partyPlacements": {},
             "profile": null,
             "profileError": "no such player",
             "profileStatus": "idle",
@@ -26857,6 +26867,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
             "open": false,
+            "partyPlacements": {},
             "profile": {
               "achievements": [],
               "avatars": [
@@ -26912,6 +26923,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
             "open": false,
+            "partyPlacements": {},
             "profile": {
               "achievements": [],
               "avatars": [
@@ -26973,6 +26985,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "idle",
             "open": false,
+            "partyPlacements": {},
             "profile": {
               "achievements": [],
               "avatars": [
@@ -27037,6 +27050,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "loading",
             "open": false,
+            "partyPlacements": {},
             "profile": null,
             "profileError": "",
             "profileStatus": "idle",
@@ -27090,6 +27104,7 @@
             "matchmakerProfileError": "",
             "matchmakerProfileStatus": "ready",
             "open": false,
+            "partyPlacements": {},
             "profile": null,
             "profileError": "",
             "profileStatus": "idle",
@@ -27133,6 +27148,143 @@
             "matchmakerProfileError": "offline",
             "matchmakerProfileStatus": "failed",
             "open": false,
+            "partyPlacements": {},
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "party placements merge and keep an unplaced member distinguishable",
+      "steps": [
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "partyPlacementsLoaded",
+              "payload": {
+                "placements": {
+                  "7": [
+                    {
+                      "technicalName": "ladder_1v1",
+                      "leaderboard": "1v1",
+                      "season": "Season 1",
+                      "division": "Diamond I",
+                      "score": 5,
+                      "highestScore": 10,
+                      "gamesPlayed": 3,
+                      "imageUrl": "diamond.png"
+                    }
+                  ],
+                  "8": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "partyPlacements": {
+              "7": [
+                {
+                  "division": "Diamond I",
+                  "gamesPlayed": 3,
+                  "highestScore": 10,
+                  "imageUrl": "diamond.png",
+                  "leaderboard": "1v1",
+                  "score": 5,
+                  "season": "Season 1",
+                  "technicalName": "ladder_1v1"
+                }
+              ],
+              "8": []
+            },
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "partyPlacementsLoaded",
+              "payload": {
+                "placements": {
+                  "9": [
+                    {
+                      "technicalName": "tmm_2v2",
+                      "leaderboard": "2v2",
+                      "season": "Season 1",
+                      "division": "Bronze II",
+                      "score": 1,
+                      "highestScore": 4,
+                      "gamesPlayed": 2,
+                      "imageUrl": "bronze.png"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "expected": {
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "partyPlacements": {
+              "7": [
+                {
+                  "division": "Diamond I",
+                  "gamesPlayed": 3,
+                  "highestScore": 10,
+                  "imageUrl": "diamond.png",
+                  "leaderboard": "1v1",
+                  "score": 5,
+                  "season": "Season 1",
+                  "technicalName": "ladder_1v1"
+                }
+              ],
+              "8": [],
+              "9": [
+                {
+                  "division": "Bronze II",
+                  "gamesPlayed": 2,
+                  "highestScore": 4,
+                  "imageUrl": "bronze.png",
+                  "leaderboard": "2v2",
+                  "score": 1,
+                  "season": "Season 1",
+                  "technicalName": "tmm_2v2"
+                }
+              ]
+            },
             "profile": null,
             "profileError": "",
             "profileStatus": "idle",
@@ -30006,6 +30158,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -30260,6 +30413,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -30523,6 +30677,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -30781,6 +30936,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -31039,6 +31195,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -31307,6 +31464,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -31581,6 +31739,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -31867,6 +32026,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -32144,6 +32304,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -32423,6 +32584,7 @@
                 "applyFilters": false,
                 "columnWidths": [],
                 "detailWidth": 0,
+                "hideFoes": false,
                 "hideModded": false,
                 "hidePrivate": false,
                 "hideUnranked": false,
@@ -32686,6 +32848,7 @@
                     "hidePrivate": true,
                     "hideModded": true,
                     "hideUnranked": false,
+                    "hideFoes": false,
                     "applyFilters": true,
                     "rules": [
                       {
@@ -32804,6 +32967,7 @@
                   80
                 ],
                 "detailWidth": 360,
+                "hideFoes": false,
                 "hideModded": true,
                 "hidePrivate": true,
                 "hideUnranked": false,

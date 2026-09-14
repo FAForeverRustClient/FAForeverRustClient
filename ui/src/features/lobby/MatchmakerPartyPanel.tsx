@@ -3,12 +3,13 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
-import type { PartyMember, PartyState, PlayerProfile, SocialState } from "../../ipc/bindings";
+import type { PartyMember, PartyState, PlayerLeaguePlacement, PlayerProfile, SocialState } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
 import { ProfileAvatar } from "../../shared/ProfileAvatar";
 import { FactionIcon } from "../../shared/FactionIcon";
 import { factionIdFromName } from "../../shared/factions";
+import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 
 interface InviteModalProps {
   social: SocialState;
@@ -88,9 +89,19 @@ const PARTY_CAPACITY = 4;
  */
 function PartyFactions({ factions }: { factions: string[] }) {
   const { t } = useTranslation();
-  if (factions.length === 0) {
-    // No choice recorded is the server's way of saying "any of them", which is
-    // the mark this client already uses for Random.
+  const ids = new Set(
+    factions
+      .map(factionIdFromName)
+      .filter((id): id is number => id !== null && id >= 1 && id <= 4),
+  );
+  const isAllOrRandom =
+    factions.length === 0
+    || ids.size === 4
+    || factions.some((f) => f.trim().toLocaleLowerCase() === "random");
+
+  if (isAllOrRandom) {
+    // All 4 factions or no choice recorded is the server's way of saying
+    // "any of them", which is the mark this client already uses for Random.
     return (
       <span className="party-seat-factions" title={t("lobby.party.randomFaction")}>
         <FactionIcon faction={5} size={14} />
@@ -111,19 +122,60 @@ function PartyFactions({ factions }: { factions: string[] }) {
   );
 }
 
+/**
+ * A seat's league emblem, on the right where the eye lands after the name.
+ *
+ * Java's `matchmaking_member_card.fxml` shows the same picture for the same
+ * reason: who you are queueing with is mostly a question of how good they are,
+ * and the division answers it in one glyph where a rating needs reading.
+ *
+ * Three states, from the backend's map: not looked up yet renders nothing
+ * (Java hides `leagueImageView` until the entry arrives); looked up and empty
+ * is the unlisted badge the player's own card uses; otherwise the highest
+ * active placement, which the list keeps first.
+ */
+function PartyLeague({ placements }: { placements: PlayerLeaguePlacement[] | undefined }) {
+  const { t } = useTranslation();
+  const placement = placements?.[0] ?? null;
+  const label = placement?.division || t("lobby.matchmaker.unplaced");
+  return (
+    <span className="party-seat-league" role="img" title={label} aria-label={label}>
+      <img
+        src={placement?.imageUrl || UNLISTED_DIVISION_IMAGE}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        draggable={false}
+        onError={(event) => { event.currentTarget.src = UNLISTED_DIVISION_IMAGE; }}
+      />
+    </span>
+  );
+}
+
 interface Props {
   party: PartyState;
   social: SocialState;
+  /** Active league placements by player id, from `playerCard.partyPlacements`. */
+  placements: { [key in number]: PlayerLeaguePlacement[] };
   playerId: number | null;
   playerName: string;
   searching: boolean;
+  selectedFactions?: string[];
 }
 
 /**
  * Memoised: the panel above holds a one second clock for the queue countdowns,
  * and a party does not change on that tick.
  */
-export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, social, playerId, playerName, searching }: Props) {
+export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
+  party,
+  social,
+  placements,
+  playerId,
+  playerName,
+  searching,
+  selectedFactions,
+}: Props) {
   const { t } = useTranslation();
   const [inviteOpen, setInviteOpen] = useState(false);
   const isParty = party.members.length > 1;
@@ -157,8 +209,8 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, 
 
   const members = useMemo(() => party.members.length > 0
     ? party.members
-    : playerId === null ? [] : [{ playerId, name: playerName, factions: [] }],
-  [party.members, playerId, playerName]);
+    : playerId === null ? [] : [{ playerId, name: playerName, factions: selectedFactions ?? [] }],
+  [party.members, playerId, playerName, selectedFactions]);
   const memberIds = useMemo(() => new Set(members.map((member) => member.playerId)), [members]);
 
   // One placeholder, not one per free seat. Three identical empty tiles beside a
@@ -200,25 +252,44 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, 
       <div className="party-seats">
         {members.map((member) => {
           const leader = member.playerId === party.ownerId || (!isParty && member.playerId === playerId);
+          const avatar = avatarFor(member);
+          const kickable = canManageParty && member.playerId !== playerId;
+          const factions = member.playerId === playerId && selectedFactions !== undefined
+            ? selectedFactions
+            : member.factions;
           return (
-            <div className="party-seat" key={member.playerId}>
-              <ProfileAvatar
-                name={nameFor(member)}
-                avatarUrl={avatarFor(member)?.avatarUrl}
-                tooltip={avatarFor(member)?.avatarTooltip}
-              />
+            <div className={`party-seat${kickable ? " has-kick" : ""}`} key={member.playerId}>
+              <PartyLeague placements={placements[member.playerId]} />
               <span className="party-seat-text">
-                <strong><PlayerName name={nameFor(member)} />{member.playerId === playerId ? t("lobby.party.youSuffix") : ""}</strong>
-                {/* Both, where the line used to be one or the other: the
-                    leader's own factions were the ones nobody could see, and
-                    the leader is the seat whose factions decide whether the
-                    party can queue at all. */}
+                <span className="party-seat-name-row">
+                  <strong><PlayerName name={nameFor(member)} /></strong>
+                  {leader && (
+                    <span
+                      className="party-seat-leader"
+                      role="img"
+                      title={t("lobby.party.leader")}
+                      aria-label={t("lobby.party.leader")}
+                    >
+                      <Icon name="crown" size={13} />
+                    </span>
+                  )}
+                </span>
                 <span className="party-seat-meta">
-                  <PartyFactions factions={member.factions} />
-                  {leader && <small>{t("lobby.party.leader")}</small>}
+                  <PartyFactions factions={factions} />
                 </span>
               </span>
-              {canManageParty && member.playerId !== playerId ? (
+              {avatar?.avatarUrl && (
+                <img
+                  className="party-seat-avatar"
+                  src={avatar.avatarUrl}
+                  alt=""
+                  title={avatar.avatarTooltip || undefined}
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                />
+              )}
+              {kickable ? (
                 <button
                   type="button"
                   className="party-seat-kick"
@@ -227,7 +298,7 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, 
                   aria-label={`Remove ${nameFor(member)}`}
                   onClick={() => ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId: member.playerId } } })}
                 >
-                  <Icon name="close" size={15} />
+                  <Icon name="close" size={13} />
                 </button>
               ) : null}
             </div>

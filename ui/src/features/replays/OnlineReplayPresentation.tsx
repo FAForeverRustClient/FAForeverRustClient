@@ -288,8 +288,16 @@ export function ReplayLibraryCard({
       </div>
       <div className="replay-card-right">
         <div className="replay-card-header">
-          <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
-          <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
+          <div className="replay-card-header-main">
+            <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
+            <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
+          </div>
+          {watched && (
+            <span className="replay-card-watched-badge" title={t("replays.watched.mark")}>
+              <Icon name="eye" size={12} />
+              <span>{t("replays.card.watched")}</span>
+            </span>
+          )}
         </div>
         <ReplayCardRoster teams={replay.teams} onPlayerMenu={onPlayerMenu} />
         {/* The id and the way in, on one line in the corner: the label that

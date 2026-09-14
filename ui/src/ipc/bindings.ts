@@ -1543,6 +1543,7 @@ export type CustomGameBrowserPreferences = {
 	hidePrivate: boolean,
 	hideModded: boolean,
 	hideUnranked: boolean,
+	hideFoes: boolean,
 	applyFilters: boolean,
 	rules: CustomGameFilterRule[],
 	/**
@@ -4943,6 +4944,15 @@ export type PlayerCardCommand = { type: "open"; payload: {
 /**  Scan this player's games and fold them into per-map records. */
 { type: "loadMapStats"; payload: {
 	playerId: number,
+} } |
+/**
+ *  Look up the active league placements of these party members.
+ *
+ *  Ids already in [`PlayerCardState::party_placements`] are not asked
+ *  about again, so the panel can send the whole party on every change.
+ */
+{ type: "loadPartyPlacements"; payload: {
+	playerIds: number[],
 } };
 
 export type PlayerCardEvent = { type: "loading"; payload: {
@@ -4983,6 +4993,16 @@ export type PlayerCardEvent = { type: "loading"; payload: {
 	stats: PlayerMapStats,
 } } | { type: "mapStatsLoadFailed"; payload: {
 	reason: string,
+} } |
+/**
+ *  Placements for some party members, merged over what is already known.
+ *
+ *  Every id that was asked about is present, with an empty list for a
+ *  member the league has not placed, so the seat can tell "unplaced"
+ *  from "not looked up".
+ */
+{ type: "partyPlacementsLoaded"; payload: {
+	placements: { [key in number]: PlayerLeaguePlacement[] },
 } };
 
 export type PlayerCardProfile = {
@@ -5019,6 +5039,19 @@ export type PlayerCardState = {
 	matchmakerProfile: MatchmakerPlayerProfile | null,
 	matchmakerProfileStatus: PlayerCardStatus,
 	matchmakerProfileError: string,
+	/**
+	 *  Active league placements of the people in the party, by player id,
+	 *  highest division first. The party seat shows each member's emblem the
+	 *  way Java's `matchmaking_member_card.fxml` does, and the party message
+	 *  carries ids and factions only, so the placements are looked up.
+	 *
+	 *  A present key with an empty list is a member the league has no
+	 *  placement for, which draws the unlisted badge; an absent key is a
+	 *  member nothing has been asked about yet, which draws nothing. Kept
+	 *  for the session rather than cleared on leave, so re-inviting the same
+	 *  partner costs no request.
+	 */
+	partyPlacements: { [key in number]: PlayerLeaguePlacement[] },
 	/**
 	 *  Per-map record, loaded separately from the profile because it scans
 	 *  the player's whole game history and should not hold up their identity.

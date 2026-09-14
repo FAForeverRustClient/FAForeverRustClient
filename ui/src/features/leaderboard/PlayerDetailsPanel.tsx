@@ -8,7 +8,7 @@ import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { requestReplaySearch } from "../replays/replaySearchIntent";
 import { openPlayerCard } from "../player-card/playerCardActions";
 import { useTranslation } from "../../i18n/useTranslation";
-import { PlayerName } from "../../shared/nameColors";
+import { PlayerName, includesName } from "../../shared/nameColors";
 
 interface PlayerDetailsPanelProps {
   entry: LeaderboardEntry | null;
@@ -32,7 +32,7 @@ export function PlayerDetailsPanel({ entry, heading }: PlayerDetailsPanelProps) 
   }
 
   const isMe = me?.id === entry.playerId;
-  const isFriend = friends.includes(entry.playerName);
+  const isFriend = includesName(friends, entry.playerName);
   const setRelation = (relation: "friend", member: boolean) => ipc.send({
     kind: "Social",
     command: {

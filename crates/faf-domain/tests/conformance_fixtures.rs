@@ -4971,6 +4971,46 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "party placements merge and keep an unplaced member distinguishable",
+            vec![
+                PlayerCardEvent::PartyPlacementsLoaded {
+                    placements: std::collections::BTreeMap::from([
+                        (
+                            7,
+                            vec![PlayerLeaguePlacement {
+                                technical_name: "ladder_1v1".into(),
+                                leaderboard: "1v1".into(),
+                                season: "Season 1".into(),
+                                division: "Diamond I".into(),
+                                score: 5,
+                                highest_score: 10,
+                                games_played: 3,
+                                image_url: "diamond.png".into(),
+                            }],
+                        ),
+                        (8, Vec::new()),
+                    ]),
+                }
+                .into(),
+                PlayerCardEvent::PartyPlacementsLoaded {
+                    placements: std::collections::BTreeMap::from([(
+                        9,
+                        vec![PlayerLeaguePlacement {
+                            technical_name: "tmm_2v2".into(),
+                            leaderboard: "2v2".into(),
+                            season: "Season 1".into(),
+                            division: "Bronze II".into(),
+                            score: 1,
+                            highest_score: 4,
+                            games_played: 2,
+                            image_url: "bronze.png".into(),
+                        }],
+                    )]),
+                }
+                .into(),
+            ],
+        ),
         // ── replays ──────────────────────────────────────────────────────
         case(
             "a replay connects, fails, and is dismissed",
@@ -5317,6 +5357,7 @@ fn cases() -> Vec<Case> {
                             hide_private: true,
                             hide_modded: true,
                             hide_unranked: false,
+                            hide_foes: false,
                             apply_filters: true,
                             rules: vec![
                                 CustomGameFilterRule {

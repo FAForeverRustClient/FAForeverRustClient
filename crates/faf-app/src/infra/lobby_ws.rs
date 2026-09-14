@@ -691,6 +691,7 @@ async fn run_session(
                     }
                     "player_info" => {
                         if let Some(players) = value.get("players").and_then(Value::as_array) {
+                            let unresolved_before = directory.unresolved_relation_ids();
                             let mut newly_seen = Vec::new();
                             let mut removed = Vec::new();
                             for player in players {
@@ -731,12 +732,14 @@ async fn run_session(
                                 break 'connection;
                             }
                             if !newly_seen.is_empty() {
+                                let resolved_any = !unresolved_before.is_empty()
+                                    && newly_seen.iter().any(|p| unresolved_before.contains(&(p.id as i64)));
                                 if tx.send(LobbyUpdate::PlayersSeen(newly_seen)).await.is_err() {
                                     break 'connection;
                                 }
                                 // Newly named accounts may be the friends whose
                                 // ids we couldn't resolve when `social` arrived.
-                                if directory.has_relations() {
+                                if resolved_any {
                                     let (friends, foes) = directory.relations();
                                     if tx
                                         .send(LobbyUpdate::Relations { friends, foes })
@@ -1560,7 +1563,6 @@ impl PlayerDirectory {
             }
         }
     }
-
     fn unresolved_relation_ids(&self) -> Vec<i64> {
         let mut missing = Vec::new();
         for &id in self.friend_ids.iter().chain(self.foe_ids.iter()) {
@@ -1575,6 +1577,7 @@ impl PlayerDirectory {
         self.logins.insert(id, login);
     }
 
+    #[cfg(test)]
     fn has_relations(&self) -> bool {
         !self.friend_ids.is_empty() || !self.foe_ids.is_empty()
     }

@@ -265,6 +265,17 @@ pub struct PlayerCardState {
     pub matchmaker_profile: Option<MatchmakerPlayerProfile>,
     pub matchmaker_profile_status: PlayerCardStatus,
     pub matchmaker_profile_error: String,
+    /// Active league placements of the people in the party, by player id,
+    /// highest division first. The party seat shows each member's emblem the
+    /// way Java's `matchmaking_member_card.fxml` does, and the party message
+    /// carries ids and factions only, so the placements are looked up.
+    ///
+    /// A present key with an empty list is a member the league has no
+    /// placement for, which draws the unlisted badge; an absent key is a
+    /// member nothing has been asked about yet, which draws nothing. Kept
+    /// for the session rather than cleared on leave, so re-inviting the same
+    /// partner costs no request.
+    pub party_placements: BTreeMap<i32, Vec<PlayerLeaguePlacement>>,
     /// Per-map record, loaded separately from the profile because it scans
     /// the player's whole game history and should not hold up their identity.
     pub map_stats: Option<PlayerMapStats>,
@@ -295,6 +306,7 @@ impl Default for PlayerCardState {
             matchmaker_profile: None,
             matchmaker_profile_status: PlayerCardStatus::default(),
             matchmaker_profile_error: String::new(),
+            party_placements: BTreeMap::new(),
             map_stats: None,
             map_stats_status: PlayerCardStatus::default(),
             map_stats_error: String::new(),
@@ -332,6 +344,14 @@ pub enum PlayerCardCommand {
     #[serde(rename_all = "camelCase")]
     LoadMapStats {
         player_id: i32,
+    },
+    /// Look up the active league placements of these party members.
+    ///
+    /// Ids already in [`PlayerCardState::party_placements`] are not asked
+    /// about again, so the panel can send the whole party on every change.
+    #[serde(rename_all = "camelCase")]
+    LoadPartyPlacements {
+        player_ids: Vec<i32>,
     },
 }
 
@@ -399,6 +419,15 @@ pub enum PlayerCardEvent {
     #[serde(rename_all = "camelCase")]
     MapStatsLoadFailed {
         reason: String,
+    },
+    /// Placements for some party members, merged over what is already known.
+    ///
+    /// Every id that was asked about is present, with an empty list for a
+    /// member the league has not placed, so the seat can tell "unplaced"
+    /// from "not looked up".
+    #[serde(rename_all = "camelCase")]
+    PartyPlacementsLoaded {
+        placements: BTreeMap<i32, Vec<PlayerLeaguePlacement>>,
     },
 }
 
@@ -548,6 +577,11 @@ pub fn reduce(state: &mut PlayerCardState, event: &PlayerCardEvent) {
             }
             state.matchmaker_profile_status = PlayerCardStatus::Failed;
             state.matchmaker_profile_error = reason.clone();
+        }
+        PlayerCardEvent::PartyPlacementsLoaded { placements } => {
+            for (player_id, placement) in placements {
+                state.party_placements.insert(*player_id, placement.clone());
+            }
         }
     }
 }
@@ -802,6 +836,43 @@ mod tests {
         );
         assert_eq!(state.matchmaker_profile.as_ref().unwrap().player_id, 8);
         assert_eq!(state.matchmaker_profile_status, PlayerCardStatus::Ready);
+    }
+
+    #[test]
+    fn party_placements_merge_and_keep_an_unplaced_member_distinguishable() {
+        let placement = |division: &str| PlayerLeaguePlacement {
+            technical_name: "ladder_1v1".into(),
+            leaderboard: "1v1".into(),
+            season: "Season 1".into(),
+            division: division.into(),
+            score: 5,
+            highest_score: 10,
+            games_played: 3,
+            image_url: format!("{division}.png"),
+        };
+        let mut state = PlayerCardState::default();
+
+        reduce(
+            &mut state,
+            &PlayerCardEvent::PartyPlacementsLoaded {
+                placements: BTreeMap::from([(7, vec![placement("Diamond I")]), (8, Vec::new())]),
+            },
+        );
+        // A second batch merges: a partner looked up earlier stays known.
+        reduce(
+            &mut state,
+            &PlayerCardEvent::PartyPlacementsLoaded {
+                placements: BTreeMap::from([(9, vec![placement("Bronze II")])]),
+            },
+        );
+
+        assert_eq!(state.party_placements[&7][0].division, "Diamond I");
+        assert!(state.party_placements[&8].is_empty(), "unplaced, but known");
+        assert_eq!(state.party_placements[&9][0].division, "Bronze II");
+        assert!(
+            !state.party_placements.contains_key(&10),
+            "never asked about"
+        );
     }
 
     #[test]

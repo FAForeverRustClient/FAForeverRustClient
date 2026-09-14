@@ -53,6 +53,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                     hide_private: true,
                     hide_modded: false,
                     hide_unranked: false,
+                    hide_foes: false,
                     apply_filters: true,
                     rules: vec![CustomGameFilterRule {
                         field: CustomGameFilterField::Map,
