@@ -156,12 +156,21 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Whole pixels on purpose. The row centres its control against this column, so
+   the column's height decides where that control lands: with the inherited
+   `line-height: 1.45` on a 14 px body a line box is 20.3 px, a two-line hint
+   makes the row 91.9 px tall, and the control is centred on a half pixel. Two
+   otherwise identical segmented controls then round to heights a pixel apart,
+   which is visible and was reported as exactly that. An integer line box and an
+   even gap keep every row an even number of pixels tall, so every control in
+   the tab sits on the same whole-pixel grid whether its hint wraps or not. */
 .setting-copy,
 .setting-block {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
   min-width: 0;
+  line-height: 20px;
 }
 
 .setting-block {
@@ -716,6 +725,12 @@
 
 .settings-path-status.is-unset {
   color: var(--color-subtle);
+}
+
+/* Not an error: the file is not there because nothing has downloaded it yet,
+   which is the state every machine starts in. */
+.settings-path-status.is-pending {
+  color: var(--color-warn);
 }
 
 .theme-card {

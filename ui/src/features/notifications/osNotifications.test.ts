@@ -20,6 +20,7 @@ describe("which notifications leave the client", () => {
       "serverWarning",
       "serverNotice",
       "gameCacheAlert",
+      "gameInstall",
       "clientUpdate",
       "privateMessage",
       "mention",

@@ -106,6 +106,12 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  /* A capsule: any value past half the element's height rounds the ends fully,
+     and sixteen stylesheets already asked for this token by name. Without the
+     declaration every one of those `var(--radius-pill)` rules was invalid at
+     computed-value time and fell back to the initial 0, which is why the tab
+     counts, the vault badges and the upload chips all had square corners. */
+  --radius-pill: 999px;
 
   /* Elevation. Three steps, deliberately: a hairline lift for a control that
      sits on a surface, a lift for something floating over the workspace, and
@@ -220,6 +226,8 @@
   --color-error: #d65454;
 
   --radius-md: 2px;
+  /* This theme is the square one, so its capsules are not capsules. */
+  --radius-pill: 3px;
 
   --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'Cascadia Code', 'Courier New', monospace;

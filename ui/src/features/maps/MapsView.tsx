@@ -37,7 +37,7 @@ import {
   sizeLabel,
 } from "./MapVaultComponents";
 import { MapPreviewDialog } from "./MapPreviewZoom";
-import { GenerateMapModal, GeneratorProgress, stillRunning } from "./GenerateMapModal";
+import { GeneratorProgress, stillRunning } from "./GenerateMapModal";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
 import { useGridPageSize } from "../../shared/useGridPageSize";
 import "./maps.css";
@@ -803,6 +803,13 @@ function InstalledView({ busy }: { busy: boolean }) {
             <Button onClick={loadInstalled} disabled={installedStatus.type === "loading"}>
               <Icon name="refresh" size={15} /> {t("maps.view.rescan")}
             </Button>
+            {/* Beside the other two things this row does to the library rather
+                than to the filter: clearing generated maps is housekeeping, and
+                it used to sit up on the tab bar's own line, where it read as a
+                tab. Generated maps are reproducible from their name, so
+                removing them costs nothing but reclaims the disk a season of
+                ladder accumulates. */}
+            <Button onClick={cleanUpGeneratedMaps}>{t("maps.view.clearGenerated")}</Button>
           </>
         )}
         advanced={filtersOpen ? (
@@ -997,7 +1004,6 @@ const cleanUpGeneratedMaps = () =>
 export function MapsView() {
   const { t } = useTranslation();
   const [subView, setSubView] = useState<SubView>("vault");
-  const [generating, setGenerating] = useState(false);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
   const generatorStatus = useAppStore((state) => state.state.mapGenerator.status);
   const busy = installStatus.type === "installing";
@@ -1012,28 +1018,20 @@ export function MapsView() {
           items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEWS[key].label) }))}
           onChange={setSubView}
         />
-        <div className="vault-subnav-actions">
-          {/* No publish button here. Uploading a map is one action with one
-              entry point, which is "Upload map" in the vault's own toolbar:
-              this one opened a second dialog that did the same thing from a
-              list of installed maps instead of a folder. */}
-          {subView === "installed" && (
-            <>
-              {/* Generated maps are reproducible from their name, so removing them
-                  costs nothing but reclaims the disk a season of ladder accumulates. */}
-              <Button onClick={cleanUpGeneratedMaps}>{t("maps.view.clearGenerated")}</Button>
-              <Button variant="primary" onClick={() => setGenerating(true)}>
-                <Icon name="plus" size={15} /> {t("maps.view.generateMap")}
-              </Button>
-            </>
-          )}
-        </div>
+        {/* Nothing sits beside the tabs any more. Uploading a map has one
+            entry point, "Upload map" in the vault's own toolbar; clearing
+            generated maps has moved down into the installed list's action row
+            next to Clear and Rescan, where the rest of the library's
+            housekeeping already is; and generating one belongs to hosting a
+            game, which is where the dialog is reached from. Buttons resting on
+            the tab underline read as tabs, which is how this row was
+            reported. */}
       </div>
       <Component busy={busy} />
-      {generating && <GenerateMapModal onClose={() => setGenerating(false)} />}
-      {/* Progress stays visible after the dialog closes: a run started here
-          keeps going, and it is slow enough that the user will navigate away. */}
-      {!generating && stillRunning(generatorStatus) && (
+      {/* The generator is started from the host dialog now, but this is still
+          where its output lands, and a run is slow enough that the user will
+          have walked away from the dialog long before it finishes. */}
+      {stillRunning(generatorStatus) && (
         <div className="maps-generator-status surface"><GeneratorProgress /></div>
       )}
     </div>

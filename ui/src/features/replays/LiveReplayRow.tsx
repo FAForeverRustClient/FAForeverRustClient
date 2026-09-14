@@ -451,7 +451,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
                     // `showResults` off, and not a choice here: nobody has won
                     // yet. The avatars are the directory's, which the lobby
                     // does not send with a game.
-                    <ReplayDetailRoster teams={teams} showResults={false} />
+                    <ReplayDetailRoster teams={teams} showResults={false} onPlayerMenu={onPlayerMenu} />
                   ) : (
                     <p className="replay-detail-empty muted">{t("replays.live.lineupUnavailable")}</p>
                   )}

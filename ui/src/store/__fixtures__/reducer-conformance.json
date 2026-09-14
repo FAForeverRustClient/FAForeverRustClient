@@ -8,6 +8,8 @@
     "install": {
       "gameReady": false,
       "replayReady": false,
+      "gamePending": false,
+      "replayPending": false,
       "checked": false,
       "resolved": {
         "vaultDir": "",
@@ -693,7 +695,10 @@
         "reduceMotion": false,
         "uiScale": 100,
         "gameTileColumns": 0,
-        "sidebarWidth": 224
+        "sidebarWidth": 224,
+        "hoverPanels": true,
+        "hoverOpenDelayMs": 500,
+        "hoverCloseDelayMs": 160
       },
       "social": {
         "playerNotes": []
@@ -1996,6 +2001,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -2528,6 +2536,8 @@
               "payload": {
                 "gameReady": true,
                 "replayReady": false,
+                "gamePending": false,
+                "replayPending": true,
                 "resolved": {
                   "vaultDir": "D:/faf/vault",
                   "mapsDir": "D:/faf/vault/maps",
@@ -2543,7 +2553,9 @@
           },
           "expected": {
             "checked": true,
+            "gamePending": false,
             "gameReady": true,
+            "replayPending": true,
             "replayReady": false,
             "resolved": {
               "gamePrefsPath": "C:/Users/ada/AppData/Local/Gas Powered Games/Supreme Commander Forged Alliance/game.prefs",
@@ -29981,6 +29993,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -30232,6 +30247,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -30492,6 +30510,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -30747,6 +30768,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -31002,6 +31026,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -31267,6 +31294,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -31538,6 +31568,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -31821,6 +31854,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -32095,6 +32131,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -32371,6 +32410,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100
@@ -32743,6 +32785,9 @@
             "appearance": {
               "density": "comfortable",
               "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
               "reduceMotion": false,
               "sidebarWidth": 224,
               "uiScale": 100

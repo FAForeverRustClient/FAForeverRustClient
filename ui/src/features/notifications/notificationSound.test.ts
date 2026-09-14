@@ -122,6 +122,7 @@ describe("which tone a notification plays", () => {
       "reportSubmitted",
       "eventReminder",
       "gameCacheAlert",
+      "gameInstall",
       "error",
     ];
     for (const kind of noSwitch) {

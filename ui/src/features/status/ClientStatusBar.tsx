@@ -211,17 +211,23 @@ export function ClientStatusBar() {
             <div className="client-status-popover-heading">
               <span className="client-status-popover-dot" data-status={status} aria-hidden="true" />
               <span>{t("status.connection.heading", { service: label })}</span>
-              <strong>{stateLabel}</strong>
             </div>
-            <button
-              type="button"
-              className="client-status-action"
-              role="menuitem"
-              disabled={!canConnect}
-              onClick={() => void reconnect(kind)}
-            >
-              {actionLabel}
-            </button>
+            {/* The state and the thing you can do about it, side by side and the
+                same size. They used to be a word tucked into the heading and a
+                full-width menu row, which read as one item with a caption: the
+                pair is what the popover is actually for. */}
+            <div className="client-status-popover-row">
+              <span className="client-status-state" data-status={status}>{stateLabel}</span>
+              <button
+                type="button"
+                className="client-status-action"
+                role="menuitem"
+                disabled={!canConnect}
+                onClick={() => void reconnect(kind)}
+              >
+                {actionLabel}
+              </button>
+            </div>
           </div>
         )}
       </div>

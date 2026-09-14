@@ -1262,12 +1262,24 @@ img.chat-game-map {
   max-height: calc(100vh - 16px);
   overflow: auto;
   padding: 10px;
-  pointer-events: none;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   color: var(--color-text);
   box-shadow: var(--shadow-popover);
+}
+
+/* The card holds a button now, so the pointer has to be able to reach it. It
+   used to be `pointer-events: none`, which is the right answer for a card that
+   is purely a label and the wrong one the moment it is not. `GameSummaryPopover`
+   keeps it open while the pointer is over it. */
+.chat-game-popover-action {
+  display: flex;
+  width: 100%;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
 }
 
 .chat-game-popover-head {
@@ -1384,14 +1396,16 @@ img.chat-game-map {
 .chat-game-team li {
   min-width: 0;
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
+  grid-template-columns: auto 16px minmax(0, 1fr) auto;
   align-items: center;
   gap: 5px;
   font-size: 12px;
 }
 
 .chat-game-team li > span:nth-child(2),
-.chat-game-player {
+.chat-game-player,
+.chat-game-player-static {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1469,9 +1483,13 @@ img.chat-game-map {
 }
 
 /* ── User context menu ────────────────────────────────────────────────── */
+/* Above the modal layer (100), not above chat's own furniture. The menu is
+   opened from a replay's detail panel now as well as from a channel roster, and
+   a context menu that renders behind the thing it was opened from is a context
+   menu that is not there. */
 .chat-user-menu {
   position: fixed;
-  z-index: 60;
+  z-index: 130;
   min-width: 190px;
   padding: var(--space-1);
   background: var(--color-surface-raised);
@@ -1636,8 +1654,48 @@ img.chat-game-map {
   align-items: center;
 }
 
+/* The lineup, at the three widths the panel can be dragged to. See
+   `rosterTier`, which decides which of them applies.
+
+   The panel used to stack its teams at every width, because it was narrow at
+   every width. It is draggable up to 600 px, and at that size a lineup laid out
+   in one column is a column of names with half the panel empty beside it. */
 .chat-conversation-aside .chat-game-teams {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* Wide: side by side, the way a replay card lays a matchup out. */
+.chat-conversation-aside[data-tier="wide"] .chat-game-teams {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+/* Narrow: the decorations come off and the name keeps the room. The avatar is
+   40 px wide and the flag 16, which together is most of the column at this
+   size, and a name truncated to four letters answers nothing. */
+.chat-conversation-aside[data-tier="narrow"] .chat-game-player-avatar,
+.chat-conversation-aside[data-tier="narrow"] .chat-game-team li > img,
+.chat-conversation-aside[data-tier="narrow"] .chat-game-flag-placeholder {
+  display: none;
+}
+
+.chat-conversation-aside[data-tier="narrow"] .chat-game-team li {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* Reserved even when empty, so one player with an avatar does not indent the
+   names of a team where nobody else has one. */
+.chat-game-player-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 40px;
+  height: 20px;
+}
+
+.chat-game-player-avatar img {
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
 }
 
 .chat-game-elapsed b {
@@ -1647,4 +1705,83 @@ img.chat-game-map {
 
 .chat-aside-action {
   align-self: flex-start;
+}
+
+/* The roster hover card. Replaces the operating system's own tooltip, which is
+   the one surface the theme cannot reach: see `PlayerRatingCard`. Sized to the
+   content rather than to the game card beside it, because a rating table is
+   four short lines and a 410 px slab around it would read as a panel. */
+.chat-player-card {
+  position: fixed;
+  z-index: 100;
+  width: min(260px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  padding: 10px;
+  pointer-events: none;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.chat-player-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.chat-player-card-head strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-player-card-avatar {
+  flex: 0 0 auto;
+  border-radius: var(--radius-sm);
+}
+
+.chat-player-card-empty {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.chat-player-card-ratings {
+  display: grid;
+  gap: 3px;
+  margin: 8px 0 0;
+}
+
+.chat-player-card-ratings > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.chat-player-card-ratings dt {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-player-card-ratings dd {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-player-card-ratings dd span {
+  font-size: 11px;
 }

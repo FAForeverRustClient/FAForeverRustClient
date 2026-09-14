@@ -82,6 +82,36 @@ export type AppearancePreferences = {
 	 *  way in, because a settings file is a file somebody can edit.
 	 */
 	sidebarWidth: number,
+	/**
+	 *  Whether the detail panels that appear on hover are shown at all.
+	 *
+	 *  Off leaves every list's own row intact and simply never opens the
+	 *  overlay. Reported by people who move the pointer across the game list on
+	 *  the way to somewhere else and collect four or five panels doing it.
+	 */
+	hoverPanels: boolean,
+	/**
+	 *  How long the pointer has to rest on something before its hover panel
+	 *  opens, in milliseconds.
+	 *
+	 *  Zero is the behaviour this client shipped with: the panel is up before
+	 *  the pointer has stopped, which is what made crossing the list expensive.
+	 *  A second was tried and drew the opposite complaint, so this is a
+	 *  preference rather than a better constant.
+	 *
+	 *  The delay applies to the *first* panel only: once one is open, moving to
+	 *  another opens it at once, so a delay long enough to stop accidents does
+	 *  not also make browsing slow.
+	 */
+	hoverOpenDelayMs: number,
+	/**
+	 *  How long a hover panel survives the pointer leaving it, in milliseconds.
+	 *
+	 *  Not merely symmetry with [`Self::hover_open_delay_ms`]: the panels are
+	 *  interactive, so reaching one means crossing the gap between the row and
+	 *  the panel, and a zero here makes everything in them unclickable.
+	 */
+	hoverCloseDelayMs: number,
 };
 
 /**
@@ -2821,6 +2851,9 @@ export type InstallEvent =
 { type: "checked"; payload: {
 	gameReady: boolean,
 	replayReady: boolean,
+	/**  See [`InstallState::game_pending`]. */
+	gamePending: boolean,
+	replayPending: boolean,
 	resolved: ResolvedPaths,
 } };
 
@@ -2829,6 +2862,20 @@ export type InstallState = {
 	gameReady: boolean,
 	/**  The configured replay-playback executable exists on disk. */
 	replayReady: boolean,
+	/**
+	 *  The live executable is not there yet, but the path names an install this
+	 *  client owns, so the updater downloads the engine into it before the
+	 *  first game.
+	 *
+	 *  A fresh machine is in exactly this state, and it needs its own name: it
+	 *  stats identically to a broken setting, and telling somebody their
+	 *  install is missing sends them looking for a folder that has never
+	 *  existed on that computer. The reference clients reach the same place by
+	 *  downloading it on first run.
+	 */
+	gamePending: boolean,
+	/**  The same for replay playback. */
+	replayPending: boolean,
 	/**
 	 *  Whether the paths have been checked at all yet.
 	 *
@@ -4516,6 +4563,17 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
 "mapGenerated" |
 /**  Game file cache exceeded user-configured threshold size. */
 "gameCacheAlert" |
+/**
+ *  Something about the local Forged Alliance install changed or needs
+ *  explaining: a path the client refused and what it used instead.
+ *
+ *  Not [`Self::Error`], because nothing failed, and not
+ *  [`Self::GameCacheAlert`], which is specifically about disk use. It keeps
+ *  in the notification centre like the rest of the operational messages: a
+ *  setting the user has just changed does not need the screen taken away
+ *  from them to be told about it.
+ */
+"gameInstall" |
 /**
  *  A newer client release exists. The banner says so too, but the banner
  *  lives at the top of one workspace and this survives a tab change.

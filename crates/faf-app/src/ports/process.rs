@@ -75,6 +75,14 @@ pub struct ReplayMetadata {
 pub struct InstallPresence {
     pub game: bool,
     pub replay: bool,
+    /// The live executable is not on disk, but the path names an install this
+    /// client may write to, so the updater will download it there before the
+    /// first game. A fresh machine is in exactly this state, and it is not the
+    /// same thing as a missing install: nothing is wrong and nothing has to be
+    /// found.
+    pub game_pending: bool,
+    /// The same for replay playback.
+    pub replay_pending: bool,
 }
 
 /// Existing FAF-managed executables discovered from another installed client.
@@ -205,5 +213,22 @@ pub trait ProcessPort: Send + Sync {
     /// inspect, so the default is intentionally empty.
     fn discover_install_paths(&self) -> DiscoveredInstallPaths {
         DiscoveredInstallPaths::default()
+    }
+
+    /// Where this client would put its own copy of the game if it had to make
+    /// one, and whether the given executable is the untouched retail game.
+    ///
+    /// Both answers are about the host filesystem, which is why they are asked
+    /// of the launcher rather than worked out by a service. A port with no host
+    /// to install onto has nowhere to suggest.
+    fn default_install_paths(&self) -> DiscoveredInstallPaths {
+        DiscoveredInstallPaths::default()
+    }
+
+    /// Whether `path` is the original Steam/retail Forged Alliance rather than
+    /// a FAF-managed copy. Drives the explanation the user gets for a path the
+    /// client refuses: see the settings service.
+    fn is_original_game_install(&self, _path: &str) -> bool {
+        false
     }
 }

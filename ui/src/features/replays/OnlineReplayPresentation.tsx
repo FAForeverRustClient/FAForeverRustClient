@@ -27,6 +27,7 @@ import {
 } from "../../shared/mapPresentation";
 import { MapPreviewFrame } from "../maps/MapPreviewZoom";
 import { onlineReplayLink } from "../../shared/replayLinks";
+import type { PlayerMenuOpener } from "../chat/usePlayerMenu";
 import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { ReplayInsights } from "./ReplayInsights";
 import { useAppStore } from "../../store/store";
@@ -229,6 +230,7 @@ export function ReplayLibraryCard({
   watch,
   onOpen,
   onDoubleClick,
+  onPlayerMenu,
 }: {
   replay: ReplayCardData;
   watched: boolean;
@@ -237,6 +239,8 @@ export function ReplayLibraryCard({
   watch?: ReplayCardWatch;
   onOpen: () => void;
   onDoubleClick?: () => void;
+  /** Opens the chat player menu on a name in the lineup. */
+  onPlayerMenu?: PlayerMenuOpener;
 }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
@@ -287,7 +291,7 @@ export function ReplayLibraryCard({
           <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
           <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
         </div>
-        <ReplayCardRoster teams={replay.teams} />
+        <ReplayCardRoster teams={replay.teams} onPlayerMenu={onPlayerMenu} />
         {/* The id and the way in, on one line in the corner: the label that
             says which replay this is, and the button that plays it. */}
         <div className="replay-card-footer">
@@ -325,6 +329,7 @@ export function ReplayCard({
   onOpen,
   onDoubleClick,
   onWatch,
+  onPlayerMenu,
 }: {
   replay: VaultReplay;
   watched: boolean;
@@ -333,6 +338,8 @@ export function ReplayCard({
   onOpen: () => void;
   onDoubleClick?: () => void;
   onWatch?: () => void;
+  /** Opens the chat player menu on a name in the lineup. */
+  onPlayerMenu?: PlayerMenuOpener;
 }) {
   const { t } = useTranslation();
   const localReplays = useAppStore((state) => state.state.replays.local);
@@ -370,6 +377,7 @@ export function ReplayCard({
       watch={watch}
       onOpen={onOpen}
       onDoubleClick={onDoubleClick}
+      onPlayerMenu={onPlayerMenu}
     />
   );
 }
@@ -558,6 +566,7 @@ export function ReplayDetailPanel({
   source = "online",
   watched = false,
   onToggleWatched,
+  onPlayerMenu,
 }: {
   replay: VaultReplay;
   busy: boolean;
@@ -584,6 +593,8 @@ export function ReplayDetailPanel({
   /// since a card is itself a button and cannot hold one.
   watched?: boolean;
   onToggleWatched?: () => void;
+  /** Opens the chat player menu on a name in the lineup. */
+  onPlayerMenu?: PlayerMenuOpener;
 }) {
   const { t } = useTranslation();
   const maps = useAppStore((state) => state.state.maps);
@@ -1117,6 +1128,7 @@ export function ReplayDetailPanel({
                 teams={detailTeams}
                 showResults={showResults}
                 avatarByLogin={avatarByLogin}
+                onPlayerMenu={onPlayerMenu}
               />
             ) : (
               <p className="replay-detail-empty muted">{t("replays.detail.noLineup")}</p>

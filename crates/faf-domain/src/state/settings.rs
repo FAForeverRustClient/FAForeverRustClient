@@ -298,6 +298,30 @@ pub struct AppearancePreferences {
     /// inside it was not, so every start put it back at 224 px. Clamped on the
     /// way in, because a settings file is a file somebody can edit.
     pub sidebar_width: u16,
+    /// Whether the detail panels that appear on hover are shown at all.
+    ///
+    /// Off leaves every list's own row intact and simply never opens the
+    /// overlay. Reported by people who move the pointer across the game list on
+    /// the way to somewhere else and collect four or five panels doing it.
+    pub hover_panels: bool,
+    /// How long the pointer has to rest on something before its hover panel
+    /// opens, in milliseconds.
+    ///
+    /// Zero is the behaviour this client shipped with: the panel is up before
+    /// the pointer has stopped, which is what made crossing the list expensive.
+    /// A second was tried and drew the opposite complaint, so this is a
+    /// preference rather than a better constant.
+    ///
+    /// The delay applies to the *first* panel only: once one is open, moving to
+    /// another opens it at once, so a delay long enough to stop accidents does
+    /// not also make browsing slow.
+    pub hover_open_delay_ms: u16,
+    /// How long a hover panel survives the pointer leaving it, in milliseconds.
+    ///
+    /// Not merely symmetry with [`Self::hover_open_delay_ms`]: the panels are
+    /// interactive, so reaching one means crossing the gap between the row and
+    /// the panel, and a zero here makes everything in them unclickable.
+    pub hover_close_delay_ms: u16,
 }
 
 // A field-level `#[serde(default)]` would have been shorter, but specta turns
@@ -317,6 +341,9 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             ui_scale: u16,
             game_tile_columns: u8,
             sidebar_width: u16,
+            hover_panels: bool,
+            hover_open_delay_ms: u16,
+            hover_close_delay_ms: u16,
         }
 
         impl Default for Wire {
@@ -328,6 +355,9 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
                     ui_scale: defaults.ui_scale,
                     game_tile_columns: defaults.game_tile_columns,
                     sidebar_width: defaults.sidebar_width,
+                    hover_panels: defaults.hover_panels,
+                    hover_open_delay_ms: defaults.hover_open_delay_ms,
+                    hover_close_delay_ms: defaults.hover_close_delay_ms,
                 }
             }
         }
@@ -341,6 +371,9 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             sidebar_width: wire
                 .sidebar_width
                 .clamp(MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH),
+            hover_panels: wire.hover_panels,
+            hover_open_delay_ms: wire.hover_open_delay_ms.min(MAX_HOVER_DELAY_MS),
+            hover_close_delay_ms: wire.hover_close_delay_ms.min(MAX_HOVER_DELAY_MS),
         })
     }
 }
@@ -369,6 +402,13 @@ pub const MAX_SIDEBAR_WIDTH: u16 = 400;
 /// slightly off the default nor pulling all the way in is ambiguous.
 pub const SIDEBAR_RAIL_BELOW: u16 = 150;
 
+/// The longest either hover delay may be set to.
+///
+/// A ceiling rather than a list, because the settings file is a file somebody
+/// can edit and a panel that takes a minute to appear reads as one that is
+/// broken. The tab itself offers a handful of steps inside this range.
+pub const MAX_HOVER_DELAY_MS: u16 = 2000;
+
 impl Default for AppearancePreferences {
     fn default() -> Self {
         Self {
@@ -377,6 +417,17 @@ impl Default for AppearancePreferences {
             ui_scale: default_ui_scale(),
             game_tile_columns: 0,
             sidebar_width: 224,
+            hover_panels: true,
+            // Long enough that crossing the list on the way somewhere else does
+            // not open anything, short enough to feel like an answer rather
+            // than a wait. Zero was the old behaviour and is still available;
+            // so is a full second, which is what this was before and what drew
+            // the complaint in the other direction.
+            hover_open_delay_ms: 500,
+            // The gap between a row and its panel is about six pixels, which a
+            // pointer crosses in well under 50 ms. A sixth of a second covers
+            // that without the panel trailing the pointer down the list.
+            hover_close_delay_ms: 160,
         }
     }
 }
@@ -388,6 +439,8 @@ impl AppearancePreferences {
         self.sidebar_width = self
             .sidebar_width
             .clamp(MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
+        self.hover_open_delay_ms = self.hover_open_delay_ms.min(MAX_HOVER_DELAY_MS);
+        self.hover_close_delay_ms = self.hover_close_delay_ms.min(MAX_HOVER_DELAY_MS);
         self
     }
 }

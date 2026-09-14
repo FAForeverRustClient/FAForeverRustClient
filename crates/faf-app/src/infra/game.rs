@@ -454,6 +454,8 @@ impl ProcessPort for GameProcess {
         InstallPresence {
             game: present(&config.game_path),
             replay: present(&config.replay_game_path),
+            game_pending: managed_executable_is_pending(&config.game_path),
+            replay_pending: managed_executable_is_pending(&config.replay_game_path),
         }
     }
 
@@ -463,6 +465,14 @@ impl ProcessPort for GameProcess {
 
     fn discover_install_paths(&self) -> DiscoveredInstallPaths {
         discover_reference_install_paths()
+    }
+
+    fn default_install_paths(&self) -> DiscoveredInstallPaths {
+        default_managed_install_paths()
+    }
+
+    fn is_original_game_install(&self, path: &str) -> bool {
+        is_original_game_executable(Path::new(path))
     }
 }
 
@@ -787,6 +797,43 @@ fn managed_executable_is_present(path: &str) -> bool {
     exe.is_file() && managed_install_dir_of(path).is_some()
 }
 
+/// Whether the updater would create this executable rather than fail on it.
+///
+/// The one state a fresh machine is in, and the reason it needs a name of its
+/// own: the file is absent, which looks exactly like a broken setting, but the
+/// path is a managed install root and the updater's whole job is to put the
+/// engine there. Saying "install not found" about it sends the user looking for
+/// something that has never existed.
+fn managed_executable_is_pending(path: &str) -> bool {
+    let exe = Path::new(path);
+    !exe.is_file() && managed_install_dir_of(path).is_some()
+}
+
+/// Where this client puts its own copy of the game when nothing else has one.
+///
+/// The same roots the reference clients use, which is what makes an install
+/// made here visible to them and theirs visible to us:
+/// `%PROGRAMDATA%\FAForever` on Windows, `~/.faforever` on Linux. Nothing is
+/// created here; these are the paths the updater is pointed at, and it creates
+/// what it needs when the first game or replay is prepared.
+fn default_managed_install_paths() -> DiscoveredInstallPaths {
+    let root = if cfg!(windows) {
+        std::env::var_os("PROGRAMDATA")
+            .or_else(|| std::env::var_os("ALLUSERSPROFILE"))
+            .map(|base| PathBuf::from(base).join("FAForever"))
+    } else {
+        directories::BaseDirs::new().map(|dirs| dirs.home_dir().join(".faforever"))
+    };
+    let Some(root) = root else {
+        return DiscoveredInstallPaths::default();
+    };
+    let spell = |path: PathBuf| Some(path.to_string_lossy().into_owned());
+    DiscoveredInstallPaths {
+        game: spell(root.join("bin").join(MANAGED_EXE)),
+        replay: spell(root.join("replaydata").join("bin").join(MANAGED_EXE)),
+    }
+}
+
 /// The reference clients validate an original FA root through its base archive.
 /// Its executable has the same filename and `bin/` shape as the managed copy,
 /// so checking only `ForgedAlliance.exe` cannot keep the updater out of Steam.
@@ -1039,7 +1086,9 @@ mod tests {
             process.installs_present(),
             InstallPresence {
                 game: true,
-                replay: false
+                replay: false,
+                game_pending: false,
+                replay_pending: false,
             }
         );
     }
@@ -1053,7 +1102,38 @@ mod tests {
             replay_game_path: String::new(),
             ..GameConfig::default()
         });
-        assert!(!process.installs_present().game);
+        let present = process.installs_present();
+        assert!(!present.game);
+        // Absent, but the updater would create it: the state a fresh machine
+        // starts in, which must not be reported as a missing install.
+        assert!(present.game_pending);
+    }
+
+    #[test]
+    fn the_original_retail_game_is_neither_present_nor_pending() {
+        // Steam's install has the same `bin/` shape as a managed one, and a
+        // fresh machine has nothing else to point at. It is refused either way:
+        // the updater derives its write target from this path, and FAF never
+        // writes into the original game. See `redirect_retail_pick`.
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("Supreme Commander Forged Alliance");
+        std::fs::create_dir_all(root.join("gamedata")).unwrap();
+        std::fs::create_dir_all(root.join("bin")).unwrap();
+        std::fs::write(root.join("gamedata").join("lua.scd"), b"base game").unwrap();
+        let exe = root.join("bin").join(MANAGED_EXE);
+        std::fs::write(&exe, b"engine").unwrap();
+
+        let process = GameProcess::new(GameConfig {
+            game_path: exe.display().to_string(),
+            ..GameConfig::default()
+        });
+        let present = process.installs_present();
+        assert!(!present.game, "the retail game is never the update target");
+        assert!(
+            !present.game_pending,
+            "and it is not somewhere the updater may create one either"
+        );
+        assert!(process.is_original_game_install(&exe.display().to_string()));
     }
 
     #[test]

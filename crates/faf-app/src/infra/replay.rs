@@ -1793,10 +1793,10 @@ fn local_teams(header: &Value) -> Vec<LocalReplayTeam> {
 /// show it as a game of four.
 fn body_teams(armies: &[LocalBodyArmy], mission: bool) -> Vec<LocalReplayTeam> {
     let mut teams: Vec<LocalReplayTeam> = Vec::new();
-    for army in armies
-        .iter()
-        .filter(|army| !army.civilian && !(mission && army.computer))
-    {
+    // Spelled as one predicate rather than two negations: clippy rejects the
+    // two, and the question this asks is a single one anyway.
+    let is_player = |army: &LocalBodyArmy| !(army.civilian || (mission && army.computer));
+    for army in armies.iter().filter(|army| is_player(army)) {
         let key = army
             .team
             .map(|team| team.to_string())

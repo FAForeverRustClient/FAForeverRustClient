@@ -114,6 +114,8 @@ export function reduceInstall(_state: InstallState, event: InstallEvent): Instal
       return {
         gameReady: event.payload.gameReady,
         replayReady: event.payload.replayReady,
+        gamePending: event.payload.gamePending,
+        replayPending: event.payload.replayPending,
         resolved: event.payload.resolved,
         checked: true,
       };

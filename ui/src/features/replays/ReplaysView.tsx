@@ -13,16 +13,25 @@ import { useTranslation } from "../../i18n/useTranslation";
 
 type SubView = "live" | "online" | "local";
 
+/**
+ * The line above the tabs, for progress only.
+ *
+ * A failure used to be shown here too, as a strip of text at the very top of
+ * the workspace. It was reported as being in the wrong place and it was: the
+ * reader had just double-clicked a game halfway down the page and was looking
+ * there, the strip pushed the whole tab down when it appeared, and the next
+ * successful action wiped it with no way back to what it had said. The service
+ * raises a notification instead, where the rest of this client's operational
+ * messages already collect and where they stay until they are read.
+ */
 function statusNote(status: ReplayStatus): string | null {
   switch (status.type) {
-    case "idle":
-      return null;
     case "connecting":
       return t("replays.status.connecting");
+    case "idle":
     case "playing":
-      return null;
     case "failed":
-      return t("replays.status.failed", { reason: status.payload.reason });
+      return null;
   }
 }
 

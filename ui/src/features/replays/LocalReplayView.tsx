@@ -13,6 +13,7 @@ import { loadStoredSet, saveStoredSet } from "../../shared/storage";
 import { mapPresentation } from "../../shared/mapPresentation";
 import { formatShortDate } from "../../shared/dates";
 import { formatDuration } from "../../shared/durations";
+import { usePlayerMenu } from "../chat/usePlayerMenu";
 import { LocalReplaySearch } from "./LocalReplaySearch";
 import {
   ReplayLibraryCard,
@@ -146,6 +147,8 @@ function localReplayCard(
 
 export function LocalReplayView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
+  // See `OnlineReplayView`: one menu for the whole tab, not one per card.
+  const { openPlayerMenu, playerMenu } = usePlayerMenu();
   const local = useAppStore((s) => s.state.replays.local);
   const localStatus = useAppStore((s) => s.state.replays.localStatus);
   const mapVault = useAppStore((s) => s.state.maps.vault);
@@ -390,6 +393,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                 } : undefined}
                 onOpen={() => setOpenReplay(replay)}
                 onDoubleClick={() => replay.watchable && !busy && markWatchedAndOpen(replay)}
+                onPlayerMenu={openPlayerMenu}
               />
             ))}
           </div>
@@ -504,6 +508,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
             markWatchedAndOpen(openReplay);
             setOpenReplay(null);
           }}
+          onPlayerMenu={openPlayerMenu}
         />
       )}
       {pendingDelete && (
@@ -518,6 +523,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
           </div>
         </Modal>
       )}
+      {playerMenu}
     </>
   );
 }
