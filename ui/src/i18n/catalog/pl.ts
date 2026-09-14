@@ -936,7 +936,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendsGamesOnly": "Tylko gry znajomych",
   "settings.notifications.friendsGamesOnlyHint": "Ogranicz alerty o nowych grach do gier hostowanych przez znajomych.",
   "settings.notifications.gameFull": "Gra pełna",
-  "settings.notifications.gameFullHint": "Alert, gdy w twojej grze zapełni się ostatnie miejsce.",
+  "settings.notifications.gameFullHint": "Alert, gdy w grze, w której jesteś, zapełni się ostatnie miejsce.",
   "settings.notifications.gameLaunched": "Gra uruchomiona",
   "settings.notifications.gameLaunchedHint": "Potwierdzenie, gdy proces gry wystartuje poprawnie.",
   "settings.notifications.reviewReminder": "Przypomnienie po grze",

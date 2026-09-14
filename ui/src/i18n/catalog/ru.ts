@@ -1005,7 +1005,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendsGamesOnly": "Только игры друзей",
   "settings.notifications.friendsGamesOnlyHint": "Ограничить оповещения о новых играх теми, что создали друзья.",
   "settings.notifications.gameFull": "Игра заполнена",
-  "settings.notifications.gameFullHint": "Оповещать, когда в вашей игре занимается последний слот.",
+  "settings.notifications.gameFullHint": "Оповещать, когда в игре, где вы сидите, занимается последний слот.",
   "settings.notifications.gameLaunched": "Игра запущена",
   "settings.notifications.gameLaunchedHint": "Подтверждать, когда процесс игры успешно стартовал.",
   "settings.notifications.reviewReminder": "Напоминание после игры",

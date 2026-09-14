@@ -1092,7 +1092,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendsGamesOnly": "Nur Partien von Freunden",
   "settings.notifications.friendsGamesOnlyHint": "Hinweise auf neue Partien auf Freunde beschränken.",
   "settings.notifications.gameFull": "Partie voll",
-  "settings.notifications.gameFullHint": "Hinweis, wenn deine gehostete Partie den letzten Platz füllt.",
+  "settings.notifications.gameFullHint": "Hinweis, wenn eine Partie, in der du sitzt, den letzten Platz füllt.",
   "settings.notifications.gameLaunched": "Spiel gestartet",
   "settings.notifications.gameLaunchedHint": "Bestätigen, wenn der Spielprozess erfolgreich startet.",
   "settings.notifications.reviewReminder": "Erinnerung nach der Partie",

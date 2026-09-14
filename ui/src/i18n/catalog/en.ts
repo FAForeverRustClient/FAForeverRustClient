@@ -1278,7 +1278,7 @@ export const en = {
   "settings.notifications.friendsGamesOnly": "Friends' games only",
   "settings.notifications.friendsGamesOnlyHint": "Limit new-game alerts to games hosted by friends.",
   "settings.notifications.gameFull": "Game full",
-  "settings.notifications.gameFullHint": "Alert when a custom game you host fills its last slot.",
+  "settings.notifications.gameFullHint": "Alert when a custom game you are in fills its last slot.",
   "settings.notifications.gameLaunched": "Game launched",
   "settings.notifications.gameLaunchedHint": "Confirm when the game process starts successfully.",
   "settings.notifications.reviewReminder": "After-game reminder",

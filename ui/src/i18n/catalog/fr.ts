@@ -983,7 +983,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendsGamesOnly": "Parties d'amis uniquement",
   "settings.notifications.friendsGamesOnlyHint": "Limiter les alertes de nouvelles parties à celles hébergées par des amis.",
   "settings.notifications.gameFull": "Partie complète",
-  "settings.notifications.gameFullHint": "Alerter quand une partie que vous hébergez remplit sa dernière place.",
+  "settings.notifications.gameFullHint": "Alerter quand une partie à laquelle vous participez remplit sa dernière place.",
   "settings.notifications.gameLaunched": "Partie lancée",
   "settings.notifications.gameLaunchedHint": "Confirmer quand le processus du jeu démarre correctement.",
   "settings.notifications.reviewReminder": "Rappel après la partie",
