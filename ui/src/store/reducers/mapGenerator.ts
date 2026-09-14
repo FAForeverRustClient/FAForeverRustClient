@@ -2,6 +2,9 @@
 
 import type { MapGeneratorEvent, MapGeneratorState } from "../../ipc/bindings";
 
+/** Twin of `MAX_KEPT_PREVIEWS` in the Rust slice. */
+const MAX_KEPT_PREVIEWS = 64;
+
 export function reduceMapGenerator(
   state: MapGeneratorState,
   event: MapGeneratorEvent,
@@ -43,11 +46,18 @@ export function reduceMapGenerator(
         selectedVersion: event.payload.options.version ?? state.selectedVersion,
         options: event.payload.options,
       };
-    case "previewsLoaded":
-      return {
-        ...state,
-        previews: { ...state.previews, ...event.payload.previews },
-      };
+    case "previewsLoaded": {
+      // Twin of the Rust arm, cap and all: a preview is a whole PNG spelled as
+      // base64 text, and keeping every one of them for the life of the session
+      // is what ended with the page reporting "Out of Memory" after a sitting
+      // of twenty or thirty generated maps.
+      const held = state.previews ?? {};
+      const kept =
+        Object.keys(held).length + Object.keys(event.payload.previews).length > MAX_KEPT_PREVIEWS
+          ? {}
+          : held;
+      return { ...state, previews: { ...kept, ...event.payload.previews } };
+    }
     case "validationChanged":
       return { ...state, validation: event.payload.issues };
     case "namePredicted":

@@ -110,6 +110,15 @@ pub struct GeneratorPreset {
     pub options: GeneratorOptions,
 }
 
+/// How many generated map previews are kept at once.
+///
+/// A preview is a 256-pixel PNG, around 130 kB, and a data URL of it is a
+/// third longer again. Sixty-four of them is a comfortable ceiling on
+/// something that used to have none: more than the fifty a single run can
+/// produce, so no run ever loses a thumbnail it is showing, and a bounded
+/// amount of what is, in the end, a picture cache.
+pub const MAX_KEPT_PREVIEWS: usize = 64;
+
 /// Longest preset name accepted. Generous, but bounded: the name becomes a
 /// file name, and file systems have limits that a silent truncation would hit
 /// in confusing ways.
@@ -337,6 +346,9 @@ pub struct MapGeneratorState {
     /// `GeneratorPrefs`.
     pub options: GeneratorOptions,
     /// Data URLs of newly generated map previews (`map_name` -> `data:image/png;base64,...`).
+    ///
+    /// Capped at [`MAX_KEPT_PREVIEWS`]: every entry is a PNG file carried as
+    /// text, in this state and again in the frontend's mirror of it.
     #[serde(default)]
     pub previews: std::collections::HashMap<String, String>,
     /// Problems with the current options, from the pure rule checks. Refreshed
@@ -523,6 +535,21 @@ pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {
             state.options = options.clone();
         }
         MapGeneratorEvent::PreviewsLoaded { previews } => {
+            // Bounded, because these are whole PNG files spelled as base64
+            // text and they used to be kept for the life of the session. A
+            // report of the interface dying with "Out of Memory" came from
+            // somebody who had generated twenty or thirty maps in a sitting,
+            // and came back after a reload -- which is what a cache that the
+            // backend hands straight back on the next hydrate looks like.
+            //
+            // The newest batch is always kept whole: a single run generates up
+            // to fifty maps and the dialog shows a thumbnail per map. Older
+            // ones are kept only while they fit, and dropped together rather
+            // than by age, because a map is either still being looked at or it
+            // is history and its folder is on disk to be looked at again.
+            if state.previews.len() + previews.len() > MAX_KEPT_PREVIEWS {
+                state.previews.clear();
+            }
             state.previews.extend(previews.clone());
         }
         MapGeneratorEvent::ValidationChanged { issues } => state.validation = issues.clone(),
@@ -545,6 +572,43 @@ mod tests {
         assert!(!s.option_lists.is_empty());
         assert!(GeneratorOptionLists::empty().is_empty());
         assert!(!s.status.is_busy());
+    }
+
+    #[test]
+    fn the_preview_cache_keeps_the_newest_run_and_stays_bounded() {
+        let batch = |from: usize, count: usize| {
+            (from..from + count)
+                .map(|n| (format!("neroxis_{n}"), format!("data:image/png;base64,{n}")))
+                .collect::<std::collections::HashMap<_, _>>()
+        };
+        let mut state = MapGeneratorState::default();
+
+        // Sixty singles: the sitting that ended in an out-of-memory page.
+        for n in 0..60 {
+            reduce(
+                &mut state,
+                &MapGeneratorEvent::PreviewsLoaded {
+                    previews: batch(n, 1),
+                },
+            );
+            assert!(state.previews.len() <= MAX_KEPT_PREVIEWS);
+        }
+
+        // And the biggest run there is, straight after: every one of its maps
+        // is still there to be shown.
+        reduce(
+            &mut state,
+            &MapGeneratorEvent::PreviewsLoaded {
+                previews: batch(1_000, 50),
+            },
+        );
+        assert!(state.previews.len() <= MAX_KEPT_PREVIEWS);
+        for n in 1_000..1_050 {
+            assert!(
+                state.previews.contains_key(&format!("neroxis_{n}")),
+                "the run being looked at lost neroxis_{n}"
+            );
+        }
     }
 
     #[test]
