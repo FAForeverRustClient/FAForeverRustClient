@@ -87,7 +87,11 @@ export function filterLocalReplays(
     return matchesPlayer
       && (!query.map || contains(replay.map, query.map) || contains(mapDisplayName(replay), query.map))
       && (!replayId || replay.uid !== null && String(replay.uid).includes(replayId))
-      && (!query.mod || contains(replay.modName, query.mod))
+      // Exactly, not "contains": the control is a picker over the featured
+      // mods the archive holds, and `faf` is a prefix of `fafbeta` and
+      // `fafdevelop`, so asking for custom games used to answer with the beta
+      // and develop games too.
+      && (!query.mod || replay.modName.toLocaleLowerCase() === query.mod.trim().toLocaleLowerCase())
       && (!query.title || contains(replay.title || replay.fileName, query.title))
       && (!query.recorder || contains(replay.recorder, query.recorder))
       && (!query.simMod || replay.simMods.some((mod) => contains(mod, query.simMod)))
