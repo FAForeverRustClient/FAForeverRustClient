@@ -1878,7 +1878,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.details.preparing": "Przygotowywanie…",
   "lobby.details.alreadyInGame": "Jesteś już w grze",
   "lobby.mode.aria": "Tryby gry",
-  "lobby.mode.custom": "Graj",
+  "lobby.mode.custom": "Własne",
   "lobby.mode.matchmaking": "Dobieranie",
   "lobby.mode.coop": "Kooperacja",
   "lobby.mode.galacticWar": "Galactic War",

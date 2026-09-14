@@ -1028,7 +1028,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.details.preparing": "Vorbereitung…",
   "lobby.details.alreadyInGame": "Du bist bereits in einem Spiel",
   "lobby.mode.aria": "Spielmodi",
-  "lobby.mode.custom": "Spielen",
+  "lobby.mode.custom": "Custom",
   "lobby.mode.matchmaking": "Matchmaker",
   "lobby.mode.coop": "Coop",
   "lobby.mode.galacticWar": "Galactic War",

@@ -1497,7 +1497,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.local.cancel": "Annuler",
 
   "lobby.mode.aria": "Modes de jeu",
-  "lobby.mode.custom": "Jouer",
+  "lobby.mode.custom": "Personnalisées",
   "lobby.mode.matchmaking": "Matchmaking",
   "lobby.mode.coop": "Coop",
   "lobby.mode.galacticWar": "Galactic War",

@@ -1211,7 +1211,7 @@ export const en = {
   "lobby.details.ratingLockedTitle": "The host limited this lobby to ratings {from} to {to}. Yours is {rating}.",
   "lobby.details.alreadyInGame": "You are already in a game",
   "lobby.mode.aria": "Play modes",
-  "lobby.mode.custom": "Play",
+  "lobby.mode.custom": "Custom",
   "lobby.mode.matchmaking": "Matchmaker",
   "lobby.mode.coop": "Coop",
   "lobby.mode.galacticWar": "Galactic War",
