@@ -411,6 +411,17 @@
   }
 }
 
+/* Room between the bar and the buttons under it.
+
+   The bar is six pixels of constant motion and the row sat straight against
+   it, so Cancel and Hide read as part of the bar rather than as the row
+   below. Scoped to this dialog: `.confirm-dialog-actions` is the shared row
+   every modal in the client uses, and most of them have a paragraph above it
+   rather than something moving. */
+.replay-starting-modal .confirm-dialog-actions {
+  margin-top: var(--space-4);
+}
+
 .replay-starting-note {
   margin-top: var(--space-2);
   font-size: 11px;
