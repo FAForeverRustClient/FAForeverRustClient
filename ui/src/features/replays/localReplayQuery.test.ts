@@ -66,19 +66,37 @@ describe("local replay query", () => {
     ).toEqual([]);
   });
 
-  // `faf` is a prefix of `fafbeta` and `fafdevelop`, and the control over this
-  // field is a picker across whichever of them the archive holds, so a prefix
-  // match answered "custom games" with the beta and develop games as well.
-  it("matches the featured mod exactly, not as a prefix", () => {
+  // The mode is a coarser question than the featured mod, and the two used to
+  // be one control: a game on the beta build is a custom game, not a mode of
+  // its own, and offering `fafbeta` in a mode picker is what that conflation
+  // looked like.
+  it("groups every build of the base mod under custom games", () => {
+    const custom = replay({ path: "C:/replays/1.fafreplay", modName: "faf" });
+    const beta = replay({ path: "C:/replays/2.fafreplay", modName: "fafbeta" });
+    const coop = replay({ path: "C:/replays/3.fafreplay", modName: "coop" });
+    const ladder = replay({ path: "C:/replays/4.fafreplay", modName: "ladder1v1" });
+    const all = [custom, beta, coop, ladder];
+
+    expect(filterLocalReplays(all, { ...EMPTY_LOCAL_REPLAY_QUERY, gameMode: "custom" }))
+      .toEqual([custom, beta]);
+    expect(filterLocalReplays(all, { ...EMPTY_LOCAL_REPLAY_QUERY, gameMode: "coop" }))
+      .toEqual([coop]);
+    expect(filterLocalReplays(all, { ...EMPTY_LOCAL_REPLAY_QUERY, gameMode: "ladder" }))
+      .toEqual([ladder]);
+    expect(filterLocalReplays(all, EMPTY_LOCAL_REPLAY_QUERY)).toHaveLength(4);
+  });
+
+  // Which is why the mod filter is still there, in the panel: it is the way to
+  // ask for the beta build on its own, and the mode picker cannot express it.
+  it("narrows a mode by the exact build when both are set", () => {
     const custom = replay({ path: "C:/replays/1.fafreplay", modName: "faf" });
     const beta = replay({ path: "C:/replays/2.fafreplay", modName: "fafbeta" });
 
-    expect(filterLocalReplays([custom, beta], { ...EMPTY_LOCAL_REPLAY_QUERY, mod: "faf" }))
-      .toEqual([custom]);
-    expect(filterLocalReplays([custom, beta], { ...EMPTY_LOCAL_REPLAY_QUERY, mod: "fafbeta" }))
-      .toEqual([beta]);
-    expect(filterLocalReplays([custom, beta], { ...EMPTY_LOCAL_REPLAY_QUERY, mod: "" }))
-      .toHaveLength(2);
+    expect(filterLocalReplays([custom, beta], {
+      ...EMPTY_LOCAL_REPLAY_QUERY,
+      gameMode: "custom",
+      mod: "fafbeta",
+    })).toEqual([beta]);
   });
 
   it("supports local advanced filters and sort direction", () => {
