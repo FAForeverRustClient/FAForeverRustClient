@@ -711,13 +711,13 @@
           "friendOffline": "chime",
           "friendPlaying": "chime",
           "newCustomGame": "chime",
-          "gameFull": "chime",
+          "gameFull": "alert",
           "gameLaunched": "chime",
           "reviewReminder": "chime",
           "partyInvite": "chime",
           "other": "chime"
         },
-        "soundChoiceVersion": 1,
+        "soundChoiceVersion": 2,
         "notifyWhenFocused": false,
         "toastPosition": "bottomLeft",
         "matchFound": true,
@@ -2201,12 +2201,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -27887,6 +27887,7 @@
                   "title": "Downloaded replay",
                   "recorder": "Host",
                   "startTime": null,
+                  "durationSeconds": 1337,
                   "modifiedTime": 1,
                   "fileSizeBytes": 100,
                   "numPlayers": 2,
@@ -27919,6 +27920,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28020,6 +28022,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28123,6 +28126,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28224,6 +28228,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28323,6 +28328,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28427,6 +28433,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28528,6 +28535,7 @@
             "local": [
               {
                 "averageRating": null,
+                "durationSeconds": 1337,
                 "fileName": "42.fafreplay",
                 "fileSizeBytes": 100,
                 "gameVersion": null,
@@ -28560,6 +28568,207 @@
                 "reason": "could not update game to version 3701"
               },
               "type": "failed"
+            },
+            "vault": [],
+            "vaultHasMore": true,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 2,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "vaultDownloadStarted",
+              "payload": {
+                "uid": 46
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "payload": {
+                "uid": 46
+              },
+              "type": "downloading"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [
+              {
+                "averageRating": null,
+                "durationSeconds": 1337,
+                "fileName": "42.fafreplay",
+                "fileSizeBytes": 100,
+                "gameVersion": null,
+                "map": "scmp_009",
+                "modName": "faf",
+                "modifiedTime": 1,
+                "numPlayers": 2,
+                "path": "/replays/42.fafreplay",
+                "recorder": "Host",
+                "simMods": [],
+                "startTime": null,
+                "status": "complete",
+                "teams": [],
+                "title": "Downloaded replay",
+                "uid": 42,
+                "watchable": true
+              }
+            ],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
+            "status": {
+              "payload": {
+                "reason": "could not update game to version 3701"
+              },
+              "type": "failed"
+            },
+            "vault": [],
+            "vaultHasMore": true,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 2,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "vaultTotalPages": 9,
+            "vaultTotalRecords": 412
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "closed"
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [
+              {
+                "averageRating": null,
+                "durationSeconds": 1337,
+                "fileName": "42.fafreplay",
+                "fileSizeBytes": 100,
+                "gameVersion": null,
+                "map": "scmp_009",
+                "modName": "faf",
+                "modifiedTime": 1,
+                "numPlayers": 2,
+                "path": "/replays/42.fafreplay",
+                "recorder": "Host",
+                "simMods": [],
+                "startTime": null,
+                "status": "complete",
+                "teams": [],
+                "title": "Downloaded replay",
+                "uid": 42,
+                "watchable": true
+              }
+            ],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "replayDetails": {},
+            "resolvedMaps": {
+              "42": "SCCA_Coop_A03.v0023",
+              "43": ""
+            },
+            "status": {
+              "type": "idle"
             },
             "vault": [],
             "vaultHasMore": true,
@@ -29969,12 +30178,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -30220,12 +30429,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -30480,12 +30689,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -30737,12 +30946,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -30993,12 +31202,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -31269,12 +31478,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -31535,12 +31744,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -31818,12 +32027,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -32092,12 +32301,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -32368,12 +32577,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",
@@ -32762,12 +32971,12 @@
               "privateMessages": true,
               "reviewReminder": true,
               "sound": true,
-              "soundChoiceVersion": 1,
+              "soundChoiceVersion": 2,
               "sounds": {
                 "friendOffline": "chime",
                 "friendOnline": "chime",
                 "friendPlaying": "chime",
-                "gameFull": "chime",
+                "gameFull": "alert",
                 "gameLaunched": "chime",
                 "matchFound": "fafMatch",
                 "mention": "chime",

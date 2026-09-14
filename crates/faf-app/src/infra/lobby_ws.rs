@@ -467,6 +467,10 @@ async fn run_session(
     // Identity (rather than rating) side of the same `player_info` stream,
     // what chat needs to rank its roster. See `PlayerDirectory`.
     let mut directory = PlayerDirectory::default();
+    // Who this session is, from `welcome`. Only used to refuse the one
+    // `player_info` that must never be believed: our own account going
+    // offline. See the `player_info` arm.
+    let mut own_player_id: Option<i64> = None;
     let mut matchmaking = MatchmakingState::Idle;
     // The machine proof is computed off this loop. `faf-uid` needs seconds on a
     // cold first run (15s measured on a freshly installed client, ~2.4s warm),
@@ -541,6 +545,9 @@ async fn run_session(
                     ending = SessionEnd::Cancelled;
                     break;
                 };
+                // A relation the user just set is a change to state this
+                // session re-broadcasts, and the server tells nobody about it.
+                directory.note_local_relation(&frame);
                 if write
                     .send(Message::binary(encode_lobby_message(&frame).into_bytes()))
                     .await
@@ -667,6 +674,7 @@ async fn run_session(
                             break 'connection;
                         }
                         if let Some(player) = value.get("me") {
+                            own_player_id = player.get("id").and_then(Value::as_i64);
                             update_player_ratings(&mut player_ratings, player);
                             if let Some(profile) = directory.observe(player) {
                                 if tx.send(LobbyUpdate::PlayersSeen(vec![profile])).await.is_err() {
@@ -687,6 +695,25 @@ async fn run_session(
                             let mut removed = Vec::new();
                             for player in players {
                                 if player.get("state").and_then(Value::as_str) == Some("offline") {
+                                    // Never our own account. The server marks
+                                    // a dropped connection offline and
+                                    // broadcasts it, and a reconnect is
+                                    // exactly that: the old connection's
+                                    // notice arrives on the new one, after
+                                    // `welcome` has already introduced us. The
+                                    // client then forgot its own profile --
+                                    // avatar, country and clan all gone from a
+                                    // session that was plainly still online,
+                                    // which is what "my avatar got eaten"
+                                    // looked like. We are receiving this
+                                    // message, so we are not offline.
+                                    let id = player.get("id").and_then(Value::as_i64);
+                                    if id.is_some() && id == own_player_id {
+                                        tracing::debug!(
+                                            "ignoring an offline notice for our own account"
+                                        );
+                                        continue;
+                                    }
                                     if let Some(profile) = directory.remove(player) {
                                         player_ratings.remove(&profile.login);
                                         removed.push(profile);
@@ -1493,6 +1520,45 @@ impl PlayerDirectory {
     fn set_relations(&mut self, value: &Value) {
         self.friend_ids = id_list(value, "friends");
         self.foe_ids = id_list(value, "foes");
+    }
+
+    /// Fold a `social_add`/`social_remove` this client is *sending* into the
+    /// directory's own lists.
+    ///
+    /// The server acknowledges neither command and never sends a second
+    /// `social` message, so the connection would otherwise never learn what
+    /// the user just did: the id lists stay exactly as they arrived at login.
+    /// That was invisible until the next `player_info` named an account the
+    /// relation lists had been waiting for, because the resolved lists are
+    /// re-sent then -- and they are built from these ids, so they replaced the
+    /// change the user had just made with the state from login. Adding a foe
+    /// put a friend back, removing a friend restored them, and adding a friend
+    /// held for a second or two and then vanished.
+    ///
+    /// The two lists are kept mutually exclusive here, as they are in the
+    /// slice: `services::social` sends the matching `social_remove` for the
+    /// other list, so this is the local half of the same decision.
+    fn note_local_relation(&mut self, frame: &Value) {
+        let member = match frame.get("command").and_then(Value::as_str) {
+            Some("social_add") => true,
+            Some("social_remove") => false,
+            _ => return,
+        };
+        for key in ["friend", "foe"] {
+            let Some(id) = frame.get(key).and_then(Value::as_i64) else {
+                continue;
+            };
+            let (list, other) = if key == "friend" {
+                (&mut self.friend_ids, &mut self.foe_ids)
+            } else {
+                (&mut self.foe_ids, &mut self.friend_ids)
+            };
+            list.retain(|known| *known != id);
+            if member {
+                list.push(id);
+                other.retain(|known| *known != id);
+            }
+        }
     }
 
     fn unresolved_relation_ids(&self) -> Vec<i64> {
@@ -2330,6 +2396,33 @@ mod tests {
             relation_frame(7, Relation::Foe, false),
             json!({ "command": "social_remove", "foe": 7 })
         );
+    }
+
+    #[test]
+    fn a_relation_the_user_sets_survives_the_next_player_info() {
+        // The report: adding a foe made them a friend, removing a friend put
+        // them back, and adding a friend held for a moment and vanished. All
+        // three are this re-broadcast, which used to replay the login state.
+        let mut directory = PlayerDirectory::default();
+        directory.record_login(7, "Aurora".into());
+        directory.record_login(9, "Nomander".into());
+        directory.set_relations(&json!({ "friends": [7], "foes": [] }));
+
+        directory.note_local_relation(&relation_frame(7, Relation::Foe, true));
+        assert_eq!(directory.relations(), (vec![], vec!["Aurora".to_string()]));
+
+        directory.note_local_relation(&relation_frame(9, Relation::Friend, true));
+        assert_eq!(
+            directory.relations(),
+            (vec!["Nomander".to_string()], vec!["Aurora".to_string()])
+        );
+
+        directory.note_local_relation(&relation_frame(9, Relation::Friend, false));
+        assert_eq!(directory.relations(), (vec![], vec!["Aurora".to_string()]));
+
+        // Anything else on the outgoing channel leaves the lists alone.
+        directory.note_local_relation(&json!({ "command": "game_join", "uid": 7 }));
+        assert_eq!(directory.relations(), (vec![], vec!["Aurora".to_string()]));
     }
 
     #[test]

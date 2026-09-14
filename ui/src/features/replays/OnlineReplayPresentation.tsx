@@ -1129,27 +1129,29 @@ export function ReplayDetailPanel({
                 had just clicked a greyed-out control at the bottom of the
                 panel never connected the two: the report was "I clicked game
                 result and wondered why it does not work". A disabled control
-                owes its reason to the place the click landed. Above rather
-                than beside: a reason long enough to be one pushed the button
-                sideways and left the pair reading as two half-width controls. */}
-            <span className="replay-card-result-group">
-              {!rated && (
-                <span className="replay-card-result-reason" id="replay-result-reason">
-                  <Icon name="info" size={13} />
-                  <span>{notRated ?? t("replays.detail.noResultYet")}</span>
-                </span>
-              )}
-              <Button
-                className="replay-card-result-btn"
-                aria-pressed={showResults}
-                disabled={!rated}
-                aria-describedby={rated ? undefined : "replay-result-reason"}
-                onClick={() => setShowResults((visible) => !visible)}
-              >
-                <Icon name="eye" size={15} />
-                <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
-              </Button>
-            </span>
+                owes its reason to the place the click landed.
+
+                It spans the row rather than stacking on the button: a reason
+                is a whole sentence, and half the width of the panel wrapped it
+                to three lines and lifted one button off the other's baseline.
+                A notice the width of the panel reads in one line and is a
+                notice rather than a caption. */}
+            {!rated && (
+              <p className="replay-card-result-reason" id="replay-result-reason">
+                <Icon name="info" size={15} />
+                <span>{notRated ?? t("replays.detail.noResultYet")}</span>
+              </p>
+            )}
+            <Button
+              className="replay-card-result-btn"
+              aria-pressed={showResults}
+              disabled={!rated}
+              aria-describedby={rated ? undefined : "replay-result-reason"}
+              onClick={() => setShowResults((visible) => !visible)}
+            >
+              <Icon name="eye" size={15} />
+              <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
+            </Button>
             <Button
               className="replay-card-watch-btn"
               variant="primary"

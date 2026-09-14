@@ -173,7 +173,7 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({ party, 
       <div className="party-strip-head">
         <div>
           <span className="matchmaker-kicker">{t("lobby.party.yours")}</span>
-          <h2>{members.length || 1} of {PARTY_CAPACITY} players</h2>
+          <h2>{t("lobby.party.ofPlayers", { count: members.length || 1, max: PARTY_CAPACITY })}</h2>
         </div>
         <div className="party-strip-actions">
           {searching && isParty && (

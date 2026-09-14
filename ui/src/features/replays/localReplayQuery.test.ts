@@ -4,7 +4,7 @@ import {
   EMPTY_LOCAL_REPLAY_QUERY,
   filterLocalReplays,
   nextLocalDetailLimit,
-  personalLocalReplayQuery,
+  type LocalReplayQuery,
 } from "./localReplayQuery";
 
 function replay(overrides: Partial<LocalReplay> = {}): LocalReplay {
@@ -17,6 +17,7 @@ function replay(overrides: Partial<LocalReplay> = {}): LocalReplay {
     title: "Team game",
     recorder: "TestPlayer",
     startTime: 1_767_225_600,
+    durationSeconds: 1_530,
     modifiedTime: 1_767_225_600,
     fileSizeBytes: 25_000,
     numPlayers: 4,
@@ -66,6 +67,38 @@ describe("local replay query", () => {
     ).toEqual([]);
   });
 
+  // Three modes and not the matchmaker's sizes: the queue a game came from is
+  // in no field of a replay file. `localGameModes` has where that was looked
+  // for.
+  it("answers the mode a replay was played in from its featured mod", () => {
+    const custom = replay({ path: "C:/replays/1.fafreplay", modName: "faf" });
+    const beta = replay({ path: "C:/replays/2.fafreplay", modName: "fafbeta" });
+    const coop = replay({ path: "C:/replays/3.fafreplay", modName: "coop" });
+    const ladder = replay({ path: "C:/replays/4.fafreplay", modName: "ladder1v1" });
+    const all = [custom, beta, coop, ladder];
+    const matching = (gameMode: LocalReplayQuery["gameMode"]) =>
+      filterLocalReplays(all, { ...EMPTY_LOCAL_REPLAY_QUERY, gameMode }).map((r) => r.path);
+
+    expect(matching("")).toHaveLength(4);
+    // Every build of the base mod is a custom game; only co-op and ladder are not.
+    expect(matching("custom")).toEqual(["C:/replays/1.fafreplay", "C:/replays/2.fafreplay"]);
+    expect(matching("coop")).toEqual(["C:/replays/3.fafreplay"]);
+    expect(matching("ladder_1v1")).toEqual(["C:/replays/4.fafreplay"]);
+  });
+
+  // Which is why the mod filter is still there, in the panel: it is the way to
+  // ask for the beta build on its own, and the mode picker cannot express it.
+  it("narrows a mode by the exact build when both are set", () => {
+    const custom = replay({ path: "C:/replays/1.fafreplay", modName: "faf" });
+    const beta = replay({ path: "C:/replays/2.fafreplay", modName: "fafbeta" });
+
+    expect(filterLocalReplays([custom, beta], {
+      ...EMPTY_LOCAL_REPLAY_QUERY,
+      gameMode: "custom",
+      mod: "fafbeta",
+    })).toEqual([beta]);
+  });
+
   it("supports local advanced filters and sort direction", () => {
     const older = replay();
     const newer = replay({
@@ -96,13 +129,6 @@ describe("local replay query", () => {
       minRating: 1000,
       maxRating: 1600,
     })).toEqual([high]);
-  });
-
-  it("builds an exact personal preset", () => {
-    expect(personalLocalReplayQuery("TestPlayer")).toMatchObject({
-      player: "TestPlayer",
-      exactPlayer: true,
-    });
   });
 });
 

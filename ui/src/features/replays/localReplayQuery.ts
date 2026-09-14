@@ -1,4 +1,5 @@
 import type { LocalReplay } from "../../ipc/bindings";
+import { matchesLocalGameMode, type LocalGameMode } from "./localGameModes";
 
 export type LocalReplaySortField = "date" | "title" | "map" | "players" | "size";
 export type LocalReplayStatusFilter = "all" | LocalReplay["status"];
@@ -8,7 +9,13 @@ export interface LocalReplayQuery {
   exactPlayer: boolean;
   map: string;
   replayId: string;
+  /** The exact featured mod, as free text: `fafbeta`, `nomads`. */
   mod: string;
+  /**
+   * Custom, a matchup size, or co-op: a different question from `mod`, and a
+   * question the file answers from its roster rather than from its mod.
+   */
+  gameMode: LocalGameMode;
   title: string;
   recorder: string;
   simMod: string;
@@ -30,6 +37,7 @@ export const EMPTY_LOCAL_REPLAY_QUERY: LocalReplayQuery = {
   map: "",
   replayId: "",
   mod: "",
+  gameMode: "",
   title: "",
   recorder: "",
   simMod: "",
@@ -42,12 +50,6 @@ export const EMPTY_LOCAL_REPLAY_QUERY: LocalReplayQuery = {
   sortBy: "date",
   sortDescending: true,
 };
-
-export function personalLocalReplayQuery(player: string): LocalReplayQuery {
-  return player
-    ? { ...EMPTY_LOCAL_REPLAY_QUERY, player, exactPlayer: true }
-    : { ...EMPTY_LOCAL_REPLAY_QUERY };
-}
 
 export function localReplayTimestamp(replay: LocalReplay): number {
   return (replay.startTime ?? replay.modifiedTime) * 1000;
@@ -94,6 +96,7 @@ export function filterLocalReplays(
       && (!query.map || contains(replay.map, query.map) || contains(mapDisplayName(replay), query.map))
       && (!replayId || replay.uid !== null && String(replay.uid).includes(replayId))
       && (!query.mod || contains(replay.modName, query.mod))
+      && matchesLocalGameMode(replay, query.gameMode)
       && (!query.title || contains(replay.title || replay.fileName, query.title))
       && (!query.recorder || contains(replay.recorder, query.recorder))
       && (!query.simMod || replay.simMods.some((mod) => contains(mod, query.simMod)))
@@ -122,6 +125,7 @@ export function filterLocalReplays(
 export function localReplayAdvancedFilterCount(query: LocalReplayQuery): number {
   return [
     query.exactPlayer,
+    query.mod !== "",
     query.title !== "",
     query.recorder !== "",
     query.simMod !== "",

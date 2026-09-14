@@ -12,6 +12,7 @@ import { loadStatusNote } from "../../shared/loadStatusNote";
 import { loadStoredSet, saveStoredSet } from "../../shared/storage";
 import { mapPresentation } from "../../shared/mapPresentation";
 import { formatShortDate } from "../../shared/dates";
+import { formatDuration } from "../../shared/durations";
 import { LocalReplaySearch } from "./LocalReplaySearch";
 import {
   ReplayLibraryCard,
@@ -27,10 +28,10 @@ import {
   type ReplayListGroup,
 } from "./ReplayList";
 import {
+  EMPTY_LOCAL_REPLAY_QUERY,
   filterLocalReplays,
   localReplayTimestamp,
   nextLocalDetailLimit,
-  personalLocalReplayQuery,
   type LocalReplayQuery,
 } from "./localReplayQuery";
 import "./local-replays.css";
@@ -133,8 +134,10 @@ function localReplayCard(
     startTime: timestamp > 0 ? new Date(timestamp).toISOString() : "",
     teams: localReplayTeams(replay),
     averageRating: replay.averageRating,
+    // The envelope gives the wall clock; the sim's own length would mean
+    // walking the command stream of every file in the folder.
     gameDurationSeconds: null,
-    durationSeconds: null,
+    durationSeconds: replay.durationSeconds,
     reviewsAverage: null,
     reviewsCount: null,
     footerNote: localStatusLabel(replay.status),
@@ -162,7 +165,20 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
       },
     });
   };
-  const [query, setQuery] = useState<LocalReplayQuery>(() => personalLocalReplayQuery(self));
+  // The archive opens unfiltered, and the search bar shows the filter it is
+  // under.
+  //
+  // It used to open on a query built from the account's own name and then hand
+  // the search bar a copy with the player blanked out, so the list was narrowed to
+  // the account's own games while the Player box looked empty. On a real
+  // archive that reads as the tab being broken: "76 of 2780 replays" with
+  // nothing filled in, games missing that are plainly in the folder, and a
+  // Clear button that appears to *add* two and a half thousand replays rather
+  // than remove a filter. The filter also drops every row whose roster this
+  // client has not read -- the `unread` tail beyond the detail limit, a file
+  // too damaged to name its players -- because a replay with no roster matches
+  // nobody. "My replays" is still one click away, and now says so when it is on.
+  const [query, setQuery] = useState<LocalReplayQuery>(EMPTY_LOCAL_REPLAY_QUERY);
   const [page, setPage] = useState(1);
   const [watched, setWatched] = useState<Set<string>>(() =>
     loadStoredSet(LOCAL_WATCHED_STORAGE_KEY, (value): value is string => typeof value === "string"),
@@ -176,9 +192,26 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   const note = loadStatusNote(localStatus, t("replays.local.scanning"), t("replays.local.scanFailed"));
 
   useEffect(() => {
-    if (useAppStore.getState().state.replays.localStatus.type === "idle") {
-      loadLocal(INITIAL_DETAIL_LIMIT);
-    }
+    // Every time the tab is opened, not only the first time.
+    //
+    // The guard used to be `localStatus === "idle"`, which is true exactly
+    // once per run of the client: the folder was scanned when the tab was
+    // first opened and never again. So a game played after that left a file
+    // the list could not know about, and "new replays don't show up in local"
+    // was the whole of it -- the file is written, the list is simply the one
+    // from before it existed. Pressing Refresh or restarting the client showed
+    // it, which is what made the report sound like a parser bug.
+    //
+    // This view is unmounted when the sub-tab changes and mounted again when
+    // it comes back, so this effect is the right place for it; the status it
+    // used to consult lives in the store, which is what outlived the mount and
+    // made the scan happen once per run of the client rather than once per
+    // visit.
+    //
+    // A scan is a directory read plus a bounded header read for the newest
+    // `INITIAL_DETAIL_LIMIT` files, sixteen at a time: the same work Refresh
+    // does, and the rows already in the store stay on screen while it runs.
+    loadLocal(INITIAL_DETAIL_LIMIT);
     // The archive itself is a folder on this disk, but the vault is what turns
     // a folder name into a map's title, and asking for it needs an account.
     if (offline) return;
@@ -286,7 +319,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   return (
     <>
       <LocalReplaySearch
-        initialQuery={query.player === self ? { ...query, player: "" } : query}
+        initialQuery={query}
         self={self}
         featuredMods={featuredMods}
         loading={localStatus.type === "loading"}
@@ -407,8 +440,10 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                     secondary: simModLabel,
                   },
                   duration: {
-                    primary: "N/A",
-                    secondary: t("replays.local.notRecorded"),
+                    primary: formatDuration(replay.durationSeconds, "N/A"),
+                    secondary: replay.durationSeconds === null
+                      ? t("replays.local.notRecorded")
+                      : t("replays.local.realTime"),
                   },
                   replay: {
                     primary: localStatusLabel(replay.status),

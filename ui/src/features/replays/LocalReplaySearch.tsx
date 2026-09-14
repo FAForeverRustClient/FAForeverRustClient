@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { RangeSlider } from "../../design-system/RangeSlider";
+import { localGameModes, type LocalGameMode } from "./localGameModes";
 import {
   EMPTY_LOCAL_REPLAY_QUERY,
   localReplayAdvancedFilterCount,
@@ -136,19 +137,21 @@ export function LocalReplaySearch({
           />
         </label>
 
+        {/* The same move the online tab made: the mode leads the row and the
+            featured mod goes down into the panel. They are different
+            questions -- `fafbeta` is a custom game on another build, not a
+            mode -- and `localGameModes` has the rest of why. */}
         <label className="vault-field local-vault-mod search-panel-field">
-          <span className="vault-field-label search-panel-label">{t("replays.search.mod")}</span>
-          <input
+          <span className="vault-field-label search-panel-label">{t("replays.search.gameMode")}</span>
+          <select
             className="vault-input search-panel-control"
-            type="search"
-            list="local-replay-mod-options"
-            value={form.mod}
-            placeholder={t("replays.search.anyMod")}
-            onChange={(event) => set("mod", event.target.value)}
-          />
-          <datalist id="local-replay-mod-options">
-            {featuredMods.map((mod) => <option value={mod} key={mod} />)}
-          </datalist>
+            value={form.gameMode}
+            onChange={(event) => set("gameMode", event.target.value as LocalGameMode)}
+          >
+            {localGameModes().map((mode) => (
+              <option value={mode.id} key={mode.id}>{mode.label}</option>
+            ))}
+          </select>
         </label>
 
         <div className="vault-search-rating search-panel-field">
@@ -243,6 +246,20 @@ export function LocalReplaySearch({
             <label className="vault-field">
               <span className="vault-field-label">{t("replays.search.recorder")}</span>
               <input className="vault-input" type="search" value={form.recorder} onChange={(event) => set("recorder", event.target.value)} />
+            </label>
+            <label className="vault-field">
+              <span className="vault-field-label">{t("replays.search.mod")}</span>
+              <input
+                className="vault-input"
+                type="search"
+                list="local-replay-mod-options"
+                value={form.mod}
+                placeholder={t("replays.search.anyMod")}
+                onChange={(event) => set("mod", event.target.value)}
+              />
+              <datalist id="local-replay-mod-options">
+                {featuredMods.map((mod) => <option value={mod} key={mod} />)}
+              </datalist>
             </label>
             <label className="vault-field">
               <span className="vault-field-label">{t("replays.search.simMod")}</span>

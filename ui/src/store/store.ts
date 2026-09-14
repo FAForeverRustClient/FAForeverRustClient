@@ -444,7 +444,7 @@ const INITIAL: AppState = {
         friendOffline: "chime",
         friendPlaying: "chime",
         newCustomGame: "chime",
-        gameFull: "chime",
+        gameFull: "alert",
         gameLaunched: "chime",
         reviewReminder: "chime",
         partyInvite: "chime",
@@ -453,7 +453,7 @@ const INITIAL: AppState = {
       // Mirrors NOTIFICATION_SOUND_CHOICE_VERSION. A stored file below this
       // has its match-found row moved onto the current default on load; see
       // `NotificationPreferences`' Deserialize.
-      soundChoiceVersion: 1,
+      soundChoiceVersion: 2,
       notifyWhenFocused: false,
       toastPosition: "bottomLeft",
       matchFound: true,

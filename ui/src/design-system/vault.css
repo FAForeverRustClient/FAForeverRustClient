@@ -185,9 +185,15 @@
   color: var(--color-warn);
 }
 
+/* The detail column is wider than it was. The report was about a mod's
+   description, which had a hundred-odd pixels of a 350 px column to be read
+   in and was cut mid-sentence on anything longer than a paragraph: "a complete
+   disaster for my mod with its description". The grid still gives the browser
+   everything else, and the column stops growing at 440 px so the cards beside
+   it keep their own width. */
 .vault-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 350px);
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
   align-items: start;
   gap: var(--space-4);
   min-width: 0;
@@ -267,9 +273,21 @@
 
 /* ── Unified Vault Detail Panel ────────────────────────────────────────── */
 
+/* As tall as its content needs, which is as far down the page as the list
+   beside it goes. That is what was asked for: the panel should be as tall as
+   the mod page is long, so that all of it fits. Nothing here scrolls on its
+   own any more.
+
+   It used to be `position: sticky` under `max-height: calc(100vh - ...)`, and
+   the two together were worse than either. `100vh` is the window, but the
+   thing that scrolls is `.content`, which is the window minus the shell's
+   header and its status bar -- so the panel was always taller than the space
+   it had, and the part hanging off the bottom was the action row. Sticky then
+   made that permanent: a box taller than the scrollport has its top pinned as
+   soon as you scroll, so the bottom of it cannot be reached at all. The
+   description scrolling inside its own little window was the visible symptom;
+   the buttons under it being unreachable was the other half. */
 .vault-detail-panel {
-  position: sticky;
-  top: 0;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--color-border);
@@ -315,6 +333,10 @@
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-3);
+  /* Takes what the preview leaves, and may shrink below its content so the
+     description's own scroll is the one that runs. */
+  flex: 1;
+  min-height: 0;
 }
 
 .vault-detail-header {
@@ -424,6 +446,10 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* The one part of the panel that grows: everything else is a line or two of
+     known length, and this is the part people came to read. */
+  flex: 1;
+  min-height: 0;
 }
 
 .vault-detail-description h3 {
@@ -440,15 +466,24 @@
   color: var(--color-muted);
   font-size: 12.5px;
   line-height: 1.45;
-  max-height: 90px;
-  overflow-y: auto;
+  /* Six lines was the cap, then the panel's leftover room behind a scrollbar.
+     It is the whole description now: the panel grows to hold it. */
+  min-height: 88px;
   word-break: break-word;
+  /* Authors lay their descriptions out in lines -- a feature list, a
+     changelog, a "requires:" block -- and every one of those newlines is in
+     the string the vault hands over. Collapsing them ran the whole thing
+     together as one paragraph, which is what "line breaks don't work" was.
+     The mod vault's own description already did this; the maps vault and the
+     installed-mods panel, which draw a plain paragraph instead, did not. */
+  white-space: pre-wrap;
 }
 
 /* ── Action Footer ── */
 .vault-detail-actions {
   display: flex;
   flex-wrap: wrap;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 6px;

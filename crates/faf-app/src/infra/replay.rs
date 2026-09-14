@@ -1776,6 +1776,51 @@ fn local_teams(header: &Value) -> Vec<LocalReplayTeam> {
         .unwrap_or_default()
 }
 
+/// The teams as the replay body has them, which is the seating the game was
+/// played with.
+///
+/// Civilian armies are dropped: every map has one or two of them, they are on
+/// team 1 with nobody in particular, and they are not players. Everything else
+/// is kept, AI included, because an army that was in the game belongs in the
+/// list of who was in the game. Teams come out in the engine's own numbering,
+/// and the players inside one keep their slot order.
+/// The lineup of a replay, from the armies the engine loaded.
+///
+/// `mission` is a co-op game, where the armies with no client behind them are
+/// the script's and not players. Everywhere else they are the AI somebody put
+/// in the lobby, which is a participant: a 4v4 against four AI is a game of
+/// eight, and the vault, which only knows accounts, is the one that has to
+/// show it as a game of four.
+fn body_teams(armies: &[LocalBodyArmy], mission: bool) -> Vec<LocalReplayTeam> {
+    let mut teams: Vec<LocalReplayTeam> = Vec::new();
+    for army in armies
+        .iter()
+        .filter(|army| !army.civilian && !(mission && army.computer))
+    {
+        let key = army
+            .team
+            .map(|team| team.to_string())
+            .unwrap_or_else(|| "1".to_string());
+        let player = LocalReplayPlayer {
+            name: army.name.clone(),
+            faction: army.faction,
+            rating: army.rating,
+        };
+        match teams.iter_mut().find(|team| team.team == key) {
+            Some(team) => team.players.push(player),
+            None => teams.push(LocalReplayTeam {
+                team: key,
+                players: vec![player],
+            }),
+        }
+    }
+    teams.sort_by(|left, right| {
+        let number = |team: &LocalReplayTeam| team.team.parse::<i32>().unwrap_or(i32::MAX);
+        number(left).cmp(&number(right))
+    });
+    teams
+}
+
 fn local_sim_mods(header: &Value) -> Vec<String> {
     header
         .get("sim_mods")
@@ -1806,8 +1851,40 @@ const LOCAL_REPLAY_BODY_READ_BYTES: usize = 4 * 1024 * 1024;
 #[derive(Default)]
 struct LocalBodyInfo {
     player_stats: HashMap<String, (Option<i32>, Option<i32>)>,
+    /// The armies as the engine loaded them, in slot order: `(team, name)`.
+    ///
+    /// This is the seating the game was actually played with, which is not
+    /// what the `.fafreplay` envelope says. The envelope carries the lobby
+    /// listing as it stood when whoever recorded the file sent the launch, so
+    /// a player who joined late is missing from it and a player who switched
+    /// team is in the old one -- 1v4 and 4v2 lineups for games that were 4v4,
+    /// which is what "not all players show up" looked like. Observers are not
+    /// armies and so are not here, and neither is the neutral civilian army,
+    /// which is filtered out where this is read.
+    armies: Vec<LocalBodyArmy>,
     map_name: Option<String>,
     game_version: Option<i32>,
+}
+
+/// One army of the replay body's army table.
+struct LocalBodyArmy {
+    name: String,
+    /// The engine's team number. 1 is "no team" (free-for-all, and the
+    /// civilian armies); a team game numbers its sides from 2.
+    team: Option<i32>,
+    /// `Civilian` in the army table: the map's neutral armies, never a player.
+    civilian: bool,
+    /// No client behind this army: the engine writes `255` for the army's
+    /// source when nobody was connected to it.
+    ///
+    /// In a skirmish that is an AI somebody added to the lobby, and it belongs
+    /// in the lineup -- a 4v4 against four AI is a game of eight. In a co-op
+    /// mission it is the mission's own script: `Order`, `QAI`, `Loyalist`,
+    /// `UEF`, `Eris`. Those are the campaign's antagonists, not players, and
+    /// listing them turned a solo mission into a five player game.
+    computer: bool,
+    faction: Option<i32>,
+    rating: Option<i32>,
 }
 
 fn extract_map_folder(path: &str) -> String {
@@ -1939,9 +2016,33 @@ fn read_replay_body_prefix_limit(mut reader: impl Read, limit: usize) -> Vec<u8>
 fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
     let mut cursor = Cursor::new(body);
     let game_version = game_version_from_string(replay_string(&mut cursor).as_deref());
-    let _newline = replay_string(&mut cursor);
+    // Two fixed-width fields, not strings. `faf-scfa-replay-parser` reads them
+    // as `read(3)` and `read(4)`, and so does this module's own
+    // `parse_detailed_info_from_body`; only this function read them as
+    // NUL-terminated strings. On every replay anyone has produced the bytes
+    // are `\r\n\0` and `\r\n\x1a\0`, so the two agree and the difference never
+    // showed -- verified against 93 files from a real archive and the
+    // reference parser's own 13 fixtures. They agree by coincidence, though:
+    // any other byte there and the string read walks to the next NUL, and
+    // every field after it is read from the wrong offset with no error
+    // anywhere. Read the widths the format actually specifies.
+    if !skip_replay_bytes(&mut cursor, 3) {
+        return LocalBodyInfo {
+            game_version,
+            ..Default::default()
+        };
+    }
     let raw_map = replay_string(&mut cursor);
-    let _garbage = replay_string(&mut cursor);
+    if !skip_replay_bytes(&mut cursor, 4) {
+        return LocalBodyInfo {
+            game_version,
+            map_name: raw_map
+                .as_deref()
+                .map(extract_map_folder)
+                .filter(|m| !m.is_empty()),
+            ..Default::default()
+        };
+    }
     let Some(_) = replay_u32(&mut cursor) else {
         return LocalBodyInfo {
             game_version,
@@ -1980,52 +2081,61 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
 
     let Some(source_count) = replay_u8(&mut cursor) else {
         return LocalBodyInfo {
-            player_stats: HashMap::new(),
             map_name,
             game_version,
+            ..Default::default()
         };
     };
     let mut sources = Vec::with_capacity(source_count as usize);
     for _ in 0..source_count {
         let Some(name) = replay_string(&mut cursor) else {
             return LocalBodyInfo {
-                player_stats: HashMap::new(),
                 map_name,
                 game_version,
+                ..Default::default()
             };
         };
         let Some(_) = replay_u32(&mut cursor) else {
             return LocalBodyInfo {
-                player_stats: HashMap::new(),
                 map_name,
                 game_version,
+                ..Default::default()
             };
         };
         sources.push(name);
     }
     if replay_u8(&mut cursor).is_none() {
         return LocalBodyInfo {
-            player_stats: HashMap::new(),
             map_name,
             game_version,
+            ..Default::default()
         };
     }
     let Some(army_count) = replay_u8(&mut cursor) else {
         return LocalBodyInfo {
-            player_stats: HashMap::new(),
             map_name,
             game_version,
+            ..Default::default()
         };
     };
     let mut stats = HashMap::new();
+    let mut armies = Vec::new();
+    // Whether the army table was read to the end. A file that stops in the
+    // middle of it still yields the armies before the cut, and those are a
+    // believable-looking lineup that is missing players: exactly the thing
+    // this reads the table to avoid. A partial table answers nothing.
+    let mut armies_complete = true;
     for _ in 0..army_count {
         if replay_u32(&mut cursor).is_none() {
+            armies_complete = false;
             break;
         }
         let Some(Value::Object(data)) = parse_replay_lua(&mut cursor, 0) else {
+            armies_complete = false;
             break;
         };
         let Some(source) = replay_u8(&mut cursor) else {
+            armies_complete = false;
             break;
         };
         if source != u8::MAX {
@@ -2039,10 +2149,22 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
         let Some(name) = name else { continue };
         let faction = data.get("Faction").and_then(replay_i32_value);
         let rating = replay_displayed_rating(&data);
+        armies.push(LocalBodyArmy {
+            name: name.clone(),
+            team: data.get("Team").and_then(replay_i32_value),
+            civilian: data
+                .get("Civilian")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            computer: source == u8::MAX,
+            faction,
+            rating,
+        });
         stats.insert(name, (faction, rating));
     }
     LocalBodyInfo {
         player_stats: stats,
+        armies: if armies_complete { armies } else { Vec::new() },
         map_name,
         game_version,
     }
@@ -2717,6 +2839,7 @@ fn empty_local_replay(
         title,
         recorder: String::new(),
         start_time: None,
+        duration_seconds: None,
         modified_time: unix_seconds(modified),
         file_size_bytes: file_size.min(u32::MAX as u64) as u32,
         num_players: 0,
@@ -2774,12 +2897,25 @@ async fn read_local_metadata(
     let body_info = local_body_player_stats(&body, compression);
     let playable = playable_body(body_info.as_ref());
     let body_info = body_info.unwrap_or_default();
-    let mut teams = local_teams(&header);
-    for team in &mut teams {
-        for player in &mut team.players {
-            if let Some((faction, rating)) = body_info.player_stats.get(&player.name) {
-                player.faction = *faction;
-                player.rating = *rating;
+    // A co-op mission, where the armies with no client behind them belong to
+    // the campaign rather than to anybody playing: see [`body_teams`].
+    let mission = header
+        .get("featured_mod")
+        .and_then(Value::as_str)
+        .is_some_and(|featured| featured.eq_ignore_ascii_case("coop"));
+    // The body's own army table first, and the envelope only when there is no
+    // body left to read: see `LocalBodyInfo::armies` for why the envelope
+    // cannot be trusted with this.
+    let mut teams = body_teams(&body_info.armies, mission);
+    let teams_from_body = !teams.is_empty();
+    if teams.is_empty() {
+        teams = local_teams(&header);
+        for team in &mut teams {
+            for player in &mut team.players {
+                if let Some((faction, rating)) = body_info.player_stats.get(&player.name) {
+                    player.faction = *faction;
+                    player.rating = *rating;
+                }
             }
         }
     }
@@ -2807,6 +2943,19 @@ async fn read_local_metadata(
         .and_then(Value::as_f64)
         .filter(|value| *value > 0.0)
         .map(|value| value.min(u32::MAX as f64).round() as u32);
+
+    // Both ends or nothing. A recording interrupted before the game ended has
+    // no `game_end`, and one this client wrote before the recorder learned the
+    // launch time has the two equal; neither is a duration, and a confident
+    // "0m 00s" is worse than saying nothing.
+    let duration_seconds = header
+        .get("game_end")
+        .and_then(Value::as_f64)
+        .filter(|end| *end > 0.0)
+        .zip(start_time.map(f64::from))
+        .map(|(end, start)| end - start)
+        .filter(|seconds| *seconds > 0.0)
+        .map(|seconds| seconds.min(f64::from(i32::MAX)).round() as i32);
 
     let header_map = header
         .get("mapname")
@@ -2852,14 +3001,22 @@ async fn read_local_metadata(
             .unwrap_or("")
             .to_string(),
         start_time,
+        duration_seconds,
         modified_time: unix_seconds(modified),
         file_size_bytes: file_size.min(u32::MAX as u64) as u32,
-        num_players: header
-            .get("num_players")
-            .and_then(Value::as_i64)
-            .and_then(|value| i32::try_from(value).ok())
-            .filter(|value| *value >= 0)
-            .unwrap_or(team_player_count),
+        // The envelope's count is the lobby listing's count, and it is wrong
+        // in exactly the games whose teams it also has wrong. When the body
+        // named the armies, they are what was in the game.
+        num_players: if teams_from_body {
+            team_player_count
+        } else {
+            header
+                .get("num_players")
+                .and_then(Value::as_i64)
+                .and_then(|value| i32::try_from(value).ok())
+                .filter(|value| *value >= 0)
+                .unwrap_or(team_player_count)
+        },
         teams,
         average_rating,
         sim_mods: local_sim_mods(&header),
@@ -4362,10 +4519,18 @@ mod tests {
         bytes
     }
 
-    fn lua_army() -> Vec<u8> {
+    /// One army of the replay body's table, the way the engine writes it:
+    /// the player's name, their seat's team, and the TrueSkill pair the
+    /// displayed rating is derived from.
+    fn lua_army_named(name: &str, team: f32, civilian: bool) -> Vec<u8> {
         let mut bytes = vec![4];
         bytes.extend(lua_string("PlayerName"));
-        bytes.extend(lua_string("TestPlayer"));
+        bytes.extend(lua_string(name));
+        bytes.extend(lua_string("Team"));
+        bytes.extend(lua_number(team));
+        bytes.extend(lua_string("Civilian"));
+        bytes.push(3);
+        bytes.push(u8::from(civilian));
         bytes.extend(lua_string("Faction"));
         bytes.extend(lua_number(1.0));
         bytes.extend(lua_string("MEAN"));
@@ -4377,11 +4542,21 @@ mod tests {
     }
 
     fn local_body_with_army() -> Vec<u8> {
+        // Four bytes, as every real replay has here and as the reference
+        // parser reads. This fixture used to carry a bare `\0`, which only
+        // parsed because the reader looked for a NUL instead of a width.
+        local_body_with_army_after(b"\r\n\x1a\0")
+    }
+
+    /// [`local_body_with_army`] with the four-byte field after the map string
+    /// filled by the caller, so a test can put bytes there that are not a
+    /// NUL-terminated string.
+    fn local_body_with_army_after(gap: &[u8]) -> Vec<u8> {
         let mut body = Vec::new();
         body.extend_from_slice(b"Supreme Commander v1.50.3764\0");
         body.extend_from_slice(b"\r\n\0");
         body.extend_from_slice(b"Replay v1.9\r\n/maps/SCMP_009/SCMP_009.scmap\0");
-        body.extend_from_slice(b"\0");
+        body.extend_from_slice(gap);
         body.extend_from_slice(&0_u32.to_le_bytes());
         body.extend_from_slice(&[4, 5]);
         body.extend_from_slice(&0_u32.to_le_bytes());
@@ -4390,10 +4565,19 @@ mod tests {
         body.extend_from_slice(b"TestPlayer\0");
         body.extend_from_slice(&u32::MAX.to_le_bytes());
         body.push(0);
-        body.push(1);
-        body.extend_from_slice(&1_u32.to_le_bytes());
-        body.extend(lua_army());
-        body.extend_from_slice(&[0, 0]);
+        // Three armies: the two players the envelope also knows about, on the
+        // two teams the engine seated them in, and the neutral civilian army
+        // every map carries and no listing should show.
+        body.push(3);
+        for army in [
+            lua_army_named("TestPlayer", 2.0, false),
+            lua_army_named("Guest", 3.0, false),
+            lua_army_named("civilian", 1.0, true),
+        ] {
+            body.extend_from_slice(&1_u32.to_le_bytes());
+            body.extend(army);
+            body.extend_from_slice(&[0, 0]);
+        }
         body
     }
 
@@ -4421,6 +4605,31 @@ mod tests {
             Some(&(Some(1), Some(1200)))
         );
         assert_eq!(stats.map_name.as_deref(), Some("SCMP_009"));
+    }
+
+    /// The four bytes after the map string are a width, not a string.
+    ///
+    /// `faf-scfa-replay-parser` reads them with `read(4)`, and so does
+    /// [`parse_detailed_info_from_body`]; the listing's own reader used to look
+    /// for a NUL instead. Every replay anyone has produced carries
+    /// `\r\n\x1a\0` there, so the two agreed on all 93 files of a real archive
+    /// and on the reference parser's own fixtures. They agree by coincidence.
+    /// With no NUL in those four bytes the string read runs on into the army
+    /// table, and every field after it is taken from the wrong offset: no
+    /// error, no empty list, just a roster that is quietly somebody else's.
+    #[test]
+    fn the_field_after_the_map_string_is_four_bytes_wide_not_a_string() {
+        let body = local_body_with_army_after(&[0x01, 0x02, 0x03, 0x04]);
+        let info = parse_local_body_info(&body);
+
+        assert_eq!(info.map_name.as_deref(), Some("SCMP_009"));
+        assert_eq!(
+            info.armies
+                .iter()
+                .map(|army| army.name.as_str())
+                .collect::<Vec<_>>(),
+            ["TestPlayer", "Guest", "civilian"]
+        );
     }
 
     #[test]
@@ -4503,8 +4712,24 @@ mod tests {
         // `mapname` and is what the archive shows when both are there.
         assert_eq!(complete.map, "SCMP_009");
         assert_eq!(complete.recorder, "host");
+        // From the body's army table, not the envelope's listing: two players
+        // on two teams, and the map's civilian army left out of both.
         assert_eq!(complete.num_players, 2);
         assert_eq!(complete.teams.len(), 2);
+        assert_eq!(
+            complete
+                .teams
+                .iter()
+                .map(|team| (
+                    team.team.as_str(),
+                    team.players
+                        .iter()
+                        .map(|player| player.name.as_str())
+                        .collect::<Vec<_>>()
+                ))
+                .collect::<Vec<_>>(),
+            [("2", vec!["TestPlayer"]), ("3", vec!["Guest"])]
+        );
         assert_eq!(complete.sim_mods, vec!["UI Party"]);
         assert_eq!(complete.start_time, Some(1_700_000_000));
 
@@ -4593,6 +4818,7 @@ mod tests {
         body.extend_from_slice(b"Supreme Commander v1.50.3836\0");
         body.extend_from_slice(b"\r\n\0");
         body.extend_from_slice(b"Replay v1.9\r\n/maps/SCCA_Coop_A03.v0023/SCCA_Coop_A03.scmap\0");
+        body.extend_from_slice(b"\r\n\x1a\0");
         // Enough incompressible filler that the compressed stream runs well
         // past the range this fetches, so the truncated case below is the real
         // one rather than an accident of a tiny fixture.
@@ -4672,15 +4898,17 @@ mod tests {
         };
         // The stream, not a stand-in for one: the listing now asks whether a
         // file still holds a game, and a body that names none is disowned as
-        // damaged. Three strings is what every real one opens with.
+        // damaged. Two strings with a fixed-width field after each is what
+        // every real one opens with, and the map path belongs to the second
+        // string rather than being one of its own.
         let mut body = Vec::new();
-        body.extend_from_slice(b"Supreme Commander v1.5.3599 ");
-        body.extend_from_slice(
-            b"Replay v1.9
- ",
-        );
-        body.extend_from_slice(b"/maps/scmp_009/scmp_009_scenario.lua ");
-        let file = crate::infra::replay_recorder::build_fafreplay(&metadata, body, true).unwrap();
+        body.extend_from_slice(b"Supreme Commander v1.5.3599\0");
+        body.extend_from_slice(b"\r\n\0");
+        body.extend_from_slice(b"Replay v1.9\r\n/maps/scmp_009/scmp_009_scenario.lua\0");
+        body.extend_from_slice(b"\r\n\x1a\0");
+        let file =
+            crate::infra::replay_recorder::build_fafreplay(&metadata, body, true, 1_788_000_000.0)
+                .unwrap();
         let path = dir.join("27619486-Nory.fafreplay");
         tokio::fs::write(&path, &file).await.unwrap();
 
@@ -5539,5 +5767,97 @@ mod tests {
     fn an_empty_message_is_not_a_message() {
         let stream = delivered("   ", "Vindex", 1.0, &[], &[]);
         assert!(extract(&stream).is_empty());
+    }
+
+    fn army(name: &str, team: i32, civilian: bool) -> LocalBodyArmy {
+        LocalBodyArmy {
+            name: name.to_string(),
+            team: Some(team),
+            civilian,
+            computer: false,
+            faction: Some(2),
+            rating: Some(1_500),
+        }
+    }
+
+    /// An army with no client behind it: an AI in a skirmish, the mission's
+    /// own script in a co-op game.
+    fn computer(name: &str, team: i32) -> LocalBodyArmy {
+        LocalBodyArmy {
+            computer: true,
+            ..army(name, team, false)
+        }
+    }
+
+    #[test]
+    fn the_replay_body_seats_the_players_the_envelope_gets_wrong() {
+        // Taken from a real file: the envelope listed five of the eight who
+        // played, split 3-2, because that is how the lobby stood when the
+        // recorder sent its launch. The armies are the game.
+        let teams = body_teams(
+            &[
+                army("SpeculariiNoob", 3, false),
+                army("Seraphim-Noob", 2, false),
+                army("hard_not_to_fart", 3, false),
+                army("CumCitron", 2, false),
+                army("civilian", 1, true),
+            ],
+            false,
+        );
+
+        assert_eq!(
+            teams
+                .iter()
+                .map(|team| (
+                    team.team.as_str(),
+                    team.players
+                        .iter()
+                        .map(|player| player.name.as_str())
+                        .collect::<Vec<_>>()
+                ))
+                .collect::<Vec<_>>(),
+            [
+                ("2", vec!["Seraphim-Noob", "CumCitron"]),
+                ("3", vec!["SpeculariiNoob", "hard_not_to_fart"]),
+            ]
+        );
+        assert_eq!(teams[0].players[0].rating, Some(1_500));
+        assert_eq!(teams[0].players[0].faction, Some(2));
+    }
+
+    #[test]
+    fn a_body_with_nothing_in_it_leaves_the_envelope_to_answer() {
+        assert!(body_teams(&[], false).is_empty());
+        assert!(body_teams(&[army("civilian", 1, true)], false).is_empty());
+    }
+
+    /// A co-op mission's armies are the campaign's, and the campaign is not a
+    /// player. Taken from a real file: one player, and `Order`, `QAI`,
+    /// `Loyalist` and `OrderNeutral` seated beside them, which listed a solo
+    /// mission as a game of five.
+    #[test]
+    fn a_missions_own_armies_are_not_players() {
+        let armies = [
+            army("Seraphim-Noob", 1, false),
+            computer("Order", 1),
+            computer("QAI", 1),
+            computer("Loyalist", 1),
+            computer("OrderNeutral", 1),
+        ];
+
+        let mission = body_teams(&armies, true);
+        assert_eq!(mission.len(), 1);
+        assert_eq!(
+            mission[0]
+                .players
+                .iter()
+                .map(|player| player.name.as_str())
+                .collect::<Vec<_>>(),
+            ["Seraphim-Noob"]
+        );
+
+        // The same armies in a skirmish are the AI somebody added to the
+        // lobby, and those are the other half of the game.
+        assert_eq!(body_teams(&armies, false)[0].players.len(), 5);
     }
 }

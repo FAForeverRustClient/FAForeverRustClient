@@ -86,6 +86,11 @@ pub struct ServiceCtx {
     pub reporting_generation: LatestRequest,
     pub replay_vault_generation: LatestRequest,
     pub replay_local_generation: LatestRequest,
+    /// The in-flight replay launch, so the overlay's Cancel button has
+    /// something to press. Same shape as `auth_cancellation`, and for the same
+    /// reason: dropping the future is the only thing that actually stops work
+    /// that is several awaits deep inside a port.
+    pub replay_cancellation: std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>,
     pub map_generator_active: SingleFlight,
     pub tutorial_launch_active: SingleFlight,
     /// The changelog tab re-mounts on every visit and asks for the index each
@@ -329,6 +334,7 @@ impl App {
             reporting_generation: LatestRequest::default(),
             replay_vault_generation: LatestRequest::default(),
             replay_local_generation: LatestRequest::default(),
+            replay_cancellation: std::sync::Mutex::new(None),
             map_generator_active: SingleFlight::default(),
             tutorial_launch_active: SingleFlight::default(),
             changelog_active: SingleFlight::default(),
