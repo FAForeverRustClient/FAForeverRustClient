@@ -138,7 +138,7 @@ export function MatchmakerQueueCard({
         <span className="matchmaker-queue-facts">
           <span><Icon name="hourglass" size={14} /> {formatClockDuration(secondsUntilPop)}</span>
           <span className="matchmaker-queue-queued">
-            <Icon name="users" size={14} /> {queue.numPlayers} queued
+            <Icon name="users" size={14} /> {t("lobby.matchmaker.queuedCount", { count: queue.numPlayers })}
             {buckets.length > 0 && (
               // Shown while the pointer is anywhere on the card, and anchored
               // here because this is the count it breaks down. Hover-only and
@@ -171,7 +171,7 @@ export function MatchmakerQueueCard({
               </span>
             )}
           </span>
-          <span><Icon name="play" size={14} /> {activeGames} active</span>
+          <span><Icon name="play" size={14} /> {t("lobby.matchmaker.activeCount", { count: activeGames })}</span>
           {inRange !== null && (
             <span title={t("lobby.matchmaker.inRangeHint")}>
               <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange })}
