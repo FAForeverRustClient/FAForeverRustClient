@@ -28,6 +28,13 @@ import {
   mergeGeneratorRows,
 } from "../maps/generatedMapDescription";
 import { openPlayerCard } from "../player-card/playerCardActions";
+import {
+  hoverCloseDelay,
+  hoverOpenDelay,
+  hoverPanelsEnabled,
+  noteHoverPanelClosed,
+  noteHoverPanelOpen,
+} from "../../shared/hoverPanels";
 import { friendKeys, friendsInGame } from "./friendPresence";
 import { formatNumber, t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -240,6 +247,9 @@ type ActiveLineup = {
   position: TooltipPosition;
 } | null;
 
+/** One overlay exists at a time, so one id is enough. See `shared/hoverPanels`. */
+const LINEUP_PANEL_ID = "lobby-game-lineup";
+
 let activeLineup: ActiveLineup = null;
 const lineupListeners = new Set<() => void>();
 
@@ -256,7 +266,9 @@ export function getActiveLineupSnapshot() {
 
 export function hideGlobalLineup() {
   cancelLineupHide();
+  cancelLineupShow();
   if (activeLineup !== null) {
+    noteHoverPanelClosed(LINEUP_PANEL_ID);
     activeLineup = null;
     for (const listener of lineupListeners) {
       listener();
@@ -267,21 +279,19 @@ export function hideGlobalLineup() {
 /**
  * How long the overlay survives the pointer leaving it.
  *
- * The overlay is interactive now -- the player names in it open profile cards
- * -- and reaching it means crossing the gap between the row and the overlay,
- * which is a `mouseleave` with nothing under the pointer. Closing on that
- * would make the overlay unreachable, so leaving starts a timer instead and
- * arriving anywhere that counts cancels it.
+ * The overlay is interactive -- the player names in it open profile cards --
+ * and reaching it means crossing the gap between the row and the overlay, which
+ * is a `mouseleave` with nothing under the pointer. Closing on that would make
+ * the overlay unreachable, so leaving starts a timer instead and arriving
+ * anywhere that counts cancels it.
  *
- * A second was the first guess and it was far too long: scanning down the list
- * the overlay trails the pointer by a visible beat, which reads as the client
- * lagging rather than as a grace period. A sixth of a second still covers the
- * six-pixel gap -- a pointer crosses that in well under 50ms -- while being
- * short enough that leaving looks like leaving.
+ * A preference rather than a constant since #264: a second was too long and
+ * scanning the list left the overlay trailing the pointer, a sixth of a second
+ * suits people who want to reach the overlay, and neither suits everybody. See
+ * `shared/hoverPanels`, which also owns the delay before it opens.
  */
-const LINEUP_GRACE_MS = 160;
-
 let lineupHideTimer: ReturnType<typeof setTimeout> | null = null;
+let lineupShowTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Stop a pending close: the pointer arrived somewhere that keeps it open. */
 export function cancelLineupHide() {
@@ -294,7 +304,15 @@ export function cancelLineupHide() {
 /** The pointer left. Close, unless it comes back within the grace period. */
 export function hideGlobalLineupSoon() {
   cancelLineupHide();
-  lineupHideTimer = setTimeout(hideGlobalLineup, LINEUP_GRACE_MS);
+  lineupHideTimer = setTimeout(hideGlobalLineup, hoverCloseDelay());
+}
+
+/** Drop a pending open: the pointer left before the delay was up. */
+function cancelLineupShow() {
+  if (lineupShowTimer !== null) {
+    clearTimeout(lineupShowTimer);
+    lineupShowTimer = null;
+  }
 }
 
 /**
@@ -326,6 +344,7 @@ function installLineupGuards() {
 
 export function setGlobalLineup(gameId: number, position: TooltipPosition) {
   installLineupGuards();
+  noteHoverPanelOpen(LINEUP_PANEL_ID);
   activeLineup = { gameId, position };
   for (const listener of lineupListeners) {
     listener();
@@ -367,29 +386,53 @@ function useGameLineupPosition(gameId: number) {
   const currentActive = useSyncExternalStore(subscribeLineup, getActiveLineupSnapshot, () => null);
   const tooltipPosition = currentActive?.gameId === gameId ? currentActive.position : null;
 
-  const showLineup = (target: HTMLElement) => {
+  /**
+   * `immediate` is the keyboard path. A delay exists because a pointer crosses
+   * rows it did not mean to ask about; tabbing onto a row is never accidental,
+   * and waiting half a second after a deliberate keypress reads as a client
+   * that has stopped responding.
+   */
+  const showLineup = (target: HTMLElement, immediate = false) => {
+    if (!hoverPanelsEnabled()) return;
     // Moving straight from one row to another: the close the first row asked
     // for must not land on the overlay the second one is opening.
     cancelLineupHide();
-    const bounds = target.getBoundingClientRect();
-    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
-    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
-    const tooltipWidth = Math.min(430, viewportWidth - 32);
-    const halfWidth = tooltipWidth / 2;
-    const left = Math.min(
-      viewportWidth - 16 - halfWidth,
-      Math.max(16 + halfWidth, bounds.left + bounds.width / 2),
-    );
-    const hasRoomBelow = viewportHeight - bounds.bottom >= 260;
-    const position = hasRoomBelow
-      ? { left, top: bounds.bottom + 6 }
-      : { left, bottom: viewportHeight - bounds.top + 6 };
-    setGlobalLineup(gameId, position);
+    cancelLineupShow();
+    // Measured when the delay is up rather than now: the list scrolls and
+    // reflows under a resting pointer, and a rectangle half a second old is a
+    // rectangle the row has moved out of.
+    const open = () => {
+      lineupShowTimer = null;
+      const bounds = target.getBoundingClientRect();
+      const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+      const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+      const tooltipWidth = Math.min(430, viewportWidth - 32);
+      const halfWidth = tooltipWidth / 2;
+      const left = Math.min(
+        viewportWidth - 16 - halfWidth,
+        Math.max(16 + halfWidth, bounds.left + bounds.width / 2),
+      );
+      const hasRoomBelow = viewportHeight - bounds.bottom >= 260;
+      const position = hasRoomBelow
+        ? { left, top: bounds.bottom + 6 }
+        : { left, bottom: viewportHeight - bounds.top + 6 };
+      setGlobalLineup(gameId, position);
+    };
+    const delay = immediate ? 0 : hoverOpenDelay();
+    if (delay <= 0) {
+      open();
+      return;
+    }
+    lineupShowTimer = setTimeout(open, delay);
   };
 
   // Leaving starts the grace period rather than closing: the overlay is
   // reachable now, and the pointer has to cross a gap to get to it.
   const hideLineup = () => {
+    // Also when nothing is open yet: the pointer passing over a row starts the
+    // open timer, and leaving before it fires has to call it off. That is the
+    // whole point of the delay.
+    cancelLineupShow();
     if (currentActive?.gameId === gameId) {
       hideGlobalLineupSoon();
     }
@@ -722,7 +765,7 @@ export const GameTile = memo(function GameTile({
       }}
       onMouseEnter={(event) => showLineup(event.currentTarget)}
       onMouseLeave={hideLineup}
-      onFocus={(event) => showLineup(event.currentTarget)}
+      onFocus={(event) => showLineup(event.currentTarget, true)}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) hideLineup();
       }}
@@ -858,7 +901,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
         }}
         onMouseEnter={(event) => showLineup(event.currentTarget)}
         onMouseLeave={hideLineup}
-        onFocus={(event) => showLineup(event.currentTarget)}
+        onFocus={(event) => showLineup(event.currentTarget, true)}
         onBlur={hideLineup}
         aria-describedby={tooltipPosition ? tooltipId : undefined}
       >
