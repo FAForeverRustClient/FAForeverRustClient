@@ -1784,9 +1784,19 @@ fn local_teams(header: &Value) -> Vec<LocalReplayTeam> {
 /// is kept, AI included, because an army that was in the game belongs in the
 /// list of who was in the game. Teams come out in the engine's own numbering,
 /// and the players inside one keep their slot order.
-fn body_teams(armies: &[LocalBodyArmy]) -> Vec<LocalReplayTeam> {
+/// The lineup of a replay, from the armies the engine loaded.
+///
+/// `mission` is a co-op game, where the armies with no client behind them are
+/// the script's and not players. Everywhere else they are the AI somebody put
+/// in the lobby, which is a participant: a 4v4 against four AI is a game of
+/// eight, and the vault, which only knows accounts, is the one that has to
+/// show it as a game of four.
+fn body_teams(armies: &[LocalBodyArmy], mission: bool) -> Vec<LocalReplayTeam> {
     let mut teams: Vec<LocalReplayTeam> = Vec::new();
-    for army in armies.iter().filter(|army| !army.civilian) {
+    for army in armies
+        .iter()
+        .filter(|army| !army.civilian && !(mission && army.computer))
+    {
         let key = army
             .team
             .map(|team| team.to_string())
@@ -1864,6 +1874,15 @@ struct LocalBodyArmy {
     team: Option<i32>,
     /// `Civilian` in the army table: the map's neutral armies, never a player.
     civilian: bool,
+    /// No client behind this army: the engine writes `255` for the army's
+    /// source when nobody was connected to it.
+    ///
+    /// In a skirmish that is an AI somebody added to the lobby, and it belongs
+    /// in the lineup -- a 4v4 against four AI is a game of eight. In a co-op
+    /// mission it is the mission's own script: `Order`, `QAI`, `Loyalist`,
+    /// `UEF`, `Eris`. Those are the campaign's antagonists, not players, and
+    /// listing them turned a solo mission into a five player game.
+    computer: bool,
     faction: Option<i32>,
     rating: Option<i32>,
 }
@@ -2137,6 +2156,7 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
                 .get("Civilian")
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
+            computer: source == u8::MAX,
             faction,
             rating,
         });
@@ -2877,10 +2897,16 @@ async fn read_local_metadata(
     let body_info = local_body_player_stats(&body, compression);
     let playable = playable_body(body_info.as_ref());
     let body_info = body_info.unwrap_or_default();
+    // A co-op mission, where the armies with no client behind them belong to
+    // the campaign rather than to anybody playing: see [`body_teams`].
+    let mission = header
+        .get("featured_mod")
+        .and_then(Value::as_str)
+        .is_some_and(|featured| featured.eq_ignore_ascii_case("coop"));
     // The body's own army table first, and the envelope only when there is no
     // body left to read: see `LocalBodyInfo::armies` for why the envelope
     // cannot be trusted with this.
-    let mut teams = body_teams(&body_info.armies);
+    let mut teams = body_teams(&body_info.armies, mission);
     let teams_from_body = !teams.is_empty();
     if teams.is_empty() {
         teams = local_teams(&header);
@@ -5748,8 +5774,18 @@ mod tests {
             name: name.to_string(),
             team: Some(team),
             civilian,
+            computer: false,
             faction: Some(2),
             rating: Some(1_500),
+        }
+    }
+
+    /// An army with no client behind it: an AI in a skirmish, the mission's
+    /// own script in a co-op game.
+    fn computer(name: &str, team: i32) -> LocalBodyArmy {
+        LocalBodyArmy {
+            computer: true,
+            ..army(name, team, false)
         }
     }
 
@@ -5758,13 +5794,16 @@ mod tests {
         // Taken from a real file: the envelope listed five of the eight who
         // played, split 3-2, because that is how the lobby stood when the
         // recorder sent its launch. The armies are the game.
-        let teams = body_teams(&[
-            army("SpeculariiNoob", 3, false),
-            army("Seraphim-Noob", 2, false),
-            army("hard_not_to_fart", 3, false),
-            army("CumCitron", 2, false),
-            army("civilian", 1, true),
-        ]);
+        let teams = body_teams(
+            &[
+                army("SpeculariiNoob", 3, false),
+                army("Seraphim-Noob", 2, false),
+                army("hard_not_to_fart", 3, false),
+                army("CumCitron", 2, false),
+                army("civilian", 1, true),
+            ],
+            false,
+        );
 
         assert_eq!(
             teams
@@ -5788,7 +5827,37 @@ mod tests {
 
     #[test]
     fn a_body_with_nothing_in_it_leaves_the_envelope_to_answer() {
-        assert!(body_teams(&[]).is_empty());
-        assert!(body_teams(&[army("civilian", 1, true)]).is_empty());
+        assert!(body_teams(&[], false).is_empty());
+        assert!(body_teams(&[army("civilian", 1, true)], false).is_empty());
+    }
+
+    /// A co-op mission's armies are the campaign's, and the campaign is not a
+    /// player. Taken from a real file: one player, and `Order`, `QAI`,
+    /// `Loyalist` and `OrderNeutral` seated beside them, which listed a solo
+    /// mission as a game of five.
+    #[test]
+    fn a_missions_own_armies_are_not_players() {
+        let armies = [
+            army("Seraphim-Noob", 1, false),
+            computer("Order", 1),
+            computer("QAI", 1),
+            computer("Loyalist", 1),
+            computer("OrderNeutral", 1),
+        ];
+
+        let mission = body_teams(&armies, true);
+        assert_eq!(mission.len(), 1);
+        assert_eq!(
+            mission[0]
+                .players
+                .iter()
+                .map(|player| player.name.as_str())
+                .collect::<Vec<_>>(),
+            ["Seraphim-Noob"]
+        );
+
+        // The same armies in a skirmish are the AI somebody added to the
+        // lobby, and those are the other half of the game.
+        assert_eq!(body_teams(&armies, false)[0].players.len(), 5);
     }
 }
