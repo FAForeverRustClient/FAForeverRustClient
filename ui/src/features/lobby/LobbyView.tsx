@@ -53,6 +53,12 @@ import "./play.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame } from "./joinGame";
 
+/// How often the Galactic War player count is re-asked while the Play tab is
+/// open. A minute: often enough that the number is not stale advice about
+/// whether it is worth starting the other client, rare enough to be one small
+/// request to a gateway that is not FAF's.
+const GALACTIC_WAR_POLL_MS = 60_000;
+
 const connect = () => ipc.send({ kind: "Lobby", command: { type: "connect" } });
 const join = (id: number, password: string | null = null) => joinGame(id, password);
 
@@ -653,6 +659,22 @@ export function LobbyView() {
   useEffect(() => {
     if (hostPrefill !== null) setHostOpen(true);
   }, [hostPrefill]);
+
+  // How many people are in Galactic War, kept current for as long as the Play
+  // tab is the tab being looked at.
+  //
+  // The mode strip prints that number, and it used to be whatever the gateway
+  // said the last time somebody entered the Galactic War panel: an hour old,
+  // or never fetched at all. "It says x players online, I open it and there is
+  // nobody" is what that looks like from outside. Only the statistics are
+  // asked for, not the install check, and only while this tab is mounted: the
+  // gateway is a service outside FAF and this is not a background poller.
+  useEffect(() => {
+    const ask = () => ipc.send({ kind: "GalacticWar", command: { type: "refreshStatistics" } });
+    ask();
+    const timer = setInterval(ask, GALACTIC_WAR_POLL_MS);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleHostCoop = (mission?: CoopMission) => {
     setCoopMissionToHost(mission ?? null);

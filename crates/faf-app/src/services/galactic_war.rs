@@ -19,6 +19,7 @@ use crate::runtime::{EventSink, ServiceCtx};
 pub async fn handle(cmd: GalacticWarCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         GalacticWarCommand::Refresh => refresh(ctx, out).await,
+        GalacticWarCommand::RefreshStatistics => refresh_statistics(ctx, out).await,
         GalacticWarCommand::Install => {
             install(ctx, out).await;
         }
