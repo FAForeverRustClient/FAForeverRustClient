@@ -1,5 +1,5 @@
 import type { LocalReplay } from "../../ipc/bindings";
-import { localGameModeOf, type LocalGameMode } from "./localGameModes";
+import { matchesLocalGameMode, type LocalGameMode } from "./localGameModes";
 
 export type LocalReplaySortField = "date" | "title" | "map" | "players" | "size";
 export type LocalReplayStatusFilter = "all" | LocalReplay["status"];
@@ -11,7 +11,10 @@ export interface LocalReplayQuery {
   replayId: string;
   /** The exact featured mod, as free text: `fafbeta`, `nomads`. */
   mod: string;
-  /** Custom, ladder or co-op, which is a coarser question than `mod`. */
+  /**
+   * Custom, a matchup size, or co-op: a different question from `mod`, and a
+   * question the file answers from its roster rather than from its mod.
+   */
   gameMode: LocalGameMode;
   title: string;
   recorder: string;
@@ -93,7 +96,7 @@ export function filterLocalReplays(
       && (!query.map || contains(replay.map, query.map) || contains(mapDisplayName(replay), query.map))
       && (!replayId || replay.uid !== null && String(replay.uid).includes(replayId))
       && (!query.mod || contains(replay.modName, query.mod))
-      && (!query.gameMode || localGameModeOf(replay.modName) === query.gameMode)
+      && matchesLocalGameMode(replay, query.gameMode)
       && (!query.title || contains(replay.title || replay.fileName, query.title))
       && (!query.recorder || contains(replay.recorder, query.recorder))
       && (!query.simMod || replay.simMods.some((mod) => contains(mod, query.simMod)))
