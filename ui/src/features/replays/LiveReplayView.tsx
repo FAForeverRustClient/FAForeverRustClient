@@ -270,6 +270,7 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           batchSize={LIVE_REPLAY_BATCH_SIZE}
           tracking={tracking}
           onOpen={setOpenId}
+          onPlayerMenu={openPlayerMenu}
           onLoadMore={() => setVisibleCount((current) => current + LIVE_REPLAY_BATCH_SIZE)}
         />
       ) : (
@@ -299,6 +300,7 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           busy={busy}
           tracking={tracking}
           waitSeconds={replayDelayRemaining(openGame, Date.now())}
+          onPlayerMenu={openPlayerMenu}
           onClose={() => setOpenId(null)}
         />
       )}

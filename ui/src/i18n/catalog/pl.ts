@@ -110,7 +110,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "status.connection.connecting": "łączenie",
   "status.connection.connected": "połączono",
   "status.connection.summary": "{service} {state}",
-  "status.connection.heading": "Połączenie {service}",
+  "status.connection.heading": "Stan połączenia {service}",
   "status.reconnect": "Połącz ponownie",
   "status.disconnect": "Rozłącz",
   "status.matchSetup.label": "Przygotowanie gry:",
@@ -651,7 +651,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.view.tab.installed": "Zainstalowane",
   "maps.view.rescan": "Skanuj ponownie",
   "maps.view.clearGenerated": "Usuń wygenerowane",
-  "maps.view.generateMap": "Wygeneruj mapę",
 
   "maps.vault.working": "Przetwarzanie {folder}…",
   "maps.vault.operationFailed": "Operacja na mapie nie powiodła się: {reason}",
@@ -1235,6 +1234,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.roster.draw": "Remis",
   "replays.roster.combinedRating": "Łączny pokazywany ranking",
   "replays.roster.rating": "Ranking",
+  "replays.roster.playerActions": "Akcje dla {name}",
   "replays.roster.score": "Wynik",
   "replays.live.connecting": "Łączenie z trwającymi grami",
   "replays.live.connectingHint": "Lista powtórek pojawi się, gdy strumień poczekalni będzie gotowy.",
@@ -1509,7 +1509,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.starting.cancel": "Anuluj",
   "replays.starting.close": "Zamknij",
   "replays.starting.hideNote": "Ukrycie niczego nie zatrzymuje. Anuluj przerywa uruchamianie powtórki.",
-  "replays.status.failed": "Powtórka nie powiodła się: {reason}",
   "replays.status.launchedWarning":
     "Uruchomiono, ale: {warning}. Jeśli to samo nie ustąpi, FA może zawiesić się na ekranie wczytywania.",
   "replays.gameType.custom": "Własna",

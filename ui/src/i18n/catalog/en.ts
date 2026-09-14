@@ -137,7 +137,7 @@ export const en = {
   "status.connection.connected": "connected",
   // "FAF" and "Chat" stay literal: they are the service names, not prose.
   "status.connection.summary": "{service} {state}",
-  "status.connection.heading": "{service} connection",
+  "status.connection.heading": "{service} connection status",
   "status.reconnect": "Reconnect",
   "status.disconnect": "Disconnect",
   "status.matchSetup.label": "Match setup:",
@@ -1050,6 +1050,7 @@ export const en = {
   "replays.roster.draw": "Draw",
   "replays.roster.combinedRating": "Combined displayed rating",
   "replays.roster.rating": "Rating",
+  "replays.roster.playerActions": "Actions for {name}",
   "replays.roster.score": "Score",
 
   // Live replay list.
@@ -1721,7 +1722,6 @@ export const en = {
   "maps.view.tab.installed": "Installed",
   "maps.view.rescan": "Rescan",
   "maps.view.clearGenerated": "Clear generated",
-  "maps.view.generateMap": "Generate map",
 
   // Player card: the profile modal and its six sections.
   "playerCard.eyebrow": "Player profile",
@@ -2245,7 +2245,6 @@ export const en = {
   "replays.starting.cancel": "Cancel",
   "replays.starting.close": "Close",
   "replays.starting.hideNote": "Hiding this does not stop anything. Cancel stops the replay from starting.",
-  "replays.status.failed": "Replay failed: {reason}",
   "replays.status.launchedWarning":
     "Launched, but: {warning}. FA may get stuck loading if this doesn't resolve itself.",
   "replays.gameType.custom": "Custom",

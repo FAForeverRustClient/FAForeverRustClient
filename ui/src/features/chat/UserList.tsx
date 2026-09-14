@@ -30,7 +30,7 @@ import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/useCountryLabel";
 import { GameSummaryPopover } from "./GameSummaryPopover";
 import { gamePresenceIndex, type GamePresence } from "./gameSummary";
-import { rosterRatingSummary } from "./ratingSummary";
+import { usePlayerRatingCard } from "./PlayerRatingCard";
 
 interface Props {
   users: ChatUser[];
@@ -278,7 +278,13 @@ export const UserList = memo(function UserList({
                           <span className="chat-roster-heading-label">
                             {t(USER_CATEGORY_LABELS[item.category])}
                           </span>
-                          <span className="chat-roster-count">{item.count}</span>
+                          {/* Every group but this one answers "how many?".
+                              "You" is always one person, so the 1 beside it
+                              was a number nobody could ever read anything
+                              from. */}
+                          {item.category !== "self" && (
+                            <span className="chat-roster-count">{item.count}</span>
+                          )}
                         </button>
                       </h3>
                     </li>
@@ -333,6 +339,10 @@ const RosterRow = memo(function RosterRow({
 }) {
   const countryOf = useCountryLabel();
   const nameStyle = resolvedNickStyle(user.name, user, social, preferences, self);
+  const { cardProps, anchorRef, card } = usePlayerRatingCard(
+    displayName(user.name, profile),
+    profile,
+  );
   return (
     <li className="chat-roster-item">
       <div
@@ -340,10 +350,11 @@ const RosterRow = memo(function RosterRow({
         onContextMenu={(e) => onContextMenu(user.name, e)}
       >
         <button
+          ref={anchorRef}
           type="button"
           className="chat-roster-identity"
-          title={rosterRatingSummary(displayName(user.name, profile), profile)}
           onDoubleClick={() => onOpenConversation(user.name)}
+          {...cardProps}
         >
           <span className="chat-avatar">
             {profile?.avatarUrl ? (
@@ -384,6 +395,7 @@ const RosterRow = memo(function RosterRow({
         </button>
         {presence && <GameSummaryPopover presence={presence} social={social} vault={mapVault} />}
       </div>
+      {card}
     </li>
   );
 });

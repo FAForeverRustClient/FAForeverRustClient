@@ -108,7 +108,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "status.connection.connecting": "conectando",
   "status.connection.connected": "conectado",
   "status.connection.summary": "{service} {state}",
-  "status.connection.heading": "Conexión de {service}",
+  "status.connection.heading": "Estado de la conexión de {service}",
   "status.reconnect": "Reconectar",
   "status.disconnect": "Desconectar",
   "status.matchSetup.label": "Preparación de la partida:",
@@ -634,7 +634,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "maps.view.tab.installed": "Instalados",
   "maps.view.rescan": "Volver a analizar",
   "maps.view.clearGenerated": "Eliminar los generados",
-  "maps.view.generateMap": "Generar mapa",
 
   "maps.vault.working": "Procesando {folder}…",
   "maps.vault.operationFailed": "Falló la operación con el mapa: {reason}",
@@ -1233,6 +1232,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.roster.draw": "Empate",
   "replays.roster.combinedRating": "Puntuación mostrada combinada",
   "replays.roster.rating": "Puntuación",
+  "replays.roster.playerActions": "Acciones para {name}",
   "replays.roster.score": "Puntuación",
 
   "replays.source.aria": "Fuentes de repeticiones",
@@ -1247,7 +1247,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.starting.cancel": "Cancelar",
   "replays.starting.close": "Cerrar",
   "replays.starting.hideNote": "Ocultar esto no detiene nada. Cancelar impide que la repetición se inicie.",
-  "replays.status.failed": "Falló la repetición: {reason}",
   "replays.status.launchedWarning": "Iniciado, pero: {warning}. FA puede quedarse cargando si esto no se resuelve solo.",
   "replays.gameType.custom": "Personalizada",
   "replays.gameType.matchmaker": "Emparejamiento",

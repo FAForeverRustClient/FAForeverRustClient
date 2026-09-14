@@ -1,8 +1,9 @@
-import { Fragment } from "react";
+import { Fragment, type MouseEvent as ReactMouseEvent } from "react";
 import { Icon } from "../../design-system/Icon";
 import type { LocalReplayTeam, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
 import { FactionIcon } from "../../shared/FactionIcon";
 import { openPlayerCard } from "../player-card/playerCardActions";
+import type { PlayerMenuOpener } from "../chat/usePlayerMenu";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/nameColors";
@@ -184,13 +185,40 @@ export function mergeReplayTeamsWithLocal(
  */
 const CARD_TEAM_SPLIT_AT = 4;
 
+/**
+ * What a click on a name in a lineup does.
+ *
+ * The menu where there is one, the profile card where there is not. Left-click
+ * rather than right-click only, because that is what the channel roster and the
+ * live table already do, and a name that answers the two buttons differently
+ * from one list to the next is a name nobody trusts.
+ */
+function openPlayerActions(
+  name: string,
+  event: ReactMouseEvent,
+  onPlayerMenu: PlayerMenuOpener | undefined,
+): void {
+  if (onPlayerMenu) {
+    onPlayerMenu(name, event);
+    return;
+  }
+  void openPlayerCard(null, name);
+}
+
+function playerActionTitle(name: string, onPlayerMenu: PlayerMenuOpener | undefined): string {
+  return onPlayerMenu
+    ? t("replays.roster.playerActions", { name })
+    : t("lobby.browser.openProfile", { name });
+}
+
 export function ReplayCardRoster({
   teams,
   interactive = false,
+  onPlayerMenu,
 }: {
   teams: ReplayTeam[];
   /**
-   * Whether a name in here opens the player card.
+   * Whether a name in here is a control at all.
    *
    * Off by default, and it has to be: the vault's card is itself one large
    * `<button>`, and a button inside a button is not markup a browser will
@@ -198,6 +226,8 @@ export function ReplayCardRoster({
    * handle on a player that every other list in this client makes them.
    */
   interactive?: boolean;
+  /** See [`ReplayDetailRoster`]'s prop of the same name. */
+  onPlayerMenu?: PlayerMenuOpener;
 }) {
   useLocale();
   if (teams.length === 0) return null;
@@ -235,13 +265,18 @@ export function ReplayCardRoster({
                     <button
                       type="button"
                       className="replay-player-identity replay-player-link"
-                      title={t("lobby.browser.openProfile", { name: player.name })}
+                      title={playerActionTitle(player.name, onPlayerMenu)}
                       onClick={(event) => {
                         // The card around this one opens the game; this opens
                         // the player. Both are reasonable readings of a click
                         // on a name, and the nearer target wins.
                         event.stopPropagation();
-                        openPlayerCard(null, player.name);
+                        openPlayerActions(player.name, event, onPlayerMenu);
+                      }}
+                      onContextMenu={(event) => {
+                        if (!onPlayerMenu) return;
+                        event.stopPropagation();
+                        onPlayerMenu(player.name, event);
                       }}
                     >
                       <ReplayPlayerMarker player={player} observer={observer} size={17} />
@@ -251,7 +286,18 @@ export function ReplayCardRoster({
                       <PlayerName name={player.name} className="replay-player-name-text" />
                     </button>
                   ) : (
-                    <span className="replay-player-identity">
+                    /* Not a control: a card that is itself one big target
+                       cannot hold buttons. The context menu is still reachable,
+                       which is the gesture the channel roster answers on a name
+                       too, and the only one a span can offer. */
+                    <span
+                      className={onPlayerMenu ? "replay-player-identity replay-player-menuable" : "replay-player-identity"}
+                      title={onPlayerMenu ? t("replays.roster.playerActions", { name: player.name }) : undefined}
+                      onContextMenu={onPlayerMenu && ((event) => {
+                        event.stopPropagation();
+                        onPlayerMenu(player.name, event);
+                      })}
+                    >
                       <ReplayPlayerMarker player={player} observer={observer} size={17} />
                       <PlayerName name={player.name} />
                     </span>
@@ -297,6 +343,7 @@ export function ReplayDetailRoster({
   teams,
   showResults = false,
   avatarByLogin,
+  onPlayerMenu,
 }: {
   teams: ReplayTeam[];
   /**
@@ -308,6 +355,14 @@ export function ReplayDetailRoster({
    */
   showResults?: boolean;
   avatarByLogin?: ReadonlyMap<string, string>;
+  /**
+   * Opens the chat player menu on a name, which is what a nickname does
+   * everywhere else in this client: message, invite, friend, foe, mute, note,
+   * report, and "view profile" among them. Supplied by a caller that can host
+   * the menu (`usePlayerMenu`); without it a name still opens the profile card
+   * on its own, which is all a surface with nowhere to put a menu can offer.
+   */
+  onPlayerMenu?: PlayerMenuOpener;
 }) {
   useLocale();
   if (teams.length === 0) return null;
@@ -379,8 +434,9 @@ export function ReplayDetailRoster({
                     <button
                       type="button"
                       className="replay-player-identity replay-player-link"
-                      title={t("lobby.browser.openProfile", { name: player.name })}
-                      onClick={() => openPlayerCard(null, player.name)}
+                      title={playerActionTitle(player.name, onPlayerMenu)}
+                      onClick={(event) => openPlayerActions(player.name, event, onPlayerMenu)}
+                      onContextMenu={(event) => onPlayerMenu?.(player.name, event)}
                     >
                       <ReplayPlayerAvatar player={player} avatarByLogin={avatarByLogin} />
                       {observer || player.faction ? (

@@ -371,12 +371,20 @@
   white-space: nowrap;
 }
 
+/* The two halves of the Watch column alternate in place: a game that is still
+   inside the five-minute delay shows the trigger, a mature one the button. They
+   are therefore the same size, or the column changes width the moment a game
+   matures and the whole table twitches. `.live-replay-card-footer` below opts
+   both back out, because there they sit in a flex row and must not eat it. */
 .live-delay-actions {
+  width: 100%;
   min-width: 0;
 }
 
 .live-delay-trigger {
+  width: 100%;
   min-width: 92px;
+  min-height: 32px;
   padding: 7px var(--space-2);
   color: var(--color-text);
   background: var(--color-surface);
@@ -750,6 +758,7 @@
   flex: 0 0 auto;
   width: auto;
   min-width: 92px;
+  min-height: 0;
 }
 
 .live-replay-card-footer .live-watch-button {

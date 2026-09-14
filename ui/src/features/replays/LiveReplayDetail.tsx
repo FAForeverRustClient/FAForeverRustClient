@@ -29,6 +29,7 @@ import { useAppStore } from "../../store/store";
 import { ReplayMapThumb } from "./OnlineReplayPresentation";
 import { MapPreviewFrame } from "../maps/MapPreviewZoom";
 import { ReplayDetailRoster } from "./ReplayRoster";
+import type { PlayerMenuOpener } from "../chat/usePlayerMenu";
 import { liveReplayTeams } from "./LiveReplayCards";
 import { LiveWatchButton } from "./LiveReplayRow";
 import { gameStartedAt, prettyGameType } from "./liveReplayModel";
@@ -42,12 +43,15 @@ export function LiveReplayDetail({
   busy,
   tracking,
   waitSeconds,
+  onPlayerMenu,
   onClose,
 }: {
   game: Game;
   busy: boolean;
   tracking: LiveReplayTracking | null;
   waitSeconds: number;
+  /** Opens the chat player menu on a name in the lineup. */
+  onPlayerMenu: PlayerMenuOpener;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -219,7 +223,12 @@ export function LiveReplayDetail({
           <section className="replay-card-lineup" aria-label={t("replays.live.lineup")}>
             {teams.length > 0 ? (
               // `showResults` off, and not a choice here: nobody has won yet.
-              <ReplayDetailRoster teams={teams} showResults={false} avatarByLogin={avatarByLogin} />
+              <ReplayDetailRoster
+                teams={teams}
+                showResults={false}
+                avatarByLogin={avatarByLogin}
+                onPlayerMenu={onPlayerMenu}
+              />
             ) : (
               <p className="replay-detail-empty muted">{t("replays.live.lineupUnavailable")}</p>
             )}

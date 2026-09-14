@@ -174,7 +174,7 @@ html[data-reduced-motion="true"] .client-status-progress[data-indeterminate="tru
 
 .client-status-popover-heading {
   display: grid;
-  grid-template-columns: 7px minmax(0, 1fr) auto;
+  grid-template-columns: 7px minmax(0, 1fr);
   align-items: center;
   gap: 7px;
   padding: 3px 4px 8px;
@@ -182,11 +182,45 @@ html[data-reduced-motion="true"] .client-status-progress[data-indeterminate="tru
   font-size: 12px;
 }
 
-.client-status-popover-heading strong {
-  color: var(--color-text);
+/* Two equal halves: what the connection is, and what you can do to it. Equal
+   because neither is the caption of the other. */
+.client-status-popover-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.client-status-state {
+  display: grid;
+  min-height: 28px;
+  place-items: center;
+  padding: 5px 8px;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 550;
   text-transform: capitalize;
+}
+
+/* The same tinted-badge pattern the vault uses for a state worth a colour. */
+.client-status-state[data-status="connected"] {
+  color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-ok) 25%, transparent);
+}
+
+.client-status-state[data-status="connecting"] {
+  color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
+}
+
+.client-status-state[data-status="disconnected"] {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-error) 25%, transparent);
 }
 
 .client-status-popover-dot {
@@ -205,13 +239,15 @@ html[data-reduced-motion="true"] .client-status-progress[data-indeterminate="tru
 }
 
 .client-status-action {
+  display: grid;
   width: 100%;
   min-height: 28px;
+  place-items: center;
   padding: 5px 8px;
   color: var(--color-text);
-  text-align: left;
-  background: transparent;
-  border: 1px solid transparent;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 12px;

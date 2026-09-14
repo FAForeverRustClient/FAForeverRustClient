@@ -116,7 +116,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "status.connection.connecting": "подключение",
   "status.connection.connected": "подключено",
   "status.connection.summary": "{service} {state}",
-  "status.connection.heading": "Подключение {service}",
+  "status.connection.heading": "Состояние подключения {service}",
   "status.reconnect": "Переподключить",
   "status.disconnect": "Отключить",
   "status.matchSetup.label": "Подготовка матча:",
@@ -657,7 +657,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.view.tab.installed": "Установленные",
   "maps.view.rescan": "Пересканировать",
   "maps.view.clearGenerated": "Удалить сгенерированные",
-  "maps.view.generateMap": "Сгенерировать карту",
 
   "maps.vault.working": "Обработка {folder}…",
   "maps.vault.operationFailed": "Не удалось выполнить операцию с картой: {reason}",
@@ -1256,6 +1255,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.roster.draw": "Ничья",
   "replays.roster.combinedRating": "Суммарный отображаемый рейтинг",
   "replays.roster.rating": "Рейтинг",
+  "replays.roster.playerActions": "Действия для {name}",
   "replays.roster.score": "Счет",
 
   "replays.source.aria": "Источники реплеев",
@@ -1270,7 +1270,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.starting.cancel": "Отмена",
   "replays.starting.close": "Закрыть",
   "replays.starting.hideNote": "Скрытие ничего не останавливает. Отмена прерывает запуск повтора.",
-  "replays.status.failed": "Сбой реплея: {reason}",
   "replays.status.launchedWarning": "Запущено, но: {warning}. FA может зависнуть на загрузке, если это не разрешится само.",
   "replays.gameType.custom": "Пользовательская",
   "replays.gameType.matchmaker": "Подбор игр",

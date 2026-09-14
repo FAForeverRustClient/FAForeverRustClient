@@ -103,7 +103,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "status.connection.connecting": "verbindet",
   "status.connection.connected": "verbunden",
   "status.connection.summary": "{service} {state}",
-  "status.connection.heading": "{service}-Verbindung",
+  "status.connection.heading": "{service}-Verbindungsstatus",
   "status.reconnect": "Neu verbinden",
   "status.disconnect": "Trennen",
   "status.matchSetup.label": "Spielvorbereitung:",
@@ -913,6 +913,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.roster.draw": "Unentschieden",
   "replays.roster.combinedRating": "Summe der angezeigten Ratings",
   "replays.roster.rating": "Rating",
+  "replays.roster.playerActions": "Aktionen für {name}",
   "replays.roster.score": "Punkte",
 
   "replays.live.connecting": "Verbinde mit laufenden Partien",
@@ -1500,7 +1501,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.view.tab.installed": "Installiert",
   "maps.view.rescan": "Neu einlesen",
   "maps.view.clearGenerated": "Erzeugte entfernen",
-  "maps.view.generateMap": "Karte erzeugen",
 
   "playerCard.eyebrow": "Spielerprofil",
   "playerCard.fallbackName": "Spieler",
@@ -1981,7 +1981,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.starting.cancel": "Abbrechen",
   "replays.starting.close": "Schließen",
   "replays.starting.hideNote": "Ausblenden stoppt nichts. Abbrechen verhindert, dass das Replay startet.",
-  "replays.status.failed": "Replay fehlgeschlagen: {reason}",
   "replays.status.launchedWarning":
     "Gestartet, aber: {warning}. FA bleibt beim Laden hängen, wenn sich das nicht von selbst löst.",
   "replays.gameType.custom": "Eigenes",
