@@ -1,40 +1,244 @@
-/* Settings */
+/* Settings
+ *
+ * A rail of numbered registers on the left, one register on the stage to the
+ * right. The rail grows downwards as registers are added, which is the point:
+ * the row of category tabs this replaces got wider with every category, so the
+ * structure degraded exactly as the client grew.
+ */
 .settings-view {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: var(--space-4);
   height: 100%;
   max-height: 100%;
   min-height: 0;
-  max-width: 920px;
+  max-width: 1120px;
   width: 100%;
   overflow: hidden;
 }
 
-.settings-header-container {
-  flex: none;
-  position: relative;
-  z-index: 10;
-  background: var(--color-bg);
-}
-
-.settings-heading {
+.settings-rail {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
+  flex-direction: column;
+  min-height: 0;
+  padding-right: var(--space-3);
+  border-right: 1px solid var(--color-border);
 }
 
-.settings-heading > div {
+.settings-rail-head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+}
+
+.settings-rail-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-rail-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 7px 10px;
+  color: var(--color-muted);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  cursor: pointer;
+}
+
+.settings-rail-item:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.settings-rail-item:focus-visible {
+  outline: 2px solid var(--color-accent-glow);
+  outline-offset: -2px;
+}
+
+.settings-rail-item.is-active {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-left-color: var(--color-accent);
+}
+
+/* A register with no match is dimmed, never removed: a rail that reorders
+   itself while somebody types loses the shape they were navigating by, and the
+   numbers stop meaning anything the moment they move. */
+.settings-rail-item.is-dimmed {
+  opacity: 0.4;
+}
+
+.settings-rail-no {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-subtle);
+}
+
+.settings-rail-item.is-active .settings-rail-no {
+  color: var(--color-accent);
+}
+
+.settings-rail-name {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.settings-rail-foot {
+  flex: none;
+  padding: var(--space-2) 10px 0;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-stage {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 32px;
+  padding-right: 4px;
+}
+
+.settings-register {
+  display: flex;
+  flex-direction: column;
+}
+
+/* `display: flex` above would otherwise beat the user agent's [hidden] rule,
+   and every register would be drawn on top of every other. */
+.settings-register[hidden] {
+  display: none;
+}
+
+.settings-register-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-register-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-subtle);
+}
+
+.settings-register-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+.settings-register-head p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* The index: every register with what it currently says. */
+.settings-index {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-index-row {
+  display: grid;
+  grid-template-columns: 26px 132px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 11px 10px;
+  color: var(--color-text);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.settings-index-row:hover {
+  background: var(--color-surface-hover);
+}
+
+.settings-index-row:focus-visible {
+  outline: 2px solid var(--color-accent-glow);
+  outline-offset: -2px;
+}
+
+.settings-index-no {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-subtle);
+}
+
+.settings-index-name {
+  font-weight: 600;
+}
+
+.settings-index-about {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+/* The value column is the reason this page exists rather than being a second
+   copy of the rail. Tabular figures so the sizes and counts line up. */
+.settings-index-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--color-accent);
+}
+
+@media (max-width: 860px) {
+  .settings-view {
+    grid-template-columns: 168px minmax(0, 1fr);
+  }
+
+  .settings-index-row {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+  }
+
+  .settings-index-about {
+    display: none;
+  }
 }
 
 .settings-search-field {
   display: flex;
   align-items: center;
-  flex: 0 1 280px;
   gap: 7px;
   min-height: 34px;
-  margin-top: 2px;
   padding: 0 6px 0 10px;
   color: var(--color-muted);
   background: var(--color-surface);
@@ -76,41 +280,6 @@
   color: var(--color-text);
   background: var(--color-surface-hover);
   outline: none;
-}
-
-.settings-intro {
-  margin: -12px 0 20px;
-}
-
-.settings-category-tabs {
-  margin-bottom: 0;
-}
-
-.settings-header-scrim {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  height: 20px;
-  background: linear-gradient(to bottom, var(--color-bg), transparent);
-  pointer-events: none;
-  z-index: 5;
-  opacity: 0;
-  transition: opacity 150ms ease;
-}
-
-.settings-header-scrim.is-visible {
-  opacity: 1;
-}
-
-.settings-content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-top: 16px;
-  padding-bottom: 32px;
-  padding-right: 4px;
 }
 
 .settings-section {

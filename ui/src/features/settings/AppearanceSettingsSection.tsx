@@ -1,13 +1,18 @@
-import type { AppearancePreferences, UiDensity } from "../../ipc/bindings";
+import type { AppearancePreferences, ChatPreferences, UiDensity } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { ChatNameColorSettings } from "./ChatNameColorSettings";
 import { ThemePicker } from "./ThemePicker";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
 
 const save = (preferences: AppearancePreferences) =>
   ipc.send({ kind: "Settings", command: { type: "setAppearance", payload: { preferences } } });
+
+/** The chat slice keeps its own two display settings; this register draws them. */
+const saveChat = (preferences: ChatPreferences) =>
+  ipc.send({ kind: "Settings", command: { type: "setChat", payload: { preferences } } });
 
 /** Within `MIN_UI_SCALE`/`MAX_UI_SCALE` in the domain, which clamps anything else. */
 const UI_SCALES = [100, 125, 150, 175] as const;
@@ -94,6 +99,7 @@ export function AppearanceSettingsSection() {
       },
     });
   const activePageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
+  const chat = useAppStore((state) => state.state.settings.chat);
 
   return (
     <>
@@ -270,6 +276,26 @@ export function AppearanceSettingsSection() {
           label={t("settings.appearance.reduceMotion")}
         />
       </SettingRow>
+      {/* The name colours, which are not a chat setting however they are
+          stored. `App` projects the friend and foe choices onto the document
+          root as `--color-friend` and `--color-foe`, and the only stylesheet
+          that consumes them is the lobby's: they paint the borders, badges and
+          player counts on the custom game tiles in the Play tab. Somebody who
+          recolours their friends is recolouring the client, and filing that
+          under Chat put it two registers away from what it visibly changes.
+
+          The generated-colour switch comes with them rather than staying
+          behind: it decides the colour of everyone the rules below do not
+          name, and splitting a rule from its fallback across two registers is
+          the arrangement this rewrite exists to end. */}
+      <SettingRow label={t("settings.chat.colorEveryName")} hint={t("settings.chat.colorEveryNameHint")}>
+        <SettingsSwitch
+          checked={chat.coloredNames}
+          onChange={(coloredNames) => void saveChat({ ...chat, coloredNames })}
+          label={t("settings.chat.colorEveryName")}
+        />
+      </SettingRow>
+      <ChatNameColorSettings preferences={chat} onSave={(next) => void saveChat(next)} />
     </>
   );
 }

@@ -10,18 +10,30 @@ const save = (preferences: DebugPreferences) =>
     command: { type: "setDebug", payload: { preferences } },
   });
 
-/**
- * The diagnostic windows the helper processes may put on screen.
- *
- * All three are off, which is why this section exists: the client suppresses
- * every console window its helpers would otherwise raise, and these hand them
- * back to whoever is debugging a connection or a generator run. They take
- * effect on the next game or the next run, not on the one in flight.
- */
-export function DebugWindowsSettingsSection() {
-  const { t } = useTranslation();
+function useDebugPreferences() {
   const preferences = useAppStore((state) => state.state.settings.debug);
-  const set = (patch: Partial<DebugPreferences>) => void save({ ...preferences, ...patch });
+  return {
+    preferences,
+    set: (patch: Partial<DebugPreferences>) => void save({ ...preferences, ...patch }),
+  };
+}
+
+/**
+ * The adapter's own three windows.
+ *
+ * All three are off, which is why they exist at all: the client suppresses
+ * every console window its helpers would otherwise raise, and these hand them
+ * back to whoever is debugging a connection. They take effect on the next game,
+ * not the one in flight.
+ *
+ * Drawn under Connectivity rather than with the logs, and the difference is
+ * when you reach for them. These are switched on *before* a game so you can
+ * watch the adapter work, which makes them part of configuring it; a log is
+ * read afterwards, once something has already gone wrong.
+ */
+export function IceDebugWindowsSection() {
+  const { t } = useTranslation();
+  const { preferences, set } = useDebugPreferences();
 
   return (
     <>
@@ -55,16 +67,31 @@ export function DebugWindowsSettingsSection() {
           label={t("settings.debug.iceAdapterConsoleWindow")}
         />
       </SettingRow>
-      <SettingRow
-        label={t("settings.debug.mapGeneratorWindow")}
-        hint={t("settings.debug.mapGeneratorWindowHint")}
-      >
-        <SettingsSwitch
-          checked={preferences.mapGeneratorWindow}
-          onChange={(mapGeneratorWindow) => set({ mapGeneratorWindow })}
-          label={t("settings.debug.mapGeneratorWindow")}
-        />
-      </SettingRow>
     </>
+  );
+}
+
+/**
+ * The generator's console window, beside the logs.
+ *
+ * The one debug window that is opened after the fact: a generator run either
+ * produced a map or it did not, and this is how you find out why. That is
+ * reading a log by another name, which is the register it belongs to.
+ */
+export function MapGeneratorWindowSection() {
+  const { t } = useTranslation();
+  const { preferences, set } = useDebugPreferences();
+
+  return (
+    <SettingRow
+      label={t("settings.debug.mapGeneratorWindow")}
+      hint={t("settings.debug.mapGeneratorWindowHint")}
+    >
+      <SettingsSwitch
+        checked={preferences.mapGeneratorWindow}
+        onChange={(mapGeneratorWindow) => set({ mapGeneratorWindow })}
+        label={t("settings.debug.mapGeneratorWindow")}
+      />
+    </SettingRow>
   );
 }
