@@ -869,7 +869,7 @@ export const en = {
   "lobby.browser.column.game": "Game",
   "lobby.browser.column.map": "Map",
   "lobby.browser.column.players": "Players",
-  "lobby.browser.column.rating": "Avg. Rating",
+  "lobby.browser.column.rating": "Ø Rating",
   "lobby.browser.column.age": "Age",
   "lobby.browser.column.version": "Version",
   "lobby.browser.noMatch": "No games match",
