@@ -25,6 +25,39 @@ export function ChatSettingsSection() {
 
   return (
     <>
+      {/* Chat's own two, and the reason they stay here while the name colours
+          left: these reach nothing but the chat. The colours are projected onto
+          the document root and repaint the game tiles in the Play tab, so they
+          are a client-wide choice; a font size that changes one pane is a
+          setting of that pane. */}
+      <SettingRow label={t("settings.chat.fontSize")} hint={t("settings.chat.fontSizeHint")}>
+        <label className="settings-slider">
+          <input
+            type="range"
+            min={11}
+            max={22}
+            step={1}
+            value={preferences.fontSize || 13}
+            onChange={(event) => void save({ ...preferences, fontSize: Number(event.target.value) })}
+            aria-label={t("settings.chat.fontSize")}
+          />
+          <span>{preferences.fontSize || 13} px</span>
+        </label>
+      </SettingRow>
+      <SettingRow label={t("settings.chat.senderWidth")} hint={t("settings.chat.senderWidthHint")}>
+        <label className="settings-slider">
+          <input
+            type="range"
+            min={64}
+            max={260}
+            step={4}
+            value={preferences.senderWidth || 116}
+            onChange={(event) => void save({ ...preferences, senderWidth: Number(event.target.value) })}
+            aria-label={t("settings.chat.senderWidth")}
+          />
+          <span>{preferences.senderWidth || 116} px</span>
+        </label>
+      </SettingRow>
       <SettingRow label={t("settings.chat.messageTimestamps")} hint={t("settings.chat.messageTimestampsHint")}>
         <SettingsSwitch
           checked={preferences.showTimestamps}

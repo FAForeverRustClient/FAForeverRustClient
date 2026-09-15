@@ -1135,7 +1135,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.register.appearance.title": "Darstellung",
   "settings.register.appearance.description": "Alles, was bestimmt, wie etwas gezeichnet wird, wo auch immer im Client.",
   "settings.register.chat.title": "Chat",
-  "settings.register.chat.description": "Was die Kanäle zeigen, welche du beim Verbinden betrittst und wessen Nachrichten du lieber nicht siehst.",
+  "settings.register.chat.description": "Wie die Kanäle gesetzt und gelesen werden: Textgröße, welche du beim Verbinden betrittst und wessen Nachrichten du lieber nicht siehst.",
   "settings.register.notifications.title": "Benachrichtigungen",
   "settings.register.notifications.description": "Welche Ereignisse dich unterbrechen dürfen, wie sie dich erreichen und wie sie klingen.",
   "settings.register.account.title": "Konto",

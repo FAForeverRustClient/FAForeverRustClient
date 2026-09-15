@@ -927,7 +927,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.register.appearance.title": "Внешний вид",
   "settings.register.appearance.description": "Всё, что определяет, как что-либо отображается, в любой части клиента.",
   "settings.register.chat.title": "Чат",
-  "settings.register.chat.description": "Что показывают каналы, куда вы подключаетесь при входе и чьи сообщения лучше не видеть.",
+  "settings.register.chat.description": "Как устроены и читаются каналы: размер текста, куда вы подключаетесь при входе и чьи сообщения лучше не видеть.",
   "settings.register.notifications.title": "Уведомления",
   "settings.register.notifications.description": "О каких событиях сообщать, как они доходят до вас и как звучат.",
   "settings.register.account.title": "Учётная запись",

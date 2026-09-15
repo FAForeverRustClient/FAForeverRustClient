@@ -964,7 +964,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.register.appearance.title": "Wygląd",
   "settings.register.appearance.description": "Wszystko, co decyduje o tym, jak coś jest rysowane, w dowolnym miejscu klienta.",
   "settings.register.chat.title": "Czat",
-  "settings.register.chat.description": "Co pokazują kanały, do których dołączasz po połączeniu i czyich wiadomości wolisz nie widzieć.",
+  "settings.register.chat.description": "Jak kanały są ustawione i czytane: rozmiar tekstu, do których dołączasz po połączeniu i czyich wiadomości wolisz nie widzieć.",
   "settings.register.notifications.title": "Powiadomienia",
   "settings.register.notifications.description": "Które zdarzenia mogą ci przerwać, jak do ciebie docierają i jak brzmią.",
   "settings.register.account.title": "Konto",

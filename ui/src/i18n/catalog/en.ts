@@ -1322,7 +1322,7 @@ export const en = {
   "settings.register.appearance.title": "Appearance",
   "settings.register.appearance.description": "Anything that decides how something is drawn, wherever in the client it is drawn.",
   "settings.register.chat.title": "Chat",
-  "settings.register.chat.description": "What the channels show, which ones you join on connecting, and whose messages you would rather not see.",
+  "settings.register.chat.description": "How the channels are set and read: text size, which ones you join on connecting, and whose messages you would rather not see.",
   "settings.register.notifications.title": "Notifications",
   "settings.register.notifications.description": "Which events can interrupt you, how they reach you, and what they sound like.",
   "settings.register.account.title": "Account",

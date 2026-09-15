@@ -276,39 +276,6 @@ export function AppearanceSettingsSection() {
           label={t("settings.appearance.reduceMotion")}
         />
       </SettingRow>
-      {/* Chat's two, because they decide how something is drawn and that is
-          what this register is. They were the only display settings in the
-          client filed under the feature they draw for, which is how the lobby's
-          column count and the vault's page size ended up here while the chat's
-          font size did not. */}
-      <SettingRow label={t("settings.chat.fontSize")} hint={t("settings.chat.fontSizeHint")}>
-        <label className="settings-slider">
-          <input
-            type="range"
-            min={11}
-            max={22}
-            step={1}
-            value={chat.fontSize || 13}
-            onChange={(event) => void saveChat({ ...chat, fontSize: Number(event.target.value) })}
-            aria-label={t("settings.chat.fontSize")}
-          />
-          <span>{chat.fontSize || 13} px</span>
-        </label>
-      </SettingRow>
-      <SettingRow label={t("settings.chat.senderWidth")} hint={t("settings.chat.senderWidthHint")}>
-        <label className="settings-slider">
-          <input
-            type="range"
-            min={64}
-            max={260}
-            step={4}
-            value={chat.senderWidth || 116}
-            onChange={(event) => void saveChat({ ...chat, senderWidth: Number(event.target.value) })}
-            aria-label={t("settings.chat.senderWidth")}
-          />
-          <span>{chat.senderWidth || 116} px</span>
-        </label>
-      </SettingRow>
       {/* The name colours, which are not a chat setting however they are
           stored. `App` projects the friend and foe choices onto the document
           root as `--color-friend` and `--color-foe`, and the only stylesheet
