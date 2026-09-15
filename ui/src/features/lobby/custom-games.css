@@ -860,7 +860,7 @@
 .game-tile-body {
   display: flex;
   flex-direction: column;
-  padding: 10px 12px 6px;
+  padding: 10px 12px 9px;
 }
 
 .game-tile-title {
@@ -985,20 +985,12 @@
   background: color-mix(in srgb, var(--color-error) 12%, var(--color-surface));
 }
 
-.game-tile-footer {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-top: auto;
-}
-
 .game-tile-host {
   display: flex;
   min-width: 0;
   align-items: baseline;
   gap: 5px;
+  margin-top: auto;
 }
 
 .game-tile-host b {
@@ -1009,33 +1001,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.game-tile-foes {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 6px;
-  color: var(--color-foe);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.25;
-  white-space: nowrap;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-foe) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-foe) 40%, transparent);
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.game-tile-foes:hover,
-.game-tile-foes:focus-visible {
-  background: color-mix(in srgb, var(--color-foe) 20%, transparent);
-  border-color: color-mix(in srgb, var(--color-foe) 65%, transparent);
-  outline: none;
-}
-
-
 
 .game-friends-popover {
   position: fixed;
@@ -1703,26 +1668,46 @@
    The outline stays at full strength, and the 1 px box-shadow with it: it
    feathers the subpixel antialiasing at the rounded corners, so the edge
    follows the curve without tangent notches. Tint and edge are two signals for
-   one fact, and the tint is the one that survives being glanced at. */
+   one fact, and the tint is the one that survives being glanced at.
+
+   A foe reads the same way in its own colour, which is why the appearance is
+   written once against `--tile-social` rather than twice against two colours.
+   The two setters below are the whole of the difference, and the order they
+   are in is the rule for a lobby holding both: the friend one is second, so it
+   wins. Spelling this out as one rule per state per colour meant four more
+   rules to say "friend, not foe" again, and one of them was already missing:
+   a selected tile with both took the friend border instead of the accent. */
+.game-tile.has-foe {
+  --tile-social: var(--color-foe);
+}
+
 .game-tile.has-friend {
-  background: color-mix(in srgb, var(--color-friend) 7%, var(--color-surface));
-  border-color: var(--color-friend);
-  box-shadow: 0 0 1px 0 var(--color-friend);
+  --tile-social: var(--color-friend);
+}
+
+.game-tile.has-friend,
+.game-tile.has-foe {
+  background: color-mix(in srgb, var(--tile-social) 7%, var(--color-surface));
+  border-color: var(--tile-social);
+  box-shadow: 0 0 1px 0 var(--tile-social);
 }
 
 .game-tile.has-friend:hover,
-.game-tile.has-friend:focus-within {
-  background: color-mix(in srgb, var(--color-friend) 11%, var(--color-surface-hover));
-  border-color: var(--color-friend);
-  box-shadow: 0 0 1px 0 var(--color-friend);
+.game-tile.has-friend:focus-within,
+.game-tile.has-foe:hover,
+.game-tile.has-foe:focus-within {
+  background: color-mix(in srgb, var(--tile-social) 11%, var(--color-surface-hover));
+  border-color: var(--tile-social);
+  box-shadow: 0 0 1px 0 var(--tile-social);
 }
 
 /* Selected has to win over friendly, not blend with it: a selected tile that
    looked the same as an unselected one was the complaint. The accent takes the
    border back, so the feathering shadow goes with it rather than ringing an
    accent edge in green. */
-.game-tile.has-friend.active {
-  background: color-mix(in srgb, var(--color-friend) 11%, var(--color-surface-raised));
+.game-tile.has-friend.active,
+.game-tile.has-foe.active {
+  background: color-mix(in srgb, var(--tile-social) 11%, var(--color-surface-raised));
   border-color: var(--color-accent);
   box-shadow: none;
 }
@@ -1772,40 +1757,6 @@
 
 .game-browser-row.has-friend.has-foe.active {
   box-shadow: inset 3px 0 var(--color-friend), inset 6px 0 var(--color-foe), inset 9px 0 var(--color-accent);
-}
-
-/* A tile with a foe in it. Outline only, matching the friend tile pattern. */
-.game-tile.has-foe {
-  border-color: var(--color-foe);
-  box-shadow: 0 0 1px 0 var(--color-foe);
-}
-
-.game-tile.has-foe:hover,
-.game-tile.has-foe:focus-within {
-  border-color: var(--color-foe);
-  box-shadow: 0 0 1px 0 var(--color-foe);
-}
-
-.game-tile.has-foe.active {
-  border-color: var(--color-foe);
-  box-shadow: 0 0 1px 0 var(--color-foe);
-}
-
-/* If a game has both friends and foes, friend outline takes priority. */
-.game-tile.has-foe.has-friend {
-  border-color: var(--color-friend);
-  box-shadow: 0 0 1px 0 var(--color-friend);
-}
-
-.game-tile.has-foe.has-friend:hover,
-.game-tile.has-foe.has-friend:focus-within {
-  border-color: var(--color-friend);
-  box-shadow: 0 0 1px 0 var(--color-friend);
-}
-
-.game-tile.has-foe.has-friend.active {
-  border-color: var(--color-friend);
-  box-shadow: 0 0 1px 0 var(--color-friend);
 }
 
 /* The foe tag, using --color-foe. */

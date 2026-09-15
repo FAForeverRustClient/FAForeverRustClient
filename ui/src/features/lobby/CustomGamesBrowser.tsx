@@ -991,7 +991,7 @@ export const GameTile = memo(function GameTile({
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const players = playingCount(game);
   const { friends, label: friendLabel } = friendsHere(game, friendSet);
-  const { foes } = foesHere(game, foeSet);
+  const { foes, label: foeLabel } = foesHere(game, foeSet);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
   const {
     socialPopoverId,
@@ -1113,15 +1113,9 @@ export const GameTile = memo(function GameTile({
               {friendLabel}
             </i>
           )}
-          {(game.ratingMin !== null || game.ratingMax !== null) && (
-            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
-          )}
-        </span>
-        <span className="game-tile-footer">
-          <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
           {foes.length > 0 && (
-            <span
-              className="game-tile-foes"
+            <i
+              className="foe"
               onMouseEnter={(e) => {
                 e.stopPropagation();
                 showSocial(e.currentTarget, "foes");
@@ -1140,11 +1134,14 @@ export const GameTile = memo(function GameTile({
                 e.stopPropagation();
               }}
             >
-              <Icon name="users" size={13} />
-              <span>{t("lobby.browser.foeCount", { count: foes.length })}</span>
-            </span>
+              {foeLabel}
+            </i>
+          )}
+          {(game.ratingMin !== null || game.ratingMax !== null) && (
+            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
           )}
         </span>
+        <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
       </button>
       {tooltipPosition && !socialPosition && createPortal(
         <GameLineup game={game} id={tooltipId} position={tooltipPosition} />,
