@@ -2057,10 +2057,8 @@ export const en = {
   "replays.list.processing": "Processing",
   "replays.list.watchAria": "Watch {name}",
   "replays.list.downloadAria": "Download the replay file for {name}",
-  "replays.list.details": "Details",
-  "replays.list.detailsAria": "Open replay {uid} details",
   "replays.list.count": { one: "{count} replay", other: "{count} replays" },
-  "replays.list.selectHint": "Select a row to highlight it · double-click to watch replay",
+  "replays.list.openHint": "Click a row for details · double-click to watch",
 
   // Online replay detail dialog.
   "replays.detail.aria": "Replay {name}",
@@ -2246,7 +2244,6 @@ export const en = {
   "replays.local.deleteAria": "Delete {name}",
   "replays.local.delete": "Delete replay",
   "replays.local.footerCount": "Showing {shown} of {total} replays",
-  "replays.local.doubleClickHint": "Double-click to watch",
   "replays.local.pagesAria": "Local replay pages",
   "replays.local.confirmDelete": "Delete local replay?",
   "replays.local.confirmDeleteBody":

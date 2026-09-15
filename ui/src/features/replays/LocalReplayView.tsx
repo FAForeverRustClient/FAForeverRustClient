@@ -480,7 +480,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                 };
               }),
             }))}
-            footer={<><span>{t("replays.local.footerCount", { shown: pageReplays.length, total: filtered.length })}</span><span>{t("replays.local.doubleClickHint")}</span></>}
+            footer={<><span>{t("replays.local.footerCount", { shown: pageReplays.length, total: filtered.length })}</span><span>{t("replays.list.openHint")}</span></>}
           />
           {totalPages > 1 && (
             <div className="vault-pagination">

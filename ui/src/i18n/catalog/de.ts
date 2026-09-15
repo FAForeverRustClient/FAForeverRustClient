@@ -1802,10 +1802,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.list.realTimeSuffix": "{duration} echt",
   "replays.list.available": "Verfügbar",
   "replays.list.processing": "In Verarbeitung",
-  "replays.list.details": "Details",
-  "replays.list.detailsAria": "Details zu Replay {uid} öffnen",
   "replays.list.count": { one: "{count} Replay", other: "{count} Replays" },
-  "replays.list.selectHint": "Zeile anklicken zum Hervorheben · Doppelklick zum Ansehen",
+  "replays.list.openHint": "Zeile anklicken für Details · Doppelklick zum Ansehen",
 
   "replays.detail.aria": "Replay {name}",
   "replays.detail.idCopied": "Replay-ID kopiert",
@@ -1982,7 +1980,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.local.deleteAria": "{name} löschen",
   "replays.local.delete": "Replay löschen",
   "replays.local.footerCount": "{shown} von {total} Replays",
-  "replays.local.doubleClickHint": "Doppelklick zum Ansehen",
   "replays.local.pagesAria": "Seiten der lokalen Wiederholungen",
   "replays.local.confirmDelete": "Lokales Replay löschen?",
   "replays.local.confirmDeleteBody":
