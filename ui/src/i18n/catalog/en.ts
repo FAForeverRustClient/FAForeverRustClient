@@ -1390,6 +1390,9 @@ export const en = {
   "settings.chat.autoJoinNewbieHint": "Automatically join the #newbie channel for accounts with fewer than 50 completed games.",
   "settings.chat.visibleHistory": "Visible history",
   "settings.chat.visibleHistoryHint": "Limit rendered messages per conversation for a responsive long-running chat.",
+  // The three choices are 100, 250 and 500, and every one of them is plural in
+  // both English and Russian, so one parameterised message covers the select.
+  "settings.chat.visibleHistoryOption": "{count} messages",
   "settings.chat.mutedPlayers": "Muted players",
   "settings.chat.visibleChatHistory": "Visible chat history",
   "settings.chat.channel": "#channel",
