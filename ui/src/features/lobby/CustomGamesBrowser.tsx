@@ -222,7 +222,7 @@ interface Props {
 }
 
 type ContextMenu = { game: Game; x: number; y: number };
-type TooltipPosition = { left: number; top?: number; bottom?: number };
+type TooltipPosition = { left?: number; right?: number; top?: number; bottom?: number };
 
 function observerTeam(team: string): boolean {
   return team === "-1" || team === "null";
@@ -334,11 +334,20 @@ let lineupGuardsInstalled = false;
 function installLineupGuards() {
   if (lineupGuardsInstalled || typeof window === "undefined") return;
   lineupGuardsInstalled = true;
-  window.addEventListener("blur", hideGlobalLineup);
+  window.addEventListener("blur", () => {
+    hideGlobalLineup();
+    hideGlobalSocial();
+  });
   // Capture, because the scroll happens on a container rather than on window.
-  window.addEventListener("scroll", hideGlobalLineup, true);
+  window.addEventListener("scroll", () => {
+    hideGlobalLineup();
+    hideGlobalSocial();
+  }, true);
   window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") hideGlobalLineup();
+    if (event.key === "Escape") {
+      hideGlobalLineup();
+      hideGlobalSocial();
+    }
   });
 }
 
@@ -355,7 +364,10 @@ export function setGlobalLineup(gameId: number, position: TooltipPosition) {
 // anything that takes the pointer away without one leaves it on screen. These
 // are those cases.
 if (typeof window !== "undefined") {
-  window.addEventListener("blur", hideGlobalLineup);
+  window.addEventListener("blur", () => {
+    hideGlobalLineup();
+    hideGlobalSocial();
+  });
   // Coming back matters as much as leaving. Alt-tabbing away with the pointer
   // resting on a tile and moving it elsewhere in another window produces no
   // `mouseleave` here at all, because this window is not receiving the pointer:
@@ -366,18 +378,34 @@ if (typeof window !== "undefined") {
   // otherwise take the tooltip away and, with no `mouseenter` left to fire,
   // not give it back until the pointer had left the tile and returned.
   window.addEventListener("focus", () => {
-    if (!document.querySelector(".game-tile:hover, .game-browser-row:hover")) {
+    if (!document.querySelector(".game-tile:hover, .game-browser-row:hover, .game-friends-popover:hover")) {
       hideGlobalLineup();
+      hideGlobalSocial();
     }
   });
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) hideGlobalLineup();
+    if (document.hidden) {
+      hideGlobalLineup();
+      hideGlobalSocial();
+    }
   });
-  window.addEventListener("scroll", hideGlobalLineup, true);
-  window.addEventListener("resize", hideGlobalLineup);
-  document.addEventListener("mouseleave", hideGlobalLineup);
+  window.addEventListener("scroll", () => {
+    hideGlobalLineup();
+    hideGlobalSocial();
+  }, true);
+  window.addEventListener("resize", () => {
+    hideGlobalLineup();
+    hideGlobalSocial();
+  });
+  document.addEventListener("mouseleave", () => {
+    hideGlobalLineup();
+    hideGlobalSocial();
+  });
   window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") hideGlobalLineup();
+    if (event.key === "Escape") {
+      hideGlobalLineup();
+      hideGlobalSocial();
+    }
   });
 }
 
@@ -394,6 +422,7 @@ function useGameLineupPosition(gameId: number) {
    */
   const showLineup = (target: HTMLElement, immediate = false) => {
     if (!hoverPanelsEnabled()) return;
+    if (activeSocial?.gameId === gameId) return;
     // Moving straight from one row to another: the close the first row asked
     // for must not land on the overlay the second one is opening.
     cancelLineupHide();
@@ -452,6 +481,118 @@ function useGameLineupPosition(gameId: number) {
     tooltipPosition,
     showLineup,
     hideLineup,
+  };
+}
+
+type ActiveSocial = {
+  gameId: number;
+  category: "friends" | "foes";
+  position: TooltipPosition;
+} | null;
+
+let activeSocial: ActiveSocial = null;
+const socialListeners = new Set<() => void>();
+
+function subscribeSocial(listener: () => void) {
+  socialListeners.add(listener);
+  return () => {
+    socialListeners.delete(listener);
+  };
+}
+
+export function getActiveSocialSnapshot() {
+  return activeSocial;
+}
+
+const SOCIAL_GRACE_MS = 160;
+let socialHideTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function cancelSocialHide() {
+  if (socialHideTimer !== null) {
+    clearTimeout(socialHideTimer);
+    socialHideTimer = null;
+  }
+}
+
+export function hideGlobalSocial() {
+  cancelSocialHide();
+  if (activeSocial !== null) {
+    activeSocial = null;
+    for (const listener of socialListeners) {
+      listener();
+    }
+  }
+}
+
+export function hideGlobalSocialSoon() {
+  cancelSocialHide();
+  socialHideTimer = setTimeout(hideGlobalSocial, SOCIAL_GRACE_MS);
+}
+
+export function setGlobalSocial(gameId: number, category: "friends" | "foes", position: TooltipPosition) {
+  installLineupGuards();
+  cancelSocialHide();
+  activeSocial = { gameId, category, position };
+  for (const listener of socialListeners) {
+    listener();
+  }
+}
+
+export const hideGlobalFriends = hideGlobalSocial;
+export const cancelFriendsHide = cancelSocialHide;
+export const hideGlobalFriendsSoon = hideGlobalSocialSoon;
+
+function useGameSocialPosition(gameId: number) {
+  const socialPopoverId = useId();
+  const currentActive = useSyncExternalStore(subscribeSocial, getActiveSocialSnapshot, () => null);
+  const socialCategory = currentActive?.gameId === gameId ? currentActive.category : null;
+  const socialPosition = currentActive?.gameId === gameId ? currentActive.position : null;
+
+  const showSocial = (target: HTMLElement, category: "friends" | "foes") => {
+    cancelSocialHide();
+    hideGlobalLineup();
+    const bounds = target.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+    const popoverWidth = 290;
+
+    const isRightHalf = bounds.left + bounds.width / 2 > viewportWidth / 2;
+    const position: TooltipPosition = {};
+    if (isRightHalf) {
+      position.right = Math.max(16, viewportWidth - bounds.right);
+    } else {
+      position.left = Math.max(16, Math.min(bounds.left, viewportWidth - 16 - popoverWidth));
+    }
+
+    const hasRoomAbove = bounds.top >= 180;
+    if (hasRoomAbove) {
+      position.bottom = viewportHeight - bounds.top + 6;
+    } else {
+      position.top = bounds.bottom + 6;
+    }
+    setGlobalSocial(gameId, category, position);
+  };
+
+  const hideSocial = () => {
+    if (currentActive?.gameId === gameId) {
+      hideGlobalSocialSoon();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (activeSocial?.gameId === gameId) {
+        hideGlobalSocial();
+      }
+    };
+  }, [gameId]);
+
+  return {
+    socialPopoverId,
+    socialCategory,
+    socialPosition,
+    showSocial,
+    hideSocial,
   };
 }
 
@@ -691,6 +832,87 @@ function GameLineupTeam({
   );
 }
 
+function friendTeamName(game: Game, login: string): string {
+  const lower = login.toLowerCase();
+  const activeTeams = Object.entries(game.teams).filter(([t, p]) => !observerTeam(t) && p.length > 0);
+  const soleTeam = activeTeams.length === 1;
+  for (const [team, players] of Object.entries(game.teams)) {
+    if (players.some((p) => p.toLowerCase() === lower)) {
+      return displayTeamName(team, soleTeam);
+    }
+  }
+  return "";
+}
+
+function GameSocialPopover({
+  game,
+  players,
+  category,
+  id,
+  position,
+}: {
+  game: Game;
+  players: string[];
+  category: "friends" | "foes";
+  id: string;
+  position: TooltipPosition;
+}) {
+  const social = useAppStore((state) => state.state.social);
+  const countryOf = useCountryLabel();
+  const leaderboard = gameLeaderboard(game.ratingType);
+
+  return (
+    <aside
+      className={`game-friends-popover game-social-popover${category === "foes" ? " is-foes" : ""}`}
+      id={id}
+      role="tooltip"
+      style={position}
+      onMouseEnter={cancelSocialHide}
+      onMouseLeave={hideGlobalSocialSoon}
+    >
+      <header className="game-friends-popover-header">
+        <span>{t(category === "friends" ? "chat.category.friends" : "chat.category.foes")}</span>
+      </header>
+      <ul className="game-friends-list">
+        {players.map((login) => {
+          const profile = findPlayer(social, login);
+          const rating = displayedRating(profile, leaderboard);
+          const teamName = friendTeamName(game, login);
+
+          return (
+            <li key={login}>
+              <button
+                type="button"
+                className="game-friend-row"
+                onClick={() => openPlayerCard(profile?.id ?? null, login)}
+                title={t("lobby.browser.openProfile", { name: login })}
+              >
+                {profile?.country ? (
+                  <img
+                    src={flagSrc(profile.country)}
+                    alt={countryOf(profile.country)}
+                    title={countryOf(profile.country)}
+                    width={16}
+                    height={12}
+                    decoding="async"
+                    draggable={false}
+                    className="game-friend-flag"
+                  />
+                ) : (
+                  <i className="game-friend-flag-placeholder" />
+                )}
+                <PlayerName name={login} className="game-friend-name" />
+                {teamName && <span className="game-friend-team">{teamName}</span>}
+                <span className="game-friend-rating">{rating === null ? "N/A" : rating}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </aside>
+  );
+}
+
 /**
  * The friends in a lobby, and the label that names them.
  *
@@ -723,11 +945,25 @@ function friendsHere(game: Game, wanted: ReadonlySet<string>): { friends: string
   };
 }
 
+const NOBODY_FOES: { foes: string[]; label: string } = { foes: [], label: "" };
+
+function foesHere(game: Game, wanted: ReadonlySet<string>): { foes: string[]; label: string } {
+  const foes = friendsInGame(game, wanted);
+  if (foes.length === 0) return NOBODY_FOES;
+  return {
+    foes,
+    label: t("lobby.browser.foeCount", { count: foes.length }),
+  };
+}
+
+const EMPTY_SET: ReadonlySet<string> = new Set();
+
 export const GameTile = memo(function GameTile({
   game,
   vault,
   vaultMods,
   friendSet,
+  foeSet = EMPTY_SET,
   selected,
   now,
   onSelect,
@@ -740,6 +976,8 @@ export const GameTile = memo(function GameTile({
   vaultMods: VaultMod[];
   /** The friend list, lower-cased once for the whole list. */
   friendSet: ReadonlySet<string>;
+  /** The foe list, lower-cased once for the whole list. */
+  foeSet?: ReadonlySet<string>;
   selected: boolean;
   now: number;
   onSelect: () => void;
@@ -752,12 +990,20 @@ export const GameTile = memo(function GameTile({
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const players = playingCount(game);
   const { friends } = friendsHere(game, friendSet);
+  const { foes } = foesHere(game, foeSet);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
+  const {
+    socialPopoverId,
+    socialCategory,
+    socialPosition,
+    showSocial,
+    hideSocial,
+  } = useGameSocialPosition(game.id);
 
   return (
     <article
       className={
-        `game-tile surface-panel${friends.length > 0 ? " has-friend" : ""}${selected ? " active" : ""}`
+        `game-tile surface-panel${friends.length > 0 ? " has-friend" : ""}${foes.length > 0 ? " has-foe" : ""}${selected ? " active" : ""}`
       }
       onContextMenu={(event) => {
         hideGlobalLineup();
@@ -836,16 +1082,67 @@ export const GameTile = memo(function GameTile({
           {friends.length > 0 && (
             <span
               className="game-tile-friends"
-              title={t("lobby.browser.friendsHere", { names: friends.join(", ") })}
+              onMouseEnter={(e) => {
+                e.stopPropagation();
+                showSocial(e.currentTarget, "friends");
+              }}
+              onMouseLeave={hideSocial}
+              onFocus={(e) => {
+                e.stopPropagation();
+                showSocial(e.currentTarget, "friends");
+              }}
+              onBlur={hideSocial}
+              tabIndex={0}
+              role="button"
+              aria-label={t("lobby.browser.friendCount", { count: friends.length })}
+              aria-describedby={socialPosition && socialCategory === "friends" ? socialPopoverId : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
             >
               <Icon name="users" size={13} />
               <span>{t("lobby.browser.friendCount", { count: friends.length })}</span>
             </span>
           )}
+          {foes.length > 0 && (
+            <span
+              className="game-tile-foes"
+              onMouseEnter={(e) => {
+                e.stopPropagation();
+                showSocial(e.currentTarget, "foes");
+              }}
+              onMouseLeave={hideSocial}
+              onFocus={(e) => {
+                e.stopPropagation();
+                showSocial(e.currentTarget, "foes");
+              }}
+              onBlur={hideSocial}
+              tabIndex={0}
+              role="button"
+              aria-label={t("lobby.browser.foeCount", { count: foes.length })}
+              aria-describedby={socialPosition && socialCategory === "foes" ? socialPopoverId : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              <Icon name="users" size={13} />
+              <span>{t("lobby.browser.foeCount", { count: foes.length })}</span>
+            </span>
+          )}
         </span>
       </button>
-      {tooltipPosition && createPortal(
+      {tooltipPosition && !socialPosition && createPortal(
         <GameLineup game={game} id={tooltipId} position={tooltipPosition} />,
+        document.body,
+      )}
+      {socialPosition && socialCategory && createPortal(
+        <GameSocialPopover
+          game={game}
+          players={socialCategory === "friends" ? friends : foes}
+          category={socialCategory}
+          id={socialPopoverId}
+          position={socialPosition}
+        />,
         document.body,
       )}
     </article>
@@ -857,6 +1154,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   vault,
   vaultMods,
   friendSet,
+  foeSet = EMPTY_SET,
   now,
   columnStyle,
   selected,
@@ -870,6 +1168,8 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   vaultMods: VaultMod[];
   /** The friend list, lower-cased once for the whole list. */
   friendSet: ReadonlySet<string>;
+  /** The foe list, lower-cased once for the whole list. */
+  foeSet?: ReadonlySet<string>;
   now?: number;
   /** The column template, built once by the browser and shared by every row. */
   columnStyle?: React.CSSProperties;
@@ -885,13 +1185,21 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   const players = playingCount(game);
   const currentNow = now ?? Date.now();
   const { friends, label: friendLabel } = friendsHere(game, friendSet);
+  const { foes, label: foeLabel } = foesHere(game, foeSet);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
+  const {
+    socialPopoverId,
+    socialCategory,
+    socialPosition,
+    showSocial,
+    hideSocial,
+  } = useGameSocialPosition(game.id);
   return (
     <>
       <button
         type="button"
         className={
-          `game-browser-row${friends.length > 0 ? " has-friend" : ""}${selected ? " active" : ""}`
+          `game-browser-row${friends.length > 0 ? " has-friend" : ""}${foes.length > 0 ? " has-foe" : ""}${selected ? " active" : ""}`
         }
         style={columnStyle}
         onClick={onSelect}
@@ -948,8 +1256,51 @@ export const GameBrowserRow = memo(function GameBrowserRow({
                 )}
                 {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
                 {friends.length > 0 && (
-                  <i className="friend" title={t("lobby.browser.friendsHere", { names: friends.join(", ") })}>
+                  <i
+                    className="friend"
+                    onMouseEnter={(e) => {
+                      e.stopPropagation();
+                      showSocial(e.currentTarget, "friends");
+                    }}
+                    onMouseLeave={hideSocial}
+                    onFocus={(e) => {
+                      e.stopPropagation();
+                      showSocial(e.currentTarget, "friends");
+                    }}
+                    onBlur={hideSocial}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={t("lobby.browser.friendCount", { count: friends.length })}
+                    aria-describedby={socialPosition && socialCategory === "friends" ? socialPopoverId : undefined}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
                     {friendLabel}
+                  </i>
+                )}
+                {foes.length > 0 && (
+                  <i
+                    className="foe"
+                    onMouseEnter={(e) => {
+                      e.stopPropagation();
+                      showSocial(e.currentTarget, "foes");
+                    }}
+                    onMouseLeave={hideSocial}
+                    onFocus={(e) => {
+                      e.stopPropagation();
+                      showSocial(e.currentTarget, "foes");
+                    }}
+                    onBlur={hideSocial}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={t("lobby.browser.foeCount", { count: foes.length })}
+                    aria-describedby={socialPosition && socialCategory === "foes" ? socialPopoverId : undefined}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    {foeLabel}
                   </i>
                 )}
                 {(game.ratingMin !== null || game.ratingMax !== null) && (
@@ -982,8 +1333,18 @@ export const GameBrowserRow = memo(function GameBrowserRow({
           <span>{formatAge(game.hostedAt, currentNow)}</span>
         </div>
       </button>
-      {tooltipPosition && createPortal(
+      {tooltipPosition && !socialPosition && createPortal(
         <GameLineup game={game} id={tooltipId} position={tooltipPosition} />,
+        document.body,
+      )}
+      {socialPosition && socialCategory && createPortal(
+        <GameSocialPopover
+          game={game}
+          players={socialCategory === "friends" ? friends : foes}
+          category={socialCategory}
+          id={socialPopoverId}
+          position={socialPosition}
+        />,
         document.body,
       )}
     </>
@@ -1270,6 +1631,8 @@ export function CustomGamesBrowser({
   const vaultMods = useAppStore((state) => state.state.mods.vault);
   const friendLogins = useAppStore((state) => state.state.social.friends);
   const friendSet = useMemo(() => friendKeys(friendLogins), [friendLogins]);
+  const foeLogins = useAppStore((state) => state.state.social.foes);
+  const foeSet = useMemo(() => friendKeys(foeLogins), [foeLogins]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -1327,6 +1690,7 @@ export function CustomGamesBrowser({
               vault={vault}
               vaultMods={vaultMods}
               friendSet={friendSet}
+              foeSet={foeSet}
               selected={selectedId === game.id}
               now={now}
               onSelect={() => onSelect(game.id)}
@@ -1342,6 +1706,7 @@ export function CustomGamesBrowser({
               vault={vault}
               vaultMods={vaultMods}
               friendSet={friendSet}
+              foeSet={foeSet}
               now={now}
               columnStyle={columnStyle}
               selected={selectedId === game.id}

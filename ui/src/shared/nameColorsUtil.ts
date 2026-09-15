@@ -116,12 +116,12 @@ export function resolvePlayerStyle(
     return { color: preferences.nameColors.selfColor };
   }
 
-  if (includesName(social.friends, name) && preferences.nameColors.friends) {
-    return { color: preferences.nameColors.friends };
+  if (includesName(social.friends, name)) {
+    return { color: preferences.nameColors.friends || "var(--color-friend)" };
   }
 
-  if (includesName(social.foes, name) && preferences.nameColors.foes) {
-    return { color: preferences.nameColors.foes };
+  if (includesName(social.foes, name)) {
+    return { color: preferences.nameColors.foes || "var(--color-foe)" };
   }
 
   if (preferences.coloredNames) {

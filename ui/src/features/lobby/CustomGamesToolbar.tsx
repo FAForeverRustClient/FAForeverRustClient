@@ -24,6 +24,7 @@ interface Props {
    * unranked, so the checkbox there was a way to empty the list.
    */
   hideUnranked?: boolean;
+  hideFoes?: boolean;
   applyFilters: boolean;
   filterCount: number;
   connected: boolean;
@@ -33,6 +34,7 @@ interface Props {
   onHidePrivate: (value: boolean) => void;
   onHideModded: (value: boolean) => void;
   onHideUnranked?: (value: boolean) => void;
+  onHideFoes?: (value: boolean) => void;
   onApplyFilters: (value: boolean) => void;
   onOpenFilters: () => void;
   onHost: () => void;
@@ -79,6 +81,16 @@ export function CustomGamesToolbar(props: Props) {
             onChange={(event) => props.onHideUnranked?.(event.target.checked)}
           />
           {t("lobby.toolbar.hideUnranked")}
+        </label>
+      )}
+      {props.onHideFoes && (
+        <label className="toolbar-check">
+          <input
+            type="checkbox"
+            checked={props.hideFoes ?? false}
+            onChange={(event) => props.onHideFoes?.(event.target.checked)}
+          />
+          {t("lobby.toolbar.hideFoes")}
         </label>
       )}
       {/* The tooltip says which way the rules go. Both reports of this filter

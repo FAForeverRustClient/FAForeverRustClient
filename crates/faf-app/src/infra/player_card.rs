@@ -1,6 +1,6 @@
 //! FAF Data API implementation of the combined Python/Java player profile.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use async_trait::async_trait;
 use faf_domain::protocol::game_outcome::{
@@ -256,13 +256,27 @@ impl PlayerCardClient {
     }
 
     async fn placements(&self, player_id: i32, token: &str) -> Result<JsonApiDoc, String> {
+        self.placements_matching(&format!("loginId=={player_id}"), token)
+            .await
+    }
+
+    /// The same lookup for a batch, which is what the party needs.
+    async fn placements_for(&self, player_ids: &[i32], token: &str) -> Result<JsonApiDoc, String> {
+        let ids: Vec<String> = player_ids.iter().map(i32::to_string).collect();
+        self.placements_matching(&format!("loginId=in=({})", ids.join(",")), token)
+            .await
+    }
+
+    /// Active season scores for whoever `who` selects, with the season,
+    /// leaderboard, division and subdivision they belong to.
+    async fn placements_matching(&self, who: &str, token: &str) -> Result<JsonApiDoc, String> {
         let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
         let mut url = self.url("leagueSeasonScore")?;
         url.query_pairs_mut()
             .append_pair(
                 "filter",
                 &format!(
-                    "(loginId=={player_id};leagueSeason.startDate=le=\"{now}\";leagueSeason.endDate=ge=\"{now}\")"
+                    "({who};leagueSeason.startDate=le=\"{now}\";leagueSeason.endDate=ge=\"{now}\")"
                 ),
             )
             .append_pair(
@@ -442,6 +456,18 @@ impl PlayerCardPort for PlayerCardClient {
             league_placements,
             warnings,
         })
+    }
+
+    async fn load_league_placements(
+        &self,
+        player_ids: &[i32],
+    ) -> Result<BTreeMap<i32, Vec<PlayerLeaguePlacement>>, String> {
+        if player_ids.is_empty() {
+            return Ok(BTreeMap::new());
+        }
+        let token = self.token()?;
+        let doc = self.placements_for(player_ids, &token).await?;
+        Ok(parse_placements_by_player(&doc))
     }
 
     async fn load_rating_history(
@@ -1032,10 +1058,44 @@ fn parse_achievements(
     achievements
 }
 
+/// One player's placements, highest division first.
 fn parse_placements(doc: &JsonApiDoc) -> Vec<PlayerLeaguePlacement> {
+    let mut placements = parse_placement_rows(doc);
+    // Java chooses the greatest division index and then greatest subdivision
+    // index for the compact Matchmaker identity. Keep that item first while
+    // retaining the complete placement list for the full profile.
+    placements.sort_by_key(|row| std::cmp::Reverse(row.order));
+    placements.into_iter().map(|row| row.placement).collect()
+}
+
+/// A batch lookup's placements grouped by the `loginId` each score names,
+/// each group highest division first. A player the response says nothing
+/// about is absent.
+fn parse_placements_by_player(doc: &JsonApiDoc) -> BTreeMap<i32, Vec<PlayerLeaguePlacement>> {
+    let mut rows = parse_placement_rows(doc);
+    rows.sort_by_key(|row| std::cmp::Reverse(row.order));
+    let mut by_player: BTreeMap<i32, Vec<PlayerLeaguePlacement>> = BTreeMap::new();
+    for row in rows {
+        by_player
+            .entry(row.player_id)
+            .or_default()
+            .push(row.placement);
+    }
+    by_player
+}
+
+/// A `leagueSeasonScore` with what it needs to be ordered and attributed.
+struct PlacementRow {
+    player_id: i32,
+    /// Division index, then subdivision index: the ordering Java's
+    /// `getHighestActiveLeagueEntryForPlayer` sorts by.
+    order: i32,
+    placement: PlayerLeaguePlacement,
+}
+
+fn parse_placement_rows(doc: &JsonApiDoc) -> Vec<PlacementRow> {
     let index = index(doc);
-    let mut placements: Vec<_> = doc
-        .data
+    doc.data
         .iter()
         .filter_map(|score| {
             let season = related(score, "leagueSeason", &index)?;
@@ -1045,9 +1105,10 @@ fn parse_placements(doc: &JsonApiDoc) -> Vec<PlayerLeaguePlacement> {
             let technical_name = text(board, "technicalName");
             let order = integer(division, "divisionIndex") * 1_000
                 + integer(subdivision, "subdivisionIndex");
-            Some((
+            Some(PlacementRow {
+                player_id: integer(score, "loginId"),
                 order,
-                PlayerLeaguePlacement {
+                placement: PlayerLeaguePlacement {
                     technical_name: technical_name.clone(),
                     leaderboard: pretty_board(&technical_name, &text(board, "nameKey")),
                     season: display_key(&text(season, "nameKey")),
@@ -1070,16 +1131,8 @@ fn parse_placements(doc: &JsonApiDoc) -> Vec<PlayerLeaguePlacement> {
                         }
                     },
                 },
-            ))
+            })
         })
-        .collect();
-    // Java chooses the greatest division index and then greatest subdivision
-    // index for the compact Matchmaker identity. Keep that item first while
-    // retaining the complete placement list for the full profile.
-    placements.sort_by_key(|(order, _)| std::cmp::Reverse(*order));
-    placements
-        .into_iter()
-        .map(|(_, placement)| placement)
         .collect()
 }
 
@@ -1469,6 +1522,24 @@ impl PlayerCardPort for FakePlayerCard {
         })
     }
 
+    async fn load_league_placements(
+        &self,
+        player_ids: &[i32],
+    ) -> Result<BTreeMap<i32, Vec<PlayerLeaguePlacement>>, String> {
+        // Odd ids get the offline profile's placement and even ones get none,
+        // so a fake party shows both an emblem and the unlisted badge. Odd,
+        // because `OFFLINE_FAF_ID` is 101 and the signed-in seat is the one
+        // that is always on screen.
+        let mut placements = BTreeMap::new();
+        for &player_id in player_ids {
+            if player_id % 2 == 1 {
+                let profile = self.load_profile(Some(player_id), "").await?;
+                placements.insert(player_id, profile.league_placements);
+            }
+        }
+        Ok(placements)
+    }
+
     async fn load_rating_history(
         &self,
         query: &RatingHistoryQuery,
@@ -1647,6 +1718,44 @@ mod tests {
         // Absent from the payload rather than defaulted to something wrong: a
         // subdivision without a ceiling renders no progress at all.
         assert_eq!(placements[1].highest_score, 0);
+    }
+
+    #[test]
+    fn a_batch_of_placements_is_grouped_by_the_player_each_score_names() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [
+                { "type": "leagueSeasonScore", "id": "1", "attributes": { "loginId": 7, "score": 900, "gameCount": 8 }, "relationships": {
+                    "leagueSeason": { "data": { "type": "leagueSeason", "id": "s" } },
+                    "leagueSeasonDivisionSubdivision": { "data": { "type": "leagueSeasonDivisionSubdivision", "id": "low" } }
+                }},
+                { "type": "leagueSeasonScore", "id": "2", "attributes": { "loginId": 9, "score": 1200, "gameCount": 12 }, "relationships": {
+                    "leagueSeason": { "data": { "type": "leagueSeason", "id": "s" } },
+                    "leagueSeasonDivisionSubdivision": { "data": { "type": "leagueSeasonDivisionSubdivision", "id": "high" } }
+                }},
+                { "type": "leagueSeasonScore", "id": "3", "attributes": { "loginId": 7, "score": 1300, "gameCount": 20 }, "relationships": {
+                    "leagueSeason": { "data": { "type": "leagueSeason", "id": "s" } },
+                    "leagueSeasonDivisionSubdivision": { "data": { "type": "leagueSeasonDivisionSubdivision", "id": "high" } }
+                }}
+            ],
+            "included": [
+                { "type": "leaderboard", "id": "b", "attributes": { "technicalName": "ladder_1v1" } },
+                { "type": "leagueSeason", "id": "s", "attributes": { "nameKey": "season_1" }, "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "b" } } } },
+                { "type": "leagueSeasonDivision", "id": "bronze", "attributes": { "nameKey": "bronze", "divisionIndex": 1 } },
+                { "type": "leagueSeasonDivision", "id": "diamond", "attributes": { "nameKey": "diamond", "divisionIndex": 4 } },
+                { "type": "leagueSeasonDivisionSubdivision", "id": "low", "attributes": { "nameKey": "ii", "subdivisionIndex": 2 }, "relationships": { "leagueSeasonDivision": { "data": { "type": "leagueSeasonDivision", "id": "bronze" } } } },
+                { "type": "leagueSeasonDivisionSubdivision", "id": "high", "attributes": { "nameKey": "i", "subdivisionIndex": 1 }, "relationships": { "leagueSeasonDivision": { "data": { "type": "leagueSeasonDivision", "id": "diamond" } } } }
+            ]
+        })).unwrap();
+
+        let by_player = parse_placements_by_player(&doc);
+        assert_eq!(by_player.len(), 2);
+        // Each player's own list is still highest division first.
+        assert_eq!(by_player[&7][0].division, "Diamond I");
+        assert_eq!(by_player[&7][1].division, "Bronze Ii");
+        assert_eq!(by_player[&9][0].division, "Diamond I");
+        assert_eq!(by_player[&9].len(), 1);
+        // Nobody asked about is invented.
+        assert!(!by_player.contains_key(&8));
     }
 }
 

@@ -161,14 +161,14 @@
 
 .party-seats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 220px));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 240px));
   gap: 8px;
   margin-top: 14px;
 }
 
 .party-seat {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
   min-height: 48px;
@@ -176,22 +176,26 @@
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  position: relative;
 }
 
-/* Bigger than the 28px the design system gives an avatar elsewhere, because
-   this is the one place a FAF avatar is the subject rather than a marker: the
-   seat is 190px wide and has the room, and a 40x20 banner at 28px wide was a
-   picture nobody could make out. The first grid track above matches. */
-.party-seat .profile-avatar {
-  width: 38px;
-  height: 38px;
-  font-size: 14px;
+.party-seat.has-kick {
+  padding-right: 22px;
 }
 
 .party-seat-text {
   display: flex;
   min-width: 0;
   flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.party-seat-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
 }
 
 .party-seat strong {
@@ -207,21 +211,26 @@
   font-size: 12px;
 }
 
-/* The second line of a seat: what it queues as, and whether it leads. One row
-   whatever it holds, so a seat is the same height with and without the label. */
+.party-seat-avatar {
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
 .party-seat-meta {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 6px;
-  overflow: hidden;
 }
 
 .party-seat-factions {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  flex: none;
+  flex-shrink: 0;
 }
 
 /* The glyphs carry their faction's colour, which is the whole point of showing
@@ -229,6 +238,30 @@
 .party-seat-factions small {
   color: var(--color-subtle);
   font-size: 11px;
+}
+
+.party-seat-leader {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-warn);
+  flex-shrink: 0;
+}
+
+/* The member's league mark, on the left of the seat like in the identity card.
+   Sized to 34px so a placed and an unplaced member are seats of one height. */
+.party-seat-league {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.party-seat-league img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 /* A dashed outline reads as "this could be filled" where a solid card would
@@ -240,8 +273,8 @@
 
 .party-seat-slot {
   display: inline-flex;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   align-items: center;
   justify-content: center;
   flex: none;
@@ -250,21 +283,30 @@
 }
 
 .party-seat-kick {
+  position: absolute;
+  top: 3px;
+  right: 3px;
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   place-items: center;
   padding: 0;
-  color: var(--color-muted);
+  color: var(--color-subtle);
   background: transparent;
   border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  z-index: 1;
 }
 
-.party-seat-kick:hover {
+.party-seat-kick:hover:not(:disabled) {
   color: var(--color-text);
   background: var(--color-surface-hover);
+}
+
+.party-seat-kick:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .party-seat-kick:focus-visible {

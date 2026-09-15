@@ -131,5 +131,12 @@ export function reducePlayerCard(state: PlayerCardState, event: PlayerCardEvent)
         matchmakerProfileStatus: "failed",
         matchmakerProfileError: event.payload.reason,
       };
+    case "partyPlacementsLoaded":
+      // Merged, not replaced: a partner looked up earlier stays known, and an
+      // id that arrives with an empty list is recorded as unplaced.
+      return {
+        ...state,
+        partyPlacements: { ...state.partyPlacements, ...event.payload.placements },
+      };
   }
 }

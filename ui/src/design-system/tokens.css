@@ -74,6 +74,7 @@
      hue. Aliases resolve against the theme block's own value, because every
      block styles the same root element. */
   --color-friend: var(--color-ok);
+  --color-foe: var(--color-error);
 
   /* The unit categories of a replay's end-of-game statistics. Twelve bars
      stand side by side in one group there, and twelve bars in one colour say

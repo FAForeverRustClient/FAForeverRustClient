@@ -173,9 +173,11 @@ export function AppShell() {
   // chat. A second, fixed green for the same idea elsewhere in the client was
   // a setting that only half applied.
   const friendColor = useAppStore((state) => state.state.settings.chat.nameColors.friends);
+  const foeColor = useAppStore((state) => state.state.settings.chat.nameColors.foes);
   const shellStyle = {
     "--sidebar-width": `${sidebarWidth}px`,
     ...(friendColor ? { "--color-friend": friendColor } : {}),
+    ...(foeColor ? { "--color-foe": foeColor } : {}),
   } as CSSProperties;
 
   return (

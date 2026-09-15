@@ -10,6 +10,7 @@ export type IconName =
   | "mods"
   | "leaderboard"
   | "trophy"
+  | "crown"
   | "book"
   | "units"
   | "changelog"
@@ -26,6 +27,7 @@ export type IconName =
   | "search"
   | "filter"
   | "users"
+  | "userX"
   | "lock"
   | "plus"
   | "minus"
@@ -71,6 +73,7 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     leaderboard: <><path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7" /><path d="M2 20h20" /></>,
     book: <><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5Z" /><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v4H6.5A2.5 2.5 0 0 1 4 19.5" /></>,
     trophy: <><path d="M7 4h10v6a5 5 0 0 1-10 0Z" /><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" /><path d="M12 15v4M9 21h6" /></>,
+    crown: <><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7z" /><path d="M4 20h16" /></>,
     units: <><path d="m12 2 8.5 5v10L12 22l-8.5-5V7Z" /><path d="m3.5 7 8.5 5 8.5-5M12 12v10" /></>,
     changelog: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M8 13h5M8 17h8" /></>,
     github: <><path d="M15 22v-3.3c0-1.1-.4-1.9-1-2.3 3.3-.4 6.7-1.6 6.7-7.1 0-1.6-.6-2.9-1.6-3.9.2-.4.7-1.9-.2-3.8 0 0-1.3-.4-4.1 1.5a14 14 0 0 0-7.5 0C4.5 1.2 3.2 1.6 3.2 1.6c-.9 1.9-.4 3.4-.2 3.8-1 1-1.6 2.3-1.6 3.9 0 5.5 3.4 6.7 6.7 7.1-.6.4-1 1.1-1 2.3V22" /><path d="M7.1 18.3c-3 .9-3-1.4-4.2-1.8" /></>,
@@ -86,6 +89,7 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     search: <><circle cx="10" cy="10" r="6" /><path d="m14.5 14.5 5 5" /></>,
     filter: <path d="M4 6h16M7 12h10M10 18h4" />,
     users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>,
+    userX: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="17" y1="8" x2="22" y2="13" /><line x1="22" y1="8" x2="17" y2="13" /></>,
     lock: <><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
     plus: <path d="M12 5v14M5 12h14" />,
     minus: <path d="M5 12h14" />,

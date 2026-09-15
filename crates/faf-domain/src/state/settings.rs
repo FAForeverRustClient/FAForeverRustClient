@@ -1654,6 +1654,7 @@ pub struct CustomGameBrowserPreferences {
     pub hide_private: bool,
     pub hide_modded: bool,
     pub hide_unranked: bool,
+    pub hide_foes: bool,
     pub apply_filters: bool,
     pub rules: Vec<CustomGameFilterRule>,
     /// Pixel widths of the list view's columns, left to right.
@@ -1685,6 +1686,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             hide_private: bool,
             hide_modded: bool,
             hide_unranked: bool,
+            hide_foes: bool,
             apply_filters: bool,
             rules: Vec<CustomGameFilterRule>,
             column_widths: Vec<u32>,
@@ -1698,6 +1700,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             hide_private: wire.hide_private,
             hide_modded: wire.hide_modded,
             hide_unranked: wire.hide_unranked,
+            hide_foes: wire.hide_foes,
             apply_filters: wire.apply_filters,
             rules: wire.rules,
             column_widths: wire.column_widths,
@@ -3104,6 +3107,7 @@ mod tests {
                     hide_private: true,
                     hide_modded: true,
                     hide_unranked: true,
+                    hide_foes: true,
                     apply_filters: true,
                     rules: vec![
                         CustomGameFilterRule {
@@ -3202,6 +3206,7 @@ mod tests {
             CustomGameSort::Host
         );
         assert!(settings.browsing.custom_games_browser.hide_private);
+        assert!(settings.browsing.custom_games_browser.hide_foes);
         assert_eq!(settings.browsing.custom_games_browser.rules.len(), 1);
         assert_eq!(
             settings.browsing.custom_games_browser.rules[0].value,

@@ -151,6 +151,25 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     });
   }, [playerCard.matchmakerProfile, playerCard.matchmakerProfileStatus, playerId, playerName]);
 
+  // Sorted and joined so the effect keys on who is in the party, not on the
+  // party message arriving again with the same people in it. The backend
+  // skips ids it already knows, so sending the whole party every time is
+  // cheap and lets a freshly signed-in solo player get their own emblem.
+  const partyIdsKey = useMemo(() => {
+    const ids = party.members.length > 0 ? party.members.map((member) => member.playerId) : playerId === null ? [] : [playerId];
+    return [...new Set(ids)].sort((left, right) => left - right).join(",");
+  }, [party.members, playerId]);
+  useEffect(() => {
+    if (!partyIdsKey) return;
+    ipc.send({
+      kind: "PlayerCard",
+      command: {
+        type: "loadPartyPlacements",
+        payload: { playerIds: partyIdsKey.split(",").map(Number) },
+      },
+    });
+  }, [partyIdsKey]);
+
   useEffect(() => {
     // A party can grow while it is queued. The Java client immediately leaves
     // queues that no longer fit instead of waiting for a server rejection.
@@ -240,7 +259,15 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
           onFactionsChange={setFactions}
         />
 
-        <MatchmakerPartyPanel party={party} social={social} playerId={playerId} playerName={playerName} searching={isSearching || searchLocked} />
+        <MatchmakerPartyPanel
+          party={party}
+          social={social}
+          placements={playerCard.partyPlacements}
+          playerId={playerId}
+          playerName={playerName}
+          searching={isSearching || searchLocked}
+          selectedFactions={selectedFactions}
+        />
 
         <section
           className="matchmaker-card surface-panel matchmaker-queues-section"

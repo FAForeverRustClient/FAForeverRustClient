@@ -36,6 +36,7 @@ describe("browsing preferences", () => {
         hidePrivate: true,
         hideModded: true,
         hideUnranked: true,
+        hideFoes: true,
         applyFilters: true,
         columnWidths: [10, 5000, 200, 200, 200, 200],
         detailWidth: 40,
@@ -133,6 +134,7 @@ describe("browsing preferences", () => {
       hidePrivate: true,
       hideModded: true,
       hideUnranked: true,
+      hideFoes: true,
       applyFilters: true,
       rules: [{ field: "title", constraint: "contains", value: "no rush" }],
     });
