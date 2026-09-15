@@ -1,475 +1,116 @@
-import { useEffect, useRef, useState } from "react";
-import type { ComponentType } from "react";
+// Settings, as a sidebar of registers.
+//
+// It was one scroll of fourteen sections with a row of category tabs above it,
+// and the report that started this called it a dump. Two things were wrong with
+// it and only one of them was the length: every new category made the tab row
+// wider, so the structure got worse exactly as the client grew, and the tabs
+// only scrolled the one list rather than replacing it, so there was never a
+// screen holding one subject and nothing else.
+//
+// A rail fixes both. It grows downwards, which costs nothing, and it shows one
+// register at a time, which is what makes a register a place rather than a
+// heading you pass. The shape is the one the issue asked for: a numbered list
+// down the side, an index at 00 that reports what each register currently says,
+// and a heading on each page naming the register you are in.
+//
+// Every register stays mounted and all but one are hidden, which is not a
+// detail: it is what lets the search read the rows that rendered rather than a
+// list maintained beside them (see `settingsSearch`), and it costs no more than
+// the previous tab, which rendered all fourteen sections at all times anyway.
+
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+
 import { Icon } from "../../design-system/Icon";
-import { SectionTabs } from "../../design-system/SectionTabs";
-import { AppearanceSettingsSection } from "./AppearanceSettingsSection";
-import { AccountSupportSettingsSection } from "./AccountSupportSettingsSection";
-import { ChatSettingsSection } from "./ChatSettingsSection";
-import { ConnectivitySettingsSection } from "./ConnectivitySettingsSection";
-import { DebugWindowsSettingsSection } from "./DebugWindowsSettingsSection";
-import { DiscordSettingsSection } from "./DiscordSettingsSection";
-import { DiagnosticsSettingsSection } from "./DiagnosticsSettingsSection";
-import { FoldersSettingsSection } from "./FoldersSettingsSection";
-import { GameCacheSettingsSection } from "./GameCacheSettingsSection";
-import { GameSettingsSection } from "./GameSettingsSection";
-import { GeneralSettingsSection } from "./GeneralSettingsSection";
-import { PathsSettingsSection } from "./PathsSettingsSection";
-import { NotificationsSettingsSection } from "./NotificationsSettingsSection";
-import { SettingsSection } from "./SettingControls";
-import { UpdatesSettingsSection } from "./UpdatesSettingsSection";
-import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { REGISTERS, REGISTER_ORDER, type RegisterKey } from "./registers";
+import { SettingsIndex } from "./SettingsIndex";
+import { SettingsRegisterScope, useSettingsIndexEntry } from "./SettingControls";
+import {
+  clearSettingsRequest,
+  pendingSettingsRequest,
+  subscribeToSettingsRequest,
+} from "./settingsNavigation";
+import {
+  registerMatches,
+  settingsIndexRevision,
+  subscribeToSettingsIndex,
+} from "./settingsSearch";
 import "./settings.css";
 
-type SectionKey = "general" | "account" | "appearance" | "notifications" | "chat" | "discord" | "connectivity" | "folders" | "diagnostics" | "debugWindows" | "updates" | "game" | "gameCache" | "paths";
-type SettingsCategory = "all" | "general" | "chat" | "notifications" | "account" | "connectivity" | "game" | "paths" | "maintenance";
-
-interface SectionDef {
-  title: MessageKey;
-  description: MessageKey;
-  keywords: MessageKey;
-  labels?: readonly MessageKey[];
-  Component: ComponentType;
-}
+/** The index page is a register in the rail, and the one the tab opens on. */
+const INDEX: RegisterKey | "index" = "index";
+type RailKey = RegisterKey | "index";
 
 /**
- * One declaration per section, read by both the search filter and the render.
+ * A register's search words, which are indexed and never drawn.
  *
- * Title and description used to be written out twice, once for `matches()` and
- * once for the rendered `SettingsSection`. Keying them here means a section is
- * described in exactly one place, and a translation cannot drift between the
- * copy a user reads and the copy the search looks at.
+ * These carry the terms people type that no label on the page uses: "fps",
+ * "nickname", "vault". Drawing them would be a paragraph of keyword soup under
+ * every heading, so they are contributed to the index and nothing else.
  */
-const SECTIONS = {
-  general: {
-    title: "settings.section.general.title",
-    description: "settings.section.general.description",
-    keywords: "settings.section.general.keywords",
-    labels: [
-      "settings.general.startPage.label",
-      "settings.general.startPage.hint",
-      "settings.general.autoLogin.label",
-      "settings.general.autoLogin.hint",
-      "settings.general.language.label",
-      "settings.general.language.hint",
-      "settings.events.weekStart.label",
-      "settings.events.weekStart.hint",
-      "settings.events.reminders.label",
-      "settings.events.reminders.hint",
-    ],
-    Component: GeneralSettingsSection,
-  },
-  account: {
-    title: "settings.section.account.title",
-    description: "settings.section.account.description",
-    keywords: "settings.section.account.keywords",
-    labels: [
-      "settings.account.session",
-      "settings.account.sessionHint",
-      "settings.account.logOut",
-      "settings.account.fafAccount",
-      "settings.account.fafAccountHint",
-      "settings.account.changeUsername",
-      "settings.account.resetPassword",
-      "settings.account.linkSteam",
-      "settings.account.helpCommunityRules",
-      "settings.account.helpCommunityRulesHint",
-      "settings.account.support",
-      "settings.account.technicalHelp",
-      "settings.account.rules",
-    ],
-    Component: AccountSupportSettingsSection,
-  },
-  appearance: {
-    title: "settings.section.appearance.title",
-    description: "settings.section.appearance.description",
-    keywords: "settings.section.appearance.keywords",
-    labels: [
-      "settings.appearance.theme",
-      "settings.appearance.themeHint",
-      "settings.appearance.interfaceDensity",
-      "settings.appearance.interfaceDensityHint",
-      "settings.appearance.compact",
-      "settings.appearance.comfortable",
-      "settings.appearance.interfaceScale",
-      "settings.appearance.interfaceScaleHint",
-      "settings.appearance.tileColumns",
-      "settings.appearance.tileColumnsHint",
-      "settings.appearance.tileColumnsAuto",
-      "settings.appearance.hoverPanels",
-      "settings.appearance.hoverPanelsHint",
-      "settings.appearance.hoverOpenDelay",
-      "settings.appearance.hoverOpenDelayHint",
-      "settings.appearance.hoverCloseDelay",
-      "settings.appearance.hoverCloseDelayHint",
-      "settings.appearance.reduceMotion",
-      "settings.appearance.reduceMotionHint",
-    ],
-    Component: AppearanceSettingsSection,
-  },
-  notifications: {
-    title: "settings.section.notifications.title",
-    description: "settings.section.notifications.description",
-    keywords: "settings.section.notifications.keywords",
-    labels: [
-      "settings.notifications.enabled",
-      "settings.notifications.enabledHint",
-      "settings.notifications.desktop",
-      "settings.notifications.desktopHint",
-      "settings.notifications.sound",
-      "settings.notifications.soundHint",
-      "settings.notifications.volume",
-      "settings.notifications.volumeHint",
-      "settings.notifications.volumeAria",
-      "settings.notifications.whenFocused",
-      "settings.notifications.whenFocusedHint",
-      "settings.notifications.matchFound",
-      "settings.notifications.matchFoundHint",
-      "settings.notifications.privateMessages",
-      "settings.notifications.privateMessagesHint",
-      "settings.notifications.mentions",
-      "settings.notifications.mentionsHint",
-      "settings.notifications.friendOnline",
-      "settings.notifications.friendOnlineHint",
-      "settings.notifications.friendOffline",
-      "settings.notifications.friendOfflineHint",
-      "settings.notifications.friendPlaying",
-      "settings.notifications.friendPlayingHint",
-      "settings.notifications.newGames",
-      "settings.notifications.newGamesHint",
-      "settings.notifications.friendsGamesOnly",
-      "settings.notifications.friendsGamesOnlyHint",
-      "settings.notifications.gameFull",
-      "settings.notifications.gameFullHint",
-      "settings.notifications.gameLaunched",
-      "settings.notifications.gameLaunchedHint",
-      "settings.notifications.reviewReminder",
-      "settings.notifications.reviewReminderHint",
-      "settings.notifications.partyInvites",
-      "settings.notifications.partyInvitesHint",
-      "settings.notifications.streamLive",
-      "settings.notifications.streamLiveHint",
-    ],
-    Component: NotificationsSettingsSection,
-  },
-  chat: {
-    title: "settings.section.chat.title",
-    description: "settings.section.chat.description",
-    keywords: "settings.section.chat.keywords",
-    labels: [
-      "settings.chat.messageTimestamps",
-      "settings.chat.messageTimestampsHint",
-      "settings.chat.24HourTime",
-      "settings.chat.24HourTimeHint",
-      "settings.chat.colorEveryName",
-      "settings.chat.colorEveryNameHint",
-      "settings.chat.showJoinsParts",
-      "settings.chat.showJoinsPartsHint",
-      "settings.chat.hideFoeMessages",
-      "settings.chat.hideFoeMessagesHint",
-      "settings.chat.joinMyLanguage",
-      "settings.chat.joinMyLanguageHint",
-      "settings.chat.autoJoinNewbie",
-      "settings.chat.autoJoinNewbieHint",
-      "settings.chat.visibleHistory",
-      "settings.chat.visibleHistoryHint",
-      "settings.chat.mutedLabel",
-      "settings.chat.mutedHint",
-      "settings.chat.autoJoinLabel",
-      "settings.chat.autoJoinHint",
-    ],
-    Component: ChatSettingsSection,
-  },
-  discord: {
-    title: "settings.section.discord.title",
-    description: "settings.section.discord.description",
-    keywords: "settings.section.discord.keywords",
-    labels: [
-      "settings.discord.richPresence",
-      "settings.discord.richPresenceHint",
-      "settings.discord.disallowJoinsVia",
-      "settings.discord.disallowJoinsViaHint",
-    ],
-    Component: DiscordSettingsSection,
-  },
-  connectivity: {
-    title: "settings.section.connectivity.title",
-    description: "settings.section.connectivity.description",
-    keywords: "settings.section.connectivity.keywords",
-    labels: [
-      "settings.connectivity.connectivityAdapter",
-      "settings.connectivity.connectivityAdapterHint",
-      "settings.connectivity.java",
-      "settings.connectivity.go",
-    ],
-    Component: ConnectivitySettingsSection,
-  },
-  folders: {
-    title: "settings.section.folders.title",
-    description: "settings.section.folders.description",
-    keywords: "settings.section.folders.keywords",
-    labels: [
-      "settings.folders.label",
-      "settings.folders.hint",
-      "settings.folders.maps",
-      "settings.folders.mods",
-      "settings.folders.replays",
-      "settings.folders.vault",
-      "settings.folders.gamePrefs",
-    ],
-    Component: FoldersSettingsSection,
-  },
-  diagnostics: {
-    title: "settings.section.diagnostics.title",
-    description: "settings.section.diagnostics.description",
-    keywords: "settings.section.diagnostics.keywords",
-    labels: [
-      "settings.diagnostics.gameLogs",
-      "settings.diagnostics.gameLogsHint",
-      "settings.diagnostics.viewLatest",
-      "settings.diagnostics.openFolder",
-      "settings.diagnostics.clientLogs",
-      "settings.diagnostics.clientLogsHint",
-    ],
-    Component: DiagnosticsSettingsSection,
-  },
-  debugWindows: {
-    title: "settings.section.debugWindows.title",
-    description: "settings.section.debugWindows.description",
-    keywords: "settings.section.debugWindows.keywords",
-    labels: [
-      "settings.debug.iceAdapterDebugWindow",
-      "settings.debug.iceAdapterDebugWindowHint",
-      "settings.debug.iceAdapterInfoWindow",
-      "settings.debug.iceAdapterInfoWindowHint",
-      "settings.debug.iceAdapterConsoleWindow",
-      "settings.debug.iceAdapterConsoleWindowHint",
-      "settings.debug.mapGeneratorWindow",
-      "settings.debug.mapGeneratorWindowHint",
-    ],
-    Component: DebugWindowsSettingsSection,
-  },
-  updates: {
-    title: "settings.section.updates.title",
-    description: "settings.section.updates.description",
-    keywords: "settings.section.updates.keywords",
-    labels: [
-      "settings.updates.checkUpdatesAt",
-      "settings.updates.checkUpdatesAtHint",
-      "settings.updates.includePreReleases",
-      "settings.updates.includePreReleasesHint",
-      "settings.updates.updateStatus",
-      "settings.updates.updateStatusHint",
-      "settings.updates.checkNow",
-    ],
-    Component: UpdatesSettingsSection,
-  },
-  game: {
-    title: "settings.section.game.title",
-    description: "settings.section.game.description",
-    keywords: "settings.section.game.keywords",
-    labels: [
-      "settings.game.autoGenerateMaps",
-      "settings.game.autoGenerateMapsHint",
-      "settings.game.pipeLiveReplay",
-      "settings.game.pipeLiveReplayHint",
-      "settings.game.argumentsLabel",
-      "settings.game.argumentsHint",
-    ],
-    Component: GameSettingsSection,
-  },
-  paths: {
-    title: "settings.section.paths.title",
-    description: "settings.section.paths.description",
-    keywords: "settings.section.paths.keywords",
-    labels: [
-      "settings.paths.gameInstall",
-      "settings.paths.gameInstallHint",
-      "settings.paths.replayInstall",
-      "settings.paths.replayInstallHint",
-      "settings.paths.vault",
-      "settings.paths.vaultHint",
-      "settings.paths.maps",
-      "settings.paths.mapsHint",
-      "settings.paths.mods",
-      "settings.paths.modsHint",
-      "settings.paths.replays",
-      "settings.paths.replaysHint",
-      "settings.paths.mapGenerator",
-      "settings.paths.mapGeneratorHint",
-      "settings.paths.gamePrefs",
-      "settings.paths.gamePrefsHint",
-      "settings.paths.java",
-      "settings.paths.javaHint",
-    ],
-    Component: PathsSettingsSection,
-  },
-  gameCache: {
-    title: "settings.section.gameCache.title",
-    description: "settings.section.gameCache.description",
-    keywords: "settings.section.gameCache.keywords",
-    labels: [
-      "settings.game.cacheLifetime",
-      "settings.game.cacheLifetimeHint",
-      "settings.game.cacheRollingBranches",
-      "settings.game.cacheRollingBranchesHint",
-      "settings.game.cacheRollingBranchesDocTitle",
-      "settings.game.experimentalBadge",
-      "settings.game.cacheStorage",
-      "settings.game.cacheStorageHint",
-      "settings.game.cachedVersions",
-      "settings.game.clearCache",
-      "settings.game.refreshCache",
-    ],
-    Component: GameCacheSettingsSection,
-  },
-} as const satisfies Record<SectionKey, SectionDef>;
-
-const CATEGORY_SECTIONS: Record<SettingsCategory, readonly SectionKey[]> = {
-  all: ["general", "appearance", "chat", "notifications", "account", "discord", "connectivity", "game", "gameCache", "paths", "folders", "diagnostics", "debugWindows", "updates"],
-  general: ["general", "appearance"],
-  chat: ["chat"],
-  notifications: ["notifications"],
-  account: ["account", "discord"],
-  connectivity: ["connectivity"],
-  game: ["game", "gameCache"],
-  paths: ["paths"],
-  maintenance: ["folders", "gameCache", "updates", "diagnostics", "debugWindows"],
-};
-
-const CATEGORY_TABS = [
-  { id: "all", label: "settings.category.all" },
-  { id: "general", label: "settings.category.general" },
-  { id: "chat", label: "settings.category.chat" },
-  { id: "notifications", label: "settings.category.notifications" },
-  { id: "account", label: "settings.category.account" },
-  { id: "connectivity", label: "settings.category.connectivity" },
-  { id: "game", label: "settings.category.game" },
-  { id: "paths", label: "settings.category.paths" },
-  { id: "maintenance", label: "settings.category.maintenance" },
-] as const satisfies readonly { id: SettingsCategory; label: MessageKey }[];
-
-const SECTION_KEYS: readonly SectionKey[] = CATEGORY_SECTIONS.all;
+function RegisterKeywords({ text }: { text: string }) {
+  useSettingsIndexEntry(text);
+  return null;
+}
 
 export function SettingsView() {
   const { t } = useTranslation();
+  const [active, setActive] = useState<RailKey>(INDEX);
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>("all");
-  const [isScrolled, setIsScrolled] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const isProgrammaticScroll = useRef(false);
-  const scrollTimeoutRef = useRef<number | null>(null);
-  const query = search.trim().toLocaleLowerCase();
+  const query = search.trim();
+  const stageRef = useRef<HTMLDivElement>(null);
 
-  const sectionMatchesSearch = (section: SectionKey) => {
-    if (!query) return true;
-    const definition = SECTIONS[section];
-    const labels = definition.labels ? definition.labels.map((key) => t(key)).join(" ") : "";
-    const haystack = `${t(definition.title)} ${t(definition.description)} ${t(definition.keywords)} ${labels}`;
-    const normalizedHaystack = haystack.toLocaleLowerCase();
-    const normalizedQuery = query.toLocaleLowerCase();
-    if (normalizedHaystack.includes(normalizedQuery)) return true;
-    const simplifiedHaystack = normalizedHaystack.replace(/[-_]/g, " ");
-    const simplifiedQuery = normalizedQuery.replace(/[-_]/g, " ");
-    return simplifiedHaystack.includes(simplifiedQuery);
-  };
+  // The index fills in as rows mount, so the match set has to be recomputed
+  // when it changes and not only when the query does.
+  const revision = useSyncExternalStore(subscribeToSettingsIndex, settingsIndexRevision);
+  const matches = useMemo(
+    () => new Set(REGISTER_ORDER.filter((key) => registerMatches(key, query))),
+    // `revision` is the dependency that matters; it is not read in the body.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [query, revision],
+  );
 
-  const visibleSections = SECTION_KEYS.filter(sectionMatchesSearch);
-
-  const updateSearch = (value: string) => {
-    setSearch(value);
-    setActiveCategory("all");
-  };
-
-  const scrollToCategory = (category: SettingsCategory) => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    isProgrammaticScroll.current = true;
-    setActiveCategory(category);
-
-    if (category === "all") {
-      container.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      const firstSectionKey = CATEGORY_SECTIONS[category][0];
-      const el = document.getElementById(`settings-${firstSectionKey}`);
-      if (el) {
-        const containerRect = container.getBoundingClientRect();
-        const elRect = el.getBoundingClientRect();
-        const targetScrollTop = container.scrollTop + (elRect.top - containerRect.top) - 4;
-        container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: "smooth" });
-      }
-    }
-
-    if (scrollTimeoutRef.current) {
-      window.clearTimeout(scrollTimeoutRef.current);
-    }
-    scrollTimeoutRef.current = window.setTimeout(() => {
-      isProgrammaticScroll.current = false;
-    }, 600);
-  };
-
+  // A search that excludes the register you are looking at would leave you
+  // reading a page the rail says has no matches, so move to the first one that
+  // does. Typing on the index page leaves you there: that page lists them all,
+  // which is the useful answer while a query is still half typed.
   useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
+    if (!query || active === INDEX) return;
+    if (matches.has(active as RegisterKey)) return;
+    const first = REGISTER_ORDER.find((key) => matches.has(key));
+    if (first) setActive(first);
+  }, [query, matches, active]);
 
-    const onScroll = () => {
-      const scrolled = container.scrollTop > 2;
-      setIsScrolled((prev) => (prev !== scrolled ? scrolled : prev));
+  // Each register is its own page, so it starts at the top like one.
+  useEffect(() => {
+    stageRef.current?.scrollTo({ top: 0 });
+  }, [active]);
 
-      if (isProgrammaticScroll.current) return;
-      if (search.trim()) return;
+  // A notification that sends you into Settings names the register it meant.
+  // Consumed here rather than acted on by the sender, because the sender has
+  // navigated to the tab and this component may not have existed yet.
+  const requested = useSyncExternalStore(subscribeToSettingsRequest, pendingSettingsRequest);
+  useEffect(() => {
+    if (!requested) return;
+    setActive(requested);
+    setSearch("");
+    clearSettingsRequest();
+  }, [requested]);
 
-      if (container.scrollTop < 30) {
-        setActiveCategory("all");
-        return;
-      }
-
-      const isBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 30;
-      if (isBottom) {
-        setActiveCategory("maintenance");
-        return;
-      }
-
-      const containerRect = container.getBoundingClientRect();
-      let current: SettingsCategory = "all";
-      for (const tab of CATEGORY_TABS) {
-        if (tab.id === "all") continue;
-        const firstSectionKey = CATEGORY_SECTIONS[tab.id][0];
-        const el = document.getElementById(`settings-${firstSectionKey}`);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          if (rect.top <= containerRect.top + 32) {
-            current = tab.id;
-          }
-        }
-      }
-
-      setActiveCategory(current);
-    };
-
-    container.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      container.removeEventListener("scroll", onScroll);
-      if (scrollTimeoutRef.current) {
-        window.clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, [search]);
+  const open = (key: RailKey) => {
+    setActive(key);
+  };
 
   return (
     <div className="settings-view">
-      <div className="settings-header-container">
-        <div className="settings-heading">
-          <div>
-            <h2 className="view-title">{t("settings.title")}</h2>
-            <p className="settings-intro muted">{t("settings.intro")}</p>
-          </div>
+      <nav className="settings-rail" aria-label={t("settings.registers.aria")}>
+        <div className="settings-rail-head">
+          <h2 className="view-title">{t("settings.title")}</h2>
           <label className="settings-search-field">
             <Icon name="search" size={15} />
             <input
               value={search}
-              onChange={(event) => updateSearch(event.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
               placeholder={t("settings.search.placeholder")}
               aria-label={t("settings.search.placeholder")}
             />
@@ -478,7 +119,7 @@ export function SettingsView() {
                 type="button"
                 aria-label={t("settings.search.clearAria")}
                 title={t("settings.search.clearTitle")}
-                onClick={() => updateSearch("")}
+                onClick={() => setSearch("")}
               >
                 <Icon name="close" size={14} />
               </button>
@@ -486,37 +127,79 @@ export function SettingsView() {
           </label>
         </div>
 
-        <SectionTabs
-          active={activeCategory}
-          ariaLabel={t("settings.categories.aria")}
-          className="settings-category-tabs"
-          items={CATEGORY_TABS.map((tab) => ({ id: tab.id, label: t(tab.label) }))}
-          onChange={scrollToCategory}
-        />
-        <div className={`settings-header-scrim${isScrolled ? " is-visible" : ""}`} />
-      </div>
-
-      <div className="settings-content" ref={scrollContainerRef}>
-        {visibleSections.map((section) => {
-          const definition = SECTIONS[section];
-          const Section = definition.Component;
-          return (
-            <SettingsSection
-              key={section}
-              id={`settings-${section}`}
-              title={t(definition.title)}
-              description={t(definition.description)}
+        <ul className="settings-rail-list">
+          <li>
+            <button
+              type="button"
+              className={`settings-rail-item${active === INDEX ? " is-active" : ""}`}
+              aria-current={active === INDEX ? "page" : undefined}
+              onClick={() => open(INDEX)}
             >
-              <Section />
-            </SettingsSection>
+              <span className="settings-rail-no">00</span>
+              <span className="settings-rail-name">{t("settings.register.index.title")}</span>
+            </button>
+          </li>
+          {REGISTER_ORDER.map((key) => {
+            const register = REGISTERS[key];
+            // Dimmed rather than removed: a rail that reorders itself while
+            // somebody types loses the shape they were navigating by, and the
+            // numbers stop meaning anything if they move.
+            const dimmed = query !== "" && !matches.has(key);
+            return (
+              <li key={key}>
+                <button
+                  type="button"
+                  className={`settings-rail-item${active === key ? " is-active" : ""}${dimmed ? " is-dimmed" : ""}`}
+                  aria-current={active === key ? "page" : undefined}
+                  onClick={() => open(key)}
+                >
+                  <span className="settings-rail-no">{register.no}</span>
+                  <span className="settings-rail-name">{t(register.title)}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        <p className="settings-rail-foot muted">
+          {query
+            ? t("settings.search.registerMatches", { count: matches.size })
+            : t("settings.registers.count", { count: REGISTER_ORDER.length })}
+        </p>
+      </nav>
+
+      <div className="settings-stage" ref={stageRef}>
+        <div className="settings-register" hidden={active !== INDEX}>
+          <header className="settings-register-head">
+            <span className="settings-register-eyebrow">{t("settings.register.eyebrow")}</span>
+            <h3 className="settings-register-title">{t("settings.register.index.title")}</h3>
+            <p className="muted">{t("settings.register.index.description")}</p>
+          </header>
+          <SettingsRegisterScope register="index">
+            <SettingsIndex onOpen={open} />
+          </SettingsRegisterScope>
+        </div>
+
+        {REGISTER_ORDER.map((key) => {
+          const register = REGISTERS[key];
+          return (
+            <div className="settings-register" key={key} hidden={active !== key}>
+              <header className="settings-register-head">
+                <span className="settings-register-eyebrow">
+                  {t("settings.register.eyebrowNumbered", { no: register.no })}
+                </span>
+                <h3 className="settings-register-title">{t(register.title)}</h3>
+                <p className="muted">{t(register.description)}</p>
+              </header>
+              <SettingsRegisterScope register={key}>
+                <RegisterKeywords text={t(register.keywords)} />
+                {register.panels.map((Panel, index) => (
+                  <Panel key={index} />
+                ))}
+              </SettingsRegisterScope>
+            </div>
           );
         })}
-
-        {query && visibleSections.length === 0 && (
-          <p className="settings-search-empty surface muted">
-            {t("settings.search.empty", { query: search.trim() })}
-          </p>
-        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { NumberInput } from "../../design-system/NumberInput";
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
@@ -8,6 +9,10 @@ import { formatBytes } from "../../shared/formatBytes";
 import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import type { GamePreferences } from "../../ipc/bindings";
+
+/// Mirrors `faf_domain::state::settings::MAX_KEPT_GENERATED_MAPS`, so the
+/// input never offers a number the backend would quietly clamp.
+const MAX_KEPT_GENERATED_MAPS = 500;
 
 const save = (preferences: GamePreferences) =>
   ipc.send({ kind: "Settings", command: { type: "setGame", payload: { preferences } } });
@@ -17,6 +22,17 @@ export function GameCacheSettingsSection() {
   const preferences = useAppStore((state) => state.state.settings.game);
   const cacheInfo = useAppStore((state) => state.state.settings.cacheInfo);
   const [showDoc, setShowDoc] = useState(false);
+
+  const setKeepGeneratedMaps = (keepGeneratedMaps: boolean) => {
+    void save({ ...preferences, keepGeneratedMaps });
+  };
+
+  const setKeepGeneratedMapsLimit = (keepGeneratedMapsLimit: number) => {
+    void save({
+      ...preferences,
+      keepGeneratedMapsLimit: Math.max(0, Math.min(MAX_KEPT_GENERATED_MAPS, keepGeneratedMapsLimit)),
+    });
+  };
 
   const setCacheLifetime = (days: number) => {
     void save({
@@ -55,6 +71,36 @@ export function GameCacheSettingsSection() {
 
   return (
     <>
+      {/* Keeping generated maps is a retention question about files on disk, so
+          it is filed with the rest of the disk the client spends rather than
+          beside the switch that generates them. Same slice of settings either
+          way: only the register it is drawn in has changed. */}
+      <SettingRow
+        label={t("settings.game.keepGeneratedMaps")}
+        hint={t("settings.game.keepGeneratedMapsHint")}
+      >
+        <div className="settings-inline-pair">
+          <SettingsSwitch
+            checked={preferences.keepGeneratedMaps ?? false}
+            onChange={setKeepGeneratedMaps}
+            label={t("settings.game.keepGeneratedMaps")}
+          />
+          {/* How many, next to whether. Keeping everything is what filled a
+              system drive in the thread that asked for this, and keeping
+              nothing is already the switch beside it; zero means no limit
+              because that is the old behaviour and it stays reachable. */}
+          <NumberInput
+            className="number-input"
+            value={preferences.keepGeneratedMapsLimit ?? 0}
+            min={0}
+            max={MAX_KEPT_GENERATED_MAPS}
+            disabled={!(preferences.keepGeneratedMaps ?? false)}
+            aria-label={t("settings.game.keepGeneratedMapsLimit")}
+            title={t("settings.game.keepGeneratedMapsLimitHint")}
+            onChange={setKeepGeneratedMapsLimit}
+          />
+        </div>
+      </SettingRow>
       <SettingRow
         label={t("settings.game.cacheLifetime")}
         hint={t("settings.game.cacheLifetimeHint")}
