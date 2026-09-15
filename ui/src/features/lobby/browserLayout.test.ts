@@ -45,13 +45,15 @@ describe("the game list's column widths", () => {
     expect(withColumnResized(widths, 1, -40)).toEqual([320, 210, 80, 100, 75]);
   });
 
-  it("keeps every column within reach of another drag", () => {
-    // A line can only travel as far as both of its columns allow: Players
-    // stops at the floor, and on the way back it grows by what Map had above
-    // the floor to give, not by the distance the pointer covered.
+  it("travels until the column it is closing has nothing left", () => {
+    // Only the shrinking side can stop a line: growing is unbounded. So the
+    // drag runs until Players is shut, and on the way back it grows by
+    // everything Map had to give, not by the distance the pointer covered.
     const widths = [320, 170, 80, 100, 75];
-    expect(withColumnResized(widths, 2, 5000)).toEqual([320, 194, MIN_BROWSER_COLUMN_PX, 100, 75]);
-    expect(withColumnResized(widths, 2, -5000)).toEqual([320, MIN_BROWSER_COLUMN_PX, 194, 100, 75]);
+    expect(withColumnResized(widths, 2, 5000))
+      .toEqual([320, 170 + (80 - MIN_BROWSER_COLUMN_PX), MIN_BROWSER_COLUMN_PX, 100, 75]);
+    expect(withColumnResized(widths, 2, -5000))
+      .toEqual([320, MIN_BROWSER_COLUMN_PX, 80 + (170 - MIN_BROWSER_COLUMN_PX), 100, 75]);
   });
 
   it("gives the game column whatever the other four leave", () => {

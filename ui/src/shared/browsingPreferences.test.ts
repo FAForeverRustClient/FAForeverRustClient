@@ -6,10 +6,8 @@ import {
   LEGACY_LIVE_REPLAY_FILTERS_KEY,
   LEGACY_MATCHMAKER_FACTIONS_KEY,
   LEGACY_MATCHMAKER_QUEUES_KEY,
-  MAX_BROWSER_COLUMN_PX,
   MAX_VAULT_PAGE_SIZE,
   migrateLegacyBrowsingPreferences,
-  MIN_BROWSER_COLUMN_PX,
   MIN_DETAIL_PX,
   MIN_PARTY_CHAT_PX,
   normalizeBrowsingPreferences,
@@ -87,9 +85,10 @@ describe("browsing preferences", () => {
       mapVaultSort: "  newest  ",
       modVaultSort: "",
       vaultPageSize: 5000,
-      // Out of bounds, zero and negative: the first is clamped, and the two
+      // A narrow one, a zero and a negative. Nothing is clamped any more: a
+      // width is kept at whatever it was dragged to, narrow or wide. The two
       // that are not widths become zeros, which is how a column says it keeps
-      // its designed width. Dropping them would shift 9999 onto column three.
+      // its designed width; dropping them would shift 9999 onto column three.
       replayListColumns: [10, 200, 0, -5, 9999],
       liveReplayColumns: [],
       coopBoardColumns: [],
@@ -109,13 +108,7 @@ describe("browsing preferences", () => {
 
     expect(normalized.favoriteMods).toEqual(["eco_graph"]);
 
-    expect(normalized.replayListColumns).toEqual([
-      MIN_BROWSER_COLUMN_PX,
-      200,
-      0,
-      0,
-      MAX_BROWSER_COLUMN_PX,
-    ]);
+    expect(normalized.replayListColumns).toEqual([10, 200, 0, 0, 9999]);
     expect(normalized.modPresets).toEqual([
       { name: "Replay watching", uids: ["a", "b"] },
       { name: "Vanilla", uids: [] },
@@ -163,8 +156,8 @@ describe("browsing preferences", () => {
     expect(normalized.mapVaultSort).toBe("newest");
     expect(normalized.vaultPageSize).toBe(MAX_VAULT_PAGE_SIZE);
     expect(normalized.customGamesBrowser.columnWidths).toEqual([
-      MIN_BROWSER_COLUMN_PX,
-      MAX_BROWSER_COLUMN_PX,
+      10,
+      5000,
       200,
       200,
       200,

@@ -343,51 +343,34 @@
   font-size: 12px;
 }
 
-/* The table is the one place co-op content can genuinely overflow: long
-   team lists: so it scrolls inside itself rather than the page. */
+/* Nothing to scroll to sideways. The board used to be seven pixel-width
+   columns with a 760 pixel floor and draggable dividers, which in a panel that
+   shares its width with the mission list meant a horizontal scrollbar most of
+   the time. The columns are shares of the panel now, so they fit whatever it
+   is. */
 .coop-board-scroll {
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .coop-board {
   width: 100%;
-  /* Fixed, so the colgroup's dragged widths are what the table uses rather
-     than a suggestion the widest row can overrule. */
+  /* Fixed, so the colgroup's shares are what the table uses rather than a
+     suggestion the widest row can overrule. */
   table-layout: fixed;
-  min-width: 760px;
   border-collapse: collapse;
   font-size: 12px;
 }
 
-.coop-board th {
-  position: relative;
-}
-
-/* Same shape as every other column divider in the client: on a cell's leading
-   edge, centred on the boundary it moves. */
-/* Two classes, not one, and deliberately: `.resize-handle` in the design
-   system sets `position: relative` for the in-flow panel dividers, and it is a
-   single-class selector like this one was. Which of the two won came down to
-   which stylesheet the bundler emitted last -- and with the feature sheets in
-   lazily loaded chunks, that differed between a dev run and a build. When
-   `relative` won, the handle sat in the text flow after the label and the
-   `left` offset moved it from *there*, so where it landed depended on how long
-   the label was. That is the "sometimes in the wrong place" this fixes. */
-.coop-board th > .coop-board-col-handle {
-  position: absolute;
-  /* Over the neighbouring header cell's own background. */
-  z-index: 1;
-  top: 0;
-  left: -6px;
-  bottom: 0;
-  width: 12px;
-}
-
+/* Every cell truncates, because a column that cannot widen has to be allowed
+   to cut instead. The team column carried this alone while the others were
+   free to push the table wider than its panel. */
 .coop-board th,
 .coop-board td {
+  overflow: hidden;
   padding: 5px 8px;
   text-align: left;
   white-space: nowrap;
+  text-overflow: ellipsis;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -437,10 +420,10 @@
   font-size: 11px;
 }
 
-/* Everything else in the board is short and fixed; the team is the cell that
-   can hold four logins, so it gives way rather than widening the table. */
+/* The team cell holds four logins and is the widest share for that reason.
+   The truncation is the rule above now, shared with every other cell; what is
+   left here is that it must not carry a max-width of its own, which would
+   leave the column's share unspent. */
 .coop-board-team {
-  max-width: 170px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: none;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_BROWSER_COLUMN_PX, MIN_BROWSER_COLUMN_PX } from "./browsingPreferences";
+import { MIN_BROWSER_COLUMN_PX } from "./browsingPreferences";
 import {
   columnTemplate,
   resolveColumnWidths,
@@ -20,9 +20,11 @@ describe("a table's stored column widths", () => {
     expect(resolveColumnWidths([...WIDTHS, 999], WIDTHS)).toEqual(WIDTHS);
   });
 
-  it("bounds a stored width the way the backend bounds it", () => {
+  it("keeps a stored width however wide it was dragged", () => {
+    // There is no ceiling. A column somebody dragged to nine thousand pixels
+    // is nine thousand pixels wide when they come back to it.
+    expect(resolveColumnWidths([9999], WIDTHS)[0]).toBe(9999);
     expect(resolveColumnWidths([1], WIDTHS)[0]).toBe(MIN_BROWSER_COLUMN_PX);
-    expect(resolveColumnWidths([9999], WIDTHS)[0]).toBe(MAX_BROWSER_COLUMN_PX);
   });
 });
 
@@ -33,10 +35,11 @@ describe("dragging the line in front of a column", () => {
     expect(withBoundaryDragged(WIDTHS, 4, -20, FLEXIBLE)).toEqual([
       120, 110, 260, 64, 104, 150, 130, 128,
     ]);
-    // Far enough right that the column it takes from runs out first: 28 of the
-    // 30 pixels are there to be had, and both sides stop on the same 28.
+    // The whole 30 pixels move, both ways. This used to stop at 28, because
+    // the column being taken from hit a 56 pixel floor; there is no such floor
+    // now and a column gives up whatever it has.
     expect(withBoundaryDragged(WIDTHS, 4, 30, FLEXIBLE)).toEqual([
-      120, 110, 260, 112, 56, 150, 130, 128,
+      120, 110, 260, 114, 54, 150, 130, 128,
     ]);
   });
 
@@ -47,17 +50,30 @@ describe("dragging the line in front of a column", () => {
       120, 150, 260, 84, 84, 150, 130, 128,
     ]);
     expect(withBoundaryDragged(WIDTHS, 3, 40, FLEXIBLE)).toEqual([
-      120, 110, 260, 56, 84, 150, 130, 128,
+      120, 110, 260, 44, 84, 150, 130, 128,
     ]);
   });
 
-  it("stops both columns at the bounds, rather than one of them", () => {
-    // Letting the far side carry on would pull the line away from the cursor
+  it("runs until the column being shrunk has nothing left, and no sooner", () => {
+    // Only the shrinking side can stop a drag now: growing is unbounded, so a
+    // divider travels until the column it is pushing into is closed. Letting
+    // the far side carry on past that would pull the line away from the cursor
     // and quietly change the total width of the table with it.
     const dragged = withBoundaryDragged(WIDTHS, 5, 5000, FLEXIBLE);
     expect(dragged[5]).toBe(MIN_BROWSER_COLUMN_PX);
     expect(dragged[4]).toBe(84 + (150 - MIN_BROWSER_COLUMN_PX));
     expect(tableMinWidth(dragged)).toBe(tableMinWidth(WIDTHS));
+  });
+
+  it("lets a column grow past any width when the flexible one is paying", () => {
+    // The old ceiling stopped the divider at 900 pixels with the cursor still
+    // moving, which is what this answers. The flexible column has no width of
+    // its own, so it pays without limit and the column beside it grows exactly
+    // as far as it was dragged. The table's total does change here, unlike a
+    // trade between two fixed columns: the flexible column absorbs it on
+    // screen, which is the whole of what it is for.
+    const dragged = withBoundaryDragged(WIDTHS, 2, 4000, FLEXIBLE);
+    expect(dragged[1]).toBe(110 + 4000);
   });
 
   it("ignores a line that has no column on one side of it", () => {

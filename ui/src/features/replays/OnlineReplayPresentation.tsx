@@ -396,7 +396,6 @@ export function OnlineReplayList({
   groupByDate = true,
   selectedUid,
   watchedUids,
-  onSelect,
   onOpen,
   onWatch,
   onDownload,
@@ -406,7 +405,7 @@ export function OnlineReplayList({
   groupByDate?: boolean;
   selectedUid: number | null;
   watchedUids: Set<number>;
-  onSelect: (uid: number) => void;
+  /** Opens the detail panel, and marks the row selected on the way. */
   onOpen: (uid: number) => void;
   onWatch?: (uid: number) => void;
   /** Saves the `.fafreplay` file, without opening the detail panel first. */
@@ -461,15 +460,16 @@ export function OnlineReplayList({
         },
         selected: selectedUid === replay.uid,
         watched: watchedUids.has(replay.uid),
-        onSelect: () => onSelect(replay.uid),
+        // One click opens the replay, the same as a click on the card in the
+        // tile view and on a live game. It used to only highlight the row, and
+        // the way in was a Details button at the far end of it: the one thing
+        // every reader wants from a row was the one thing behind a control
+        // they had to aim at. Highlighting still happens, because opening sets
+        // the selection too, so the row stays marked once the panel is closed.
+        onSelect: () => onOpen(replay.uid),
         onActivate: () => {
           if (onWatch && replay.replayAvailable) onWatch(replay.uid);
           else onOpen(replay.uid);
-        },
-        action: {
-          label: t("replays.list.details"),
-          ariaLabel: t("replays.list.detailsAria", { uid: replay.uid }),
-          onClick: () => onOpen(replay.uid),
         },
         // Watch and Download on the row itself, which is what the thread
         // asked for: both were a detail panel away, and both are the reason
@@ -512,7 +512,7 @@ export function OnlineReplayList({
   return (
     <ReplayList
       groups={listGroups}
-      footer={<><span>{t("replays.list.count", { count: replays.length })}</span><span>{t("replays.list.selectHint")}</span></>}
+      footer={<><span>{t("replays.list.count", { count: replays.length })}</span><span>{t("replays.list.openHint")}</span></>}
     />
   );
 }
