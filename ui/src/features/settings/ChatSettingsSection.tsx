@@ -5,7 +5,6 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
-import { ChatNameColorSettings } from "./ChatNameColorSettings";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const save = (preferences: ChatPreferences) =>
@@ -41,14 +40,6 @@ export function ChatSettingsSection() {
           label={t("settings.chat.24HourTime")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.chat.colorEveryName")} hint={t("settings.chat.colorEveryNameHint")}>
-        <SettingsSwitch
-          checked={preferences.coloredNames}
-          onChange={(coloredNames) => void save({ ...preferences, coloredNames })}
-          label={t("settings.chat.colorEveryName")}
-        />
-      </SettingRow>
-      <ChatNameColorSettings preferences={preferences} onSave={(next) => void save(next)} />
       <SettingRow label={t("settings.chat.showJoinsParts")} hint={t("settings.chat.showJoinsPartsHint")}>
         <SettingsSwitch
           checked={preferences.showJoinsParts}

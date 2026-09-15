@@ -2,6 +2,7 @@ import type { AppearancePreferences, ChatPreferences, UiDensity } from "../../ip
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { ChatNameColorSettings } from "./ChatNameColorSettings";
 import { ThemePicker } from "./ThemePicker";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
@@ -308,6 +309,26 @@ export function AppearanceSettingsSection() {
           <span>{chat.senderWidth || 116} px</span>
         </label>
       </SettingRow>
+      {/* The name colours, which are not a chat setting however they are
+          stored. `App` projects the friend and foe choices onto the document
+          root as `--color-friend` and `--color-foe`, and the only stylesheet
+          that consumes them is the lobby's: they paint the borders, badges and
+          player counts on the custom game tiles in the Play tab. Somebody who
+          recolours their friends is recolouring the client, and filing that
+          under Chat put it two registers away from what it visibly changes.
+
+          The generated-colour switch comes with them rather than staying
+          behind: it decides the colour of everyone the rules below do not
+          name, and splitting a rule from its fallback across two registers is
+          the arrangement this rewrite exists to end. */}
+      <SettingRow label={t("settings.chat.colorEveryName")} hint={t("settings.chat.colorEveryNameHint")}>
+        <SettingsSwitch
+          checked={chat.coloredNames}
+          onChange={(coloredNames) => void saveChat({ ...chat, coloredNames })}
+          label={t("settings.chat.colorEveryName")}
+        />
+      </SettingRow>
+      <ChatNameColorSettings preferences={chat} onSave={(next) => void saveChat(next)} />
     </>
   );
 }

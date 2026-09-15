@@ -905,7 +905,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.register.appearance.title": "Apparence",
   "settings.register.appearance.description": "Tout ce qui décide de la façon dont quelque chose est dessiné, où que ce soit dans le client.",
   "settings.register.chat.title": "Discussion",
-  "settings.register.chat.description": "Ce que montrent les canaux, qui est coloré et lesquels vous rejoignez en vous connectant.",
+  "settings.register.chat.description": "Ce que montrent les canaux, lesquels vous rejoignez en vous connectant, et quels messages vous préférez ne pas voir.",
   "settings.register.notifications.title": "Notifications",
   "settings.register.notifications.description": "Quels événements peuvent vous interrompre, comment ils vous parviennent et comment ils sonnent.",
   "settings.register.account.title": "Compte",
