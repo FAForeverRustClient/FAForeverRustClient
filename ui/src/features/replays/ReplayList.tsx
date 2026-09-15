@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "../../design-system/Icon";
 import {
   isGeneratedMap,
@@ -188,7 +188,22 @@ function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string })
   );
 }
 
-function ReplayListRowView({ row }: { row: ReplayListRow }) {
+/**
+ * Memoised, because dragging a column divider re-renders the list.
+ *
+ * The widths are one CSS variable on the section around the list, so a drag
+ * writes one inline style and the browser reflows the grid: cheap, and the
+ * reason the header stays under the cursor. What was not cheap is that the
+ * drag state lives in `ReplayList`, so every pointer move re-rendered every
+ * row in it, thumbnail state and all, at sixty frames a second over a page of
+ * a hundred replays. That is the "laggy" this fixes, and why the game browser
+ * and the live table never had it: both memoise their rows already.
+ *
+ * The default comparison is enough. A drag does not re-render the component
+ * that builds the rows, so every `row` object keeps its identity across the
+ * frames of one, and a real change to a row still replaces the object.
+ */
+const ReplayListRowView = memo(function ReplayListRowView({ row }: { row: ReplayListRow }) {
   const interactive = Boolean(row.onSelect || row.onActivate);
   return (
     <div
@@ -224,7 +239,7 @@ function ReplayListRowView({ row }: { row: ReplayListRow }) {
       <ReplayListStatus cell={row.replay} action={row.action} iconActions={row.iconActions} />
     </div>
   );
-}
+});
 
 /**
  * The designed widths, in the order the columns are drawn, the last column
