@@ -976,31 +976,6 @@
   white-space: nowrap;
 }
 
-.game-tile-friends {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 6px;
-  color: var(--color-friend);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.25;
-  white-space: nowrap;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-friend) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-friend) 40%, transparent);
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.game-tile-friends:hover,
-.game-tile-friends:focus-visible {
-  background: color-mix(in srgb, var(--color-friend) 20%, transparent);
-  border-color: color-mix(in srgb, var(--color-friend) 65%, transparent);
-  outline: none;
-}
-
 .game-tile-foes {
   display: inline-flex;
   align-items: center;
@@ -1676,25 +1651,46 @@
   box-shadow: inset 3px 0 var(--color-friend), inset 6px 0 var(--color-accent);
 }
 
-/* A tile with a friend in it. Outline only, keeping the standard surface
-   background so the card remains quiet while clearly signaling friend
-   presence. A 1px subtle box-shadow feathers subpixel antialiasing at the
-   rounded corners so the high-contrast outline transitions cleanly into
-   the curve without tangent notches or stepped pixel gaps. */
+/* The tile is filled, not just outlined. A grid of tiles is scanned rather
+   than read line by line, so a 1 px edge is the wrong signal there: the whole
+   card has to be the thing that catches the eye. The row above keeps its edge,
+   because a list *is* read line by line and a hundred tinted rows would be a
+   colour chart.
+
+   Mixed into the surface rather than laid over it, so the tint follows every
+   theme's own background and the text on top keeps its contrast. The hover and
+   selected states are restated, otherwise this would swallow them.
+
+   A wash, not a coat of paint. At 14% the tile stopped reading as one of the
+   grey tiles and started competing with the amber and red tags inside it,
+   which is worse the more friends somebody has. Half that leaves the tile
+   plainly tinted and plainly still a tile; the border carries the rest.
+
+   The outline stays at full strength, and the 1 px box-shadow with it: it
+   feathers the subpixel antialiasing at the rounded corners, so the edge
+   follows the curve without tangent notches. Tint and edge are two signals for
+   one fact, and the tint is the one that survives being glanced at. */
 .game-tile.has-friend {
+  background: color-mix(in srgb, var(--color-friend) 7%, var(--color-surface));
   border-color: var(--color-friend);
   box-shadow: 0 0 1px 0 var(--color-friend);
 }
 
 .game-tile.has-friend:hover,
 .game-tile.has-friend:focus-within {
+  background: color-mix(in srgb, var(--color-friend) 11%, var(--color-surface-hover));
   border-color: var(--color-friend);
   box-shadow: 0 0 1px 0 var(--color-friend);
 }
 
+/* Selected has to win over friendly, not blend with it: a selected tile that
+   looked the same as an unselected one was the complaint. The accent takes the
+   border back, so the feathering shadow goes with it rather than ringing an
+   accent edge in green. */
 .game-tile.has-friend.active {
-  border-color: var(--color-friend);
-  box-shadow: 0 0 1px 0 var(--color-friend);
+  background: color-mix(in srgb, var(--color-friend) 11%, var(--color-surface-raised));
+  border-color: var(--color-accent);
+  box-shadow: none;
 }
 
 /* The friend tag, in the colour the reader chose for friends in chat rather
