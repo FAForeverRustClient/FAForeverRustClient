@@ -23,9 +23,6 @@ import { loadStatusNote } from "../../shared/loadStatusNote";
 import { GameBrowserRow, GameTile, type GameViewMode } from "./CustomGamesBrowser";
 import { useGameBrowserColumns } from "./gameBrowserColumns";
 import { coopFailureAction } from "./coopFailure";
-import { ResizeHandle } from "../../design-system/ResizeHandle";
-import { useColumnWidths } from "../../shared/useColumnWidths";
-import { tableMinWidth } from "../../shared/tableColumns";
 import "./custom-games.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import { scenarioBadge, sortCoopScenarios } from "./coopScenarios";
@@ -279,26 +276,23 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
  * choose whose leaderboard it is.
  */
 /**
- * The designed widths of the record board, in the order the columns are drawn,
- * the Replay column included: a divider takes from the column on one side of
- * it and gives to the column on the other, and a column with no width of its
- * own has nothing to give.
- */
-const BOARD_COLUMN_PX = [56, 96, 96, 220, 96, 110, 90];
-
-/**
- * The team column, which is the flexible one.
+ * The record board's columns, as shares of the panel rather than pixels.
  *
- * Four names in one cell is what runs out of room first, so it is what the
- * board spends a wide panel on. The number above is its floor rather than its
- * width: on screen it is whatever the board has left after the other six. The
- * player count beside it no longer carries the 220 pixels the names needed.
+ * The board had draggable dividers and a pixel width per column, which meant a
+ * minimum width of 764 pixels and a horizontal scrollbar in every panel
+ * narrower than that -- and the panel is narrow, because the mission list and
+ * the detail sit beside each other. Scrolling sideways to read a leaderboard
+ * is the thing this replaces.
+ *
+ * Shares always fit, whatever the panel is: seven of them add up to one board.
+ * The team column takes the largest because four logins in one cell is what
+ * runs out of room first, and the rank takes the smallest because it is never
+ * more than three digits.
  */
-const FLEXIBLE_BOARD_COLUMN = 3;
+const BOARD_COLUMN_SHARES = [5, 11, 10, 34, 12, 16, 12];
 
 function MissionDetail({ mission }: { mission: CoopMission }) {
   const { t } = useTranslation();
-  const columns = useColumnWidths("coopBoardColumns", BOARD_COLUMN_PX, FLEXIBLE_BOARD_COLUMN);
   const boardLabels = [
     "#",
     t("lobby.coop.column.time"),
@@ -365,48 +359,21 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
 
       {coop.leaderboard.length > 0 && (
         <div className="coop-board-scroll">
-          <table
-            className="coop-board"
-            style={{ minWidth: `${tableMinWidth(columns.widths)}px` }}
-          >
-            {/* `table-layout: fixed` plus a colgroup is how a real table takes
-                dragged widths: putting them on the cells would let the widest
-                row win instead. */}
-            {/* Every column the width it was given except the players
-                column, which has none and so takes what is left. An empty
-                track at the end took it for one release, and the board then
-                stopped well short of the panel it sits in. */}
+          <table className="coop-board">
+            {/* `table-layout: fixed` plus a colgroup is how a table is told its
+                own proportions rather than being measured from the widest row
+                it happens to hold. Percentages, so the seven columns add up to
+                the panel however wide the panel is and there is never anything
+                to scroll to sideways. */}
             <colgroup>
-              {columns.widths.map((width, index) =>
-                index === FLEXIBLE_BOARD_COLUMN ? (
-                  <col key={boardLabels[index]} />
-                ) : (
-                  <col key={boardLabels[index]} style={{ width: `${width}px` }} />
-                ),
-              )}
+              {BOARD_COLUMN_SHARES.map((share, index) => (
+                <col key={boardLabels[index]} style={{ width: `${share}%` }} />
+              ))}
             </colgroup>
             <thead>
               <tr>
-                {/* One line in front of every column but the first, standing
-                    where that column starts. It trades width between the two
-                    columns it separates, so it lands under the cursor and no
-                    other line moves. */}
-                {boardLabels.map((label, index) => (
-                  <th scope="col" key={label}>
-                    {index > 0 && (
-                      <ResizeHandle
-                        className="coop-board-col-handle is-ruled"
-                        label={t("lobby.browser.resizeColumn", {
-                          column:
-                            boardLabels[index - 1 === FLEXIBLE_BOARD_COLUMN ? index : index - 1],
-                        })}
-                        onDrag={(delta) => columns.onDrag(index, delta)}
-                        onEnd={columns.onCommit}
-                        onReset={columns.onReset}
-                      />
-                    )}
-                    {label}
-                  </th>
+                {boardLabels.map((label) => (
+                  <th scope="col" key={label}>{label}</th>
                 ))}
               </tr>
             </thead>

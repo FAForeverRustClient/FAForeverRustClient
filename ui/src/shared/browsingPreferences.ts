@@ -42,7 +42,7 @@ const MAX_TABLE_COLUMNS = 16;
 export function normalizeColumnWidths(widths: number[] | undefined): number[] {
   return (widths ?? []).slice(0, MAX_TABLE_COLUMNS).map((width) =>
     Number.isFinite(width) && width > 0
-      ? clampInteger(width, MIN_BROWSER_COLUMN_PX, MAX_BROWSER_COLUMN_PX, MIN_BROWSER_COLUMN_PX)
+      ? Math.max(MIN_BROWSER_COLUMN_PX, Math.round(width))
       : 0,
   );
 }
@@ -113,8 +113,21 @@ export const VALID_MOD_VAULT_PRESETS = [
  * *offers* a value the backend would then quietly change underneath it.
  */
 export const MAX_BROWSER_COLUMNS = 5;
-export const MIN_BROWSER_COLUMN_PX = 56;
-export const MAX_BROWSER_COLUMN_PX = 900;
+/**
+ * One pixel, which is not a usable column and is not meant to be.
+ *
+ * There is no ceiling, and this is as close to no floor as the stored format
+ * allows: a column is dragged to whatever width somebody wants, including
+ * none. One rather than zero because zero already means "no width stored, use
+ * the designed one", so a column dragged shut has to stay distinguishable from
+ * one nobody has touched.
+ *
+ * No counterpart in `faf_domain` any more, unlike the bounds below. A `u32`
+ * that is not zero is already at least one, so the backend has nothing left to
+ * enforce; this side still does, because a hand-edited settings file reaches
+ * it as JSON and can hold a negative or a fraction.
+ */
+export const MIN_BROWSER_COLUMN_PX = 1;
 export const MIN_DETAIL_PX = 220;
 export const MAX_DETAIL_PX = 720;
 export const MIN_PARTY_CHAT_PX = 260;
@@ -289,7 +302,7 @@ function normalizeCustomGamesBrowser(
     columnWidths: (preferences.columnWidths ?? [])
       .slice(0, MAX_BROWSER_COLUMNS)
       .map((width) =>
-        clampInteger(width, MIN_BROWSER_COLUMN_PX, MAX_BROWSER_COLUMN_PX, MIN_BROWSER_COLUMN_PX),
+        Math.max(MIN_BROWSER_COLUMN_PX, Math.round(width)),
       ),
     detailWidth: preferences.detailWidth
       ? clampInteger(preferences.detailWidth, MIN_DETAIL_PX, MAX_DETAIL_PX, 0)

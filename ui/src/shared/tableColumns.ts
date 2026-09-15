@@ -25,7 +25,7 @@
 // every divider to the right of the cursor. Both read as the list fighting
 // back.
 
-import { MAX_BROWSER_COLUMN_PX, MIN_BROWSER_COLUMN_PX } from "./browsingPreferences";
+import { MIN_BROWSER_COLUMN_PX } from "./browsingPreferences";
 
 /**
  * The stored widths, padded and bounded into a usable set.
@@ -42,7 +42,7 @@ export function resolveColumnWidths(
   return defaults.map((fallback, index) => {
     const saved = stored?.[index];
     return saved && saved > 0
-      ? Math.min(MAX_BROWSER_COLUMN_PX, Math.max(MIN_BROWSER_COLUMN_PX, Math.round(saved)))
+      ? Math.max(MIN_BROWSER_COLUMN_PX, Math.round(saved))
       : fallback;
   });
 }
@@ -78,7 +78,11 @@ function room(widths: readonly number[], index: number, flexible: number, grow: 
   // The flexible column has no width of its own, so it never limits a drag:
   // it simply takes up what its neighbour gives away.
   if (index === flexible) return Number.POSITIVE_INFINITY;
-  return grow ? MAX_BROWSER_COLUMN_PX - widths[index] : widths[index] - MIN_BROWSER_COLUMN_PX;
+  // Growing is unbounded. A divider that stops while the cursor keeps going is
+  // the complaint this answers, and there is nothing a wide column can break:
+  // the two columns either side of a divider trade width, so the row's total
+  // never changes however far one of them is dragged.
+  return grow ? Number.POSITIVE_INFINITY : widths[index] - MIN_BROWSER_COLUMN_PX;
 }
 
 /**
