@@ -1,7 +1,16 @@
 import { isValidElement } from "react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-import { parseChatGameLink, renderBody, renderFormattedText, stripHtmlTags } from "./chatFormat";
+import type { PlayerProfile, SocialState } from "../../ipc/bindings";
+import {
+  USER_CATEGORY_ORDER,
+  categoryOf,
+  ownClanTag,
+  parseChatGameLink,
+  renderBody,
+  renderFormattedText,
+  stripHtmlTags,
+} from "./chatFormat";
 
 function linksIn(content: string): string[] {
   return renderBody(content, "").flatMap((node) =>
@@ -146,5 +155,64 @@ describe("server notice HTML tag parsing and stripping", () => {
         : [],
     );
     expect(links).toEqual(["https://www.faforever.com/"]);
+  });
+});
+
+describe("which roster group a nickname lands in", () => {
+  const profile = (login: string, clan = ""): PlayerProfile => ({
+    id: login.length,
+    login,
+    globalRating: 0,
+    ratings: [],
+    country: "",
+    clan,
+    avatarUrl: "",
+    avatarTooltip: "",
+  });
+
+  // Dog is us, in [SNF]. Rhiza shares the clan, Nexus is a friend in another
+  // one, ableeuw is neither, and faf-bot is a nickname with no FAF account.
+  const social: SocialState = {
+    friends: ["Nexus-"],
+    foes: ["Grump"],
+    players: [
+      profile("Dog", "SNF"),
+      profile("Rhiza", "SNF"),
+      profile("Nexus-", "SA"),
+      profile("ableeuw"),
+      profile("Grump", "SNF"),
+    ],
+  };
+
+  const groupOf = (name: string, elevation = "") =>
+    categoryOf({ name, elevation }, "Dog", social, true, ownClanTag(social, "Dog"));
+
+  it("puts a clanmate between the friends and everyone else", () => {
+    expect(groupOf("Rhiza")).toBe("clan");
+    expect(USER_CATEGORY_ORDER.indexOf("clan"))
+      .toBeGreaterThan(USER_CATEGORY_ORDER.indexOf("friends"));
+    expect(USER_CATEGORY_ORDER.indexOf("clan"))
+      .toBeLessThan(USER_CATEGORY_ORDER.indexOf("players"));
+  });
+
+  it("leaves a friend under Friends even when they are also a clanmate", () => {
+    // Nobody wants one name in two groups, and the friend list is the more
+    // specific of the two statements.
+    expect(groupOf("Nexus-")).toBe("friends");
+  });
+
+  it("keeps a foe at the bottom whatever else they are", () => {
+    expect(groupOf("Grump", "@")).toBe("foes");
+  });
+
+  it("groups by our own clan, not by having one at all", () => {
+    expect(groupOf("ableeuw")).toBe("players");
+    const clanless: SocialState = { ...social, players: [profile("Dog"), profile("Rhiza", "SNF")] };
+    expect(categoryOf({ name: "Rhiza", elevation: "" }, "Dog", clanless, true, ownClanTag(clanless, "Dog")))
+      .toBe("players");
+  });
+
+  it("still sinks a nickname with no FAF account to the IRC group", () => {
+    expect(groupOf("faf-bot")).toBe("ircOnly");
   });
 });

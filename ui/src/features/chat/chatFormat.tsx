@@ -8,7 +8,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { ChatPreferences, ChatUser, PlayerProfile, SocialState } from "../../ipc/bindings";
 import { EMOJI_PATTERN, emojiName } from "./emoji";
 import { openHttpsUrl, optionalHttpsUrl, validateHttpsUrl } from "../../shared/externalLinks";
-import { findPlayer, isModerator } from "../../store/reducer";
+import { findPlayer, isModerator, playersByNickname } from "../../store/reducer";
 import { t, type MessageKey } from "../../i18n";
 
 import { assignedPlayerColor, includesName, nickHue, nickStyle, resolvePlayerStyle } from "../../shared/nameColors";
@@ -58,12 +58,20 @@ export function resolvedNickStyle(
  * entirely and collect at the very bottom, where the group can be collapsed
  * away in one click.
  */
-export type UserCategory = "self" | "moderators" | "friends" | "players" | "ircOnly" | "foes";
+export type UserCategory =
+  | "self"
+  | "moderators"
+  | "friends"
+  | "clan"
+  | "players"
+  | "ircOnly"
+  | "foes";
 
 export const USER_CATEGORY_LABELS = {
   self: "chat.category.self",
   moderators: "chat.category.moderators",
   friends: "chat.category.friends",
+  clan: "chat.category.clan",
   players: "chat.category.players",
   ircOnly: "chat.category.ircOnly",
   foes: "chat.category.foes",
@@ -73,35 +81,58 @@ export const USER_CATEGORY_ORDER: readonly UserCategory[] = [
   "self",
   "moderators",
   "friends",
+  "clan",
   "players",
   "ircOnly",
   "foes",
 ];
 
 /**
+ * Our own clan tag, or "" when we are in no clan.
+ *
+ * Read from our own entry in the lobby's player list, which is where every
+ * other clan tag in the roster comes from too: the group therefore appears
+ * exactly when the tags it groups by are known, with no second thing to load
+ * and nothing to go stale against. `state.clan` is the wrong source here, being
+ * about managing a clan and only fetched when that view is opened.
+ */
+export function ownClanTag(social: SocialState, self: string): string {
+  return playersByNickname(social.players).get(self.toLowerCase())?.clan ?? "";
+}
+
+/**
  * Which bucket a roster entry belongs to.
  *
- * Channel elevation comes from IRC; friendship and "is a FAF account at all"
- * come from the lobby (`state.social`): chat alone cannot tell a player from a
- * bot. Until the lobby connects, `social.players` is empty and everyone would
- * land in `ircOnly`, so callers pass `socialKnown` to fall back to `players`
- * instead of mislabelling the whole channel.
+ * Channel elevation comes from IRC; friendship, clan and "is a FAF account at
+ * all" come from the lobby (`state.social`): chat alone cannot tell a player
+ * from a bot. Until the lobby connects, `social.players` is empty and everyone
+ * would land in `ircOnly`, so callers pass `socialKnown` to fall back to
+ * `players` instead of mislabelling the whole channel.
  *
  * Being a foe outranks every bucket but `self`: a foe who also carries a
  * channel op prefix still belongs at the bottom, not among the moderators.
+ *
+ * Clanmates sit below friends and above everyone else, which is the order the
+ * request asked for: you, then the people you picked out yourself, then the
+ * people you play with. A clanmate you have also friended stays under Friends,
+ * because that is the more specific of the two and nobody wants one name in
+ * two groups.
  */
 export function categoryOf(
   user: ChatUser,
   self: string,
   social: SocialState,
   socialKnown: boolean,
+  ownClan: string,
 ): UserCategory {
   if (self && user.name === self) return "self";
   if (includesName(social.foes, user.name)) return "foes";
   if (isModerator(user)) return "moderators";
   if (includesName(social.friends, user.name)) return "friends";
+  const profile = findPlayer(social, user.name);
+  if (ownClan && profile?.clan === ownClan) return "clan";
   if (!socialKnown) return "players";
-  return findPlayer(social, user.name) ? "players" : "ircOnly";
+  return profile ? "players" : "ircOnly";
 }
 
 /** `[clan]name`, the way both reference clients render a chatter's name. */

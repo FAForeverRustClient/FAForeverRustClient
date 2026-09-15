@@ -289,6 +289,7 @@ export const en = {
   "chat.category.self": "You",
   "chat.category.moderators": "Moderators & admins",
   "chat.category.friends": "Friends",
+  "chat.category.clan": "Clan",
   "chat.category.players": "Players",
   "chat.category.ircOnly": "IRC only",
   "chat.category.foes": "Foes",
@@ -1389,6 +1390,9 @@ export const en = {
   "settings.chat.autoJoinNewbieHint": "Automatically join the #newbie channel for accounts with fewer than 50 completed games.",
   "settings.chat.visibleHistory": "Visible history",
   "settings.chat.visibleHistoryHint": "Limit rendered messages per conversation for a responsive long-running chat.",
+  // The three choices are 100, 250 and 500, and every one of them is plural in
+  // both English and Russian, so one parameterised message covers the select.
+  "settings.chat.visibleHistoryOption": "{count} messages",
   "settings.chat.mutedPlayers": "Muted players",
   "settings.chat.visibleChatHistory": "Visible chat history",
   "settings.chat.channel": "#channel",
@@ -1466,7 +1470,7 @@ export const en = {
   "settings.paths.gameInstall": "Game install",
   "settings.paths.gameInstallHint": "ForgedAlliance.exe used to join and play live games.",
   "settings.paths.replayInstall": "Replay install",
-  "settings.paths.replayInstallHint": "ForgedAlliance.exe used for replay playback: can be a different build/version than the game install.",
+  "settings.paths.replayInstallHint": "Its own copy of the game, beside the one above. The client downloads it the first time you watch a replay, because a replay only loads in the exact build it was recorded with.",
   "settings.paths.installNote": "Changes take effect immediately. FAF plays through its own patched copy of the engine, which the client downloads the first time you play; an existing one left by the Java or Python client is reused instead. Your original Steam or retail install is never written to, only read, for the game's movies, sounds and fonts. Browsing the replay and map vaults works without any install; playing and watching do not.",
   "settings.game.additionalGameLaunch": "Additional game launch arguments",
   "settings.game.confirmDownloads": "Ask before downloading mods",

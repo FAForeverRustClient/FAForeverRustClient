@@ -148,9 +148,11 @@ export function ChatSettingsSection() {
           onChange={(event) => void save({ ...preferences, visibleMessageLimit: Number(event.target.value) })}
           aria-label={t("settings.chat.visibleChatHistory")}
         >
-          <option value={100}>100 messages</option>
-          <option value={250}>250 messages</option>
-          <option value={500}>500 messages</option>
+          {[100, 250, 500].map((count) => (
+            <option key={count} value={count}>
+              {t("settings.chat.visibleHistoryOption", { count })}
+            </option>
+          ))}
         </select>
       </SettingRow>
       <div className="setting-block settings-channels">

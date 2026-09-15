@@ -1183,6 +1183,10 @@ impl ReplayPort for ReplayClient {
         player: String,
     ) -> Result<Option<String>, String> {
         let _playback_guard = self.playback_lock.lock().await;
+        // Same reason as `play_file`, plus one of its own on Windows: the live
+        // transport's named pipe is created with `first_pipe_instance`, which
+        // the previous live replay is still holding.
+        self.process.stop_replay().await;
         let token = self
             .tokens
             .get()
@@ -1349,6 +1353,12 @@ impl ReplayPort for ReplayClient {
 
     async fn play_file(&self, path: PathBuf) -> Result<Option<String>, String> {
         let _playback_guard = self.playback_lock.lock().await;
+        // Before anything is staged, not merely before the launch. The version
+        // step below writes this replay's exact engine build into the replay
+        // install, and doing that to a directory the previous replay's Forged
+        // Alliance still has open leaves an install the next launch sits on a
+        // loading screen over. See `ProcessPort::stop_replay`.
+        self.process.stop_replay().await;
         let replay = prepare_scfareplay(&path).await?;
         let mod_name = normalize_mod(&replay.mod_name);
         let mut warning = None;

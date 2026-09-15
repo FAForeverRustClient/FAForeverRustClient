@@ -157,6 +157,19 @@ impl ProcessPort for RecordingProcess {
     fn discover_install_paths(&self) -> DiscoveredInstallPaths {
         self.discovered.clone()
     }
+
+    /// Same derivation as the real process port: `replaydata/bin` beside the
+    /// live install's `bin`.
+    fn replay_path_beside_game(&self, game_path: &str) -> Option<String> {
+        let root = PathBuf::from(game_path).parent()?.parent()?.to_path_buf();
+        Some(
+            root.join("replaydata")
+                .join("bin")
+                .join("ForgedAlliance.exe")
+                .to_string_lossy()
+                .into_owned(),
+        )
+    }
 }
 
 #[tokio::test]
@@ -232,6 +245,41 @@ async fn loading_settings_points_replay_preparation_at_the_configured_install() 
         *install_dirs.lock().unwrap(),
         vec![Some(PathBuf::from("C:/faf/replaydata"))],
         "the replay updater must target the install Settings configured"
+    );
+}
+
+/// Issue #267: "there is no replay.exe in the FAForever folder and putting the
+/// game exe in works".
+///
+/// It did not want a second file to go and find. A replay install is the
+/// `replaydata` half of the same FAF install, and the only reason the field
+/// ever looked empty is that nothing had derived it. Nothing is discovered here
+/// and no default is offered: the path comes from the live install alone.
+#[tokio::test]
+async fn an_unset_replay_install_is_derived_from_the_live_one() {
+    let ports = Ports {
+        settings: Arc::new(StoredSettings(SettingsState {
+            game_path: "configured-D:/faf-data/bin/ForgedAlliance.exe".into(),
+            replay_game_path: String::new(),
+            ..SettingsState::default()
+        })),
+        process: Arc::new(RecordingProcess::default()),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+
+    app.dispatch_and_wait(SettingsCommand::Load.into())
+        .await
+        .unwrap();
+
+    let expected = PathBuf::from("configured-D:/faf-data")
+        .join("replaydata")
+        .join("bin")
+        .join("ForgedAlliance.exe");
+    assert_eq!(
+        PathBuf::from(app.snapshot().settings.replay_game_path),
+        expected
     );
 }
 
