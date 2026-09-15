@@ -874,21 +874,33 @@
   white-space: nowrap;
 }
 
-/* Four facts now, the featured mod among them, and the tracks are deliberately
-   not equal shares.
+/* Four facts now, the featured mod among them, evenly spaced.
 
-   Three of the four are short and known: a player count, a rating, an age. They
-   take exactly the width they need (`max-content`, which is the wider of the
-   value and the label above it), so "AVG. RATING" is never clipped to
-   "AVG. R..." to make room for something else. The version is the odd one,
-   because it is the only value that is words rather than a number and the
-   longest of them ("FAF Beta Balance") is wider than all three put together. It
-   takes whatever is left, and shortens with an ellipsis when that is not
-   enough, which at the grid's 390px minimum it is not. Its full name is on the
-   element's title, and the tile is only that narrow in the narrowest panel. */
+   Equal shares, so the four sit at an even pitch across the tile rather than
+   three of them huddling on the left while one track soaks up the slack: that
+   is what the version column did when it was the only `1fr`, and the gap in
+   front of the age was several times the others.
+
+   The floor is what keeps the even pitch from costing anything. `max-content`
+   as the minimum means a track never drops below the wider of its value and its
+   label, so "AVG. RATING" -- and "Puntuacion", "Classement", the longest of
+   them in whichever language -- is never shortened to make the arithmetic work.
+   When one track does need more than its share the other three simply divide
+   what is left, still equally, so the row stays even and stays legible at the
+   grid's 390px minimum.
+
+   The version is the exception, and is the only track with a zero floor: its
+   value is words rather than a number, and the longest of them
+   ("FAF Beta Balance") is wider than the other three columns put together. It
+   takes its equal share and ellipsizes past it, with the full name on its
+   title. */
 .game-tile-primary-stats {
   display: grid;
-  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+  grid-template-columns:
+    minmax(max-content, 1fr)
+    minmax(max-content, 1fr)
+    minmax(0, 1fr)
+    minmax(max-content, 1fr);
   gap: var(--space-2);
   margin-top: 7px;
 }
