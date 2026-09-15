@@ -1396,7 +1396,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.card.gameTime": "Tiempo de juego (simulación)",
   "replays.card.realTime": "Tiempo real (reloj)",
   "replays.card.onMap": "en {map}",
-  "replays.card.watched": "Vista",
   "replays.card.notUploaded": "todavía sin subir",
   "replays.card.justNow": "ahora mismo",
   "replays.card.ago": "hace {duration}",

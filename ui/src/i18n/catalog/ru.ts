@@ -1425,7 +1425,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.card.gameTime": "Игровое время (симуляция)",
   "replays.card.realTime": "Реальное время (по часам)",
   "replays.card.onMap": "на карте {map}",
-  "replays.card.watched": "Просмотрено",
   "replays.card.notUploaded": "ещё не загружен",
   "replays.card.justNow": "только что",
   "replays.card.ago": "{duration} назад",
