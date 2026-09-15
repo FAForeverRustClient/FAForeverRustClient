@@ -194,12 +194,17 @@ async fn relay(config: ReplayRelayConfig, game_id: i32, mut rx: mpsc::UnboundedR
             },
             Err(error) => {
                 tracing::warn!(%error, game_id, "could not reach the FAF replay service");
-                // Nothing is connected, so the game's bytes would otherwise
-                // pile up unread until the next attempt. Collect them now, and
-                // notice here too when FA has finished.
-                drain(&mut rx, &mut stream, &mut game_over);
             }
         }
+
+        // Nothing is connected between here and the next attempt, so the game's
+        // bytes would otherwise pile up unread. Collecting them now is also the
+        // only place a failed *connection* learns that FA has finished, and the
+        // one thing that guarantees the loop below terminates: a service that
+        // accepts and immediately hangs up would otherwise be retried forever,
+        // because `pump` only reports the end of the game when it gets as far
+        // as reading the queue.
+        drain(&mut rx, &mut stream, &mut game_over);
 
         if game_over {
             attempts_after_game += 1;
