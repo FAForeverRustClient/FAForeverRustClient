@@ -61,6 +61,7 @@ pub mod relay;
 pub mod replay;
 pub(crate) mod replay_analysis;
 pub(crate) mod replay_recorder;
+pub(crate) mod replay_relay;
 pub mod reporting;
 pub mod reviews;
 pub mod scmap;
@@ -574,7 +575,12 @@ pub fn real_ports() -> Ports {
     // development already selects `fake_ports` through `FAF_FAKE_AUTH`, so a
     // real account always gets the real launch chain.
     let ice: Arc<dyn IcePort> = select_ice_adapter(&tokens);
-    let process: Arc<dyn ProcessPort> = Arc::new(GameProcess::faf());
+    // Uploading, not just recording: FAF builds a game's vault entry out of the
+    // replay streams clients post while the game is played, so a launcher that
+    // only wrote a local file left every game it ran stuck at "not uploaded
+    // yet" for everyone else.
+    let process: Arc<dyn ProcessPort> =
+        Arc::new(GameProcess::faf().uploading_replays(tokens.clone()));
 
     // Follows `process`, not the other ports: patching writes into the live
     // install and only ever runs on the launch path, which is itself inert
