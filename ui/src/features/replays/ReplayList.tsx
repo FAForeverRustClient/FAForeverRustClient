@@ -198,10 +198,17 @@ function ReplayListRowView({ row }: { row: ReplayListRow }) {
       aria-selected={row.selected || undefined}
       onClick={row.onSelect}
       onDoubleClick={row.onActivate}
+      // Enter does what a single click does, which is now opening the replay
+      // rather than only marking the row. It used to run `onActivate`, the
+      // double-click action, so a keyboard user pressing Enter on a row started
+      // watching a replay they had not been able to look at first. A row with
+      // no primary action still falls through to `onActivate`, which is the
+      // only thing it has.
       onKeyDown={(event) => {
-        if ((event.key === "Enter" || event.key === " ") && row.onActivate) {
+        const act = row.onSelect ?? row.onActivate;
+        if ((event.key === "Enter" || event.key === " ") && act) {
           event.preventDefault();
-          row.onActivate();
+          act();
         }
       }}
     >

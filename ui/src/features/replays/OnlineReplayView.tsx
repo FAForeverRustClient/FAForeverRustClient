@@ -243,7 +243,6 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
           groupByDate={query.sortBy === "startTime" || query.sortBy === "endTime"}
           selectedUid={selectedUid}
           watchedUids={watchedUids}
-          onSelect={setSelectedUid}
           onOpen={(uid) => {
             setSelectedUid(uid);
             setOpenUid(uid);

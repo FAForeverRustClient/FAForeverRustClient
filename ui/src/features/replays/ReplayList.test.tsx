@@ -36,4 +36,43 @@ describe("ReplayList", () => {
     expect(markup).not.toContain(">Date<");
     expect(markup.indexOf("Mod")).toBeLessThan(markup.indexOf("Played"));
   });
+
+  it("carries no per-row Details button, because the row itself opens", () => {
+    // The vault list used to put a Details button at the far end of every row,
+    // and a plain click only highlighted. One click opens now, in both the
+    // online and the local library, so the control has nothing left to do.
+    const markup = renderToStaticMarkup(
+      <ReplayList
+        groups={[{
+          label: "Jul 21, 2026",
+          rows: [{
+            key: "1",
+            mapName: "Seton's Clutch",
+            mapThumbnailUrl: "",
+            game: { primary: "private" },
+            played: { primary: "05:26 PM" },
+            players: { primary: "3" },
+            rating: { primary: "1100" },
+            mod: { primary: "faf" },
+            duration: { primary: "5m 20s" },
+            replay: { primary: "Available", tone: "ok" },
+            onSelect: () => undefined,
+            iconActions: [{
+              icon: "play",
+              ariaLabel: "Watch",
+              title: "Watch",
+              onClick: () => undefined,
+            }],
+          }],
+        }]}
+        footer={<span>1 replay</span>}
+      />,
+    );
+
+    expect(markup).not.toContain("replay-list-action\"");
+    // The row is reachable and operable from the keyboard, and the icon
+    // actions beside it are untouched.
+    expect(markup).toContain('tabindex="0"');
+    expect(markup).toContain('aria-label="Watch"');
+  });
 });
