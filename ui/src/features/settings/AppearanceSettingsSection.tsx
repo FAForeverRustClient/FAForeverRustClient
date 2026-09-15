@@ -1,4 +1,4 @@
-import type { AppearancePreferences, UiDensity } from "../../ipc/bindings";
+import type { AppearancePreferences, ChatPreferences, UiDensity } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
@@ -8,6 +8,10 @@ import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
 
 const save = (preferences: AppearancePreferences) =>
   ipc.send({ kind: "Settings", command: { type: "setAppearance", payload: { preferences } } });
+
+/** The chat slice keeps its own two display settings; this register draws them. */
+const saveChat = (preferences: ChatPreferences) =>
+  ipc.send({ kind: "Settings", command: { type: "setChat", payload: { preferences } } });
 
 /** Within `MIN_UI_SCALE`/`MAX_UI_SCALE` in the domain, which clamps anything else. */
 const UI_SCALES = [100, 125, 150, 175] as const;
@@ -94,6 +98,7 @@ export function AppearanceSettingsSection() {
       },
     });
   const activePageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
+  const chat = useAppStore((state) => state.state.settings.chat);
 
   return (
     <>
@@ -269,6 +274,39 @@ export function AppearanceSettingsSection() {
           onChange={(reduceMotion) => void save({ ...preferences, reduceMotion })}
           label={t("settings.appearance.reduceMotion")}
         />
+      </SettingRow>
+      {/* Chat's two, because they decide how something is drawn and that is
+          what this register is. They were the only display settings in the
+          client filed under the feature they draw for, which is how the lobby's
+          column count and the vault's page size ended up here while the chat's
+          font size did not. */}
+      <SettingRow label={t("settings.chat.fontSize")} hint={t("settings.chat.fontSizeHint")}>
+        <label className="settings-slider">
+          <input
+            type="range"
+            min={11}
+            max={22}
+            step={1}
+            value={chat.fontSize || 13}
+            onChange={(event) => void saveChat({ ...chat, fontSize: Number(event.target.value) })}
+            aria-label={t("settings.chat.fontSize")}
+          />
+          <span>{chat.fontSize || 13} px</span>
+        </label>
+      </SettingRow>
+      <SettingRow label={t("settings.chat.senderWidth")} hint={t("settings.chat.senderWidthHint")}>
+        <label className="settings-slider">
+          <input
+            type="range"
+            min={64}
+            max={260}
+            step={4}
+            value={chat.senderWidth || 116}
+            onChange={(event) => void saveChat({ ...chat, senderWidth: Number(event.target.value) })}
+            aria-label={t("settings.chat.senderWidth")}
+          />
+          <span>{chat.senderWidth || 116} px</span>
+        </label>
       </SettingRow>
     </>
   );

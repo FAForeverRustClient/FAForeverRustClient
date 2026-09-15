@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import type { ClientNotification, NotificationAction } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
+import { requestSettingsSection } from "../settings/settingsNavigation";
 import { native } from "../../ipc/native";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
@@ -95,15 +96,11 @@ async function runAction(item: ClientNotification) {
       case "openSettings":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });
         if (action.payload.section) {
-          // The payload carries a section *key* (`gameCache`, `updates`); the
-          // element it names is `settings-<key>`. Looking up the bare key found
-          // nothing and scrolled nowhere, silently, which is why the game-cache
-          // alert has always landed at the top of Settings.
-          const sectionId = action.payload.section;
-          setTimeout(() => {
-            const el = document.getElementById(`settings-${sectionId}`) ?? document.getElementById(sectionId);
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-          }, 100);
+          // The payload carries a section *key* (`gameCache`, `updates`), which
+          // now names a register rather than an element to scroll to: the
+          // register the notification means is not on screen at all until the
+          // rail opens it, so scrolling could never have reached it.
+          requestSettingsSection(action.payload.section);
         }
         break;
     }
