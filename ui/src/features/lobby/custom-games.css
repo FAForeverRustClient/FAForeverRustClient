@@ -874,9 +874,21 @@
   white-space: nowrap;
 }
 
+/* Four facts now, the featured mod among them, and the tracks are deliberately
+   not equal shares.
+
+   Three of the four are short and known: a player count, a rating, an age. They
+   take exactly the width they need (`max-content`, which is the wider of the
+   value and the label above it), so "AVG. RATING" is never clipped to
+   "AVG. R..." to make room for something else. The version is the odd one,
+   because it is the only value that is words rather than a number and the
+   longest of them ("FAF Beta Balance") is wider than all three put together. It
+   takes whatever is left, and shortens with an ellipsis when that is not
+   enough, which at the grid's 390px minimum it is not. Its full name is on the
+   element's title, and the tile is only that narrow in the narrowest panel. */
 .game-tile-primary-stats {
   display: grid;
-  grid-template-columns: 1fr .72fr 1fr;
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
   gap: var(--space-2);
   margin-top: 7px;
 }
@@ -903,6 +915,16 @@
   font-size: 11px;
   letter-spacing: .04em;
   text-transform: uppercase;
+}
+
+/* The labels clip like the values above them. With three columns every label
+   fitted its track and nothing needed saying; at four, "AVG. RATING" is wider
+   than the number under it, and a label with no overflow rule does not shrink
+   its column, it simply paints over the next one. */
+.game-tile-primary-stats small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .game-tile-flags {

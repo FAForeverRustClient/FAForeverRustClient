@@ -768,6 +768,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.column.players": "Spieler",
   "lobby.browser.column.rating": "Ø-Rating",
   "lobby.browser.column.age": "Alter",
+  "lobby.browser.column.version": "Version",
   "lobby.browser.noMatch": "Keine passenden Partien",
   "lobby.browser.noMatchHint": "Passe die Suche oder die Filter an.",
 

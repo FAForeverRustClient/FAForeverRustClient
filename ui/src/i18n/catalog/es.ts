@@ -2196,6 +2196,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.generateMap": "Generar",
   "lobby.browser.generatingMap": "Generando el mapa…",
   "lobby.browser.column.age": "Antigüedad",
+  "lobby.browser.column.version": "Versión",
   "lobby.coop.noReplay": "Sin repetición",
   "lobby.coop.watchRunTitle": "Ver la repetición de esta partida",
   "lobby.host.mapTab.all": "Todos los mapas ({count})",
