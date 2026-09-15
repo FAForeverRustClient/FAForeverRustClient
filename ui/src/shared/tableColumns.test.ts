@@ -35,10 +35,11 @@ describe("dragging the line in front of a column", () => {
     expect(withBoundaryDragged(WIDTHS, 4, -20, FLEXIBLE)).toEqual([
       120, 110, 260, 64, 104, 150, 130, 128,
     ]);
-    // Far enough right that the column it takes from runs out first: 28 of the
-    // 30 pixels are there to be had, and both sides stop on the same 28.
+    // The whole 30 pixels move, both ways. This used to stop at 28, because
+    // the column being taken from hit a 56 pixel floor; there is no such floor
+    // now and a column gives up whatever it has.
     expect(withBoundaryDragged(WIDTHS, 4, 30, FLEXIBLE)).toEqual([
-      120, 110, 260, 112, 56, 150, 130, 128,
+      120, 110, 260, 114, 54, 150, 130, 128,
     ]);
   });
 
@@ -49,7 +50,7 @@ describe("dragging the line in front of a column", () => {
       120, 150, 260, 84, 84, 150, 130, 128,
     ]);
     expect(withBoundaryDragged(WIDTHS, 3, 40, FLEXIBLE)).toEqual([
-      120, 110, 260, 56, 84, 150, 130, 128,
+      120, 110, 260, 44, 84, 150, 130, 128,
     ]);
   });
 
@@ -64,13 +65,15 @@ describe("dragging the line in front of a column", () => {
     expect(tableMinWidth(dragged)).toBe(tableMinWidth(WIDTHS));
   });
 
-  it("lets a column grow past any width, so long as a neighbour can pay", () => {
+  it("lets a column grow past any width when the flexible one is paying", () => {
     // The old ceiling stopped the divider at 900 pixels with the cursor still
     // moving, which is what this answers. The flexible column has no width of
-    // its own and pays without limit.
-    const dragged = withBoundaryDragged(WIDTHS, 3, 4000, FLEXIBLE);
-    expect(dragged[2]).toBeGreaterThan(900);
-    expect(tableMinWidth(dragged)).toBe(tableMinWidth(WIDTHS));
+    // its own, so it pays without limit and the column beside it grows exactly
+    // as far as it was dragged. The table's total does change here, unlike a
+    // trade between two fixed columns: the flexible column absorbs it on
+    // screen, which is the whole of what it is for.
+    const dragged = withBoundaryDragged(WIDTHS, 2, 4000, FLEXIBLE);
+    expect(dragged[1]).toBe(110 + 4000);
   });
 
   it("ignores a line that has no column on one side of it", () => {

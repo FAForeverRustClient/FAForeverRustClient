@@ -116,11 +116,16 @@ export const MAX_BROWSER_COLUMNS = 5;
 /**
  * One pixel, which is not a usable column and is not meant to be.
  *
- * There is no ceiling: a column is dragged to whatever width somebody wants,
- * and stopping the divider under the cursor is what this used to do. The floor
- * is one rather than zero only because zero already means "no width stored,
- * use the designed one", so a column dragged shut has to be distinguishable
- * from one nobody has touched.
+ * There is no ceiling, and this is as close to no floor as the stored format
+ * allows: a column is dragged to whatever width somebody wants, including
+ * none. One rather than zero because zero already means "no width stored, use
+ * the designed one", so a column dragged shut has to stay distinguishable from
+ * one nobody has touched.
+ *
+ * No counterpart in `faf_domain` any more, unlike the bounds below. A `u32`
+ * that is not zero is already at least one, so the backend has nothing left to
+ * enforce; this side still does, because a hand-edited settings file reaches
+ * it as JSON and can hold a negative or a fraction.
  */
 export const MIN_BROWSER_COLUMN_PX = 1;
 export const MIN_DETAIL_PX = 220;
