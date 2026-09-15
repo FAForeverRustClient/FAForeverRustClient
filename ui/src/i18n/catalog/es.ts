@@ -416,6 +416,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "chat.category.self": "Tú",
   "chat.category.moderators": "Moderadores y administradores",
   "chat.category.friends": "Amigos",
+  "chat.category.clan": "Clan",
   "chat.category.players": "Jugadores",
   "chat.category.ircOnly": "Solo IRC",
   "chat.category.foes": "Enemigos",

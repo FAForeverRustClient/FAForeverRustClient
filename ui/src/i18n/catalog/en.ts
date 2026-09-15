@@ -289,6 +289,7 @@ export const en = {
   "chat.category.self": "You",
   "chat.category.moderators": "Moderators & admins",
   "chat.category.friends": "Friends",
+  "chat.category.clan": "Clan",
   "chat.category.players": "Players",
   "chat.category.ircOnly": "IRC only",
   "chat.category.foes": "Foes",
