@@ -187,6 +187,47 @@ impl GameProcess {
         }
     }
 
+    /// End whatever this slot is still running, and wait until it is gone.
+    ///
+    /// Both halves matter, and the waiting half is the reported bug. Starting a
+    /// replay while the previous one is still open used to spawn the new
+    /// process first and terminate the old one afterwards, so for as long as
+    /// the old process took to die there were two copies of one install
+    /// running: the state the whole of [`Self::spawn`] exists to prevent,
+    /// because they fight over that install's shader cache and lock files and
+    /// one of them freezes on a blank post-shader-compile screen with no crash
+    /// and no error anywhere. Which one freezes is a race, which is why the
+    /// report is "50% of the time".
+    ///
+    /// The wait is bounded. A process that has been sent a termination signal
+    /// and has not gone in five seconds is not going to, and a launch is worth
+    /// attempting anyway at that point: refusing would leave the user with
+    /// nothing, where the odds are simply back to what they were.
+    ///
+    /// Only ever called for [`Slot::Replay`], and that is not incidental.
+    /// Taking a child out of its slot is what tells [`Self::watch_for_exit`] it
+    /// is done, and the game slot's watcher announces an exit as it goes: a
+    /// live game relaunched through here would report the previous game as
+    /// having ended, over the top of the one that just started. The replay
+    /// slot's watcher announces nothing, because a replay window closing is not
+    /// the end of a game session.
+    async fn end_previous(&self, slot: Slot) {
+        let Some(mut previous) = self.slot(slot).lock().unwrap().take() else {
+            return;
+        };
+        if matches!(previous.child.try_wait(), Ok(Some(_))) {
+            return;
+        }
+        let _ = previous.child.start_kill();
+        for _ in 0..100 {
+            match previous.child.try_wait() {
+                Ok(None) => tokio::time::sleep(Duration::from_millis(50)).await,
+                _ => return,
+            }
+        }
+        tracing::warn!("the previous Forged Alliance process has not exited; launching anyway");
+    }
+
     fn spawn(
         &self,
         slot: Slot,
@@ -271,11 +312,14 @@ impl GameProcess {
             None => format!("could not start '{}': {e}", exe.display()),
         })?;
 
-        // Only ever the previous occupant of *this* slot, which is a relaunch
-        // of the same kind: a second replay replaces the first, a second game
-        // replaces the first. `drop(prev)` here (the bug this replaces) only
-        // discarded our handle: it sends no signal, so the old FA process kept
-        // running as an orphan. Confirmed live: relaunching a replay left two
+        // The replay slot is normally empty by now: a replay launch ends the
+        // previous occupant through `end_previous` first, and waits for it,
+        // because two copies of one install must never be alive at the same
+        // time. This is the backstop for that, and for the game slot, which
+        // does not go through it. It is deliberately not a `drop(prev)` (the
+        // bug this replaces): dropping the handle sends no signal, so the old
+        // FA process kept running as an orphan. Confirmed live: relaunching a
+        // replay left two
         // `ForgedAlliance.exe` processes alive simultaneously, fighting over
         // the same install's shader cache/lock files, and the previous process
         // froze on a blank post-shader-compile screen with zero further disk
@@ -401,6 +445,7 @@ impl ProcessPort for GameProcess {
     }
 
     async fn launch_replay(&self, args: Vec<String>) -> Result<(), String> {
+        self.end_previous(Slot::Replay).await;
         let path = self.config.lock().unwrap().replay_game_path.clone();
         self.spawn(Slot::Replay, &path, &args, "replay")
     }
@@ -481,6 +526,10 @@ impl ProcessPort for GameProcess {
 
     fn is_live_install(&self, path: &str) -> bool {
         same_install(path, &self.config.lock().unwrap().game_path)
+    }
+
+    async fn stop_replay(&self) {
+        self.end_previous(Slot::Replay).await;
     }
 }
 
@@ -1207,6 +1256,67 @@ mod tests {
         let replay = PathBuf::from("C:/ProgramData/FAForever/replaydata/bin/ForgedAlliance.exe");
         assert_eq!(game.file_name(), replay.file_name());
         assert_ne!(super::install_key(&game), super::install_key(&replay));
+    }
+
+    #[tokio::test]
+    async fn ending_a_replay_that_is_not_running_is_not_a_wait() {
+        // Every replay launch calls this, and almost every one of them has
+        // nothing to end. It must not be the place a first replay of the
+        // session spends five seconds.
+        let process = GameProcess::faf();
+        let started = std::time::Instant::now();
+        process.end_previous(Slot::Replay).await;
+        assert!(process.replay_child.lock().unwrap().is_none());
+        assert!(started.elapsed() < Duration::from_millis(500));
+    }
+
+    #[tokio::test]
+    async fn a_replay_launch_frees_the_install_before_the_next_one_takes_it() {
+        // The reported bug, as far as it can be reproduced without an FA
+        // install: watching a second replay while the first is still open used
+        // to start the second process and *then* kill the first, so two copies
+        // of one install overlapped and one of them froze on a loading screen.
+        // Afterwards the slot is empty and the process is really gone, which is
+        // what makes the next launch the only copy running.
+        let process = GameProcess::faf();
+        let child = a_process_that_keeps_running();
+        let exe = PathBuf::from("C:/games/FAForever/replaydata/bin/ForgedAlliance.exe");
+        *process.replay_child.lock().unwrap() = Some(Running {
+            child,
+            exe: install_key(&exe),
+        });
+
+        process.end_previous(Slot::Replay).await;
+
+        assert!(
+            process.replay_child.lock().unwrap().is_none(),
+            "the slot has to be free before anything is spawned into it"
+        );
+        assert!(
+            !process.other_slot_holds(Slot::Game, &exe),
+            "and nothing is left holding that install"
+        );
+    }
+
+    /// A child that stays alive until it is killed, on both the platform this
+    /// is developed on and the one CI runs.
+    fn a_process_that_keeps_running() -> Child {
+        let mut command = if cfg!(windows) {
+            let mut command = Command::new("cmd");
+            command.args(["/c", "ping", "-n", "60", "127.0.0.1"]);
+            command
+        } else {
+            let mut command = Command::new("sleep");
+            command.arg("60");
+            command
+        };
+        command
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true)
+            .spawn()
+            .expect("a long-running child")
     }
 
     #[test]

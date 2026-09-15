@@ -247,6 +247,18 @@ pub trait ProcessPort: Send + Sync {
         None
     }
 
+    /// End a replay that is still playing, and wait until it has gone.
+    ///
+    /// Called before a replay is *prepared*, not merely before it is launched,
+    /// because preparing one writes the engine build it needs into the replay
+    /// install: staging files into a directory a running Forged Alliance has
+    /// open is how that install ends up in a state the next launch cannot load
+    /// from. Nothing to end is the normal case and costs nothing.
+    ///
+    /// Defaulted to doing nothing, like the rest of the process-shaped answers:
+    /// a fake launcher has no process to end.
+    async fn stop_replay(&self) {}
+
     /// Whether `path` names the install live games are launched from.
     ///
     /// The one answer the replay field cannot work out for itself, and the one
