@@ -1145,7 +1145,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.paths.gameInstall": "Installation du jeu",
   "settings.paths.gameInstallHint": "ForgedAlliance.exe utilisé pour rejoindre et jouer des parties en direct.",
   "settings.paths.replayInstall": "Installation pour les replays",
-  "settings.paths.replayInstallHint": "ForgedAlliance.exe utilisé pour la lecture des replays : peut être une version différente de celle du jeu.",
+  "settings.paths.replayInstallHint": "Sa propre copie du jeu, à côté de celle ci-dessus. Le client la télécharge la première fois que vous regardez un replay, car un replay ne se charge que dans la version exacte avec laquelle il a été enregistré.",
   "settings.paths.installNote": "Les changements prennent effet immédiatement. FAF joue avec sa propre copie corrigée du moteur, que le client télécharge la première fois que vous jouez ; celle qu'un client Java ou Python a déjà laissée est réutilisée à la place. Votre installation d'origine, Steam ou disque, n'est jamais modifiée, seulement lue, pour les vidéos, les sons et les polices du jeu. Les vaults de replays et de cartes se parcourent sans aucune installation ; jouer et regarder, non.",
   "settings.paths.unset": "Non défini",
   "settings.paths.missing": "Inutilisable",

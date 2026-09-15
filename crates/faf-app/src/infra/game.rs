@@ -474,6 +474,14 @@ impl ProcessPort for GameProcess {
     fn is_original_game_install(&self, path: &str) -> bool {
         is_original_game_executable(Path::new(path))
     }
+
+    fn replay_path_beside_game(&self, game_path: &str) -> Option<String> {
+        replay_path_beside(game_path)
+    }
+
+    fn is_live_install(&self, path: &str) -> bool {
+        same_install(path, &self.config.lock().unwrap().game_path)
+    }
 }
 
 /// Split a command line into a program and its arguments.
@@ -834,6 +842,45 @@ fn default_managed_install_paths() -> DiscoveredInstallPaths {
     }
 }
 
+/// The replay install that belongs to a given live install: the `replaydata`
+/// directory beside its `bin`.
+///
+/// This is the shape both reference clients use, and the reason it is derived
+/// from the configured game path rather than from the default root: somebody
+/// whose game lives in a Java client's data directory on another drive has no
+/// use for a replay install under `%PROGRAMDATA%`. The two belong to one FAF
+/// install and are two directories inside it.
+///
+/// `None` for an empty path, for a path that is not shaped like an install,
+/// and for the retail game, which is never an update target and therefore has
+/// no replay install to sit beside.
+fn replay_path_beside(game_path: &str) -> Option<String> {
+    let root = managed_install_dir_of(game_path)?;
+    Some(
+        root.join("replaydata")
+            .join("bin")
+            .join(MANAGED_EXE)
+            .to_string_lossy()
+            .into_owned(),
+    )
+}
+
+/// Whether two configured executables name the same install.
+///
+/// The question the replay field has to ask about a pick, and it is a question
+/// about the directory rather than the file: `bin\ForgedAlliance.exe` and
+/// `replaydata\bin\ForgedAlliance.exe` differ only in the directories above
+/// them, and the same install reached two ways differs only in spelling.
+/// [`install_key`] settles the spelling, and the directory is used rather than
+/// the executable because the executable of an install FAF has not downloaded
+/// yet does not exist to canonicalise.
+fn same_install(left: &str, right: &str) -> bool {
+    match (install_dir_of(left), install_dir_of(right)) {
+        (Some(left), Some(right)) => install_key(&left) == install_key(&right),
+        _ => false,
+    }
+}
+
 /// The reference clients validate an original FA root through its base archive.
 /// Its executable has the same filename and `bin/` shape as the managed copy,
 /// so checking only `ForgedAlliance.exe` cannot keep the updater out of Steam.
@@ -1186,6 +1233,52 @@ mod tests {
             process.game_install_dir(),
             Some(PathBuf::from("C:/games/FAForever"))
         );
+    }
+
+    #[test]
+    fn the_replay_install_sits_beside_the_live_one() {
+        // Issue #267: the replay field used to want a path of its own, and on a
+        // machine where FAF has only ever installed the live game there is no
+        // such file to browse to. It is the same install's `replaydata` half,
+        // and derived from wherever the live install actually is: a game in a
+        // Java client's data directory on another drive has no use for a replay
+        // install under `%PROGRAMDATA%`.
+        let beside = super::replay_path_beside("D:/faf-data/bin/ForgedAlliance.exe").unwrap();
+        assert_eq!(
+            PathBuf::from(beside),
+            PathBuf::from("D:/faf-data")
+                .join("replaydata")
+                .join("bin")
+                .join(MANAGED_EXE)
+        );
+    }
+
+    #[test]
+    fn nothing_is_derived_from_a_path_that_is_not_an_install() {
+        // Same three cases `install_dir_of` refuses, for the same reason: a
+        // derived path built on the empty root would land in whatever directory
+        // the client is running from.
+        for path in ["", "ForgedAlliance.exe", "bin/ForgedAlliance.exe"] {
+            assert_eq!(super::replay_path_beside(path), None, "for {path:?}");
+        }
+    }
+
+    #[test]
+    fn the_replay_half_is_not_the_live_install() {
+        // What the settings service asks before accepting a replay pick. The
+        // two executables share a filename, so the comparison is on the
+        // directory above `bin`, and the same install spelled two ways is still
+        // one install.
+        let live = "C:/ProgramData/FAForever/bin/ForgedAlliance.exe";
+        let replay = "C:/ProgramData/FAForever/replaydata/bin/ForgedAlliance.exe";
+        assert!(super::same_install(live, live));
+        assert!(!super::same_install(live, replay));
+        assert!(!super::same_install(
+            live,
+            "D:/other/FAForever/bin/ForgedAlliance.exe"
+        ));
+        // Nothing configured is not "the same install as nothing".
+        assert!(!super::same_install("", ""));
     }
 
     #[test]

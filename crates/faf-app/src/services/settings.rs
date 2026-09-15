@@ -40,11 +40,6 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             } else {
                 discovered.game
             };
-            let replay_fallback = if settings.replay_game_path.is_empty() {
-                discovered.replay.or(defaults.replay)
-            } else {
-                discovered.replay
-            };
             let mut imported_reference_install = false;
             if !ctx
                 .ports
@@ -56,6 +51,25 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
                     imported_reference_install = true;
                 }
             }
+            // Deliberately after the game path is settled, because it is
+            // derived from it. A replay install is not a second thing to go
+            // and find: it is the `replaydata` half of the same FAF install,
+            // and the reported confusion was a field demanding a path that
+            // exists nowhere on the machine. Only the bare default is behind
+            // it, for the case where there is no game path to derive from
+            // either.
+            let replay_fallback = if settings.replay_game_path.is_empty() {
+                discovered
+                    .replay
+                    .or_else(|| {
+                        ctx.ports
+                            .process
+                            .replay_path_beside_game(&settings.game_path)
+                    })
+                    .or(defaults.replay)
+            } else {
+                discovered.replay
+            };
             if !ctx
                 .ports
                 .process
@@ -131,6 +145,7 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         SettingsCommand::SetReplayGamePath { path } => {
             let path = redirect_retail_pick(&path, ctx, out, true);
+            let path = redirect_live_install_pick(&path, ctx, out);
             out.emit(SettingsEvent::ReplayGamePathChanged { path });
             persist(ctx, out).await;
             sync_installs(ctx, out);
@@ -374,6 +389,51 @@ fn redirect_retail_pick(path: &str, ctx: &ServiceCtx, out: &EventSink, replay: b
              is still used for the game's movies, sounds and fonts.",
             which = if replay { "replay" } else { "game" },
             verb = if replay { "watch a replay" } else { "play" },
+        ),
+        Some(NotificationAction::OpenSettings {
+            section: Some("paths".to_string()),
+        }),
+    );
+    target
+}
+
+/// Answer a replay pick that is the live install, the way a retail pick is
+/// answered.
+///
+/// This is the whole of the reported confusion. The replay field asks for a
+/// `ForgedAlliance.exe`, the only one on the machine is the one the game
+/// install already names, so that is what gets picked, and it appears to work.
+/// It does not: replay playback stages the replay's *exact* engine build into
+/// the install it launches, so the first old replay quietly downgrades the copy
+/// the user plays live games with, and the next live game has to download it
+/// all back. The two installs are separate for that reason and no other.
+///
+/// So the pick is answered rather than taken: say what is wrong with it, and
+/// configure `replaydata` beside the live install, which is the place the
+/// updater fills in on the first replay anyway. That path is a directory FAF
+/// owns, so nothing is written where the user did not expect it.
+fn redirect_live_install_pick(path: &str, ctx: &ServiceCtx, out: &EventSink) -> String {
+    if !ctx.ports.process.is_live_install(path) {
+        return path.to_string();
+    }
+    let Some(target) = ctx
+        .ports
+        .process
+        .replay_path_beside_game(path)
+        .filter(|target| !target.is_empty())
+    else {
+        return path.to_string();
+    };
+    notifications::add_required(
+        out,
+        NotificationKind::GameInstall,
+        "Replays get their own copy of the game",
+        format!(
+            "{path} is the install you play live games from. Watching a replay puts that \
+             replay's own engine build in place first, which would downgrade it and leave \
+             the next live game to download everything again. The replay install now points \
+             at {target}, beside it, where the client downloads what a replay needs the \
+             first time you watch one.",
         ),
         Some(NotificationAction::OpenSettings {
             section: Some("paths".to_string()),

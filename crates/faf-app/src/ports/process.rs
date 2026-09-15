@@ -231,4 +231,29 @@ pub trait ProcessPort: Send + Sync {
     fn is_original_game_install(&self, _path: &str) -> bool {
         false
     }
+
+    /// The replay install belonging to the live install at `game_path`: the
+    /// `replaydata` directory beside its `bin`.
+    ///
+    /// Asked of the launcher because it is a statement about how a FAF install
+    /// is laid out on disk, and it is asked at all because the replay path is
+    /// not a second thing for the user to find. It is the same install's other
+    /// half, and a client that works the game path out for itself has no
+    /// business making somebody hunt for this one.
+    ///
+    /// `None` when there is nothing to derive it from: no game path, a path
+    /// that is not shaped like an install, or the retail game.
+    fn replay_path_beside_game(&self, _game_path: &str) -> Option<String> {
+        None
+    }
+
+    /// Whether `path` names the install live games are launched from.
+    ///
+    /// The one answer the replay field cannot work out for itself, and the one
+    /// it has to have: pointing replay playback at the live install looks like
+    /// it works, and then the first old replay stages that replay's exact
+    /// engine build over the copy the user plays with.
+    fn is_live_install(&self, _path: &str) -> bool {
+        false
+    }
 }

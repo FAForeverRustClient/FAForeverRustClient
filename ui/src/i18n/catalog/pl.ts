@@ -1095,7 +1095,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.paths.gameInstall": "Instalacja gry",
   "settings.paths.gameInstallHint": "Plik ForgedAlliance.exe używany do dołączania i grania.",
   "settings.paths.replayInstall": "Instalacja do powtórek",
-  "settings.paths.replayInstallHint": "Plik ForgedAlliance.exe używany do odtwarzania powtórek: może to być inna kompilacja lub wersja niż instalacja gry.",
+  "settings.paths.replayInstallHint": "Własna kopia gry, obok tej powyżej. Klient pobiera ją przy pierwszym odtworzeniu powtórki, bo powtórka wczytuje się tylko w tej wersji, w której została nagrana.",
   "settings.paths.installNote": "Zmiany działają od razu. FAF gra przez własną, spatchowaną kopię silnika, którą klient pobiera przy pierwszym uruchomieniu gry; jeśli klient Java lub Python już taką zostawił, używana jest tamta. Do oryginalnej instalacji ze Steama lub z płyty klient nigdy nie zapisuje, tylko z niej czyta filmy, dźwięki i czcionki. Magazyny powtórek i map można przeglądać bez żadnej instalacji; grać i oglądać nie.",
   "settings.game.additionalGameLaunch": "Dodatkowe argumenty uruchamiania gry",
   "settings.game.autoGenerateMaps": "Automatycznie generuj brakujące mapy",
