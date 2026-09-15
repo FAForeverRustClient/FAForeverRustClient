@@ -674,6 +674,40 @@ pub fn sort_rating_summaries(ratings: &mut Vec<PlayerRatingSummary>) {
     });
 }
 
+/// Put a player's league placements in the order a profile shows them.
+///
+/// The same order as the ratings above them, and for the same reason. The one
+/// placement the matchmaker wants is the player's best, so the parser hands
+/// every caller the list sorted by division and then subdivision; a profile
+/// that lists *all* of them inherited that ranking, and a ranking is the one
+/// thing this order must not be. It puts the queues in a different sequence
+/// for every account, moves them around as somebody is promoted, and leaves
+/// the placement grid disagreeing with the rating grid directly above it,
+/// which is the same set of queues.
+///
+/// Callers that want the best placement first, the matchmaker identity and the
+/// party seats, keep the parser's ranking and do not call this.
+pub fn sort_league_placements(placements: &mut Vec<PlayerLeaguePlacement>) {
+    placements.retain(|placement| !is_retired_leaderboard(&placement.technical_name));
+    placements.sort_by(|left, right| {
+        match (
+            leaderboard_display_rank(&left.technical_name),
+            leaderboard_display_rank(&right.technical_name),
+        ) {
+            (Some(left_rank), Some(right_rank)) => left_rank.cmp(&right_rank),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            // A league this client has never heard of has no place in the run,
+            // so it falls back to what a rating does: most played first, then
+            // by name so the tie is not resolved differently on each visit.
+            (None, None) => right
+                .games_played
+                .cmp(&left.games_played)
+                .then_with(|| left.leaderboard.cmp(&right.leaderboard)),
+        }
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -836,6 +870,46 @@ mod tests {
         );
         assert_eq!(state.matchmaker_profile.as_ref().unwrap().player_id, 8);
         assert_eq!(state.matchmaker_profile_status, PlayerCardStatus::Ready);
+    }
+
+    #[test]
+    fn the_profile_lists_placements_by_queue_and_not_by_division() {
+        let placement = |technical: &str, board: &str, games: i32| PlayerLeaguePlacement {
+            technical_name: technical.into(),
+            leaderboard: board.into(),
+            season: "Season 12".into(),
+            division: "Bronze I".into(),
+            score: 5,
+            highest_score: 10,
+            games_played: games,
+            image_url: String::new(),
+        };
+
+        // As the parser hands them over: best division first, which puts the
+        // queues in whatever sequence this particular account happens to be
+        // ranked in.
+        let mut placements = vec![
+            placement("tmm_4v4_full_share", "4v4", 12),
+            placement("ladder_1v1", "1v1", 40),
+            placement("tmm_4v4_share_until_death", "4v4 No Share", 2),
+            placement("some_new_league", "Something New", 1),
+            placement("global", "Global", 900),
+            placement("another_new_league", "Another", 7),
+            placement("tmm_2v2", "2v2", 25),
+        ];
+        sort_league_placements(&mut placements);
+
+        let order: Vec<_> = placements
+            .iter()
+            .map(|placement| placement.leaderboard.as_str())
+            .collect();
+        // Solo first, then by team size, exactly as the ratings grid above it,
+        // and the leagues this build has never heard of after all of them,
+        // most played first. The retired 4v4 queue is gone, as it is there.
+        assert_eq!(
+            order,
+            ["Global", "1v1", "2v2", "4v4", "Another", "Something New"],
+        );
     }
 
     #[test]

@@ -768,6 +768,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.column.players": "Spieler",
   "lobby.browser.column.rating": "Ø-Rating",
   "lobby.browser.column.age": "Alter",
+  "lobby.browser.column.version": "Version",
   "lobby.browser.noMatch": "Keine passenden Partien",
   "lobby.browser.noMatchHint": "Passe die Suche oder die Filter an.",
 
@@ -1751,7 +1752,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.card.gameTime": "Spielzeit (Simulation)",
   "replays.card.realTime": "Echtzeit (Wanduhr)",
   "replays.card.onMap": "auf {map}",
-  "replays.card.watched": "Angesehen",
   "replays.card.notUploaded": "noch nicht hochgeladen",
   "replays.card.justNow": "gerade eben",
   "replays.card.ago": "vor {duration}",

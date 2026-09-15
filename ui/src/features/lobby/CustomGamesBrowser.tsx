@@ -17,6 +17,7 @@ import {
 } from "../../shared/mapPresentation";
 import { formatRelativeDuration } from "../../shared/durations";
 import { flagSrc } from "../../shared/countryFlags";
+import { featuredModLabel } from "../../shared/featuredMods";
 import { useCountryLabel } from "../../shared/useCountryLabel";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
@@ -989,8 +990,8 @@ export const GameTile = memo(function GameTile({
   const simModsRanked = simModCount > 0 && simModsKeepGameRanked(game, vaultMods);
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const players = playingCount(game);
-  const { friends } = friendsHere(game, friendSet);
-  const { foes } = foesHere(game, foeSet);
+  const { friends, label: friendLabel } = friendsHere(game, friendSet);
+  const { foes, label: foeLabel } = foesHere(game, foeSet);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
   const {
     socialPopoverId,
@@ -1054,16 +1055,25 @@ export const GameTile = memo(function GameTile({
         aria-describedby={tooltipPosition ? tooltipId : undefined}
       >
         <span className="game-tile-title" title={game.title}>{game.title}</span>
+        {/* Four facts, not a tag and three facts. The featured mod was a tag
+            among "unranked" and "3 SIM", which read as something the lobby had
+            switched on; it is a property of the game in the way its size and
+            its rating are, so it stands in the row that carries those. Spelled
+            the way the Host Game dialog spells it, from the same catalogue
+            entries, rather than as the `fafdevelop` the server sends. */}
         <span className="game-tile-primary-stats">
           <span>
             <b>{players} / {game.maxPlayers}</b>
             <small>{t("lobby.browser.playersWord", { count: players })}</small>
           </span>
-          <span><b>{formatAge(game.hostedAt, now)}</b><small>age</small></span>
-          <span><b>{game.averageRating || "N/A"}</b><small>avg. rating</small></span>
+          <span><b>{game.averageRating || "N/A"}</b><small>{t("lobby.browser.column.rating")}</small></span>
+          <span>
+            <b title={featuredModLabel(game.modName)}>{featuredModLabel(game.modName)}</b>
+            <small>{t("lobby.browser.column.version")}</small>
+          </span>
+          <span><b>{formatAge(game.hostedAt, now)}</b><small>{t("lobby.browser.column.age")}</small></span>
         </span>
         <span className="game-tile-flags">
-          <i>{game.modName || "faf"}</i>
           {simModCount > 0 && (
             <i
               className={simModsRanked ? "modded is-ranked" : "modded"}
@@ -1073,15 +1083,15 @@ export const GameTile = memo(function GameTile({
             </i>
           )}
           {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
-          {(game.ratingMin !== null || game.ratingMax !== null) && (
-            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
-          )}
-        </span>
-        <span className="game-tile-footer">
-          <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
+          {/* Among the tags, where it was: a count is a property of the lobby
+              the way "unranked" and "3 SIM" are, and the tile is scanned as a
+              block rather than read left to right, so the friend count belongs
+              with the other things that describe the game and not off in the
+              footer beside the host's name. Who they are is the popover's job,
+              which the tag carries exactly as the list row's does. */}
           {friends.length > 0 && (
-            <span
-              className="game-tile-friends"
+            <i
+              className="friend"
               onMouseEnter={(e) => {
                 e.stopPropagation();
                 showSocial(e.currentTarget, "friends");
@@ -1100,13 +1110,12 @@ export const GameTile = memo(function GameTile({
                 e.stopPropagation();
               }}
             >
-              <Icon name="users" size={13} />
-              <span>{t("lobby.browser.friendCount", { count: friends.length })}</span>
-            </span>
+              {friendLabel}
+            </i>
           )}
           {foes.length > 0 && (
-            <span
-              className="game-tile-foes"
+            <i
+              className="foe"
               onMouseEnter={(e) => {
                 e.stopPropagation();
                 showSocial(e.currentTarget, "foes");
@@ -1125,11 +1134,14 @@ export const GameTile = memo(function GameTile({
                 e.stopPropagation();
               }}
             >
-              <Icon name="users" size={13} />
-              <span>{t("lobby.browser.foeCount", { count: foes.length })}</span>
-            </span>
+              {foeLabel}
+            </i>
+          )}
+          {(game.ratingMin !== null || game.ratingMax !== null) && (
+            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
           )}
         </span>
+        <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
       </button>
       {tooltipPosition && !socialPosition && createPortal(
         <GameLineup game={game} id={tooltipId} position={tooltipPosition} />,

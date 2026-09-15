@@ -12,7 +12,7 @@ import type {
   VaultReplay,
 } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
-import { formatAgeOrDate, formatDate, formatShortDate, formatTime } from "../../shared/dates";
+import { formatAgeOrDate, formatDate, formatShortDate, formatShortDateTime, formatTime } from "../../shared/dates";
 import { formatDuration } from "../../shared/durations";
 import { localReplayTimestamp } from "./localReplayQuery";
 import {
@@ -137,7 +137,16 @@ function ReplayMetaGrid({ replay }: { replay: ReplayCardData }) {
   const { t } = useTranslation();
   return (
     <div className="replay-meta-grid muted">
-      <ReplayMetaFact icon="calendar" label={t("replays.card.played")} value={formatDate(replay.startTime, "")} />
+      {/* Date *and* time of day. The date alone answers "which day was this"
+          and not "which of that evening's games was this", which is the
+          question someone scanning their own recent replays is actually
+          asking: the list view has printed the clock time in its Played column
+          all along, and the card was the odd one out. */}
+      <ReplayMetaFact
+        icon="calendar"
+        label={t("replays.card.played")}
+        value={formatShortDateTime(replay.startTime, "")}
+      />
       <ReplayMetaFact icon="users" label={t("replays.card.players")} value={`${playerCount(replay.teams)}`} />
       <ReplayMetaFact icon="mods" label={t("replays.card.featuredMod")} value={replay.modName} />
       <ReplayMetaFact
@@ -288,16 +297,8 @@ export function ReplayLibraryCard({
       </div>
       <div className="replay-card-right">
         <div className="replay-card-header">
-          <div className="replay-card-header-main">
-            <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
-            <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
-          </div>
-          {watched && (
-            <span className="replay-card-watched-badge" title={t("replays.watched.mark")}>
-              <Icon name="eye" size={12} />
-              <span>{t("replays.card.watched")}</span>
-            </span>
-          )}
+          <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
+          <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
         </div>
         <ReplayCardRoster teams={replay.teams} onPlayerMenu={onPlayerMenu} />
         {/* The id and the way in, on one line in the corner: the label that

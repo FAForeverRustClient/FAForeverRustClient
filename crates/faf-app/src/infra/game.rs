@@ -130,6 +130,14 @@ pub struct GameProcess {
     /// its replay. Replaced on the next launch, which drops and stops the
     /// previous one.
     replay_recorder: Mutex<Option<crate::infra::replay_recorder::ReplayRecorder>>,
+    /// What the recorder needs to forward the stream on to FAF, so the game
+    /// lands in the vault rather than only on this disk.
+    ///
+    /// `None` is a launcher that records locally and uploads nothing: the
+    /// offline/dev wiring, which has no session to authenticate with. It is
+    /// deliberately not fatal, here or at launch time, because a replay that
+    /// only exists locally is still a replay.
+    replay_relay: Option<crate::infra::replay_relay::ReplayRelayConfig>,
 }
 
 impl GameProcess {
@@ -140,11 +148,23 @@ impl GameProcess {
             replay_child: Arc::new(Mutex::new(None)),
             exited: Arc::new(Notify::new()),
             replay_recorder: Mutex::new(None),
+            replay_relay: None,
         }
     }
 
     pub fn faf() -> Self {
         Self::new(GameConfig::faf())
+    }
+
+    /// Upload the replays of the games this launcher starts, as `tokens`'
+    /// account.
+    ///
+    /// Separate from [`Self::faf`] because the offline wiring uses the same
+    /// real launcher (game paths are a local capability, not a network one) and
+    /// has no session to upload with.
+    pub fn uploading_replays(mut self, tokens: crate::infra::session::TokenStore) -> Self {
+        self.replay_relay = Some(crate::infra::replay_relay::ReplayRelayConfig::faf(tokens));
+        self
     }
 }
 
@@ -401,6 +421,7 @@ impl ProcessPort for GameProcess {
         let recorder = match crate::infra::replay_recorder::ReplayRecorder::start(
             crate::infra::replay::local_replays_dir(),
             params.replay.clone(),
+            self.replay_relay.clone(),
         )
         .await
         {

@@ -43,6 +43,28 @@ export function formatTime(value: string | number, fallback = t("common.unknown"
     : date.toLocaleTimeString(clientIntlTag(), { timeStyle: "short" });
 }
 
+/**
+ * The numeric date and the time of day, in one line.
+ *
+ * `formatDateTime` spells the month out (`Sep 13, 2026, 10:30 PM`), which reads
+ * well in a detail row and is too wide for the two-column meta grid on a replay
+ * card. This is the same short date those cards already printed, with the clock
+ * time the card was missing appended to it.
+ */
+export function formatShortDateTime(value: string | number, fallback = t("common.unknown")): string {
+  if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? fallback
+    : date.toLocaleString(clientIntlTag(), {
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+}
+
 export function formatDateTime(value: string | number, fallback = t("common.unknown")): string {
   if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
   const date = new Date(value);
