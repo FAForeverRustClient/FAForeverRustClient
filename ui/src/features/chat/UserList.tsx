@@ -17,12 +17,14 @@ import type { ChatPreferences, ChatUser, Game, PlayerProfile, SocialState, Vault
 import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { isModerator, playersByNickname } from "../../store/reducer";
+import { playersByNickname } from "../../store/reducer";
 import { useTranslation } from "../../i18n/useTranslation";
 import {
   USER_CATEGORY_LABELS,
   USER_CATEGORY_ORDER,
+  categoryOf,
   displayName,
+  ownClanTag,
   resolvedNickStyle,
   type UserCategory,
 } from "./chatFormat";
@@ -122,14 +124,6 @@ export const UserList = memo(function UserList({
 
   // Shared with the message list, which needs exactly the same index.
   const profilesByLogin = playersByNickname(social.players);
-  const friendsSet = useMemo(
-    () => new Set(social.friends.map((f) => f.toLowerCase())),
-    [social.friends],
-  );
-  const foesSet = useMemo(
-    () => new Set(social.foes.map((f) => f.toLowerCase())),
-    [social.foes],
-  );
 
   const groups = useMemo(() => {
     const needle = filter.trim().toLowerCase();
@@ -137,34 +131,19 @@ export const UserList = memo(function UserList({
       ? users.filter((u) => u.name.toLowerCase().includes(needle))
       : users;
     // Without the lobby we can't tell an account from an IRC-only nickname;
-    // see `categoryOf`.
+    // see `categoryOf`, which is where the whole of this decision lives. It
+    // used to be repeated here, and the copy is how the roster and everything
+    // else that asks the same question drift apart.
     const socialKnown = social.players.length > 0;
+    const ownClan = ownClanTag(social, self);
     const buckets = new Map<UserCategory, ChatUser[]>(
       USER_CATEGORY_ORDER.map((c) => [c, [] as ChatUser[]]),
     );
     for (const user of matching) {
-      const lower = user.name.toLowerCase();
-      let category: UserCategory;
-      if (self && user.name === self) {
-        category = "self";
-      } else if (foesSet.has(lower)) {
-        // Foes leave the normal list entirely: `USER_CATEGORY_ORDER` puts them
-        // last, and this branch runs before the others so a foe stays there
-        // even when they are a moderator or a known player.
-        category = "foes";
-      } else if (isModerator(user)) {
-        category = "moderators";
-      } else if (friendsSet.has(lower)) {
-        category = "friends";
-      } else if (!socialKnown || profilesByLogin.has(lower)) {
-        category = "players";
-      } else {
-        category = "ircOnly";
-      }
-      buckets.get(category)?.push(user);
+      buckets.get(categoryOf(user, self, social, socialKnown, ownClan))?.push(user);
     }
     return buckets;
-  }, [users, self, social, friendsSet, foesSet, profilesByLogin, filter]);
+  }, [users, self, social, filter]);
 
   // Flatten ordered categories and users into a unified virtualization list.
   const flatItems = useMemo<RosterFlatItem[]>(() => {

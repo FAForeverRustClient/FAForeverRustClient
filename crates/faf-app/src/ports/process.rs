@@ -231,4 +231,41 @@ pub trait ProcessPort: Send + Sync {
     fn is_original_game_install(&self, _path: &str) -> bool {
         false
     }
+
+    /// The replay install belonging to the live install at `game_path`: the
+    /// `replaydata` directory beside its `bin`.
+    ///
+    /// Asked of the launcher because it is a statement about how a FAF install
+    /// is laid out on disk, and it is asked at all because the replay path is
+    /// not a second thing for the user to find. It is the same install's other
+    /// half, and a client that works the game path out for itself has no
+    /// business making somebody hunt for this one.
+    ///
+    /// `None` when there is nothing to derive it from: no game path, a path
+    /// that is not shaped like an install, or the retail game.
+    fn replay_path_beside_game(&self, _game_path: &str) -> Option<String> {
+        None
+    }
+
+    /// End a replay that is still playing, and wait until it has gone.
+    ///
+    /// Called before a replay is *prepared*, not merely before it is launched,
+    /// because preparing one writes the engine build it needs into the replay
+    /// install: staging files into a directory a running Forged Alliance has
+    /// open is how that install ends up in a state the next launch cannot load
+    /// from. Nothing to end is the normal case and costs nothing.
+    ///
+    /// Defaulted to doing nothing, like the rest of the process-shaped answers:
+    /// a fake launcher has no process to end.
+    async fn stop_replay(&self) {}
+
+    /// Whether `path` names the install live games are launched from.
+    ///
+    /// The one answer the replay field cannot work out for itself, and the one
+    /// it has to have: pointing replay playback at the live install looks like
+    /// it works, and then the first old replay stages that replay's exact
+    /// engine build over the copy the user plays with.
+    fn is_live_install(&self, _path: &str) -> bool {
+        false
+    }
 }
