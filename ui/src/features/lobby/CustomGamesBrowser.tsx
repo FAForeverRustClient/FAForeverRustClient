@@ -989,7 +989,7 @@ export const GameTile = memo(function GameTile({
   const simModsRanked = simModCount > 0 && simModsKeepGameRanked(game, vaultMods);
   const unranked = showsUnrankedTag(game, vault, vaultMods);
   const players = playingCount(game);
-  const { friends } = friendsHere(game, friendSet);
+  const { friends, label: friendLabel } = friendsHere(game, friendSet);
   const { foes } = foesHere(game, foeSet);
   const { tooltipId, tooltipPosition, showLineup, hideLineup } = useGameLineupPosition(game.id);
   const {
@@ -1073,15 +1073,15 @@ export const GameTile = memo(function GameTile({
             </i>
           )}
           {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
-          {(game.ratingMin !== null || game.ratingMax !== null) && (
-            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
-          )}
-        </span>
-        <span className="game-tile-footer">
-          <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
+          {/* Among the tags, where it was: a count is a property of the lobby
+              the way "unranked" and "3 SIM" are, and the tile is scanned as a
+              block rather than read left to right, so the friend count belongs
+              with the other things that describe the game and not off in the
+              footer beside the host's name. Who they are is the popover's job,
+              which the tag carries exactly as the list row's does. */}
           {friends.length > 0 && (
-            <span
-              className="game-tile-friends"
+            <i
+              className="friend"
               onMouseEnter={(e) => {
                 e.stopPropagation();
                 showSocial(e.currentTarget, "friends");
@@ -1100,10 +1100,15 @@ export const GameTile = memo(function GameTile({
                 e.stopPropagation();
               }}
             >
-              <Icon name="users" size={13} />
-              <span>{t("lobby.browser.friendCount", { count: friends.length })}</span>
-            </span>
+              {friendLabel}
+            </i>
           )}
+          {(game.ratingMin !== null || game.ratingMax !== null) && (
+            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
+          )}
+        </span>
+        <span className="game-tile-footer">
+          <span className="game-tile-host"><small>{t("lobby.browser.host")}</small><b><PlayerName name={game.host} /></b></span>
           {foes.length > 0 && (
             <span
               className="game-tile-foes"

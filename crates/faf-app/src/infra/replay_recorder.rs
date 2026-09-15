@@ -36,17 +36,19 @@
 //!
 //! ## Scope
 //!
-//! This records locally. It deliberately does **not** relay the stream on to
-//! FAF's live-replay service, which is what lets other people watch you play
-//! while the game is running; that needs an authenticated websocket to the
-//! relay and is tracked separately. The two are independent: the local file is
-//! written whether or not a relay exists.
+//! Two destinations, from the one stream FA sends. The local file is this
+//! module's job; forwarding the same bytes on to FAF, which is what puts the
+//! game in the vault and lets other people watch it, is
+//! [`super::replay_relay`]'s. They are independent on purpose: the file is
+//! written whether or not the upload worked, and the upload is attempted
+//! whether or not the file could be written.
 
 use std::path::{Path, PathBuf};
 
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 
+use crate::infra::replay_relay::{ReplayRelay, ReplayRelayConfig};
 use crate::ports::ReplayMetadata;
 
 /// FA's "posting a replay" header prefix.
@@ -60,6 +62,13 @@ const GET_PREFIX: &[u8] = b"G/";
 /// this process allocate. A long game is single-digit megabytes, so the cap is
 /// far above anything FA produces and is never expected to be reached.
 const MAX_REPLAY_BYTES: usize = 512 * 1024 * 1024;
+
+/// How long the end of a game waits for the upload to be acknowledged.
+///
+/// Generous, because this is the last chance the stream gets and the game has
+/// already exited, so nothing the user is looking at is being held up. Bounded,
+/// because the recorder task ends here and something has to end it.
+const UPLOAD_FLUSH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// A listening recorder. Dropping it stops accepting new connections; the
 /// in-flight write finishes on its own task.
@@ -76,6 +85,7 @@ impl ReplayRecorder {
     pub(crate) async fn start(
         directory: PathBuf,
         metadata: ReplayMetadata,
+        relay: Option<ReplayRelayConfig>,
     ) -> Result<Self, String> {
         let listener = TcpListener::bind(("127.0.0.1", 0))
             .await
@@ -91,7 +101,7 @@ impl ReplayRecorder {
             // game's stream on a port that game was never told about.
             match listener.accept().await {
                 Ok((stream, _)) => {
-                    if let Err(error) = record(stream, &directory, &metadata).await {
+                    if let Err(error) = record(stream, &directory, &metadata, relay).await {
                         tracing::warn!(%error, game_id, "could not record the replay");
                     }
                 }
@@ -131,7 +141,12 @@ async fn record(
     mut stream: tokio::net::TcpStream,
     directory: &Path,
     metadata: &ReplayMetadata,
+    relay: Option<ReplayRelayConfig>,
 ) -> Result<(), String> {
+    // Started with the connection, not with the first chunk: the upload has an
+    // access-token request and a TLS handshake to get through before it can
+    // take a byte, and FA is already streaming.
+    let relay = relay.map(|config| ReplayRelay::start(config, metadata.uid));
     let mut buffer = vec![0u8; 64 * 1024];
     let mut body: Vec<u8> = Vec::new();
     let mut header_done = false;
@@ -160,6 +175,14 @@ async fn record(
         };
         let mut chunk = &buffer[..read];
 
+        // Before the header is stripped, deliberately. `P/<uid>/<player>\0` is
+        // the replay service's handshake and has to reach it intact; it is only
+        // the *file* that must not contain it. Sending the two destinations
+        // different bytes here is the entire difference between them.
+        if let Some(relay) = &relay {
+            relay.send(chunk);
+        }
+
         if !header_done {
             header_done = true;
             chunk = strip_header(chunk);
@@ -175,6 +198,30 @@ async fn record(
         body.extend_from_slice(chunk);
     }
 
+    // The local file first, the upload's tail second. The player's own copy is
+    // a disk write that always succeeds in milliseconds and must not be made to
+    // wait behind a network call; the relay has been streaming the whole game
+    // already, so what is left for it here is the last chunk and a close frame.
+    let written = write_local(directory, metadata, body, complete, opened_at).await;
+
+    // Awaited rather than detached: FA has exited, so nothing else is keeping
+    // this stream's task alive, and dropping the relay here would cut the
+    // upload off short of the very bytes that tell the server the game ended.
+    if let Some(relay) = relay {
+        relay.finish(UPLOAD_FLUSH_TIMEOUT).await;
+    }
+
+    written
+}
+
+/// Write the player's own `.fafreplay`.
+async fn write_local(
+    directory: &Path,
+    metadata: &ReplayMetadata,
+    body: Vec<u8>,
+    complete: bool,
+    opened_at: f64,
+) -> Result<(), String> {
     if body.is_empty() {
         return Err("the game sent no replay data".into());
     }
@@ -422,7 +469,9 @@ mod tests {
         use tokio::io::AsyncWriteExt as _;
 
         let dir = std::env::temp_dir().join(format!("faf-rec-{}", std::process::id()));
-        let recorder = ReplayRecorder::start(dir.clone(), metadata())
+        // No relay: this is the local half of the recorder's job, and the
+        // upload has its own end-to-end test in `replay_relay`.
+        let recorder = ReplayRecorder::start(dir.clone(), metadata(), None)
             .await
             .unwrap();
         let url = recorder.savereplay_url(4711, "Nory");
