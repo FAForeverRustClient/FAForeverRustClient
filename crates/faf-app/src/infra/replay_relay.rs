@@ -77,6 +77,11 @@ const FINAL_FLUSH_ATTEMPTS: u32 = 5;
 /// window is short and a game's stream is time-sensitive.
 const RETRY_DELAY: Duration = Duration::from_secs(3);
 
+/// Largest frame the catch-up send puts on the wire. Comfortably under the
+/// 16 MiB a tungstenite peer accepts by default, and large enough that even a
+/// long game is only a handful of frames.
+const CATCH_UP_FRAME_BYTES: usize = 1024 * 1024;
+
 /// What the relay needs to reach the replay service on the user's behalf.
 ///
 /// The token is read from the store at each connection attempt rather than
@@ -247,8 +252,16 @@ async fn pump(
     // The catch-up send. On the first connection this is whatever FA produced
     // while the handshake was in flight; on a later one it is the whole game so
     // far, which is what makes a reconnect recover rather than truncate.
-    if !stream.is_empty() && write.send(Message::Binary(stream.clone())).await.is_err() {
-        return Pumped::Lost;
+    //
+    // Sent in slices rather than as one frame: the stream is a byte stream that
+    // the far end concatenates, so the framing carries no meaning, and a whole
+    // game in a single frame is exactly the shape a WebSocket peer's maximum
+    // frame size refuses. Nothing else here can produce a frame that large,
+    // since live chunks are bounded by the recorder's read buffer.
+    for slice in stream.chunks(CATCH_UP_FRAME_BYTES) {
+        if write.send(Message::Binary(slice.to_vec())).await.is_err() {
+            return Pumped::Lost;
+        }
     }
     if *game_over {
         return close(write).await;
@@ -318,6 +331,13 @@ fn buffer(stream: &mut Vec<u8>, chunk: &[u8]) {
 mod tests {
     use super::*;
 
+    fn oneshot() -> (
+        tokio::sync::oneshot::Sender<()>,
+        tokio::sync::oneshot::Receiver<()>,
+    ) {
+        tokio::sync::oneshot::channel()
+    }
+
     #[test]
     fn the_retransmit_buffer_stops_at_the_cap() {
         let mut stream = vec![0u8; MAX_BUFFERED_BYTES - 1];
@@ -366,7 +386,10 @@ mod tests {
     ///
     /// Returns the API base to point a relay at, and a handle that yields every
     /// byte the service was sent once the relay closes the stream.
-    async fn fake_replay_service() -> (String, tokio::task::JoinHandle<Vec<u8>>) {
+    async fn fake_replay_service(
+        hang_up_first: bool,
+        accepted: tokio::sync::oneshot::Sender<()>,
+    ) -> (String, tokio::task::JoinHandle<Vec<u8>>) {
         use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
         let service = tokio::net::TcpListener::bind(("127.0.0.1", 0))
@@ -374,8 +397,22 @@ mod tests {
             .unwrap();
         let service_port = service.local_addr().unwrap().port();
         let received = tokio::spawn(async move {
+            if hang_up_first {
+                let (socket, _) = service.accept().await.unwrap();
+                let mut ws = tokio_tungstenite::accept_async(socket).await.unwrap();
+                // A close frame rather than a bare disconnect: it is the one
+                // way to end a connection that the relay notices at a known
+                // moment, which keeps this test from racing the operating
+                // system's socket buffers.
+                let _ = ws.close(None).await;
+                drop(ws);
+            }
             let (socket, _) = service.accept().await.unwrap();
             let mut ws = tokio_tungstenite::accept_async(socket).await.unwrap();
+            // Fired only for the connection whose bytes are collected, so a
+            // test can order its sends against the reconnect rather than
+            // against the clock.
+            let _ = accepted.send(());
             let mut bytes = Vec::new();
             while let Some(Ok(message)) = ws.next().await {
                 match message {
@@ -424,9 +461,11 @@ mod tests {
         // the local file strips it, and a relay that stripped it too would hand
         // the vault a stream it cannot file -- which looks, from the outside,
         // exactly like not uploading at all.
-        let (api_base, received) = fake_replay_service().await;
+        let (_accepted, accepted_rx) = oneshot();
+        let (api_base, received) = fake_replay_service(false, _accepted).await;
         let tokens = TokenStore::new();
         tokens.set("a-token");
+        drop(accepted_rx);
 
         let relay = ReplayRelay::start(ReplayRelayConfig::for_test(&api_base, tokens), 4711);
         relay.send(b"P/4711/Nory\0");
@@ -438,6 +477,34 @@ mod tests {
             .expect("the service should have been handed the stream")
             .unwrap();
         assert_eq!(bytes, b"P/4711/Nory\0hello replay");
+    }
+
+    #[tokio::test]
+    async fn a_dropped_connection_re_sends_the_game_from_the_beginning() {
+        // A twenty-minute game over a connection nobody promised to keep: the
+        // drop is the expected case, not the exceptional one. What must not
+        // happen is the vault ending up with the tail of a game, so the whole
+        // stream goes out again on the new connection rather than resuming at
+        // an offset.
+        let (accepted, accepted_rx) = oneshot();
+        let (api_base, received) = fake_replay_service(true, accepted).await;
+        let tokens = TokenStore::new();
+        tokens.set("a-token");
+
+        let relay = ReplayRelay::start(ReplayRelayConfig::for_test(&api_base, tokens), 4711);
+        relay.send(b"P/4711/Nory\0before the drop ");
+        // Only once the *second* connection is up, so the game is still running
+        // when the first one dies: ending it earlier would let the relay finish
+        // on the connection this test means to break.
+        accepted_rx.await.unwrap();
+        relay.send(b"after the drop");
+        relay.finish(Duration::from_secs(10)).await;
+
+        let bytes = tokio::time::timeout(Duration::from_secs(10), received)
+            .await
+            .expect("the reconnect should have delivered the stream")
+            .unwrap();
+        assert_eq!(bytes, b"P/4711/Nory\0before the drop after the drop");
     }
 
     #[tokio::test]
