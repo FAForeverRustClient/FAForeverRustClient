@@ -7,11 +7,11 @@ use faf_domain::protocol::game_outcome::{
     moved_a_rating, outcome_for, GameRows, PlayerRow, RatingChange,
 };
 use faf_domain::state::{
-    aggregate_map_stats, leaderboard_display_name, sort_rating_summaries, ClanMember,
-    MatchmakerPlayerProfile, PlayedGame, PlayerAchievement, PlayerAchievementState, PlayerAvatar,
-    PlayerCardProfile, PlayerClan, PlayerEventCount, PlayerLeaguePlacement, PlayerMapStats,
-    PlayerNameRecord, PlayerRatingSummary, PlayerSummary, RatingHistoryPage, RatingHistoryPeriod,
-    RatingHistoryPoint, RatingHistoryQuery,
+    aggregate_map_stats, leaderboard_display_name, sort_league_placements, sort_rating_summaries,
+    ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement, PlayerAchievementState,
+    PlayerAvatar, PlayerCardProfile, PlayerClan, PlayerEventCount, PlayerLeaguePlacement,
+    PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary, RatingHistoryPage,
+    RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 use serde_json::Value;
 
@@ -396,6 +396,11 @@ impl PlayerCardPort for PlayerCardClient {
             .as_ref()
             .map(parse_placements)
             .unwrap_or_default();
+        // The full profile lists every placement, so it lists them the way the
+        // ratings directly above them are listed. `parse_placements` ranks by
+        // division because the matchmaker identity wants the best one first,
+        // and that ranking is exactly wrong for a grid of all of them.
+        sort_league_placements(&mut profile.league_placements);
         profile.warnings = warnings;
         Ok(profile)
     }
