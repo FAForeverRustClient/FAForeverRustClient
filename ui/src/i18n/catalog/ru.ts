@@ -2047,6 +2047,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "training.basics.title": "Изучите основы",
   "training.basics.lead": "Четыре вещи, которые должен освоить каждый новичок в первую очередь.",
   "lobby.browser.column.age": "Создано",
+  "lobby.browser.column.version": "Версия",
   "lobby.details.mapSize": "Размер карты",
   "lobby.details.ratingRangeValue": "с {from} до {to}",
   "lobby.browser.ratingRangeTooltip": "Диапазон рейтинга: с {from} до {to}",

@@ -2198,6 +2198,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.generateMap": "Générer",
   "lobby.browser.generatingMap": "Génération de la carte…",
   "lobby.browser.column.age": "Ouverte depuis",
+  "lobby.browser.column.version": "Version",
   "lobby.coop.noReplay": "Pas de replay",
   "lobby.coop.watchRunTitle": "Regarder le replay de cette partie",
   "lobby.host.mapTab.all": "Toutes les cartes ({count})",

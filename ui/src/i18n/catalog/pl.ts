@@ -2228,6 +2228,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.generateMap": "Wygeneruj",
   "lobby.browser.generatingMap": "Generowanie mapy…",
   "lobby.browser.column.age": "Wiek",
+  "lobby.browser.column.version": "Wersja",
   "lobby.coop.noReplay": "Brak powtórki",
   "lobby.coop.watchRunTitle": "Obejrzyj powtórkę tego przejścia",
   "lobby.host.mapTab.all": "Wszystkie mapy ({count})",
