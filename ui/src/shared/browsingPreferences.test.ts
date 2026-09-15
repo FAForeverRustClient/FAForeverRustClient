@@ -6,7 +6,6 @@ import {
   LEGACY_LIVE_REPLAY_FILTERS_KEY,
   LEGACY_MATCHMAKER_FACTIONS_KEY,
   LEGACY_MATCHMAKER_QUEUES_KEY,
-  MAX_BROWSER_COLUMN_PX,
   MAX_VAULT_PAGE_SIZE,
   migrateLegacyBrowsingPreferences,
   MIN_BROWSER_COLUMN_PX,
@@ -114,7 +113,7 @@ describe("browsing preferences", () => {
       200,
       0,
       0,
-      MAX_BROWSER_COLUMN_PX,
+      9999,
     ]);
     expect(normalized.modPresets).toEqual([
       { name: "Replay watching", uids: ["a", "b"] },
@@ -164,7 +163,7 @@ describe("browsing preferences", () => {
     expect(normalized.vaultPageSize).toBe(MAX_VAULT_PAGE_SIZE);
     expect(normalized.customGamesBrowser.columnWidths).toEqual([
       MIN_BROWSER_COLUMN_PX,
-      MAX_BROWSER_COLUMN_PX,
+      5000,
       200,
       200,
       200,

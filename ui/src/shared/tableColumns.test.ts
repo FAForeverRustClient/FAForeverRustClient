@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_BROWSER_COLUMN_PX, MIN_BROWSER_COLUMN_PX } from "./browsingPreferences";
+import { MIN_BROWSER_COLUMN_PX } from "./browsingPreferences";
 import {
   columnTemplate,
   resolveColumnWidths,
@@ -20,9 +20,11 @@ describe("a table's stored column widths", () => {
     expect(resolveColumnWidths([...WIDTHS, 999], WIDTHS)).toEqual(WIDTHS);
   });
 
-  it("bounds a stored width the way the backend bounds it", () => {
+  it("keeps a stored width however wide it was dragged", () => {
+    // There is no ceiling. A column somebody dragged to nine thousand pixels
+    // is nine thousand pixels wide when they come back to it.
+    expect(resolveColumnWidths([9999], WIDTHS)[0]).toBe(9999);
     expect(resolveColumnWidths([1], WIDTHS)[0]).toBe(MIN_BROWSER_COLUMN_PX);
-    expect(resolveColumnWidths([9999], WIDTHS)[0]).toBe(MAX_BROWSER_COLUMN_PX);
   });
 });
 
@@ -51,12 +53,23 @@ describe("dragging the line in front of a column", () => {
     ]);
   });
 
-  it("stops both columns at the bounds, rather than one of them", () => {
-    // Letting the far side carry on would pull the line away from the cursor
+  it("runs until the column being shrunk has nothing left, and no sooner", () => {
+    // Only the shrinking side can stop a drag now: growing is unbounded, so a
+    // divider travels until the column it is pushing into is closed. Letting
+    // the far side carry on past that would pull the line away from the cursor
     // and quietly change the total width of the table with it.
     const dragged = withBoundaryDragged(WIDTHS, 5, 5000, FLEXIBLE);
     expect(dragged[5]).toBe(MIN_BROWSER_COLUMN_PX);
     expect(dragged[4]).toBe(84 + (150 - MIN_BROWSER_COLUMN_PX));
+    expect(tableMinWidth(dragged)).toBe(tableMinWidth(WIDTHS));
+  });
+
+  it("lets a column grow past any width, so long as a neighbour can pay", () => {
+    // The old ceiling stopped the divider at 900 pixels with the cursor still
+    // moving, which is what this answers. The flexible column has no width of
+    // its own and pays without limit.
+    const dragged = withBoundaryDragged(WIDTHS, 3, 4000, FLEXIBLE);
+    expect(dragged[2]).toBeGreaterThan(900);
     expect(tableMinWidth(dragged)).toBe(tableMinWidth(WIDTHS));
   });
 

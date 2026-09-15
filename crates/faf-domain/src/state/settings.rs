@@ -1733,7 +1733,12 @@ impl CustomGameBrowserPreferences {
         // or hand-edited one rather than against anything a drag can produce.
         self.column_widths.truncate(MAX_BROWSER_COLUMNS);
         for width in &mut self.column_widths {
-            *width = (*width).clamp(MIN_BROWSER_COLUMN_PX, MAX_BROWSER_COLUMN_PX);
+            // Zero is "unset" here as it is everywhere else, so it is left
+            // alone rather than raised to the floor: raising it would turn a
+            // column nobody has touched into a one-pixel one.
+            if *width != 0 {
+                *width = (*width).max(MIN_BROWSER_COLUMN_PX);
+            }
         }
         if self.detail_width != 0 {
             self.detail_width = self.detail_width.clamp(MIN_DETAIL_PX, MAX_DETAIL_PX);
@@ -1747,8 +1752,14 @@ impl CustomGameBrowserPreferences {
 pub const MAX_BROWSER_COLUMNS: usize = 5;
 /// The widest table the client draws, plus room. Only a bound on a file.
 pub const MAX_TABLE_COLUMNS: usize = 16;
-pub const MIN_BROWSER_COLUMN_PX: u32 = 56;
-pub const MAX_BROWSER_COLUMN_PX: u32 = 900;
+/// One pixel, which is not a usable column and is not meant to be.
+///
+/// There is no upper bound and this is as close to no lower bound as the
+/// format allows: a column is dragged to whatever width somebody wants it,
+/// including none. The floor is one rather than zero only because zero already
+/// means "no width stored, use the designed one", and a column dragged shut
+/// has to be distinguishable from a column nobody has touched.
+pub const MIN_BROWSER_COLUMN_PX: u32 = 1;
 
 /// The detail panel's bounds. The floor is where the map preview stops being
 /// a preview; the ceiling leaves the game list usable on a small window.
@@ -2252,7 +2263,7 @@ fn normalize_column_widths(mut widths: Vec<u32>) -> Vec<u32> {
     widths.truncate(MAX_TABLE_COLUMNS);
     for width in &mut widths {
         if *width != 0 {
-            *width = (*width).clamp(MIN_BROWSER_COLUMN_PX, MAX_BROWSER_COLUMN_PX);
+            *width = (*width).max(MIN_BROWSER_COLUMN_PX);
         }
     }
     widths
@@ -3242,8 +3253,8 @@ mod tests {
         assert_eq!(settings.browsing.favorite_mods, ["eco_graph"]);
         assert_eq!(
             settings.browsing.replay_list_columns,
-            [MIN_BROWSER_COLUMN_PX, 200, 0, MAX_BROWSER_COLUMN_PX],
-            "a zero stays a zero; everything else is bounded"
+            [MIN_BROWSER_COLUMN_PX, 200, 0, 9_999],
+            "a zero stays a zero, a narrow one is lifted to the floor, and a              wide one is left alone: there is no ceiling to bound it against"
         );
         assert_eq!(
             settings.browsing.live_replay_columns.len(),
@@ -3260,8 +3271,8 @@ mod tests {
         let browser = &settings.browsing.custom_games_browser;
         assert_eq!(
             browser.column_widths,
-            [MIN_BROWSER_COLUMN_PX, MAX_BROWSER_COLUMN_PX, 200, 200, 200],
-            "five columns, each within reach of a drag"
+            [MIN_BROWSER_COLUMN_PX, 5_000, 200, 200, 200],
+            "five columns, and a wide one stays as wide as it was dragged"
         );
         assert_eq!(browser.detail_width, MIN_DETAIL_PX);
         assert_eq!(
