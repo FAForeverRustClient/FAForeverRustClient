@@ -889,17 +889,21 @@
    what is left, still equally, so the row stays even and stays legible at the
    grid's 390px minimum.
 
-   The version is the exception, and is the only track with a zero floor: its
-   value is words rather than a number, and the longest of them
-   ("FAF Beta Balance") is wider than the other three columns put together. It
-   takes its equal share and ellipsizes past it, with the full name on its
-   title. */
+   The version is the exception: its value is words rather than a number, and
+   the longest of them ("FAF Beta Balance") is wider than the other three
+   columns put together, so it cannot have its value's `max-content` as a floor
+   the way the others do. It gets a flat one instead, wide enough for the word
+   "Version" in every language the client speaks. Without it the track went to
+   zero, and in the languages that spell the rating label as a whole word --
+   Spanish "Puntuacion", French "Classement" -- the squeeze landed on this
+   label rather than on the mod name it is supposed to fall on. Past the floor
+   the value ellipsizes, with the full name on its title. */
 .game-tile-primary-stats {
   display: grid;
   grid-template-columns:
     minmax(max-content, 1fr)
     minmax(max-content, 1fr)
-    minmax(0, 1fr)
+    minmax(3.5rem, 1fr)
     minmax(max-content, 1fr);
   gap: var(--space-2);
   margin-top: 7px;

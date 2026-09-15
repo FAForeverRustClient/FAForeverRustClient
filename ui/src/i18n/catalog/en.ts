@@ -869,7 +869,7 @@ export const en = {
   "lobby.browser.column.game": "Game",
   "lobby.browser.column.map": "Map",
   "lobby.browser.column.players": "Players",
-  "lobby.browser.column.rating": "Avg. Rating",
+  "lobby.browser.column.rating": "Ø Rating",
   "lobby.browser.column.age": "Age",
   "lobby.browser.column.version": "Version",
   "lobby.browser.noMatch": "No games match",
@@ -2003,7 +2003,6 @@ export const en = {
   "replays.card.gameTime": "Game time (simulation)",
   "replays.card.realTime": "Real time (wall clock)",
   "replays.card.onMap": "on {map}",
-  "replays.card.watched": "Watched",
   "replays.card.notUploaded": "not uploaded yet",
   // German puts the preposition first ("vor 3d"), so the whole phrase is one
   // message rather than a suffix appended to a formatted duration.
