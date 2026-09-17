@@ -273,22 +273,22 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
                       <Icon name="crown" size={13} />
                     </span>
                   )}
+                  {avatar?.avatarUrl && (
+                    <img
+                      className="party-seat-avatar"
+                      src={avatar.avatarUrl}
+                      alt=""
+                      title={avatar.avatarTooltip || undefined}
+                      loading="lazy"
+                      decoding="async"
+                      draggable={false}
+                    />
+                  )}
                 </span>
                 <span className="party-seat-meta">
                   <PartyFactions factions={factions} />
                 </span>
               </span>
-              {avatar?.avatarUrl && (
-                <img
-                  className="party-seat-avatar"
-                  src={avatar.avatarUrl}
-                  alt=""
-                  title={avatar.avatarTooltip || undefined}
-                  loading="lazy"
-                  decoding="async"
-                  draggable={false}
-                />
-              )}
               {kickable ? (
                 <button
                   type="button"
