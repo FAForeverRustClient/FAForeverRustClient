@@ -46,18 +46,30 @@ const REASON_KEYS: Record<string, MessageKey> = {
 };
 
 /**
- * Whether this game actually produced a rating change, and therefore has a
- * result worth displaying.
+ * Whether there is a result to put on screen.
  *
- * Both halves matter, and they are the two Java ANDs together for its "show
- * rating change" button: the server has to call the game valid, *and* a rating
- * journal has to carry an "after". A game can be `VALID` and still be waiting
- * for the rating to be computed.
+ * This used to ask the stronger question, whether a rating moved: the server
+ * had to call the game valid *and* a rating journal had to carry an "after",
+ * which is the pair of conditions Java ANDs together for its "show rating
+ * change" button.
+ *
+ * The panel shows two things: who won, and what it cost each player.
+ * The second needs a rating journal; the first needs only the outcome the
+ * server recorded against each player, and a game the server calls `VALID` has
+ * that whether or not the rating job has caught up with it.
+ *
+ * Gating the whole panel on the journal is what produced the report: a game
+ * that plainly was rated, whose "Game result" button was dead. The two halves
+ * are now asked separately, and the roster draws whichever of them it has.
+ *
+ * A game the server refused still shows nothing. That refusal is the reason it
+ * has no result, and an outcome recorded against a refused game is the "Defeat
+ * on both sides" that hiding them was for.
  */
-export function isRated(validity: string, teams: ReplayTeam[]): boolean {
+export function hasGameResult(validity: string, teams: ReplayTeam[]): boolean {
   if (validity !== VALID) return false;
   return teams.some((team) =>
-    team.players.some((player: ReplayPlayer) => player.ratingChange !== null && player.ratingChange !== undefined),
+    team.players.some((player: ReplayPlayer) => player.outcome.trim() !== ""),
   );
 }
 
@@ -69,7 +81,11 @@ export function isRated(validity: string, teams: ReplayTeam[]): boolean {
  * usual cause is a game whose rating has not been computed yet.
  */
 export function notRatedReason(validity: string): string {
-  if (!validity) return t("replays.notRated.pending");
+  // `VALID` is not a reason a game was not rated; it is the server saying it
+  // was. Reaching here with it means the rating journal has not arrived, which
+  // is the same "not yet available" an empty validity gets, and printing
+  // "Game was not rated. Reason: VALID" instead was the report.
+  if (!validity || validity === VALID) return t("replays.notRated.pending");
   const key = REASON_KEYS[validity];
   return t("replays.notRated.reason", { reason: key ? t(key) : validity });
 }
@@ -104,7 +120,7 @@ export function localRatingNote(
       // it, verdict wording included: the file it was opened from changes
       // nothing about whether the server rated it.
       const validity = lookup.payload.validity ?? "";
-      return isRated(validity, teams) ? null : notRatedReason(validity);
+      return hasGameResult(validity, teams) ? null : notRatedReason(validity);
     }
     case "missing":
       return t("replays.notRated.localUnknownGame");
