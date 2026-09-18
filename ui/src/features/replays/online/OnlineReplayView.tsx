@@ -52,6 +52,10 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   const featuredMods = useAppStore((s) => s.state.replays.featuredMods);
   const leaderboards = useAppStore((s) => s.state.leaderboard.ratingLeaderboards);
   const self = useAppStore((s) => s.state.auth.player?.name ?? "");
+  // Names for the friends picker in the search bar. A plain array off the
+  // state, which the store keeps sorted and replaces wholesale, so the
+  // identity check upstream is enough and nothing needs memoising here.
+  const friends = useAppStore((s) => s.state.social.friends);
   const note = loadStatusNote(vaultStatus, t("replays.vault.searching"), t("replays.vault.loadFailed"));
   const browsing = useAppStore((s) => s.state.settings.browsing);
   const viewMode: ReplayViewMode = browsing.replaysView;
@@ -184,6 +188,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         featuredMods={featuredMods}
         leaderboards={leaderboards}
         self={self}
+        friends={friends}
         initialQuery={formInitialQuery}
         onSearch={handleSearch}
       />
