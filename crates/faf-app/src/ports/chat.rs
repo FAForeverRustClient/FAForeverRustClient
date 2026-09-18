@@ -33,7 +33,7 @@ pub enum ChatUpdate {
     },
     /// A new line in the channel: including our own sent messages, since this
     /// client doesn't negotiate IRC's `echo-message` capability; the port is
-    /// responsible for the local echo (see `infra::chat`/`infra::irc`).
+    /// responsible for the local echo (see `infra::chat_fake`/`infra::irc`).
     Message {
         channel: String,
         message: ChatMessage,

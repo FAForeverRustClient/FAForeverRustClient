@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import type { RatingHistoryPoint } from "../../ipc/bindings";
-import { formatDate, formatDateTime } from "../../shared/dates";
+import { formatDate, formatDateTime } from "../../shared/format/dates";
 import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 

@@ -11,7 +11,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { TrainingDocument, TrainingResource } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-import { relatedResources } from "../../shared/trainingRules";
+import { relatedResources } from "../../shared/rules/trainingRules";
 import { Markdown } from "./markdown";
 import { RunAnalysis } from "./RunAnalysis";
 import { parseEnvelope } from "./recording";

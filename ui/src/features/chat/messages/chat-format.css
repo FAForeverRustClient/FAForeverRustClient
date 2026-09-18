@@ -1,0 +1,64 @@
+/* How formatted message text looks: mentions, pings, emoji, links, search
+   hits. Its own sheet because a notification renders the same text through
+   the same formatter, before the chat tab has loaded chat.css. */
+
+/* Our own name inside a message. Weight and colour only: the filled box this
+   used to draw interrupted the sentence it was marking, and the colour is
+   already the loudest thing on the line. The colour itself is set inline from
+   the ping preference, so this rule only has to not fight it. */
+.chat-mention {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-weight: 700;
+}
+
+/* Somebody else's name inside a message: the sender's confirmation that the
+   word they typed resolved to a player in the room. The colour itself is the
+   `chat.nameColors.pings` preference, set inline by the renderer; this rule
+   only undoes the browser's yellow `mark` background. */
+.chat-ping {
+  background: none;
+  font-weight: 550;
+}
+
+/* An emoji inside a message body. A shade larger than the words around it,
+   because at body size an unfamiliar glyph cannot be made out at all, which is
+   what the report said before it asked for the name. The name itself is the
+   `title`, and the cursor only claims there is one where the renderer found
+   one. */
+.chat-emoji {
+  font-size: 1.25em;
+  line-height: 1;
+  vertical-align: -0.08em;
+}
+
+.chat-emoji[title] {
+  cursor: help;
+}
+
+.chat-search-hit {
+  display: inline-block;
+  line-height: 1.15;
+  vertical-align: baseline;
+  padding: 1px 3px;
+  color: inherit;
+  background: var(--color-accent-glow);
+  border-radius: 3px;
+}
+
+.chat-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.chat-game-link {
+  display: inline;
+  padding: 0;
+  font: inherit;
+  text-align: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}

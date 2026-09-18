@@ -1,34 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { PlayerName } from "../../shared/nameColors";
+import { PlayerName } from "../../shared/components/nameColors";
 import { ipc } from "../../ipc/client";
 import type { CoopMission, Game, PlayerProfile, VaultMap } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
-import { GameFiltersModal, type GameFilterRule } from "./GameFiltersModal";
-import { HostGameModal } from "./HostGameModal";
+import { GameFiltersModal, type GameFilterRule } from "./browser/GameFiltersModal";
+import { HostGameModal } from "./host/HostGameModal";
 import { HostCoopModal } from "./host/HostCoopModal";
-import { MatchmakingPanel } from "./MatchmakingPanel";
-import { CoopPanel } from "./CoopPanel";
-import { GalacticWarPanel } from "./GalacticWarPanel";
+import { MatchmakingPanel } from "./matchmaker/MatchmakingPanel";
+import { CoopPanel } from "./coop/CoopPanel";
+import { GalacticWarPanel } from "./galactic-war/GalacticWarPanel";
 import { Modal } from "../../design-system/Modal";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
-import {
-  CustomGamesBrowser,
-  GamePreviewDialog,
-  displayTeamName,
-  isCoopGame,
-  isCustomGameRanked,
-  type GameViewMode,
-} from "./CustomGamesBrowser";
-import { CustomGamesToolbar, type SortMode } from "./CustomGamesToolbar";
-import { compareGames } from "./gameSortOrder";
-import { detailWidth, withDetailResized } from "./browserLayout";
+import { CustomGamesBrowser } from "./browser/CustomGamesBrowser";
+import { GamePreviewDialog } from "./browser/GamePreviewDialog";
+import { displayTeamName } from "./browser/GameLineup";
+import { isCoopGame, isCustomGameRanked, type GameViewMode } from "./browser/gameRules";
+import { CustomGamesToolbar, type SortMode } from "./browser/CustomGamesToolbar";
+import { compareGames } from "./browser/gameSortOrder";
+import { detailWidth, withDetailResized } from "./browser/browserLayout";
 import { GameMapImage } from "./GameMapImage";
-import { requestModVaultFocus } from "../mods/modVaultFocus";
+import { requestModVaultFocus } from "../../shared/modVaultFocus";
 import { PlayModeTabs } from "./PlayModeTabs";
 import { queuedPlayerCount } from "./queuedPlayers";
-import { PrivateGameDialog } from "./PrivateGameDialog";
+import { PrivateGameDialog } from "./join/PrivateGameDialog";
 import { flagSrc } from "../../shared/countryFlags";
 import {
   GLOBAL_LEADERBOARD,
@@ -37,21 +33,21 @@ import {
   gameLeaderboard,
   leaderboardLabel,
 } from "../../shared/playerRatings";
-import { useCountryLabel } from "../../shared/useCountryLabel";
+import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
 import { isGeneratedMap, mapPresentation, mapSize } from "../../shared/mapPresentation";
-import { openPlayerCard } from "../player-card/playerCardActions";
-import { PlayerNoteModal } from "../player-card/PlayerNoteEditor";
-import { UserMenu, type UserMenuTarget } from "../chat/UserMenu";
+import { openPlayerCard } from "../../shared/playerCardActions";
+import { PlayerNoteModal } from "../../shared/components/PlayerNoteEditor";
+import { UserMenu, type UserMenuTarget } from "../../shared/components/UserMenu";
 import { findPlayer } from "../../store/reducer";
 import { assignedPlayerColor, includesName, nickKey } from "../../shared/nameColorsUtil";
-import { noteForPlayer } from "../../shared/playerNotes";
+import { noteForPlayer } from "../../shared/rules/playerNotes";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
-import { requestReplaySearch } from "../replays/replaySearchIntent";
-import "./custom-games.css";
+import { requestReplaySearch } from "../../shared/replaySearchIntent";
+import "./browser/custom-games.css";
 import "./game-dialogs.css";
 import "./play.css";
 import { useTranslation } from "../../i18n/useTranslation";
-import { joinGame } from "./joinGame";
+import { joinGame } from "../../shared/joinGame";
 
 /// How often the Galactic War player count is re-asked while the Play tab is
 /// open. A minute: often enough that the number is not stale advice about
@@ -496,23 +492,16 @@ export function LobbyView() {
   useEffect(() => {
     if (useAppStore.getState().state.lobby.status === "disconnected") connect();
     ipc.send({ kind: "Maps", command: { type: "loadInstalled" } });
-    // Only when nothing has loaded it yet: this tab mounts on every visit, and
-    // the vault is the catalogue crawl. The service refuses a second one
-    // anyway; this just saves the round trip, and matches every other caller.
-    if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
-      ipc.send({ kind: "Maps", command: { type: "loadVault" } });
-    }
-    if (useAppStore.getState().state.mods.vaultStatus.type === "idle") {
-      ipc.send({ kind: "Mods", command: { type: "loadVault" } });
-    }
+    // The two vaults are the catalogue crawls, loaded once per session: the
+    // services refuse a second one, so this tab can ask on every visit.
+    ipc.send({ kind: "Maps", command: { type: "loadVault" } });
+    ipc.send({ kind: "Mods", command: { type: "loadVault" } });
     // What is on disk, which until now only the Mods tab and the host dialog
     // ever asked for. Joining is the other thing that needs the answer: a
     // player who had not opened either since starting the client was told to
     // download mods they had been playing with minutes earlier, because an
     // empty list and an unread list look the same from here.
-    if (useAppStore.getState().state.mods.installedStatus.type === "idle") {
-      ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
-    }
+    ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
   }, []);
 
   const isMatchmakerGame = (game: Game) =>
@@ -747,7 +736,7 @@ export function LobbyView() {
               onApplyFilters={(value) => updateGameBrowser({ applyFilters: value })}
               onOpenFilters={() => setFiltersOpen(true)}
               onHost={() => handleHostCoop()}
-              onRefresh={() => ipc.send({ kind: "Coop", command: { type: "loadCatalog" } })}
+              onRefresh={() => ipc.send({ kind: "Coop", command: { type: "refreshCatalog" } })}
             />
           )}
           onJoin={requestJoin}

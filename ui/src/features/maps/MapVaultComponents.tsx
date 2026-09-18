@@ -1,37 +1,16 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { Modal } from "../../design-system/Modal";
+import { ConfirmDialog } from "../../design-system/ConfirmDialog";
 import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
-import type { MapInstallStatus, VaultMap } from "../../ipc/bindings";
-import { formatShortDate } from "../../shared/dates";
-import { openReviews } from "../reviews/openReviews";
-import { ReportDialog } from "../vault/ReportDialog";
+import type { VaultMap } from "../../ipc/bindings";
+import { clientIntlTag, formatShortDate } from "../../shared/format/dates";
+import { openReviews } from "../../shared/openReviews";
+import { ReportDialog } from "../../shared/components/ReportDialog";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
-import { clientIntlTag } from "../../shared/dates";
-import { kilometresLabel } from "../../shared/mapPresentation";
-
-export function installNote(status: MapInstallStatus): string | null {
-  switch (status.type) {
-    case "idle":
-      return null;
-    case "installing":
-      return t("maps.vault.working", { folder: status.payload.folderName });
-    case "failed":
-      return t("maps.vault.operationFailed", { reason: status.payload.reason });
-  }
-}
-
-export function sizeLabel(map: { width?: number; height?: number }): string {
-  const w = map.width ?? 512;
-  const h = map.height ?? 512;
-  return `${kilometresLabel(w)} × ${kilometresLabel(h)} km`;
-}
-
-export function ratingLabel(map: VaultMap): string {
-  return map.reviews > 0 ? `${(map.ratingTenths / 10).toFixed(1)} (${map.reviews})` : t("maps.vault.notRated");
-}
+import { isOfficialMap, ratingLabel, sizeLabel } from "../../shared/mapPresentation";
+import { MapPreview } from "../../shared/components/MapPreview";
 
 function formatCount(value: number): string {
   return new Intl.NumberFormat(clientIntlTag(), {
@@ -41,75 +20,6 @@ function formatCount(value: number): string {
 
 function cleanDescription(value: string): string {
   return value.replace(/^<LOC\s+[^>]+>/i, "").trim();
-}
-
-export function isOfficialMap(folderName: string): boolean {
-  const match = /^(scmp|x1mp)_(\d{3})$/i.exec(folderName);
-  if (!match) return false;
-  const number = Number(match[2]);
-  return match[1].toLocaleLowerCase() === "scmp"
-    ? number >= 1 && number <= 40
-    : (number >= 1 && number <= 12) || number === 14 || number === 17;
-}
-
-export function mapInstalled(map: VaultMap, installedFolders: Set<string>): boolean {
-  return isOfficialMap(map.folderName) || installedFolders.has(map.folderName.toLocaleLowerCase());
-}
-
-export type PreviewableMap = {
-  folderName: string;
-  displayName?: string;
-  thumbnailUrl?: string;
-  thumbnailUrlLarge?: string;
-  previewUrl?: string;
-};
-
-export function MapPreview({ map, large = false }: { map: PreviewableMap; large?: boolean }) {
-  const cdnFallback = `https://content.faforever.com/maps/previews/${large ? "large" : "small"}/${encodeURIComponent(map.folderName.toLowerCase())}.png`;
-  const primaryUrl = large
-    ? (map.thumbnailUrlLarge || map.thumbnailUrl || map.previewUrl)
-    : (map.thumbnailUrl || map.previewUrl || map.thumbnailUrlLarge);
-  const [currentUrl, setCurrentUrl] = useState<string | null>(primaryUrl || cdnFallback);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setCurrentUrl(primaryUrl || cdnFallback);
-    setFailed(false);
-  }, [primaryUrl, cdnFallback]);
-
-  const handleError = () => {
-    if (currentUrl && currentUrl !== cdnFallback) {
-      // Try the standard FAF CDN fallback before failing to the placeholder icon
-      setCurrentUrl(cdnFallback);
-    } else {
-      setFailed(true);
-    }
-  };
-
-  if (!currentUrl || failed) {
-    return (
-      <span
-        className={
-          large
-            ? "map-vault-preview map-vault-preview-empty"
-            : "map-vault-thumb map-vault-preview-empty"
-        }
-        aria-hidden="true"
-      >
-        <Icon name="maps" size={large ? 34 : 24} />
-      </span>
-    );
-  }
-  return (
-    <img
-      className={large ? "map-vault-preview" : "map-vault-thumb"}
-      src={currentUrl}
-      alt={`${map.displayName || map.folderName} preview`}
-      loading="lazy"
-      decoding="async"
-      onError={handleError}
-    />
-  );
 }
 
 export function MapCard({
@@ -420,19 +330,15 @@ export function MapHideDialog({
 }) {
   useLocale();
   return (
-    <Modal className="confirm-modal" onClose={onCancel}>
-      <div className="confirm-dialog-content">
-        <h2>{t("maps.vault.hideTitle")}</h2>
-        <p>{t("maps.vault.hideBody", { map: mapName })}</p>
-        <p className="confirm-dialog-warning">{t("maps.vault.hideWarning")}</p>
-        <div className="confirm-dialog-actions">
-          <Button onClick={onCancel}>{t("maps.vault.cancel")}</Button>
-          <Button className="btn-danger" onClick={onConfirm}>
-            {t("maps.vault.hideConfirm")}
-          </Button>
-        </div>
-      </div>
-    </Modal>
+    <ConfirmDialog
+      title={t("maps.vault.hideTitle")}
+      body={t("maps.vault.hideBody", { map: mapName })}
+      warning={t("maps.vault.hideWarning")}
+      confirmLabel={t("maps.vault.hideConfirm")}
+      danger
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
   );
 }
 
@@ -447,17 +353,13 @@ export function MapUninstallDialog({
 }) {
   useLocale();
   return (
-    <Modal className="confirm-modal" onClose={onCancel}>
-      <div className="confirm-dialog-content">
-        <h2>{t("maps.vault.uninstallTitle")}</h2>
-        <p>“{mapName}” will be permanently removed from your user maps folder.</p>
-        <div className="confirm-dialog-actions">
-          <Button onClick={onCancel}>{t("maps.vault.cancel")}</Button>
-          <Button className="btn-danger" onClick={onConfirm}>
-            {t("maps.vault.uninstallConfirm")}
-          </Button>
-        </div>
-      </div>
-    </Modal>
+    <ConfirmDialog
+      title={t("maps.vault.uninstallTitle")}
+      body={t("maps.vault.uninstallBody", { map: mapName })}
+      confirmLabel={t("maps.vault.uninstallConfirm")}
+      danger
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
   );
 }

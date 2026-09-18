@@ -610,67 +610,6 @@ html.is-resizing-chat-roster * {
   }
 }
 
-/* Our own name inside a message. Weight and colour only: the filled box this
-   used to draw interrupted the sentence it was marking, and the colour is
-   already the loudest thing on the line. The colour itself is set inline from
-   the ping preference, so this rule only has to not fight it. */
-.chat-mention {
-  background: none;
-  padding: 0;
-  color: inherit;
-  font-weight: 700;
-}
-
-/* Somebody else's name inside a message: the sender's confirmation that the
-   word they typed resolved to a player in the room. The colour itself is the
-   `chat.nameColors.pings` preference, set inline by the renderer; this rule
-   only undoes the browser's yellow `mark` background. */
-.chat-ping {
-  background: none;
-  font-weight: 550;
-}
-
-/* An emoji inside a message body. A shade larger than the words around it,
-   because at body size an unfamiliar glyph cannot be made out at all, which is
-   what the report said before it asked for the name. The name itself is the
-   `title`, and the cursor only claims there is one where the renderer found
-   one. */
-.chat-emoji {
-  font-size: 1.25em;
-  line-height: 1;
-  vertical-align: -0.08em;
-}
-
-.chat-emoji[title] {
-  cursor: help;
-}
-
-.chat-search-hit {
-  display: inline-block;
-  line-height: 1.15;
-  vertical-align: baseline;
-  padding: 1px 3px;
-  color: inherit;
-  background: var(--color-accent-glow);
-  border-radius: 3px;
-}
-
-.chat-link {
-  color: var(--color-accent);
-  text-decoration: underline;
-  overflow-wrap: anywhere;
-}
-
-.chat-game-link {
-  display: inline;
-  padding: 0;
-  font: inherit;
-  text-align: inherit;
-  background: none;
-  border: 0;
-  cursor: pointer;
-}
-
 /* Shares the header row with the topic, so it matches its size. (`--font-size-xs`
    was never defined, which left this declaration invalid and the size inherited.) */
 .chat-link-notice {
@@ -1236,6 +1175,7 @@ html.is-resizing-chat-roster * {
   justify-content: center;
   width: 22px;
   height: 22px;
+  aspect-ratio: 1;
   border-radius: var(--radius-xs, 2px);
   overflow: hidden;
   box-shadow: 0 0 0 1px var(--color-border);
@@ -1255,6 +1195,66 @@ img.chat-game-map {
   color: var(--color-subtle);
 }
 
+.chat-game-card-map-wrap {
+  position: relative;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  aspect-ratio: 1;
+}
+
+.chat-game-card-map {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.chat-game-card-map-wrap .chat-game-card-map {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+}
+
+.chat-game-card-map.chat-game-map-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-subtle);
+  border: 1px solid var(--color-border);
+}
+
+.chat-game-card-map-btn {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color 100ms ease;
+  z-index: 1;
+}
+
+.chat-game-card-map-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.chat-game-card-map-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .chat-game-popover {
   position: fixed;
   z-index: 100;
@@ -1269,12 +1269,23 @@ img.chat-game-map {
   box-shadow: var(--shadow-popover);
 }
 
+.chat-game-popover-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
 /* The card holds a button now, so the pointer has to be able to reach it. It
    used to be `pointer-events: none`, which is the right answer for a card that
    is purely a label and the wrong one the moment it is not. `GameSummaryPopover`
    keeps it open while the pointer is over it. */
 .chat-game-popover-action {
   display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   margin-top: var(--space-2);
   padding-top: var(--space-2);
@@ -1282,16 +1293,25 @@ img.chat-game-map {
   border-radius: 0;
 }
 
+.chat-game-popover-actions .chat-game-popover-action {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+  flex: 1;
+}
+
 .chat-game-popover-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
   padding-bottom: 6px;
   border-bottom: 1px solid var(--color-border);
 }
 
-.chat-game-popover-head > div {
+.chat-game-popover-info,
+.chat-game-popover-head > div:not(.chat-game-card-map-wrap) {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -1309,13 +1329,15 @@ img.chat-game-map {
   font-size: 13px;
 }
 
-.chat-game-popover-head > div > span,
+.chat-game-popover-info > span,
+.chat-game-popover-head > div:not(.chat-game-card-map-wrap) > span,
 .chat-game-meta,
 .chat-game-team li small {
   color: var(--color-muted);
 }
 
-.chat-game-popover-head > div > span {
+.chat-game-popover-info > span,
+.chat-game-popover-head > div:not(.chat-game-card-map-wrap) > span {
   font-size: 12px;
 }
 
@@ -1476,12 +1498,6 @@ img.chat-game-map {
   border-radius: 1px;
 }
 
-.chat-clan {
-  color: var(--color-muted);
-  font-weight: 500;
-  margin-right: 4px;
-}
-
 /* ── User context menu ────────────────────────────────────────────────── */
 /* Above the modal layer (100), not above chat's own furniture. The menu is
    opened from a replay's detail panel now as well as from a channel roster, and
@@ -1631,27 +1647,28 @@ img.chat-game-map {
   min-width: 0;
 }
 
+.chat-aside-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.chat-aside-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
 .chat-conversation-aside-empty {
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 0;
   font-size: 12px;
-}
-
-/* The map is a thumbnail here rather than the badge it is in a roster row:
-   the panel has the width for it, and it is the fastest way to recognise a
-   game you are being told about. */
-.chat-conversation-aside .chat-game-card-map {
-  flex: none;
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-}
-
-.chat-conversation-aside .chat-game-popover-head {
-  align-items: center;
 }
 
 /* The lineup, at the three widths the panel can be dragged to. See

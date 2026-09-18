@@ -50,6 +50,14 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         MapsCommand::LoadInstalled => {
+            // Every view that shows installed maps asks on mount, and the
+            // host dialog asks on open, so two scans of the same folders can
+            // be requested within a frame. One at a time; the result of the
+            // one in flight is the answer both wanted. A finished scan is
+            // repeated on purpose: the folder changes under the client.
+            if out.with_state(|state| state.maps.installed_status == MapListStatus::Loading) {
+                return;
+            }
             out.emit(MapsEvent::InstalledLoading);
             match ctx.ports.maps.list_installed().await {
                 Ok(maps) => {

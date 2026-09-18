@@ -14,10 +14,11 @@ import type { Game, SocialState, VaultMap } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ipc } from "../../ipc/client";
-import { joinGame } from "../lobby/joinGame";
-import { GameSummaryCard } from "./GameSummaryCard";
-import { gamePresenceForPlayer } from "./gameSummary";
-import type { RosterTier } from "./RosterResizeHandle";
+import { joinGame } from "../../shared/joinGame";
+import { useNamedMapGeneration } from "../../shared/hooks/useNamedMapGeneration";
+import { GameSummaryCard } from "./roster/GameSummaryCard";
+import { gamePresenceForPlayer } from "./roster/gameSummary";
+import type { RosterTier } from "./roster/RosterResizeHandle";
 
 interface Props {
   /** The person on the other side; a private channel is named after them. */
@@ -55,6 +56,7 @@ export function ConversationAside({
 }: Props) {
   const { t } = useTranslation();
   const presence = gamePresenceForPlayer(openGames, liveGames, peer, now);
+  const mapGen = useNamedMapGeneration(presence?.game.map);
 
   if (!presence) {
     return (
@@ -105,10 +107,27 @@ export function ConversationAside({
           onOpenConversation={onOpenConversation}
           onPlayerContextMenu={onPlayerContextMenu}
         />
-        <button type="button" className="chat-head-action chat-aside-action" onClick={act}>
-          <Icon name={watching ? "eye" : "play"} size={14} />
-          {watching ? t("chat.aside.watch") : t("chat.aside.join")}
-        </button>
+        <div className="chat-aside-actions">
+          {(mapGen.canGenerate || mapGen.isGenerating) && (
+            <button
+              type="button"
+              className="chat-head-action chat-aside-action"
+              disabled={mapGen.isGenerating}
+              onClick={mapGen.generate}
+            >
+              <Icon
+                name={mapGen.isGenerating ? "refresh" : "plus"}
+                size={14}
+                className={mapGen.isGenerating ? "spin" : undefined}
+              />
+              {mapGen.generateLabel}
+            </button>
+          )}
+          <button type="button" className="chat-head-action chat-aside-action" onClick={act}>
+            <Icon name={watching ? "eye" : "play"} size={14} />
+            {watching ? t("chat.aside.watch") : t("chat.aside.join")}
+          </button>
+        </div>
       </div>
     </aside>
   );

@@ -5,10 +5,10 @@ import { ipc } from "../../ipc/client";
 import type { LeaderboardEntry } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
-import { requestReplaySearch } from "../replays/replaySearchIntent";
-import { openPlayerCard } from "../player-card/playerCardActions";
+import { requestReplaySearch } from "../../shared/replaySearchIntent";
+import { openPlayerCard } from "../../shared/playerCardActions";
 import { useTranslation } from "../../i18n/useTranslation";
-import { PlayerName, includesName } from "../../shared/nameColors";
+import { PlayerName, includesName } from "../../shared/components/nameColors";
 
 interface PlayerDetailsPanelProps {
   entry: LeaderboardEntry | null;

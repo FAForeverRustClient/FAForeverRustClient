@@ -8,9 +8,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CoopMission, CoopScenario, VaultMap } from "../../../ipc/bindings";
-import { FactionIcon } from "../../../shared/FactionIcon";
+import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { inferCoopFaction, mapThumbnailCandidates } from "../../../shared/mapPresentation";
-import { useLocalMapPreview } from "../../../shared/useLocalMapPreview";
+import { useLocalMapPreview } from "../../../shared/hooks/useLocalMapPreview";
 import { useTranslation } from "../../../i18n/useTranslation";
 
 const COOP_FACTION_NUMBERS: Record<string, number> = {

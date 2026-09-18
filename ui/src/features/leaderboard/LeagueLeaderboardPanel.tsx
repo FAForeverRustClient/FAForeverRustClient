@@ -5,7 +5,7 @@ import { SectionTabs } from "../../design-system/SectionTabs";
 import { ipc } from "../../ipc/client";
 import type { LeaderboardEntry, LeaderboardTier, LeagueSeason } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
-import { formatDate } from "../../shared/dates";
+import { formatDate } from "../../shared/format/dates";
 import { LeaderboardTable } from "./LeaderboardTable";
 import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
 import { useTranslation } from "../../i18n/useTranslation";

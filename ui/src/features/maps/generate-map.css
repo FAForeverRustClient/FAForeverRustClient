@@ -113,20 +113,6 @@
   border-color: var(--color-border-strong);
 }
 
-/* Progress feedback */
-.generate-map-progress {
-  margin: 0;
-  font-size: 12px;
-}
-
-.generate-map-progress.is-ok {
-  color: var(--color-ok);
-}
-
-.generate-map-progress.is-error {
-  color: var(--color-error);
-}
-
 /* Actions footer */
 .generate-map-actions {
   display: flex;

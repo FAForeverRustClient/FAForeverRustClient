@@ -76,28 +76,6 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.map-vault-thumb,
-.map-vault-preview {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Catalogue art shares the mod-card frame for a stable mixed-library rhythm.
-   The selected map's detail panel still exposes the complete square preview. */
-.map-vault-thumb {
-  object-position: center;
-}
-
-.map-vault-preview-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-subtle);
-  background: var(--color-bg);
-}
-
 .map-vault-card-copy {
   display: flex;
   min-width: 0;
@@ -313,46 +291,6 @@
   background: color-mix(in srgb, var(--color-error) 14%, transparent);
 }
 
-.map-uninstall-dialog,
-.map-preview-dialog {
-  width: min(520px, calc(100vw - 64px));
-}
-
-.map-uninstall-dialog h2 {
-  margin: 0 0 var(--space-2);
-  font-size: 18px;
-}
-
-.map-uninstall-dialog p,
-.map-preview-dialog p {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-.map-uninstall-dialog > div {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
-
-/* The picture inside is square, so the dialog is as wide as the tallest square
-   that fits. Without the height term a short window capped the image and left
-   a band of empty dialog down its right-hand side, which is the whole of the
-   report: the space was not unused, it was unusable. */
-.map-preview-dialog {
-  width: min(760px, calc(100vw - 64px), max(320px, calc(100vh - 250px)));
-}
-
-.map-preview-dialog .map-vault-preview {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: contain;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
 .installed-map-library {
   min-width: 0;
 }
@@ -566,17 +504,6 @@
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-}
-
-.surface-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 7px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-muted);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-pill);
 }
 
 .map-upload-description {

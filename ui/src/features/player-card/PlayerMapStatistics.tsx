@@ -12,8 +12,8 @@ import { useAppStore } from "../../store/store";
 import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
 import { formatDecimal, formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
-import { MapThumbnail } from "../../shared/MapThumbnail";
-import { formatDateTime } from "../../shared/dates";
+import { MapThumbnail } from "../../shared/components/MapThumbnail";
+import { formatDateTime } from "../../shared/format/dates";
 
 /** Shared with the host dialog's generated-map preview. */
 const MAPGEN_ICON = "/assets/mapgen-placeholder.png";

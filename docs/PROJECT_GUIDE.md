@@ -139,7 +139,12 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | Path | Meaning |
 |---|---|
 | `src/main.rs` | Entry point; calls `faforever_rust_client_lib::run()`. |
-| `src/lib.rs` | Registers Tauri commands `dispatch` + `snapshot`, forwards every `AppEvent` to the frontend (`emit("app://event")`). Injects `ports_from_env()` here. |
+| `src/lib.rs` | `run()`: assembles the modules below in the order Tauri needs them, and nothing else. The shared `Core` handle and the `FrontendMessage` envelope live here. |
+| `src/commands.rs` | Every `#[tauri::command]`: `dispatch`, `dispatch_and_wait` and `snapshot` (the only way state crosses the boundary), and the folder, log, sound and shell-fact commands `ipc/native.ts` calls. |
+| `src/startup.rs` | Builds the core with `ports_from_env()`, drives its loop, forwards every `AppEvent` to the frontend (`emit("app://event")`), locates the bundled helpers, and opens a replay handed in as an argument. |
+| `src/window.rs`, `src/navigation.rs` | The main window, and the decision of which URLs may load in it versus which are handed to the OS browser. The decision is separate so it can be unit tested. |
+| `src/tray.rs` | The tray icon and its menu. |
+| `src/diagnostics.rs` | The rolling client log. |
 | `build.rs` | Tauri build hook. |
 | `tauri.conf.json` | Window, build, and bundle configuration (frontend path, dev URL, icons). |
 | `capabilities/default.json` | Tauri permissions for the main window (events, window). |
@@ -154,18 +159,28 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/ipc/client.ts` | **The only typed bridge** to the backend (`send` for event handlers, awaited `dispatch` for sequenced flows, plus `snapshot`/subscriptions). Rejected fire-and-forget bridge calls are reported to the shell; no component calls `invoke`/`listen` directly. |
 | `src/ipc/bindings.ts` | **GENERATED** from Rust. Do not edit manually. |
 | `src/store/store.ts` | Zustand store; mirrors `AppState`. Write access only via `apply` (events) + `hydrate` (snapshot). |
-| `src/store/reducer.ts` | **Mirror reducer**: structurally identical to `faf-domain/src/reducer.rs`. If you change the Rust reducer, change this twin too. |
+| `src/store/reducer.ts` | **Mirror reducer**: the dispatcher over `src/store/reducers/<slice>.ts`, one hand-written twin per Rust slice reducer. If you change a transition in `faf-domain/src/state/<slice>.rs`, change the twin; the conformance test (`src/store/reducer.conformance.test.ts`) replays a fixture recorded from the Rust reducer and fails when the two disagree. |
+| `src/store/store.ts` `INITIAL` | The frontend's copy of every slice's `Default`, used only until the first snapshot arrives. A new state field needs an entry here or the typecheck fails. |
+| `src/ipc/native.ts` | The second, narrower bridge: desktop capabilities that are not domain commands (open a folder, pick a file, exit). Its request and response types are written by hand and must mirror the `#[tauri::command]` in `src-tauri/src/commands.rs`; keep it small. |
 | `src/design-system/tokens.css` | **Theming contract.** Semantic CSS variables under `:root` (= `forgeDark`) + one `[data-theme="…"]` block per theme (`forgeLight`/`javaClient`/`pythonClient`). Components reference these only. |
 | `src/design-system/Button.tsx` | **`Button` primitive**: encapsulates control structure/classes so theme-specific shape changes touch one file. |
 | `src/styles.css` | Global styles + component classes (token-driven; no hardcoded hex: enforced in CI). |
-| `src/shared/` | Helpers a feature folder should not own alone: query shapes, formatting, storage. Pure, and unit tested next to the code. |
+| `src/shared/` | Everything two or more features need. Sorted by kind so a reader knows what can render: `components/` (things with JSX and their stylesheets: the player menu, the map preview, the note editor), `hooks/`, `rules/` (hand-written twins of `faf-domain` decision functions, pinned by the conformance test), `format/` (dates, durations, byte counts), and the root for pure helpers with no better home (query shapes, presentation, the join flow). Unit tested next to the code. |
 | `src/i18n/` | The message catalogues. `catalog/en.ts` is the source of truth: a missing **key** is a compile error, a missing translation falls back to English. |
 | `src/features/shell/AppShell.tsx` | The logged-in shell: sidebar, tab bar, status bar, and the active tab's view. Routing is a lookup in the tab registry, not a router. |
 | `src/features/nav/tabs.tsx` | The tab registry: the one place a new tab is added. `TAB_ORDER` fixes the left-to-right order; labels are message keys, not text. |
-| `src/features/<tab>/` | One folder per tab. 27 of them today (auth, chat, lobby, replays, maps, mods, leaderboard, tournaments, settings, …). Listing them here would go stale faster than it would help: `ls ui/src/features` is the current answer. |
+| `src/features/<tab>/` | One folder per tab. Listing them here would go stale faster than it would help: `ls ui/src/features` is the current answer. A folder that has outgrown one level is split along the tab's own sub-destinations, which `nav.rs` already names: `lobby/{browser,matchmaker,coop,galactic-war,host,join}/` and `replays/{live,local,online,analysis}/`. |
 
 > **Feature structure:** A folder `features/<name>/`. Components **select state +
 > dispatch commands**, nothing else. No business logic, no direct IPC calls.
+>
+> **A feature is a module.** It may import from `design-system/`, `shared/`,
+> `store/`, `ipc/` and `i18n/`, and from its own folder, and from nothing
+> beside it. Something two features both need goes down into `shared/`; it does
+> not get imported across. `scripts/check-architecture.mjs` enforces this, with
+> a short allow-list of real dependencies (the matchmaker embeds chat, the vaults
+> open the upload dialog) that each carry the reason they are there. `shell/` and
+> `nav/` are the composition roots and import every tab by design.
 
 ---
 
@@ -174,7 +189,7 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 How data flows concretely: useful for debugging:
 
 1. User clicks "Log in" → `LoginView` calls `ipc.send({ kind: "Auth", command: { type: "login" }})`.
-2. `src-tauri/src/lib.rs` (command `dispatch`) pushes the `AppCommand` into the loop.
+2. `src-tauri/src/commands.rs` (command `dispatch`) pushes the `AppCommand` into the loop.
 3. `runtime/mod.rs` routes to `services/auth.rs::handle`.
 4. The service emits `LoginStarted`, calls `ctx.ports.auth.login()` (→ `OAuthAuth`: opens the browser, catches the redirect, exchanges the code, looks up `/me`), emits `LoggedIn { player }`.
 5. `EventSink::emit` reduces each event into `AppState` **and** broadcasts it.
@@ -188,16 +203,24 @@ Backend and frontend can never diverge because both **reduce the same event stre
 
 ## 6. "Where Do I Add X?" (Cookbook)
 
+Every row lists **all** the files, both halves of the boundary. A slice that is
+wired only on the Rust side compiles and then fails the conformance job; the
+frontend half is where new contributors most often stop early.
+
 | I want to… | …then |
 |---|---|
-| **Add new state** | Slice in `faf-domain/src/state/<name>.rs` (state + events + commands + `reduce` + tests); wire into `state/mod.rs`, `events.rs`, `commands.rs`, `reducer.rs`. |
-| **Add new backend capability** | Command + event(s) in the slice; service in `faf-app/src/services/<name>.rs`; dispatch arm in `runtime/mod.rs`. |
-| **Add new external system** | `Port` trait in `faf-app/src/ports/`; impl in `infra/`; mock/fake for tests; field in `Ports`. |
-| **Add new screen/tab** | Folder `ui/src/features/<name>/`; wire into `AppShell`; add `Tab` variant in `nav.rs` if needed. |
-| **Add/change a theme** | Add a `[data-theme="…"]` block in `tokens.css` + a `Theme` variant in `faf-domain/state/settings.rs`. No component changes; never hardcode a color in a component (CI rejects hex outside `tokens.css`). |
-| **Changed a cross-boundary type** | Run `pnpm run bindings` (otherwise the TS build breaks). |
+| **Add a state field or event to an existing slice** | Rust: the field, its `Default`, the event, the `reduce` arm and a unit test in `faf-domain/src/state/<slice>.rs`; a case in `faf-domain/tests/conformance_fixtures.rs` (a new event variant fails the test until it has one). Then `pnpm run bindings`. Frontend: the field in `INITIAL` in `ui/src/store/store.ts`; the arm in `ui/src/store/reducers/<slice>.ts`. Then `cargo test -p faf-domain --test conformance_fixtures` to regenerate the fixture, and `pnpm exec vitest run ui/src/store/reducer.conformance.test.ts` to prove the twin agrees. |
+| **Add a new slice** | All of the above, plus: `pub mod` in `faf-domain/src/state/mod.rs`; a variant in `events.rs` and `commands.rs`; the arm in `faf-domain/src/reducer.rs`; a new `ui/src/store/reducers/<slice>.ts` registered in `ui/src/store/reducer.ts`; the slice's defaults in `INITIAL`. |
+| **Add a backend capability** | Command + event(s) in the slice (row one); the service arm in `faf-app/src/services/<slice>.rs`; a dispatch arm in `runtime/mod.rs` for a new slice. If the command can be sent twice while the first is in flight, or can be answered out of order, it needs a guard on `ServiceCtx` (`SingleFlight`, `LatestRequest` or `SerialMutation`, see `runtime/policies.rs`): every command runs on its own task, so nothing is ordered unless you order it. An integration test in `faf-app/tests/<slice>.rs` with a scripted port. |
+| **Add an external system** | `Port` trait in `faf-app/src/ports/<name>.rs` and `pub mod` in `ports/mod.rs`; the real adapter in `infra/<name>.rs` with its fake at the bottom of the same file (or `<name>_fake.rs` when the fake is large); `pub mod` and `pub use` in `infra/mod.rs`; a field in `Ports` and an entry in `fake_ports()` and `ports_from_env()`. The map at the top of `infra/mod.rs` says which kind of adapter goes where. |
+| **Add a screen or tab** | Folder `ui/src/features/<name>/` with a `<Name>View.tsx` and its stylesheet; register it in `ui/src/features/nav/tabs.tsx` (the one place tabs are listed; `AppShell` reads that registry); add the `Tab` variant in `faf-domain/src/state/nav.rs` and `pnpm run bindings`; the label and description keys in `ui/src/i18n/catalog/en.ts` and `de.ts`. |
+| **Add something two features both need** | Put it in `ui/src/shared/` (by kind: `components/`, `hooks/`, `rules/`, `format/`, or the root), never in one feature for the other to import. `pnpm run architecture` fails the cross-feature import and says so. |
+| **Add a desktop capability that is not a domain command** | A `#[tauri::command]` in `src-tauri/src/commands.rs`, registered in `run()`; the typed call in `ui/src/ipc/native.ts` with the mirrored types. Before doing this, ask whether it is really not state: most things are, and belong in the loop. |
+| **Add or change a theme** | A `[data-theme="…"]` block in `tokens.css` + a `Theme` variant in `faf-domain/state/settings.rs`. No component changes; never hardcode a color in a component (CI rejects hex outside `tokens.css`). |
+| **Changed a cross-boundary type** | `pnpm run bindings`, and `cargo test -p faf-domain --test conformance_fixtures` if it is a state type or a default. Both are separate CI jobs and both drift silently until they run. |
+| **Added user-facing text** | A key in `ui/src/i18n/catalog/en.ts` (the source; a missing key is a compile error) and `de.ts`; `pnpm run i18n:check` lists literals that slipped through. |
 
-**Never:** mutate state outside a reducer · do IO outside `infra/` · put logic in a component · write a cross-boundary type by hand.
+**Never:** mutate state outside a reducer · do IO outside `infra/` · put logic in a component · write a cross-boundary type by hand (`ipc/native.ts` is the one deliberate exception) · import one feature from another.
 
 ---
 
@@ -210,7 +233,8 @@ pnpm install           # Frontend deps (once)
 pnpm run bindings      # Regenerate ui/src/ipc/bindings.ts from Rust
 pnpm run tauri dev     # Start the app (Vite + Tauri)
 
-cargo test             # Rust tests (reducer + loop + services)
+cargo check -j 1       # Rust compiles (single-threaded: a full build lags the desktop)
+cargo test -p <crate> -j 1 -- <test_name>   # One test, not the workspace (AGENTS.md section 6)
 pnpm run lint          # ESLint, including React Hooks rules
 pnpm run typecheck     # tsc over the frontend
 pnpm test              # Frontend tests
@@ -268,6 +292,7 @@ everything after it skipped.
 | No `font-size` below 11 px in `ui/src/**/*.css`. | `check-architecture.mjs` |
 | No hex colours in `ui/src/**/*.css` outside `design-system/tokens.css`. Components reference semantic tokens so a new theme never revisits a component. | workflow |
 | Crate layering: the boundaries in [`ARCHITECTURE.md`](ARCHITECTURE.md). | `check-architecture.mjs` |
+| Feature isolation: `ui/src/features/<a>` does not import from `features/<b>`. Shared code goes into `ui/src/shared/`; the few real dependencies are allow-listed in the script with their reason. `shell/` and `nav/` are exempt as the composition roots. | `check-architecture.mjs` |
 
 Reproduce the whole frontend gate locally, in the order CI runs it:
 
@@ -276,7 +301,8 @@ pnpm run architecture && pnpm run typecheck && pnpm run lint && pnpm test && pnp
 ```
 
 And the Rust half, where `cargo fmt` is a separate gate that a clean clippy run
-does **not** imply:
+does **not** imply. This is what CI runs; locally, AGENTS.md section 6 asks for
+`-j 1` and for single targeted tests rather than the workspace sweep:
 
 ```bash
 cargo test --workspace

@@ -16,7 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
-import { FOLDER_GROUPS, openFolderEntry, type FolderEntry } from "./gameFolders";
+import { FOLDER_GROUPS, openFolderEntry, type FolderEntry } from "../../shared/gameFolders";
 import "./game-folders.css";
 
 export function GameFoldersMenu() {

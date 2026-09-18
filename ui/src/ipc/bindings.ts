@@ -1421,7 +1421,14 @@ export type CoopCategory =
 /**  Forged Alliance. */
 "scfa" | "custom";
 
-export type CoopCommand = { type: "loadCatalog" } | { type: "selectMission"; payload: {
+export type CoopCommand =
+/**
+ *  Have the catalogue loaded. Ignored once it is, or while it is being
+ *  fetched, so every view that needs it can ask on mount.
+ */
+{ type: "loadCatalog" } |
+/**  Fetch the catalogue again even if it is loaded: the refresh button. */
+{ type: "refreshCatalog" } | { type: "selectMission"; payload: {
 	missionId: number,
 } } | { type: "setPlayerCount"; payload: {
 	playerCount: number,

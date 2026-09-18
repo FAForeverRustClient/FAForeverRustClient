@@ -1,0 +1,106 @@
+/* The right-click player menu. Shared: every list of names in the client
+   opens it, so its styles travel with the component rather than with chat.css,
+   which is only loaded once the chat tab has been visited. */
+/* Above the modal layer (100), not above chat's own furniture. The menu is
+   opened from a replay's detail panel now as well as from a channel roster, and
+   a context menu that renders behind the thing it was opened from is a context
+   menu that is not there. */
+.chat-user-menu {
+  position: fixed;
+  z-index: 130;
+  min-width: 190px;
+  padding: var(--space-1);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+/* A name in a message, while its player menu is open. Same reason as the
+   roster row above: the menu is anonymous without it. */
+.chat-nick.is-menu-open {
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-sm);
+}
+
+.chat-user-menu-color {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.chat-user-menu-color label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.chat-user-menu-color input[type="color"] {
+  width: 30px;
+  height: 26px;
+  padding: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.chat-user-menu-color > button {
+  min-height: 26px;
+  padding: 0 var(--space-2);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.chat-user-menu-color > button:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.chat-user-menu-color > button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chat-user-menu-separator {
+  height: 0;
+  margin: var(--space-1) var(--space-2);
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+.chat-user-menu-item {
+  font: inherit;
+  display: block;
+  width: 100%;
+  padding: 6px var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.chat-user-menu-item:hover {
+  background: var(--color-surface-hover);
+}
+
+.chat-user-menu-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.chat-user-menu-item.is-danger {
+  color: var(--color-error);
+}

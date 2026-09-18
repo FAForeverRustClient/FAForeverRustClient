@@ -32,8 +32,9 @@ export function LeaderboardView() {
   const showTable = !explaining;
   const currentSeason = state.seasons.find((season) => season.id === state.selectedSeasonId) ?? null;
 
+  // The service ignores this once the catalogue is loaded or being loaded.
   useEffect(() => {
-    if (useAppStore.getState().state.leaderboard.catalogStatus.type === "idle") void loadCatalog();
+    void loadCatalog();
   }, []);
 
   return (

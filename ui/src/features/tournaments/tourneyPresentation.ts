@@ -5,7 +5,7 @@
 // tournament would grow the payload to say what the client can work out.
 //
 // Presentation only. The rules the panes *gate* on are twins of
-// `faf_domain::state::tourney` and live in `shared/tourneyRules.ts`, where the
+// `faf_domain::state::tourney` and live in `shared/rules/tourneyRules.ts`, where the
 // conformance harness can pin them: `store/` may not import from `features/`,
 // so a twin left here would be a twin nothing can hold.
 

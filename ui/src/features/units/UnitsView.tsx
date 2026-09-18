@@ -5,7 +5,7 @@
 // achievable by using the real thing. No custom parsing/state on our side,
 // this tab is presentation-only: a frame and the way out of it.
 
-import { EmbeddedSite } from "../../shared/EmbeddedSite";
+import { EmbeddedSite } from "../../shared/components/EmbeddedSite";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const ETFREEMAN_URL = "https://faforever.github.io/etfreeman-db/#/";
