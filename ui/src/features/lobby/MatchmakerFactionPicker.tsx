@@ -1,7 +1,15 @@
 import { FactionIcon } from "../../shared/FactionIcon";
 import { useTranslation } from "../../i18n/useTranslation";
 
-export const MATCHMAKER_FACTIONS = ["UEF", "Aeon", "Cybran", "Seraphim"] as const;
+/**
+ * The four toggles, left to right. See `FACTION_DISPLAY_ORDER`, which this
+ * agrees with: the picker and the party seats below it are read as one row,
+ * so they cannot disagree about where Cybran is.
+ *
+ * Order here is presentation only. What is stored and what is sent is a set,
+ * and `browsingPreferences` keeps its own list for the defaults.
+ */
+export const MATCHMAKER_FACTIONS = ["UEF", "Cybran", "Aeon", "Seraphim"] as const;
 
 /** Matches `FACTION_NAMES` in `shared/factions.ts`, which the glyphs key off. */
 const FACTION_IDS: Readonly<Record<string, number>> = {
