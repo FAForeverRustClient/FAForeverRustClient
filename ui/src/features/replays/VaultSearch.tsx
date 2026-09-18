@@ -39,6 +39,7 @@ import {
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
 import { replayGameModes, selectedGameMode, withGameMode } from "./replayGameModes";
 import { activeReplayPreset } from "./replayPresets";
+import { FriendReplayPicker } from "./FriendReplayPicker";
 import "../../design-system/search-panel.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -80,12 +81,14 @@ interface Props {
   leaderboards: RatingLeaderboard[];
   /** Logged-in player, for the "My replays" preset. */
   self: string;
+  /** Logins from `social.friends`, for the friends picker beside it. */
+  friends: string[];
   /** Executed query (or the first query about to execute) when this form mounts. */
   initialQuery: ReplayQuery;
   onSearch: (query: ReplayQuery) => void;
 }
 
-export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, onSearch }: Props) {
+export function VaultSearch({ featuredMods, leaderboards, self, friends, initialQuery, onSearch }: Props) {
   const { t } = useTranslation();
   const [form, setForm] = useState<ReplayQuery>(initialQuery);
   const [advanced, setAdvanced] = useState(false);
@@ -367,6 +370,28 @@ export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, on
         >
           {t("replays.search.preset.myReplays")}
         </Button>
+        {/* Beside "My replays", because it is the same scope for somebody
+            else. Typing a full FAF login by hand every time was the whole
+            complaint. See `FriendReplayPicker`. */}
+        <FriendReplayPicker
+          friends={friends}
+          current={form.player}
+          onPick={(login) => {
+            const query: ReplayQuery = {
+              ...form,
+              player: login,
+              exactPlayer: true,
+              // The same explicit bound "My replays" sets, and for the same
+              // reason: a player filter counts as narrowing, so an empty
+              // `after` hands the backend its invisible six-month floor.
+              after: isoDaysAgo(365),
+              page: 1,
+            };
+            setForm(query);
+            setRecentOnly(isRecentBound(query.after));
+            onSearch(query);
+          }}
+        />
         {/* The divider is load-bearing: everything left of it replaces the
             search, everything right of it modifies the one you have. Without it
             the toggle reads as a fourth preset, and "All replays" next to
