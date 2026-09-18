@@ -96,11 +96,21 @@ export function MatchmakerQueueCard({
         // the only thing left to do with it, and refusing both directions is
         // what made an outgrown 1v1 permanent.
         disabled={disabled || (incompatible && !selected)}
+        // The card already says which queue it is and draws itself differently
+        // once it is in the search, so a native tooltip repeating that in
+        // words was only ever in the way: it opens on the same hover as the
+        // rating breakdown below and lands on top of it. The sentence still
+        // reaches a screen reader, where nothing else carries it.
+        //
+        // The one state that keeps its tooltip is the outgrown queue, because
+        // there the click does the opposite of what a card that cannot be
+        // selected suggests, and that is worth a sentence.
+        aria-label={t(selected ? "lobby.matchmaker.queueInSearch" : "lobby.matchmaker.queueAddToSearch", {
+          queue: queueTitle(queue),
+        })}
         title={incompatible && selected
           ? t("lobby.matchmaker.queueDropTooLarge", { queue: queueTitle(queue) })
-          : t(selected ? "lobby.matchmaker.queueInSearch" : "lobby.matchmaker.queueAddToSearch", {
-            queue: queueTitle(queue),
-          })}
+          : undefined}
         onClick={onToggle}
       >
         <span className="matchmaker-queue-head">
