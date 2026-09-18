@@ -274,7 +274,7 @@ impl ModsPort for ModsClient {
                     .append_pair("sort", "-latestVersion.createTime")
                     .append_pair("page[size]", &VAULT_PAGE_SIZE.to_string())
                     .append_pair("page[number]", &page.to_string())
-                    .append_pair("include", "latestVersion,reviewsSummary,uploader");
+                    .append_pair("include", MOD_VAULT_INCLUDE);
                 Ok(url)
             },
         )
@@ -316,7 +316,7 @@ impl ModsPort for ModsClient {
                 .append_pair("page[size]", &query.page_size.to_string())
                 .append_pair("page[number]", &query.page.max(1).to_string())
                 .append_key_only("page[totals]")
-                .append_pair("include", "latestVersion,reviewsSummary,uploader");
+                .append_pair("include", MOD_VAULT_INCLUDE);
         }
 
         let doc = fetch_document(&self.http, url, &token).await?;
@@ -958,6 +958,21 @@ fn build_active_mods_block(uids: &[String]) -> String {
     format!("active_mods = {{\n{}\n}}", entries.join(",\n"))
 }
 
+/// What a vault listing has to bring back with each mod.
+///
+/// `latestVersion.reviewsSummary` is the part that was missing, and it is why
+/// a mod with reviews on it showed "Rating N/A" in the search results while
+/// opening the same mod showed the reviews. A review is written against a mod
+/// *version*, so that is where the summary hangs; `mod.reviewsSummary` is the
+/// whole mod's, and only the older mods have one at all.
+///
+/// The parser has always looked in both places. It reads them out of the
+/// document's `included` block, which is the half this decides: a relationship
+/// that is linked but not included is a dangling id, and the lookup answered
+/// nothing.
+const MOD_VAULT_INCLUDE: &str =
+    "latestVersion,latestVersion.reviewsSummary,reviewsSummary,uploader";
+
 fn parse_reviews_summary(summary: &JsonApiResource) -> (i32, i32) {
     let reviews = value_i32(&summary.attributes, "reviews")
         .or_else(|| value_i32(&summary.attributes, "numReviews"))
@@ -1001,36 +1016,51 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
                 .and_then(Value::as_str)
                 .unwrap_or("")
                 .to_string();
-            let reviews_summary = rel_target(&mod_res.relationships, "reviewsSummary")
-                .or_else(|| rel_target(&mod_res.relationships, "modReviewsSummary"))
-                .or_else(|| rel_target(&version.relationships, "reviewsSummary"))
-                .or_else(|| rel_target(&version.relationships, "modVersionReviewsSummary"))
-                .and_then(|rel| find_rel_resource(doc, &index, Some(rel)));
+            // Both summaries, not the first one found. A review is written
+            // against a version, so that is where the count usually is, while
+            // the older entries carry one on the parent as well. Taking the
+            // parent's whenever it existed is what printed "N/A" over a
+            // version with reviews on it: an empty summary is still a summary,
+            // and it won.
+            let reviews_summary = [
+                rel_target(&mod_res.relationships, "reviewsSummary"),
+                rel_target(&mod_res.relationships, "modReviewsSummary"),
+                rel_target(&version.relationships, "reviewsSummary"),
+                rel_target(&version.relationships, "modVersionReviewsSummary"),
+            ]
+            .into_iter()
+            .flatten()
+            .filter_map(|rel| find_rel_resource(doc, &index, Some(rel)))
+            .map(parse_reviews_summary)
+            // Ties keep the first, which is the parent's: the order above is
+            // the order to believe them in when they agree on how many.
+            .max_by_key(|(_, reviews)| *reviews);
 
-            let (rating_tenths, reviews) = if let Some(summary) = reviews_summary {
-                parse_reviews_summary(summary)
-            } else if let Some(summary_attr) = mod_res
-                .attributes
-                .get("reviewsSummary")
-                .or_else(|| version.attributes.get("reviewsSummary"))
-            {
-                let r = value_i32(summary_attr, "reviews")
-                    .or_else(|| value_i32(summary_attr, "numReviews"))
-                    .unwrap_or(0);
-                let score = value_f64(summary_attr, "averageScore")
-                    .or_else(|| {
-                        let s = value_f64(summary_attr, "score")?;
-                        if r > 0 {
-                            Some(s / f64::from(r))
-                        } else {
-                            Some(s)
-                        }
-                    })
-                    .unwrap_or(0.0);
-                ((score * 10.0).round() as i32, r)
-            } else {
-                (0, 0)
-            };
+            let (rating_tenths, reviews) =
+                if let Some(summary) = reviews_summary.filter(|(_, reviews)| *reviews > 0) {
+                    summary
+                } else if let Some(summary_attr) = mod_res
+                    .attributes
+                    .get("reviewsSummary")
+                    .or_else(|| version.attributes.get("reviewsSummary"))
+                {
+                    let r = value_i32(summary_attr, "reviews")
+                        .or_else(|| value_i32(summary_attr, "numReviews"))
+                        .unwrap_or(0);
+                    let score = value_f64(summary_attr, "averageScore")
+                        .or_else(|| {
+                            let s = value_f64(summary_attr, "score")?;
+                            if r > 0 {
+                                Some(s / f64::from(r))
+                            } else {
+                                Some(s)
+                            }
+                        })
+                        .unwrap_or(0.0);
+                    ((score * 10.0).round() as i32, r)
+                } else {
+                    (0, 0)
+                };
 
             // The exact wire value for `modType` (`"UI"`/`"SIM"` or
             // something else) couldn't be verified against a live
@@ -1580,6 +1610,51 @@ ui_only = true
         // And it is not the declared author, which anyone can write into
         // `mod_info.lua`.
         assert_eq!(mods[0].author, "Someone Else");
+    }
+
+    /// The report: a mod with reviews on it showed "Rating N/A" in the search
+    /// results while opening it showed the reviews. A review belongs to a mod
+    /// *version*, and a parent summary that exists but counts nothing used to
+    /// win simply for being looked at first.
+    #[test]
+    fn a_version_summary_beats_an_empty_one_on_the_mod() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "mod",
+                "id": "77",
+                "attributes": { "displayName": "Roguelike Mode", "author": "Someone" },
+                "relationships": {
+                    "latestVersion": { "data": { "type": "modVersion", "id": "9" } },
+                    "reviewsSummary": { "data": { "type": "reviewsSummary", "id": "15" } },
+                },
+            }],
+            "included": [
+                {
+                    "type": "modVersion",
+                    "id": "9",
+                    "attributes": { "uid": "abc-123", "version": 3 },
+                    "relationships": {
+                        "reviewsSummary": { "data": { "type": "reviewsSummary", "id": "16" } },
+                    },
+                },
+                {
+                    "type": "reviewsSummary",
+                    "id": "15",
+                    "attributes": { "averageScore": 0.0, "reviews": 0 }
+                },
+                {
+                    "type": "reviewsSummary",
+                    "id": "16",
+                    "attributes": { "averageScore": 4.5, "reviews": 6 }
+                }
+            ],
+        }))
+        .unwrap();
+
+        let mods = parse_vault_mods(&doc);
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].reviews, 6);
+        assert_eq!(mods[0].rating_tenths, 45);
     }
 
     #[test]
