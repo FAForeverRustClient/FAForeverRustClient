@@ -274,7 +274,7 @@ impl ModsPort for ModsClient {
                     .append_pair("sort", "-latestVersion.createTime")
                     .append_pair("page[size]", &VAULT_PAGE_SIZE.to_string())
                     .append_pair("page[number]", &page.to_string())
-                    .append_pair("include", "latestVersion,reviewsSummary,uploader");
+                    .append_pair("include", MOD_VAULT_INCLUDE);
                 Ok(url)
             },
         )
@@ -316,7 +316,7 @@ impl ModsPort for ModsClient {
                 .append_pair("page[size]", &query.page_size.to_string())
                 .append_pair("page[number]", &query.page.max(1).to_string())
                 .append_key_only("page[totals]")
-                .append_pair("include", "latestVersion,reviewsSummary,uploader");
+                .append_pair("include", MOD_VAULT_INCLUDE);
         }
 
         let doc = fetch_document(&self.http, url, &token).await?;
@@ -546,26 +546,33 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
         .await
         .map_err(|e| format!("could not list {}: {e}", dir.display()))?
     {
-        let is_dir = entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false);
-        if !is_dir {
+        let path = entry.path();
+        if !is_directory(&path).await {
             continue;
         }
-        let path = entry.path();
         if path.join("mod_info.lua").is_file() {
-            mod_dirs.push(path);
-            continue;
+            mod_dirs.push(path.clone());
+            // Deliberately no `continue`. A folder that is a mod can still
+            // contain one: the reported case is a simulation mod that ships
+            // its own UI-only variant inside itself, so that one download
+            // covers both rather than the author publishing the same mod
+            // twice with a flag flipped. The game finds both, and so does the
+            // Java client, whose `Files.walk(modsDirectory, 2)` collects every
+            // `mod_info.lua` within two levels rather than stopping at the
+            // first. This stopped at the first, and the inner mod was
+            // invisible.
         }
 
         // Match the Java client's `Files.walk(modsDirectory, 2)`: archives
-        // occasionally contain one extra wrapper directory.
+        // occasionally contain one extra wrapper directory, and a mod may
+        // carry a second mod inside it.
         let Ok(mut children) = tokio::fs::read_dir(&path).await else {
             continue;
         };
         while let Ok(Some(child)) = children.next_entry().await {
-            if child.file_type().await.is_ok_and(|kind| kind.is_dir())
-                && child.path().join("mod_info.lua").is_file()
-            {
-                mod_dirs.push(child.path());
+            let child_path = child.path();
+            if is_directory(&child_path).await && child_path.join("mod_info.lua").is_file() {
+                mod_dirs.push(child_path);
             }
         }
     }
@@ -600,6 +607,30 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
     }
     installed.sort_by(|a, b| a.display_name.cmp(&b.display_name));
     Ok(installed)
+}
+
+/// Whether a path is a directory, following a link if it is one.
+///
+/// `DirEntry::file_type` reports the entry itself and never follows: a
+/// directory symlink answers `is_symlink`, and `is_dir` is false. On Windows a
+/// junction answers the same way. So a mod folder that is a link into a
+/// working tree somewhere else was skipped outright, which is the report: mod
+/// authors keep the sources elsewhere and link them in, and the client found
+/// nothing.
+///
+/// `metadata` follows, which is what the game itself does with these folders.
+/// A link pointing at nothing, or at a file, answers false rather than
+/// failing: it is not a mod, and a broken link in the mods folder is not
+/// something to refuse the whole scan over.
+///
+/// Following cannot recurse away: the scan is two levels deep by construction,
+/// so a link that points at its own parent costs one extra `read_dir` and
+/// nothing more.
+async fn is_directory(path: &Path) -> bool {
+    tokio::fs::metadata(path)
+        .await
+        .map(|data| data.is_dir())
+        .unwrap_or(false)
 }
 
 /// The subset of `mod_info.lua` fields this client needs (mirrors the
@@ -927,6 +958,21 @@ fn build_active_mods_block(uids: &[String]) -> String {
     format!("active_mods = {{\n{}\n}}", entries.join(",\n"))
 }
 
+/// What a vault listing has to bring back with each mod.
+///
+/// `latestVersion.reviewsSummary` is the part that was missing, and it is why
+/// a mod with reviews on it showed "Rating N/A" in the search results while
+/// opening the same mod showed the reviews. A review is written against a mod
+/// *version*, so that is where the summary hangs; `mod.reviewsSummary` is the
+/// whole mod's, and only the older mods have one at all.
+///
+/// The parser has always looked in both places. It reads them out of the
+/// document's `included` block, which is the half this decides: a relationship
+/// that is linked but not included is a dangling id, and the lookup answered
+/// nothing.
+const MOD_VAULT_INCLUDE: &str =
+    "latestVersion,latestVersion.reviewsSummary,reviewsSummary,uploader";
+
 fn parse_reviews_summary(summary: &JsonApiResource) -> (i32, i32) {
     let reviews = value_i32(&summary.attributes, "reviews")
         .or_else(|| value_i32(&summary.attributes, "numReviews"))
@@ -970,36 +1016,51 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
                 .and_then(Value::as_str)
                 .unwrap_or("")
                 .to_string();
-            let reviews_summary = rel_target(&mod_res.relationships, "reviewsSummary")
-                .or_else(|| rel_target(&mod_res.relationships, "modReviewsSummary"))
-                .or_else(|| rel_target(&version.relationships, "reviewsSummary"))
-                .or_else(|| rel_target(&version.relationships, "modVersionReviewsSummary"))
-                .and_then(|rel| find_rel_resource(doc, &index, Some(rel)));
+            // Both summaries, not the first one found. A review is written
+            // against a version, so that is where the count usually is, while
+            // the older entries carry one on the parent as well. Taking the
+            // parent's whenever it existed is what printed "N/A" over a
+            // version with reviews on it: an empty summary is still a summary,
+            // and it won.
+            let reviews_summary = [
+                rel_target(&mod_res.relationships, "reviewsSummary"),
+                rel_target(&mod_res.relationships, "modReviewsSummary"),
+                rel_target(&version.relationships, "reviewsSummary"),
+                rel_target(&version.relationships, "modVersionReviewsSummary"),
+            ]
+            .into_iter()
+            .flatten()
+            .filter_map(|rel| find_rel_resource(doc, &index, Some(rel)))
+            .map(parse_reviews_summary)
+            // Ties keep the first, which is the parent's: the order above is
+            // the order to believe them in when they agree on how many.
+            .max_by_key(|(_, reviews)| *reviews);
 
-            let (rating_tenths, reviews) = if let Some(summary) = reviews_summary {
-                parse_reviews_summary(summary)
-            } else if let Some(summary_attr) = mod_res
-                .attributes
-                .get("reviewsSummary")
-                .or_else(|| version.attributes.get("reviewsSummary"))
-            {
-                let r = value_i32(summary_attr, "reviews")
-                    .or_else(|| value_i32(summary_attr, "numReviews"))
-                    .unwrap_or(0);
-                let score = value_f64(summary_attr, "averageScore")
-                    .or_else(|| {
-                        let s = value_f64(summary_attr, "score")?;
-                        if r > 0 {
-                            Some(s / f64::from(r))
-                        } else {
-                            Some(s)
-                        }
-                    })
-                    .unwrap_or(0.0);
-                ((score * 10.0).round() as i32, r)
-            } else {
-                (0, 0)
-            };
+            let (rating_tenths, reviews) =
+                if let Some(summary) = reviews_summary.filter(|(_, reviews)| *reviews > 0) {
+                    summary
+                } else if let Some(summary_attr) = mod_res
+                    .attributes
+                    .get("reviewsSummary")
+                    .or_else(|| version.attributes.get("reviewsSummary"))
+                {
+                    let r = value_i32(summary_attr, "reviews")
+                        .or_else(|| value_i32(summary_attr, "numReviews"))
+                        .unwrap_or(0);
+                    let score = value_f64(summary_attr, "averageScore")
+                        .or_else(|| {
+                            let s = value_f64(summary_attr, "score")?;
+                            if r > 0 {
+                                Some(s / f64::from(r))
+                            } else {
+                                Some(s)
+                            }
+                        })
+                        .unwrap_or(0.0);
+                    ((score * 10.0).round() as i32, r)
+                } else {
+                    (0, 0)
+                };
 
             // The exact wire value for `modType` (`"UI"`/`"SIM"` or
             // something else) couldn't be verified against a live
@@ -1398,6 +1459,76 @@ mod tests {
         assert!(parse_active_mod_uids("no_active_mods_here = 1\n").is_empty());
     }
 
+    /// A simulation mod that ships its UI-only variant inside itself. Both are
+    /// mods, the game loads both, and the outer one used to hide the inner.
+    #[tokio::test]
+    async fn a_mod_inside_a_mod_is_found_as_well_as_its_parent() {
+        let dir = std::env::temp_dir().join(format!("forge-mods-nested-{}", std::process::id()));
+        let outer = dir.join("sim_speed_balancer");
+        let inner = outer.join("ui_variant");
+        tokio::fs::create_dir_all(&inner).await.unwrap();
+        tokio::fs::write(outer.join("mod_info.lua"), SAMPLE_MOD_INFO)
+            .await
+            .unwrap();
+        tokio::fs::write(
+            inner.join("mod_info.lua"),
+            "name = \"Sim Speed Balancer (UI)\"
+uid = \"11111111-2222-3333-4444-555555555555\"
+ui_only = true
+",
+        )
+        .await
+        .unwrap();
+
+        let installed = list_installed_dir(&dir).await.expect("should list");
+        let folders: Vec<&str> = installed
+            .iter()
+            .map(|entry| entry.folder_name.as_str())
+            .collect();
+        assert_eq!(installed.len(), 2, "found {folders:?}");
+        assert!(folders.contains(&"sim_speed_balancer"));
+        // Relative to the mods folder and with forward slashes, which is the
+        // shape every other nested mod already uses.
+        assert!(folders.contains(&"sim_speed_balancer/ui_variant"));
+        let ui = installed
+            .iter()
+            .find(|entry| entry.folder_name.ends_with("ui_variant"))
+            .unwrap();
+        assert_eq!(ui.mod_type, ModType::Ui);
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
+    /// Mod authors keep their sources elsewhere and link the folder in. The
+    /// scan read the link's own type, which is "symlink" and not "directory",
+    /// and skipped it.
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn a_linked_mod_folder_is_found() {
+        let dir = std::env::temp_dir().join(format!("forge-mods-link-{}", std::process::id()));
+        let real = std::env::temp_dir().join(format!("forge-mods-src-{}", std::process::id()));
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+        tokio::fs::create_dir_all(&real).await.unwrap();
+        tokio::fs::write(real.join("mod_info.lua"), SAMPLE_MOD_INFO)
+            .await
+            .unwrap();
+
+        // Needs either developer mode or elevation; where neither is on, the
+        // link cannot be made and there is nothing to assert.
+        if std::os::windows::fs::symlink_dir(&real, dir.join("linked_mod")).is_err() {
+            let _ = tokio::fs::remove_dir_all(&dir).await;
+            let _ = tokio::fs::remove_dir_all(&real).await;
+            return;
+        }
+
+        let installed = list_installed_dir(&dir).await.expect("should list");
+        assert_eq!(installed.len(), 1);
+        assert_eq!(installed[0].folder_name, "linked_mod");
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+        let _ = tokio::fs::remove_dir_all(&real).await;
+    }
+
     #[tokio::test]
     async fn list_installed_dir_missing_folder_returns_empty() {
         let dir = std::env::temp_dir().join("forge-mods-does-not-exist");
@@ -1479,6 +1610,51 @@ mod tests {
         // And it is not the declared author, which anyone can write into
         // `mod_info.lua`.
         assert_eq!(mods[0].author, "Someone Else");
+    }
+
+    /// The report: a mod with reviews on it showed "Rating N/A" in the search
+    /// results while opening it showed the reviews. A review belongs to a mod
+    /// *version*, and a parent summary that exists but counts nothing used to
+    /// win simply for being looked at first.
+    #[test]
+    fn a_version_summary_beats_an_empty_one_on_the_mod() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "mod",
+                "id": "77",
+                "attributes": { "displayName": "Roguelike Mode", "author": "Someone" },
+                "relationships": {
+                    "latestVersion": { "data": { "type": "modVersion", "id": "9" } },
+                    "reviewsSummary": { "data": { "type": "reviewsSummary", "id": "15" } },
+                },
+            }],
+            "included": [
+                {
+                    "type": "modVersion",
+                    "id": "9",
+                    "attributes": { "uid": "abc-123", "version": 3 },
+                    "relationships": {
+                        "reviewsSummary": { "data": { "type": "reviewsSummary", "id": "16" } },
+                    },
+                },
+                {
+                    "type": "reviewsSummary",
+                    "id": "15",
+                    "attributes": { "averageScore": 0.0, "reviews": 0 }
+                },
+                {
+                    "type": "reviewsSummary",
+                    "id": "16",
+                    "attributes": { "averageScore": 4.5, "reviews": 6 }
+                }
+            ],
+        }))
+        .unwrap();
+
+        let mods = parse_vault_mods(&doc);
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].reviews, 6);
+        assert_eq!(mods[0].rating_tenths, 45);
     }
 
     #[test]
