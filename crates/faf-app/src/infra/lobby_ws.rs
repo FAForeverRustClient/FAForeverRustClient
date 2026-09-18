@@ -548,6 +548,32 @@ async fn run_session(
                 // A relation the user just set is a change to state this
                 // session re-broadcasts, and the server tells nobody about it.
                 directory.note_local_relation(&frame);
+                // The end of the game is the end of the match, and the server
+                // says nothing about it: the search was over the moment the
+                // match was made, so there is no `search_info` left to send.
+                // This connection keeps its own copy of the matchmaking state
+                // and would otherwise carry `Launching` for the rest of the
+                // session, ready to be re-published by the next message that
+                // touches it.
+                //
+                // `GameState Ended` is the client's own report that the process
+                // is gone, relayed a few lines before `GameTerminated` reaches
+                // the app state, so it is the same fact arriving on this side.
+                if is_game_ended_relay(&frame)
+                    && matches!(
+                        matchmaking,
+                        MatchmakingState::Launching { .. } | MatchmakingState::MatchFound { .. }
+                    )
+                {
+                    matchmaking = MatchmakingState::Idle;
+                    if tx
+                        .send(LobbyUpdate::Matchmaking(matchmaking.clone()))
+                        .await
+                        .is_err()
+                    {
+                        break 'connection;
+                    }
+                }
                 if write
                     .send(Message::binary(encode_lobby_message(&frame).into_bytes()))
                     .await
@@ -871,11 +897,19 @@ async fn run_session(
                             .unwrap_or_default()
                             .to_string();
                         let searching = value.get("state").and_then(Value::as_str) == Some("start");
-                        matchmaking.update_search(queue_name, searching);
-                        if tx
-                            .send(LobbyUpdate::Matchmaking(matchmaking.clone()))
-                            .await
-                            .is_err()
+                        // Only when it moved. `update_search` refuses to let a
+                        // late `stop` erase a match that was already found, and
+                        // sending the unchanged state anyway published that
+                        // refusal as news: a `stop` arriving after the match had
+                        // been played put `Launching` back into the app's state
+                        // long after the game had ended, and the Play tab then
+                        // sat on "Starting your match" until the client was
+                        // restarted.
+                        if matchmaking.update_search(queue_name, searching)
+                            && tx
+                                .send(LobbyUpdate::Matchmaking(matchmaking.clone()))
+                                .await
+                                .is_err()
                         {
                             break 'connection;
                         }
@@ -1057,6 +1091,23 @@ fn reconnect_delay(failures: u32) -> std::time::Duration {
 /// not what matters, a frame arriving at all is.
 fn ping_frame() -> Value {
     json!({ "command": "ping" })
+}
+
+/// Whether an outgoing frame is the relay that reports the game process gone.
+///
+/// The launcher sends `GameState Ended` to the server the moment the process
+/// exits, the way the Python client does in `GameSession._exited`. It is the
+/// only signal this connection gets that a match it started is over, which is
+/// why the session loop watches for it going past.
+fn is_game_ended_relay(frame: &Value) -> bool {
+    frame.get("command").and_then(Value::as_str) == Some("GameState")
+        && frame.get("target").and_then(Value::as_str) == Some("game")
+        && frame
+            .get("args")
+            .and_then(Value::as_array)
+            .and_then(|args| args.first())
+            .and_then(Value::as_str)
+            .is_some_and(|state| state.eq_ignore_ascii_case("Ended"))
 }
 
 fn avatar_list_frame() -> Value {
