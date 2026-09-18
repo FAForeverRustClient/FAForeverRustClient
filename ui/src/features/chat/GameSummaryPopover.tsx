@@ -177,10 +177,12 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
           {/* The card is reachable now, so the action the double-click on the
               badge performs is spelled out here too. Nothing about a pair of
               crossed swords says "double-click me to spectate". */}
-          <button type="button" className="chat-head-action chat-game-popover-action" onClick={act}>
-            <Icon name={watching ? "eye" : "play"} size={14} />
-            {watching ? t("chat.aside.watch") : t("chat.aside.join")}
-          </button>
+          <footer className="chat-game-popover-foot">
+            <button type="button" className="chat-head-action" onClick={act}>
+              <Icon name={watching ? "eye" : "play"} size={14} />
+              {watching ? t("chat.aside.watch") : t("chat.aside.join")}
+            </button>
+          </footer>
         </aside>,
         document.body,
       )}
