@@ -1,6 +1,8 @@
 //! Vault publishing orchestration.
 
-use faf_domain::state::{is_safe_folder_name, UploadStatus, UploadsCommand, UploadsEvent};
+use faf_domain::state::{
+    is_safe_folder_name, ModsEvent, UploadKind, UploadStatus, UploadsCommand, UploadsEvent,
+};
 
 use crate::runtime::{EventSink, ServiceCtx};
 
@@ -13,6 +15,9 @@ pub async fn handle(cmd: UploadsCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(UploadsEvent::Opened {
                 request: request.clone(),
             });
+            if request.kind == UploadKind::Mod {
+                rescan_mods(ctx, out);
+            }
             let uploads = ctx.ports.uploads.clone();
             let sink = out.clone();
             tokio::spawn(async move {
@@ -26,6 +31,36 @@ pub async fn handle(cmd: UploadsCommand, ctx: &ServiceCtx, out: &EventSink) {
         UploadsCommand::SetRanked { ranked } => out.emit(UploadsEvent::RankedChanged { ranked }),
         UploadsCommand::Start => start(ctx, out).await,
     }
+}
+
+/// Re-read the mods folder while the publish dialog is opening.
+///
+/// The dialog prints the mod's version and uid, and it took them from the list
+/// scanned when the client started. An author who edits `mod_info.lua` and then
+/// publishes without restarting was shown the values from before the edit: the
+/// report is that publishing "takes the wrong version and UID".
+///
+/// The archive itself was always current, because it is zipped from the folder
+/// at the moment Publish is pressed. What was stale is the last screen before
+/// that happens, which is the screen the author checks.
+///
+/// Off the critical path on purpose. The dialog is already on screen and fills
+/// its facts in from the state; a scan that finishes a moment later corrects
+/// them in place, and one that fails leaves what was there rather than emptying
+/// the dialog. `InstalledLoading` is deliberately not emitted for the same
+/// reason: the list is not empty, and saying it is loading would blank the
+/// facts the author is reading.
+fn rescan_mods(ctx: &ServiceCtx, out: &EventSink) {
+    let mods = ctx.ports.mods.clone();
+    let sink = out.clone();
+    tokio::spawn(async move {
+        match mods.list_installed().await {
+            Ok(mods) => sink.emit(ModsEvent::InstalledLoaded { mods }),
+            Err(reason) => {
+                tracing::warn!(%reason, "could not re-read the mods folder for the publish dialog")
+            }
+        }
+    });
 }
 
 async fn start(ctx: &ServiceCtx, out: &EventSink) {
