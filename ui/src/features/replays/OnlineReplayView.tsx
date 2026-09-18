@@ -68,7 +68,14 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     loadStoredSet(WATCHED_STORAGE_KEY, (value): value is number => typeof value === "number"),
   );
 
-  const initialPlayer = browsing.replayVaultPlayer || self;
+  // The vault opens on your own replays, every time, which is what was asked
+  // for: a trainer who looks up a dozen other people in one sitting should not
+  // find the twelfth of them waiting the next time the tab is opened.
+  //
+  // `replayVaultPlayer` still remembers the last name searched, and is still
+  // what the form shows while a search is running, but it no longer decides
+  // where the tab lands. Signed out there is no "own", so it is the fallback.
+  const initialPlayer = self || browsing.replayVaultPlayer;
 
   // Somebody else's search wins over the default one, and having run it, the
   // default must not fire behind it: the store has not caught up yet, so
@@ -85,7 +92,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
 
   useEffect(() => {
     const state = useAppStore.getState().state;
-    const playerToSearch = state.settings.browsing.replayVaultPlayer || self;
+    const playerToSearch = self || state.settings.browsing.replayVaultPlayer;
     if (!runRequestedSearch() && !handedOver.current) {
       if (state.replays.vaultStatus.type === "idle" && playerToSearch) {
         searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
@@ -163,15 +170,11 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   const totalPages = useAppStore((s) => s.state.replays.vaultTotalPages);
   const totalRecords = useAppStore((s) => s.state.replays.vaultTotalRecords);
 
-  const formInitialQuery: ReplayQuery = useMemo(() => {
-    const base = vaultStatus.type === "idle"
+  const formInitialQuery: ReplayQuery = useMemo(() =>
+    vaultStatus.type === "idle"
       ? personalReplayQuery(initialPlayer, isoDaysAgo(365))
-      : query;
-    if (base.player === self && !browsing.replayVaultPlayer) {
-      return { ...base, player: "" };
-    }
-    return base;
-  }, [vaultStatus.type, initialPlayer, query, self, browsing.replayVaultPlayer]);
+      : query,
+  [vaultStatus.type, initialPlayer, query]);
 
   return (
     <>

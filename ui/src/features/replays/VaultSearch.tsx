@@ -38,6 +38,7 @@ import {
 } from "../../shared/replayQuery";
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
 import { replayGameModes, selectedGameMode, withGameMode } from "./replayGameModes";
+import { activeReplayPreset } from "./replayPresets";
 import "../../design-system/search-panel.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -195,6 +196,10 @@ export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, on
 
   const gameModes = replayGameModes(leaderboards);
   const hiddenFilterCount = advancedReplayFilterCount(form);
+  // Which scope button is lit. Read off the form, so it follows a search
+  // arrived at by hand or handed over from a player card as well as one of
+  // these three presses. See `activeReplayPreset`.
+  const preset = activeReplayPreset(form, self);
 
   return (
     <form className="vault-search online-vault-search search-panel surface-panel" onSubmit={submit}>
@@ -334,13 +339,32 @@ export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, on
       </div>
 
       <div className="vault-search-presets search-panel-secondary">
-        <Button type="button" onClick={() => applyPreset("newest")}>
+        {/* Drawn active the same way the toggles to the right of the divider
+            are. Three buttons that never changed gave no sign which scope the
+            list was under, which was the report. */}
+        <Button
+          type="button"
+          className={preset === "newest" ? "active" : ""}
+          aria-pressed={preset === "newest"}
+          onClick={() => applyPreset("newest")}
+        >
           {t("replays.search.preset.newest")}
         </Button>
-        <Button type="button" onClick={() => applyPreset("highestRated")}>
+        <Button
+          type="button"
+          className={preset === "highestRated" ? "active" : ""}
+          aria-pressed={preset === "highestRated"}
+          onClick={() => applyPreset("highestRated")}
+        >
           {t("replays.search.preset.bestReviewed")}
         </Button>
-        <Button type="button" disabled={!self} onClick={() => applyPreset("own")}>
+        <Button
+          type="button"
+          className={preset === "own" ? "active" : ""}
+          aria-pressed={preset === "own"}
+          disabled={!self}
+          onClick={() => applyPreset("own")}
+        >
           {t("replays.search.preset.myReplays")}
         </Button>
         {/* The divider is load-bearing: everything left of it replaces the
