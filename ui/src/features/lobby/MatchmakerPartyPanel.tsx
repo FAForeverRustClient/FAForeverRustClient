@@ -244,7 +244,14 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
           )}
           {/* No invite button here any more: the placeholder seat below is the
               same action, in the place the eye already goes. */}
-          {isParty && !canManageParty && (
+          {/* Everybody in a party can leave it, the leader included. The button
+              used to be hidden from whoever led, on the reasoning that the
+              leader manages the party rather than belonging to it. They belong
+              to it: a leader who wanted out had to kick every other seat one at
+              a time, and the report was simply that pressing Leave did not work
+              -- there was nothing to press. The server reassigns or dissolves
+              the party by itself, the way it does when the leader disconnects. */}
+          {isParty && (
             <Button disabled={searching} onClick={() => ipc.send({ kind: "Lobby", command: { type: "leaveParty" } })}>
               {t("lobby.party.leave")}
             </Button>
