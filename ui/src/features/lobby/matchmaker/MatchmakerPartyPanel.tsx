@@ -8,7 +8,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { ProfileAvatar } from "../../../shared/components/ProfileAvatar";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
-import { factionIdFromName } from "../../../shared/factions";
+import { factionIdFromName, orderFactionNames } from "../../../shared/factions";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 
 interface InviteModalProps {
@@ -86,31 +86,34 @@ const PARTY_CAPACITY = 4;
  * The words stay as the hover text and as each glyph's accessible name, so
  * nothing is lost to somebody who needs them. A faction this client does not
  * know keeps its word rather than being dropped: the list comes off the wire.
+ *
+ * All four picked used to collapse into the Random mark, on the grounds that
+ * "any of them" is what it means. It is not what it says. The party is at most
+ * four seats and four emblems fit on one line of one, so a seat whose player
+ * ticked every faction now shows every faction, and the Random mark is kept
+ * for the two cases that really are one: a seat that recorded no choice at
+ * all, and a server that answered the word "random".
  */
 function PartyFactions({ factions }: { factions: string[] }) {
   const { t } = useTranslation();
-  const ids = new Set(
-    factions
-      .map(factionIdFromName)
-      .filter((id): id is number => id !== null && id >= 1 && id <= 4),
-  );
-  const isAllOrRandom =
+  const isRandom =
     factions.length === 0
-    || ids.size === 4
-    || factions.some((f) => f.trim().toLocaleLowerCase() === "random");
+    || factions.some((faction) => faction.trim().toLocaleLowerCase() === "random");
 
-  if (isAllOrRandom) {
-    // All 4 factions or no choice recorded is the server's way of saying
-    // "any of them", which is the mark this client already uses for Random.
+  if (isRandom) {
     return (
       <span className="party-seat-factions" title={t("lobby.party.randomFaction")}>
         <FactionIcon faction={5} size={14} />
       </span>
     );
   }
+  // Sorted rather than taken as it arrived: the wire order is the order the
+  // player happened to click the toggles in, so the same three factions drew a
+  // different row for each member of the party.
+  const ordered = orderFactionNames(factions);
   return (
-    <span className="party-seat-factions" title={factions.join(", ")}>
-      {factions.map((faction) => {
+    <span className="party-seat-factions" title={ordered.join(", ")}>
+      {ordered.map((faction) => {
         const id = factionIdFromName(faction);
         return id === null ? (
           <small key={faction}>{faction}</small>
