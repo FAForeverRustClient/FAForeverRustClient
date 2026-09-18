@@ -1376,6 +1376,14 @@ impl RawGame {
 /// 900-rated game because that is what their global ratings happen to be, and
 /// the number printed here is read beside the same players' ratings in the
 /// lineup, which name the same leaderboard.
+///
+/// Rounded to nearest, which is not what a displayed rating does. The two are
+/// different quantities: a displayed rating is truncated because that is what
+/// the server and both reference clients print for it, while this is an
+/// average of several of those and truncating one biases it downward by up to
+/// a point every time. A server-supplied `average_rating` is rounded by the
+/// caller, so a fallback that truncated also disagreed with the value it
+/// stands in for.
 fn average_game_rating(
     teams: Option<&BTreeMap<String, Vec<String>>>,
     player_ratings: &PlayerRatings,
@@ -1395,10 +1403,12 @@ fn average_game_rating(
         .collect::<Vec<_>>();
 
     if ratings.is_empty() {
-        0
-    } else {
-        ratings.iter().sum::<i32>() / ratings.len() as i32
+        return 0;
     }
+    // Through `f64`, not integer division: `/` truncates toward zero, which
+    // rounds a negative average the wrong way as well as a positive one.
+    let total: i64 = ratings.iter().map(|rating| i64::from(*rating)).sum();
+    (total as f64 / ratings.len() as f64).round() as i32
 }
 
 /// Store the conservative displayed global rating from a lobby `player_info`
@@ -2754,8 +2764,9 @@ mod tests {
             .unwrap();
 
         assert_eq!(game.rating_type, "ladder_1v1");
-        // Ladder: 467 and 700, not global's 806 and 1000.
-        assert_eq!(game.average_rating, 583);
+        // Ladder: 467 and 700, not global's 806 and 1000. 583.5 rounds up,
+        // the way the server's own average does when it sends one.
+        assert_eq!(game.average_rating, 584);
     }
 
     #[test]
