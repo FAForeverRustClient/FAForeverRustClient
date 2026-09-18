@@ -244,13 +244,18 @@ impl MatchmakingState {
     /// Apply one `search_info` update without losing the other queues the party
     /// is searching. The lobby protocol reports queue changes independently,
     /// while the Java client permits several compatible queues at once.
-    pub fn update_search(&mut self, queue_name: String, searching: bool) {
+    ///
+    /// Answers whether anything actually moved. The caller broadcasts the
+    /// result, and broadcasting a state this declined to change is how a
+    /// finished match came back to life: see the early return below.
+    pub fn update_search(&mut self, queue_name: String, searching: bool) -> bool {
         // A match-found/cancelled update can be followed by late `stop`
         // acknowledgements for each formerly active queue. Those must not erase
         // the more useful terminal status. A new `start` intentionally does.
         if !searching && !matches!(self, Self::Searching { .. }) {
-            return;
+            return false;
         }
+        let before = self.clone();
         let mut queue_names = match self {
             Self::Searching { queue_names } => queue_names.clone(),
             _ => Vec::new(),
@@ -270,6 +275,7 @@ impl MatchmakingState {
         } else {
             Self::Searching { queue_names }
         };
+        *self != before
     }
 
     pub fn searching_queues(&self) -> &[String] {
@@ -1237,6 +1243,33 @@ mod tests {
                 queue_name: "ladder1v1".into(),
             }
         );
+    }
+
+    #[test]
+    fn a_refused_update_is_reported_as_no_change() {
+        // The caller broadcasts what this answers. A late `stop` against a
+        // launch leaves the state alone, and saying so is what stops the
+        // connection from re-publishing `Launching` after the game it started
+        // has already ended.
+        let mut state = MatchmakingState::Launching {
+            queue_name: "tmm3v3".into(),
+        };
+        assert!(!state.update_search("tmm3v3".into(), false));
+        assert_eq!(
+            state,
+            MatchmakingState::Launching {
+                queue_name: "tmm3v3".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn a_repeated_start_is_reported_as_no_change() {
+        let mut state = MatchmakingState::Searching {
+            queue_names: vec!["tmm2v2".into()],
+        };
+        assert!(!state.update_search("tmm2v2".into(), true));
+        assert!(state.update_search("tmm4v4".into(), true));
     }
 
     #[test]
