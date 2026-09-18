@@ -7,7 +7,7 @@
 // backend `Settings` slice, at which point this module reads from there instead
 // and the rest of the app keeps calling the same `t()`.
 
-import { DEFAULT_LOCALE, isLocale, type Locale } from "./locales";
+import { DEFAULT_LOCALE, isLocale, matchLocale, type Locale } from "./locales";
 
 const STORAGE_KEY = "faf.locale";
 
@@ -15,15 +15,52 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 
+/**
+ * The language the system is in, as far as the WebView will say.
+ *
+ * `navigator.languages` is the ordered list the operating system hands the
+ * browser, so the first entry this client has a catalogue for is the best
+ * answer available. A runtime that has neither property, or names nothing we
+ * translate, answers `null`.
+ */
+export function detectSystemLocale(): Locale | null {
+  if (typeof navigator === "undefined") return null;
+  const tags = navigator.languages?.length
+    ? navigator.languages
+    : navigator.language
+      ? [navigator.language]
+      : [];
+  return matchLocale(tags);
+}
+
+/**
+ * The language to open in.
+ *
+ * A stored choice wins outright, and is the only thing that does: somebody who
+ * picked English on a Russian machine meant it.
+ *
+ * With nothing stored, the system's language is used. That is the first run
+ * after installing, which is the case the request was about: a client on a
+ * Russian Windows opened in English and stayed there until its owner found the
+ * picker.
+ *
+ * The detected language is deliberately *not* written back. Storing it would
+ * turn "never chose" into a choice, and the next reader could no longer tell
+ * the two apart; leaving it unwritten also means somebody who changes their
+ * system language and has never touched the picker is followed rather than
+ * left behind. `setLocale` writes, and only a real choice calls it.
+ */
 function readStoredLocale(): Locale {
   try {
     if (typeof window === "undefined") return DEFAULT_LOCALE;
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return isLocale(raw) ? raw : DEFAULT_LOCALE;
+    if (isLocale(raw)) return raw;
   } catch {
     // A blocked or unavailable storage must not stop the client from starting.
-    return DEFAULT_LOCALE;
+    // Nothing is stored as far as this run is concerned, so the system's
+    // language is still a better guess than English.
   }
+  return detectSystemLocale() ?? DEFAULT_LOCALE;
 }
 
 let current: Locale = readStoredLocale();
