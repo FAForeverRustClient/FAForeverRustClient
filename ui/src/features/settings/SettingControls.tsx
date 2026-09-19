@@ -4,22 +4,22 @@ import type { ReactNode } from "react";
 import { addSettingsIndexEntry, removeSettingsIndexEntry } from "./settingsSearch";
 
 /**
- * Which register the rows below belong to.
+ * Which section the rows below belong to.
  *
- * Supplied by the settings shell around each register's panels, so a row does
- * not have to be told, and a panel that moves between registers carries its
+ * Supplied by the settings shell around each section's panels, so a row does
+ * not have to be told, and a panel that moves between sections carries its
  * rows' search entries with it without anybody editing a list.
  */
-const RegisterContext = createContext<string>("");
+const SectionContext = createContext<string>("");
 
-export function SettingsRegisterScope({
-  register,
+export function SettingsSectionScope({
+  section,
   children,
 }: {
-  register: string;
+  section: string;
   children: ReactNode;
 }) {
-  return <RegisterContext.Provider value={register}>{children}</RegisterContext.Provider>;
+  return <SectionContext.Provider value={section}>{children}</SectionContext.Provider>;
 }
 
 /**
@@ -39,15 +39,15 @@ export function useSettingsIndexEntry(...text: (ReactNode | undefined)[]): void 
   // row on every keystroke elsewhere in the tab. A newline is a safe separator
   // because no label or hint contains one.
   const key = phrases.join("\n");
-  const register = useContext(RegisterContext);
+  const section = useContext(SectionContext);
   useEffect(() => {
-    if (!register) return;
+    if (!section) return;
     const parts = key.split("\n").filter(Boolean);
-    for (const phrase of parts) addSettingsIndexEntry(register, phrase);
+    for (const phrase of parts) addSettingsIndexEntry(section, phrase);
     return () => {
-      for (const phrase of parts) removeSettingsIndexEntry(register, phrase);
+      for (const phrase of parts) removeSettingsIndexEntry(section, phrase);
     };
-  }, [register, key]);
+  }, [section, key]);
 }
 
 export function SettingsSection({

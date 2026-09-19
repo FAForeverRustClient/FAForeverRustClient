@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import type { PlayerClan } from "../../ipc/bindings";
-import { formatDate } from "../../shared/dates";
+import { formatDate } from "../../shared/format/dates";
 import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
 import { Button } from "../../design-system/Button";
-import { openPlayerCard } from "./playerCardActions";
+import { openPlayerCard } from "../../shared/playerCardActions";
 import { useTranslation } from "../../i18n/useTranslation";
-import { PlayerName } from "../../shared/nameColors";
+import { PlayerName } from "../../shared/components/nameColors";
 import { ClanManagement } from "./ClanManagement";
 
 function displayDate(value: string): string {

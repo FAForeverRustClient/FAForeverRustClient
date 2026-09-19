@@ -54,7 +54,13 @@ export type IconName =
   | "info"
   | "check"
   | "folder"
-  | "trash";
+  | "trash"
+  // One person: the account that is signed in. `users` is a group.
+  | "user"
+  // Local storage: the cache and the paths the client keeps on disk.
+  | "drive"
+  // The network: connectivity to other players.
+  | "globe";
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -112,6 +118,9 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     info: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="8" r=".8" fill="currentColor" stroke="none" /><path d="M12 11.5v4.5" /></>,
     check: <polyline points="20 6 9 17 4 12" />,
     folder: <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />,
+    user: <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>,
+    drive: <><rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 12h.01M10 12h.01" /><path d="M14 12h4" /></>,
+    globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18Z" /></>,
     trash: (
       <>
         <polyline points="3 6 5 6 21 6" />

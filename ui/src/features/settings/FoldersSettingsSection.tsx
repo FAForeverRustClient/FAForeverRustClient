@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
-import { FOLDER_GROUPS, openFolderEntry, type FolderEntry } from "../game-folders/gameFolders";
+import { FOLDER_GROUPS, openFolderEntry, type FolderEntry } from "../../shared/gameFolders";
 import { SettingRow } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 

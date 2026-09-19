@@ -4,7 +4,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-import { translateIn, type MessageValues } from "./index";
+import { translateIn, type MessageValues } from ".";
 import type { MessageKey } from "./catalog/en";
 import type { Locale } from "./locales";
 import { getLocale, setLocale, subscribeToLocale } from "./store";

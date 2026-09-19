@@ -9,7 +9,7 @@ import type { PlayerSummary, Tourney, TourneyPlayer, TourneyTeam } from "../../i
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerChip } from "./PlayerChip";
 import { rankedEntrants } from "./tourneyPresentation";
-import { profileOf } from "../../shared/tourneyRules";
+import { profileOf } from "../../shared/rules/tourneyRules";
 
 /** A cell with nothing in it, drawn rather than left blank so the row reads. */
 const NO_RATING = "–";

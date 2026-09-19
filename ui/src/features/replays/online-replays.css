@@ -1599,6 +1599,11 @@ button.vault-input {
   font-size: 12px;
 }
 
+.replay-preview-overlay-generate {
+  margin-left: auto;
+  flex: none;
+}
+
 .replay-preview-overlay-image {
   width: 100%;
   height: 100%;

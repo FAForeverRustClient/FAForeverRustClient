@@ -5,12 +5,12 @@ import {
   mapThumbnailCandidates,
   normalizeMapName,
 } from "../../shared/mapPresentation";
-import { clientIntlTag, formatAgeOrDate } from "../../shared/dates";
+import { clientIntlTag, formatAgeOrDate } from "../../shared/format/dates";
 import { useAppStore } from "../../store/store";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
-import { useColumnWidths } from "../../shared/useColumnWidths";
+import { useColumnWidths } from "../../shared/hooks/useColumnWidths";
 import { columnTemplate } from "../../shared/tableColumns";
 
 export type ReplayListCell = {

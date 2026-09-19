@@ -23,7 +23,7 @@
 // The previous version ordered the shelf by an unstated relevance score, which
 // left a reader with no way to disagree with it.
 //
-// Filtering runs locally against the loaded catalogue (`shared/trainingRules`,
+// Filtering runs locally against the loaded catalogue (`shared/rules/trainingRules`,
 // a twin pinned by the conformance fixture) rather than as a command per
 // keystroke.
 
@@ -39,7 +39,7 @@ import type {
   TrainingResource,
 } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-import { filterResources } from "../../shared/trainingRules";
+import { filterResources } from "../../shared/rules/trainingRules";
 import { EMPTY_TRAINING_QUERY, trainingQueryIsEmpty } from "../../shared/trainingQuery";
 import { TrainingCard } from "./TrainingCard";
 import {

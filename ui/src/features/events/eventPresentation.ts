@@ -8,7 +8,7 @@
 // thing that can be set wrong.
 
 import type { EventCategory, EventOrigin, WeekStart } from "../../ipc/bindings";
-import { clientIntlTag, formatTime } from "../../shared/dates";
+import { clientIntlTag, formatTime } from "../../shared/format/dates";
 import type { MessageKey } from "../../i18n";
 import type { CalendarEntry } from "./calendarFeed";
 import { addDays, weekDays } from "./calendarGrid";

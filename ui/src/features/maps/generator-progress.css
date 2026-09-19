@@ -1,0 +1,15 @@
+/* The generator's progress line. Its own sheet because the Maps tab shows
+   it without ever opening the generator dialog, whose stylesheet used to be
+   the only place these lived. */
+.generate-map-progress {
+  margin: 0;
+  font-size: 12px;
+}
+
+.generate-map-progress.is-ok {
+  color: var(--color-ok);
+}
+
+.generate-map-progress.is-error {
+  color: var(--color-error);
+}

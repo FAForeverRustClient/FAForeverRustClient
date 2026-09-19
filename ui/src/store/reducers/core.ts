@@ -11,7 +11,7 @@ import type {
   SettingsEvent,
   SettingsState,
 } from "../../ipc/bindings";
-import { normalizePlayerNotes } from "../../shared/playerNotes";
+import { normalizePlayerNotes } from "../../shared/rules/playerNotes";
 import { normalizeBrowsingPreferences } from "../../shared/browsingPreferences";
 import {
   normalizePathPreferences,

@@ -6,7 +6,7 @@ import { requestSettingsSection } from "../settings/settingsNavigation";
 import { native } from "../../ipc/native";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
-import { renderFormattedText, stripHtmlTags } from "../chat/chatFormat";
+import { renderFormattedText, stripHtmlTags } from "../chat/messages/chatFormat";
 import { playNotificationSound, soundForKind } from "./notificationSound";
 import { raisesOsNotification } from "./osNotifications";
 import "./notifications.css";

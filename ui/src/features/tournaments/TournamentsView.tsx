@@ -31,9 +31,9 @@ import { ipc } from "../../ipc/client";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
 import { matchTitle } from "./matchTitle";
-import { MatchReportDialog } from "./MatchReportDialog";
-import { TournamentDetailPane } from "./TournamentDetailPane";
-import { TournamentForm } from "./TournamentForm";
+import { MatchReportDialog } from "./bracket/MatchReportDialog";
+import { TournamentDetailPane } from "./detail/TournamentDetailPane";
+import { TournamentForm } from "./manage/TournamentForm";
 import { SignUpDialog } from "./SignUpDialog";
 import {
   STATUS_LABELS,
@@ -43,7 +43,7 @@ import {
   groupedEvents,
   type ListGroup,
 } from "./tourneyPresentation";
-import { busyMatchId, openEvent } from "../../shared/tourneyRules";
+import { busyMatchId, openEvent } from "../../shared/rules/tourneyRules";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
 

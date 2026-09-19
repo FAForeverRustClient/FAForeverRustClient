@@ -1,9 +1,9 @@
 import type { PlayerCardProfile, PlayerRatingSummary } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
-import { PlayerNoteCard } from "./PlayerNoteEditor";
+import { PlayerNoteCard } from "../../shared/components/PlayerNoteEditor";
 import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
-import { formatDateTime } from "../../shared/dates";
+import { formatDateTime } from "../../shared/format/dates";
 
 function displayDate(value: string): string {
   return formatDateTime(value, "N/A");

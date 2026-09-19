@@ -3,7 +3,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Pagination } from "../../design-system/Pagination";
-import { useGridPageSize } from "../../shared/useGridPageSize";
+import { useGridPageSize } from "../../shared/hooks/useGridPageSize";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import {
   SearchField,
@@ -346,10 +346,11 @@ export function InstalledModsView({
     setActiveMods(installed.filter((mod) => mod.enabled || wanted.has(mod.uid)).map((mod) => mod.uid));
   };
 
+  // The installed list on every visit, because the folder changes under the
+  // client; the vault once per session (the service refuses a repeat).
   useEffect(() => {
-    const mods = useAppStore.getState().state.mods;
-    if (mods.installedStatus.type === "idle") loadInstalled();
-    if (mods.vaultStatus.type === "idle") loadVault();
+    loadInstalled();
+    loadVault();
   }, []);
 
   // The catalogue reload finished: say what it found, and take the reader to

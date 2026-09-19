@@ -1,0 +1,400 @@
+/* Co-op: mission catalog plus currently open co-op games. */
+.coop-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 12px;
+}
+
+.coop-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.coop-intro-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-md);
+}
+
+.coop-intro h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.coop-intro p {
+  max-width: 720px;
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.coop-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coop-toolbar .search-field {
+  flex: 1 1 260px;
+}
+
+.coop-layout {
+  display: grid;
+  flex: 1;
+  /* Wide enough for the record board to show all seven of its columns without
+     scrolling sideways: rank, time, players, team, secondary, the date it was
+     played and the replay button. The team cell is the one that grows, so it
+     truncates instead. Widened when the date joined them: the replay button sat
+     off the edge and had to be scrolled to. */
+  grid-template-columns: minmax(0, 1fr) minmax(560px, 660px);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.coop-layout > .play-toolbar {
+  grid-column: 1;
+  grid-row: 1;
+  margin-bottom: 0;
+}
+
+.coop-layout > .coop-games-main {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.coop-layout > .coop-detail {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.coop-games-main .section-heading,
+.coop-detail .section-heading {
+  flex: 0 0 auto;
+  margin-bottom: 12px;
+}
+
+.coop-games-main .game-tile-grid {
+  min-height: 0;
+  padding: 2px;
+  overflow: auto;
+}
+
+/* Shape and type come from `.empty-state` in design-system/patterns.css. All
+   this adds is the stretch, so the state fills the games pane rather than
+   sitting at its top. */
+.coop-games-empty {
+  flex: 1;
+}
+
+.coop-mission-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.coop-picker-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.coop-picker-field label {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 900px) {
+  .coop-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    height: auto;
+  }
+
+  .coop-layout > .play-toolbar {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .coop-layout > .coop-games-main {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .coop-layout > .coop-detail {
+    grid-column: 1;
+    grid-row: 3;
+  }
+}
+
+/* ── Campaign list ───────────────────────────────────────────────────────── */
+
+.coop-detail {
+  overflow-y: auto;
+}
+
+.coop-campaign + .coop-campaign {
+  margin-top: 14px;
+}
+
+.coop-campaign-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+/* Faction is identity, not status: tinted with the faction tokens the rest
+   of the client already uses, never with the ok/warn/error colours. */
+.coop-faction {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.coop-faction.is-uef { color: var(--color-faction-uef); }
+.coop-faction.is-aeon { color: var(--color-faction-aeon); }
+.coop-faction.is-cybran { color: var(--color-faction-cybran); }
+.coop-faction.is-seraphim { color: var(--color-faction-seraphim); }
+
+/* Surface, border, hover and focus ring come from `.surface`
+   `.surface-interactive` in design-system/patterns.css. */
+.coop-mission-row {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.coop-mission-row + .coop-mission-row {
+  margin-top: 4px;
+}
+
+.coop-mission-row.is-active {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised);
+}
+
+/* ── Mission detail ──────────────────────────────────────────────────────── */
+
+.coop-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.coop-detail-head h3 {
+  margin: 0 0 2px;
+  font-size: 16px;
+}
+
+.coop-detail-brief {
+  margin: 10px 0;
+  white-space: pre-line;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+/* ── Record board ────────────────────────────────────────────────────────── */
+
+.coop-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0 8px;
+}
+
+.coop-board-head h4 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.coop-board-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.coop-board-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.coop-player-count-group {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  gap: 2px;
+}
+
+.coop-player-count-group button {
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.coop-player-count-group button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.coop-player-count-group button.is-active {
+  color: var(--color-text);
+  background: var(--color-surface-active, var(--color-surface));
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.coop-load-error {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 10px 12px;
+}
+
+.coop-load-error strong,
+.coop-load-error p {
+  margin: 0;
+}
+
+.coop-load-error p {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+/* Nothing to scroll to sideways. The board used to be seven pixel-width
+   columns with a 760 pixel floor and draggable dividers, which in a panel that
+   shares its width with the mission list meant a horizontal scrollbar most of
+   the time. The columns are shares of the panel now, so they fit whatever it
+   is. */
+.coop-board-scroll {
+  overflow-x: hidden;
+}
+
+.coop-board {
+  width: 100%;
+  /* Fixed, so the colgroup's shares are what the table uses rather than a
+     suggestion the widest row can overrule. */
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+/* Every cell truncates, because a column that cannot widen has to be allowed
+   to cut instead. The team column carried this alone while the others were
+   free to push the table wider than its panel. */
+.coop-board th,
+.coop-board td {
+  overflow: hidden;
+  padding: 5px 8px;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.coop-board th {
+  color: var(--color-muted);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.coop-board-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A real button rather than an underlined word: this downloads a replay and
+   starts the game, which is not what a link in a table cell promises. */
+.coop-board-replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  color: var(--color-accent);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: 550;
+  line-height: 1.6;
+  cursor: pointer;
+}
+
+.coop-board-replay:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
+}
+
+.coop-board-replay:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* The record exists, the replay does not: older runs predate replay storage. */
+.coop-board-no-replay {
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+/* The team cell holds four logins and is the widest share for that reason.
+   The truncation is the rule above now, shared with every other cell; what is
+   left here is that it must not carry a max-width of its own, which would
+   leave the column's share unspent. */
+.coop-board-team {
+  max-width: none;
+}

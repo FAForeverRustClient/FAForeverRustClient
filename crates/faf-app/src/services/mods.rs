@@ -50,6 +50,10 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(ModsEvent::DownloadSizesResolved { sizes });
         }
         ModsCommand::LoadInstalled => {
+            // Same as `services::maps`: one scan at a time, repeated on demand.
+            if out.with_state(|state| state.mods.installed_status == ModListStatus::Loading) {
+                return;
+            }
             out.emit(ModsEvent::InstalledLoading);
             match ctx.ports.mods.list_installed().await {
                 Ok(mods) => out.emit(ModsEvent::InstalledLoaded { mods }),

@@ -32,7 +32,7 @@ import { InstalledModsView } from "./InstalledModsView";
 // off the filesystem, which is what an author has after building one.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { ModRenameDialog } from "./ModRenameDialog";
-import { requestModVaultFocus, takeModVaultFocus } from "./modVaultFocus";
+import { requestModVaultFocus, takeModVaultFocus } from "../../shared/modVaultFocus";
 import { modUpdateAvailable } from "./modVersions";
 import { favoriteModKeys, toggleFavoriteMod } from "./favoriteMods";
 import "./mods.css";
@@ -225,10 +225,11 @@ function VaultView({ busy }: { busy: boolean }) {
   const favoriteUids = useMemo(() => favoriteModKeys(browsing.favoriteMods), [browsing.favoriteMods]);
   const toggleFavorite = (uid: string) => toggleFavoriteMod(browsing, uid);
 
+  // The vault once per session (the service refuses a repeat); the installed
+  // list on every visit, because the folder changes under the client.
   useEffect(() => {
-    const mods = useAppStore.getState().state.mods;
-    if (mods.vaultStatus.type === "idle") loadVault();
-    if (mods.installedStatus.type === "idle") loadInstalled();
+    loadVault();
+    loadInstalled();
   }, []);
 
   // Only on a change of preset, never on mount, so the remembered sort is not

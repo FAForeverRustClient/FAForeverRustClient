@@ -48,9 +48,9 @@ import type {
 } from "../ipc/bindings";
 import type { BracketKind, MatchPlan } from "../ipc/bindings";
 import fixture from "./__fixtures__/reducer-conformance.json";
-import { canLaunch, installTarget, updateAvailable } from "../shared/galacticWarActions";
-import { noteForPlayer } from "../shared/playerNotes";
-import { contributionProblem, filterResources, reviewProblem } from "../shared/trainingRules";
+import { canLaunch, installTarget, updateAvailable } from "../shared/rules/galacticWarActions";
+import { noteForPlayer } from "../shared/rules/playerNotes";
+import { contributionProblem, filterResources, reviewProblem } from "../shared/rules/trainingRules";
 import {
   bracketConfigOf,
   defaultPlanFor,
@@ -108,7 +108,7 @@ import {
   unreadTotal,
   vetoTurn,
   wouldExceedCap,
-} from "../shared/tourneyRules";
+} from "../shared/rules/tourneyRules";
 import { applyEvent } from "./reducer";
 import { summarize } from "./reducers/reviews";
 import { isUploadBusy } from "./reducers/uploads";

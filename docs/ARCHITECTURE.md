@@ -62,14 +62,17 @@ rust-client/
 │  │
 │  ├─ faf-ipc/                # tauri-specta contracts: typed commands/events + TS export
 │  │
-│  └─ src-tauri/              # thin Tauri binary: builds faf-app, registers commands,
-│                             #   forwards every AppEvent -> emit(). ~no logic.
+│  └─ src-tauri/              # thin Tauri binary: run() assembles commands.rs, startup.rs
+│                             #   (builds faf-app, forwards every AppEvent -> emit()),
+│                             #   window.rs + navigation.rs, tray.rs. ~no logic.
 │
 └─ ui/                        # React frontend (ForgeMapToolkit design system)
    ├─ design-system/          #   reused primitives + CSS tokens (tokens.css, primitives.css)
    ├─ ipc/                    #   generated typed client + single event-subscription hook
-   ├─ store/                  #   Zustand slices + one event reducer (mirror of faf-domain)
-   └─ features/<tab>/         #   container (selectors + dispatch) + view (primitives only)
+   ├─ shared/                 #   what two features both need: components/ hooks/ rules/ format/
+   ├─ store/                  #   Zustand store + reducers/<slice>.ts (twins of faf-domain state/)
+   └─ features/<tab>/         #   container (selectors + dispatch) + view (primitives only);
+                              #   a module: imports shared/, never a sibling feature
 ```
 
 ### Dependency direction (enforced by the crate graph)
@@ -188,7 +191,7 @@ behind the connection task.
 ### 3.6 Frontend mirror
 
 ```ts
-// ui/store/reducer.ts : mirrors faf-domain/reducer.rs
+// ui/store/reducer.ts : dispatches to reducers/<slice>.ts, the twins of faf-domain/state/<slice>.rs
 function applyEvent(state, event: AppEvent) {
   switch (event.kind) {
     case "Session": sessionReducer(state.session, event); break;
@@ -230,7 +233,15 @@ The ForgeMapToolkit design system is the **view layer only**.
 - **`design-system/`**: existing tokens + primitives lifted in as-is (`tokens.css`, `primitives.css`, primitive components). It stays a pure presentation library.
 - **A feature is a folder, not a class:** `features/<tab>/` owns its view and focused
   subcomponents. Small features may colocate selection and presentation in one file;
-  larger features extract dedicated components and pure helpers as they grow.
+  larger features extract dedicated components and pure helpers as they grow, and
+  split into sub-folders along the tab's own sub-destinations once one level stops
+  being readable (`lobby/matchmaker/`, `replays/live/`).
+- **A feature is a module:** it imports from the foundation directories and from
+  itself, never from a sibling feature. What two features both need moves down into
+  `shared/` (sorted by kind: `components/`, `hooks/`, `rules/`, `format/`).
+  `scripts/check-architecture.mjs` enforces this; the handful of real cross-feature
+  dependencies are allow-listed there with the reason for each. `shell/` and `nav/`
+  compose every tab and are exempt.
   - Feature views select backend state and dispatch typed commands.
   - Presentational subcomponents receive data and callbacks through props and compose
     design-system primitives.
@@ -399,7 +410,7 @@ Each feature = *new slice + new service + new port impl*. None can introduce spa
   1. **A rule that runs on every keystroke may have a frontend twin, and the twin is
      pinned in the same change.** The library filter and the two form validators run per
      character typed, which a command round trip would make feel like the network. They
-     live in `ui/src/shared/trainingRules.ts` and are pinned by the `trainingFilters` and
+     live in `ui/src/shared/rules/trainingRules.ts` and are pinned by the `trainingFilters` and
      `trainingFormProblems` cases in the conformance fixture, recorded from the Rust
      functions rather than from anyone's reading of them. Everything not per-keystroke
      (which resources are recommended, in what order, and the composed text of a post)

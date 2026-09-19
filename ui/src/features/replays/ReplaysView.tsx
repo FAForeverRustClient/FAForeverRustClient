@@ -4,9 +4,9 @@ import { SectionTabs } from "../../design-system/SectionTabs";
 import type { ReplayStatus } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { LiveReplayView } from "./LiveReplayView";
-import { LocalReplayView } from "./LocalReplayView";
-import { OnlineReplayView } from "./OnlineReplayView";
+import { LiveReplayView } from "./live/LiveReplayView";
+import { LocalReplayView } from "./local/LocalReplayView";
+import { OnlineReplayView } from "./online/OnlineReplayView";
 import "./replays.css";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -58,9 +58,7 @@ export function ReplaysView() {
   // crawl anyway.
   useEffect(() => {
     if (offline) return;
-    if (useAppStore.getState().state.coop.catalogStatus.type === "idle") {
-      ipc.send({ kind: "Coop", command: { type: "loadCatalog" } });
-    }
+    ipc.send({ kind: "Coop", command: { type: "loadCatalog" } });
   }, [offline]);
 
   const note = statusNote(status);

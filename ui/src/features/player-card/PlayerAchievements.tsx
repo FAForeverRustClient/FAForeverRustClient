@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { PlayerAchievement } from "../../ipc/bindings";
-import { formatDate } from "../../shared/dates";
+import { formatDate } from "../../shared/format/dates";
 import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 

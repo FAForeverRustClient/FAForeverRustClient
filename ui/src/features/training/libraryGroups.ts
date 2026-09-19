@@ -10,14 +10,14 @@
 // before they open this tab, the tabs above already answer "what kind", and the
 // two together are the whole question: a build order, for 1v1.
 //
-// Nothing here is a rule the domain shares, so unlike `shared/trainingRules` it
+// Nothing here is a rule the domain shares, so unlike `shared/rules/trainingRules` it
 // has no Rust twin: grouping is how this one view arranges what the filter
 // returned, and it runs on every keystroke because the groups change as the
 // filter narrows.
 
 import type { MessageKey } from "../../i18n";
 import type { TrainingProfile, TrainingResource } from "../../ipc/bindings";
-import { normaliseMap } from "../../shared/trainingRules";
+import { normaliseMap } from "../../shared/rules/trainingRules";
 import { kindLabel } from "./trainingPresentation";
 
 /**

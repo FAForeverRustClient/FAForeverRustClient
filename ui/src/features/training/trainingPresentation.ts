@@ -15,7 +15,7 @@ import type {
   TrainingResource,
   TrainingTopic,
 } from "../../ipc/bindings";
-import { resourceBand } from "../../shared/trainingRules";
+import { resourceBand } from "../../shared/rules/trainingRules";
 import {
   isGeneratedMapPlaceholderUrl,
   mapPresentation,

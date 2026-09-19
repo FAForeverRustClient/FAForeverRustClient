@@ -18,7 +18,7 @@ import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
-import { PlayerName } from "../../shared/nameColors";
+import { PlayerName } from "../../shared/components/nameColors";
 
 /** Mirrors `faf_domain::state::clan::MAX_CLAN_TAG`, which is the API's own cap. */
 const MAX_TAG = 3;
@@ -352,7 +352,7 @@ export function ClanManagement() {
                           {t("clan.roster.handOver")}
                         </Button>
                         <Button
-                          className="btn-danger"
+                          variant="danger"
                           disabled={busy}
                           onClick={() =>
                             send({ type: "remove", payload: { playerId: member.playerId } })
@@ -377,7 +377,7 @@ export function ClanManagement() {
                     <span>{t("clan.disband.confirm", { name: identity.clanName })}</span>
                     <Button onClick={() => setConfirming(null)}>{t("clan.cancel")}</Button>
                     <Button
-                      className="btn-danger"
+                      variant="danger"
                       disabled={busy}
                       onClick={() => {
                         setConfirming(null);
@@ -388,7 +388,7 @@ export function ClanManagement() {
                     </Button>
                   </div>
                 ) : (
-                  <Button className="btn-danger" disabled={busy} onClick={() => setConfirming("disband")}>
+                  <Button variant="danger" disabled={busy} onClick={() => setConfirming("disband")}>
                     {t("clan.disband.submit")}
                   </Button>
                 )}
@@ -403,7 +403,7 @@ export function ClanManagement() {
                   <span>{t("clan.leave.confirm", { name: identity.clanName })}</span>
                   <Button onClick={() => setConfirming(null)}>{t("clan.cancel")}</Button>
                   <Button
-                    className="btn-danger"
+                    variant="danger"
                     disabled={busy}
                     onClick={() => {
                       setConfirming(null);
@@ -414,7 +414,7 @@ export function ClanManagement() {
                   </Button>
                 </div>
               ) : (
-                <Button className="btn-danger" disabled={busy} onClick={() => setConfirming("leave")}>
+                <Button variant="danger" disabled={busy} onClick={() => setConfirming("leave")}>
                   {t("clan.leave.submit")}
                 </Button>
               )}
