@@ -49,7 +49,7 @@ pub(crate) fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent
 pub(crate) fn build_main(app: &tauri::App) -> tauri::Result<()> {
     let nav_handle = app.handle().clone();
     let new_win_handle = app.handle().clone();
-    tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::default())
+    let window = tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::default())
         .title("FAForever Client")
         // First run only: the window-state plugin replaces this with the
         // remembered geometry when there is one.
@@ -83,5 +83,13 @@ pub(crate) fn build_main(app: &tauri::App) -> tauri::Result<()> {
             tauri::webview::NewWindowResponse::Deny
         })
         .build()?;
+
+    // Browser-style inspection in development mode
+    // `FAF_OPEN_DEVTOOLS=1 pnpm run tauri dev`.
+    #[cfg(debug_assertions)]
+    if std::env::var_os("FAF_OPEN_DEVTOOLS").is_some() {
+        window.open_devtools();
+    }
+
     Ok(())
 }

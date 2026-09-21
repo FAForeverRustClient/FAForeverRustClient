@@ -61,6 +61,7 @@ hex color instead of a token).
 
 Env toggles for local dev:
 - `FAF_FAKE_AUTH=1`: skip the browser login (offline fake auth)
+- `FAF_OPEN_DEVTOOLS=1`: open browser-style devtools
 - `FAF_FAKE_LOBBY=1` / `FAF_FAKE_CHAT=1`: keep either live service local while testing
 - `FAF_FAKE_ROLES=TOURNAMENT_DIRECTOR`: comma-separated permission roles for the session,
   so role-gated UI can be built and screenshotted without holding the role. It reveals
