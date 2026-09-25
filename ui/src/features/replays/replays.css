@@ -426,3 +426,65 @@
   margin-top: var(--space-2);
   font-size: 11px;
 }
+
+/* A private comment and tags on the replay (issue 324). Quiet on purpose: it
+   is the reader's own index, and it sits between the lineup and the actions. */
+.replay-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.replay-notes-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.replay-notes-head h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.replay-notes-head span {
+  font-size: 12px;
+}
+
+.replay-notes-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.replay-notes-tags li {
+  padding: 2px var(--space-2);
+  color: var(--color-accent);
+  font-size: 12px;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.replay-notes-comment {
+  min-height: 52px;
+  resize: vertical;
+  font: inherit;
+}
+
+.replay-notes-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.replay-notes-tag-input {
+  flex: 1;
+  min-width: 0;
+}

@@ -244,6 +244,10 @@ export function LocalReplaySearch({
               <input className="vault-input" type="search" value={form.title} onChange={(event) => set("title", event.target.value)} />
             </label>
             <label className="vault-field">
+              <span className="vault-field-label">{t("replays.search.noteOrTag")}</span>
+              <input className="vault-input" type="search" value={form.note} onChange={(event) => set("note", event.target.value)} />
+            </label>
+            <label className="vault-field">
               <span className="vault-field-label">{t("replays.search.recorder")}</span>
               <input className="vault-input" type="search" value={form.recorder} onChange={(event) => set("recorder", event.target.value)} />
             </label>

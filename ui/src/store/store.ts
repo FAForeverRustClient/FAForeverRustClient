@@ -436,7 +436,7 @@ const INITIAL: AppState = {
       hoverOpenDelayMs: 500,
       hoverCloseDelayMs: 160,
     },
-    social: { playerNotes: [] },
+    social: { playerNotes: [], replayNotes: [] },
     notifications: {
       enabled: true,
       desktop: true,

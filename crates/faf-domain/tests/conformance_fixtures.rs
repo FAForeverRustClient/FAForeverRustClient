@@ -2691,6 +2691,7 @@ fn helper_fixture() -> HelperFixture {
             .map(|(notes, player_id)| PlayerNoteLookupCase {
                 expected: SocialPreferences {
                     player_notes: notes.clone(),
+                    replay_notes: Vec::new(),
                 }
                 .note_for(player_id)
                 .map_or_else(String::new, |entry| entry.note.clone()),
@@ -5340,6 +5341,31 @@ fn cases() -> Vec<Case> {
                                 player_id: 0,
                                 login: "Invalid".into(),
                                 note: "drop me".into(),
+                            },
+                        ],
+                        // Both reducers tidy these the same way: tags trimmed,
+                        // folded and deduplicated, the later note for a replay
+                        // winning, and an empty one dropped.
+                        replay_notes: vec![
+                            ReplayNote {
+                                replay_id: 9,
+                                comment: " first ".into(),
+                                tags: vec!["old".into()],
+                            },
+                            ReplayNote {
+                                replay_id: 12,
+                                comment: String::new(),
+                                tags: vec![" Lots  finals ".into(), "LOTS FINALS".into(), " ".into()],
+                            },
+                            ReplayNote {
+                                replay_id: 9,
+                                comment: "  Comeback  ".into(),
+                                tags: Vec::new(),
+                            },
+                            ReplayNote {
+                                replay_id: 30,
+                                comment: " ".into(),
+                                tags: Vec::new(),
                             },
                         ],
                     },

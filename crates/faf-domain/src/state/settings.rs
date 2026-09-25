@@ -189,10 +189,51 @@ pub struct PlayerNote {
     pub note: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+pub const REPLAY_NOTE_CHARACTER_LIMIT: usize = 500;
+pub const REPLAY_TAG_CHARACTER_LIMIT: usize = 32;
+pub const REPLAY_TAGS_PER_REPLAY: usize = 10;
+const REPLAY_NOTE_LIMIT: usize = 5_000;
+
+/// A private, local comment and set of tags on one replay (#324).
+///
+/// Keyed by the game id, which the vault and a downloaded file share, so a
+/// note written on the Online tab is there on the Local tab too. Nothing here
+/// leaves this machine: it is a personal index ("Lots finals"), not a review.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayNote {
+    pub replay_id: i32,
+    pub comment: String,
+    pub tags: Vec<String>,
+}
+
+/// The player's own annotations: notes on players and on replays.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SocialPreferences {
     pub player_notes: Vec<PlayerNote>,
+    pub replay_notes: Vec<ReplayNote>,
+}
+
+// Through a defaulting twin, so a settings file from before replay notes
+// loads, while the generated TypeScript keeps both fields required.
+impl<'de> Deserialize<'de> for SocialPreferences {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize, Default)]
+        #[serde(rename_all = "camelCase", default)]
+        struct Wire {
+            player_notes: Vec<PlayerNote>,
+            replay_notes: Vec<ReplayNote>,
+        }
+        let wire = Wire::deserialize(deserializer)?;
+        Ok(Self {
+            player_notes: wire.player_notes,
+            replay_notes: wire.replay_notes,
+        })
+    }
 }
 
 impl SocialPreferences {
@@ -230,7 +271,29 @@ impl SocialPreferences {
         *self = std::mem::take(self).normalized();
     }
 
+    pub fn replay_note_for(&self, replay_id: i32) -> Option<&ReplayNote> {
+        self.replay_notes
+            .iter()
+            .find(|entry| entry.replay_id == replay_id)
+    }
+
+    /// Set or clear one replay's note. Empty comment and no tags clears it.
+    pub fn set_replay_note(&mut self, replay_id: i32, comment: String, tags: Vec<String>) {
+        if replay_id <= 0 {
+            return;
+        }
+        self.replay_notes
+            .retain(|entry| entry.replay_id != replay_id);
+        self.replay_notes.push(ReplayNote {
+            replay_id,
+            comment,
+            tags,
+        });
+        *self = std::mem::take(self).normalized();
+    }
+
     fn normalized(mut self) -> Self {
+        self.replay_notes = normalized_replay_notes(std::mem::take(&mut self.replay_notes));
         let mut notes = BTreeMap::new();
         for entry in self.player_notes {
             if entry.player_id <= 0 {
@@ -258,6 +321,63 @@ impl SocialPreferences {
         self.player_notes = notes.into_values().take(PLAYER_NOTE_LIMIT).collect();
         self
     }
+}
+
+/// Bound and tidy replay notes. Twin of `normalizeReplayNotes` in
+/// `ui/src/shared/rules/replayNotes.ts`.
+///
+/// A tag is trimmed, kept to one line and a bounded length, and kept once per
+/// replay however it is capitalised, the first spelling winning. The last note
+/// written for a replay wins, and a note left with neither a comment nor a tag
+/// is dropped, which is how a note is cleared.
+fn normalized_replay_notes(notes: Vec<ReplayNote>) -> Vec<ReplayNote> {
+    let mut by_id = BTreeMap::new();
+    for entry in notes {
+        if entry.replay_id <= 0 {
+            continue;
+        }
+        let comment: String = entry
+            .comment
+            .trim()
+            .chars()
+            .take(REPLAY_NOTE_CHARACTER_LIMIT)
+            .collect();
+        let mut tags: Vec<String> = Vec::new();
+        for tag in entry.tags {
+            let tag: String = tag
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+                .chars()
+                .take(REPLAY_TAG_CHARACTER_LIMIT)
+                .collect();
+            let tag = tag.trim().to_string();
+            if tag.is_empty()
+                || tags
+                    .iter()
+                    .any(|known| known.to_lowercase() == tag.to_lowercase())
+            {
+                continue;
+            }
+            tags.push(tag);
+            if tags.len() == REPLAY_TAGS_PER_REPLAY {
+                break;
+            }
+        }
+        if comment.is_empty() && tags.is_empty() {
+            by_id.remove(&entry.replay_id);
+            continue;
+        }
+        by_id.insert(
+            entry.replay_id,
+            ReplayNote {
+                replay_id: entry.replay_id,
+                comment,
+                tags,
+            },
+        );
+    }
+    by_id.into_values().take(REPLAY_NOTE_LIMIT).collect()
 }
 
 impl Default for GeneralPreferences {
@@ -2532,6 +2652,13 @@ pub enum SettingsCommand {
         login: String,
         note: String,
     },
+    /// Write or clear the private note and tags on one replay (#324).
+    #[serde(rename_all = "camelCase")]
+    SetReplayNote {
+        replay_id: i32,
+        comment: String,
+        tags: Vec<String>,
+    },
     SetNotifications {
         preferences: NotificationPreferences,
     },
@@ -3435,6 +3562,7 @@ mod tests {
     fn malformed_persisted_player_notes_are_normalized_away() {
         let settings = SettingsState {
             social: SocialPreferences {
+                replay_notes: Vec::new(),
                 player_notes: vec![
                     PlayerNote {
                         player_id: -1,
@@ -3478,5 +3606,35 @@ mod tests {
         )
         .unwrap();
         assert_eq!(parsed_exceeding.game_tile_columns, 6);
+    }
+
+    #[test]
+    fn replay_notes_are_tidied_bounded_and_cleared_by_emptying() {
+        let mut preferences = SocialPreferences::default();
+        preferences.set_replay_note(
+            42,
+            "  great comeback  ".into(),
+            vec![
+                " Lots  finals ".into(),
+                "lots finals".into(),
+                String::new(),
+                "casts".into(),
+            ],
+        );
+        let note = preferences.replay_note_for(42).unwrap();
+        assert_eq!(note.comment, "great comeback");
+        assert_eq!(note.tags, ["Lots finals", "casts"]);
+
+        preferences.set_replay_note(42, " ".into(), Vec::new());
+        assert!(preferences.replay_note_for(42).is_none());
+
+        preferences.set_replay_note(0, "no game".into(), Vec::new());
+        assert!(preferences.replay_notes.is_empty());
+    }
+
+    #[test]
+    fn a_settings_file_from_before_replay_notes_still_loads() {
+        let social: SocialPreferences = serde_json::from_str(r#"{"playerNotes":[]}"#).unwrap();
+        assert!(social.replay_notes.is_empty());
     }
 }
