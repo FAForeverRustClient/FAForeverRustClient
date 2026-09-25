@@ -1862,7 +1862,7 @@ const LOCAL_REPLAY_BODY_READ_BYTES: usize = 4 * 1024 * 1024;
 /// in the binary Lua army table that follows it.
 #[derive(Default)]
 struct LocalBodyInfo {
-    player_stats: HashMap<String, (Option<i32>, Option<i32>, Option<String>)>,
+    player_stats: HashMap<String, BodyPlayerStats>,
     /// The armies as the engine loaded them, in slot order: `(team, name)`.
     ///
     /// This is the seating the game was actually played with, which is not
@@ -1876,6 +1876,15 @@ struct LocalBodyInfo {
     armies: Vec<LocalBodyArmy>,
     map_name: Option<String>,
     game_version: Option<i32>,
+}
+
+/// What the army table says about one player, by name.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BodyPlayerStats {
+    faction: Option<i32>,
+    rating: Option<i32>,
+    /// Two-letter country code, lower case.
+    country: Option<String>,
 }
 
 /// One army of the replay body's army table.
@@ -2181,7 +2190,14 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
             rating,
             country: country.clone(),
         });
-        stats.insert(name, (faction, rating, country));
+        stats.insert(
+            name,
+            BodyPlayerStats {
+                faction,
+                rating,
+                country,
+            },
+        );
     }
     LocalBodyInfo {
         player_stats: stats,
@@ -2933,10 +2949,10 @@ async fn read_local_metadata(
         teams = local_teams(&header);
         for team in &mut teams {
             for player in &mut team.players {
-                if let Some((faction, rating, country)) = body_info.player_stats.get(&player.name) {
-                    player.faction = *faction;
-                    player.rating = *rating;
-                    player.country = country.clone();
+                if let Some(stats) = body_info.player_stats.get(&player.name) {
+                    player.faction = stats.faction;
+                    player.rating = stats.rating;
+                    player.country = stats.country.clone();
                 }
             }
         }
@@ -4627,7 +4643,11 @@ mod tests {
         let stats = local_body_player_stats(encoded.as_bytes(), "").expect("a decodable body");
         assert_eq!(
             stats.player_stats.get("TestPlayer"),
-            Some(&(Some(1), Some(1200), Some("de".to_string())))
+            Some(&BodyPlayerStats {
+                faction: Some(1),
+                rating: Some(1200),
+                country: Some("de".to_string()),
+            })
         );
         assert_eq!(stats.map_name.as_deref(), Some("SCMP_009"));
     }
