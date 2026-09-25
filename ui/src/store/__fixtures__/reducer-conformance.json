@@ -178,7 +178,11 @@
       "analysisLoading": null,
       "analysisError": null,
       "onlineLookups": {},
-      "resolvedMaps": {}
+      "resolvedMaps": {},
+      "recentMatchmaker": [],
+      "recentMatchmakerStatus": {
+        "type": "idle"
+      }
     },
     "maps": {
       "vault": [],
@@ -25905,6 +25909,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -26038,6 +26046,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -26113,6 +26125,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -26189,6 +26205,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -27294,6 +27314,406 @@
       ]
     },
     {
+      "name": "the matchmaker tab's recent games load beside the vault, not into it",
+      "steps": [
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "recentMatchmakerLoading"
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "loading"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "recentMatchmakerFailed",
+              "payload": {
+                "reason": "not logged in"
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "payload": {
+                "reason": "not logged in"
+              },
+              "type": "failed"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "recentMatchmakerLoading"
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "loading"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "recentMatchmakerLoaded",
+              "payload": {
+                "replays": [
+                  {
+                    "uid": 61,
+                    "title": "Looked-up game",
+                    "map": "scmp_009",
+                    "mapThumbnailUrl": "",
+                    "modName": "faf",
+                    "startTime": "2026-01-01T00:00:00Z",
+                    "endTime": "2026-01-01T00:30:00Z",
+                    "replayAvailable": true,
+                    "durationSeconds": null,
+                    "gameDurationSeconds": null,
+                    "teams": [],
+                    "averageRating": null,
+                    "quality": null,
+                    "reviewsAverage": null,
+                    "reviewsCount": null,
+                    "gameVersion": null,
+                    "validity": "VALID",
+                    "victoryCondition": "DEMORALIZATION"
+                  },
+                  {
+                    "uid": 60,
+                    "title": "Looked-up game",
+                    "map": "scmp_009",
+                    "mapThumbnailUrl": "",
+                    "modName": "faf",
+                    "startTime": "2026-01-01T00:00:00Z",
+                    "endTime": "2026-01-01T00:30:00Z",
+                    "replayAvailable": true,
+                    "durationSeconds": null,
+                    "gameDurationSeconds": null,
+                    "teams": [],
+                    "averageRating": null,
+                    "quality": null,
+                    "reviewsAverage": null,
+                    "reviewsCount": null,
+                    "gameVersion": null,
+                    "validity": "VALID",
+                    "victoryCondition": "DEMORALIZATION"
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "recentMatchmaker": [
+              {
+                "averageRating": null,
+                "durationSeconds": null,
+                "endTime": "2026-01-01T00:30:00Z",
+                "gameDurationSeconds": null,
+                "gameVersion": null,
+                "map": "scmp_009",
+                "mapThumbnailUrl": "",
+                "modName": "faf",
+                "quality": null,
+                "replayAvailable": true,
+                "reviewsAverage": null,
+                "reviewsCount": null,
+                "startTime": "2026-01-01T00:00:00Z",
+                "teams": [],
+                "title": "Looked-up game",
+                "uid": 61,
+                "validity": "VALID",
+                "victoryCondition": "DEMORALIZATION"
+              },
+              {
+                "averageRating": null,
+                "durationSeconds": null,
+                "endTime": "2026-01-01T00:30:00Z",
+                "gameDurationSeconds": null,
+                "gameVersion": null,
+                "map": "scmp_009",
+                "mapThumbnailUrl": "",
+                "modName": "faf",
+                "quality": null,
+                "replayAvailable": true,
+                "reviewsAverage": null,
+                "reviewsCount": null,
+                "startTime": "2026-01-01T00:00:00Z",
+                "teams": [],
+                "title": "Looked-up game",
+                "uid": 60,
+                "validity": "VALID",
+                "victoryCondition": "DEMORALIZATION"
+              }
+            ],
+            "recentMatchmakerStatus": {
+              "type": "ready"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        }
+      ]
+    },
+    {
       "name": "a replay connects, fails, and is dismissed",
       "steps": [
         {
@@ -27320,6 +27740,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -27395,6 +27819,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -27470,6 +27898,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -27563,6 +27995,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -27635,6 +28071,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -27707,6 +28147,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -27819,6 +28263,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -27903,6 +28351,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -27984,6 +28436,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -28107,6 +28563,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -28209,6 +28669,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -28313,6 +28777,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -28415,6 +28883,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -28515,6 +28987,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -28620,6 +29096,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -28722,6 +29202,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -28827,6 +29311,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -28926,6 +29414,10 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {
               "42": "SCCA_Coop_A03.v0023",
@@ -29012,6 +29504,10 @@
               "51": {
                 "type": "loading"
               }
+            },
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
             },
             "replayDetails": {},
             "resolvedMaps": {},
@@ -29132,6 +29628,10 @@
                 "type": "found"
               }
             },
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
             "replayDetails": {},
             "resolvedMaps": {},
             "status": {
@@ -29233,6 +29733,10 @@
               "52": {
                 "type": "loading"
               }
+            },
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
             },
             "replayDetails": {},
             "resolvedMaps": {},
@@ -29336,6 +29840,10 @@
               "52": {
                 "type": "missing"
               }
+            },
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
             },
             "replayDetails": {},
             "resolvedMaps": {},
@@ -29441,6 +29949,10 @@
               "53": {
                 "type": "loading"
               }
+            },
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
             },
             "replayDetails": {},
             "resolvedMaps": {},
@@ -29550,6 +30062,10 @@
                 },
                 "type": "failed"
               }
+            },
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
             },
             "replayDetails": {},
             "resolvedMaps": {},

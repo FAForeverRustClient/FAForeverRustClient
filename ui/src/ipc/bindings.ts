@@ -5723,6 +5723,8 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 } } |
 /**  Fetch the featured-mod list for the search form's mod filter. */
 { type: "loadFeaturedMods" } |
+/**  The signed-in player's latest matchmaker games, for the matchmaker tab. */
+{ type: "loadRecentMatchmaker" } |
 /**  Download and play a vault replay by its game id. */
 { type: "watchVault"; payload: {
 	uid: number,
@@ -5915,6 +5917,10 @@ export type ReplayEvent = { type: "connecting" } |
 	totalPages?: number | null,
 	totalRecords?: number | null,
 } } | { type: "vaultLoadFailed"; payload: {
+	reason: string,
+} } | { type: "recentMatchmakerLoading" } | { type: "recentMatchmakerLoaded"; payload: {
+	replays: VaultReplay[],
+} } | { type: "recentMatchmakerFailed"; payload: {
 	reason: string,
 } } |
 /**  The featured-mod list backing the vault search's mod filter. */
@@ -6286,6 +6292,14 @@ export type ReplayState = {
 	 *  stops asking. See [`ReplayCommand::ResolveMaps`].
 	 */
 	resolvedMaps?: { [key in number]: string },
+	/**
+	 *  The signed-in player's latest matchmaker games, newest first (#301).
+	 *
+	 *  Its own list rather than a vault search, so showing it on the
+	 *  matchmaker tab never replaces whatever the Replays tab was showing.
+	 */
+	recentMatchmaker: VaultReplay[],
+	recentMatchmakerStatus: VaultStatus,
 };
 
 export type ReplayStatus = { type: "idle" } | { type: "connecting" } |
