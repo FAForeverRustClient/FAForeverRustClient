@@ -134,12 +134,7 @@ pub async fn ensure_game_version(
     )
     .await?;
 
-    write_fa_path_lua(
-        target_dir,
-        &retail_install_dir(target_dir),
-        featured_mod,
-        version,
-    )?;
+    finish_install(target_dir, featured_mod, version)?;
     Ok(())
 }
 
@@ -226,12 +221,7 @@ pub async fn ensure_latest_game_version(
         .or_else(|| base.as_ref().and_then(|b| b.engine_version))
         .unwrap_or(installed.version);
 
-    write_fa_path_lua(
-        target_dir,
-        &retail_install_dir(target_dir),
-        featured_mod,
-        engine_version,
-    )?;
+    finish_install(target_dir, featured_mod, engine_version)?;
     Ok(engine_version)
 }
 
@@ -1054,6 +1044,102 @@ fn patch_exe_version(exe_path: &Path, version: i32) -> Result<(), String> {
     Ok(())
 }
 
+/// The last step of every install pass: the retail game's own libraries into
+/// the FAF `bin`, then `fa_path.lua`. One place, so the three ways an install
+/// finishes (a fresh update, a cached version, a replay's version) cannot
+/// disagree about either.
+fn finish_install(target_dir: &Path, featured_mod: &str, version: i32) -> Result<(), String> {
+    let retail = retail_install_dir(target_dir);
+    copy_retail_binaries(&retail, target_dir)?;
+    write_fa_path_lua(target_dir, &retail, featured_mod, version)
+}
+
+/// The files a FAF install's `bin` needs from the game the player owns.
+///
+/// FAF's file list ships the patched executable and FAF's own Lua, never the
+/// engine's runtime libraries: those are the retail game's, not FAF's to hand
+/// out. Something has to bring them across, and on a machine where this
+/// client was the first FAF client, nothing did. The game then stopped at
+/// "BugSplat.dll is missing" the moment a lobby started, and installing the
+/// Java client fixed it, because the Java client copies exactly these files.
+/// The list and the rule (only a file the FAF install lacks) are its
+/// `GameBinariesUpdateTaskImpl`.
+const RETAIL_BINARIES: [&str; 13] = [
+    "BsSndRpt.exe",
+    "BugSplat.dll",
+    "BugSplatRc.dll",
+    "DbgHelp.dll",
+    "GDFBinary.dll",
+    "Microsoft.VC80.CRT.manifest",
+    "SHSMP.DLL",
+    "msvcm80.dll",
+    "msvcp80.dll",
+    "msvcr80.dll",
+    "sx32w.dll",
+    "wxmsw24u-vs80.dll",
+    "zlibwapi.dll",
+];
+
+/// Copy the [`RETAIL_BINARIES`] the FAF install is missing from the retail
+/// install's `bin`.
+///
+/// A file already in the FAF install is left alone, whatever its content: it
+/// may be the one FAF shipped. Names are compared without case, both ways,
+/// since a retail install copied onto a case-sensitive disk keeps whatever
+/// spelling it had. Nothing to copy from is not an error here: with no retail
+/// install found, `retail_dir` is the FAF install itself, and that is already
+/// reported where it is resolved.
+fn copy_retail_binaries(retail_dir: &Path, target_dir: &Path) -> Result<(), String> {
+    if retail_dir == target_dir {
+        return Ok(());
+    }
+    let Ok(sources) = std::fs::read_dir(retail_dir.join("bin")) else {
+        return Ok(());
+    };
+    let target_bin = target_dir.join("bin");
+    std::fs::create_dir_all(&target_bin)
+        .map_err(|error| format!("could not create {}: {error}", target_bin.display()))?;
+    let present: Vec<String> = std::fs::read_dir(&target_bin)
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter_map(|entry| entry.file_name().to_str().map(str::to_ascii_lowercase))
+                .collect()
+        })
+        .unwrap_or_default();
+    for source in sources.flatten() {
+        let file_name = source.file_name();
+        let Some(name) = file_name.to_str() else {
+            continue;
+        };
+        let wanted = RETAIL_BINARIES
+            .iter()
+            .any(|binary| binary.eq_ignore_ascii_case(name));
+        if !wanted || present.contains(&name.to_ascii_lowercase()) {
+            continue;
+        }
+        let destination = target_bin.join(name);
+        std::fs::copy(source.path(), &destination)
+            .map_err(|error| format!("could not copy {name} from the game install: {error}"))?;
+        tracing::info!(file = name, "copied a game library into the FAF install");
+        // A retail install copied off a disc keeps the read-only flag, and a
+        // read-only file in the FAF install is one the next update cannot
+        // replace. The Java client clears it for the same reason. Windows
+        // only, where read-only is one attribute and not the Unix mode bits
+        // the lint below is about: there is nothing to make world-writable.
+        #[cfg(windows)]
+        #[allow(clippy::permissions_set_readonly_false)]
+        if let Ok(metadata) = std::fs::metadata(&destination) {
+            let mut permissions = metadata.permissions();
+            if permissions.readonly() {
+                permissions.set_readonly(false);
+                let _ = std::fs::set_permissions(&destination, permissions);
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Mirrors `fa/path.py:writeFAPathLua`. Written into `target_dir` (the FAF
 /// patch dir, e.g. `.../replaydata`); the FAF init script beside the exe
 /// reads it to locate everything else.
@@ -1445,12 +1531,7 @@ fn stage_cached_version(
         let _ = patch_exe_version(&exe_path, entry.resolved_version);
     }
 
-    write_fa_path_lua(
-        target_dir,
-        &retail_install_dir(target_dir),
-        &entry.featured_mod,
-        entry.resolved_version,
-    )?;
+    finish_install(target_dir, &entry.featured_mod, entry.resolved_version)?;
 
     let build_info = serde_json::json!({
         "featuredMod": entry.featured_mod,
@@ -2233,6 +2314,57 @@ mod tests {
             resolve_retail_install_dir([patch_dir.clone()], &patch_dir),
             patch_dir
         );
+    }
+
+    /// The reported bug: a player whose first FAF client was this one got
+    /// "BugSplat.dll is missing" on joining a lobby, because nothing brought
+    /// the retail game's libraries into the FAF install. Installing the Java
+    /// client fixed it, since that is what the Java client does.
+    #[test]
+    fn the_retail_games_libraries_are_copied_into_the_faf_install() {
+        let temp = tempfile::tempdir().unwrap();
+        let retail = temp.path().join("retail");
+        let faf = temp.path().join("faf");
+        std::fs::create_dir_all(retail.join("bin")).unwrap();
+        std::fs::create_dir_all(faf.join("bin")).unwrap();
+        std::fs::write(retail.join("bin").join("BugSplat.dll"), b"retail bugsplat").unwrap();
+        std::fs::write(retail.join("bin").join("shsmp.dll"), b"retail shsmp").unwrap();
+        std::fs::write(retail.join("bin").join("msvcr80.dll"), b"retail crt").unwrap();
+        std::fs::write(retail.join("bin").join("SupremeCommander.exe"), b"not ours").unwrap();
+        // Already in the FAF install, possibly FAF's own: left as it is.
+        std::fs::write(faf.join("bin").join("MSVCR80.dll"), b"faf crt").unwrap();
+
+        copy_retail_binaries(&retail, &faf).unwrap();
+
+        let read = |name: &str| std::fs::read(faf.join("bin").join(name)).ok();
+        assert_eq!(
+            read("BugSplat.dll").as_deref(),
+            Some(&b"retail bugsplat"[..])
+        );
+        assert_eq!(read("shsmp.dll").as_deref(), Some(&b"retail shsmp"[..]));
+        assert_eq!(read("MSVCR80.dll").as_deref(), Some(&b"faf crt"[..]));
+        assert_eq!(
+            read("SupremeCommander.exe"),
+            None,
+            "only the listed libraries"
+        );
+        let names = std::fs::read_dir(faf.join("bin")).unwrap().count();
+        assert_eq!(names, 3, "no second spelling of a file already there");
+    }
+
+    #[test]
+    fn no_retail_install_means_nothing_to_copy() {
+        let temp = tempfile::tempdir().unwrap();
+        let faf = temp.path().join("faf");
+        std::fs::create_dir_all(faf.join("bin")).unwrap();
+        std::fs::write(faf.join("bin").join("BugSplat.dll"), b"faf").unwrap();
+
+        // The fallback when no retail install is found is the FAF install itself.
+        copy_retail_binaries(&faf, &faf).unwrap();
+        // And a retail path without a bin folder is not an error either.
+        copy_retail_binaries(&temp.path().join("missing"), &faf).unwrap();
+
+        assert_eq!(std::fs::read_dir(faf.join("bin")).unwrap().count(), 1);
     }
 
     #[test]
