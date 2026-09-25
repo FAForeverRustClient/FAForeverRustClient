@@ -267,10 +267,15 @@ fn rating_filters(query: &RatingQuery, player: PlayerFilter) -> Vec<String> {
         }
     }
     if player == PlayerFilter::Applied && !query.player.trim().is_empty() {
-        filters.push(format!(
-            "player.login==\"{}\"",
-            escape_filter_value(query.player.trim())
-        ));
+        let name = escape_filter_value(query.player.trim());
+        filters.push(if query.include_former_names {
+            // `*` is the API's wildcard, and it goes inside the quotes. The
+            // user's own `*` is dropped, so it cannot widen the search further.
+            let part = name.replace('*', "");
+            format!("(player.login==\"*{part}*\",player.names.name==\"*{part}*\")")
+        } else {
+            format!("player.login==\"{name}\"")
+        });
     }
     filters
 }
@@ -1307,6 +1312,22 @@ mod tests {
         let counted = rating_filter(&query, PlayerFilter::Dropped);
         assert!(counted.contains("leaderboard.technicalName==\"ladder_1v1\""));
         assert!(!counted.contains("player.login"));
+    }
+
+    #[test]
+    fn former_names_widen_the_player_search_to_a_part_of_any_name() {
+        let former = rating_filter(
+            &RatingQuery {
+                player: "farms*".into(),
+                include_former_names: true,
+                ..RatingQuery::default()
+            },
+            PlayerFilter::Applied,
+        );
+        assert!(
+            former.contains(r#"(player.login=="*farms*",player.names.name=="*farms*")"#),
+            "{former}"
+        );
     }
 
     #[test]

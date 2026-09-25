@@ -158,6 +158,14 @@
   flex: 0 1 240px;
 }
 
+/* Sits beside the name it widens, level with the inputs rather than their
+   labels. */
+.leaderboard-search-former {
+  flex: none;
+  align-self: flex-end;
+  min-height: 34px;
+}
+
 .leaderboard-search-date {
   flex: 0 1 165px;
 }
