@@ -114,13 +114,18 @@ export function mergeReplayTeamsWithLocal(
     };
   });
 
-  // Everyone the file has and the listing does not, which in practice means
-  // the AI. The vault's roster is `playerStats`, one row per account, so a
-  // game against three AI arrives from the server as a lineup of one; the
-  // replay's own army table has all four. The grid card reads that table
-  // directly and showed them, the panel took the server's list and did not,
-  // and the same game therefore had two different lineups depending on where
-  // you looked at it.
+  // The AI the file has and the listing cannot. The vault's roster is
+  // `playerStats`, one row per account, so a game against three AI arrives
+  // from the server as a lineup of one; the replay's own army table has all
+  // four. The grid card reads that table directly and showed them, the panel
+  // took the server's list and did not, and the same game therefore had two
+  // different lineups depending on where you looked at it.
+  //
+  // Only the AI, though, and not everyone the listing is missing by name. The
+  // listing names an account as it is called today and the file as it was
+  // called on the day of the game, so a player who has been renamed since is
+  // "missing" from the listing too, and was added a second time under the old
+  // name. The file marks which armies had no client behind them.
   const online = new Set(
     enriched.flatMap((team) => team.players.map((player) => player.name.toLocaleLowerCase())),
   );
@@ -140,7 +145,7 @@ export function mergeReplayTeamsWithLocal(
   const merged = enriched.map((team) => ({ ...team, players: [...team.players] }));
   for (const localTeam of localTeams) {
     const missing = localTeam.players.filter(
-      (player) => !online.has(player.name.toLocaleLowerCase()),
+      (player) => player.ai === true && !online.has(player.name.toLocaleLowerCase()),
     );
     if (missing.length === 0) continue;
     const added = missing.map((player) => ({

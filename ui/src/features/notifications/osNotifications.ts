@@ -16,6 +16,8 @@ const EXPIRING: readonly NotificationKind[] = [
   "partyInvite",
   "gameLaunched",
   "mapGenerated",
+  "eventReminder",
+  "gameFull",
 ];
 
 export function raisesOsNotification(kind: NotificationKind): boolean {

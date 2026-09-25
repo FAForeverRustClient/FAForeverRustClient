@@ -10,6 +10,13 @@ import { LeaderboardTable } from "./LeaderboardTable";
 import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
 import { useTranslation } from "../../i18n/useTranslation";
 
+/**
+ * Rows the season table draws at a time. The whole season is loaded, so the
+ * chart and the name search see every placed player, but drawing several
+ * thousand rows at once would stall the tab for no one's benefit.
+ */
+const LEAGUE_ROW_BATCH = 200;
+
 const selectLeague = (leagueId: number) => ipc.send({
   kind: "Leaderboard",
   command: { type: "selectLeague", payload: { leagueId } },
@@ -473,6 +480,7 @@ export function LeagueLeaderboardPanel() {
               ) : (
                 <LeaderboardTable
                   entries={filtered}
+                  rowBatch={LEAGUE_ROW_BATCH}
                   columns={["rank", "player", "league", "division", "score", "games"]}
                   selectedPlayerId={selected?.playerId ?? null}
                   onSelect={setSelected}

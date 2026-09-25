@@ -6,8 +6,16 @@ import { raisesOsNotification } from "./osNotifications";
 // the same test. Two lists that can drift is the risk of a hand-written twin;
 // spelling both out is what makes the drift visible in review.
 describe("which notifications leave the client", () => {
-  it("lets through the four kinds somebody is waiting on", () => {
-    for (const kind of ["matchFound", "partyInvite", "gameLaunched", "mapGenerated"] as const) {
+  it("lets through the kinds somebody is waiting on", () => {
+    const expiring: NotificationKind[] = [
+      "matchFound",
+      "partyInvite",
+      "gameLaunched",
+      "mapGenerated",
+      "eventReminder",
+      "gameFull",
+    ];
+    for (const kind of expiring) {
       expect(raisesOsNotification(kind)).toBe(true);
     }
   });
@@ -28,7 +36,6 @@ describe("which notifications leave the client", () => {
       "friendOffline",
       "friendPlaying",
       "newCustomGame",
-      "gameFull",
       "reviewReminder",
       "replayAvailable",
       "reportSubmitted",
