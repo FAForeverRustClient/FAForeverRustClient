@@ -142,13 +142,15 @@ pub struct MapGeneratorConfig {
     /// `{version}`-templated download URL for the release asset.
     pub download_url_format: String,
     /// `java` executable. Shared convention with the ICE adapter's
-    /// `FAF_JAVA_PATH`, since both need a JVM.
-    pub java_path: String,
+    /// `FAF_JAVA_PATH`, since both need a JVM. `None` follows Settings.
+    pub java_path: Option<String>,
     /// Where downloaded generator JARs are cached. Also holds the generator
-    /// log, the option cache and the preview drop folder.
-    pub generator_dir: PathBuf,
-    /// Where generated maps are written: FA's user maps folder.
-    pub maps_dir: PathBuf,
+    /// log, the option cache and the preview drop folder. `None` follows
+    /// Settings.
+    pub generator_dir: Option<PathBuf>,
+    /// Where generated maps are written: FA's user maps folder. `None`
+    /// follows Settings.
+    pub maps_dir: Option<PathBuf>,
     /// Which generator major versions this client will drive. Configurable for
     /// the same reason the Java client reads it from `application.yml`: FAF can
     /// move the window without a client release.
@@ -167,11 +169,32 @@ impl MapGeneratorConfig {
                 "FAF_MAP_GENERATOR_DOWNLOAD_URL",
                 "https://github.com/FAForever/Neroxis-Map-Generator/releases/download/{version}/NeroxisGen_{version}.jar",
             ),
-            java_path: super::java_runtime::preferred_java_path(),
-            generator_dir: generator_dir(),
-            maps_dir: user_maps_dir(),
+            // Not resolved here. The generator is built while the client
+            // starts, before Settings has been read, so a folder taken now is
+            // the default one: a player with their vault somewhere else had
+            // every map generated into a folder the game never mounts, and the
+            // "is it there?" check read the same wrong folder, so the map was
+            // never found and never made again. Resolved at every use, all
+            // three follow Settings the way the rest of the client does.
+            java_path: None,
+            generator_dir: None,
+            maps_dir: None,
             version_policy: version_policy_from_env(),
         }
+    }
+
+    pub(crate) fn java_path(&self) -> String {
+        self.java_path
+            .clone()
+            .unwrap_or_else(super::java_runtime::preferred_java_path)
+    }
+
+    pub(crate) fn generator_dir(&self) -> PathBuf {
+        self.generator_dir.clone().unwrap_or_else(generator_dir)
+    }
+
+    pub(crate) fn maps_dir(&self) -> PathBuf {
+        self.maps_dir.clone().unwrap_or_else(user_maps_dir)
     }
 }
 
@@ -303,7 +326,7 @@ impl NeroxisMapGenerator {
     }
 
     fn jar_path(&self, version: GeneratorVersion) -> PathBuf {
-        self.config.generator_dir.join(version.cached_jar_name())
+        self.config.generator_dir().join(version.cached_jar_name())
     }
 
     /// Where the generator's own output is kept.
@@ -313,7 +336,7 @@ impl NeroxisMapGenerator {
     /// the generator's explanation is on stdout, and a single scraped error
     /// line is rarely enough to say why.
     fn log_path(&self) -> PathBuf {
-        self.config.generator_dir.join("map_generator.log")
+        self.config.generator_dir().join("map_generator.log")
     }
 
     /// Append a line to the generator log, rotating once it grows too large.
@@ -329,7 +352,7 @@ impl NeroxisMapGenerator {
         {
             let _ = tokio::fs::rename(&path, path.with_extension("log.1")).await;
         }
-        let _ = tokio::fs::create_dir_all(&self.config.generator_dir).await;
+        let _ = tokio::fs::create_dir_all(&self.config.generator_dir()).await;
         if let Ok(mut file) = tokio::fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -401,7 +424,7 @@ impl NeroxisMapGenerator {
             .content_length()
             .map(|n| u32::try_from(n).unwrap_or(u32::MAX));
 
-        tokio::fs::create_dir_all(&self.config.generator_dir)
+        tokio::fs::create_dir_all(&self.config.generator_dir())
             .await
             .map_err(|e| format!("could not create the generator directory: {e}"))?;
         let temp = target.with_extension("partial");
@@ -476,7 +499,7 @@ impl NeroxisMapGenerator {
         args: Vec<String>,
         progress: &mpsc::Sender<GeneratorUpdate>,
     ) -> RunOutcome {
-        if let Err(e) = tokio::fs::create_dir_all(&self.config.maps_dir).await {
+        if let Err(e) = tokio::fs::create_dir_all(&self.config.maps_dir()).await {
             return RunOutcome::Failed(format!("could not create the maps directory: {e}"));
         }
         // The generator writes previews into this folder if it was asked to;
@@ -500,13 +523,13 @@ impl NeroxisMapGenerator {
         }
         self.log_line(&header).await;
 
-        let mut command = Command::new(&self.config.java_path);
+        let mut command = Command::new(&self.config.java_path());
         command
             .arg("-jar")
             .arg(jar)
             .args(&args)
             // The generator writes into its working directory.
-            .current_dir(&self.config.maps_dir)
+            .current_dir(&self.config.maps_dir())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         // Always hidden: what the switch opens is the log window above, which
@@ -517,7 +540,7 @@ impl NeroxisMapGenerator {
             Err(e) => {
                 return RunOutcome::Failed(format!(
                 "could not start the map generator ({}): {e}. Java is required to generate maps.",
-                self.config.java_path
+                self.config.java_path()
             ))
             }
         };
@@ -645,7 +668,7 @@ impl NeroxisMapGenerator {
         // Trust the folder, not the log: a name in the output that didn't
         // result in a directory means the run half-failed.
         for name in &names {
-            if !self.config.maps_dir.join(name).is_dir() {
+            if !self.config.maps_dir().join(name).is_dir() {
                 return RunOutcome::Failed(format!(
                     "the generator reported {name} but wrote no folder"
                 ));
@@ -665,7 +688,7 @@ impl NeroxisMapGenerator {
         args: &[&str],
         limit: Duration,
     ) -> Result<String, String> {
-        let mut command = Command::new(&self.config.java_path);
+        let mut command = Command::new(&self.config.java_path());
         command
             .arg("-jar")
             .arg(jar)
@@ -675,7 +698,7 @@ impl NeroxisMapGenerator {
             // map into its working directory. Beside the JAR that is at
             // least findable; in the client's own working directory it is
             // litter nobody would connect to the map generator.
-            .current_dir(&self.config.generator_dir)
+            .current_dir(&self.config.generator_dir())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         // Never windowed: these run while the dialog is being filled in, and
@@ -687,7 +710,7 @@ impl NeroxisMapGenerator {
             .map_err(|e| {
                 format!(
                 "could not start the map generator ({}): {e}. Java is required to generate maps.",
-                self.config.java_path
+                self.config.java_path()
             )
             })?;
 
@@ -702,7 +725,7 @@ impl NeroxisMapGenerator {
         if stderr.contains("UnsupportedClassVersionError") {
             return Err(format!(
                 "the Java runtime at {} is too old for this map generator release: install a newer Java, or point FAF_JAVA_PATH at one",
-                self.config.java_path
+                self.config.java_path()
             ));
         }
         // picocli colours its errors; the escape sequences are noise in a
@@ -801,7 +824,7 @@ impl NeroxisMapGenerator {
     }
 
     fn releases_cache_path(&self) -> PathBuf {
-        self.config.generator_dir.join("releases_cache.json")
+        self.config.generator_dir().join("releases_cache.json")
     }
 
     /// The last release list that reached us, if one ever did.
@@ -817,7 +840,7 @@ impl NeroxisMapGenerator {
         let Ok(serialized) = serde_json::to_string(tags) else {
             return;
         };
-        let _ = tokio::fs::create_dir_all(&self.config.generator_dir).await;
+        let _ = tokio::fs::create_dir_all(&self.config.generator_dir()).await;
         let _ = tokio::fs::write(self.releases_cache_path(), serialized).await;
     }
 
@@ -868,8 +891,8 @@ impl NeroxisMapGenerator {
     async fn read_map_preview(&self, map_name: &str) -> Option<String> {
         use base64::Engine as _;
         let normalized = map_name.to_lowercase();
-        let folder = self.config.maps_dir.join(map_name);
-        let folder_lower = self.config.maps_dir.join(&normalized);
+        let folder = self.config.maps_dir().join(map_name);
+        let folder_lower = self.config.maps_dir().join(&normalized);
         // The `--preview-path` drop folder is checked first: when the run used
         // it, the file is there under a known name and nothing below is needed.
         let previews = self.preview_dir();
@@ -1065,13 +1088,13 @@ impl NeroxisMapGenerator {
             .or_default()
             .insert(query.flag().to_string(), values.to_vec());
         if let Ok(serialized) = serde_json::to_string_pretty(&all) {
-            let _ = tokio::fs::create_dir_all(&self.config.generator_dir).await;
+            let _ = tokio::fs::create_dir_all(&self.config.generator_dir()).await;
             let _ = tokio::fs::write(&path, serialized).await;
         }
     }
 
     fn options_cache_path(&self) -> PathBuf {
-        self.config.generator_dir.join("options_cache.json")
+        self.config.generator_dir().join("options_cache.json")
     }
 
     /// Where the generator is asked to drop preview images.
@@ -1082,7 +1105,7 @@ impl NeroxisMapGenerator {
     /// been seen under several. Kept beside the JARs rather than in the maps
     /// directory so a "delete generated maps" sweep does not take it out.
     fn preview_dir(&self) -> PathBuf {
-        self.config.generator_dir.join("previews")
+        self.config.generator_dir().join("previews")
     }
 
     /// Where saved option sets live, one JSON file each.
@@ -1091,7 +1114,7 @@ impl NeroxisMapGenerator {
     /// settings, so a preset can be copied, backed up or sent to someone else
     /// without exporting anything.
     fn presets_dir(&self) -> PathBuf {
-        self.config.generator_dir.join("presets")
+        self.config.generator_dir().join("presets")
     }
 
     /// Resolve a preset name to its file, refusing anything that could point
@@ -1402,7 +1425,7 @@ impl MapGeneratorPort for NeroxisMapGenerator {
     }
 
     fn is_installed(&self, map_name: &str) -> bool {
-        !map_name.is_empty() && self.config.maps_dir.join(map_name).is_dir()
+        !map_name.is_empty() && self.config.maps_dir().join(map_name).is_dir()
     }
 
     async fn clean_up(&self, protected_maps: &[String]) -> Result<usize, String> {
@@ -1411,7 +1434,7 @@ impl MapGeneratorPort for NeroxisMapGenerator {
             .map(|name| name.trim().to_ascii_lowercase())
             .collect();
         let mut removed = 0;
-        let mut entries = match tokio::fs::read_dir(&self.config.maps_dir).await {
+        let mut entries = match tokio::fs::read_dir(&self.config.maps_dir()).await {
             Ok(entries) => entries,
             // No maps folder means nothing to clean, not a failure.
             Err(_) => return Ok(0),
@@ -1554,9 +1577,9 @@ mod tests {
         MapGeneratorConfig {
             releases_url: "http://localhost/releases".into(),
             download_url_format: "http://localhost/{version}.jar".into(),
-            java_path: "java".into(),
-            generator_dir: dir.join("generators"),
-            maps_dir: dir.join("maps"),
+            java_path: Some("java".into()),
+            generator_dir: Some(dir.join("generators")),
+            maps_dir: Some(dir.join("maps")),
             version_policy: VersionPolicy::default(),
         }
     }
