@@ -151,7 +151,12 @@ impl ModsClient {
         Ok(())
     }
 
-    async fn mod_download_url(&self, uid: &str) -> Result<String, String> {
+    /// Where to download the version a game names, and which version it is.
+    ///
+    /// The version rides along because the same record already carries it, and
+    /// a replacement prompt that names only the installed version leaves the
+    /// player guessing what the host is on (#330).
+    async fn required_mod_version(&self, uid: &str) -> Result<RequiredModVersion, String> {
         if uid.is_empty()
             || !uid
                 .bytes()
@@ -174,14 +179,30 @@ impl ModsClient {
             .into_iter()
             .next()
             .and_then(|resource| {
-                resource
+                let download_url = resource
                     .attributes
                     .get("downloadUrl")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned)
+                    .and_then(Value::as_str)?
+                    .to_owned();
+                let version = match resource.attributes.get("version") {
+                    Some(Value::String(text)) => text.clone(),
+                    Some(Value::Number(number)) => number.to_string(),
+                    _ => String::new(),
+                };
+                Some(RequiredModVersion {
+                    download_url,
+                    version,
+                })
             })
             .ok_or_else(|| format!("simulation mod {uid} was not found in the vault"))
     }
+}
+
+/// One vault `modVersion` record, reduced to what joining a game needs.
+struct RequiredModVersion {
+    download_url: String,
+    /// Empty when the vault did not say, which the prompt draws as "?".
+    version: String,
 }
 
 /// How big the file behind a URL is, asked two ways.
@@ -452,12 +473,12 @@ impl ModsPort for ModsClient {
             if installed.iter().any(|candidate| candidate.uid == *uid) {
                 continue;
             }
-            let download_url = self
-                .mod_download_url(uid)
+            let required = self
+                .required_mod_version(uid)
                 .await
                 .map_err(ModPrepFailure::Failed)?;
             let bytes = self
-                .download_mod_archive(uid, &download_url)
+                .download_mod_archive(uid, &required.download_url)
                 .await
                 .map_err(ModPrepFailure::Failed)?;
             let root = archive_root_name(&bytes).map_err(ModPrepFailure::Failed)?;
@@ -474,6 +495,7 @@ impl ModsPort for ModsClient {
                     conflicts.push(ModVersionConflict {
                         required_uid: uid.clone(),
                         required_name: name.clone(),
+                        required_version: required.version.clone(),
                         folder_name: root.clone(),
                         installed_uid: occupant.map(|m| m.uid.clone()).unwrap_or_default(),
                         // A folder with no readable `mod_info.lua` is not in
@@ -1294,9 +1316,10 @@ mod tests {
             crate::infra::session::TokenStore::new(),
         );
         let error = client
-            .mod_download_url("valid-looking' || hidden==false")
+            .required_mod_version("valid-looking' || hidden==false")
             .await
-            .expect_err("a filter-injection uid must be rejected");
+            .err()
+            .expect("a filter-injection uid must be rejected");
         assert!(error.contains("invalid simulation-mod uid"));
     }
 

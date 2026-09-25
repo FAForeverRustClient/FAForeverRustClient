@@ -3261,7 +3261,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.joinProgress.hideNote": "Ausblenden stoppt nichts. Die Statusleiste zeigt denselben Fortschritt weiter.",
   "lobby.modConflict.title": "Installierte Mods ersetzen?",
   "lobby.modConflict.body": { one: "Dieses Spiel nutzt eine andere Version einer Mod, die du bereits installiert hast. Bisher wurde nichts geändert.", other: "Dieses Spiel nutzt andere Versionen von {count} Mods, die du bereits installiert hast. Bisher wurde nichts geändert." },
-  "lobby.modConflict.replaces": "ersetzt {installed} v{version} in {folder}",
+  "lobby.modConflict.versions": "Dieses Spiel: v{required}. Installiert: {installed} v{version}, in {folder}",
   "lobby.modConflict.note": "Beim Ersetzen wird deine installierte Version gelöscht. Du kannst sie danach wieder aus dem Vault installieren.",
   "lobby.modConflict.cancel": "Nicht beitreten",
   "lobby.modConflict.confirm": "Ersetzen und beitreten",

@@ -1857,7 +1857,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
 
   "lobby.modConflict.title": "Remplacer les mods installés ?",
   "lobby.modConflict.body": { one: "Cette partie utilise une autre version d'un mod que vous avez déjà installé. Rien n'a encore été modifié.", other: "Cette partie utilise d'autres versions de {count} mods que vous avez déjà installés. Rien n'a encore été modifié." },
-  "lobby.modConflict.replaces": "remplace {installed} v{version} dans {folder}",
+  "lobby.modConflict.versions": "Cette partie : v{required}. Installé : {installed} v{version}, dans {folder}",
   "lobby.modConflict.note": "Le remplacement supprime votre version installée. Vous pourrez la réinstaller depuis le vault ensuite.",
   "lobby.modConflict.cancel": "Ne pas rejoindre",
   "lobby.modConflict.confirm": "Remplacer et rejoindre",

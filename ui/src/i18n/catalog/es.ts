@@ -1855,7 +1855,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "lobby.modConflict.title": "¿Reemplazar los mods instalados?",
   "lobby.modConflict.body": { one: "Esta partida usa una versión distinta de un mod que ya tienes instalado. Todavía no se ha cambiado nada.", other: "Esta partida usa versiones distintas de {count} mods que ya tienes instalados. Todavía no se ha cambiado nada." },
-  "lobby.modConflict.replaces": "reemplaza {installed} v{version} en {folder}",
+  "lobby.modConflict.versions": "Esta partida: v{required}. Instalado: {installed} v{version}, en {folder}",
   "lobby.modConflict.note": "Al reemplazarlo se elimina tu versión instalada. Después puedes volver a instalarla desde el vault.",
   "lobby.modConflict.cancel": "No entrar",
   "lobby.modConflict.confirm": "Reemplazar y entrar",

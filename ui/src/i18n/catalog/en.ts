@@ -3547,7 +3547,7 @@ export const en = {
   "lobby.joinProgress.hideNote": "Hiding this does not stop anything. The status bar keeps the same progress.",
   "lobby.modConflict.title": "Replace installed mods?",
   "lobby.modConflict.body": { one: "This game uses a different version of a mod you already have installed. Nothing has been changed yet.", other: "This game uses different versions of {count} mods you already have installed. Nothing has been changed yet." },
-  "lobby.modConflict.replaces": "replaces {installed} v{version} in {folder}",
+  "lobby.modConflict.versions": "This game: v{required}. Installed: {installed} v{version}, in {folder}",
   "lobby.modConflict.note": "Replacing deletes your installed version. You can install it again from the vault afterwards.",
   "lobby.modConflict.cancel": "Do not join",
   "lobby.modConflict.confirm": "Replace and join",

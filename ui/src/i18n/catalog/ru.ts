@@ -1959,7 +1959,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "lobby.modConflict.title": "Заменить установленные моды?",
   "lobby.modConflict.body": { one: "Эта игра использует другую версию мода, который у вас уже установлен. Пока ничего не изменено.", few: "Эта игра использует другие версии {count} модов, которые у вас уже установлены. Пока ничего не изменено.", many: "Эта игра использует другие версии {count} модов, которые у вас уже установлены. Пока ничего не изменено.", other: "Эта игра использует другие версии {count} модов, которые у вас уже установлены. Пока ничего не изменено." },
-  "lobby.modConflict.replaces": "заменяет {installed} v{version} в {folder}",
+  "lobby.modConflict.versions": "В этой игре: v{required}. Установлено: {installed} v{version}, в {folder}",
   "lobby.modConflict.note": "Замена удаляет вашу установленную версию. Позже её можно снова установить из вольта.",
   "lobby.modConflict.cancel": "Не входить",
   "lobby.modConflict.confirm": "Заменить и войти",

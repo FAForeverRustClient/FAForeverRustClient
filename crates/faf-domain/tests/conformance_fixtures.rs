@@ -3474,6 +3474,7 @@ fn cases() -> Vec<Case> {
                     conflicts: vec![ModVersionConflict {
                         required_uid: "old-uid".into(),
                         required_name: "Total Mayhem".into(),
+                        required_version: "11".into(),
                         folder_name: "Total Mayhem".into(),
                         installed_uid: "new-uid".into(),
                         installed_name: "Total Mayhem".into(),
