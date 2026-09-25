@@ -170,6 +170,27 @@ impl MapsPort for MapsClient {
         })
     }
 
+    async fn find_vault_maps_by_folder(
+        &self,
+        folder_names: &[String],
+    ) -> Result<Vec<VaultMap>, String> {
+        let Some(filter) = folder_lookup_filter(folder_names) else {
+            return Ok(Vec::new());
+        };
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| "not logged in".to_string())?;
+        let mut url = url::Url::parse(&format!("{}/data/map", self.config.api_base))
+            .map_err(|e| format!("invalid API base: {e}"))?;
+        url.query_pairs_mut()
+            .append_pair("filter", &filter)
+            .append_pair("page[size]", &MAX_FOLDER_LOOKUPS.to_string())
+            .append_pair("include", "latestVersion,author,reviewsSummary");
+        let doc = fetch_document(&self.http, url, &token).await?;
+        Ok(parse_vault_maps(&doc))
+    }
+
     async fn list_installed(&self) -> Result<Vec<InstalledMap>, String> {
         list_installed_dir(&maps_dir()).await
     }
@@ -403,6 +424,40 @@ const MAX_PREVIEW_REQUEST: usize = 64;
 
 /// A folder name without its `.vNNNN` suffix, lowercased: the key both the
 /// installed folders and the co-op missions are matched on.
+/// How many folders one lookup names. A lobby list asks for a handful at a
+/// time; the cap keeps a pathological page from building an unbounded URL.
+const MAX_FOLDER_LOOKUPS: usize = 20;
+
+/// `versions.folderName=in=(...)` over the folders worth asking about, or
+/// `None` when none is.
+///
+/// On `versions` rather than `latestVersion`, and with no `hidden` clause: a
+/// lobby can be on any version, and a withdrawn one is exactly what this is
+/// for. The Java client's `getMapLatestVersion` asks the same way. A folder
+/// name comes off the lobby wire, so anything outside the characters a map
+/// folder is made of is dropped rather than escaped into the filter.
+fn folder_lookup_filter(folder_names: &[String]) -> Option<String> {
+    let mut names: Vec<String> = folder_names
+        .iter()
+        .map(|name| name.trim().to_lowercase())
+        .filter(|name| {
+            !name.is_empty()
+                && name.len() <= 128
+                && name
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | ' '))
+        })
+        .collect();
+    names.sort();
+    names.dedup();
+    names.truncate(MAX_FOLDER_LOOKUPS);
+    if names.is_empty() {
+        return None;
+    }
+    let quoted: Vec<String> = names.iter().map(|name| format!("\"{name}\"")).collect();
+    Some(format!("versions.folderName=in=({})", quoted.join(",")))
+}
+
 pub(crate) fn base_folder_name(folder_name: &str) -> String {
     let lower = folder_name.trim().to_lowercase();
     match lower.rsplit_once(".v") {
@@ -1109,6 +1164,21 @@ mod tests {
             .await
             .expect("missing dir is not an error");
         assert!(installed.is_empty());
+    }
+
+    #[test]
+    fn folder_lookups_ask_every_version_and_refuse_filter_syntax() {
+        assert_eq!(
+            folder_lookup_filter(&[
+                "Waters_Of_Isis.v0003".into(),
+                "waters_of_isis.v0003".into(),
+                "x\"),hidden==false;(a".into(),
+                "  ".into(),
+            ])
+            .as_deref(),
+            Some(r#"versions.folderName=in=("waters_of_isis.v0003")"#)
+        );
+        assert_eq!(folder_lookup_filter(&["a\"b".into()]), None);
     }
 
     #[test]
