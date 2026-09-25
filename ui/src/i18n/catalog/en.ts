@@ -450,10 +450,12 @@ export const en = {
   "links.entry.twitchHint": "The official channel, where tournaments are cast",
   "links.entry.youtube": "FAF on YouTube",
   "links.entry.youtubeHint": "Casts, guides and event recordings",
-  "links.entry.stellar": "Stellar Tactician",
-  "links.entry.stellarHint": "High-level play and strategy commentary",
-  "links.entry.memeCommander": "The Meme Commander",
-  "links.entry.memeCommanderHint": "Casts, shorts and entertainment",
+  "links.entry.twitchCategory": "Forged Alliance on Twitch",
+  "links.entry.twitchCategoryHint": "Everyone streaming the game right now",
+  "links.entry.youtubeCategory": "Forged Alliance on YouTube",
+  "links.entry.youtubeCategoryHint": "Videos about the game from every channel",
+  "links.entry.kickCategory": "Forged Alliance on Kick",
+  "links.entry.kickCategoryHint": "Everyone streaming the game on Kick",
 
   // The community calendar.
   "events.title": "Events",
