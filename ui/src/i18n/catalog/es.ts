@@ -794,6 +794,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "playerCard.overview.ratingsEyebrow": "Puntuaciones",
   "playerCard.overview.ratingsTitle": "Colas de puntuación actuales",
   "playerCard.overview.ratingsHint": "Selecciona una cola para explorar todo su historial",
+  "playerCard.overview.foundByFormerName": "Encontrado por un nombre anterior: {name} ahora es {login}. Los nombres liberados pueden volver a usarse, así que esta es la cuenta que lo usó por última vez.",
   "playerCard.overview.accountEyebrow": "Cuenta",
   "playerCard.overview.playerId": "ID del jugador",
   "playerCard.overview.registered": "Registrado",

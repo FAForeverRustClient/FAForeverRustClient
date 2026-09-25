@@ -1841,6 +1841,7 @@ export const en = {
 
   // Player card: overview section.
   "playerCard.overview.warnings": "Some profile sections could not be loaded",
+  "playerCard.overview.foundByFormerName": "Found by a former name: {name} is now {login}. Names can be taken again once released, so this is the account that used it last.",
   "playerCard.overview.ratingsEyebrow": "Ratings",
   "playerCard.overview.ratingsTitle": "Current rating queues",
   "playerCard.overview.ratingsHint": "Select a queue to explore its full history",

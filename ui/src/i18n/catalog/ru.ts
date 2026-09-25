@@ -817,6 +817,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "playerCard.overview.ratingsEyebrow": "Рейтинги",
   "playerCard.overview.ratingsTitle": "Текущие рейтинговые очереди",
   "playerCard.overview.ratingsHint": "Выберите очередь, чтобы посмотреть её историю целиком",
+  "playerCard.overview.foundByFormerName": "Найдено по прежнему имени: {name} теперь {login}. Освободившееся имя может занять другой игрок, поэтому показан аккаунт, который носил его последним.",
   "playerCard.overview.accountEyebrow": "Учётная запись",
   "playerCard.overview.playerId": "ID игрока",
   "playerCard.overview.registered": "Зарегистрирован",

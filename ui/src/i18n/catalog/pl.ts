@@ -811,6 +811,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "playerCard.overview.ratingsEyebrow": "Rankingi",
   "playerCard.overview.ratingsTitle": "Bieżące kolejki rankingowe",
   "playerCard.overview.ratingsHint": "Wybierz kolejkę, aby zobaczyć jej pełną historię",
+  "playerCard.overview.foundByFormerName": "Znaleziono po dawnej nazwie: {name} to teraz {login}. Zwolnione nazwy mogą zostać zajęte ponownie, więc to konto, które używało jej ostatnie.",
   "playerCard.overview.accountEyebrow": "Konto",
   "playerCard.overview.playerId": "ID gracza",
   "playerCard.overview.registered": "Zarejestrowano",

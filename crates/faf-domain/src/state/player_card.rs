@@ -215,6 +215,13 @@ pub struct PlayerCardProfile {
     pub achievements: Vec<PlayerAchievement>,
     /// Non-fatal API section failures. Identity still loads and the UI explains omissions.
     pub warnings: Vec<String>,
+    /// The name this profile was found by, when it is a former name rather
+    /// than the current login (#315).
+    ///
+    /// A name is released when its owner changes it and can be taken by
+    /// somebody else, so a hit on a former name is a candidate, not a proof,
+    /// and the card says so.
+    pub matched_former_name: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -796,6 +803,7 @@ mod tests {
                 events: Vec::new(),
                 achievements: Vec::new(),
                 warnings: Vec::new(),
+                matched_former_name: None,
             }),
             ..PlayerCardState::default()
         };

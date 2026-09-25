@@ -61,6 +61,14 @@ export function PlayerOverview({ profile, note, onOpenHistory }: {
   const { t } = useTranslation();
   return (
     <div className="player-overview">
+      {/* Said up front, because a released name can belong to somebody else
+          now: this is the account that gave it up last, not necessarily the
+          person the reader has in mind. */}
+      {profile.matchedFormerName && (
+        <p className="player-card-former-name surface">
+          {t("playerCard.overview.foundByFormerName", { name: profile.matchedFormerName, login: profile.login })}
+        </p>
+      )}
       {profile.warnings.length > 0 && (
         <details className="player-card-warnings surface">
           <summary>{t("playerCard.overview.warnings")}</summary>

@@ -795,6 +795,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "playerCard.overview.ratingsEyebrow": "Classements",
   "playerCard.overview.ratingsTitle": "Files de classement actuelles",
   "playerCard.overview.ratingsHint": "Sélectionnez une file pour explorer tout son historique",
+  "playerCard.overview.foundByFormerName": "Trouvé par un ancien nom : {name} s'appelle maintenant {login}. Un nom libéré peut être repris, il s'agit donc du dernier compte à l'avoir porté.",
   "playerCard.overview.accountEyebrow": "Compte",
   "playerCard.overview.playerId": "ID du joueur",
   "playerCard.overview.registered": "Inscrit le",

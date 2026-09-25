@@ -1603,6 +1603,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.history.entriesLoaded": "{count} Einträge geladen",
 
   "playerCard.overview.warnings": "Einige Profilabschnitte konnten nicht geladen werden",
+  "playerCard.overview.foundByFormerName": "Über einen früheren Namen gefunden: {name} heißt jetzt {login}. Freigewordene Namen können neu vergeben werden, dies ist das Konto, das ihn zuletzt trug.",
   "playerCard.overview.ratingsEyebrow": "Ratings",
   "playerCard.overview.ratingsTitle": "Aktuelle Rating-Warteschlangen",
   "playerCard.overview.ratingsHint": "Wähle eine Warteschlange, um ihren vollen Verlauf zu sehen",
