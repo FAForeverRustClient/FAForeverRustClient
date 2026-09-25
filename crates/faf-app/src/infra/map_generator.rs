@@ -352,7 +352,7 @@ impl NeroxisMapGenerator {
         {
             let _ = tokio::fs::rename(&path, path.with_extension("log.1")).await;
         }
-        let _ = tokio::fs::create_dir_all(&self.config.generator_dir()).await;
+        let _ = tokio::fs::create_dir_all(self.config.generator_dir()).await;
         if let Ok(mut file) = tokio::fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -424,7 +424,7 @@ impl NeroxisMapGenerator {
             .content_length()
             .map(|n| u32::try_from(n).unwrap_or(u32::MAX));
 
-        tokio::fs::create_dir_all(&self.config.generator_dir())
+        tokio::fs::create_dir_all(self.config.generator_dir())
             .await
             .map_err(|e| format!("could not create the generator directory: {e}"))?;
         let temp = target.with_extension("partial");
@@ -499,7 +499,7 @@ impl NeroxisMapGenerator {
         args: Vec<String>,
         progress: &mpsc::Sender<GeneratorUpdate>,
     ) -> RunOutcome {
-        if let Err(e) = tokio::fs::create_dir_all(&self.config.maps_dir()).await {
+        if let Err(e) = tokio::fs::create_dir_all(self.config.maps_dir()).await {
             return RunOutcome::Failed(format!("could not create the maps directory: {e}"));
         }
         // The generator writes previews into this folder if it was asked to;
@@ -523,13 +523,13 @@ impl NeroxisMapGenerator {
         }
         self.log_line(&header).await;
 
-        let mut command = Command::new(&self.config.java_path());
+        let mut command = Command::new(self.config.java_path());
         command
             .arg("-jar")
             .arg(jar)
             .args(&args)
             // The generator writes into its working directory.
-            .current_dir(&self.config.maps_dir())
+            .current_dir(self.config.maps_dir())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         // Always hidden: what the switch opens is the log window above, which
@@ -688,7 +688,7 @@ impl NeroxisMapGenerator {
         args: &[&str],
         limit: Duration,
     ) -> Result<String, String> {
-        let mut command = Command::new(&self.config.java_path());
+        let mut command = Command::new(self.config.java_path());
         command
             .arg("-jar")
             .arg(jar)
@@ -698,7 +698,7 @@ impl NeroxisMapGenerator {
             // map into its working directory. Beside the JAR that is at
             // least findable; in the client's own working directory it is
             // litter nobody would connect to the map generator.
-            .current_dir(&self.config.generator_dir())
+            .current_dir(self.config.generator_dir())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         // Never windowed: these run while the dialog is being filled in, and
@@ -840,7 +840,7 @@ impl NeroxisMapGenerator {
         let Ok(serialized) = serde_json::to_string(tags) else {
             return;
         };
-        let _ = tokio::fs::create_dir_all(&self.config.generator_dir()).await;
+        let _ = tokio::fs::create_dir_all(self.config.generator_dir()).await;
         let _ = tokio::fs::write(self.releases_cache_path(), serialized).await;
     }
 
@@ -1088,7 +1088,7 @@ impl NeroxisMapGenerator {
             .or_default()
             .insert(query.flag().to_string(), values.to_vec());
         if let Ok(serialized) = serde_json::to_string_pretty(&all) {
-            let _ = tokio::fs::create_dir_all(&self.config.generator_dir()).await;
+            let _ = tokio::fs::create_dir_all(self.config.generator_dir()).await;
             let _ = tokio::fs::write(&path, serialized).await;
         }
     }
@@ -1434,7 +1434,7 @@ impl MapGeneratorPort for NeroxisMapGenerator {
             .map(|name| name.trim().to_ascii_lowercase())
             .collect();
         let mut removed = 0;
-        let mut entries = match tokio::fs::read_dir(&self.config.maps_dir()).await {
+        let mut entries = match tokio::fs::read_dir(self.config.maps_dir()).await {
             Ok(entries) => entries,
             // No maps folder means nothing to clean, not a failure.
             Err(_) => return Ok(0),
