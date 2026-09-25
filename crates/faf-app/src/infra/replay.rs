@@ -337,6 +337,13 @@ pub struct ReplayClient {
     /// Playback preparation writes shared cache and preference files. Keep one
     /// launch pipeline active per client so concurrent UI commands cannot race.
     playback_lock: Mutex<()>,
+    /// Held while a vault replay is fetched and written. "Load more info" asks
+    /// for the details and the analysis at once, and both used to find no
+    /// cached file and download the same one side by side: the second
+    /// `persist` then tried to replace a file the first reader already had
+    /// open, which Windows refuses with "Access is denied". One download at a
+    /// time, and the second caller finds the first one's file.
+    vault_downloads: Mutex<()>,
     /// The last shared-games intersection and the search that produced it, so
     /// turning a page does not scan every player's history again. Keyed by the
     /// query with its paging normalised away: page and page size change what is
@@ -448,6 +455,7 @@ impl ReplayClient {
             download_http: super::http::no_redirect_http_client(),
             process,
             playback_lock: Mutex::new(()),
+            vault_downloads: Mutex::new(()),
             pipe_live_replay: std::sync::atomic::AtomicBool::new(false),
             map_generator,
             auto_generate_maps: std::sync::atomic::AtomicBool::new(true),
@@ -1103,12 +1111,23 @@ impl ReplayClient {
         }
     }
 
+    /// The vault replay `uid` as a file in `directory`, fetched unless it is
+    /// already there.
+    ///
+    /// A vault replay never changes once uploaded, and the file only ever
+    /// appears whole (`write_replay_atomically`), so one that exists is the
+    /// finished download. Fetching it again would not only waste the
+    /// transfer, it would replace a file another command may be reading.
     async fn download_vault_to(&self, uid: i32, directory: PathBuf) -> Result<PathBuf, String> {
+        let path = directory.join(format!("{uid}.fafreplay"));
+        let _download_guard = self.vault_downloads.lock().await;
+        if tokio::fs::try_exists(&path).await.unwrap_or(false) {
+            return Ok(path);
+        }
         let bytes = self.fetch_vault_replay(uid).await?;
         tokio::fs::create_dir_all(&directory)
             .await
             .map_err(|error| format!("could not create replay directory: {error}"))?;
-        let path = directory.join(format!("{uid}.fafreplay"));
         let write_path = path.clone();
         tokio::task::spawn_blocking(move || write_replay_atomically(&write_path, &bytes))
             .await
@@ -4965,6 +4984,34 @@ mod tests {
 
         assert_eq!(std::fs::read(&path).unwrap(), b"second");
         assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    /// The reported error: "Load more info" sends the details and the analysis
+    /// together, both fetched the same replay, and the second write replaced a
+    /// file the first reader held open. A replay already on disk is the
+    /// download; nothing is fetched. The client here has no token, so a fetch
+    /// would fail the test rather than reach the network.
+    #[tokio::test]
+    async fn a_vault_replay_on_disk_is_reused_by_every_caller_at_once() {
+        let directory = tempfile::tempdir().expect("temporary replay directory");
+        let path = directory.path().join("42.fafreplay");
+        std::fs::write(&path, b"already here").unwrap();
+        let generator = Arc::new(StubGenerator::new(
+            true,
+            GeneratorStatus::Failed {
+                reason: "must not run".into(),
+            },
+        ));
+        let client = client_with(generator);
+
+        let (details, analysis) = tokio::join!(
+            client.download_vault_to(42, directory.path().to_path_buf()),
+            client.download_vault_to(42, directory.path().to_path_buf()),
+        );
+
+        assert_eq!(details.expect("reused"), path);
+        assert_eq!(analysis.expect("reused"), path);
+        assert_eq!(std::fs::read(&path).unwrap(), b"already here");
     }
 
     #[tokio::test]
