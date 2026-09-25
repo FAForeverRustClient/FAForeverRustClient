@@ -2172,10 +2172,11 @@ impl BrowsingPreferences {
             selected_factions
         };
         self.live_replay_filters.search = truncate_trimmed(self.live_replay_filters.search, 200);
+        // Room for several choices: these hold comma-separated lists now.
         self.live_replay_filters.game_type =
-            truncate_trimmed(self.live_replay_filters.game_type, 64);
+            truncate_trimmed(self.live_replay_filters.game_type, 256);
         self.live_replay_filters.featured_mod =
-            truncate_trimmed(self.live_replay_filters.featured_mod, 128);
+            truncate_trimmed(self.live_replay_filters.featured_mod, 512);
         self.live_replay_filters.active_players =
             normalize_player_count(self.live_replay_filters.active_players);
         self.live_replay_filters.max_players =
@@ -2639,17 +2640,30 @@ fn truncate_trimmed(value: String, max_chars: usize) -> String {
     value.trim().chars().take(max_chars).collect()
 }
 
+/// A comma-separated list of player counts, since the live replay filters
+/// became multi-select (#326): each count is checked on its own, and one bad
+/// entry drops only itself. Twin of `normalizePlayerCount` in
+/// `ui/src/shared/browsingPreferences.ts`.
 fn normalize_player_count(value: String) -> String {
-    let value = value.trim();
-    if value.is_empty() || !value.chars().all(|character| character.is_ascii_digit()) {
-        return String::new();
+    let mut counts: Vec<String> = Vec::new();
+    for part in value.split(',') {
+        let part = part.trim();
+        if part.is_empty() || !part.chars().all(|character| character.is_ascii_digit()) {
+            continue;
+        }
+        let Some(count) = part
+            .parse::<u8>()
+            .ok()
+            .filter(|count| (1..=64).contains(count))
+        else {
+            continue;
+        };
+        let count = count.to_string();
+        if !counts.contains(&count) {
+            counts.push(count);
+        }
     }
-    value
-        .parse::<u8>()
-        .ok()
-        .filter(|count| (1..=64).contains(count))
-        .map(|count| count.to_string())
-        .unwrap_or_default()
+    counts.join(",")
 }
 
 /// Bound the user's saved mod sets the way every other list here is bounded.
@@ -3478,5 +3492,12 @@ mod tests {
         )
         .unwrap();
         assert_eq!(parsed_exceeding.game_tile_columns, 6);
+    }
+
+    #[test]
+    fn player_count_filters_hold_a_list_and_drop_only_bad_entries() {
+        assert_eq!(normalize_player_count("2, 04,abc,999,2".into()), "2,4");
+        assert_eq!(normalize_player_count("04".into()), "4");
+        assert_eq!(normalize_player_count("999".into()), "");
     }
 }

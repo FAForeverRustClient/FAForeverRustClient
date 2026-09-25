@@ -22,6 +22,30 @@ export type LiveSortKey = "started" | "title" | "players" | "rating" | "host" | 
 export type SortDirection = "ascending" | "descending";
 export type LiveFilters = LiveReplayFilters;
 
+/**
+ * The choices one of the four dropdown filters holds.
+ *
+ * Several at once (#326), stored comma-separated in the same string field the
+ * single choice used to occupy. An older settings file's single value is
+ * therefore a one-element list, and empty still means "any", so nothing had to
+ * migrate. Commas cannot appear in a game type, a featured mod's technical
+ * name or a player count.
+ */
+export function filterChoices(value: string): string[] {
+  return [...new Set(value.split(",").map((part) => part.trim()).filter(Boolean))];
+}
+
+/** The inverse of [`filterChoices`]. */
+export function joinFilterChoices(values: string[]): string {
+  return filterChoices(values.join(",")).join(",");
+}
+
+/** Whether `actual` passes a filter holding `value`: any choice matches. */
+export function matchesFilterChoice(value: string, actual: string | number): boolean {
+  const choices = filterChoices(value);
+  return choices.length === 0 || choices.includes(String(actual));
+}
+
 export type IndexedLiveGame = {
   game: Game;
   players: string[];

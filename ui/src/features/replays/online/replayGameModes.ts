@@ -11,11 +11,12 @@
 //   playerStats.ratingChanges.leaderboard.technicalName == <board>
 //   featuredMod.technicalName == <mod>
 //
-// A mode picks exactly one of them. That is why this is a single choice rather
-// than a multi-select: "custom games or co-op" would be the two clauses at
-// once, which is an AND, which is a search that cannot match anything. A
-// control that can express an empty-by-construction query is worse than one
-// that asks a blunter question honestly.
+// Several modes can be picked at once (#326). Several leaderboards are one
+// `=in=` clause, which is already an OR. Co-op beside a leaderboard would be
+// the two clauses at once, an AND that cannot match anything, so the query
+// builder (`mode_clauses` in `faf_domain::protocol::replay_query`) turns that
+// one combination into an OR group instead. The picker offers nothing the
+// search cannot answer.
 //
 // The mod filter itself is untouched by all this and still lives in the
 // advanced panel, for `fafbeta` and `fafdevelop`. The one thing this control
@@ -29,7 +30,7 @@ import { COOP_FEATURED_MOD } from "../../../shared/replayQuery";
 export { COOP_FEATURED_MOD } from "../../../shared/replayQuery";
 
 export interface ReplayGameMode {
-  /** The `<option>` value. Empty is "any". */
+  /** The checkbox value: a leaderboard's technical name, or `coop`. */
   id: string;
   label: string;
   /** The leaderboard clause this mode asks for, if it asks for one. */
@@ -65,36 +66,41 @@ export function replayGameModes(boards: RatingLeaderboard[]): ReplayGameMode[] {
   // of the vault is, and the tab must not be missing it because the
   // leaderboard catalogue has not loaded (or failed).
   const listed = names.includes(GLOBAL_LEADERBOARD) ? names : [GLOBAL_LEADERBOARD, ...names];
+  // No "any" entry: nothing ticked is any, which the picker says itself.
   return [
-    { id: "", label: t("replays.search.mode.any"), leaderboards: [] },
     ...listed.map(mode),
     { id: COOP_FEATURED_MOD, label: t("replays.search.mode.coop"), leaderboards: [] },
   ];
 }
 
 /**
- * Which mode the query in the form is already asking for.
+ * Which modes the query in the form is already asking for.
  *
  * Derived rather than stored, so the control cannot disagree with the search
  * that is actually running: a co-op mod filter set by hand in the advanced
  * panel shows up here as Co-op, which is what it is.
  */
-export function selectedGameMode(query: Pick<ReplayQuery, "leaderboards" | "featuredMods">): string {
-  if (query.featuredMods.includes(COOP_FEATURED_MOD)) return COOP_FEATURED_MOD;
-  return query.leaderboards.length === 1 ? query.leaderboards[0] : "";
+export function selectedGameModes(query: Pick<ReplayQuery, "leaderboards" | "featuredMods">): string[] {
+  return query.featuredMods.includes(COOP_FEATURED_MOD)
+    ? [...query.leaderboards, COOP_FEATURED_MOD]
+    : [...query.leaderboards];
 }
 
 /**
- * The query with one mode selected.
+ * The query with exactly these modes selected. None is any.
  *
- * Co-op is the only mode that touches the mod filter, and it puts the rest of
- * it back when another mode is chosen: a search for `fafbeta` games that the
- * reader set in the advanced panel survives a change of mode, and the `coop`
- * entry this control added does not linger.
+ * Co-op is the only mode that touches the mod filter, and the rest of that
+ * filter is left as it was: a search for `fafbeta` games that the reader set in
+ * the advanced panel survives a change of mode, and the `coop` entry this
+ * control added does not linger once co-op is unticked.
  */
-export function withGameMode(query: ReplayQuery, mode: string): ReplayQuery {
+export function withGameModes(query: ReplayQuery, modes: string[]): ReplayQuery {
   const featuredMods = query.featuredMods.filter((mod) => mod !== COOP_FEATURED_MOD);
-  return mode === COOP_FEATURED_MOD
-    ? { ...query, leaderboards: [], featuredMods: [...featuredMods, COOP_FEATURED_MOD], page: 1 }
-    : { ...query, leaderboards: mode ? [mode] : [], featuredMods, page: 1 };
+  const leaderboards = [...new Set(modes.filter((mode) => mode && mode !== COOP_FEATURED_MOD))];
+  return {
+    ...query,
+    leaderboards,
+    featuredMods: modes.includes(COOP_FEATURED_MOD) ? [...featuredMods, COOP_FEATURED_MOD] : featuredMods,
+    page: 1,
+  };
 }

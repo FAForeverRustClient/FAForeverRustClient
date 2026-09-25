@@ -15,6 +15,7 @@ import {
   LIVE_REPLAY_BATCH_SIZE,
   liveFeaturedModOptions,
   liveSortValue,
+  matchesFilterChoice,
   replayDelayRemaining,
   type IndexedLiveGame,
   type LiveFilters,
@@ -141,10 +142,10 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
       .filter(({ game, players, searchText, simModCount }) => {
         return (
           (!search || searchText.includes(search)) &&
-          (!filters.gameType || game.gameType === filters.gameType) &&
-          (!filters.featuredMod || game.modName === filters.featuredMod) &&
-          (!filters.activePlayers || game.players === Number(filters.activePlayers)) &&
-          (!filters.maxPlayers || game.maxPlayers === Number(filters.maxPlayers)) &&
+          matchesFilterChoice(filters.gameType, game.gameType) &&
+          matchesFilterChoice(filters.featuredMod, game.modName) &&
+          matchesFilterChoice(filters.activePlayers, game.players) &&
+          matchesFilterChoice(filters.maxPlayers, game.maxPlayers) &&
           (!filters.hideModded || simModCount === 0) &&
           (!filters.hideSinglePlayer || game.players !== 1) &&
           (!filters.friendsOnly || players.some((name) => friendSet.has(name.toLocaleLowerCase())))
