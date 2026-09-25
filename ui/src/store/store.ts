@@ -64,6 +64,8 @@ const INITIAL: AppState = {
     analysisError: null,
     onlineLookups: {},
     resolvedMaps: {},
+    recentMatchmaker: [],
+    recentMatchmakerStatus: { type: "idle" },
   },
   maps: {
     vault: [],

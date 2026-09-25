@@ -5013,6 +5013,21 @@ fn cases() -> Vec<Case> {
         ),
         // ── replays ──────────────────────────────────────────────────────
         case(
+            "the matchmaker tab's recent games load beside the vault, not into it",
+            vec![
+                ReplayEvent::RecentMatchmakerLoading.into(),
+                ReplayEvent::RecentMatchmakerFailed {
+                    reason: "not logged in".into(),
+                }
+                .into(),
+                ReplayEvent::RecentMatchmakerLoading.into(),
+                ReplayEvent::RecentMatchmakerLoaded {
+                    replays: vec![vault_replay(61), vault_replay(60)],
+                }
+                .into(),
+            ],
+        ),
+        case(
             "a replay connects, fails, and is dismissed",
             vec![
                 ReplayEvent::Connecting.into(),

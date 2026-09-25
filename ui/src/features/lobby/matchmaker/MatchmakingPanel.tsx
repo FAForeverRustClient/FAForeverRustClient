@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { MatchmakerRecentGames } from "./MatchmakerRecentGames";
 import { Button } from "../../../design-system/Button";
 import { EmptyState } from "../../../design-system/EmptyState";
 import { Icon } from "../../../design-system/Icon";
@@ -347,6 +348,8 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
             </Button>
           </div>
         </section>
+
+        <MatchmakerRecentGames playerName={player?.name ?? ""} vault={maps.vault} />
       </main>
 
       {/* The divider sits between the two columns rather than on either, so

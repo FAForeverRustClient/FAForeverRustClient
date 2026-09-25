@@ -263,6 +263,25 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ReplayEvent::VaultLoadFailed { reason }),
             }
         }
+        ReplayCommand::LoadRecentMatchmaker => {
+            let Some(login) =
+                out.with_state(|state| state.auth.player.as_ref().map(|p| p.name.clone()))
+            else {
+                return;
+            };
+            out.emit(ReplayEvent::RecentMatchmakerLoading);
+            match ctx
+                .ports
+                .replay
+                .search_vault(recent_matchmaker_query(login))
+                .await
+            {
+                Ok(search) => out.emit(ReplayEvent::RecentMatchmakerLoaded {
+                    replays: search.replays,
+                }),
+                Err(reason) => out.emit(ReplayEvent::RecentMatchmakerFailed { reason }),
+            }
+        }
         ReplayCommand::LoadFeaturedMods => {
             // Best-effort: the filter falls back to a free-choice "any" when
             // the list can't be fetched, so a failure here isn't worth a
@@ -433,5 +452,29 @@ async fn look_up_many(uids: Vec<i32>, ctx: &ServiceCtx, out: &EventSink) {
                 }
             }
         }
+    }
+}
+/// The matchmaker leaderboards, by the technical names a replay's rating
+/// changes carry. `global` is left out: that is every custom game.
+const MATCHMAKER_LEADERBOARDS: [&str; 4] =
+    ["ladder_1v1", "tmm_2v2", "tmm_3v3", "tmm_4v4_full_share"];
+
+/// How many games the matchmaker tab lists.
+const RECENT_MATCHMAKER_GAMES: u32 = 10;
+
+/// The player's own latest matchmaker games, newest first (#301).
+///
+/// An exact login rather than a part of one, so another player whose name
+/// contains this one is not mixed in.
+fn recent_matchmaker_query(login: String) -> ReplayQuery {
+    ReplayQuery {
+        player: login,
+        exact_player: true,
+        leaderboards: MATCHMAKER_LEADERBOARDS
+            .iter()
+            .map(|name| (*name).to_string())
+            .collect(),
+        page_size: RECENT_MATCHMAKER_GAMES,
+        ..ReplayQuery::default()
     }
 }

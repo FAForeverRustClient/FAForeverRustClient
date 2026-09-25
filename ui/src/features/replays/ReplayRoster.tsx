@@ -5,6 +5,7 @@ import { FactionIcon } from "../../shared/components/FactionIcon";
 import { openPlayerCard } from "../../shared/playerCardActions";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { t } from "../../i18n";
+import { outcomeLabel, parseOutcome, type OutcomeKind } from "../../shared/gameOutcome";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
 
@@ -37,27 +38,8 @@ function ReplayPlayerMarker({ player, observer, size }: { player: ReplayPlayer; 
   ) : null;
 }
 
-export type OutcomeKind = "victory" | "defeat" | "draw" | "";
-
-export function parseOutcome(outcome: string): OutcomeKind {
-  switch (outcome.toLocaleUpperCase()) {
-    case "VICTORY": return "victory";
-    case "DEFEAT": return "defeat";
-    case "DRAW":
-    case "MUTUAL_DRAW": return "draw";
-    default: return "";
-  }
-}
-
-export function outcomeLabel(outcome: string): string {
-  const kind = parseOutcome(outcome);
-  switch (kind) {
-    case "victory": return t("replays.roster.victory");
-    case "defeat": return t("replays.roster.defeat");
-    case "draw": return t("replays.roster.draw");
-    default: return "";
-  }
-}
+// Moved to shared, because the matchmaker tab reads outcomes too.
+export { outcomeLabel, parseOutcome, type OutcomeKind };
 
 /**
  * One team's result, by the priority Java's `calculateTeamOutcome` uses:
