@@ -193,20 +193,32 @@ export const DIRECTORY: readonly DirectoryLink[] = [
     origin: "official",
     section: "watch",
   },
+  // No individual streamers or channels past FAF's own (#329). Any short list
+  // of them reads as the client picking favourites, and every other caster
+  // would reasonably ask to be on it. The platforms' own pages for the game
+  // list everybody, in the order the platform ranks them, which is nobody here
+  // choosing. Kick has no YouTube-style game channel, so it is the category.
   {
-    id: "stellar",
-    name: "links.entry.stellar",
-    hint: "links.entry.stellarHint",
-    href: "https://www.twitch.tv/stellartactician",
+    id: "twitchCategory",
+    name: "links.entry.twitchCategory",
+    hint: "links.entry.twitchCategoryHint",
+    href: "https://www.twitch.tv/directory/category/supreme-commander-forged-alliance",
     origin: "community",
     section: "watch",
-    channel: "stellartactician",
   },
   {
-    id: "memecommander",
-    name: "links.entry.memeCommander",
-    hint: "links.entry.memeCommanderHint",
-    href: "https://www.youtube.com/@TheMemeCommander",
+    id: "youtubeCategory",
+    name: "links.entry.youtubeCategory",
+    hint: "links.entry.youtubeCategoryHint",
+    href: "https://www.youtube.com/channel/UChiCO27pbaXDR0d0JfxlIpw",
+    origin: "community",
+    section: "watch",
+  },
+  {
+    id: "kickCategory",
+    name: "links.entry.kickCategory",
+    hint: "links.entry.kickCategoryHint",
+    href: "https://kick.com/category/supreme-commander-forged-alliance",
     origin: "community",
     section: "watch",
   },

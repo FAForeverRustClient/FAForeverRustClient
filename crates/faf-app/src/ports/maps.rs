@@ -45,6 +45,20 @@ pub trait MapsPort: Send + Sync {
         BTreeMap::new()
     }
 
+    /// The vault's record for each named map folder, hidden versions included.
+    ///
+    /// For folders [`Self::list_vault`] does not cover, which leaves out every
+    /// map whose latest version was withdrawn. The record is the map's, with its
+    /// latest version, the same shape the catalogue holds, so the lookups that
+    /// match on a base folder name treat both alike. Defaults to finding
+    /// nothing, which is what a stub needs.
+    async fn find_vault_maps_by_folder(
+        &self,
+        _folder_names: &[String],
+    ) -> Result<Vec<VaultMap>, String> {
+        Ok(Vec::new())
+    }
+
     /// Load the rating-bracket map pools and veto limits for one queue.
     async fn list_matchmaker_pools(
         &self,

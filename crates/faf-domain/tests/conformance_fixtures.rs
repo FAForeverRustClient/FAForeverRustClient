@@ -3474,6 +3474,7 @@ fn cases() -> Vec<Case> {
                     conflicts: vec![ModVersionConflict {
                         required_uid: "old-uid".into(),
                         required_name: "Total Mayhem".into(),
+                        required_version: "11".into(),
                         folder_name: "Total Mayhem".into(),
                         installed_uid: "new-uid".into(),
                         installed_name: "Total Mayhem".into(),
@@ -4641,6 +4642,28 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a withdrawn map looked up by folder joins the index once",
+            vec![
+                MapsEvent::VaultLoaded {
+                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")],
+                }
+                .into(),
+                // Twice, and with the catalogue's own record in the second
+                // answer: neither may duplicate what the index already holds.
+                MapsEvent::VaultFoldersResolved {
+                    maps: vec![conformance_vault_map(3, 33, "withdrawn_map.v0002")],
+                }
+                .into(),
+                MapsEvent::VaultFoldersResolved {
+                    maps: vec![
+                        conformance_vault_map(3, 33, "withdrawn_map.v0002"),
+                        conformance_vault_map(1, 11, "scmp_009.v0001"),
+                    ],
+                }
+                .into(),
+            ],
+        ),
+        case(
             "mods load and report a failure",
             vec![
                 ModsEvent::VaultSearching.into(),
@@ -4913,7 +4936,6 @@ fn cases() -> Vec<Case> {
                         login: "Ada".into(),
                         country: String::new(),
                         registered_at: String::new(),
-                        last_seen_at: String::new(),
                         user_agent: String::new(),
                         avatars: vec![PlayerAvatar {
                             url: "old".into(),
@@ -6004,7 +6026,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Maps:matchmakerPoolsLoading",
     "Maps:uninstallFailed",
     "Maps:uninstalled",
-    "Maps:vaultLoaded",
     "Mods:installFailed",
     "Mods:installed",
     "Mods:installedLoaded",

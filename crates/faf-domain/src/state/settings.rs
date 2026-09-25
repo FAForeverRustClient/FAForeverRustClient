@@ -697,6 +697,12 @@ pub struct NotificationPreferences {
     /// for a switch to turn them on. Off is one click, in the same list as every
     /// other kind, which is what was asked for in the thread.
     pub stream_live: bool,
+    /// Whether a finished generated map is announced.
+    ///
+    /// On by default, because generation is slow and a lobby join waits on it.
+    /// Off silences only the success: a generator that failed still says so,
+    /// because a join blocked on a map that never arrives needs explaining.
+    pub map_generated: bool,
     /// Sound volume from 0 to 100.
     pub volume: u8,
 }
@@ -725,6 +731,7 @@ impl Default for NotificationPreferences {
             review_reminder: true,
             party_invites: true,
             stream_live: true,
+            map_generated: true,
             volume: 70,
         }
     }
@@ -762,6 +769,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             review_reminder: bool,
             party_invites: bool,
             stream_live: bool,
+            map_generated: bool,
             volume: u8,
         }
 
@@ -793,6 +801,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     review_reminder: defaults.review_reminder,
                     party_invites: defaults.party_invites,
                     stream_live: defaults.stream_live,
+                    map_generated: defaults.map_generated,
                     volume: defaults.volume,
                 }
             }
@@ -835,6 +844,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             review_reminder: wire.review_reminder,
             party_invites: wire.party_invites,
             stream_live: wire.stream_live,
+            map_generated: wire.map_generated,
             volume: wire.volume,
         })
     }

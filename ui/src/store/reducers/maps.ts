@@ -14,6 +14,17 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
       return { ...state, vault: event.payload.maps, vaultStatus: { type: "ready" } };
     case "vaultLoadFailed":
       return { ...state, vaultStatus: { type: "failed", payload: { reason: event.payload.reason } } };
+    // Appended, never replacing: these are records the catalogue leaves out
+    // (withdrawn versions), looked up one folder at a time.
+    case "vaultFoldersResolved": {
+      const known = new Set(state.vault.map((map) => map.versionId));
+      const added = event.payload.maps.filter((map) => {
+        if (known.has(map.versionId)) return false;
+        known.add(map.versionId);
+        return true;
+      });
+      return added.length === 0 ? state : { ...state, vault: [...state.vault, ...added] };
+    }
     // `browse` is one page of a server-side search and is separate from
     // `vault`, which stays the whole catalogue used as a folder-name index.
     case "vaultSearching":

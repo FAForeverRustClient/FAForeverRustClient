@@ -64,7 +64,6 @@ export function PlayerClanView({
               <strong><PlayerName name={member.login} /></strong>
               <span>{t("playerCard.clan.joined", { date: displayDate(member.joinedAt) })}</span>
               <span>{t("playerCard.clan.registered", { date: displayDate(member.accountCreatedAt) })}</span>
-              <span>{t("playerCard.clan.lastSeen", { date: displayDate(member.lastSeenAt) })}</span>
             </button>
           ))}
         </div>

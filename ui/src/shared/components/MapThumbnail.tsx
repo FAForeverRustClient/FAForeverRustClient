@@ -11,6 +11,7 @@ import {
 } from "../mapPresentation";
 import { firstLiveCandidate, markThumbnailMissing } from "../thumbnailCache";
 import { useLocalMapPreview } from "../hooks/useLocalMapPreview";
+import { useVaultFolderLookup } from "../hooks/useVaultFolderLookup";
 import "./map-thumbnail.css";
 
 const COOP_FACTION_IDS: Record<string, number> = {
@@ -76,6 +77,10 @@ export function MapThumbnail({
   // Only once every remote candidate has 404'd. Kept out of `candidates` on
   // purpose: appending it there would reset the walk and replay those misses.
   const localPreview = useLocalMapPreview(mapName, !url, large);
+  // Last of all, a map the catalogue does not list: a version withdrawn from
+  // the vault is still played. Its record, once found, lands in the vault the
+  // caller passes in, and the candidates above start over with its art.
+  useVaultFolderLookup(mapName, !url && !localPreview && !isGenerated && !presentation.isCoop);
 
   if (!url) {
     if (localPreview) {

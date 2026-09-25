@@ -368,9 +368,16 @@ export function NotificationsSettingsSection() {
       <SettingRow label={t("settings.notifications.streamLive")} hint={t("settings.notifications.streamLiveHint")}>
         <SettingsSwitch checked={preferences.streamLive} disabled={!preferences.enabled} onChange={(streamLive) => update({ streamLive })} label={t("settings.notifications.streamLive")} />
       </SettingRow>
-      {/* The kinds with no switch of their own: server notices, errors, a
-          finished map, a new client version. One row rather than nine, because
-          nobody is going to want a different tone for each of them. */}
+      {/* A switch without a sound picker of its own: a finished map plays the
+          "other" tone below, and whether it is announced at all is the part
+          people asked to change (#307). */}
+      <SettingRow label={t("settings.notifications.mapGenerated")} hint={t("settings.notifications.mapGeneratedHint")}>
+        <SettingsSwitch checked={preferences.mapGenerated} disabled={!preferences.enabled} onChange={(mapGenerated) => update({ mapGenerated })} label={t("settings.notifications.mapGenerated")} />
+      </SettingRow>
+      {/* The kinds with no switch of their own: server notices, errors, a new
+          client version. One row rather than nine, because nobody is going to
+          want a different tone for each of them. A finished map has a switch
+          above but still plays this tone. */}
       <SettingRow label={t("settings.notifications.otherSounds")} hint={t("settings.notifications.otherSoundsHint")}>
         <SoundChoice value={preferences.sounds.other} disabled={mute} what={t("settings.notifications.otherSounds")} onChange={(other) => setSound({ other })} custom={customSounds} onAdd={addSound} />
       </SettingRow>

@@ -1199,7 +1199,6 @@ export type ClanMember = {
 	login: string,
 	joinedAt: string,
 	accountCreatedAt: string,
-	lastSeenAt: string,
 };
 
 export type ClanState = {
@@ -3807,6 +3806,21 @@ export type MapsCommand =
 /**  Scan the user's maps folder (mirrors `MapsManagerDialog::setup_maplist`). */
 { type: "loadInstalled" } |
 /**
+ *  Look maps up by folder name that the catalogue does not hold (#323).
+ *
+ *  The catalogue is fetched with `latestVersion.hidden=='false'`, which is
+ *  right for browsing and wrong for everything else: a map withdrawn from
+ *  the vault can still be hosted, joined and downloaded, and "hidden" only
+ *  means the vault does not list it. A lobby on such a map found no record,
+ *  and the preview service could not stand in, because it names previews
+ *  after the version's zip rather than its folder. The record's own
+ *  thumbnail URL is the only reliable address, so the UI asks for it once a
+ *  tile has run out of other art.
+ */
+{ type: "resolveVaultFolders"; payload: {
+	folderNames: string[],
+} } |
+/**
  *  Read preview art straight out of the named installed map folders.
  *
  *  On demand rather than with the folder scan: a full maps folder is
@@ -3860,6 +3874,14 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } |
 	maps: VaultMap[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
+} } |
+/**
+ *  Catalogue records looked up by folder name for maps the catalogue does
+ *  not hold, which in practice means versions withdrawn from the vault.
+ *  Added to `vault`, never replacing anything in it.
+ */
+{ type: "vaultFoldersResolved"; payload: {
+	maps: VaultMap[],
 } } | { type: "installedLoading" } | { type: "installedLoaded"; payload: {
 	maps: InstalledMap[],
 } } | { type: "installedLoadFailed"; payload: {
@@ -4320,6 +4342,11 @@ export type ModVersionConflict = {
 	requiredUid: string,
 	/**  What the vault calls that mod, for the prompt. */
 	requiredName: string,
+	/**
+	 *  The vault's version number for the required uid, so the prompt can set
+	 *  the host's version against the installed one. Empty when unknown.
+	 */
+	requiredVersion: string,
 	/**  The folder both versions want, relative to the mods directory. */
 	folderName: string,
 	/**  The version standing in the way. */
@@ -4667,6 +4694,14 @@ export type NotificationPreferences = {
 	 *  other kind, which is what was asked for in the thread.
 	 */
 	streamLive: boolean,
+	/**
+	 *  Whether a finished generated map is announced.
+	 *
+	 *  On by default, because generation is slow and a lobby join waits on it.
+	 *  Off silences only the success: a generator that failed still says so,
+	 *  because a join blocked on a map that never arrives needs explaining.
+	 */
+	mapGenerated: boolean,
 	/**  Sound volume from 0 to 100. */
 	volume: number,
 };
@@ -5028,7 +5063,6 @@ export type PlayerCardProfile = {
 	login: string,
 	country: string,
 	registeredAt: string,
-	lastSeenAt: string,
 	userAgent: string,
 	avatars: PlayerAvatar[],
 	names: PlayerNameRecord[],

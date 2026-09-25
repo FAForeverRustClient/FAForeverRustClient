@@ -34,7 +34,8 @@ export function ModReplacementDialog() {
             <li key={conflict.folderName} className="mod-replace-row">
               <strong>{conflict.requiredName}</strong>
               <span className="muted">
-                {t("lobby.modConflict.replaces", {
+                {t("lobby.modConflict.versions", {
+                  required: conflict.requiredVersion || "?",
                   installed: conflict.installedName,
                   version: conflict.installedVersion || "?",
                   folder: conflict.folderName,

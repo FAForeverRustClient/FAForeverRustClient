@@ -450,10 +450,12 @@ export const en = {
   "links.entry.twitchHint": "The official channel, where tournaments are cast",
   "links.entry.youtube": "FAF on YouTube",
   "links.entry.youtubeHint": "Casts, guides and event recordings",
-  "links.entry.stellar": "Stellar Tactician",
-  "links.entry.stellarHint": "High-level play and strategy commentary",
-  "links.entry.memeCommander": "The Meme Commander",
-  "links.entry.memeCommanderHint": "Casts, shorts and entertainment",
+  "links.entry.twitchCategory": "Forged Alliance on Twitch",
+  "links.entry.twitchCategoryHint": "Everyone streaming the game right now",
+  "links.entry.youtubeCategory": "Forged Alliance on YouTube",
+  "links.entry.youtubeCategoryHint": "Videos about the game from every channel",
+  "links.entry.kickCategory": "Forged Alliance on Kick",
+  "links.entry.kickCategoryHint": "Everyone streaming the game on Kick",
 
   // The community calendar.
   "events.title": "Events",
@@ -1302,6 +1304,8 @@ export const en = {
   "settings.notifications.streamLive": "FAF goes live",
   "settings.notifications.streamLiveHint":
     "Tell me when FAF's own Twitch channel starts broadcasting. Never a pop-up over a game: it appears in the notification list and on the External links page.",
+  "settings.notifications.mapGenerated": "Generated map ready",
+  "settings.notifications.mapGeneratedHint": "Tell me when a generated map is ready. Failures are always shown.",
 
   // Settings shell.
   "settings.title": "Settings",
@@ -1847,7 +1851,6 @@ export const en = {
   "playerCard.overview.accountEyebrow": "Account",
   "playerCard.overview.playerId": "Player ID",
   "playerCard.overview.registered": "Registered",
-  "playerCard.overview.lastSeen": "Last seen",
   "playerCard.overview.userAgent": "User agent",
   "playerCard.overview.clan": "Clan",
   "playerCard.overview.clanJoined": "Clan joined",
@@ -1915,7 +1918,6 @@ export const en = {
   "playerCard.clan.searchPlaceholder": "Member name…",
   "playerCard.clan.joined": "Joined {date}",
   "playerCard.clan.registered": "Registered {date}",
-  "playerCard.clan.lastSeen": "Last seen {date}",
 
   // Player card: private note editor.
   "playerCard.note.label": "Private note about {login}",
@@ -3548,7 +3550,7 @@ export const en = {
   "lobby.joinProgress.hideNote": "Hiding this does not stop anything. The status bar keeps the same progress.",
   "lobby.modConflict.title": "Replace installed mods?",
   "lobby.modConflict.body": { one: "This game uses a different version of a mod you already have installed. Nothing has been changed yet.", other: "This game uses different versions of {count} mods you already have installed. Nothing has been changed yet." },
-  "lobby.modConflict.replaces": "replaces {installed} v{version} in {folder}",
+  "lobby.modConflict.versions": "This game: v{required}. Installed: {installed} v{version}, in {folder}",
   "lobby.modConflict.note": "Replacing deletes your installed version. You can install it again from the vault afterwards.",
   "lobby.modConflict.cancel": "Do not join",
   "lobby.modConflict.confirm": "Replace and join",

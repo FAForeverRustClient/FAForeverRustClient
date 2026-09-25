@@ -87,7 +87,6 @@ export function PlayerOverview({ profile, note, onOpenHistory }: {
           <dl className="player-account-details surface">
             <div><dt>{t("playerCard.overview.playerId")}</dt><dd>{profile.playerId}</dd></div>
             <div><dt>{t("playerCard.overview.registered")}</dt><dd>{displayDate(profile.registeredAt)}</dd></div>
-            <div><dt>{t("playerCard.overview.lastSeen")}</dt><dd>{displayDate(profile.lastSeenAt)}</dd></div>
             <div><dt>{t("playerCard.overview.userAgent")}</dt><dd title={profile.userAgent || undefined}>{formatUserAgent(profile.userAgent)}</dd></div>
             <div><dt>{t("playerCard.overview.clan")}</dt><dd>{profile.clan ? `[${profile.clan.tag}] ${profile.clan.name}` : t("playerCard.overview.noClan")}</dd></div>
             <div><dt>{t("playerCard.overview.clanJoined")}</dt><dd>{profile.clan ? displayDate(profile.clan.joinedAt) : "N/A"}</dd></div>
