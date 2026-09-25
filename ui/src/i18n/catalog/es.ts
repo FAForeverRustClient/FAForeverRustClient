@@ -2300,7 +2300,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingLockedTitle": "El anfitrión ha limitado esta sala a puntuaciones de {from} a {to}. La tuya es {rating}.",
   "lobby.browser.footerCount": "Se muestran {shown} de {total} partidas",
   "settings.notifications.desktopAllKinds": "Enviar todos los avisos al escritorio",
-  "settings.notifications.desktopAllKindsHint": "Desactivado, solo salen del cliente los avisos que alguien está esperando: una partida encontrada, una invitación a un grupo, una partida lanzada, un mapa terminado. Activado, toda la lista de avisos se refleja en el sistema operativo.",
+  "settings.notifications.desktopAllKindsHint": "Desactivado, solo salen del cliente los avisos que alguien está esperando: una partida encontrada, una invitación a un grupo, una partida lanzada, un mapa terminado, una sala llena, un recordatorio de evento. Activado, toda la lista de avisos se refleja en el sistema operativo.",
   "settings.notifications.sound.silent": "Silencio",
   "settings.notifications.sound.soft": "Suave",
   "settings.notifications.sound.chime": "Campanilla",

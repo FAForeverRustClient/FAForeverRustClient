@@ -2302,7 +2302,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingLockedTitle": "L'hôte a limité ce lobby aux classements de {from} à {to}. Le vôtre est {rating}.",
   "lobby.browser.footerCount": "{shown} parties affichées sur {total}",
   "settings.notifications.desktopAllKinds": "Envoyer toutes les notifications au système",
-  "settings.notifications.desktopAllKindsHint": "Désactivé, seules celles que quelqu'un attend sortent du client : un match, une invitation de groupe, une partie lancée, une carte terminée. Activé, toute la liste des notifications est reprise par le système.",
+  "settings.notifications.desktopAllKindsHint": "Désactivé, seules celles que quelqu'un attend sortent du client : un match, une invitation de groupe, une partie lancée, une carte terminée, un salon complet, un rappel d'événement. Activé, toute la liste des notifications est reprise par le système.",
   "settings.notifications.sound.silent": "Silencieux",
   "settings.notifications.sound.soft": "Doux",
   "settings.notifications.sound.chime": "Carillon",

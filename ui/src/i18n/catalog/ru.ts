@@ -2452,7 +2452,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingLocked": "Вне диапазона рейтинга",
   "lobby.details.ratingLockedTitle": "Хост ограничил это лобби рейтингом с {from} до {to}. У вас {rating}.",
   "settings.notifications.desktopAllKinds": "Дублировать все уведомления в операционную систему",
-  "settings.notifications.desktopAllKindsHint": "Если выключено, в системные уведомления отправляются только важные события: найденный матч, приглашение в группу, запуск игры и скачивание карты. Если включено, дублируются все уведомления.",
+  "settings.notifications.desktopAllKindsHint": "Если выключено, в системные уведомления отправляются только важные события: найденный матч, приглашение в группу, запуск игры, скачивание карты, заполненное лобби и напоминание о событии. Если включено, дублируются все уведомления.",
   "settings.notifications.sound.silent": "Без звука",
   "settings.notifications.sound.soft": "Мягкий",
   "settings.notifications.sound.chime": "Звонок",
