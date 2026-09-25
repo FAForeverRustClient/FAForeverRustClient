@@ -4950,6 +4950,7 @@ fn cases() -> Vec<Case> {
                         events: Vec::new(),
                         achievements: Vec::new(),
                         warnings: Vec::new(),
+                        matched_former_name: None,
                     }),
                 }
                 .into(),

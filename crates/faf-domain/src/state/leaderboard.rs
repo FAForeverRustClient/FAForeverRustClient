@@ -121,6 +121,13 @@ pub struct RatingQuery {
     pub updated_after: Option<String>,
     pub updated_before: Option<String>,
     pub player: String,
+    /// Match `player` against former names as well as current logins, and as a
+    /// part of the name rather than the whole of it (#299).
+    ///
+    /// Off, the search is the exact login it has always been. On, it answers
+    /// "who was that", which is a list of candidates by nature: a released name
+    /// can have passed through several accounts.
+    pub include_former_names: bool,
 }
 
 impl Default for RatingQuery {
@@ -133,6 +140,7 @@ impl Default for RatingQuery {
             updated_after: None,
             updated_before: None,
             player: String::new(),
+            include_former_names: false,
         }
     }
 }

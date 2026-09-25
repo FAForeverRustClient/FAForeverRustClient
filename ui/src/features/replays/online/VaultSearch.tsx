@@ -37,7 +37,8 @@ import {
   isoDaysAgo,
 } from "../../../shared/replayQuery";
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
-import { replayGameModes, selectedGameMode, withGameMode } from "./replayGameModes";
+import { replayGameModes, selectedGameModes, withGameModes } from "./replayGameModes";
+import { MultiSelect } from "../../../design-system/MultiSelect";
 import "../../../design-system/search-panel.css";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -236,21 +237,18 @@ export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, on
         {/* The leaderboard picker, asked as the question people have: a
             leaderboard is how the API answers "which mode", not how anybody
             says it, and co-op, which is on no leaderboard at all, could not be
-            asked for before. One choice rather than several, because the two
-            clauses behind it are ANDed and "custom or co-op" would be a search
-            that cannot match anything. See `replayGameModes.ts`. */}
-        <label className="vault-field vault-search-mode search-panel-field">
-          <span className="vault-field-label search-panel-label">{t("replays.search.gameMode")}</span>
-          <select
-            className="vault-input search-panel-control"
-            value={selectedGameMode(form)}
-            onChange={(e) => setForm(withGameMode(form, e.target.value))}
-          >
-            {gameModes.map((mode) => (
-              <option key={mode.id} value={mode.id}>{mode.label}</option>
-            ))}
-          </select>
-        </label>
+            asked for before. Several at once (#326): "custom and matchmaker,
+            not co-op" is one question. See `replayGameModes.ts` for how co-op
+            beside a leaderboard stays answerable. */}
+        <div className="vault-field vault-search-mode search-panel-field">
+          <MultiSelect
+            label={t("replays.search.gameMode")}
+            anyLabel={t("replays.search.mode.any")}
+            options={gameModes.map((mode) => ({ value: mode.id, label: mode.label }))}
+            selected={selectedGameModes(form)}
+            onChange={(modes) => setForm(withGameModes(form, modes))}
+          />
+        </div>
 
         {/* Up here rather than three clicks into the advanced panel: "essential
             feature", and the feature it replaced in this row was the featured

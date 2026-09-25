@@ -181,6 +181,7 @@ const INITIAL: AppState = {
       updatedAfter: null,
       updatedBefore: null,
       player: "",
+      includeFormerNames: false,
     },
     ratingPage: {
       entries: [],

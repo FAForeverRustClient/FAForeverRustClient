@@ -428,6 +428,50 @@ pub fn build_scan_filter(
     join_clauses(clauses)
 }
 
+/// The featured mod `co-op` games are identified by. They are on no rating
+/// leaderboard, so this is how the game-mode picker asks for them.
+const COOP_FEATURED_MOD: &str = "coop";
+
+/// The featured-mod and leaderboard clauses.
+///
+/// Normally two clauses, ANDed like everything else. The exception is co-op
+/// picked beside one or more leaderboards, which the game-mode picker allows
+/// since it became multi-select (#326): co-op is asked for through the mod and
+/// a leaderboard through the rating changes, and a co-op game has no rating
+/// change, so ANDing them is a search that cannot match anything. What the
+/// reader means is either, so it becomes one OR group: co-op games, or games on
+/// those boards (still narrowed by any other mod picked in the advanced panel).
+fn mode_clauses(query: &ReplayQuery) -> Vec<String> {
+    let leaderboards = in_clause(
+        "playerStats.ratingChanges.leaderboard.technicalName",
+        &query.leaderboards,
+    );
+    let wants_coop = query
+        .featured_mods
+        .iter()
+        .any(|name| name == COOP_FEATURED_MOD);
+    match leaderboards {
+        Some(boards) if wants_coop => {
+            let other_mods: Vec<String> = query
+                .featured_mods
+                .iter()
+                .filter(|name| *name != COOP_FEATURED_MOD)
+                .cloned()
+                .collect();
+            let mut rated = vec![boards];
+            rated.extend(in_clause("featuredMod.technicalName", &other_mods));
+            vec![format!(
+                r#"(featuredMod.technicalName=="{COOP_FEATURED_MOD}",({}))"#,
+                rated.join(";")
+            )]
+        }
+        boards => in_clause("featuredMod.technicalName", &query.featured_mods)
+            .into_iter()
+            .chain(boards)
+            .collect(),
+    }
+}
+
 /// `(a;b;c)`, or `None` when nothing narrows the search.
 fn join_clauses(clauses: Vec<String>) -> Option<String> {
     if clauses.is_empty() {
@@ -465,15 +509,7 @@ fn common_clauses(query: &ReplayQuery, fallback_after: Option<&str>) -> Vec<Stri
     if !query.host.is_empty() {
         clauses.push(format!(r#"host.login=="{}""#, glob(&query.host)));
     }
-    if let Some(clause) = in_clause("featuredMod.technicalName", &query.featured_mods) {
-        clauses.push(clause);
-    }
-    if let Some(clause) = in_clause(
-        "playerStats.ratingChanges.leaderboard.technicalName",
-        &query.leaderboards,
-    ) {
-        clauses.push(clause);
-    }
+    clauses.extend(mode_clauses(query));
     if let Some(clause) = in_clause(
         "playerStats.faction",
         &query
@@ -1082,6 +1118,28 @@ mod tests {
         ] {
             assert!(filter.contains(expected), "missing {expected} in {filter}");
         }
+    }
+
+    #[test]
+    fn coop_beside_leaderboards_is_either_not_both() {
+        let q = ReplayQuery {
+            featured_mods: vec!["coop".into(), "fafbeta".into()],
+            leaderboards: vec!["global".into(), "ladder_1v1".into()],
+            ..query()
+        };
+        assert_eq!(
+            build_filter(&q, None, None).unwrap(),
+            r#"((featuredMod.technicalName=="coop",(playerStats.ratingChanges.leaderboard.technicalName=in=("global","ladder_1v1");featuredMod.technicalName=in=("fafbeta"))))"#
+        );
+        // Co-op alone, and boards alone, are the plain clauses they always were.
+        let coop = ReplayQuery {
+            featured_mods: vec!["coop".into()],
+            ..query()
+        };
+        assert_eq!(
+            build_filter(&coop, None, None).unwrap(),
+            r#"(featuredMod.technicalName=in=("coop"))"#
+        );
     }
 
     #[test]

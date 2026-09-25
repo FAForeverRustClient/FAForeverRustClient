@@ -54,6 +54,7 @@ export function RatingLeaderboardPanel() {
   const state = useAppStore((store) => store.state.leaderboard);
   const browsing = useAppStore((store) => store.state.settings.browsing);
   const [player, setPlayer] = useState(state.ratingQuery.player);
+  const [includeFormerNames, setIncludeFormerNames] = useState(state.ratingQuery.includeFormerNames);
   const [activeOnly, setActiveOnly] = useState(state.ratingQuery.activeOnly);
   const [after, setAfter] = useState(dayValue(state.ratingQuery.updatedAfter));
   const [before, setBefore] = useState(dayValue(state.ratingQuery.updatedBefore));
@@ -140,6 +141,7 @@ export function RatingLeaderboardPanel() {
     updatedAfter: activeOnly ? null : dayStart(after),
     updatedBefore: activeOnly ? null : dayEnd(before),
     player: player.trim(),
+    includeFormerNames,
   });
   const changeActivityFilter = (nextActiveOnly: boolean) => {
     setActiveOnly(nextActiveOnly);
@@ -151,17 +153,19 @@ export function RatingLeaderboardPanel() {
       updatedAfter: nextActiveOnly ? null : dayStart(after),
       updatedBefore: nextActiveOnly ? null : dayEnd(before),
       player: player.trim(),
+      includeFormerNames,
     });
   };
   const changePage = (page: number) => void load({ ...state.ratingQuery, page });
   const columns: TableColumn[] = ["rank", "player", ...boardColumns, ...visibleColumns];
   const clearFilters = () => {
     setPlayer("");
+    setIncludeFormerNames(false);
     setActiveOnly(true);
     setAfter("");
     setBefore("");
     setPageSize(100);
-    void load({ ...state.ratingQuery, page: 1, pageSize: 100, activeOnly: true, updatedAfter: null, updatedBefore: null, player: "" });
+    void load({ ...state.ratingQuery, page: 1, pageSize: 100, activeOnly: true, updatedAfter: null, updatedBefore: null, player: "", includeFormerNames: false });
   };
 
   return (
@@ -226,9 +230,23 @@ export function RatingLeaderboardPanel() {
           </>
         )}
       >
-        <SearchField label={t("leaderboard.ratings.exactPlayer")} className="leaderboard-search-player">
+        <SearchField
+          label={t(includeFormerNames ? "leaderboard.ratings.anyPlayerName" : "leaderboard.ratings.exactPlayer")}
+          className="leaderboard-search-player"
+        >
           <input className="search-panel-control" value={player} placeholder={t("leaderboard.ratings.playerName")} onChange={(event) => setPlayer(event.target.value)} />
         </SearchField>
+        {/* Off by default, because it turns a lookup into a list of
+            candidates: part of any name, current or former, and a released
+            name can have been worn by several accounts (#299). */}
+        <label className="option-check leaderboard-search-former" title={t("leaderboard.ratings.includeFormerNamesHint")}>
+          <input
+            type="checkbox"
+            checked={includeFormerNames}
+            onChange={(event) => setIncludeFormerNames(event.target.checked)}
+          />
+          {t("leaderboard.ratings.includeFormerNames")}
+        </label>
         <SearchField label={t("leaderboard.ratings.updatedAfter")} className="leaderboard-search-date">
           <input className="search-panel-control" type="date" value={after} readOnly={activeOnly} aria-disabled={activeOnly} onChange={(event) => setAfter(event.target.value)} />
         </SearchField>

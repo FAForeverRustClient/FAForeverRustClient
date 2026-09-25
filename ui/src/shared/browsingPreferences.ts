@@ -209,8 +209,9 @@ export function normalizeBrowsingPreferences(
     liveReplayFilters: {
       ...preferences.liveReplayFilters,
       search: truncateTrimmed(preferences.liveReplayFilters.search, 200),
-      gameType: truncateTrimmed(preferences.liveReplayFilters.gameType, 64),
-      featuredMod: truncateTrimmed(preferences.liveReplayFilters.featuredMod, 128),
+      // Room for several choices: these hold comma-separated lists now.
+      gameType: truncateTrimmed(preferences.liveReplayFilters.gameType, 256),
+      featuredMod: truncateTrimmed(preferences.liveReplayFilters.featuredMod, 512),
       activePlayers: normalizePlayerCount(preferences.liveReplayFilters.activePlayers),
       maxPlayers: normalizePlayerCount(preferences.liveReplayFilters.maxPlayers),
     },
@@ -425,11 +426,19 @@ function truncateTrimmed(value: string, maxCharacters: number): string {
   return [...value.trim()].slice(0, maxCharacters).join("");
 }
 
+// A comma-separated list since the live filters became multi-select: each
+// count is checked on its own, and one bad entry drops only itself. Twin of
+// `normalize_player_count` in crates/faf-domain/src/state/settings.rs.
 function normalizePlayerCount(value: string): string {
-  const trimmed = value.trim();
-  if (!/^\d+$/.test(trimmed)) return "";
-  const count = Number(trimmed);
-  return Number.isInteger(count) && count >= 1 && count <= 64 ? String(count) : "";
+  const counts: string[] = [];
+  for (const part of value.split(",")) {
+    const trimmed = part.trim();
+    if (!/^\d+$/.test(trimmed)) continue;
+    const count = Number(trimmed);
+    if (!Number.isInteger(count) || count < 1 || count > 64) continue;
+    if (!counts.includes(String(count))) counts.push(String(count));
+  }
+  return counts.join(",");
 }
 
 function clampInteger(value: number, minimum: number, maximum: number, fallback: number): number {

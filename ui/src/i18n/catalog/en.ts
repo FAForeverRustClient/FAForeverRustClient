@@ -1845,6 +1845,7 @@ export const en = {
 
   // Player card: overview section.
   "playerCard.overview.warnings": "Some profile sections could not be loaded",
+  "playerCard.overview.foundByFormerName": "Found by a former name: {name} is now {login}. Names can be taken again once released, so this is the account that used it last.",
   "playerCard.overview.ratingsEyebrow": "Ratings",
   "playerCard.overview.ratingsTitle": "Current rating queues",
   "playerCard.overview.ratingsHint": "Select a queue to explore its full history",
@@ -2508,6 +2509,9 @@ export const en = {
   "leaderboard.ratings.closeColumnsMenu": "Close columns menu",
   "leaderboard.rating.playerCount": { one: "{formatted} player", other: "{formatted} players" },
   "leaderboard.ratings.exactPlayer": "Exact player",
+  "leaderboard.ratings.anyPlayerName": "Part of a name",
+  "leaderboard.ratings.includeFormerNames": "Include previous names",
+  "leaderboard.ratings.includeFormerNamesHint": "Also finds players who once went by this name. A released name can have belonged to several players.",
   "leaderboard.ratings.leaderboardPages": "Leaderboard pages",
   "leaderboard.ratings.playerName": "Player name",
   "leaderboard.ratings.ratingQueues": "Rating queues",
@@ -2894,6 +2898,10 @@ export const en = {
   "designSystem.multiSelect.empty": "Nothing to choose from yet.",
   "designSystem.multiSelect.loading": "Loading options…",
   "designSystem.multiSelect.clear": "Clear selection",
+  "designSystem.colorInput.shade": "Saturation and brightness",
+  "designSystem.colorInput.hue": "Hue",
+  "designSystem.colorInput.hex": "Hex colour",
+  "designSystem.colorInput.eyedropper": "Pick a colour from the screen",
   "designSystem.modal.dialog": "Dialog",
   "designSystem.searchPanel.search": "Search",
   "designSystem.searchPanel.fewer": "Fewer filters",

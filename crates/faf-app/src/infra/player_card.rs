@@ -109,14 +109,31 @@ impl PlayerCardClient {
             || format!("login==\"{}\"", escape(login.trim())),
             |id| format!("id=={id}"),
         );
+        self.identity_documents(&filter, 1, token).await
+    }
+
+    /// Every account that once went by `name`, with the same includes as a
+    /// profile, so whichever is chosen parses like any other.
+    async fn former_name_document(&self, name: &str, token: &str) -> Result<JsonApiDoc, String> {
+        let filter = format!("names.name==\"{}\"", escape(name.trim()));
+        self.identity_documents(&filter, FORMER_NAME_CANDIDATES, token)
+            .await
+    }
+
+    async fn identity_documents(
+        &self,
+        filter: &str,
+        page_size: usize,
+        token: &str,
+    ) -> Result<JsonApiDoc, String> {
         let mut url = self.url("player")?;
         url.query_pairs_mut()
-            .append_pair("filter", &filter)
+            .append_pair("filter", filter)
             .append_pair(
                 "include",
                 "avatarAssignments.avatar,names,clanMembership.clan.memberships.player,clanMembership.clan.leader,clanMembership.clan.founder",
             )
-            .append_pair("page[size]", "1");
+            .append_pair("page[size]", &page_size.to_string());
         self.get(url, token).await
     }
 
@@ -356,10 +373,22 @@ impl PlayerCardPort for PlayerCardClient {
         login: &str,
     ) -> Result<PlayerCardProfile, String> {
         let token = self.token()?;
-        let identity_doc = self.profile_document(player_id, login, &token).await?;
+        let mut identity_doc = self.profile_document(player_id, login, &token).await?;
+        // Nobody by that login: the name may be a former one (#315). Only for a
+        // lookup by name, since an id is never anything but that one account.
+        let mut matched_former_name = None;
+        let mut chosen = 0;
+        if identity_doc.data.is_empty() && player_id.is_none() && !login.trim().is_empty() {
+            let candidates = self.former_name_document(login, &token).await?;
+            if let Some(position) = latest_holder_of(&candidates, login) {
+                identity_doc = candidates;
+                chosen = position;
+                matched_former_name = Some(login.trim().to_string());
+            }
+        }
         let identity = identity_doc
             .data
-            .first()
+            .get(chosen)
             .ok_or_else(|| format!("player '{}' was not found", login.trim()))?;
         let resolved_id = identity
             .id
@@ -402,6 +431,7 @@ impl PlayerCardPort for PlayerCardClient {
         // and that ranking is exactly wrong for a grid of all of them.
         sort_league_placements(&mut profile.league_placements);
         profile.warnings = warnings;
+        profile.matched_former_name = matched_former_name;
         Ok(profile)
     }
 
@@ -945,6 +975,7 @@ fn parse_identity(doc: &JsonApiDoc, player: &Resource) -> Result<PlayerCardProfi
         events: Vec::new(),
         achievements: Vec::new(),
         warnings: Vec::new(),
+        matched_former_name: None,
     })
 }
 
@@ -1221,6 +1252,34 @@ fn period_cutoff(period: RatingHistoryPeriod) -> Option<String> {
         RatingHistoryPeriod::All => return None,
     };
     Some(cutoff.format("%Y-%m-%dT%H:%M:%SZ").to_string())
+}
+
+/// How many accounts a former-name lookup considers. A name is only released
+/// when its owner changes it, so more than a handful sharing one is rare.
+const FORMER_NAME_CANDIDATES: usize = 20;
+
+/// Which of the accounts that once went by `name` gave it up most recently.
+///
+/// A released name can pass through several accounts, and the one that held
+/// it last is the one somebody who remembers it most likely means. Matched
+/// case-insensitively, the way the API's collation matches logins.
+fn latest_holder_of(doc: &JsonApiDoc, name: &str) -> Option<usize> {
+    let wanted = name.trim().to_lowercase();
+    let records = index(doc);
+    doc.data
+        .iter()
+        .enumerate()
+        .filter_map(|(position, player)| {
+            let latest = rel_many(player, "names")
+                .into_iter()
+                .filter_map(|key| records.get(&key).copied())
+                .filter(|record| text(record, "name").to_lowercase() == wanted)
+                .map(|record| text(record, "changeTime"))
+                .max()?;
+            Some((latest, position))
+        })
+        .max()
+        .map(|(_, position)| position)
 }
 
 fn escape(value: &str) -> String {
@@ -1512,6 +1571,7 @@ impl PlayerCardPort for FakePlayerCard {
                 },
             ],
             warnings: Vec::new(),
+            matched_former_name: None,
         })
     }
 
@@ -1631,6 +1691,29 @@ mod tests {
     /// went unnoticed because `search_players` had no caller and no test ever
     /// built the string. Asserting the string is the only thing that would have
     /// caught it short of a live request.
+    #[test]
+    fn a_former_name_resolves_to_whoever_gave_it_up_last() {
+        let doc: JsonApiDoc = serde_json::from_value(serde_json::json!({
+            "data": [
+                { "type": "player", "id": "1", "attributes": { "login": "Earlier" },
+                  "relationships": { "names": { "data": [{ "type": "nameRecord", "id": "10" }] } } },
+                { "type": "player", "id": "2", "attributes": { "login": "Later" },
+                  "relationships": { "names": { "data": [
+                      { "type": "nameRecord", "id": "20" },
+                      { "type": "nameRecord", "id": "21" }
+                  ] } } }
+            ],
+            "included": [
+                { "type": "nameRecord", "id": "10", "attributes": { "name": "Yudi", "changeTime": "2019-01-01T00:00:00Z" } },
+                { "type": "nameRecord", "id": "20", "attributes": { "name": "yudi", "changeTime": "2024-05-01T00:00:00Z" } },
+                { "type": "nameRecord", "id": "21", "attributes": { "name": "Other", "changeTime": "2025-01-01T00:00:00Z" } }
+            ]
+        }))
+        .unwrap();
+        assert_eq!(latest_holder_of(&doc, " YUDI "), Some(1));
+        assert_eq!(latest_holder_of(&doc, "Nobody"), None);
+    }
+
     #[test]
     fn a_prefix_search_puts_the_wildcard_inside_the_quotes() {
         assert_eq!(quote_prefix("Seraphim"), "\"Seraphim*\"");
