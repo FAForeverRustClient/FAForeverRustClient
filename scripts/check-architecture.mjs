@@ -60,6 +60,51 @@ for (const directory of ["design-system", "i18n", "ipc", "shared", "store"]) {
   }
 }
 
+// A feature folder is a module: it may depend on the foundation directories
+// above and on nothing beside it. Anything two features both need belongs in
+// `shared/`, which is where the player menu, the map preview, the join flow
+// and the rest went when this rule was written; before it, thirty-seven
+// feature-to-feature edges had accumulated, four of them cycles.
+//
+// The shell and the tab registry are the composition roots and import every
+// tab by design. The remaining edges are listed here, each with the reason
+// it is a real dependency rather than a helper that has not moved yet. Add to
+// this list only with such a reason; the aim is for it to shrink.
+const compositionRoots = new Set(["shell", "nav"]);
+const allowedFeatureEdges = new Map([
+  // The host dialog embeds the map generator and the map uninstall dialog.
+  ["lobby -> maps", "hosting a game embeds the maps feature's generator and dialogs"],
+  // The matchmaker's party chat is the chat feature's composer and message list.
+  ["lobby -> chat", "the party chat panel is the chat feature embedded in the matchmaker"],
+  // Uploading is its own feature with its own state slice; the vaults open it.
+  ["maps -> uploads", "the map vault opens the uploads feature's dialog"],
+  ["mods -> uploads", "the mod vault opens the uploads feature's dialog"],
+  // A notification can deep-link to the settings section that governs it,
+  // and the settings section can preview the notification's sound.
+  ["notifications -> settings", "a notification links to its settings section"],
+  ["settings -> notifications", "the notifications section previews the sounds"],
+  ["notifications -> chat", "a chat notification renders with chat's message formatter"],
+  // The start-tab setting lists the tabs, which only the registry knows.
+  ["settings -> nav", "the start-tab setting reads the tab registry"],
+]);
+const featuresRoot = resolve(root, "ui/src/features");
+for (const path of await sourceFiles(featuresRoot, new Set([".ts", ".tsx"]))) {
+  if (/\.test\.tsx?$/.test(path)) continue;
+  const from = relative(featuresRoot, path).split(sep)[0];
+  if (compositionRoots.has(from)) continue;
+  const source = await readFile(path, "utf8");
+  for (const match of source.matchAll(/from\s+["'](\.\.?\/[^"']+)["']/g)) {
+    const target = relative(featuresRoot, resolve(path, "..", match[1]));
+    if (target.startsWith("..")) continue; // outside features/: foundation code
+    const to = target.split(sep)[0];
+    if (to === from) continue;
+    const edge = `${from} -> ${to}`;
+    if (!allowedFeatureEdges.has(edge)) {
+      report(path, `line ${lineNumber(source, match.index)} imports from features/${to}; move what both need into ui/src/shared, or list "${edge}" with its reason in check-architecture.mjs`);
+    }
+  }
+}
+
 // Compact metadata still has to remain readable on an ordinary desktop
 // display. This was previously documented but unenforced, which allowed more
 // than forty sub-floor declarations to accumulate again.

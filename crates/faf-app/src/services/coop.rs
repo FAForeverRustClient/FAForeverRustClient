@@ -6,35 +6,29 @@
 //! client's `CoopController`, where both combo boxes are subscribed to
 //! `loadLeaderboard`.
 
-use faf_domain::state::{rank_results, CoopCommand, CoopEvent};
+use faf_domain::state::{rank_results, CoopCommand, CoopEvent, CoopStatus};
 
 use crate::runtime::{EventSink, ServiceCtx};
 
 pub async fn handle(cmd: CoopCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         CoopCommand::LoadCatalog => {
-            let generation = ctx.coop_catalog_generation.begin();
-            out.emit(CoopEvent::CatalogLoading);
-            let result = ctx.ports.coop.list_catalog().await;
-            if !ctx.coop_catalog_generation.is_current(generation) {
+            // The panel, the host dialog and the replay tab all ask on mount,
+            // so the check that this is needed lives here, where a new caller
+            // cannot forget it. A failure is retried; only "loaded" and "in
+            // flight" are reasons to do nothing. `RefreshCatalog` is the one
+            // that asks again regardless.
+            if out.with_state(|state| {
+                matches!(
+                    state.coop.catalog_status,
+                    CoopStatus::Loading | CoopStatus::Ready
+                )
+            }) {
                 return;
             }
-            match result {
-                Ok((scenarios, missions)) => {
-                    out.emit(CoopEvent::CatalogLoaded {
-                        scenarios,
-                        missions,
-                    });
-                    // The reducer picks the opening mission; read it back
-                    // rather than re-deriving the same rule here.
-                    load_leaderboard(ctx, out).await;
-                }
-                Err(error) => out.emit(CoopEvent::CatalogLoadFailed {
-                    reason: error.to_string(),
-                    kind: error.kind(),
-                }),
-            }
+            load_catalog(ctx, out).await;
         }
+        CoopCommand::RefreshCatalog => load_catalog(ctx, out).await,
         CoopCommand::SelectMission { mission_id } => {
             out.emit(CoopEvent::MissionSelected { mission_id });
             load_leaderboard(ctx, out).await;
@@ -52,6 +46,33 @@ pub async fn handle(cmd: CoopCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// so the mission and player count sent to the API are always the pair the
 /// reducer settled on: the same pair echoed back in `LeaderboardLoaded`,
 /// which is how a stale reply is recognised.
+/// Fetch the catalogue and, once it is in, the leaderboard for the mission
+/// the reducer opened on. Latest-wins: a slower earlier fetch never lands
+/// over a newer one.
+async fn load_catalog(ctx: &ServiceCtx, out: &EventSink) {
+    let generation = ctx.coop_catalog_generation.begin();
+    out.emit(CoopEvent::CatalogLoading);
+    let result = ctx.ports.coop.list_catalog().await;
+    if !ctx.coop_catalog_generation.is_current(generation) {
+        return;
+    }
+    match result {
+        Ok((scenarios, missions)) => {
+            out.emit(CoopEvent::CatalogLoaded {
+                scenarios,
+                missions,
+            });
+            // The reducer picks the opening mission; read it back
+            // rather than re-deriving the same rule here.
+            load_leaderboard(ctx, out).await;
+        }
+        Err(error) => out.emit(CoopEvent::CatalogLoadFailed {
+            reason: error.to_string(),
+            kind: error.kind(),
+        }),
+    }
+}
+
 async fn load_leaderboard(ctx: &ServiceCtx, out: &EventSink) {
     let (mission_id, player_count) =
         out.with_state(|state| (state.coop.selected_mission_id, state.coop.player_count));

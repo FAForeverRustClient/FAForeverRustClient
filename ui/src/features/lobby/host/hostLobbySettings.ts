@@ -83,7 +83,10 @@ export function useHostLobbySettings(
       : "";
   const passwordError =
     passwordEnabled && !PRINTABLE_ASCII.test(password) ? t("lobby.host.error.passwordAscii") : "";
-  const ratingError = ratingEnabled && ratingMin > ratingMax ? t("lobby.host.error.ratingOrder") : "";
+  // Checked whether or not the range is enforced: a back-to-front range is a
+  // mistake worth pointing out while it is being typed, not only once the
+  // checkbox is ticked.
+  const ratingError = ratingMin > ratingMax ? t("lobby.host.error.ratingOrder") : "";
 
   return {
     title,

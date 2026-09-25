@@ -1,12 +1,12 @@
 import { Fragment, type MouseEvent as ReactMouseEvent } from "react";
 import { Icon } from "../../design-system/Icon";
 import type { LocalReplayTeam, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
-import { FactionIcon } from "../../shared/FactionIcon";
-import { openPlayerCard } from "../player-card/playerCardActions";
-import type { PlayerMenuOpener } from "../chat/usePlayerMenu";
+import { FactionIcon } from "../../shared/components/FactionIcon";
+import { openPlayerCard } from "../../shared/playerCardActions";
+import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
-import { PlayerName } from "../../shared/nameColors";
+import { PlayerName } from "../../shared/components/nameColors";
 
 // Team 1 is the FAF server's "no team" bucket. Calling that "No team" reads as
 // missing data; for a game where it holds everyone it is simply a free-for-all,

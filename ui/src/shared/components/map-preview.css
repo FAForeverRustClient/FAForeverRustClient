@@ -1,0 +1,23 @@
+/* The base look of a map picture wherever MapPreview renders one. Feature
+   stylesheets size the frame around it; this only says how the image fills it. */
+.map-vault-thumb,
+.map-vault-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Catalogue art shares the mod-card frame for a stable mixed-library rhythm.
+   The selected map's detail panel still exposes the complete square preview. */
+.map-vault-thumb {
+  object-position: center;
+}
+
+.map-vault-preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-subtle);
+  background: var(--color-bg);
+}

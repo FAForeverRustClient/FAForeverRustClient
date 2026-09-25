@@ -18,7 +18,7 @@ import { Modal } from "../../design-system/Modal";
 import type { ForumPost, ReviewRequestDraft } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PostPreview } from "./PostPreview";
-import { reviewProblem } from "../../shared/trainingRules";
+import { reviewProblem } from "../../shared/rules/trainingRules";
 import { reviewProblemLabel } from "./trainingPresentation";
 
 interface Props {

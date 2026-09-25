@@ -5,7 +5,7 @@ import { NumberInput } from "../../design-system/NumberInput";
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
-import { formatBytes } from "../../shared/formatBytes";
+import { formatBytes } from "../../shared/format/formatBytes";
 import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import type { GamePreferences } from "../../ipc/bindings";

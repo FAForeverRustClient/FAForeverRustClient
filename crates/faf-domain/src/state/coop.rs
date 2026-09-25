@@ -271,15 +271,15 @@ pub enum CoopEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum CoopCommand {
+    /// Have the catalogue loaded. Ignored once it is, or while it is being
+    /// fetched, so every view that needs it can ask on mount.
     LoadCatalog,
+    /// Fetch the catalogue again even if it is loaded: the refresh button.
+    RefreshCatalog,
     #[serde(rename_all = "camelCase")]
-    SelectMission {
-        mission_id: i32,
-    },
+    SelectMission { mission_id: i32 },
     #[serde(rename_all = "camelCase")]
-    SetPlayerCount {
-        player_count: i32,
-    },
+    SetPlayerCount { player_count: i32 },
 }
 
 pub fn reduce(state: &mut CoopState, event: &CoopEvent) {

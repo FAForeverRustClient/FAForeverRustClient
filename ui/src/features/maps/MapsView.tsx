@@ -3,6 +3,7 @@
 // current search, filters, sorting and selection for presentation.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { type RankedFilter, useMapFilterDraft } from "./mapFilterDraft";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
@@ -25,28 +26,19 @@ import { isWithinNumberRange } from "../../shared/filterRanges";
 import { kilometresLabel } from "../../shared/mapPresentation";
 import { EMPTY_MAP_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
 import { useAppStore } from "../../store/store";
-import {
-  isOfficialMap,
-  MapCard,
-  MapDetailPanel,
-  MapHideDialog,
-  mapInstalled,
-  MapPreview,
-  MapUninstallDialog,
-  ratingLabel,
-  sizeLabel,
-} from "./MapVaultComponents";
-import { MapPreviewDialog } from "./MapPreviewZoom";
-import { GeneratorProgress, stillRunning } from "./GenerateMapModal";
+import { MapPreview } from "../../shared/components/MapPreview";
+import { isOfficialMap, mapInstalled, ratingLabel, sizeLabel } from "../../shared/mapPresentation";
+import { MapCard, MapDetailPanel, MapHideDialog, MapUninstallDialog } from "./MapVaultComponents";
+import { MapPreviewDialog } from "../../shared/components/MapPreviewZoom";
+import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
-import { useGridPageSize } from "../../shared/useGridPageSize";
+import { useGridPageSize } from "../../shared/hooks/useGridPageSize";
 import "./maps.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 type SubView = "vault" | "installed";
 type VaultSort = "rating" | "newest" | "played" | "name" | "size";
-type RankedFilter = "all" | "ranked" | "unranked";
 type InstallFilter = "all" | "installed" | "available";
 type VaultPreset = "recommended" | "favorites" | "mine" | "rating" | "newest" | "played" | "all";
 
@@ -185,19 +177,12 @@ function VaultView({ busy }: { busy: boolean }) {
   const initialSort: VaultSort =
     storedVaultSort(browsing.mapVaultSort) ?? presetSort(preset);
   const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
-  const [search, setSearch] = useState("");
+  const { draft, setFilter, resetFilters } = useMapFilterDraft();
+  const { search, author, ranked, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
   const [sort, setSort] = useState<VaultSort>(initialSort);
-  const [ranked, setRanked] = useState<RankedFilter>("all");
   const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
-  const [author, setAuthor] = useState("");
   const [createdAfter, setCreatedAfter] = useState("");
   const [createdBefore, setCreatedBefore] = useState("");
-  const [minimumRating, setMinimumRating] = useState<number | null>(null);
-  const [maximumRating, setMaximumRating] = useState<number | null>(null);
-  const [minimumPlayers, setMinimumPlayers] = useState<number | null>(null);
-  const [maximumPlayers, setMaximumPlayers] = useState<number | null>(null);
-  const [width, setWidth] = useState(0);
-  const [height, setHeight] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -241,10 +226,11 @@ function VaultView({ busy }: { busy: boolean }) {
     });
   };
 
+  // The vault once per session (the service refuses a repeat); the installed
+  // list on every visit, because the folder changes under the client.
   useEffect(() => {
-    const maps = useAppStore.getState().state.maps;
-    if (maps.vaultStatus.type === "idle") loadVault();
-    if (maps.installedStatus.type === "idle") loadInstalled();
+    loadVault();
+    loadInstalled();
   }, []);
 
   // Only on a *change* of preset, never on mount. Running this on mount is
@@ -264,21 +250,7 @@ function VaultView({ busy }: { busy: boolean }) {
   }, [preset]);
 
   const applySearch = () => {
-    setApplied({
-      search,
-      author,
-      sort,
-      ranked,
-      installFilter,
-      createdAfter,
-      createdBefore,
-      minimumRating,
-      maximumRating,
-      minimumPlayers,
-      maximumPlayers,
-      width,
-      height,
-    });
+    setApplied({ ...draft, sort, installFilter, createdAfter, createdBefore });
     setPage(1);
   };
 
@@ -327,18 +299,10 @@ function VaultView({ busy }: { busy: boolean }) {
   };
 
   const clearSearch = () => {
-    setSearch("");
-    setAuthor("");
-    setRanked("all");
+    resetFilters();
     setInstallFilter("all");
     setCreatedAfter("");
     setCreatedBefore("");
-    setMinimumRating(null);
-    setMaximumRating(null);
-    setMinimumPlayers(null);
-    setMaximumPlayers(null);
-    setWidth(0);
-    setHeight(0);
     setApplied({
       search: "",
       author: "",
@@ -456,8 +420,8 @@ function VaultView({ busy }: { busy: boolean }) {
               <SearchField label={t("maps.view.installation")}><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">{t("maps.view.any")}</option><option value="installed">{t("maps.view.installed")}</option><option value="available">{t("maps.view.notInstalled")}</option></select></SearchField>
               <SearchField label={t("maps.view.uploadedAfter")}><input className="search-panel-control" type="date" value={createdAfter} onChange={(event) => setCreatedAfter(event.target.value)} /></SearchField>
               <SearchField label={t("maps.view.uploadedBefore")}><input className="search-panel-control" type="date" value={createdBefore} onChange={(event) => setCreatedBefore(event.target.value)} /></SearchField>
-              <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setWidth(Number(event.target.value))}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
-              <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setHeight(Number(event.target.value))}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
+              <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
+              <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
             </div>
           </div>
         ) : undefined}
@@ -468,7 +432,7 @@ function VaultView({ busy }: { busy: boolean }) {
             value={search}
             onChange={(event) => {
               const value = event.target.value;
-              setSearch(value);
+              setFilter({ search: value });
               if (value.trim() && preset === "recommended") choosePreset("all");
             }}
             placeholder={t("maps.view.nameDescriptionFolder")}
@@ -480,7 +444,7 @@ function VaultView({ busy }: { busy: boolean }) {
             value={author}
             onChange={(event) => {
               const value = event.target.value;
-              setAuthor(value);
+              setFilter({ author: value });
               if (value.trim() && preset === "recommended") choosePreset("all");
             }}
             placeholder={t("maps.view.anyAuthor")}
@@ -494,7 +458,7 @@ function VaultView({ busy }: { busy: boolean }) {
           low={minimumRating}
           high={maximumRating}
           format={(value) => `${value}★`}
-          onChange={(low, high) => { setMinimumRating(low); setMaximumRating(high); }}
+          onChange={(low, high) => { setFilter({ minimumRating: low, maximumRating: high }); }}
         />
         <RangeSlider
           label={t("maps.view.playerSlots")}
@@ -502,10 +466,10 @@ function VaultView({ busy }: { busy: boolean }) {
           max={16}
           low={minimumPlayers}
           high={maximumPlayers}
-          onChange={(low, high) => { setMinimumPlayers(low); setMaximumPlayers(high); }}
+          onChange={(low, high) => { setFilter({ minimumPlayers: low, maximumPlayers: high }); }}
         />
         <SearchField label={t("maps.view.ranking")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">{t("maps.view.any")}</option><option value="ranked">{t("maps.view.ranked")}</option><option value="unranked">{t("maps.view.unranked")}</option></select>
+          <select className="search-panel-control" value={ranked} onChange={(event) => setFilter({ ranked: event.target.value as RankedFilter })}><option value="all">{t("maps.view.any")}</option><option value="ranked">{t("maps.view.ranked")}</option><option value="unranked">{t("maps.view.unranked")}</option></select>
         </SearchField>
         <SearchField label={t("maps.view.sortBy")} className="search-panel-field-compact">
           <select className="search-panel-control" value={sort} onChange={(event) => chooseSort(event.target.value as VaultSort)}><option value="rating">{t("maps.view.preset.rating")}</option><option value="newest">{t("maps.view.preset.newest")}</option><option value="played">{t("maps.view.preset.played")}</option><option value="name">{t("maps.view.sort.name")}</option><option value="size">{t("maps.view.sort.size")}</option></select>
@@ -634,17 +598,10 @@ function InstalledView({ busy }: { busy: boolean }) {
   // looks at were stuck at thumbnail size, which is the complaint the Vault's
   // zoom answers.
   const [previewMap, setPreviewMap] = useState<InstalledMap | VaultMap | null>(null);
-  const [search, setSearch] = useState("");
-  const [author, setAuthor] = useState("");
+  const { draft, setFilter, resetFilters } = useMapFilterDraft();
+  const { search, author, ranked, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
   const [preset, setPreset] = useState<InstalledPreset>("all");
   const [sort, setSort] = useState<InstalledSort>("name");
-  const [ranked, setRanked] = useState<RankedFilter>("all");
-  const [minimumRating, setMinimumRating] = useState<number | null>(null);
-  const [maximumRating, setMaximumRating] = useState<number | null>(null);
-  const [minimumPlayers, setMinimumPlayers] = useState<number | null>(null);
-  const [maximumPlayers, setMaximumPlayers] = useState<number | null>(null);
-  const [width, setWidth] = useState(0);
-  const [height, setHeight] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMap | null>(null);
@@ -660,9 +617,8 @@ function InstalledView({ busy }: { busy: boolean }) {
   const vaultByFolder = useMemo(() => new Map(vault.map((map) => [map.folderName.toLocaleLowerCase(), map])), [vault]);
 
   useEffect(() => {
-    const maps = useAppStore.getState().state.maps;
-    if (maps.installedStatus.type === "idle") loadInstalled();
-    if (maps.vaultStatus.type === "idle") loadVault();
+    loadInstalled();
+    loadVault();
   }, []);
 
   const choosePreset = (next: InstalledPreset) => {
@@ -670,23 +626,15 @@ function InstalledView({ busy }: { busy: boolean }) {
     if (next === "all") setSort("name");
   };
 
-  const hiddenFilterCount = Number(ranked !== "all")
-    + Number(minimumRating !== null || maximumRating !== null)
-    + Number(minimumPlayers !== null || maximumPlayers !== null)
-    + Number(width !== 0 || height !== 0);
+  // Only what the toggle actually hides: width and height. Ranked, rating and
+  // players sit on the always-visible row, and counting them here made the
+  // badge claim hidden filters that were in plain sight.
+  const hiddenFilterCount = Number(width > 0) + Number(height > 0);
 
   const clearSearch = () => {
-    setSearch("");
-    setAuthor("");
+    resetFilters();
     setPreset("all");
     setSort("name");
-    setRanked("all");
-    setMinimumRating(null);
-    setMaximumRating(null);
-    setMinimumPlayers(null);
-    setMaximumPlayers(null);
-    setWidth(0);
-    setHeight(0);
     setPage(1);
   };
 
@@ -816,13 +764,13 @@ function InstalledView({ busy }: { busy: boolean }) {
           <div className="search-panel-advanced">
             <div className="search-panel-advanced-grid">
               <SearchField label={t("maps.view.width")}>
-                <select className="search-panel-control" value={width} onChange={(event) => setWidth(Number(event.target.value))}>
+                <select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}>
                   <option value={0}>{t("maps.view.any")}</option>
                   {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}
                 </select>
               </SearchField>
               <SearchField label={t("maps.view.height")}>
-                <select className="search-panel-control" value={height} onChange={(event) => setHeight(Number(event.target.value))}>
+                <select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}>
                   <option value={0}>{t("maps.view.any")}</option>
                   {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}
                 </select>
@@ -836,7 +784,7 @@ function InstalledView({ busy }: { busy: boolean }) {
             className="search-panel-control"
             value={search}
             onChange={(event) => {
-              setSearch(event.target.value);
+              setFilter({ search: event.target.value });
               setPage(1);
             }}
             placeholder={t("maps.view.searchInstalledMaps")}
@@ -847,7 +795,7 @@ function InstalledView({ busy }: { busy: boolean }) {
             className="search-panel-control"
             value={author}
             onChange={(event) => {
-              setAuthor(event.target.value);
+              setFilter({ author: event.target.value });
               setPage(1);
             }}
             placeholder={t("maps.view.anyAuthor")}
@@ -861,7 +809,7 @@ function InstalledView({ busy }: { busy: boolean }) {
           low={minimumRating}
           high={maximumRating}
           format={(value) => `${value}★`}
-          onChange={(low, high) => { setMinimumRating(low); setMaximumRating(high); setPage(1); }}
+          onChange={(low, high) => { setFilter({ minimumRating: low, maximumRating: high }); setPage(1); }}
         />
         <RangeSlider
           label={t("maps.view.playerSlots")}
@@ -871,10 +819,10 @@ function InstalledView({ busy }: { busy: boolean }) {
           low={minimumPlayers}
           high={maximumPlayers}
           format={(value) => `${value}`}
-          onChange={(low, high) => { setMinimumPlayers(low); setMaximumPlayers(high); setPage(1); }}
+          onChange={(low, high) => { setFilter({ minimumPlayers: low, maximumPlayers: high }); setPage(1); }}
         />
         <SearchField label={t("maps.view.ranking")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={ranked} onChange={(event) => { setRanked(event.target.value as RankedFilter); setPage(1); }}>
+          <select className="search-panel-control" value={ranked} onChange={(event) => { setFilter({ ranked: event.target.value as RankedFilter }); setPage(1); }}>
             <option value="all">{t("maps.view.any")}</option>
             <option value="ranked">{t("maps.view.ranked")}</option>
             <option value="unranked">{t("maps.view.unranked")}</option>

@@ -7,6 +7,36 @@
 //! offline [`FakeAuth`]. The real lobby and chat providers are selected for a
 //! normal account session; the complete fake bundle remains available for
 //! offline development (ARCHITECTURE.md §2).
+//!
+//! # What is where
+//!
+//! One flat directory, so here is the map. Most files are named for the port
+//! they implement and hold the real adapter with its fake beside it; the ones
+//! that are not are listed by what they are.
+//!
+//! * **FAF Data API (JSON:API over HTTPS)**: `jsonapi` is the shared client;
+//!   `changelog`, `clan`, `coop`, `events`, `guides`, `leaderboard`, `maps`,
+//!   `mods`, `player_card`, `reporting`, `reviews`, `streams`, `tourney`,
+//!   `training`, `tutorials`, `uploads` are one adapter each. `http` builds
+//!   the `reqwest` client every adapter shares; `oauth` is the login.
+//! * **Long-lived sockets**: `lobby_ws` is the FAF lobby (WebSocket JSON);
+//!   `irc` and `irc_session` are chat; `jsonrpc`, `relay`, `replay_relay` and
+//!   `replay_recorder` are the game's connectivity and replay streams.
+//! * **Replays**: `replay` is the vault client plus the local library scan
+//!   and the cheap half of the file format; `replay_analysis` reads the rest.
+//! * **Processes we start**: `game` (Forged Alliance), `ice_java`,
+//!   `ice_pioneer` and `ice_select` (the connectivity adapter and how one is
+//!   chosen), `java_runtime`, `map_generator`, `galactic_war`, and
+//!   `client_update` (the installer).
+//! * **Files on disk**: `settings_file`, `paths`, `vault_install` (archives),
+//!   `game_updater` and `updater` (patching; `updater` holds the port impl,
+//!   `game_updater` its cache and manifest logic), `game_logs`, `scmap`,
+//!   `faf_content`, `notification_sounds`.
+//! * **Fakes with no real counterpart in the same file**: `lobby_fake`,
+//!   `chat_fake`, `settings_fake`, `tourney_fake`. The other fakes sit at the
+//!   bottom of the adapter they stand in for. [`fake_ports`] assembles the
+//!   offline bundle.
+//! * **Cross-cutting**: `session` (the access token store) and `discord`.
 
 /// The account the offline bundle is signed in as.
 ///
@@ -26,7 +56,7 @@ pub const OFFLINE_FAF_NAME: &str = "Nuggets";
 
 pub mod auth;
 pub mod changelog;
-pub mod chat;
+pub mod chat_fake;
 pub mod clan;
 pub mod client_update;
 pub mod coop;
@@ -48,7 +78,7 @@ pub(crate) mod java_runtime;
 pub(crate) mod jsonapi;
 pub mod jsonrpc;
 pub mod leaderboard;
-pub mod lobby;
+pub mod lobby_fake;
 pub mod lobby_ws;
 pub mod map_generator;
 pub mod maps;
@@ -79,7 +109,7 @@ pub(crate) mod vault_install;
 
 pub use auth::FakeAuth;
 pub use changelog::{ChangelogClient, ChangelogConfig, FakeChangelog};
-pub use chat::FakeChat;
+pub use chat_fake::FakeChat;
 pub use clan::{ClanClient, ClanConfig, FakeClan};
 pub use client_update::{ClientUpdateConfig, FakeClientUpdates, GitHubUpdates};
 pub use coop::{CoopClient, CoopConfig, FakeCoop};
@@ -93,7 +123,7 @@ pub use ice_pioneer::{FakeIce, IceConfig, PioneerAdapter};
 pub use ice_select::SelectableIce;
 pub use irc::{IrcClient, IrcConfig};
 pub use leaderboard::{FakeLeaderboard, LeaderboardClient, LeaderboardConfig};
-pub use lobby::FakeLobby;
+pub use lobby_fake::FakeLobby;
 pub use lobby_ws::{LobbyClient, LobbyConfig};
 pub use map_generator::{FakeMapGenerator, MapGeneratorConfig, NeroxisMapGenerator};
 pub use maps::{FakeMaps, MapsClient, MapsConfig};

@@ -15,8 +15,8 @@ import type { CoopMission } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { useAppStore } from "../../../store/store";
 import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNavigation";
-import { loadLocalMapPreviews } from "../../../shared/useLocalMapPreview";
-import { scenarioBadge, sortCoopScenarios } from "../coopScenarios";
+import { loadLocalMapPreviews } from "../../../shared/hooks/useLocalMapPreview";
+import { scenarioBadge, sortCoopScenarios } from "../coop/coopScenarios";
 import { CoopMissionArt } from "./CoopMissionArt";
 import { HostModsColumn } from "./HostModsColumn";
 import { HostTopConfig } from "./HostTopConfig";
@@ -75,14 +75,13 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
   const missionListRef = useRef<HTMLDivElement>(null);
   const campaignListRef = useRef<HTMLDivElement>(null);
 
+  // The catalogue and the vault are loaded once per session and the
+  // services ignore a repeat; the installed lists are rescanned on every
+  // open, because the folders change under the client.
   useEffect(() => {
-    if (useAppStore.getState().state.coop.catalogStatus.type === "idle") {
-      ipc.send({ kind: "Coop", command: { type: "loadCatalog" } });
-    }
+    ipc.send({ kind: "Coop", command: { type: "loadCatalog" } });
     ipc.send({ kind: "Maps", command: { type: "loadInstalled" } });
-    if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
-      ipc.send({ kind: "Maps", command: { type: "loadVault" } });
-    }
+    ipc.send({ kind: "Maps", command: { type: "loadVault" } });
     ipc.send({ kind: "Mods", command: { type: "loadInstalled" } });
   }, []);
 

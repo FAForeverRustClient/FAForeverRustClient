@@ -22,13 +22,8 @@
 // The option lists (styles, symmetries, etc.) are read out of the generator JAR
 // itself, because they change between releases.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type {
-  GenerationType,
-  GeneratorOptions,
-  GeneratorStatus,
-  MapGeneratorCommand,
-} from "../../ipc/bindings";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { GenerationType, GeneratorOptions, GeneratorStatus } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
@@ -39,7 +34,6 @@ import { ipc } from "../../ipc/client";
 import { GENERATED_MAP_PLACEHOLDER_URL, isGeneratedMap } from "../../shared/mapPresentation";
 import { recordEntries } from "../../shared/records";
 import { useAppStore } from "../../store/store";
-import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import {
   DENSITY_BINS,
@@ -56,94 +50,13 @@ import {
   outcomeOfRun,
   spawnCountsFor,
   summariseDecodedName,
-} from "./generatorPresentation";
-import { ZoomableImage } from "./MapPreviewZoom";
+} from "../../shared/generatorPresentation";
+import { ZoomableImage } from "../../shared/components/MapPreviewZoom";
 import "./generate-map.css";
 import { NumberInput } from "../../design-system/NumberInput";
-
-/** Labels from the Java client's `game.generateMap.*` strings. */
-const GENERATION_TYPES = {
-  casual: { label: "maps.generate.kind.casual", hint: "maps.generate.kind.casualHint" },
-  tournament: { label: "maps.generate.kind.tournament", hint: "maps.generate.kind.tournamentHint" },
-  blind: { label: "maps.generate.kind.blind", hint: "maps.generate.kind.blindHint" },
-  unexplored: { label: "maps.generate.kind.unexplored", hint: "maps.generate.kind.unexploredHint" },
-} as const satisfies Record<GenerationType, { label: MessageKey; hint: MessageKey }>;
-
-const send = (command: MapGeneratorCommand) => ipc.send({ kind: "MapGenerator", command });
-
-const generate = (options: GeneratorOptions) => send({ type: "generate", payload: { options } });
-const generateNamed = (mapName: string) => send({ type: "generateNamed", payload: { mapName } });
-const loadOptions = (version?: string | null) =>
-  send({ type: "loadOptions", payload: { version: version ?? null } });
-const setOptions = (options: GeneratorOptions) =>
-  send({ type: "setOptions", payload: { options } });
-const savePreset = (name: string, options: GeneratorOptions) =>
-  send({ type: "savePreset", payload: { name, options } });
-const loadPresets = () => send({ type: "loadPresets" });
-const deletePreset = (name: string) => send({ type: "deletePreset", payload: { name } });
-const preflight = (options: GeneratorOptions) => send({ type: "preflight", payload: { options } });
-const decodeNames = (mapNames: string[]) => send({ type: "decodeNames", payload: { mapNames } });
-const loadHelp = (version?: string | null) =>
-  send({ type: "loadHelp", payload: { version: version ?? null } });
-const cancel = () => send({ type: "cancel" });
-
-/** One labelled option. The label column is fixed so every control lines up. */
-function Row({
-  label,
-  hint,
-  superseded = false,
-  className,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  /** Dim the row: something else is deciding this value (see the style rows). */
-  superseded?: boolean;
-  /** Extra class, for a row whose control is taller than one field. */
-  className?: string;
-  children: ReactNode;
-}) {
-  const classes = ["generate-map-row"];
-  if (superseded) classes.push("is-superseded");
-  if (className) classes.push(className);
-  return (
-    <div className={classes.join(" ")}>
-      <span className="generate-map-row-label">{label}</span>
-      <div className="generate-map-row-control">
-        {children}
-        {hint && <small className="generate-map-row-hint">{hint}</small>}
-      </div>
-    </div>
-  );
-}
-
-function GeneratePreviewImg({
-  url,
-  alt,
-  className,
-}: {
-  url: string | undefined;
-  alt: string;
-  className: string;
-  placeholderClassName?: string;
-  iconSize?: number;
-}) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [url]);
-
-  return (
-    <img
-      src={!url || failed ? GENERATED_MAP_PLACEHOLDER_URL : url}
-      alt={alt}
-      className={className}
-      loading="lazy"
-      decoding="async"
-      onError={() => {
-        if (!failed) setFailed(true);
-      }}
-    />
-  );
-}
+import { GENERATION_TYPES, cancel, decodeNames, deletePreset, generate, generateNamed, loadHelp, loadOptions, loadPresets, preflight, savePreset, setOptions } from "./generatorCommands";
+import { GeneratePreviewImg, Row } from "./GenerateMapControls";
+import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
 
 interface Props {
   onClose: () => void;
@@ -1078,61 +991,4 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
       )}
     </Modal>
   );
-}
-
-/** Whether a run is in flight. Mirrors `GeneratorStatus::is_busy` in faf-domain. */
-export function stillRunning(status: GeneratorStatus): boolean {
-  return (
-    status.type === "preparing" ||
-    status.type === "resolvingVersion" ||
-    status.type === "downloading" ||
-    status.type === "generating"
-  );
-}
-
-/** The slow stages, narrated. Generation routinely takes 30-120 seconds. */
-export function GeneratorProgress() {
-  const { t } = useTranslation();
-  const status = useAppStore((s) => s.state.mapGenerator.status);
-
-  switch (status.type) {
-    case "idle":
-      return null;
-    case "preparing":
-      // The `--parse` preflight costs a JVM start; without this the dialog
-      // sits silent for a second or two after the button is pressed.
-      return <p className="muted generate-map-progress">{t("maps.generate.preparing")}</p>;
-    case "resolvingVersion":
-      return <p className="muted generate-map-progress">{t("maps.generate.lookingUp")}</p>;
-    case "downloading": {
-      const { downloadedBytes, totalBytes, version } = status.payload;
-      const percent = totalBytes ? Math.round((downloadedBytes / totalBytes) * 100) : null;
-      return (
-        <p className="muted generate-map-progress">
-          {percent === null
-            ? t("maps.generate.downloading", { version })
-            : t("maps.generate.downloadingPercent", { version, percent })}
-        </p>
-      );
-    }
-    case "generating":
-      return (
-        <p className="muted generate-map-progress">
-          {t("maps.generate.generatingWith", {
-            version: status.payload.version,
-            detail: status.payload.detail,
-          })}
-        </p>
-      );
-    case "generated":
-      return (
-        <p className="generate-map-progress is-ok">
-          {t("maps.generate.ready", { maps: status.payload.maps.join(", ") })}
-        </p>
-      );
-    case "cancelled":
-      return <p className="muted generate-map-progress">{t("maps.generate.cancelled")}</p>;
-    case "failed":
-      return <p className="generate-map-progress is-error">{status.payload.reason}</p>;
-  }
 }

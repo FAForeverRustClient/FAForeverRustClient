@@ -38,7 +38,7 @@ import { SectionTabs, type SectionTab } from "../../design-system/SectionTabs";
 import type { AppCommand, TrainingCommand, TrainingResource } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { openHttpsUrl } from "../../shared/externalLinks";
-import { recommendedResources } from "../../shared/trainingRules";
+import { recommendedResources } from "../../shared/rules/trainingRules";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ContributePanel } from "./ContributePanel";

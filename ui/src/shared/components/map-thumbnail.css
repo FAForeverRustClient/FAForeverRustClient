@@ -1,0 +1,32 @@
+/* The placeholder a campaign mission gets when nothing has art for it: the
+   faction's colour under its emblem. Shared because the replay views show
+   the same missions, and a stylesheet that only loaded with the co-op tab
+   left them with a bare icon there. */
+.coop-map-tile-badge {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  background: var(--color-surface-raised);
+}
+
+.coop-map-tile-badge[data-faction="uef"] {
+  border-bottom: 2px solid var(--color-faction-uef);
+}
+
+.coop-map-tile-badge[data-faction="aeon"] {
+  border-bottom: 2px solid var(--color-faction-aeon);
+}
+
+.coop-map-tile-badge[data-faction="cybran"] {
+  border-bottom: 2px solid var(--color-faction-cybran);
+}
+
+.coop-map-tile-badge[data-faction="seraphim"] {
+  border-bottom: 2px solid var(--color-faction-seraphim);
+}
+
+.coop-map-tile-badge[data-faction="custom"] {
+  border-bottom: 2px solid var(--color-accent);
+  color: var(--color-muted);
+}

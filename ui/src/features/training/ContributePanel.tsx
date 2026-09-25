@@ -31,7 +31,7 @@ import type {
 } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { FACTION_NAMES } from "../../shared/factions";
-import { contributionProblem } from "../../shared/trainingRules";
+import { contributionProblem } from "../../shared/rules/trainingRules";
 import { Markdown } from "./markdown";
 import { MarkdownField } from "./MarkdownField";
 import { PostPreview } from "./PostPreview";

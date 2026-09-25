@@ -285,3 +285,38 @@ async fn a_failed_catalog_reports_the_reason_and_asks_for_no_board() {
         other => panic!("expected a failure, got {other:?}"),
     }
 }
+
+#[tokio::test]
+async fn a_second_load_is_ignored_and_a_refresh_is_not() {
+    // Every view that shows the catalogue asks for it on mount, so the
+    // service answers "already have it" rather than every caller checking.
+    // The board query that follows a catalogue load is the tell: one per
+    // fetch that actually happened.
+    let harness = harness(vec![result(7, 90, &["Ada"])]);
+    harness
+        .app
+        .dispatch(CoopCommand::LoadCatalog.into())
+        .await
+        .unwrap();
+    settled_catalog(&harness.app).await;
+    harness.queried(1).await;
+
+    harness
+        .app
+        .dispatch(CoopCommand::LoadCatalog.into())
+        .await
+        .unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(60)).await;
+    assert_eq!(
+        harness.queries.lock().unwrap().len(),
+        1,
+        "a loaded catalogue was fetched again"
+    );
+
+    harness
+        .app
+        .dispatch(CoopCommand::RefreshCatalog.into())
+        .await
+        .unwrap();
+    harness.queried(2).await;
+}

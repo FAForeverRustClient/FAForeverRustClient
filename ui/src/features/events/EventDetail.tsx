@@ -17,7 +17,7 @@ import { Select } from "../../design-system/Select";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { openHttpsUrl } from "../../shared/externalLinks";
-import { formatShortDate } from "../../shared/dates";
+import { formatShortDate } from "../../shared/format/dates";
 import type { CalendarEntry } from "./calendarFeed";
 import {
   categoryLabel,

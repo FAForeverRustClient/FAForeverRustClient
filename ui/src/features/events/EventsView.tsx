@@ -157,11 +157,21 @@ export function EventsView() {
         />
         {events.view !== "upcoming" && (
           <div className="events-period" role="group" aria-label={t("events.period.aria")}>
-            <button type="button" onClick={() => step(-1)} aria-label={t("events.period.previous")}>
+            <button
+              type="button"
+              className="events-period-step"
+              onClick={() => step(-1)}
+              aria-label={t("events.period.previous")}
+            >
               <Icon name="arrowLeft" size={15} />
             </button>
             <strong>{title}</strong>
-            <button type="button" onClick={() => step(1)} aria-label={t("events.period.next")}>
+            <button
+              type="button"
+              className="events-period-step"
+              onClick={() => step(1)}
+              aria-label={t("events.period.next")}
+            >
               <Icon name="arrowRight" size={15} />
             </button>
             <Button onClick={() => setAnchor("")}>{t("events.period.today")}</Button>

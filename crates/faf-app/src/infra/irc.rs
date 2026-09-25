@@ -47,7 +47,7 @@
 //! `send_message` both sends the raw `PRIVMSG` line to the socket *and*
 //! independently pushes a locally-built message onto the update channel,
 //! this client doesn't negotiate `echo-message`, so the port owns the local
-//! echo (mirrors `infra::chat::FakeChat`).
+//! echo (mirrors `infra::chat_fake::FakeChat`).
 
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};

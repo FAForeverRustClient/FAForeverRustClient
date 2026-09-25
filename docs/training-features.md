@@ -43,7 +43,7 @@ community is interaction and human training. The hero routes *to* it.
 
 The whole catalogue with filters for free text, level, type, topic, game mode,
 map, and "for my rating". Filtering runs locally
-(`ui/src/shared/trainingRules.ts`) because it runs on every keystroke; the
+(`ui/src/shared/rules/trainingRules.ts`) because it runs on every keystroke; the
 rules are twins of the Rust ones and are pinned by the `trainingFilters` cases
 in the conformance fixture.
 

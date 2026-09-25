@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 
-import { ReportDialog } from "../vault/ReportDialog";
+import { ReportDialog } from "../../shared/components/ReportDialog";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { Modal } from "../../design-system/Modal";
+import { ConfirmDialog } from "../../design-system/ConfirmDialog";
 import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
-import { openReviews } from "../reviews/openReviews";
+import { openReviews } from "../../shared/openReviews";
 import type {
   InstalledMod,
   ModInstallStatus,
   ModToggleStatus,
   VaultMod,
 } from "../../ipc/bindings";
-import { formatShortDate } from "../../shared/dates";
+import { formatShortDate } from "../../shared/format/dates";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { linkifyText } from "../../shared/linkify";
 import { modUpdateAvailable } from "./modVersions";
@@ -441,17 +441,13 @@ export function UninstallDialog({
 }) {
   const { t } = useTranslation();
   return (
-    <Modal className="confirm-modal" onClose={onCancel}>
-      <div className="confirm-dialog-content">
-        <h2>{t("mods.vault.confirmUninstall")}</h2>
-        <p>{t("mods.vault.confirmUninstallBody", { name: modName })}</p>
-        <div className="confirm-dialog-actions">
-          <Button onClick={onCancel}>{t("mods.vault.cancel")}</Button>
-          <Button className="btn-danger" onClick={onConfirm}>
-            {t("mods.vault.confirmUninstallAction")}
-          </Button>
-        </div>
-      </div>
-    </Modal>
+    <ConfirmDialog
+      title={t("mods.vault.confirmUninstall")}
+      body={t("mods.vault.confirmUninstallBody", { name: modName })}
+      confirmLabel={t("mods.vault.confirmUninstallAction")}
+      danger
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
   );
 }

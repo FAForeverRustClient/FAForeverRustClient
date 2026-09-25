@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { LeaderboardEntry, PlayerRatings, RatingLeaderboard } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
-import { PlayerName } from "../../shared/nameColors";
+import { PlayerName } from "../../shared/components/nameColors";
 
 export type LeaderboardColumn =
   | "rank"

@@ -23,9 +23,13 @@
   white-space: nowrap;
 }
 
+/* The accent, as every other checkbox in the client (`.option-check`): the
+   text colour drew a bright white box on the dark surfaces, which made each
+   row's tick the loudest thing on it. */
 .check-field input,
 .host-mod-row input {
-  accent-color: var(--color-text);
+  margin: 0;
+  accent-color: var(--color-accent);
 }
 
 .filter-rule-builder select,
@@ -632,13 +636,14 @@
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 12px 0 9px;
   /* Carried by every row, transparent until the mod is on, so switching one on
      colours it instead of moving the text three pixels sideways. */
   border-left: 3px solid transparent;
   border-bottom: 1px solid var(--color-border);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   transition: background-color 120ms ease, border-left-color 120ms ease;
 }
@@ -664,13 +669,16 @@
   background: color-mix(in srgb, var(--color-ok) 13%, var(--color-surface));
 }
 
+/* Colour, not weight: a heavier face on the active row made the name widen
+   and the version shuffle sideways on every click. The tint, the green edge
+   and the tick already say which rows are on. */
 .host-mod-row.is-active .host-mod-name {
   color: var(--color-text);
-  font-weight: 600;
 }
 
 .host-mod-name {
   overflow: hidden;
+  color: var(--color-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
@@ -1337,8 +1345,10 @@
    something rather than as the mod's version. */
 .host-mod-version {
   flex: none;
+  min-width: 4ch;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+  text-align: right;
   color: var(--color-subtle);
 }
 

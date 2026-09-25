@@ -1,31 +1,30 @@
 /* Settings
  *
- * A rail of numbered registers on the left, one register on the stage to the
- * right. The rail grows downwards as registers are added, which is the point:
- * the row of category tabs this replaces got wider with every category, so the
+ * A sidebar of sections on the left, one section on the page to the right.
+ * The sidebar grows downwards as sections are added, which is the point: the
+ * row of category tabs this replaces got wider with every category, so the
  * structure degraded exactly as the client grew.
  */
 .settings-view {
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
-  gap: var(--space-4);
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 24px;
   height: 100%;
   max-height: 100%;
   min-height: 0;
   max-width: 1120px;
   width: 100%;
-  overflow: hidden;
 }
 
-.settings-rail {
+.settings-sidebar {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding-right: var(--space-3);
+  padding-right: var(--space-4);
   border-right: 1px solid var(--color-border);
 }
 
-.settings-rail-head {
+.settings-sidebar-head {
   flex: none;
   display: flex;
   flex-direction: column;
@@ -33,7 +32,20 @@
   padding-bottom: var(--space-3);
 }
 
-.settings-rail-list {
+/* The view title's own bottom margin is sized for a page; here the search
+   field follows it, and the head's gap already separates the two. */
+.settings-sidebar-head .view-title {
+  margin-bottom: var(--space-1);
+}
+
+.settings-search-count {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-sidebar-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -42,73 +54,70 @@
   list-style: none;
 }
 
-.settings-rail-item {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  align-items: baseline;
-  gap: var(--space-2);
+/* The same item as the shell's tab rail (`.tab` in nav.css): a person moves
+   between the two lists, and they should read as one vocabulary. */
+.settings-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
-  padding: 7px 10px;
+  min-height: 34px;
+  padding: 7px 9px;
   color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 450;
   text-align: left;
   background: transparent;
   border: 0;
-  border-left: 2px solid transparent;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-radius: var(--radius-md);
   cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
-.settings-rail-item:hover {
+.settings-sidebar-item svg {
+  flex: none;
+  color: var(--color-subtle);
+  transition: color 120ms ease;
+}
+
+.settings-sidebar-item:hover {
   color: var(--color-text);
-  background: var(--color-surface-hover);
+  background: var(--color-surface);
 }
 
-.settings-rail-item:focus-visible {
+.settings-sidebar-item:hover svg {
+  color: var(--color-muted);
+}
+
+.settings-sidebar-item:focus-visible {
   outline: 2px solid var(--color-accent-glow);
   outline-offset: -2px;
 }
 
-.settings-rail-item.is-active {
+.settings-sidebar-item.is-active {
   color: var(--color-text);
-  background: var(--color-surface);
-  border-left-color: var(--color-accent);
+  font-weight: 600;
+  background: var(--color-surface-raised);
 }
 
-/* A register with no match is dimmed, never removed: a rail that reorders
-   itself while somebody types loses the shape they were navigating by, and the
-   numbers stop meaning anything the moment they move. */
-.settings-rail-item.is-dimmed {
-  opacity: 0.4;
-}
-
-.settings-rail-no {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-subtle);
-}
-
-.settings-rail-item.is-active .settings-rail-no {
+.settings-sidebar-item.is-active svg {
   color: var(--color-accent);
 }
 
-.settings-rail-name {
+/* A section with no match is dimmed, never removed: a list that reorders
+   itself while somebody types loses the shape they were navigating by. */
+.settings-sidebar-item.is-dimmed {
+  opacity: 0.4;
+}
+
+.settings-sidebar-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
 }
 
-.settings-rail-foot {
-  flex: none;
-  padding: var(--space-2) 10px 0;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  border-top: 1px solid var(--color-border);
-}
-
-.settings-stage {
+.settings-page-scroll {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -116,121 +125,43 @@
   padding-right: 4px;
 }
 
-.settings-register {
+.settings-page {
   display: flex;
   flex-direction: column;
 }
 
 /* `display: flex` above would otherwise beat the user agent's [hidden] rule,
-   and every register would be drawn on top of every other. */
-.settings-register[hidden] {
+   and every section would be drawn on top of every other. */
+.settings-page[hidden] {
   display: none;
 }
 
-.settings-register-head {
+.settings-page-head {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-bottom: var(--space-3);
-  margin-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
+  gap: 4px;
+  padding: 0 0 20px;
 }
 
-.settings-register-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-subtle);
-}
-
-.settings-register-title {
+.settings-page-title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.025em;
   line-height: 1.2;
   color: var(--color-text);
 }
 
-.settings-register-head p {
+.settings-page-head p {
   margin: 0;
   font-size: 12px;
-  line-height: 1.4;
-}
-
-/* The index: every register with what it currently says. */
-.settings-index {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.settings-index-row {
-  display: grid;
-  grid-template-columns: 26px 132px minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: var(--space-3);
-  width: 100%;
-  padding: 11px 10px;
-  color: var(--color-text);
-  text-align: left;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
-}
-
-.settings-index-row:hover {
-  background: var(--color-surface-hover);
-}
-
-.settings-index-row:focus-visible {
-  outline: 2px solid var(--color-accent-glow);
-  outline-offset: -2px;
-}
-
-.settings-index-no {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-subtle);
-}
-
-.settings-index-name {
-  font-weight: 600;
-}
-
-.settings-index-about {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-}
-
-/* The value column is the reason this page exists rather than being a second
-   copy of the rail. Tabular figures so the sizes and counts line up. */
-.settings-index-value {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  white-space: nowrap;
-  color: var(--color-accent);
+  line-height: 1.45;
 }
 
 @media (max-width: 860px) {
   .settings-view {
     grid-template-columns: 168px minmax(0, 1fr);
-  }
-
-  .settings-index-row {
-    grid-template-columns: 26px minmax(0, 1fr) auto;
-  }
-
-  .settings-index-about {
-    display: none;
+    gap: var(--space-4);
   }
 }
 
@@ -255,6 +186,8 @@
   min-width: 0;
   flex: 1;
   padding: 5px 0;
+  font: inherit;
+  font-size: 13px;
   color: var(--color-text);
   background: transparent;
   border: 0;
@@ -528,31 +461,6 @@
 .settings-switch input:disabled + .settings-switch-track {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.settings-segmented {
-  display: inline-flex;
-  padding: 2px;
-  background: var(--color-surface-raised);
-}
-
-.settings-segmented button {
-  min-height: 30px;
-  padding: 0 11px;
-  color: var(--color-muted);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.settings-segmented button:hover {
-  color: var(--color-text);
-}
-
-.settings-segmented button.is-active {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
 }
 
 .settings-inline-form {
@@ -950,9 +858,8 @@
 .log-analysis {
   margin-top: var(--space-3);
   padding: var(--space-3);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 8%, var(--color-surface-raised));
+  border: 1px solid color-mix(in srgb, var(--color-warn) 45%, var(--color-border));
   border-radius: var(--radius-md);
 }
 

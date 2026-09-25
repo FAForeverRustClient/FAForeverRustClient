@@ -1,6 +1,6 @@
 //! Leaderboard orchestration.
 
-use faf_domain::state::{LeaderboardCommand, LeaderboardEvent};
+use faf_domain::state::{LeaderboardCommand, LeaderboardEvent, LeaderboardStatus};
 
 use crate::runtime::{EventSink, ServiceCtx};
 
@@ -30,6 +30,17 @@ pub async fn handle(cmd: LeaderboardCommand, ctx: &ServiceCtx, out: &EventSink) 
             out.emit(LeaderboardEvent::ModeChanged { mode });
         }
         LeaderboardCommand::LoadCatalog => {
+            // Asked for on every mount of the leaderboard and the replay
+            // vault, so the check that it is needed lives here. A failure is
+            // retried; "loaded" and "in flight" are the reasons to do nothing.
+            if out.with_state(|state| {
+                matches!(
+                    state.leaderboard.catalog_status,
+                    LeaderboardStatus::Loading | LeaderboardStatus::Ready
+                )
+            }) {
+                return;
+            }
             let generation = ctx.leaderboard_catalog_generation.begin();
             out.emit(LeaderboardEvent::CatalogLoading);
             let (rating_leaderboards, leagues) = tokio::join!(

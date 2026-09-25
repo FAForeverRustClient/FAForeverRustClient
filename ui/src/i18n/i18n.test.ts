@@ -4,7 +4,7 @@ import { CATALOGUES } from "./catalog";
 import { de } from "./catalog/de";
 import type { Message } from "./catalog/en";
 import { en } from "./catalog/en";
-import { formatNumber, translateIn } from "./index";
+import { formatNumber, translateIn } from ".";
 import { isLocale, LOCALE_KEYS } from "./locales";
 import { getLocale, resetLocaleForTests, setLocale, subscribeToLocale } from "./store";
 

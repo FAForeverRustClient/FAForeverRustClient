@@ -1,4 +1,5 @@
-import type { CoopFaction, CoopMission, VaultMap } from "../ipc/bindings";
+import type { CoopFaction, CoopMission, MapInstallStatus, VaultMap } from "../ipc/bindings";
+import { t } from "../i18n";
 import { useAppStore } from "../store/store";
 
 /** Preview used when a generated map has no rendered map image yet. */
@@ -558,4 +559,42 @@ export function mapSize(
   if (official) return mapSizeOf(official.width, official.height);
   const vaultMap = findVaultMap(vault, mapName);
   return vaultMap ? mapSizeOf(vaultMap.width, vaultMap.height) : null;
+}
+
+// ── Labels and predicates over a vault map ──────────────────────────────
+// Used by the vault, the game browser, the host dialog and the tournament map
+// picker alike, so they live here rather than in the maps feature.
+
+export function installNote(status: MapInstallStatus): string | null {
+  switch (status.type) {
+    case "idle":
+      return null;
+    case "installing":
+      return t("maps.vault.working", { folder: status.payload.folderName });
+    case "failed":
+      return t("maps.vault.operationFailed", { reason: status.payload.reason });
+  }
+}
+
+export function sizeLabel(map: { width?: number; height?: number }): string {
+  const w = map.width ?? 512;
+  const h = map.height ?? 512;
+  return `${kilometresLabel(w)} × ${kilometresLabel(h)} km`;
+}
+
+export function ratingLabel(map: VaultMap): string {
+  return map.reviews > 0 ? `${(map.ratingTenths / 10).toFixed(1)} (${map.reviews})` : t("maps.vault.notRated");
+}
+
+export function isOfficialMap(folderName: string): boolean {
+  const match = /^(scmp|x1mp)_(\d{3})$/i.exec(folderName);
+  if (!match) return false;
+  const number = Number(match[2]);
+  return match[1].toLocaleLowerCase() === "scmp"
+    ? number >= 1 && number <= 40
+    : (number >= 1 && number <= 12) || number === 14 || number === 17;
+}
+
+export function mapInstalled(map: VaultMap, installedFolders: Set<string>): boolean {
+  return isOfficialMap(map.folderName) || installedFolders.has(map.folderName.toLocaleLowerCase());
 }

@@ -17,7 +17,7 @@ import { ipc } from "../../../ipc/client";
 import type { InstalledMod, ModPreset } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { useAppStore } from "../../../store/store";
-import { ModPresetModal } from "../ModPresetModal";
+import { ModPresetModal } from "./ModPresetModal";
 
 type ModTab = "ui" | "sim";
 

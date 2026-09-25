@@ -3,7 +3,7 @@ import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { formatDateTime } from "../../shared/dates";
+import { formatDateTime } from "../../shared/format/dates";
 import "./reporting.css";
 import { useTranslation } from "../../i18n/useTranslation";
 

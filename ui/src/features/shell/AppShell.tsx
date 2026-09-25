@@ -7,7 +7,7 @@ import type { CSSProperties, KeyboardEvent, MouseEvent as ReactMouseEvent } from
 import { ipc } from "../../ipc/client";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
-import { ProfileAvatar } from "../../shared/ProfileAvatar";
+import { ProfileAvatar } from "../../shared/components/ProfileAvatar";
 import { TabBar } from "../nav/TabBar";
 import { openTabForMode, TABS } from "../nav/tabs";
 import { ClientStatusBar } from "../status/ClientStatusBar";
@@ -18,17 +18,17 @@ import { UpdateGate } from "../updates/UpdateGate";
 import { BrandMark } from "../../design-system/BrandMark";
 import { PlayerCardModal } from "../player-card/PlayerCardModal";
 import { ReviewsPanel } from "../reviews/ReviewsPanel";
-import { JoinDownloadDialog } from "../lobby/JoinDownloadDialog";
-import { JoinPreparationDialog } from "../lobby/JoinPreparationDialog";
+import { JoinDownloadDialog } from "../lobby/join/JoinDownloadDialog";
+import { JoinPreparationDialog } from "../lobby/join/JoinPreparationDialog";
 import { ReplayStartDialog } from "../replays/ReplayStartDialog";
-import { ModReplacementDialog } from "../lobby/ModReplacementDialog";
+import { ModReplacementDialog } from "../lobby/join/ModReplacementDialog";
 import { UploadDialog } from "../uploads/UploadDialog";
-import { openPlayerCard } from "../player-card/playerCardActions";
+import { openPlayerCard } from "../../shared/playerCardActions";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ReportPlayerModal } from "../reporting/ReportPlayerModal";
 import { NotificationCenter } from "../notifications/NotificationCenter";
-import { partyChatChannel } from "../lobby/partyChat";
-import { PlayerName } from "../../shared/nameColors";
+import { partyChatChannel } from "../../shared/partyChat";
+import { PlayerName } from "../../shared/components/nameColors";
 import "./shell.css";
 
 // Mirrors `MIN_SIDEBAR_WIDTH` / `MAX_SIDEBAR_WIDTH` / `SIDEBAR_RAIL_BELOW` in

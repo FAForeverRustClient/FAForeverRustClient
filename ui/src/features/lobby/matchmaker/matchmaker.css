@@ -1,0 +1,1444 @@
+.matchmaker-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Two columns, matching `team_matchmaking.fxml`: identity, party and queues on
+   the left, matchmaking chat filling the right.
+   An earlier revision made this one column because the rail held only the
+   party panel, which is ~180px tall when solo. The answer was not to drop the
+   rail but to give it the thing Java puts there. */
+.matchmaking-layout {
+  display: grid;
+  flex: 1;
+  /* Three tracks, and the width of the third is the user's: `MatchmakingPanel`
+     sets `--party-chat-width` inline from whatever the divider was dragged to.
+     A custom property rather than the template itself, so the one-column rule
+     further down still wins without `!important`. */
+  grid-template-columns: minmax(0, 1fr) 5px var(--party-chat-width, 440px);
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The divider between the queues and the chat needs no rule of its own: the
+   design system's `.resize-handle` already stretches and owns the cursor, and
+   its width is the 5px grid track above. The class exists for the one-column
+   rule at the bottom of this file, which takes it away. */
+
+/* Nothing in this column shrinks: it scrolls.
+ *
+   A flex item's default is `flex-shrink: 1`, so once the queues, the party and
+   the identity card together were taller than the tab, all three were squeezed
+   instead of the column scrolling, and `.matchmaker-card`'s `overflow: hidden`
+   clipped whatever no longer fitted. The party strip is where that showed
+   first: its seats lost the bottom of their second line, so the row looked
+   deliberately miniaturised at exactly one band of window heights (above
+   1100px, where this column owns the scrolling, and below the height at which
+   everything fits). */
+.matchmaker-main > * {
+  flex: 0 0 auto;
+}
+
+/* Faction toggles: compact chips, not cards. An unselected chip is dimmed
+   rather than hidden, so "which factions am I queuing as" is readable at a
+   glance instead of requiring a check mark hunt. */
+.faction-chips {
+  display: flex;
+  gap: 6px;
+}
+
+/* Each chip carries its faction's colour when selected. Four grey chips that
+   differ only by a small glyph turn "which factions am I queuing as" into a
+   reading task; the Java client colours them for the same reason. */
+.faction-chip {
+  --faction: var(--color-border-strong);
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 14px 0 12px;
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.faction-chip span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.faction-chip[data-faction="uef"] { --faction: var(--color-faction-uef); }
+.faction-chip[data-faction="aeon"] { --faction: var(--color-faction-aeon); }
+.faction-chip[data-faction="cybran"] { --faction: var(--color-faction-cybran); }
+.faction-chip[data-faction="seraphim"] { --faction: var(--color-faction-seraphim); }
+
+/* Desaturated rather than hidden while off, so the row still reads as four
+   known factions instead of four unlabelled buttons. */
+.faction-chip svg {
+  display: block;
+  flex: 0 0 auto;
+  opacity: 0.4;
+  filter: saturate(0.25);
+  transition: opacity 120ms ease, filter 120ms ease;
+}
+
+.faction-chip:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--faction);
+}
+
+.faction-chip:hover:not(:disabled) svg {
+  opacity: 0.8;
+  filter: none;
+}
+
+.faction-chip.is-active {
+  color: var(--color-text);
+  border-color: var(--faction);
+  background: color-mix(in srgb, var(--faction) 12%, var(--color-surface-raised));
+  box-shadow: inset 0 0 0 1px var(--faction);
+}
+
+.faction-chip.is-active svg {
+  opacity: 1;
+  filter: none;
+}
+
+.faction-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.faction-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Party: a horizontal strip of seats rather than a vertical list in a rail. */
+.party-strip {
+  padding: 16px 20px;
+}
+
+.party-strip-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.party-strip-head h2 {
+  margin: 3px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+
+.party-strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.party-strip-locked,
+.party-strip-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.party-seats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 240px));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.party-seat {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 6px 10px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  position: relative;
+}
+
+.party-seat.has-kick {
+  padding-right: 24px;
+}
+
+.party-seat-text {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.party-seat-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.party-seat strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.party-seat small {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.party-seat-avatar {
+  width: 40px;
+  height: 20px;
+  margin-left: 2px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+.party-seat-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.party-seat-factions {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+/* The glyphs carry their faction's colour, which is the whole point of showing
+   them; the words beside them stay the subdued colour of the line. */
+.party-seat-factions small {
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.party-seat-leader {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-warn);
+  flex-shrink: 0;
+}
+
+/* The member's league mark, on the left of the seat like in the identity card.
+   Sized to 34px so a placed and an unplaced member are seats of one height. */
+.party-seat-league {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.party-seat-league img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* A dashed outline reads as "this could be filled" where a solid card would
+   read as a member whose name failed to load. */
+.party-seat-empty {
+  background: transparent;
+  border-style: dashed;
+}
+
+.party-seat-slot {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 50%;
+}
+
+.party-seat-kick {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  z-index: 1;
+}
+
+.party-seat-kick:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.party-seat-kick:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.party-seat-kick:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* Wider tracks than the old fixed three, because the card is now a picture
+   rather than a line of text with a thumbnail glued to its left. */
+/* A pool entry is the veto card plus, when the catalogue has something to say
+   about that map, a way into it. Two controls, so they cannot be one button. */
+.map-pool-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.map-pool-cell .map-pool-card {
+  flex: 1;
+}
+
+.map-pool-card-guides {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 8px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.map-pool-card-guides:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.map-pool-card-guides:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.map-pool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+  max-height: 56vh;
+  margin-top: 18px;
+  overflow: auto;
+}
+
+.map-pool-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.map-pool-tabs button {
+  min-height: 30px;
+  padding: 4px 10px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.map-pool-tabs button:hover,
+.map-pool-tabs button.active {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+/* The map first: the picture fills the card and the words sit under it in a
+   strip. Choosing a map is looking at terrain, and the previous card gave that
+   a 54 px square beside two lines of text. */
+.map-pool-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  text-align: left;
+}
+
+.map-pool-card-art {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--color-surface);
+}
+
+.map-pool-card-art img,
+.map-pool-card-art > .map-preview-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.map-pool-card-foot {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 9px 7px;
+}
+
+.map-pool-card strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.map-pool-card small { color: var(--color-subtle); font-size: 11px; }
+
+/* Vetoed: the colour goes, and a band says why. Dimming alone read as a tile
+   still loading rather than as one the player had struck off. */
+.map-pool-card.vetoed .map-pool-card-art img,
+.map-pool-card.vetoed .map-pool-card-art > .map-preview-placeholder {
+  filter: grayscale(1) brightness(0.72);
+}
+
+.map-pool-card.vetoed { border-color: var(--color-error); }
+.map-pool-card.vetoed .map-pool-card-foot { color: var(--color-subtle); }
+
+.map-pool-card.is-disabled {
+  cursor: default;
+}
+
+.map-pool-card.is-disabled:hover {
+  border-color: var(--color-border);
+}
+
+/* A band across the whole card rather than a rotated sticker: the map behind it
+   stays readable, and a horizontal edge reads as a state the card is in instead
+   of a label dropped on top of it.
+ *
+ * Frosted rather than solid, the same `blur` + `color-mix` treatment the vault
+ * badges and the modal backdrop use, so the terrain still shows through and it
+ * is obvious which map is struck off. */
+.map-pool-banned {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  padding: 7px 8px;
+  transform: translateY(-50%);
+  border-top: 1px solid color-mix(in srgb, var(--color-error) 60%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-error) 60%, transparent);
+  color: var(--color-error);
+  /* Frosted over the theme's own background rather than tinted red: the word has
+     to hold up over a pale desert as well as over dark water, and red on a red
+     wash disappears against bright terrain. Same recipe as the vault badges. */
+  background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  backdrop-filter: blur(5px) saturate(115%);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Matchmaker ------------------------------------------------------------- */
+.matchmaker-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+/* `overflow: visible`, against `.matchmaker-card`'s hidden, and it is what
+   makes the search bar below stick: an ancestor with a clipped overflow is the
+   nearest scroll container a sticky element can find, and sticking to a box
+   that never scrolls is the same as not sticking at all. Nothing in this card
+   overflows it, so there is nothing left to clip. */
+.matchmaker-queues-section {
+  padding: 20px;
+  overflow: visible;
+}
+
+.matchmaker-player-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+}
+
+.matchmaker-player-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+}
+
+/* Who you are, kept to the width its own text needs. */
+.matchmaker-player-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.matchmaker-player-name {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.matchmaker-player-name:disabled { cursor: default; }
+.matchmaker-player-name:not(:disabled):hover strong { text-decoration: underline; }
+.matchmaker-player-name:focus-visible { outline: 2px solid var(--color-border-strong); outline-offset: 3px; }
+.matchmaker-player-name > span { color: var(--color-muted); font-size: 13px; }
+.matchmaker-player-name strong { overflow: hidden; font-size: 17px; text-overflow: ellipsis; white-space: nowrap; }
+
+.matchmaker-player-avatar {
+  width: 40px;
+  height: 20px;
+  margin-left: 4px;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.matchmaker-player-meta {
+  display: flex;
+  min-height: 18px;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.matchmaker-player-meta img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.matchmaker-profile-warning {
+  max-width: 300px;
+  overflow: hidden;
+  color: var(--color-warn);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matchmaker-section-copy {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.matchmaker-section-copy h1,
+.matchmaker-section-copy h2 {
+  margin: 3px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+
+/* `auto-fit` rather than `auto-fill`, so the queues the server offers share the
+   row instead of wrapping while empty tracks hold the width.
+ *
+ * The cards line up with the faction picker above them and the search button
+ * below, all three being children of the same section: the row simply spans its
+ * full width, and nothing parks leftover space on the right.
+ *
+ * That full row is only right when there is a full row. A single queue spread
+ * across the whole tab leaves three metrics floating in a card of mostly empty
+ * space, which is why the cards used to carry a width cap; the cap is now on
+ * the short rows alone, so it can no longer hold the four-queue row back from
+ * the section's edge. */
+.matchmaker-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.matchmaker-queue-grid:not(:has(> :nth-child(4))) > .matchmaker-queue-card {
+  max-width: 420px;
+}
+
+.matchmaker-queue-card {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+}
+
+/* Which queues you are about to search is the tab's most consequential state,
+   so selection reads as an accented card rather than a one-pixel grey inset.
+   The Java client outlines its selected queue buttons for the same reason. */
+.matchmaker-queue-card.is-selected {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-raised));
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.matchmaker-queue-card[data-status="searching"],
+.matchmaker-queue-card[data-status="found"],
+.matchmaker-queue-card[data-status="launching"] {
+  border-color: var(--color-ok);
+  background: color-mix(in srgb, var(--color-ok) 6%, var(--color-surface-raised));
+  box-shadow: inset 0 0 0 1px var(--color-ok);
+}
+
+.matchmaker-queue-card[data-status="cancelled"] {
+  border-color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 6%, var(--color-surface-raised));
+  box-shadow: inset 0 0 0 1px var(--color-warn);
+}
+
+.matchmaker-queue-card.incompatible {
+  opacity: .64;
+}
+
+/* The whole upper area is the toggle. The card used to be three bands split by
+   hairlines: a title strip, a bordered statistics table, then a footer. That
+   read as three stacked widgets rather than one queue. */
+.matchmaker-queue-select {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 16px 14px;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.matchmaker-queue-select:disabled {
+  cursor: not-allowed;
+}
+
+.matchmaker-queue-select:focus-visible,
+.matchmaker-map-pool-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.matchmaker-queue-head {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.matchmaker-queue-title {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.matchmaker-queue-title strong {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The number that decides whether this queue is worth entering. */
+.matchmaker-queue-rating {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+}
+
+.matchmaker-queue-rating strong {
+  font-size: 20px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchmaker-queue-rating small {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+/* Icon-led facts on one line: three short values did not need a bordered
+   four-column table with 8px headings. */
+/* A column, not a wrapping row: one fact per line reads the same on every card
+   regardless of how wide its numbers are. */
+.matchmaker-queue-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* The corner the map pool button occupies, kept clear so a long line cannot
+     run underneath it. */
+  padding-right: 108px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.matchmaker-queue-facts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchmaker-queue-facts svg {
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+
+.matchmaker-queue-check {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  color: var(--color-surface);
+  background: transparent;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.matchmaker-queue-card.is-selected .matchmaker-queue-check {
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* Laid over the last fact lines instead of below them. As its own band the map
+   pool button added a row of card height that said nothing, and the taller
+   card pushed the queue grid down for every player. Bottom offset matches the
+   toggle's bottom padding, so the two sit on one baseline. */
+.matchmaker-queue-footer {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.matchmaker-map-pool-button {
+  min-height: 32px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.matchmaker-queue-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* A footer of the queues card, not a floating strip of its own, and one that
+   stays on screen.
+ *
+   The queue cards are as tall as four rows of them need to be, so on a short
+   window the whole strip, the only control that starts a search, sat below the
+   fold of the scrolling column. It was reported as "no search button in the
+   matchmaker tab", which is exactly how an off-screen primary action reads.
+ *
+   Sticky rather than a fixed footer outside the card: while the card's bottom
+   is on screen this renders where it always did, in the place the comment
+   above describes, and only pins itself when it would otherwise be scrolled
+   past. The negative margins let it span the card's padding, so the pinned bar
+   covers the queue cards passing underneath it instead of letting them show
+   through at its edges. */
+.matchmaker-search-bar {
+  position: sticky;
+  z-index: 1;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px -20px -20px;
+  padding: 16px 20px 20px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.matchmaker-search-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 20px 2px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.matchmaker-search-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.matchmaker-search-copy > i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  background: var(--color-subtle);
+  border-radius: 50%;
+}
+
+.matchmaker-search-bar[data-state="searching"] .matchmaker-search-copy > i,
+.matchmaker-search-bar[data-state="matchFound"] .matchmaker-search-copy > i,
+.matchmaker-search-bar[data-state="launching"] .matchmaker-search-copy > i {
+  background: var(--color-ok);
+}
+
+.matchmaker-search-bar[data-state="searching"] .matchmaker-search-copy > i {
+  animation: matchmaker-dot-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.matchmaker-search-bar.cancelled .matchmaker-search-copy > i {
+  background: var(--color-warn);
+}
+
+@keyframes matchmaker-dot-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-ok) 65%, transparent);
+  }
+  60% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-ok) 0%, transparent);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-ok) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matchmaker-search-bar[data-state="searching"] .matchmaker-search-copy > i {
+    animation: none;
+  }
+}
+
+.matchmaker-search-copy > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.matchmaker-search-copy strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.matchmaker-search-copy span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* Party chat now sits in a full-width card rather than a 290px rail, so it
+   drops the miniaturised type it needed there. Capped in width because a chat
+   line stretched across the whole tab is unreadable. */
+/* A full-height rail panel now, not an inset block inside the party card. */
+.matchmaker-party-chat {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.matchmaker-party-chat.is-empty > p {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.matchmaker-party-chat > header {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.matchmaker-party-chat > header strong { font-size: 12px; }
+
+.matchmaker-party-chat > header span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Takes the rail's leftover height so the composer stays pinned to the bottom
+   regardless of how many messages there are. */
+.matchmaker-party-chat .chat-messages {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  border-radius: var(--radius-md);
+}
+
+/* One template for every kind of line, exactly as the full chat does it, so
+   the text column starts at the same place in all of them.
+ *
+ * The sender track is a share of the rail, not `auto`: each row is its own
+ * grid, so a content-sized track made every message begin wherever that
+ * sender's name happened to end. A percentage resolves against the same
+ * container in every row, so the column still lines up, and a wider rail
+ * spends the extra width on names rather than clipping them. `.chat-nick`
+ * already ellipsises, so a long name loses its tail rather than the column.
+ *
+ * Three columns whatever the row holds. `.chat-quote` and `.chat-reactions`
+ * are placed at `grid-column: 3 / -1`, so a row with fewer explicit columns
+ * pushes them into an implicit one and takes the body's width away from it.
+ * An info line fills the middle track with its empty prefix span and an action
+ * line with its `*`, which is where both belong anyway. */
+.matchmaker-party-chat .chat-message {
+  grid-template-columns: 0 minmax(0, 30%) minmax(0, 1fr);
+  gap: 7px;
+  font-size: 12px;
+}
+
+/* The rail shows no timestamps: the column that would hold them is not in its
+   template. Clipping the element left it in the flow, where it took a grid
+   cell of its own on a second row, so a message carrying a time was 16px
+   taller than its neighbours and one without still paid the row gap. Since
+   `showsTime` only marks the first message of each minute, that turned into
+   rows of visibly different heights down the conversation. */
+.matchmaker-party-chat .chat-message-time { display: none; }
+
+/* The rail has no room for an avatar column, which is why its track is zero
+   wide. The element still has to occupy that track, or every later cell shifts
+   one column left, so it is the element that must be zero: sized 32px by the
+   base rule it simply spilled out of the track and sat on top of the nick
+   beside it. Invisible until somebody in the party had an avatar at all. */
+.matchmaker-party-chat .chat-message-avatar {
+  width: 0;
+}
+
+/* Unless somebody in this conversation has one. The rail then spends 26px on
+   the column, which is the widest an avatar can be here without the message
+   body starting halfway across the panel; the banner keeps its 2:1 shape, so
+   it is drawn at 26x13 rather than the Chat tab's 32x16. `MatchmakerPartyChat`
+   decides, once per conversation, which is why this is a class on the rail and
+   not a rule per line: three columns that line up is the thing the template
+   above exists to guarantee. */
+.matchmaker-party-chat.has-avatars .chat-message {
+  grid-template-columns: 26px minmax(0, 30%) minmax(0, 1fr);
+}
+
+.matchmaker-party-chat.has-avatars .chat-message-avatar {
+  width: 26px;
+  height: 13px;
+}
+
+.matchmaker-party-chat.has-avatars .chat-message-avatar img {
+  width: 26px;
+  height: 13px;
+}
+
+.matchmaker-party-chat .chat-compose {
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.matchmaker-party-chat .chat-compose button { padding-inline: 9px; }
+
+.matchmaker-invite-search {
+  margin-top: 18px;
+  background: var(--color-surface-raised);
+}
+
+.matchmaker-invite-search:focus-within {
+  border-color: var(--color-border-strong);
+}
+
+.matchmaker-invite-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.matchmaker-invite-list {
+  max-height: 420px;
+  margin-top: 10px;
+  overflow: auto;
+}
+
+.matchmaker-invite-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.matchmaker-invite-row:last-child {
+  border-bottom: 0;
+}
+
+.matchmaker-invite-row > span:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.matchmaker-invite-row strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+
+.matchmaker-invite-row small {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.matchmaker-map-pool-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.matchmaker-veto-toolbar {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.matchmaker-bracket-name {
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.matchmaker-veto-unavailable {
+  margin-left: auto;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.matchmaker-token-wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.matchmaker-token-wallet i {
+  width: 10px;
+  height: 10px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+}
+
+.matchmaker-token-wallet i.used {
+  background: var(--color-warn);
+  border-color: var(--color-warn);
+}
+
+.matchmaker-token-wallet span {
+  margin-left: 4px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+/* Below this the chat rail costs the queue cards more width than it is worth,
+   so it drops under the main column instead of squeezing it. */
+@media (max-width: 1100px) {
+  .matchmaking-layout {
+    /* One column: there is no boundary left to move, so the width the divider
+       wrote does not apply and the handle goes with it. */
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+
+  .matchmaker-chat-divider {
+    display: none;
+  }
+
+  .matchmaker-main {
+    overflow: visible;
+  }
+
+  .matchmaker-party-chat {
+    height: 280px;
+  }
+}
+
+@media (max-width: 700px) {
+  .map-pool-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .matchmaker-player-factions {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .matchmaker-player-factions .faction-chips,
+  .faction-chips {
+    width: 100%;
+  }
+
+  .matchmaker-queue-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .matchmaker-section-copy,
+  .matchmaker-map-pool-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .matchmaker-search-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .matchmaker-search-bar > button {
+    width: 100%;
+  }
+
+  .matchmaker-veto-toolbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .matchmaker-token-wallet {
+    margin-left: 0;
+  }
+}
+
+/* No border or fill: the badge art carries its own frame, and a box around it
+   read as an empty placeholder whenever the image was missing. */
+.matchmaker-league-mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+}
+
+.matchmaker-league-mark img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Factions in the player card, mirroring the Java client (team_matchmaking.fxml). */
+.matchmaker-player-factions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.matchmaker-player-factions .faction-chips {
+  display: flex;
+  gap: 6px;
+}
+
+.matchmaker-player-factions .faction-chip {
+  width: 112px;
+}
+
+/* The single invite placeholder. Shaped like a seat so the row stays even,
+   drawn as an outline so it does not read as an occupied one. */
+.party-seat-invite {
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.party-seat-invite:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.party-seat-invite:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* The division badge under a queue's rating. Sized to match the width of the
+   rating digits and label above it, with room for widescreen tier emblems. */
+.matchmaker-queue-division {
+  width: 68px;
+  height: 40px;
+  margin-top: 4px;
+  object-fit: contain;
+  object-position: right center;
+}
+
+/* ── how the matchmaker works ───────────────────────────────────────── */
+
+/* A dialog, read once by somebody who has just arrived. Wide enough for a
+   paragraph to be a paragraph, capped so it never becomes a wall. */
+.matchmaker-explainer-modal {
+  width: min(1320px, 94vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.matchmaker-explainer-head {
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.matchmaker-explainer-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.matchmaker-explainer-head p {
+  margin: var(--space-1) 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.matchmaker-explainer-body {
+  overflow-y: auto;
+  padding: 0 var(--space-4);
+}
+
+.matchmaker-explainer-section {
+  padding: var(--space-4) 0 0;
+}
+
+.matchmaker-explainer-section h3 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.matchmaker-explainer-section p,
+.matchmaker-explainer-section li {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.matchmaker-explainer-section ul {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+/* One queue per row: its name, then the facts read off the server's own data
+   rather than typed into the prose above. */
+/* At this width the queue rows are a column of mostly empty space, so they
+   sit side by side instead: four queues, four cards. */
+.matchmaker-explainer-queues {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.matchmaker-explainer-queues > li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.matchmaker-explainer-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.matchmaker-explainer-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+/* The queue's rating breakdown, on hover anywhere on the card.
+   A pure-CSS popover rather than a portal: it lives inside the card's own
+   button, so anything focusable in here would be a control inside a control.
+   `pointer-events: none` keeps it from eating the click that selects the
+   queue.
+
+   Along the bottom edge, centred. It used to rise from the "n queued" line and
+   cover the card's own heading -- the queue's name, which is the one thing a
+   reader needs to still be able to see while deciding whether to wait in it.
+   Down here it covers the fact lines instead, one of which is the number it
+   breaks down. */
+.matchmaker-queue-breakdown {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  min-width: 160px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 100ms ease;
+}
+
+/* Anywhere on the card, not only on the words "n queued". The breakdown is
+   what the card is for -- it answers whether waiting in this queue is worth
+   it -- and asking for it by finding six characters of text turned a fact
+   into a trick. It still hangs off the count, because that is the number it
+   breaks down. */
+.matchmaker-queue-card:hover .matchmaker-queue-breakdown {
+  opacity: 1;
+}
+
+.matchmaker-queue-breakdown b {
+  margin-bottom: 2px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.matchmaker-queue-breakdown > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.matchmaker-queue-breakdown em {
+  color: var(--color-text);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchmaker-queue-breakdown i {
+  color: var(--color-muted);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A band holding somebody who would actually take this player, and the band
+   this player's own rating sits in. Both exist because the list was being read
+   as an answer to "is anybody near me": a band of one, an apparently nearby
+   rating, and "0 in your range" on the card underneath it. The bands are the
+   matchmaker's own mean and the card's rating is the conservative number, so
+   the two never did line up by eye. */
+.matchmaker-queue-breakdown > span.is-in-range i {
+  color: var(--color-ok);
+  font-weight: 600;
+}
+
+.matchmaker-queue-breakdown > span.is-mine em {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.matchmaker-queue-breakdown small {
+  margin-top: 2px;
+  color: var(--color-subtle);
+  font-size: 11px;
+}

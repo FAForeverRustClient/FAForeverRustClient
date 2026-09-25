@@ -21,19 +21,19 @@ import type { ChatChannel, ChatStatus, Game, Reaction } from "../../ipc/bindings
 import { isPrivateChannel } from "../../store/reducer";
 import { typistsAt } from "../../store/reducers/chat";
 import { ChannelTabs } from "./ChannelTabs";
-import type { ChatGameLink } from "./chatFormat";
-import { Composer } from "./Composer";
+import type { ChatGameLink } from "./messages/chatFormat";
+import { Composer } from "./messages/Composer";
 import { ConversationAside } from "./ConversationAside";
-import { MessageList, type MessageReactionsMap } from "./MessageList";
-import { visibleChatMessages } from "./messageFilters";
-import { RosterResizeHandle, clampRosterWidth, rosterTier } from "./RosterResizeHandle";
-import { UserList } from "./UserList";
-import { usePlayerMenu } from "./usePlayerMenu";
+import { MessageList, type MessageReactionsMap } from "./messages/MessageList";
+import { visibleChatMessages } from "./messages/messageFilters";
+import { RosterResizeHandle, clampRosterWidth, rosterTier } from "./roster/RosterResizeHandle";
+import { UserList } from "./roster/UserList";
+import { usePlayerMenu } from "../../shared/hooks/usePlayerMenu";
 import "./chat.css";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
-import { joinGame as joinLobbyGame } from "../lobby/joinGame";
-import { partyChatChannel } from "../lobby/partyChat";
+import { joinGame as joinLobbyGame } from "../../shared/joinGame";
+import { partyChatChannel } from "../../shared/partyChat";
 
 /** Mirrors `faf_domain::state::chat::DEFAULT_CHANNEL`. */
 const DEFAULT_CHANNEL = "#aeolus";
@@ -137,12 +137,10 @@ export function ChatView() {
   // Replay tabs only. Opening the client straight into chat therefore left
   // every badge falling back to a guessed CDN path, which 404s for any map
   // whose folder name carries a version suffix, so "some maps" silently became
-  // placeholders. Guarded on `idle` exactly like the other consumers, so this
-  // never re-fetches a vault somebody else already loaded.
+  // placeholders. The service ignores this once the vault is loaded or being
+  // loaded, so asking on every mount costs nothing.
   useEffect(() => {
-    if (useAppStore.getState().state.maps.vaultStatus.type === "idle") {
-      ipc.send({ kind: "Maps", command: { type: "loadVault" } });
-    }
+    ipc.send({ kind: "Maps", command: { type: "loadVault" } });
   }, []);
 
   useEffect(() => {

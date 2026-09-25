@@ -18,7 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatChannel } from "../../ipc/bindings";
 import { isPrivateChannel } from "../../store/reducer";
-import { partyChannelLabel } from "../lobby/partyChat";
+import { partyChannelLabel } from "../../shared/partyChat";
 import { Icon } from "../../design-system/Icon";
 import "../../design-system/section-tabs.css";
 import { useTranslation } from "../../i18n/useTranslation";
