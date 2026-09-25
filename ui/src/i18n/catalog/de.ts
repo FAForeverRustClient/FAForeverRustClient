@@ -1611,7 +1611,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.overview.accountEyebrow": "Konto",
   "playerCard.overview.playerId": "Spieler-ID",
   "playerCard.overview.registered": "Registriert",
-  "playerCard.overview.lastSeen": "Zuletzt gesehen",
   "playerCard.overview.userAgent": "User-Agent",
   "playerCard.overview.clan": "Clan",
   "playerCard.overview.clanJoined": "Clan beigetreten",
@@ -1675,7 +1674,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.clan.searchPlaceholder": "Mitgliedsname…",
   "playerCard.clan.joined": "Beigetreten {date}",
   "playerCard.clan.registered": "Registriert {date}",
-  "playerCard.clan.lastSeen": "Zuletzt gesehen {date}",
 
   "playerCard.note.label": "Private Notiz zu {login}",
   "playerCard.note.placeholder": "Eine Erinnerung, die nur in diesem Client sichtbar ist…",

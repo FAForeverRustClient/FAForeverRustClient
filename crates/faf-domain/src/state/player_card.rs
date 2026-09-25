@@ -84,7 +84,6 @@ pub struct ClanMember {
     pub login: String,
     pub joined_at: String,
     pub account_created_at: String,
-    pub last_seen_at: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -204,7 +203,10 @@ pub struct PlayerCardProfile {
     pub login: String,
     pub country: String,
     pub registered_at: String,
-    pub last_seen_at: String,
+    // No "last seen": the API's `lastLogin` is readable only by the account
+    // itself and by moderators, and `updateTime`, which stood in for it, moves
+    // whenever anything writes the row. A bulk update set it to one date for a
+    // great many accounts that had not been online in years (#312).
     pub user_agent: String,
     pub avatars: Vec<PlayerAvatar>,
     pub names: Vec<PlayerNameRecord>,
@@ -781,7 +783,6 @@ mod tests {
                 login: "Ada".into(),
                 country: String::new(),
                 registered_at: String::new(),
-                last_seen_at: String::new(),
                 user_agent: String::new(),
                 avatars: vec![PlayerAvatar {
                     url: "old".into(),

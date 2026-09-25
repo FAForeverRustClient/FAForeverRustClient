@@ -915,7 +915,6 @@ fn parse_identity(doc: &JsonApiDoc, player: &Resource) -> Result<PlayerCardProfi
         login: text(player, "login"),
         country: text(player, "country"),
         registered_at: text(player, "createTime"),
-        last_seen_at: text(player, "updateTime"),
         user_agent: text(player, "userAgent"),
         avatars,
         names,
@@ -959,7 +958,6 @@ fn parse_clan(player: &Resource, index: &Index<'_>) -> Option<PlayerClan> {
                 login: text(account, "login"),
                 joined_at: text(member, "createTime"),
                 account_created_at: text(account, "createTime"),
-                last_seen_at: text(account, "updateTime"),
             })
         })
         .collect();
@@ -1411,7 +1409,6 @@ impl PlayerCardPort for FakePlayerCard {
             login: login.into(),
             country: "de".into(),
             registered_at: "2017-04-12T14:20:00Z".into(),
-            last_seen_at: "2026-08-05T12:00:00Z".into(),
             user_agent: "Forged Alliance Forever".into(),
             avatars: vec![PlayerAvatar {
                 url: String::new(),

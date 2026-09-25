@@ -4913,7 +4913,6 @@ fn cases() -> Vec<Case> {
                         login: "Ada".into(),
                         country: String::new(),
                         registered_at: String::new(),
-                        last_seen_at: String::new(),
                         user_agent: String::new(),
                         avatars: vec![PlayerAvatar {
                             url: "old".into(),

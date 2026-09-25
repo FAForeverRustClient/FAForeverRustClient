@@ -1849,7 +1849,6 @@ export const en = {
   "playerCard.overview.accountEyebrow": "Account",
   "playerCard.overview.playerId": "Player ID",
   "playerCard.overview.registered": "Registered",
-  "playerCard.overview.lastSeen": "Last seen",
   "playerCard.overview.userAgent": "User agent",
   "playerCard.overview.clan": "Clan",
   "playerCard.overview.clanJoined": "Clan joined",
@@ -1917,7 +1916,6 @@ export const en = {
   "playerCard.clan.searchPlaceholder": "Member name…",
   "playerCard.clan.joined": "Joined {date}",
   "playerCard.clan.registered": "Registered {date}",
-  "playerCard.clan.lastSeen": "Last seen {date}",
 
   // Player card: private note editor.
   "playerCard.note.label": "Private note about {login}",
