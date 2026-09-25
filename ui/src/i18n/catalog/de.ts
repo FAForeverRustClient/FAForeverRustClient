@@ -2405,6 +2405,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.leagues.allDivisions": "Alle Divisionen",
   "leaderboard.leagues.all": "Alle",
   "leaderboard.leagues.empty": "Keine platzierten Spieler passen zu diesen Filtern.",
+  "leaderboard.showMore": "{count} weitere anzeigen",
   "leaderboard.leagues.leaguePlayer": "Liga-Spieler",
   "leaderboard.player.heading": "Spielerdetails",
   "leaderboard.player.selectRow": "Wähle eine Zeile, um den Spieler anzusehen und Aktionen zu öffnen.",

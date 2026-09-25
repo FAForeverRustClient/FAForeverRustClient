@@ -299,6 +299,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "leaderboard.leagues.allDivisions": "Все дивизионы",
   "leaderboard.leagues.all": "Все",
   "leaderboard.leagues.empty": "Нет размещённых игроков, соответствующих этим фильтрам.",
+  "leaderboard.showMore": "Показать ещё {count}",
   "leaderboard.leagues.leaguePlayer": "Игрок лиги",
   "leaderboard.player.heading": "Сведения об игроке",
   "leaderboard.player.selectRow": "Выберите строку, чтобы посмотреть игрока и открыть связанные действия.",

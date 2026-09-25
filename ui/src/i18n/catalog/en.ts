@@ -2681,6 +2681,7 @@ export const en = {
   "leaderboard.leagues.allDivisions": "All divisions",
   "leaderboard.leagues.all": "All",
   "leaderboard.leagues.empty": "No placed players match these filters.",
+  "leaderboard.showMore": "Show {count} more",
   "leaderboard.leagues.leaguePlayer": "League player",
   "leaderboard.player.heading": "Player details",
   "leaderboard.player.selectRow": "Select a row to inspect the player and open related actions.",

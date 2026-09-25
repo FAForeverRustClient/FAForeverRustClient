@@ -292,6 +292,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "leaderboard.leagues.allDivisions": "Toutes les divisions",
   "leaderboard.leagues.all": "Toutes",
   "leaderboard.leagues.empty": "Aucun joueur placé ne correspond à ces filtres.",
+  "leaderboard.showMore": "Afficher {count} de plus",
   "leaderboard.leagues.leaguePlayer": "Joueur de ligue",
   "leaderboard.player.heading": "Détails du joueur",
   "leaderboard.player.selectRow": "Sélectionnez une ligne pour inspecter le joueur et ouvrir les actions associées.",
