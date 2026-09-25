@@ -1,0 +1,143 @@
+/* The hex-speaking colour field. See ColorInput.tsx for why it exists. */
+
+.color-input-trigger {
+  padding: 0;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.color-input-trigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.color-input-popover {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+/* White from the left, black from the bottom, over the pure hue behind. */
+.color-input-square {
+  position: relative;
+  height: 140px;
+  border-radius: var(--radius-sm);
+  background-image:
+    linear-gradient(to top, black, transparent),
+    linear-gradient(to right, white, transparent);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.color-input-square:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.color-input-square-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.5);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.color-input-hue {
+  width: 100%;
+  height: 12px;
+  margin: 0;
+  border-radius: 6px;
+  background: linear-gradient(
+    to right,
+    hsl(0 100% 50%),
+    hsl(60 100% 50%),
+    hsl(120 100% 50%),
+    hsl(180 100% 50%),
+    hsl(240 100% 50%),
+    hsl(300 100% 50%),
+    hsl(360 100% 50%)
+  );
+  appearance: none;
+  cursor: pointer;
+}
+
+.color-input-hue::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.5);
+  appearance: none;
+}
+
+.color-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.color-input-preview {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.color-input-hex {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.color-input-hex:focus-visible {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.color-input-eyedropper {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.color-input-eyedropper:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+/* Laid over a swatch the caller draws, the way the hidden native input was. */
+.color-input-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}

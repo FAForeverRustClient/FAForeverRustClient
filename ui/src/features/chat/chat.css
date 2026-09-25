@@ -1538,7 +1538,7 @@ img.chat-game-map {
   font-size: 12px;
 }
 
-.chat-user-menu-color input[type="color"] {
+.chat-user-menu-color .chat-user-menu-color-swatch {
   width: 30px;
   height: 26px;
   padding: 2px;

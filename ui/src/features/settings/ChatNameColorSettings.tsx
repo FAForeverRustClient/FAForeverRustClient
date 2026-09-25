@@ -1,3 +1,4 @@
+import { ColorInput } from "../../design-system/ColorInput";
 import { useMemo, useState } from "react";
 import type { ChatNameColors, ChatPreferences } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
@@ -99,11 +100,11 @@ export function ChatNameColorSettings({
               <span className="chat-color-state">{color || t("settings.nameColors.default")}</span>
               <label className="chat-color-swatch-wrap" title={t("settings.nameColors.chooseFor", { label: text })}>
                 <span className="chat-color-preview-swatch" style={{ backgroundColor: color || DEFAULT_COLOR_PICKER_VALUE }} />
-                <input
-                  type="color"
+                <ColorInput
+                  className="color-input-overlay"
                   value={color || DEFAULT_COLOR_PICKER_VALUE}
                   aria-label={t("settings.nameColors.chooseNameColor", { label: text.toLocaleLowerCase() })}
-                  onChange={(event) => setCategoryColor(key, event.target.value)}
+                  onChange={(next) => setCategoryColor(key, next)}
                 />
               </label>
               <button
@@ -143,11 +144,11 @@ export function ChatNameColorSettings({
           <label className="chat-color-picker-control surface surface-interactive" title={t("settings.nameColors.chooseCustom")}>
             <span className="chat-color-preview-swatch" style={{ backgroundColor: playerColor }} />
             <span className="chat-color-state">{playerColor}</span>
-            <input
-              type="color"
+            <ColorInput
+              className="color-input-overlay"
               value={playerColor}
               aria-label={t("settings.nameColors.customPlayerName")}
-              onChange={(event) => setPlayerColor(event.target.value)}
+              onChange={setPlayerColor}
             />
           </label>
           <Button
@@ -171,13 +172,13 @@ export function ChatNameColorSettings({
                 title={t("settings.nameColors.changePlayer", { name: nickname })}
               >
                 <span className="chat-color-preview-swatch" style={{ backgroundColor: color }} />
-                <input
-                  type="color"
+                <ColorInput
+                  className="color-input-overlay"
                   value={color}
                   aria-label={t("settings.nameColors.changePlayerAria", { name: nickname })}
-                  onChange={(event) => saveColors({
+                  onChange={(next) => saveColors({
                     ...preferences.nameColors,
-                    players: { ...preferences.nameColors.players, [nickname]: event.target.value },
+                    players: { ...preferences.nameColors.players, [nickname]: next },
                   })}
                 />
               </label>
