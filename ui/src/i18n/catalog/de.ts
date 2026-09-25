@@ -1118,6 +1118,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.streamLive": "FAF geht live",
   "settings.notifications.streamLiveHint":
     "Hinweis, wenn FAFs eigener Twitch-Kanal sendet. Nie als Fenster über dem Spiel: der Hinweis erscheint in der Benachrichtigungsliste und auf der Seite mit den externen Links.",
+  "settings.notifications.mapGenerated": "Generierte Karte fertig",
+  "settings.notifications.mapGeneratedHint": "Melden, wenn eine generierte Karte fertig ist. Fehler werden immer angezeigt.",
 
   "settings.title": "Einstellungen",
   "settings.intro": "Einstellungen werden automatisch gespeichert und über das Backend abgeglichen.",

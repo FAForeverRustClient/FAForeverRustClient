@@ -481,6 +481,7 @@ const INITIAL: AppState = {
       reviewReminder: true,
       partyInvites: true,
       streamLive: true,
+      mapGenerated: true,
       volume: 70,
     },
     chat: {

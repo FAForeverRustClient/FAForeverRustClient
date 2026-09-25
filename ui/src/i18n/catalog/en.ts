@@ -1304,6 +1304,8 @@ export const en = {
   "settings.notifications.streamLive": "FAF goes live",
   "settings.notifications.streamLiveHint":
     "Tell me when FAF's own Twitch channel starts broadcasting. Never a pop-up over a game: it appears in the notification list and on the External links page.",
+  "settings.notifications.mapGenerated": "Generated map ready",
+  "settings.notifications.mapGeneratedHint": "Tell me when a generated map is ready. Failures are always shown.",
 
   // Settings shell.
   "settings.title": "Settings",

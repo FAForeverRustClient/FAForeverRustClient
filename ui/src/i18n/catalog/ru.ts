@@ -2469,6 +2469,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.toastPosition.topRight": "Сверху справа",
   "settings.notifications.streamLive": "FAF выходит в эфир",
   "settings.notifications.streamLiveHint": "Оповещать, когда официальный Twitch-канал FAF начинает трансляцию.",
+  "settings.notifications.mapGenerated": "Сгенерированная карта готова",
+  "settings.notifications.mapGeneratedHint": "Уведомлять, когда сгенерированная карта готова. Ошибки показываются всегда.",
   "settings.updates.checkUpdatesAt": "Сообщать о необязательных обновлениях",
   "settings.updates.checkUpdatesAtHint": "Показывает баннер и уведомление, когда доступна новая версия. Клиент в любом случае проверяет страницу релизов при запуске, а релиз, который он может установить сам, необязательным не бывает; отключение лишь убирает с глаз обновление, которое можно отложить.",
   "settings.appearance.vaultPageSize": "Записей на странице",

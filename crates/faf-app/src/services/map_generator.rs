@@ -288,15 +288,13 @@ async fn drain(
         match &status {
             GeneratorStatus::Generated { maps } => {
                 succeeded_maps = maps.clone();
-                services::notifications::add(
+                announce_background_result(
                     out,
-                    NotificationKind::MapGenerated,
                     "Map ready",
                     match maps.as_slice() {
                         [one] => one.clone(),
                         many => format!("Generated {} maps.", many.len()),
                     },
-                    None,
                 );
             }
             GeneratorStatus::Failed { reason } => services::notifications::add(
@@ -385,16 +383,28 @@ async fn evict_generated_maps(
             tracing::warn!(map = %name, %reason, "could not remove a capped generated map");
         }
     }
-    services::notifications::add(
+    announce_background_result(
         out,
-        NotificationKind::MapGenerated,
         "Generated maps trimmed",
         format!(
             "Removed {} older generated map(s) to stay within the keep limit.",
             evicted.len()
         ),
-        None,
     );
+}
+
+/// Announce something the generator did on its own, unless the player turned
+/// that off (#307).
+///
+/// Only the background results go through here: a finished map and the keep
+/// limit trimming old ones. The answers to the Maps tab's clean-up button stay
+/// unconditional, because they reply to a click, and failures stay
+/// unconditional because a lobby join blocked on a map that never arrives needs
+/// explaining whatever the switch says.
+fn announce_background_result(out: &EventSink, title: &str, body: String) {
+    if out.with_state(|state| state.settings.notifications.map_generated) {
+        services::notifications::add(out, NotificationKind::MapGenerated, title, body, None);
+    }
 }
 
 /// Re-read the whole preset library and publish it.

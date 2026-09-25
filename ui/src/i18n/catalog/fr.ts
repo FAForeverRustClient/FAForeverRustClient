@@ -2319,6 +2319,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.toastPosition.topRight": "En haut à droite",
   "settings.notifications.streamLive": "FAF passe en direct",
   "settings.notifications.streamLiveHint": "Me prévenir quand la chaîne Twitch officielle de FAF commence à diffuser. Jamais en surimpression d'une partie : cela apparaît dans la liste des notifications et sur la page des liens externes.",
+  "settings.notifications.mapGenerated": "Carte générée prête",
+  "settings.notifications.mapGeneratedHint": "Prévenir quand une carte générée est prête. Les erreurs sont toujours affichées.",
   "settings.updates.checkUpdatesAt": "Annoncer les mises à jour facultatives",
   "settings.updates.checkUpdatesAtHint": "Affiche une bannière et une notification quand une nouvelle version est disponible. Le client consulte de toute façon la page des versions au démarrage, et une version qu'il peut installer lui-même n'est pas facultative ; désactiver ceci écarte seulement une mise à jour que vous pouvez remettre à plus tard.",
   "settings.appearance.vaultPageSize": "Entrées par page",

@@ -2349,6 +2349,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.toastPosition.topRight": "Prawy górny",
   "settings.notifications.streamLive": "FAF wchodzi na żywo",
   "settings.notifications.streamLiveHint": "Powiadom mnie, gdy własny kanał FAF na Twitchu zacznie transmisję. Nigdy jako okienko nad grą: pojawia się na liście powiadomień i na stronie Odnośniki zewnętrzne.",
+  "settings.notifications.mapGenerated": "Wygenerowana mapa gotowa",
+  "settings.notifications.mapGeneratedHint": "Powiadom, gdy wygenerowana mapa będzie gotowa. Błędy są zawsze pokazywane.",
   "settings.updates.checkUpdatesAt": "Ogłaszaj opcjonalne aktualizacje",
   "settings.updates.checkUpdatesAtHint": "Wyświetla baner i powiadomienie, gdy dostępna jest nowa wersja. Klient zawsze sprawdza stronę wydań projektu przy starcie, a wydanie, które potrafi zainstalować sam, nie jest opcjonalne; wyłączenie tego tylko usuwa ci z drogi aktualizację, którą możesz odłożyć.",
   "settings.appearance.vaultPageSize": "Wpisów na stronę",
