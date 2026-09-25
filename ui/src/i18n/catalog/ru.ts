@@ -1613,7 +1613,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.galacticWar.how.battles.title": "Атаки и сражения",
   "lobby.galacticWar.how.battles.body": "Атака на планету разыгрывается как обычная игра. Статистика сезона показывает, сколько сражений идёт сейчас и сколько уже состоялось.",
   "lobby.galacticWar.how.client.title": "Отдельный клиент",
-  "lobby.galacticWar.how.client.body": "Галактическая война работает не внутри этого клиента, а как отдельное приложение — оно обновляется автоматически, а сам режим открывается уже в своём окне.",
+  "lobby.galacticWar.how.client.body": "Галактическая война работает не внутри этого клиента, а как отдельное приложение: оно обновляется автоматически, а сам режим открывается уже в своём окне.",
   "lobby.matchmaker.inRange": "{count} в вашем диапазоне",
   "lobby.matchmaker.queueByRating": "Игроки в очереди по рейтингу",
   "lobby.matchmaker.queuedCount": { one: "{count} в очереди", few: "{count} в очереди", many: "{count} в очереди", other: "{count} в очереди" },
