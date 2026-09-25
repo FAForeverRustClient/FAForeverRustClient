@@ -105,10 +105,9 @@ export function AppearanceSettingsSection() {
     <>
       <div className="setting-block">
         <span className="setting-label">{t("settings.appearance.theme")}</span>
-        <span className="muted">{t("settings.appearance.themeHint")}</span>
         <ThemePicker />
       </div>
-      <SettingRow label={t("settings.appearance.interfaceDensity")} hint={t("settings.appearance.interfaceDensityHint")}>
+      <SettingRow label={t("settings.appearance.interfaceDensity")}>
         <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.interfaceDensity")}>
           {(["compact", "comfortable"] as UiDensity[]).map((density) => (
             <button
@@ -123,10 +122,7 @@ export function AppearanceSettingsSection() {
           ))}
         </div>
       </SettingRow>
-      <SettingRow
-        label={t("settings.appearance.interfaceScale")}
-        hint={t("settings.appearance.interfaceScaleHint")}
-      >
+      <SettingRow label={t("settings.appearance.interfaceScale")}>
         <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.interfaceScale")}>
           {UI_SCALES.map((scale) => (
             <button
@@ -184,10 +180,7 @@ export function AppearanceSettingsSection() {
           ))}
         </div>
       </SettingRow>
-      <SettingRow
-        label={t("settings.appearance.sidebarWidth")}
-        hint={t("settings.appearance.sidebarWidthHint")}
-      >
+      <SettingRow label={t("settings.appearance.sidebarWidth")}>
         <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.sidebarWidth")}>
           {SIDEBAR_WIDTH_OPTIONS.map((option) => {
             const isActive = preferences.sidebarWidth === option.value;
