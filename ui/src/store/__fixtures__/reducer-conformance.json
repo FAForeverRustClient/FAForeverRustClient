@@ -739,6 +739,7 @@
         "reviewReminder": true,
         "partyInvites": true,
         "streamLive": true,
+        "mapGenerated": true,
         "volume": 70
       },
       "chat": {
@@ -2207,6 +2208,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -4728,6 +4730,7 @@
                   {
                     "requiredUid": "old-uid",
                     "requiredName": "Total Mayhem",
+                    "requiredVersion": "11",
                     "folderName": "Total Mayhem",
                     "installedUid": "new-uid",
                     "installedName": "Total Mayhem",
@@ -4754,7 +4757,8 @@
                     "installedUid": "new-uid",
                     "installedVersion": "12",
                     "requiredName": "Total Mayhem",
-                    "requiredUid": "old-uid"
+                    "requiredUid": "old-uid",
+                    "requiredVersion": "11"
                   }
                 ],
                 "id": 42
@@ -23382,6 +23386,419 @@
       ]
     },
     {
+      "name": "a withdrawn map looked up by folder joins the index once",
+      "steps": [
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultLoaded",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 1,
+                    "versionId": 11,
+                    "displayName": "scmp_009.v0001",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "scmp_009.v0001",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "scmp_009.v0001",
+                "downloadUrl": "",
+                "folderName": "scmp_009.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultFoldersResolved",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 3,
+                    "versionId": 33,
+                    "displayName": "withdrawn_map.v0002",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "withdrawn_map.v0002",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "scmp_009.v0001",
+                "downloadUrl": "",
+                "folderName": "scmp_009.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "withdrawn_map.v0002",
+                "downloadUrl": "",
+                "folderName": "withdrawn_map.v0002",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 3,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 33,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultFoldersResolved",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 3,
+                    "versionId": 33,
+                    "displayName": "withdrawn_map.v0002",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "withdrawn_map.v0002",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  },
+                  {
+                    "mapId": 1,
+                    "versionId": 11,
+                    "displayName": "scmp_009.v0001",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "scmp_009.v0001",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "scmp_009.v0001",
+                "downloadUrl": "",
+                "folderName": "scmp_009.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "withdrawn_map.v0002",
+                "downloadUrl": "",
+                "folderName": "withdrawn_map.v0002",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 3,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 33,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "mods load and report a failure",
       "steps": [
         {
@@ -26831,7 +27248,6 @@
                   "login": "Ada",
                   "country": "",
                   "registeredAt": "",
-                  "lastSeenAt": "",
                   "userAgent": "",
                   "avatars": [
                     {
@@ -26881,7 +27297,6 @@
               "clan": null,
               "country": "",
               "events": [],
-              "lastSeenAt": "",
               "leaguePlacements": [],
               "login": "Ada",
               "names": [],
@@ -26943,7 +27358,6 @@
               "clan": null,
               "country": "",
               "events": [],
-              "lastSeenAt": "",
               "leaguePlacements": [],
               "login": "Ada",
               "names": [],
@@ -27005,7 +27419,6 @@
               "clan": null,
               "country": "",
               "events": [],
-              "lastSeenAt": "",
               "leaguePlacements": [],
               "login": "Ada",
               "names": [],
@@ -30337,6 +30750,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -30592,6 +31006,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -30856,6 +31271,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -31117,6 +31533,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -31377,6 +31794,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -31657,6 +32075,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -31927,6 +32346,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -32214,6 +32634,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -32492,6 +32913,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -32772,6 +33194,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -33171,6 +33594,7 @@
               "friendPlaying": true,
               "gameFull": true,
               "gameLaunched": true,
+              "mapGenerated": true,
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
