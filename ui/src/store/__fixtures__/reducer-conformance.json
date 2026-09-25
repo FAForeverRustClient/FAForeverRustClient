@@ -706,7 +706,8 @@
         "hoverCloseDelayMs": 160
       },
       "social": {
-        "playerNotes": []
+        "playerNotes": [],
+        "replayNotes": []
       },
       "notifications": {
         "enabled": true,
@@ -2251,7 +2252,8 @@
             },
             "replayGamePath": "",
             "social": {
-              "playerNotes": []
+              "playerNotes": [],
+              "replayNotes": []
             },
             "theme": "forgeDark",
             "updates": {
@@ -30893,7 +30895,8 @@
             },
             "replayGamePath": "",
             "social": {
-              "playerNotes": []
+              "playerNotes": [],
+              "replayNotes": []
             },
             "theme": "forgeLight",
             "updates": {
@@ -31148,7 +31151,8 @@
             },
             "replayGamePath": "",
             "social": {
-              "playerNotes": []
+              "playerNotes": [],
+              "replayNotes": []
             },
             "theme": "forgeLight",
             "updates": {
@@ -31412,7 +31416,8 @@
             },
             "replayGamePath": "",
             "social": {
-              "playerNotes": []
+              "playerNotes": [],
+              "replayNotes": []
             },
             "theme": "forgeLight",
             "updates": {
@@ -31673,7 +31678,8 @@
             },
             "replayGamePath": "",
             "social": {
-              "playerNotes": []
+              "playerNotes": [],
+              "replayNotes": []
             },
             "theme": "forgeLight",
             "updates": {
@@ -31933,7 +31939,8 @@
             },
             "replayGamePath": "",
             "social": {
-              "playerNotes": []
+              "playerNotes": [],
+              "replayNotes": []
             },
             "theme": "forgeLight",
             "updates": {
@@ -32213,7 +32220,8 @@
             },
             "replayGamePath": "",
             "social": {
-              "playerNotes": []
+              "playerNotes": [],
+              "replayNotes": []
             },
             "theme": "forgeLight",
             "updates": {
@@ -32483,7 +32491,8 @@
             },
             "replayGamePath": "",
             "social": {
-              "playerNotes": []
+              "playerNotes": [],
+              "replayNotes": []
             },
             "theme": "forgeLight",
             "updates": {
@@ -32519,6 +32528,34 @@
                       "playerId": 0,
                       "login": "Invalid",
                       "note": "drop me"
+                    }
+                  ],
+                  "replayNotes": [
+                    {
+                      "replayId": 9,
+                      "comment": " first ",
+                      "tags": [
+                        "old"
+                      ]
+                    },
+                    {
+                      "replayId": 12,
+                      "comment": "",
+                      "tags": [
+                        " Lots  finals ",
+                        "LOTS FINALS",
+                        " "
+                      ]
+                    },
+                    {
+                      "replayId": 9,
+                      "comment": "  Comeback  ",
+                      "tags": []
+                    },
+                    {
+                      "replayId": 30,
+                      "comment": " ",
+                      "tags": []
                     }
                   ]
                 }
@@ -32780,6 +32817,20 @@
                   "login": "Aurora",
                   "note": "Reliable teammate",
                   "playerId": 42
+                }
+              ],
+              "replayNotes": [
+                {
+                  "comment": "Comeback",
+                  "replayId": 9,
+                  "tags": []
+                },
+                {
+                  "comment": "",
+                  "replayId": 12,
+                  "tags": [
+                    "Lots finals"
+                  ]
                 }
               ]
             },
@@ -33058,6 +33109,20 @@
                   "login": "Aurora",
                   "note": "Reliable teammate",
                   "playerId": 42
+                }
+              ],
+              "replayNotes": [
+                {
+                  "comment": "Comeback",
+                  "replayId": 9,
+                  "tags": []
+                },
+                {
+                  "comment": "",
+                  "replayId": 12,
+                  "tags": [
+                    "Lots finals"
+                  ]
                 }
               ]
             },
@@ -33338,6 +33403,20 @@
                   "login": "Aurora",
                   "note": "Reliable teammate",
                   "playerId": 42
+                }
+              ],
+              "replayNotes": [
+                {
+                  "comment": "Comeback",
+                  "replayId": 9,
+                  "tags": []
+                },
+                {
+                  "comment": "",
+                  "replayId": 12,
+                  "tags": [
+                    "Lots finals"
+                  ]
                 }
               ]
             },
@@ -33737,6 +33816,20 @@
                   "login": "Aurora",
                   "note": "Reliable teammate",
                   "playerId": 42
+                }
+              ],
+              "replayNotes": [
+                {
+                  "comment": "Comeback",
+                  "replayId": 9,
+                  "tags": []
+                },
+                {
+                  "comment": "",
+                  "replayId": 12,
+                  "tags": [
+                    "Lots finals"
+                  ]
                 }
               ]
             },

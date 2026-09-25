@@ -5983,6 +5983,19 @@ export type ReplayGameOption = {
 };
 
 /**
+ *  A private, local comment and set of tags on one replay (#324).
+ *
+ *  Keyed by the game id, which the vault and a downloaded file share, so a
+ *  note written on the Online tab is there on the Local tab too. Nothing here
+ *  leaves this machine: it is a personal index ("Lots finals"), not a review.
+ */
+export type ReplayNote = {
+	replayId: number,
+	comment: string,
+	tags: string[],
+};
+
+/**
  *  A line the game announced rather than a player typed: the notify channel,
  *  which is where the in-game mod reports what it is upgrading.
  */
@@ -6710,6 +6723,12 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	player_id: number,
 	login: string,
 	note: string,
+} } |
+/**  Write or clear the private note and tags on one replay (#324). */
+{ type: "setReplayNote"; payload: {
+	replayId: number,
+	comment: string,
+	tags: string[],
 } } | { type: "setNotifications"; payload: {
 	preferences: NotificationPreferences,
 } } |
@@ -6914,8 +6933,10 @@ export type SocialEvent =
 /**  The lobby connection went away; relations are no longer authoritative. */
 { type: "cleared" };
 
+/**  The player's own annotations: notes on players and on replays. */
 export type SocialPreferences = {
 	playerNotes: PlayerNote[],
+	replayNotes: ReplayNote[],
 };
 
 export type SocialState = {
