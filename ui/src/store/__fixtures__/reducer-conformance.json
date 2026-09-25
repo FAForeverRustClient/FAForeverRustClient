@@ -703,7 +703,8 @@
         "sidebarWidth": 224,
         "hoverPanels": true,
         "hoverOpenDelayMs": 500,
-        "hoverCloseDelayMs": 160
+        "hoverCloseDelayMs": 160,
+        "replayFlags": false
       },
       "social": {
         "playerNotes": [],
@@ -2016,6 +2017,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -30667,6 +30669,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -30923,6 +30926,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -31188,6 +31192,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -31448,6 +31453,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -31708,6 +31714,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -31978,6 +31985,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -32254,6 +32262,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -32570,6 +32579,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -32862,6 +32872,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -33156,6 +33167,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },
@@ -33547,6 +33559,7 @@
               "hoverOpenDelayMs": 500,
               "hoverPanels": true,
               "reduceMotion": false,
+              "replayFlags": false,
               "sidebarWidth": 224,
               "uiScale": 100
             },

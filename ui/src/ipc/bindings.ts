@@ -112,6 +112,16 @@ export type AppearancePreferences = {
 	 *  the panel, and a zero here makes everything in them unclickable.
 	 */
 	hoverCloseDelayMs: number,
+	/**
+	 *  Whether players' flags are drawn in replay lineups (#328).
+	 *
+	 *  Off by default: the lineup already carries a faction, a rating and a
+	 *  result per player, and a flag is mostly wanted by people preparing a
+	 *  cast. The country comes from the replay file itself, and for an online
+	 *  replay from players who are online right now, which is all the API
+	 *  offers: it has no country for an account.
+	 */
+	replayFlags: boolean,
 };
 
 /**
@@ -3473,6 +3483,8 @@ export type LocalReplayPlayer = {
 	faction: number | null,
 	/**  The displayed rating recorded in the replay header. */
 	rating: number | null,
+	/**  Two-letter country code from the army table, where the file has one. */
+	country?: string | null,
 };
 
 /**
@@ -6057,6 +6069,11 @@ export type ReplayPlayer = {
 	outcome: string,
 	/**  Simulation score at the end of the game, when recorded. */
 	score: number | null,
+	/**
+	 *  Two-letter country code, when a replay file on disk says it. The API
+	 *  has no country for an account, so an online listing never carries one.
+	 */
+	country?: string | null,
 };
 
 /**
