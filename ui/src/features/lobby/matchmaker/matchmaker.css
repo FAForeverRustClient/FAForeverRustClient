@@ -1442,3 +1442,92 @@
   color: var(--color-subtle);
   font-size: 11px;
 }
+
+/* The latest matchmaker games (issue 301): one row per game, read left to
+   right as mode, map and opponents, when, result, rating change, replay. */
+.matchmaker-recent {
+  padding: 20px;
+}
+
+.matchmaker-recent-state {
+  margin: var(--space-3) 0 0;
+}
+
+.matchmaker-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.matchmaker-recent-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto 72px 48px auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.matchmaker-recent-mode {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.matchmaker-recent-game {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.matchmaker-recent-game strong,
+.matchmaker-recent-game small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matchmaker-recent-game small,
+.matchmaker-recent-when {
+  font-size: 12px;
+}
+
+.matchmaker-recent-outcome {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.matchmaker-recent-outcome.is-victory,
+.matchmaker-recent-change.is-up {
+  color: var(--color-ok);
+}
+
+.matchmaker-recent-outcome.is-defeat,
+.matchmaker-recent-change.is-down {
+  color: var(--color-error);
+}
+
+.matchmaker-recent-change {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.matchmaker-recent-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+@media (max-width: 720px) {
+  .matchmaker-recent-row {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+
+  .matchmaker-recent-when,
+  .matchmaker-recent-change {
+    display: none;
+  }
+}

@@ -12,6 +12,7 @@ import type {
   SettingsState,
 } from "../../ipc/bindings";
 import { normalizePlayerNotes } from "../../shared/rules/playerNotes";
+import { normalizeReplayNotes } from "../../shared/rules/replayNotes";
 import { normalizeBrowsingPreferences } from "../../shared/browsingPreferences";
 import {
   normalizePathPreferences,
@@ -48,6 +49,7 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
         social: {
           ...event.payload.preferences,
           playerNotes: normalizePlayerNotes(event.payload.preferences.playerNotes),
+          replayNotes: normalizeReplayNotes(event.payload.preferences.replayNotes),
         },
       };
     case "notificationsChanged":

@@ -31,6 +31,7 @@ import { isRated, localRatingNote, notRatedReason } from "./replayValidity";
 import { formatDecimal } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ReplayMapThumb } from "./ReplayCard";
+import { ReplayNotesEditor } from "./ReplayNotesEditor";
 
 export function localReplayToVaultReplay(
   local: LocalReplay,
@@ -60,6 +61,7 @@ export function localReplayToVaultReplay(
         name: player.name,
         faction: player.faction,
         rating: player.rating,
+        country: player.country ?? null,
         outcome: "",
         score: null,
       })),
@@ -647,6 +649,7 @@ export function ReplayDetailPanel({
               <p className="replay-detail-empty muted">{t("replays.detail.noLineup")}</p>
             )}
           </section>
+          <ReplayNotesEditor replayId={replay.uid} />
           <div className="replay-card-bottom">
             {/* Why the button is dead, directly above the button.
 

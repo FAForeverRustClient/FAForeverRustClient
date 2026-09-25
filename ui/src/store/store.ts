@@ -64,6 +64,8 @@ const INITIAL: AppState = {
     analysisError: null,
     onlineLookups: {},
     resolvedMaps: {},
+    recentMatchmaker: [],
+    recentMatchmakerStatus: { type: "idle" },
   },
   maps: {
     vault: [],
@@ -434,8 +436,9 @@ const INITIAL: AppState = {
       hoverPanels: true,
       hoverOpenDelayMs: 500,
       hoverCloseDelayMs: 160,
+      replayFlags: false,
     },
-    social: { playerNotes: [] },
+    social: { playerNotes: [], replayNotes: [] },
     notifications: {
       enabled: true,
       desktop: true,

@@ -112,6 +112,16 @@ export type AppearancePreferences = {
 	 *  the panel, and a zero here makes everything in them unclickable.
 	 */
 	hoverCloseDelayMs: number,
+	/**
+	 *  Whether players' flags are drawn in replay lineups (#328).
+	 *
+	 *  Off by default: the lineup already carries a faction, a rating and a
+	 *  result per player, and a flag is mostly wanted by people preparing a
+	 *  cast. The country comes from the replay file itself, and for an online
+	 *  replay from players who are online right now, which is all the API
+	 *  offers: it has no country for an account.
+	 */
+	replayFlags: boolean,
 };
 
 /**
@@ -3483,6 +3493,8 @@ export type LocalReplayPlayer = {
 	 *  file only had the header's name list to go on.
 	 */
 	ai?: boolean,
+	/**  Two-letter country code from the army table, where the file has one. */
+	country?: string | null,
 };
 
 /**
@@ -5786,6 +5798,8 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 } } |
 /**  Fetch the featured-mod list for the search form's mod filter. */
 { type: "loadFeaturedMods" } |
+/**  The signed-in player's latest matchmaker games, for the matchmaker tab. */
+{ type: "loadRecentMatchmaker" } |
 /**  Download and play a vault replay by its game id. */
 { type: "watchVault"; payload: {
 	uid: number,
@@ -5979,6 +5993,10 @@ export type ReplayEvent = { type: "connecting" } |
 	totalRecords?: number | null,
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
+} } | { type: "recentMatchmakerLoading" } | { type: "recentMatchmakerLoaded"; payload: {
+	replays: VaultReplay[],
+} } | { type: "recentMatchmakerFailed"; payload: {
+	reason: string,
 } } |
 /**  The featured-mod list backing the vault search's mod filter. */
 { type: "featuredModsLoaded"; payload: {
@@ -6037,6 +6055,19 @@ export type ReplayEvent = { type: "connecting" } |
 export type ReplayGameOption = {
 	key: string,
 	value: string,
+};
+
+/**
+ *  A private, local comment and set of tags on one replay (#324).
+ *
+ *  Keyed by the game id, which the vault and a downloaded file share, so a
+ *  note written on the Online tab is there on the Local tab too. Nothing here
+ *  leaves this machine: it is a personal index ("Lots finals"), not a review.
+ */
+export type ReplayNote = {
+	replayId: number,
+	comment: string,
+	tags: string[],
 };
 
 /**
@@ -6101,6 +6132,11 @@ export type ReplayPlayer = {
 	outcome: string,
 	/**  Simulation score at the end of the game, when recorded. */
 	score: number | null,
+	/**
+	 *  Two-letter country code, when a replay file on disk says it. The API
+	 *  has no country for an account, so an online listing never carries one.
+	 */
+	country?: string | null,
 };
 
 /**
@@ -6349,6 +6385,14 @@ export type ReplayState = {
 	 *  stops asking. See [`ReplayCommand::ResolveMaps`].
 	 */
 	resolvedMaps?: { [key in number]: string },
+	/**
+	 *  The signed-in player's latest matchmaker games, newest first (#301).
+	 *
+	 *  Its own list rather than a vault search, so showing it on the
+	 *  matchmaker tab never replaces whatever the Replays tab was showing.
+	 */
+	recentMatchmaker: VaultReplay[],
+	recentMatchmakerStatus: VaultStatus,
 };
 
 export type ReplayStatus = { type: "idle" } | { type: "connecting" } |
@@ -6759,6 +6803,12 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	player_id: number,
 	login: string,
 	note: string,
+} } |
+/**  Write or clear the private note and tags on one replay (#324). */
+{ type: "setReplayNote"; payload: {
+	replayId: number,
+	comment: string,
+	tags: string[],
 } } | { type: "setNotifications"; payload: {
 	preferences: NotificationPreferences,
 } } |
@@ -6963,8 +7013,10 @@ export type SocialEvent =
 /**  The lobby connection went away; relations are no longer authoritative. */
 { type: "cleared" };
 
+/**  The player's own annotations: notes on players and on replays. */
 export type SocialPreferences = {
 	playerNotes: PlayerNote[],
+	replayNotes: ReplayNote[],
 };
 
 export type SocialState = {

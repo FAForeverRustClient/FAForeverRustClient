@@ -1794,6 +1794,7 @@ fn local_teams(header: &Value) -> Vec<LocalReplayTeam> {
                             faction: None,
                             rating: None,
                             ai: false,
+                            country: None,
                         })
                         .collect();
                     (!players.is_empty()).then(|| LocalReplayTeam {
@@ -1836,6 +1837,7 @@ fn body_teams(armies: &[LocalBodyArmy], mission: bool) -> Vec<LocalReplayTeam> {
             faction: army.faction,
             rating: army.rating,
             ai: army.computer,
+            country: army.country.clone(),
         };
         match teams.iter_mut().find(|team| team.team == key) {
             Some(team) => team.players.push(player),
@@ -1881,7 +1883,7 @@ const LOCAL_REPLAY_BODY_READ_BYTES: usize = 4 * 1024 * 1024;
 /// in the binary Lua army table that follows it.
 #[derive(Default)]
 struct LocalBodyInfo {
-    player_stats: HashMap<String, (Option<i32>, Option<i32>)>,
+    player_stats: HashMap<String, (Option<i32>, Option<i32>, Option<String>)>,
     /// The armies as the engine loaded them, in slot order: `(team, name)`.
     ///
     /// This is the seating the game was actually played with, which is not
@@ -1916,6 +1918,8 @@ struct LocalBodyArmy {
     computer: bool,
     faction: Option<i32>,
     rating: Option<i32>,
+    /// `Country` in the army table: the two-letter code the lobby had.
+    country: Option<String>,
 }
 
 fn extract_map_folder(path: &str) -> String {
@@ -2180,6 +2184,12 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
         let Some(name) = name else { continue };
         let faction = data.get("Faction").and_then(replay_i32_value);
         let rating = replay_displayed_rating(&data);
+        let country = data
+            .get("Country")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|code| code.len() == 2 && code.chars().all(|c| c.is_ascii_alphabetic()))
+            .map(str::to_ascii_lowercase);
         armies.push(LocalBodyArmy {
             name: name.clone(),
             team: data.get("Team").and_then(replay_i32_value),
@@ -2190,8 +2200,9 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
             computer: source == u8::MAX,
             faction,
             rating,
+            country: country.clone(),
         });
-        stats.insert(name, (faction, rating));
+        stats.insert(name, (faction, rating, country));
     }
     LocalBodyInfo {
         player_stats: stats,
@@ -2943,9 +2954,10 @@ async fn read_local_metadata(
         teams = local_teams(&header);
         for team in &mut teams {
             for player in &mut team.players {
-                if let Some((faction, rating)) = body_info.player_stats.get(&player.name) {
+                if let Some((faction, rating, country)) = body_info.player_stats.get(&player.name) {
                     player.faction = *faction;
                     player.rating = *rating;
+                    player.country = country.clone();
                 }
             }
         }
@@ -3337,6 +3349,7 @@ fn resolve_teams(
                 .unwrap_or("")
                 .to_string(),
             score: value_i32(&stat.attributes, "score"),
+            country: None,
         });
     }
     let mut teams: Vec<ReplayTeam> = by_team
@@ -4568,6 +4581,8 @@ mod tests {
         bytes.extend(lua_number(1500.0));
         bytes.extend(lua_string("DEV"));
         bytes.extend(lua_number(100.0));
+        bytes.extend(lua_string("Country"));
+        bytes.extend(lua_string("DE"));
         bytes.push(5);
         bytes
     }
@@ -4633,7 +4648,7 @@ mod tests {
         let stats = local_body_player_stats(encoded.as_bytes(), "").expect("a decodable body");
         assert_eq!(
             stats.player_stats.get("TestPlayer"),
-            Some(&(Some(1), Some(1200)))
+            Some(&(Some(1), Some(1200), Some("de".to_string())))
         );
         assert_eq!(stats.map_name.as_deref(), Some("SCMP_009"));
     }
@@ -5836,6 +5851,7 @@ mod tests {
             computer: false,
             faction: Some(2),
             rating: Some(1_500),
+            country: None,
         }
     }
 
