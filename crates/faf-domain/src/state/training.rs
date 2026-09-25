@@ -2301,11 +2301,13 @@ mod tests {
                         name: "Ada".into(),
                         faction: me_faction,
                         rating: me_rating,
+                        ai: false,
                     },
                     LocalReplayPlayer {
                         name: "Bob".into(),
                         faction: Some(2),
                         rating: Some(2000),
+                        ai: false,
                     },
                 ],
             }],

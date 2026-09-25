@@ -1793,6 +1793,7 @@ fn local_teams(header: &Value) -> Vec<LocalReplayTeam> {
                             name: name.to_string(),
                             faction: None,
                             rating: None,
+                            ai: false,
                         })
                         .collect();
                     (!players.is_empty()).then(|| LocalReplayTeam {
@@ -1834,6 +1835,7 @@ fn body_teams(armies: &[LocalBodyArmy], mission: bool) -> Vec<LocalReplayTeam> {
             name: army.name.clone(),
             faction: army.faction,
             rating: army.rating,
+            ai: army.computer,
         };
         match teams.iter_mut().find(|team| team.team == key) {
             Some(team) => team.players.push(player),
@@ -5915,6 +5917,17 @@ mod tests {
 
         // The same armies in a skirmish are the AI somebody added to the
         // lobby, and those are the other half of the game.
-        assert_eq!(body_teams(&armies, false)[0].players.len(), 5);
+        let skirmish = body_teams(&armies, false);
+        assert_eq!(skirmish[0].players.len(), 5);
+        // And they say so, which is what lets the lineup add them without also
+        // adding a renamed person under the name they played with.
+        assert_eq!(
+            skirmish[0]
+                .players
+                .iter()
+                .map(|player| player.ai)
+                .collect::<Vec<_>>(),
+            [false, true, true, true, true]
+        );
     }
 }
