@@ -416,6 +416,15 @@ button.vault-input {
   cursor: context-menu;
 }
 
+/* The flag beside the faction, when Settings, Appearance turns flags on
+   (issue 328). */
+.replay-player-flag {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
 .replay-player-faction {
   flex: 0 0 auto;
 }

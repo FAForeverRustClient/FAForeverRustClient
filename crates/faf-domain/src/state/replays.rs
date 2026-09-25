@@ -559,6 +559,10 @@ pub struct ReplayPlayer {
     pub outcome: String,
     /// Simulation score at the end of the game, when recorded.
     pub score: Option<i32>,
+    /// Two-letter country code, when a replay file on disk says it. The API
+    /// has no country for an account, so an online listing never carries one.
+    #[serde(default)]
+    pub country: Option<String>,
 }
 
 /// One `.fafreplay` file already on disk, from the shared FAF replay folder
@@ -616,6 +620,9 @@ pub struct LocalReplayPlayer {
     pub faction: Option<i32>,
     /// The displayed rating recorded in the replay header.
     pub rating: Option<i32>,
+    /// Two-letter country code from the army table, where the file has one.
+    #[serde(default)]
+    pub country: Option<String>,
 }
 
 /// How much trustworthy metadata was available without decoding the full replay
@@ -1612,11 +1619,13 @@ mod tests {
                         name: "host".into(),
                         faction: None,
                         rating: None,
+                        country: None,
                     },
                     LocalReplayPlayer {
                         name: "guest".into(),
                         faction: None,
                         rating: None,
+                        country: None,
                     },
                 ],
             }],

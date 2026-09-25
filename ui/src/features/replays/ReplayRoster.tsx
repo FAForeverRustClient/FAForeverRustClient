@@ -6,6 +6,7 @@ import { openPlayerCard } from "../../shared/playerCardActions";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { t } from "../../i18n";
 import { outcomeLabel, parseOutcome, type OutcomeKind } from "../../shared/gameOutcome";
+import { ReplayPlayerFlag } from "./ReplayPlayerFlag";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
 
@@ -91,6 +92,7 @@ export function mergeReplayTeamsWithLocal(
           ...player,
           faction: player.faction ?? localPlayer.faction,
           rating: player.rating ?? localPlayer.rating,
+          country: player.country ?? localPlayer.country ?? null,
         };
       }),
     };
@@ -129,6 +131,7 @@ export function mergeReplayTeamsWithLocal(
       name: player.name,
       faction: player.faction,
       rating: player.rating,
+      country: player.country ?? null,
       // The server never rated them and never will, so there is no outcome and
       // no score to claim one from.
       outcome: "",
@@ -262,6 +265,7 @@ export function ReplayCardRoster({
                       }}
                     >
                       <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                      <ReplayPlayerFlag player={player} />
                       {/* The class the hover underline hangs off, which is how
                           a name says it can be clicked before it is. Same one
                           the detail roster's names carry. */}
@@ -281,6 +285,7 @@ export function ReplayCardRoster({
                       })}
                     >
                       <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                      <ReplayPlayerFlag player={player} />
                       <PlayerName name={player.name} />
                     </span>
                   )}
@@ -426,6 +431,7 @@ export function ReplayDetailRoster({
                       ) : (
                         <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
                       )}
+                      <ReplayPlayerFlag player={player} />
                       <span className="replay-player-name-group">
                         <PlayerName name={player.name} className="replay-player-name-text" />
                         {player.rating !== null && (

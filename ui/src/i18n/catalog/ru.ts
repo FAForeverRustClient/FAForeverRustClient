@@ -1119,6 +1119,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.tileColumnsAuto": "Авто",
   "settings.appearance.hoverPanels": "Панели при наведении",
   "settings.appearance.hoverPanelsHint": "Панель с подробностями, которая открывается, когда курсор задерживается на игре, нике или карте. Если выключить, сами списки останутся без изменений.",
+  "settings.appearance.replayFlags": "Флаги в реплеях",
+  "settings.appearance.replayFlagsHint": "Из файла реплея или для игроков, которые сейчас в сети.",
   "settings.appearance.hoverOpenDelay": "Открывать через",
   "settings.appearance.hoverOpenDelayHint": "Сколько курсор должен оставаться на месте до появления панели. Действует только на первую: пока одна открыта, следующая появляется сразу, поэтому просматривать список быстро.",
   "settings.appearance.hoverCloseDelay": "Закрывать через",

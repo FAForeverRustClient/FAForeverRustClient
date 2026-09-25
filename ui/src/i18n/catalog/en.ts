@@ -1468,6 +1468,8 @@ export const en = {
   "settings.appearance.sidebarWide": "Wide",
   "settings.appearance.hoverPanels": "Hover panels",
   "settings.appearance.hoverPanelsHint": "The detail panel that opens when the pointer rests on a game, a nickname or a map. Off keeps the lists themselves exactly as they are.",
+  "settings.appearance.replayFlags": "Flags in replays",
+  "settings.appearance.replayFlagsHint": "From the replay file, or for players online now.",
   "settings.appearance.hoverOpenDelay": "Open after",
   "settings.appearance.hoverOpenDelayHint": "How long the pointer has to rest before a panel opens. Applies to the first panel only: once one is open, moving to another opens it at once, so crossing a list stays fast.",
   "settings.appearance.hoverCloseDelay": "Close after",

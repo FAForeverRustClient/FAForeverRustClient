@@ -1096,6 +1096,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.tileColumnsAuto": "Auto",
   "settings.appearance.hoverPanels": "Panneaux au survol",
   "settings.appearance.hoverPanelsHint": "Le panneau de détails qui s'ouvre quand le pointeur s'arrête sur une partie, un pseudo ou une carte. Désactivé, les listes elles-mêmes ne changent pas.",
+  "settings.appearance.replayFlags": "Drapeaux dans les replays",
+  "settings.appearance.replayFlagsHint": "Depuis le fichier du replay, ou pour les joueurs connectés.",
   "settings.appearance.hoverOpenDelay": "Ouvrir après",
   "settings.appearance.hoverOpenDelayHint": "Combien de temps le pointeur doit rester immobile avant qu'un panneau s'ouvre. Ne concerne que le premier : dès qu'un panneau est ouvert, le suivant apparaît aussitôt, donc parcourir une liste reste rapide.",
   "settings.appearance.hoverCloseDelay": "Fermer après",

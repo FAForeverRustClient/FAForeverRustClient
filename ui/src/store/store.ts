@@ -435,6 +435,7 @@ const INITIAL: AppState = {
       hoverPanels: true,
       hoverOpenDelayMs: 500,
       hoverCloseDelayMs: 160,
+      replayFlags: false,
     },
     social: { playerNotes: [], replayNotes: [] },
     notifications: {

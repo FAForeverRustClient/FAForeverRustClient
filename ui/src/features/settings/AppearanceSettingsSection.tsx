@@ -206,6 +206,16 @@ export function AppearanceSettingsSection() {
         </div>
       </SettingRow>
       <SettingRow
+        label={t("settings.appearance.replayFlags")}
+        hint={t("settings.appearance.replayFlagsHint")}
+      >
+        <SettingsSwitch
+          checked={preferences.replayFlags}
+          onChange={(replayFlags) => void save({ ...preferences, replayFlags })}
+          label={t("settings.appearance.replayFlags")}
+        />
+      </SettingRow>
+      <SettingRow
         label={t("settings.appearance.hoverPanels")}
         hint={t("settings.appearance.hoverPanelsHint")}
       >

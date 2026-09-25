@@ -1095,6 +1095,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.tileColumnsAuto": "Auto",
   "settings.appearance.hoverPanels": "Paneles al pasar el cursor",
   "settings.appearance.hoverPanelsHint": "El panel de detalles que se abre cuando el cursor se detiene sobre una partida, un nombre o un mapa. Desactivarlo deja las listas tal cual están.",
+  "settings.appearance.replayFlags": "Banderas en las repeticiones",
+  "settings.appearance.replayFlagsHint": "Del archivo de la repetición, o de los jugadores conectados ahora.",
   "settings.appearance.hoverOpenDelay": "Abrir tras",
   "settings.appearance.hoverOpenDelayHint": "Cuánto tiene que detenerse el cursor antes de que se abra un panel. Solo afecta al primero: con uno abierto, el siguiente aparece al instante, así que recorrer una lista sigue siendo rápido.",
   "settings.appearance.hoverCloseDelay": "Cerrar tras",

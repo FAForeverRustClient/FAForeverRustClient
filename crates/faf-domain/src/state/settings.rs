@@ -442,6 +442,14 @@ pub struct AppearancePreferences {
     /// interactive, so reaching one means crossing the gap between the row and
     /// the panel, and a zero here makes everything in them unclickable.
     pub hover_close_delay_ms: u16,
+    /// Whether players' flags are drawn in replay lineups (#328).
+    ///
+    /// Off by default: the lineup already carries a faction, a rating and a
+    /// result per player, and a flag is mostly wanted by people preparing a
+    /// cast. The country comes from the replay file itself, and for an online
+    /// replay from players who are online right now, which is all the API
+    /// offers: it has no country for an account.
+    pub replay_flags: bool,
 }
 
 // A field-level `#[serde(default)]` would have been shorter, but specta turns
@@ -464,6 +472,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             hover_panels: bool,
             hover_open_delay_ms: u16,
             hover_close_delay_ms: u16,
+            replay_flags: bool,
         }
 
         impl Default for Wire {
@@ -478,6 +487,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
                     hover_panels: defaults.hover_panels,
                     hover_open_delay_ms: defaults.hover_open_delay_ms,
                     hover_close_delay_ms: defaults.hover_close_delay_ms,
+                    replay_flags: defaults.replay_flags,
                 }
             }
         }
@@ -494,6 +504,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             hover_panels: wire.hover_panels,
             hover_open_delay_ms: wire.hover_open_delay_ms.min(MAX_HOVER_DELAY_MS),
             hover_close_delay_ms: wire.hover_close_delay_ms.min(MAX_HOVER_DELAY_MS),
+            replay_flags: wire.replay_flags,
         })
     }
 }
@@ -548,6 +559,7 @@ impl Default for AppearancePreferences {
             // pointer crosses in well under 50 ms. A sixth of a second covers
             // that without the panel trailing the pointer down the list.
             hover_close_delay_ms: 160,
+            replay_flags: false,
         }
     }
 }

@@ -61,6 +61,7 @@ export function localReplayToVaultReplay(
         name: player.name,
         faction: player.faction,
         rating: player.rating,
+        country: player.country ?? null,
         outcome: "",
         score: null,
       })),

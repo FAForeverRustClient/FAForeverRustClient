@@ -1273,6 +1273,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.sidebarWide": "Breit",
   "settings.appearance.hoverPanels": "Infofenster beim Überfahren",
   "settings.appearance.hoverPanelsHint": "Das Detailfenster, das aufgeht, wenn der Zeiger auf einem Spiel, einem Namen oder einer Karte liegen bleibt. Aus lässt die Listen selbst unverändert.",
+  "settings.appearance.replayFlags": "Flaggen in Replays",
+  "settings.appearance.replayFlagsHint": "Aus der Replay-Datei oder für gerade eingeloggte Spieler.",
   "settings.appearance.hoverOpenDelay": "Öffnet nach",
   "settings.appearance.hoverOpenDelayHint": "Wie lange der Zeiger liegen bleiben muss, bis ein Fenster aufgeht. Gilt nur für das erste: ist eines offen, geht das nächste sofort auf, damit das Durchsehen einer Liste schnell bleibt.",
   "settings.appearance.hoverCloseDelay": "Schließt nach",

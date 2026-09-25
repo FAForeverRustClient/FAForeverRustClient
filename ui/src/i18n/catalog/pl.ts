@@ -1060,6 +1060,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.appearance.tileColumnsAuto": "Auto",
   "settings.appearance.hoverPanels": "Panele po najechaniu",
   "settings.appearance.hoverPanelsHint": "Panel ze szczegółami, który otwiera się, gdy kursor zatrzyma się na grze, nicku albo mapie. Wyłączenie nie zmienia samych list.",
+  "settings.appearance.replayFlags": "Flagi w powtórkach",
+  "settings.appearance.replayFlagsHint": "Z pliku powtórki lub dla graczy obecnie online.",
   "settings.appearance.hoverOpenDelay": "Otwieraj po",
   "settings.appearance.hoverOpenDelayHint": "Jak długo kursor musi stać w miejscu, zanim otworzy się panel. Dotyczy tylko pierwszego: gdy jeden jest otwarty, następny pojawia się od razu, więc przeglądanie listy pozostaje szybkie.",
   "settings.appearance.hoverCloseDelay": "Zamykaj po",
