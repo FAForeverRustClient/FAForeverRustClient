@@ -203,6 +203,18 @@
   text-transform: uppercase;
 }
 
+/* A stream's platform, as its icon and its name (issue 155). Not uppercase:
+   "TWITCH" in capitals reads as a label, "Twitch" with its glyph as the place
+   the click goes. */
+.notification-content em.notification-stream,
+.notification-toast em.notification-stream {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-text);
+  text-transform: none;
+}
+
 .notification-dismiss {
   align-self: start;
   display: grid;
