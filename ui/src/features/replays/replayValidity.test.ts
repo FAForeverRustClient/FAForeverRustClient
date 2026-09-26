@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OnlineLookup, ReplayTeam, VaultReplay } from "../../ipc/bindings";
-import { localRatingNote, notRatedReason } from "./replayValidity";
+import { hasGameResult, localRatingNote, notRatedReason } from "./replayValidity";
 
 const teamsWithChange: ReplayTeam[] = [
   {
@@ -52,5 +52,44 @@ describe("localRatingNote", () => {
     expect(missing).not.toBe(failed);
     expect(missing).not.toBe(pending);
     expect(failed).not.toBe(pending);
+  });
+});
+
+describe("hasGameResult", () => {
+  it("is true for a valid game the server recorded outcomes for", () => {
+    expect(hasGameResult("VALID", teamsWithChange)).toBe(true);
+  });
+
+  it("is true for a valid game whose rating journal has not arrived", () => {
+    // The report: a game that plainly was rated, with a dead "Game result"
+    // button, because the listing carried outcomes and no journal.
+    const outcomesOnly: ReplayTeam[] = [
+      {
+        team: 1,
+        players: [{ name: "wilson_", faction: 1, rating: 1800, ratingChange: null, outcome: "VICTORY", score: 1 }],
+      },
+    ];
+    expect(hasGameResult("VALID", outcomesOnly)).toBe(true);
+  });
+
+  it("is false for a valid game with nothing recorded at all", () => {
+    expect(hasGameResult("VALID", teamsWithoutChange)).toBe(false);
+  });
+
+  it("is false for a game the server refused, outcomes or not", () => {
+    expect(hasGameResult("HAS_AI", teamsWithChange)).toBe(false);
+  });
+});
+
+describe("notRatedReason", () => {
+  it("never reports VALID as the reason a game was not rated", () => {
+    // "Game was not rated. Reason: VALID" is a contradiction, and it is what
+    // the panel printed for every valid game still waiting for its journal.
+    expect(notRatedReason("VALID")).toBe(notRatedReason(""));
+    expect(notRatedReason("VALID")).not.toContain("VALID");
+  });
+
+  it("still names a reason the server actually gave", () => {
+    expect(notRatedReason("SOME_NEW_STATE")).toContain("SOME_NEW_STATE");
   });
 });

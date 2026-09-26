@@ -1278,6 +1278,17 @@ img.chat-game-map {
   border-top: 1px solid var(--color-border);
 }
 
+/* One team is not a matchup, and the hover card is 410 px wide because two of
+   them stand side by side in it. Holding one, most of that width was empty and
+   the row below spread itself across it to fill the gap. A co-op game, a
+   free-for-all and a lobby nobody has joined the second seat of all land here.
+   So does a game whose lineup the server has not sent, which is narrower still
+   but has no reason to be wider. */
+.chat-game-popover:has(.chat-game-team:only-child),
+.chat-game-popover:has(.chat-game-no-teams) {
+  width: min(300px, calc(100vw - 16px));
+}
+
 /* The card holds a button now, so the pointer has to be able to reach it. It
    used to be `pointer-events: none`, which is the right answer for a card that
    is purely a label and the wrong one the moment it is not. `GameSummaryPopover`
@@ -1391,6 +1402,44 @@ img.chat-game-map {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 6px;
+}
+
+/* ...and the tile stops filling a width it has no content for. `fit-content`
+   sizes it to its own longest row, and what is left over is split either side
+   so it reads as padding rather than as a box somebody forgot to fill.
+
+   The row layout is deliberately left alone here. Every `li` is its own grid,
+   so the ratings line up in a column only while the name track is the `1fr`
+   one that ends every row at the same edge; give the name `max-content`
+   instead and each rating lands wherever its own name happens to stop. The
+   complaint that started this was that the column sat against the far side of
+   a card built for two teams. With the tile no wider than it needs to be, the
+   same `1fr` now puts it a few pixels past the longest name. */
+.chat-game-popover .chat-game-teams:has(> .chat-game-team:only-child) {
+  grid-template-columns: fit-content(100%);
+  justify-content: start;
+}
+
+/* Roomier than a team that shares its row. The 7 px below is what keeps two
+   tiles legible side by side in 192 px each; a lone tile is under no such
+   pressure, and at its own width the tighter padding reads as a box clamped
+   around the names rather than one holding them. */
+.chat-game-popover .chat-game-team:only-child {
+  padding: var(--space-2) var(--space-3);
+}
+
+/* The avatar box is reserved even when empty so one player who has one does not
+   indent the names of a team where nobody else does. Where nobody in the team
+   has one there is nothing left to stay aligned with, and 40 px of nothing is
+   then the widest thing in a tile that has just been asked to be no wider than
+   its contents. Scoped to the hover card: the conversation aside decides this
+   for itself, by width, in `rosterTier`. */
+.chat-game-popover .chat-game-team:only-child:not(:has(.chat-game-player-avatar img)) li {
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+}
+
+.chat-game-popover .chat-game-team:only-child:not(:has(.chat-game-player-avatar img)) .chat-game-player-avatar {
+  display: none;
 }
 
 .chat-game-team {
