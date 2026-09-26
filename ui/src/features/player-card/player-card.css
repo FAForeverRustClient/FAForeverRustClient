@@ -1512,3 +1512,67 @@
   display: flex;
   gap: var(--space-2);
 }
+
+/* The results list (issue 344), in the map record's table. Start-aligned
+   rather than the record's right-aligned numbers: these are a date, two names
+   and a word, read along the row. */
+.player-results-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.player-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.player-results-head .player-maps-note {
+  margin: 0;
+}
+
+.player-results-table th,
+.player-results-table td {
+  text-align: left;
+}
+
+.player-results-map {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-results-outcome {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.player-results-outcome.is-win {
+  color: var(--color-ok);
+}
+
+.player-results-outcome.is-loss {
+  color: var(--color-error);
+}
+
+.player-results-outcome.is-draw {
+  color: var(--color-muted);
+}
+
+.player-results-replay {
+  padding: 0;
+  color: var(--color-accent);
+  font: inherit;
+  text-decoration: underline;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.player-results-replay:hover,
+.player-results-replay:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}

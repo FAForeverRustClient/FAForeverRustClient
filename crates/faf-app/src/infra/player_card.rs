@@ -622,7 +622,10 @@ impl PlayerCardPort for PlayerCardClient {
             page = last + 1;
         }
 
-        Ok(aggregate_map_stats(&games, truncated))
+        Ok(PlayerMapStats {
+            player_id,
+            ..aggregate_map_stats(&games, truncated)
+        })
     }
 }
 
@@ -735,18 +738,31 @@ fn parse_history_games(document: &JsonApiDoc, player_id: i32) -> Vec<PlayedGame>
                 .unwrap_or_default();
             let queue = queue_of(&rows, player_id, &featured_mod);
             let ladder = queue.eq_ignore_ascii_case("ladder_1v1");
+            // The same journal `queue_of` named the queue from: this player's
+            // own, on the first leaderboard it names.
+            let rating_delta = rows
+                .iter()
+                .find(|row| row.player_id == player_id)
+                .into_iter()
+                .flat_map(|row| row.rating_changes.iter())
+                .find(|change| !change.leaderboard.is_empty())
+                .and_then(|change| change.displayed_delta());
+            let game_id = game.id.parse().unwrap_or_default();
             let rows = GameRows {
                 rows,
                 validity: value_string(&game.attributes, "validity").to_ascii_uppercase(),
-                queue,
+                queue: queue.clone(),
             };
 
             PlayedGame {
+                game_id,
                 map,
                 outcome: outcome_for(&rows, player_id),
                 rating_moved: moved_a_rating(&rows, player_id),
                 ladder,
                 played_at,
+                queue,
+                rating_delta,
             }
         })
         .collect()

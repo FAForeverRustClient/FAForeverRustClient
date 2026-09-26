@@ -2936,6 +2936,16 @@ fn cases() -> Vec<Case> {
                             last_played: "2026-01-04T20:00:00Z".into(),
                         }],
                         truncated: false,
+                        player_id: 7,
+                        games: vec![PlayerGameResult {
+                            game_id: 27798371,
+                            played_at: "2026-01-04T20:00:00Z".into(),
+                            queue: "global".into(),
+                            map: "Setons Clutch".into(),
+                            generated: false,
+                            outcome: "loss".into(),
+                            rating_change_hundredths: Some(-1114),
+                        }],
                     }),
                 }
                 .into(),

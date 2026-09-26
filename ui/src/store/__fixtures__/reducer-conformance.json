@@ -1238,7 +1238,19 @@
                       "lastPlayed": "2026-01-04T20:00:00Z"
                     }
                   ],
-                  "truncated": false
+                  "truncated": false,
+                  "playerId": 7,
+                  "games": [
+                    {
+                      "gameId": 27798371,
+                      "playedAt": "2026-01-04T20:00:00Z",
+                      "queue": "global",
+                      "map": "Setons Clutch",
+                      "generated": false,
+                      "outcome": "loss",
+                      "ratingChangeHundredths": -1114
+                    }
+                  ]
                 }
               }
             }
@@ -1256,6 +1268,17 @@
             "historyStatus": "idle",
             "historyTotalPages": 1,
             "mapStats": {
+              "games": [
+                {
+                  "gameId": 27798371,
+                  "generated": false,
+                  "map": "Setons Clutch",
+                  "outcome": "loss",
+                  "playedAt": "2026-01-04T20:00:00Z",
+                  "queue": "global",
+                  "ratingChangeHundredths": -1114
+                }
+              ],
               "losses": 1,
               "maps": [
                 {
@@ -1268,6 +1291,7 @@
                   "wins": 2
                 }
               ],
+              "playerId": 7,
               "rankedGames": 3,
               "totalGames": 3,
               "truncated": false,
