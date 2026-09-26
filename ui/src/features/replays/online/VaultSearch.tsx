@@ -24,7 +24,7 @@
 // *executed* lives in `state.replays.vaultQuery`, so the results and their
 // description can't drift.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RatingLeaderboard, ReplayQuery, ReplaySortField } from "../../../ipc/bindings";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
@@ -39,6 +39,8 @@ import {
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
 import { replayGameModes, selectedGameModes, withGameModes } from "./replayGameModes";
 import { MultiSelect } from "../../../design-system/MultiSelect";
+import { useAppStore } from "../../../store/store";
+import { allReplayTags, replayIdsTagged } from "../../../shared/rules/replayNotes";
 import "../../../design-system/search-panel.css";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -88,6 +90,18 @@ interface Props {
 export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, onSearch }: Props) {
   const { t } = useTranslation();
   const [form, setForm] = useState<ReplayQuery>(initialQuery);
+  // The tags picked in the filters, kept beside the form because the query
+  // only carries what they stand for: the ids of the games tagged with them.
+  const [pickedTags, setPickedTags] = useState<string[]>([]);
+  const replayNotes = useAppStore((state) => state.state.settings.social.replayNotes);
+  const tagOptions = useMemo(() => allReplayTags(replayNotes), [replayNotes]);
+  // Shown only while the ids they produced are still in the form, so a
+  // cleared or preset search does not keep claiming a tag filter.
+  const selectedTags = (form.replayIds ?? []).length > 0 ? pickedTags : [];
+  const pickTags = (tags: string[]) => {
+    setPickedTags(tags);
+    setForm((current) => ({ ...current, replayIds: replayIdsTagged(replayNotes, tags), page: 1 }));
+  };
   const [advanced, setAdvanced] = useState(false);
   // Reflects the date bound already in the query, so the button matches what is
   // actually being searched rather than a separate opinion about it. An empty
@@ -433,6 +447,9 @@ export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, on
           featuredMods={featuredMods}
           set={set}
           setRange={setRange}
+          tagOptions={tagOptions}
+          selectedTags={selectedTags}
+          onTags={pickTags}
         />
       )}
     </form>

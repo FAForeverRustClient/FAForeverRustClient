@@ -872,6 +872,7 @@
         "replayListColumns": [],
         "liveReplayColumns": [],
         "coopBoardColumns": [],
+        "matchmakerRecentColumns": [],
         "modPresets": [],
         "leaderboardRatingColumns": [
           "games",
@@ -2088,6 +2089,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -31168,6 +31170,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -31426,6 +31429,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -31693,6 +31697,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -31955,6 +31960,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -32217,6 +32223,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -32489,6 +32496,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -32767,6 +32775,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -33085,6 +33094,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -33379,6 +33389,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -33675,6 +33686,7 @@
                 "Cybran",
                 "Seraphim"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -33980,6 +33992,7 @@
                     200
                   ],
                   "coopBoardColumns": [],
+                  "matchmakerRecentColumns": [],
                   "modPresets": [],
                   "leaderboardRatingColumns": [
                     "games",
@@ -34084,6 +34097,7 @@
               "matchmakerFactions": [
                 "Cybran"
               ],
+              "matchmakerRecentColumns": [],
               "matchmakerUnselectedQueues": [
                 "ladder_1v1"
               ],

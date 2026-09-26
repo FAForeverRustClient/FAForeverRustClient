@@ -91,6 +91,15 @@ pub enum ReportingCommand {
         player_id: i32,
         login: String,
     },
+    /// Open the report form for a player known only by name (#321).
+    ///
+    /// The menus open on a name, and the account id the report needs comes
+    /// from the lobby's player list, which only holds players who are online.
+    /// A replay's lineup is mostly people who are not, so the backend looks
+    /// the name up and then opens the form exactly as [`Self::Open`] does.
+    OpenByLogin {
+        login: String,
+    },
     Close,
     LoadHistory,
     Submit {

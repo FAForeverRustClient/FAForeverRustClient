@@ -2102,6 +2102,8 @@ pub struct BrowsingPreferences {
     pub live_replay_columns: Vec<u32>,
     /// And for the co-op leaderboard.
     pub coop_board_columns: Vec<u32>,
+    /// And for the matchmaker tab's recent games (#301).
+    pub matchmaker_recent_columns: Vec<u32>,
     /// Named mod sets the host dialog can re-apply in one click.
     ///
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -2159,6 +2161,7 @@ impl Default for BrowsingPreferences {
             replay_list_columns: Vec::new(),
             live_replay_columns: Vec::new(),
             coop_board_columns: Vec::new(),
+            matchmaker_recent_columns: Vec::new(),
             mod_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
@@ -2203,6 +2206,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             live_replay_columns: Vec<u32>,
             #[serde(default)]
             coop_board_columns: Vec<u32>,
+            matchmaker_recent_columns: Vec<u32>,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
             replay_vault_player: String,
@@ -2233,6 +2237,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     replay_list_columns: defaults.replay_list_columns,
                     live_replay_columns: defaults.live_replay_columns,
                     coop_board_columns: defaults.coop_board_columns,
+                    matchmaker_recent_columns: defaults.matchmaker_recent_columns,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     replay_vault_player: defaults.replay_vault_player,
@@ -2263,6 +2268,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             replay_list_columns: wire.replay_list_columns,
             live_replay_columns: wire.live_replay_columns,
             coop_board_columns: wire.coop_board_columns,
+            matchmaker_recent_columns: wire.matchmaker_recent_columns,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             replay_vault_player: wire.replay_vault_player,
@@ -2380,6 +2386,7 @@ impl BrowsingPreferences {
         self.replay_list_columns = normalize_column_widths(self.replay_list_columns);
         self.live_replay_columns = normalize_column_widths(self.live_replay_columns);
         self.coop_board_columns = normalize_column_widths(self.coop_board_columns);
+        self.matchmaker_recent_columns = normalize_column_widths(self.matchmaker_recent_columns);
         self
     }
 }
@@ -3343,6 +3350,7 @@ mod tests {
                 replay_list_columns: vec![10, 200, 0, 9_999],
                 live_replay_columns: vec![1; 40],
                 coop_board_columns: Vec::new(),
+                matchmaker_recent_columns: Vec::new(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![

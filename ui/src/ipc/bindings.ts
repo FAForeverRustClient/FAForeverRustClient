@@ -394,6 +394,8 @@ export type BrowsingPreferences = {
 	liveReplayColumns: number[],
 	/**  And for the co-op leaderboard. */
 	coopBoardColumns: number[],
+	/**  And for the matchmaker tab's recent games (#301). */
+	matchmakerRecentColumns: number[],
 	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
@@ -6449,6 +6451,17 @@ export type ReportStatus = { type: "idle" } | { type: "submitting" } | { type: "
 
 export type ReportingCommand = { type: "open"; payload: {
 	playerId: number,
+	login: string,
+} } |
+/**
+ *  Open the report form for a player known only by name (#321).
+ *
+ *  The menus open on a name, and the account id the report needs comes
+ *  from the lobby's player list, which only holds players who are online.
+ *  A replay's lineup is mostly people who are not, so the backend looks
+ *  the name up and then opens the form exactly as [`Self::Open`] does.
+ */
+{ type: "openByLogin"; payload: {
 	login: string,
 } } | { type: "close" } | { type: "loadHistory" } | { type: "submit"; payload: {
 	playerId: number,

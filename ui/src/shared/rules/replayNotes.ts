@@ -63,3 +63,34 @@ export function replayNoteMatches(note: ReplayNote | null, query: string): boole
   const haystack = [note.comment, ...note.tags].join(" ").toLocaleLowerCase();
   return words.every((word) => haystack.includes(word));
 }
+
+/** Every tag in use, each once however it is capitalised, sorted for a picker. */
+export function allReplayTags(notes: readonly ReplayNote[]): string[] {
+  const byKey = new Map<string, string>();
+  for (const note of notes) {
+    for (const tag of note.tags) {
+      const key = tag.toLocaleLowerCase();
+      if (!byKey.has(key)) byKey.set(key, tag);
+    }
+  }
+  return [...byKey.values()].sort((left, right) => left.localeCompare(right));
+}
+
+/** Whether a note carries any of these tags, case-insensitively. */
+export function hasAnyTag(note: ReplayNote | null, tags: readonly string[]): boolean {
+  if (tags.length === 0) return true;
+  if (!note) return false;
+  const wanted = new Set(tags.map((tag) => tag.toLocaleLowerCase()));
+  return note.tags.some((tag) => wanted.has(tag.toLocaleLowerCase()));
+}
+
+/**
+ * The game ids carrying any of these tags, as the vault search takes them.
+ *
+ * This is how the Online tab filters by tag: the vault knows nothing of the
+ * reader's tags, but it can be asked for exactly these games.
+ */
+export function replayIdsTagged(notes: readonly ReplayNote[], tags: readonly string[]): string[] {
+  if (tags.length === 0) return [];
+  return notes.filter((note) => hasAnyTag(note, tags)).map((note) => String(note.replayId));
+}

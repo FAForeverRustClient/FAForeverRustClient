@@ -31,7 +31,7 @@ import { isRated, localRatingNote, notRatedReason } from "./replayValidity";
 import { formatDecimal } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ReplayMapThumb } from "./ReplayCard";
-import { ReplayNotesEditor } from "./ReplayNotesEditor";
+import { ReplayNotesDialog, useHasReplayNote } from "./ReplayNotesEditor";
 
 export function localReplayToVaultReplay(
   local: LocalReplay,
@@ -267,6 +267,8 @@ export function ReplayDetailPanel({
   // that shows what was in it, so its own open state is separate from whether
   // the details have arrived.
   const [showInsights, setShowInsights] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const hasNote = useHasReplayNote(replay.uid);
 
   useEffect(() => {
     if (isGenerated && !seed && replay.replayAvailable && !localMatch && downloadState === "idle") {
@@ -514,6 +516,22 @@ export function ReplayDetailPanel({
               <span>{t("replays.detail.requestReviewShort")}</span>
               <Icon name="book" size={15} />
             </Button>
+            {/* The reader's own comment and tags (#324), in an overlay rather
+                than in the panel: most replays have none, and an empty editor
+                on every one of them was the panel's biggest block. Lit when
+                there is a note, so a tagged game says so before it is opened. */}
+            {replay.uid > 0 && (
+              <Button
+                className={hasNote ? "replay-card-rail-btn is-on" : "replay-card-rail-btn"}
+                aria-haspopup="dialog"
+                aria-expanded={showNotes}
+                onClick={() => setShowNotes(true)}
+                title={t("replays.notes.open")}
+              >
+                <span>{t("replays.notes.open")}</span>
+                <Icon name="edit" size={15} />
+              </Button>
+            )}
             {onToggleWatched && (
               <Button
                 className={watched ? "replay-card-rail-btn is-on" : "replay-card-rail-btn"}
@@ -649,7 +667,6 @@ export function ReplayDetailPanel({
               <p className="replay-detail-empty muted">{t("replays.detail.noLineup")}</p>
             )}
           </section>
-          <ReplayNotesEditor replayId={replay.uid} />
           <div className="replay-card-bottom">
             {/* Why the button is dead, directly above the button.
 
@@ -785,6 +802,9 @@ export function ReplayDetailPanel({
           on the answer: the file may still have to be downloaded, and a
           disabled button with nothing happening behind it is what the thread
           was about. */}
+      {showNotes && (
+        <ReplayNotesDialog replayId={replay.uid} title={cardTitle} onClose={() => setShowNotes(false)} />
+      )}
       {showInsights && (
         <ReplayInsights
           details={details ?? null}

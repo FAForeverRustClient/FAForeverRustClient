@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { normalizeReplayNotes, noteForReplay, parseTagInput, replayNoteMatches } from "./replayNotes";
+import {
+  allReplayTags,
+  hasAnyTag,
+  normalizeReplayNotes,
+  noteForReplay,
+  parseTagInput,
+  replayIdsTagged,
+  replayNoteMatches,
+} from "./replayNotes";
 
 describe("replay notes", () => {
   it("tidies tags, keeps each once and lets the last note for a replay win", () => {
@@ -30,5 +38,24 @@ describe("replay notes", () => {
   it("has nothing to say about a replay without a game id", () => {
     expect(noteForReplay([{ replayId: 5, comment: "x", tags: [] }], null)).toBeNull();
     expect(noteForReplay([{ replayId: 5, comment: "x", tags: [] }], 5)?.comment).toBe("x");
+  });
+});
+
+describe("filtering by tag", () => {
+  const notes = [
+    { replayId: 3, comment: "", tags: ["Lots finals", "casts"] },
+    { replayId: 7, comment: "x", tags: ["lots finals"] },
+    { replayId: 9, comment: "only a comment", tags: [] },
+  ];
+
+  it("offers every tag once", () => {
+    expect(allReplayTags(notes)).toEqual(["casts", "Lots finals"]);
+  });
+
+  it("finds the games with any chosen tag, whatever its case", () => {
+    expect(replayIdsTagged(notes, ["LOTS FINALS"])).toEqual(["3", "7"]);
+    expect(replayIdsTagged(notes, [])).toEqual([]);
+    expect(hasAnyTag(null, ["casts"])).toBe(false);
+    expect(hasAnyTag(null, [])).toBe(true);
   });
 });

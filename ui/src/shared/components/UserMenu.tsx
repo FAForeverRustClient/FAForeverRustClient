@@ -53,6 +53,12 @@ export interface UserMenuActions {
   setNameColor: (nickname: string, color: string | null) => void;
   setMuted: (nickname: string, muted: boolean) => void;
   reportPlayer: (profile: PlayerProfile) => void;
+  /**
+   * Report somebody the lobby's player list does not know, by name: a
+   * replay's lineup is mostly players who are offline (#321). Absent where
+   * the caller cannot do that.
+   */
+  reportPlayerByLogin?: (login: string) => void;
   editNote: (profile: PlayerProfile) => void;
 }
 
@@ -150,9 +156,13 @@ export function UserMenu({
     }
   }
 
-  if (profile && !isSelf) {
+  if (!isSelf && (profile || actions.reportPlayerByLogin)) {
     separator();
-    item(t("chat.menu.reportPlayer"), () => actions.reportPlayer(profile), true);
+    item(
+      t("chat.menu.reportPlayer"),
+      () => (profile ? actions.reportPlayer(profile) : actions.reportPlayerByLogin?.(nickname)),
+      true,
+    );
   }
 
   // Keep the menu on screen: flip rather than clip when it would overflow.
