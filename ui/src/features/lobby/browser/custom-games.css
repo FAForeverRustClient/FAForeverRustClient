@@ -66,7 +66,7 @@
   /* The fallback for the moment before the saved widths arrive, in the shape
      the saved ones have: four columns at a fixed width and the game column
      taking the rest. */
-  grid-template-columns: minmax(0, 1fr) 170px 80px 100px 75px;
+  grid-template-columns: minmax(0, 1fr) 190px 170px 80px 100px 75px;
   align-items: center;
   gap: 16px;
 }
@@ -96,7 +96,12 @@
   cursor: pointer;
 }
 
-.game-browser-head-sort:hover,
+/* The tags column's header: a label, since the column orders nothing. */
+.game-browser-head-sort.is-static {
+  cursor: default;
+}
+
+.game-browser-head-sort:hover:not(.is-static),
 .game-browser-head-sort.is-active {
   color: var(--color-text);
 }
@@ -297,9 +302,18 @@
 }
 
 .game-browser-tags {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+}
+
+/* The tags column (issue 341): the chips one after another, starting at the
+   column's leading edge like every other column's contents, and wrapping onto
+   a second line when the column is dragged narrower than they are. */
+.game-browser-tags-col {
+  justify-content: flex-start;
 }
 
 .game-browser-tags i {

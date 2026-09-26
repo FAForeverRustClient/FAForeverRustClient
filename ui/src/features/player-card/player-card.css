@@ -947,19 +947,32 @@
 }
 
 .player-metric-bars > div {
+  position: relative;
   min-width: 2px;
   height: 14px;
   border-radius: 2px;
 }
 
 .player-metric-bars i {
-  display: block;
+  /* As wide as the number, not as the bar: `MetricBar` measures it to decide
+     whether it fits inside. */
+  display: inline-block;
   padding-left: var(--space-1);
   color: var(--color-accent-contrast);
   font-size: 11px;
   font-style: normal;
   line-height: 14px;
   white-space: nowrap;
+}
+
+/* A bar too short to hold its number with its padding (see `MetricBar`)
+   carries it just past its end, in the text colour, since there it stands on
+   the card and not on the bar. */
+.player-metric-bars .is-label-outside i {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  color: var(--color-text);
 }
 
 .player-achievement-summary .player-recent-achievement {

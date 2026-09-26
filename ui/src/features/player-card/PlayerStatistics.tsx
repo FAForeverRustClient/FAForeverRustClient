@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import type { PlayerCardProfile } from "../../ipc/bindings";
 import { formatNumber, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -29,6 +30,54 @@ const EVENTS = {
   seraphimWins: "15b6c19a-6084-4e82-ada9-6c30e282191f",
 } as const;
 
+/**
+ * Room kept free around a number drawn inside its bar: the label's own
+ * leading padding and as much again at the trailing end, so the digits never
+ * touch the bar's edge.
+ */
+const LABEL_INSIDE_PADDING = 8;
+
+/**
+ * One bar with its count. The count sits inside the bar whenever it fits
+ * there with its padding, and just past the bar's end when it does not.
+ *
+ * Inside, the number is drawn in the contrast colour on the bar. On a bar a
+ * few pixels wide that is the contrast colour on the card itself, which is the
+ * card's own colour in either theme: an Aeon count of 7 next to a UEF count of
+ * 1899 simply vanished (#342). Measured rather than guessed from the bar's
+ * share, since whether "1 899" fits depends on the card's width, the font and
+ * the number of digits, and a fixed share put short numbers outside bars that
+ * had plenty of room for them.
+ */
+function MetricBar({ value, max, className }: { value: number; max: number; className: string }) {
+  const barRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLElement>(null);
+  const [outside, setOutside] = useState(false);
+
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    const label = labelRef.current;
+    if (!bar || !label) return;
+    const measure = () => setOutside(label.offsetWidth + LABEL_INSIDE_PADDING > bar.clientWidth);
+    measure();
+    // The card can be resized, and the bar with it.
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, [value, max]);
+
+  return (
+    <div
+      ref={barRef}
+      className={`${className}${outside ? " is-label-outside" : ""}`}
+      style={{ width: `${(value / max) * 100}%` }}
+    >
+      <i ref={labelRef}>{formatNumber(value)}</i>
+    </div>
+  );
+}
+
 interface Metric {
   label: string;
   first: number;
@@ -50,8 +99,8 @@ function MetricChart({ title, firstLabel, secondLabel, metrics }: {
           <div className="player-metric" key={metric.label}>
             <span>{metric.label}</span>
             <div className="player-metric-bars">
-              <div className="is-first" style={{ width: `${(metric.first / max) * 100}%` }}><i>{formatNumber(metric.first)}</i></div>
-              <div className="is-second" style={{ width: `${(metric.second / max) * 100}%` }}><i>{formatNumber(metric.second)}</i></div>
+              <MetricBar className="is-first" value={metric.first} max={max} />
+              <MetricBar className="is-second" value={metric.second} max={max} />
             </div>
           </div>
         ))}
