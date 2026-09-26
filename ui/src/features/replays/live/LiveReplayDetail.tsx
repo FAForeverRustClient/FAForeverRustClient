@@ -25,7 +25,7 @@ import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
-import { mapPresentation } from "../../../shared/mapPresentation";
+import { isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { useAppStore } from "../../../store/store";
 import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
 import { ReplayMapThumb } from "../ReplayCard";
@@ -88,6 +88,19 @@ export function LiveReplayDetail({
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
   }, [enlarged]);
+
+  // A generated map's size is in its name, and decoding the name is one
+  // command for the one game this panel shows, as the lobby's own panel does.
+  const isGenerated = isGeneratedMap(game.map);
+  const decoded = useAppStore((state) => state.state.mapGenerator.decoded?.[game.map]);
+  useEffect(() => {
+    if (!isGenerated || decoded) return;
+    ipc.send({
+      kind: "MapGenerator",
+      command: { type: "decodeNames", payload: { mapNames: [game.map] } },
+    });
+  }, [isGenerated, decoded, game.map]);
+  const size = mapSize(vault, game.map, decoded?.mapSize);
 
   const presentation = mapPresentation(vault, game.map, missions);
   const mapLabel = presentation.displayName || game.map;
@@ -152,6 +165,14 @@ export function LiveReplayDetail({
     label: t("replays.column.host"),
     value: game.host,
   });
+  // Left out, like every other fact here, when nothing knows it (#327).
+  if (size) {
+    facts.push({
+      icon: "maps",
+      label: t("replays.filters.mapSize"),
+      value: size.compact,
+    });
+  }
 
   return (
     <Modal

@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { Game } from "../ipc/bindings";
 import {
   DEFAULT_LIVE_FILTERS,
+  filterChoices,
+  joinFilterChoices,
   liveFeaturedModOptions,
+  matchesFilterChoice,
   parseLiveFilters,
   prettyFeaturedMod,
 } from "./liveReplayModel";
@@ -47,5 +50,28 @@ describe("the featured mod filter", () => {
     expect(prettyFeaturedMod("nomads")).toBe("Nomads");
     // An unknown technical name is capitalised, never invented.
     expect(prettyFeaturedMod("murderparty")).toBe("Murderparty");
+  });
+});
+
+describe("filters holding several choices", () => {
+  it("reads an older single saved value as one choice", () => {
+    expect(filterChoices("custom")).toEqual(["custom"]);
+    expect(filterChoices("")).toEqual([]);
+  });
+
+  it("keeps each choice once and drops empty ones", () => {
+    expect(filterChoices(" custom,,matchmaker ,custom")).toEqual(["custom", "matchmaker"]);
+    expect(joinFilterChoices(["custom", "matchmaker", "custom"])).toBe("custom,matchmaker");
+  });
+
+  it("passes a game matching any choice, and every game when none is chosen", () => {
+    expect(matchesFilterChoice("custom,matchmaker", "matchmaker")).toBe(true);
+    expect(matchesFilterChoice("custom,matchmaker", "coop")).toBe(false);
+    expect(matchesFilterChoice("2,4", 4)).toBe(true);
+    expect(matchesFilterChoice("", "coop")).toBe(true);
+  });
+
+  it("stores player counts as a list, dropping only the bad entries", () => {
+    expect(parseLiveFilters({ activePlayers: "2, 04,abc,999,2" }).activePlayers).toBe("2,4");
   });
 });

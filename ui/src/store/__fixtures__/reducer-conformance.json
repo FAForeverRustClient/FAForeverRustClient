@@ -433,7 +433,8 @@
         "activeOnly": true,
         "updatedAfter": null,
         "updatedBefore": null,
-        "player": ""
+        "player": "",
+        "includeFormerNames": false
       },
       "ratingPage": {
         "entries": [],
@@ -26672,7 +26673,8 @@
                   "activeOnly": true,
                   "updatedAfter": null,
                   "updatedBefore": null,
-                  "player": ""
+                  "player": "",
+                  "includeFormerNames": false
                 }
               }
             }
@@ -26694,6 +26696,7 @@
             },
             "ratingQuery": {
               "activeOnly": true,
+              "includeFormerNames": false,
               "leaderboard": "global",
               "page": 1,
               "pageSize": 100,
@@ -26730,7 +26733,8 @@
                   "activeOnly": true,
                   "updatedAfter": null,
                   "updatedBefore": null,
-                  "player": ""
+                  "player": "",
+                  "includeFormerNames": false
                 },
                 "ratings": [
                   {
@@ -26775,6 +26779,7 @@
             },
             "ratingQuery": {
               "activeOnly": true,
+              "includeFormerNames": false,
               "leaderboard": "global",
               "page": 1,
               "pageSize": 100,
@@ -26811,7 +26816,8 @@
                   "activeOnly": true,
                   "updatedAfter": null,
                   "updatedBefore": null,
-                  "player": ""
+                  "player": "",
+                  "includeFormerNames": false
                 }
               }
             }
@@ -26833,6 +26839,7 @@
             },
             "ratingQuery": {
               "activeOnly": true,
+              "includeFormerNames": false,
               "leaderboard": "global",
               "page": 2,
               "pageSize": 100,
@@ -26869,7 +26876,8 @@
                   "activeOnly": true,
                   "updatedAfter": null,
                   "updatedBefore": null,
-                  "player": ""
+                  "player": "",
+                  "includeFormerNames": false
                 },
                 "ratings": [
                   {
@@ -26903,6 +26911,7 @@
             },
             "ratingQuery": {
               "activeOnly": true,
+              "includeFormerNames": false,
               "leaderboard": "global",
               "page": 2,
               "pageSize": 100,
@@ -26958,6 +26967,7 @@
             },
             "ratingQuery": {
               "activeOnly": true,
+              "includeFormerNames": false,
               "leaderboard": "global",
               "page": 1,
               "pageSize": 100,
@@ -27008,6 +27018,7 @@
             },
             "ratingQuery": {
               "activeOnly": true,
+              "includeFormerNames": false,
               "leaderboard": "global",
               "page": 1,
               "pageSize": 100,
@@ -27058,6 +27069,7 @@
             },
             "ratingQuery": {
               "activeOnly": true,
+              "includeFormerNames": false,
               "leaderboard": "global",
               "page": 1,
               "pageSize": 100,
@@ -27111,6 +27123,7 @@
             },
             "ratingQuery": {
               "activeOnly": true,
+              "includeFormerNames": false,
               "leaderboard": "global",
               "page": 1,
               "pageSize": 100,
@@ -27263,7 +27276,8 @@
                   "leaguePlacements": [],
                   "events": [],
                   "achievements": [],
-                  "warnings": []
+                  "warnings": [],
+                  "matchedFormerName": null
                 }
               }
             }
@@ -27299,6 +27313,7 @@
               "events": [],
               "leaguePlacements": [],
               "login": "Ada",
+              "matchedFormerName": null,
               "names": [],
               "playerId": 7,
               "ratings": [],
@@ -27360,6 +27375,7 @@
               "events": [],
               "leaguePlacements": [],
               "login": "Ada",
+              "matchedFormerName": null,
               "names": [],
               "playerId": 7,
               "ratings": [],
@@ -27421,6 +27437,7 @@
               "events": [],
               "leaguePlacements": [],
               "login": "Ada",
+              "matchedFormerName": null,
               "names": [],
               "playerId": 7,
               "ratings": [],

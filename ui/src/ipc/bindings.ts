@@ -5062,6 +5062,15 @@ export type PlayerCardProfile = {
 	achievements: PlayerAchievement[],
 	/**  Non-fatal API section failures. Identity still loads and the UI explains omissions. */
 	warnings: string[],
+	/**
+	 *  The name this profile was found by, when it is a former name rather
+	 *  than the current login (#315).
+	 *
+	 *  A name is released when its owner changes it and can be taken by
+	 *  somebody else, so a hit on a former name is a candidate, not a proof,
+	 *  and the card says so.
+	 */
+	matchedFormerName: string | null,
 };
 
 export type PlayerCardState = {
@@ -5574,6 +5583,15 @@ export type RatingQuery = {
 	updatedAfter: string | null,
 	updatedBefore: string | null,
 	player: string,
+	/**
+	 *  Match `player` against former names as well as current logins, and as a
+	 *  part of the name rather than the whole of it (#299).
+	 *
+	 *  Off, the search is the exact login it has always been. On, it answers
+	 *  "who was that", which is a list of candidates by nature: a released name
+	 *  can have passed through several accounts.
+	 */
+	includeFormerNames: boolean,
 };
 
 /**

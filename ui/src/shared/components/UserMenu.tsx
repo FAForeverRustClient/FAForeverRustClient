@@ -22,6 +22,7 @@
 // because they need separate backend flows. Player notes are local persisted
 // preferences and are available for every resolved FAF account.
 
+import { ColorInput } from "../../design-system/ColorInput";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Game, PlayerProfile } from "../../ipc/bindings";
@@ -231,11 +232,12 @@ export function UserMenu({
       <div className="chat-user-menu-color" role="group" aria-label={t("chat.menu.nameColorGroup", { nickname })}>
         <label>
           <span>{t("chat.menu.customColor")}</span>
-          <input
-            type="color"
+          <ColorInput
+            className="chat-user-menu-color-swatch"
+            showSwatch
             value={nameColor ?? DEFAULT_COLOR_PICKER_VALUE}
             aria-label={t("chat.menu.chooseColor", { nickname })}
-            onChange={(event) => actions.setNameColor(nickname, event.target.value)}
+            onChange={(next) => actions.setNameColor(nickname, next)}
           />
         </label>
         <button

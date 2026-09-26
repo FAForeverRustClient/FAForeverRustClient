@@ -245,6 +245,13 @@
   color: var(--color-error);
 }
 
+.player-card-former-name {
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
 .player-card-warnings {
   padding: var(--space-3);
   color: var(--color-warn);
