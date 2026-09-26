@@ -27,9 +27,13 @@ interface Props {
     low: number | null,
     high: number | null,
   ) => void;
+  /** Every tag the reader has put on a replay (#324). */
+  tagOptions: string[];
+  selectedTags: string[];
+  onTags: (tags: string[]) => void;
 }
 
-export function AdvancedReplayFilters({ form, featuredMods, set, setRange }: Props) {
+export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOptions, selectedTags, onTags }: Props) {
   const { t } = useTranslation();
   // Built per render so the captions follow the selected language.
   const VICTORY_OPTIONS: MultiSelectOption[] = VICTORY_OPTION_KEYS.map(
@@ -125,6 +129,19 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange }: Pro
             onChange={(e) => set("title", e.target.value)}
           />
         </label>
+
+        {/* The reader's own tags (#324). The vault has never heard of them,
+            so the picked tags become the ids of the games carrying them, and
+            the search asks for exactly those. */}
+        <div className="vault-field">
+          <MultiSelect
+            label={t("replays.filters.yourTags")}
+            anyLabel={t("replays.filters.anyTag")}
+            options={tagOptions.map((tag) => ({ value: tag, label: tag }))}
+            selected={selectedTags}
+            onChange={onTags}
+          />
+        </div>
 
         <div className="vault-field">
           <MultiSelect

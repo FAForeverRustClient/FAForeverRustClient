@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "../../../design-system/Button";
+import { MultiSelect } from "../../../design-system/MultiSelect";
+import { allReplayTags } from "../../../shared/rules/replayNotes";
+import { useAppStore } from "../../../store/store";
 import { Icon } from "../../../design-system/Icon";
 import { RangeSlider } from "../../../design-system/RangeSlider";
 import { localGameModes, type LocalGameMode } from "./localGameModes";
@@ -59,6 +62,8 @@ export function LocalReplaySearch({
   const [form, setForm] = useState(initialQuery);
   const [advanced, setAdvanced] = useState(false);
 
+  const replayNotes = useAppStore((state) => state.state.settings.social.replayNotes);
+  const tagOptions = useMemo(() => allReplayTags(replayNotes), [replayNotes]);
   const set = <K extends keyof LocalReplayQuery>(key: K, value: LocalReplayQuery[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
@@ -247,6 +252,15 @@ export function LocalReplaySearch({
               <span className="vault-field-label">{t("replays.search.noteOrTag")}</span>
               <input className="vault-input" type="search" value={form.note} onChange={(event) => set("note", event.target.value)} />
             </label>
+            <div className="vault-field">
+              <MultiSelect
+                label={t("replays.filters.yourTags")}
+                anyLabel={t("replays.filters.anyTag")}
+                options={tagOptions.map((tag) => ({ value: tag, label: tag }))}
+                selected={form.tags}
+                onChange={(tags) => set("tags", tags)}
+              />
+            </div>
             <label className="vault-field">
               <span className="vault-field-label">{t("replays.search.recorder")}</span>
               <input className="vault-input" type="search" value={form.recorder} onChange={(event) => set("recorder", event.target.value)} />

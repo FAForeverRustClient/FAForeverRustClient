@@ -427,32 +427,58 @@
   font-size: 11px;
 }
 
-/* A private comment and tags on the replay (issue 324). Quiet on purpose: it
-   is the reader's own index, and it sits between the lineup and the actions. */
+/* A private comment and tags on the replay (issue 324), in an overlay over
+   the replay panel. Quiet on purpose: it is the reader's own index. */
 .replay-notes {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  gap: var(--space-3);
+  box-sizing: border-box;
+  width: min(520px, 92vw);
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .replay-notes-head {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
 }
 
+.replay-notes-head > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .replay-notes-head h3 {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .replay-notes-head span {
+  overflow: hidden;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-notes-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.replay-notes-field > span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .replay-notes-tags {
@@ -474,17 +500,18 @@
 }
 
 .replay-notes-comment {
-  min-height: 52px;
+  min-height: 84px;
   resize: vertical;
   font: inherit;
 }
 
-.replay-notes-row {
+.replay-notes-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-2);
 }
 
-.replay-notes-tag-input {
+.replay-notes-actions > span {
   flex: 1;
-  min-width: 0;
+  font-size: 12px;
 }

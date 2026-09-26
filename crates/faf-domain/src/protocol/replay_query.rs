@@ -324,8 +324,16 @@ impl ReplayQuery {
     /// has no filters at all (the plain newest-first feed is cheap: the API
     /// just takes the first page of an index scan). Otherwise the Python
     /// client's rule: 3 months, or 6 when a player name is doing the narrowing.
+    ///
+    /// Also `None` for a lookup by game id. The id is the primary key, so the
+    /// query is cheap without a bound, and a bound only hides what was asked
+    /// for: a replay tagged a year ago (#324), or an old id typed by hand.
     pub fn fallback_months(&self) -> Option<u32> {
-        if !self.after.is_empty() || !self.has_narrowing_filter() {
+        if !self.after.is_empty()
+            || !self.has_narrowing_filter()
+            || !self.replay_id.is_empty()
+            || !self.replay_ids.is_empty()
+        {
             return None;
         }
         Some(if self.player.is_empty() { 3 } else { 6 })
@@ -1118,6 +1126,25 @@ mod tests {
         ] {
             assert!(filter.contains(expected), "missing {expected} in {filter}");
         }
+    }
+
+    #[test]
+    fn a_lookup_by_game_id_is_not_bounded_in_time() {
+        let tagged = ReplayQuery {
+            replay_ids: vec!["1234".into()],
+            ..query()
+        };
+        assert_eq!(tagged.fallback_months(), None);
+        let typed = ReplayQuery {
+            replay_id: "1234".into(),
+            ..query()
+        };
+        assert_eq!(typed.fallback_months(), None);
+        let named = ReplayQuery {
+            player: "Ada".into(),
+            ..query()
+        };
+        assert_eq!(named.fallback_months(), Some(6));
     }
 
     #[test]
