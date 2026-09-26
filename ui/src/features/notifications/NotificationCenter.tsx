@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "../../design-system/Icon";
 import type { ClientNotification, NotificationAction } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -48,6 +48,33 @@ function actionLabel(action: NotificationAction | null): string | null {
     case "openSettings":
     case "openEvent":
       return null;
+  }
+}
+
+/**
+ * The action line of a card: the label above, or for a stream the platform it
+ * opens as an icon and its name (#155), which says where the click goes more
+ * plainly than "Watch the stream" did.
+ */
+function actionContent(action: NotificationAction | null): ReactNode {
+  if (action?.type === "openStream" && isTwitchUrl(action.payload.url)) {
+    return (
+      <em className="notification-stream" aria-label={t("notifications.action.openStream")}>
+        <Icon name="twitch" size={14} />
+        Twitch
+      </em>
+    );
+  }
+  const label = actionLabel(action);
+  return label ? <em>{label}</em> : null;
+}
+
+function isTwitchUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "twitch.tv" || host.endsWith(".twitch.tv");
+  } catch {
+    return false;
   }
 }
 
@@ -271,7 +298,7 @@ export function NotificationCenter() {
                 <button className="notification-content" type="button" onClick={() => handleAction(item)}>
                   <span className="notification-item-head"><strong>{item.title}</strong><time>{formatTime(item.createdAt)}</time></span>
                   <span className="notification-body">{renderFormattedText(item.body)}</span>
-                  {actionLabel(item.action) && <em>{actionLabel(item.action)}</em>}
+                  {actionContent(item.action)}
                 </button>
                 <button className="notification-dismiss" type="button" onClick={() => { hideToast(item.id); dismiss(item.id); }} aria-label={`Dismiss ${item.title}`}>
                   <Icon name="close" size={12} />
@@ -296,7 +323,7 @@ export function NotificationCenter() {
             <button type="button" onClick={() => handleAction(item)}>
               <strong>{item.title}</strong>
               <span className="notification-body">{renderFormattedText(item.body)}</span>
-              {actionLabel(item.action) && <em>{actionLabel(item.action)}</em>}
+              {actionContent(item.action)}
             </button>
             <button
               type="button"
