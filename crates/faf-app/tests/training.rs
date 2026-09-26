@@ -174,11 +174,13 @@ fn local(uid: i32, map: &str, players: i32, faction: i32, rating: i32) -> LocalR
                     name: ME.into(),
                     faction: Some(faction),
                     rating: Some(rating),
+                    country: None,
                 },
                 LocalReplayPlayer {
                     name: "Someone else".into(),
                     faction: Some(4),
                     rating: Some(2100),
+                    country: None,
                 },
             ],
         }],

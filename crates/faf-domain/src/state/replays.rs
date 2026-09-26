@@ -559,6 +559,10 @@ pub struct ReplayPlayer {
     pub outcome: String,
     /// Simulation score at the end of the game, when recorded.
     pub score: Option<i32>,
+    /// Two-letter country code, when a replay file on disk says it. The API
+    /// has no country for an account, so an online listing never carries one.
+    #[serde(default)]
+    pub country: Option<String>,
 }
 
 /// One `.fafreplay` file already on disk, from the shared FAF replay folder
@@ -616,6 +620,9 @@ pub struct LocalReplayPlayer {
     pub faction: Option<i32>,
     /// The displayed rating recorded in the replay header.
     pub rating: Option<i32>,
+    /// Two-letter country code from the army table, where the file has one.
+    #[serde(default)]
+    pub country: Option<String>,
 }
 
 /// How much trustworthy metadata was available without decoding the full replay
@@ -769,6 +776,12 @@ pub struct ReplayState {
     /// stops asking. See [`ReplayCommand::ResolveMaps`].
     #[serde(default)]
     pub resolved_maps: std::collections::HashMap<i32, String>,
+    /// The signed-in player's latest matchmaker games, newest first (#301).
+    ///
+    /// Its own list rather than a vault search, so showing it on the
+    /// matchmaker tab never replaces whatever the Replays tab was showing.
+    pub recent_matchmaker: Vec<VaultReplay>,
+    pub recent_matchmaker_status: VaultStatus,
 }
 
 // No `Eq`: `VaultLoaded` carries `VaultReplay`, which has an `f32` field.
@@ -817,6 +830,13 @@ pub enum ReplayEvent {
         total_records: Option<i32>,
     },
     VaultLoadFailed {
+        reason: String,
+    },
+    RecentMatchmakerLoading,
+    RecentMatchmakerLoaded {
+        replays: Vec<VaultReplay>,
+    },
+    RecentMatchmakerFailed {
         reason: String,
     },
     /// The featured-mod list backing the vault search's mod filter.
@@ -921,6 +941,8 @@ pub enum ReplayCommand {
     },
     /// Fetch the featured-mod list for the search form's mod filter.
     LoadFeaturedMods,
+    /// The signed-in player's latest matchmaker games, for the matchmaker tab.
+    LoadRecentMatchmaker,
     /// Download and play a vault replay by its game id.
     WatchVault {
         uid: i32,
@@ -1063,6 +1085,18 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
             state.vault_status = VaultStatus::Failed {
                 reason: reason.clone(),
             }
+        }
+        ReplayEvent::RecentMatchmakerLoading => {
+            state.recent_matchmaker_status = VaultStatus::Loading;
+        }
+        ReplayEvent::RecentMatchmakerLoaded { replays } => {
+            state.recent_matchmaker = replays.clone();
+            state.recent_matchmaker_status = VaultStatus::Ready;
+        }
+        ReplayEvent::RecentMatchmakerFailed { reason } => {
+            state.recent_matchmaker_status = VaultStatus::Failed {
+                reason: reason.clone(),
+            };
         }
         ReplayEvent::LocalLoading => state.local_status = VaultStatus::Loading,
         ReplayEvent::LocalLoaded { replays } => {
@@ -1585,11 +1619,13 @@ mod tests {
                         name: "host".into(),
                         faction: None,
                         rating: None,
+                        country: None,
                     },
                     LocalReplayPlayer {
                         name: "guest".into(),
                         faction: None,
                         rating: None,
+                        country: None,
                     },
                 ],
             }],

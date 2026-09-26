@@ -60,6 +60,16 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
         ...state,
         vaultStatus: { type: "failed", payload: { reason: event.payload.reason } },
       };
+    // The matchmaker tab's own list: never touches the vault search above.
+    case "recentMatchmakerLoading":
+      return { ...state, recentMatchmakerStatus: { type: "loading" } };
+    case "recentMatchmakerLoaded":
+      return { ...state, recentMatchmaker: event.payload.replays, recentMatchmakerStatus: { type: "ready" } };
+    case "recentMatchmakerFailed":
+      return {
+        ...state,
+        recentMatchmakerStatus: { type: "failed", payload: { reason: event.payload.reason } },
+      };
     case "featuredModsLoaded":
       return { ...state, featuredMods: event.payload.mods };
     case "localLoading":

@@ -5,6 +5,8 @@ import { FactionIcon } from "../../shared/components/FactionIcon";
 import { openPlayerCard } from "../../shared/playerCardActions";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { t } from "../../i18n";
+import { outcomeLabel, parseOutcome, type OutcomeKind } from "../../shared/gameOutcome";
+import { ReplayPlayerFlag } from "./ReplayPlayerFlag";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
 
@@ -37,27 +39,8 @@ function ReplayPlayerMarker({ player, observer, size }: { player: ReplayPlayer; 
   ) : null;
 }
 
-export type OutcomeKind = "victory" | "defeat" | "draw" | "";
-
-export function parseOutcome(outcome: string): OutcomeKind {
-  switch (outcome.toLocaleUpperCase()) {
-    case "VICTORY": return "victory";
-    case "DEFEAT": return "defeat";
-    case "DRAW":
-    case "MUTUAL_DRAW": return "draw";
-    default: return "";
-  }
-}
-
-export function outcomeLabel(outcome: string): string {
-  const kind = parseOutcome(outcome);
-  switch (kind) {
-    case "victory": return t("replays.roster.victory");
-    case "defeat": return t("replays.roster.defeat");
-    case "draw": return t("replays.roster.draw");
-    default: return "";
-  }
-}
+// Moved to shared, because the matchmaker tab reads outcomes too.
+export { outcomeLabel, parseOutcome, type OutcomeKind };
 
 /**
  * One team's result, by the priority Java's `calculateTeamOutcome` uses:
@@ -109,6 +92,7 @@ export function mergeReplayTeamsWithLocal(
           ...player,
           faction: player.faction ?? localPlayer.faction,
           rating: player.rating ?? localPlayer.rating,
+          country: player.country ?? localPlayer.country ?? null,
         };
       }),
     };
@@ -147,6 +131,7 @@ export function mergeReplayTeamsWithLocal(
       name: player.name,
       faction: player.faction,
       rating: player.rating,
+      country: player.country ?? null,
       // The server never rated them and never will, so there is no outcome and
       // no score to claim one from.
       outcome: "",
@@ -280,6 +265,7 @@ export function ReplayCardRoster({
                       }}
                     >
                       <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                      <ReplayPlayerFlag player={player} />
                       {/* The class the hover underline hangs off, which is how
                           a name says it can be clicked before it is. Same one
                           the detail roster's names carry. */}
@@ -299,6 +285,7 @@ export function ReplayCardRoster({
                       })}
                     >
                       <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                      <ReplayPlayerFlag player={player} />
                       <PlayerName name={player.name} />
                     </span>
                   )}
@@ -444,6 +431,7 @@ export function ReplayDetailRoster({
                       ) : (
                         <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
                       )}
+                      <ReplayPlayerFlag player={player} />
                       <span className="replay-player-name-group">
                         <PlayerName name={player.name} className="replay-player-name-text" />
                         {player.rating !== null && (
