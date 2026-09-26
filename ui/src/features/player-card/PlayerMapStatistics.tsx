@@ -5,9 +5,9 @@
 // question a host actually asks before starting a game: how much has this
 // player played the map I am about to host, and how did it go?
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
-import { ipc } from "../../ipc/client";
+import { usePlayerHistory } from "./usePlayerHistory";
 import { useAppStore } from "../../store/store";
 import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
 import { formatDecimal, formatNumber } from "../../i18n";
@@ -60,14 +60,12 @@ const FIRST_DIRECTION: Record<SortColumn, "asc" | "desc"> = {
 
 export function PlayerMapStatistics({ playerId }: Props) {
   const { t } = useTranslation();
-  const stats = useAppStore((state) => state.state.playerCard.mapStats);
+  const { stats, status, error } = usePlayerHistory(playerId);
   // The leaderboards' own games-played totals, which is what faftracker prints
   // as "ranked games" rather than what its scan read. See `rankedRecord`.
   const ratings = useAppStore((state) => state.state.playerCard.profile?.ratings);
   // The vault supplies map art; without it every thumbnail is a placeholder.
   const vault = useAppStore((state) => state.state.maps.vault);
-  const status = useAppStore((state) => state.state.playerCard.mapStatsStatus);
-  const error = useAppStore((state) => state.state.playerCard.mapStatsError);
   const [search, setSearch] = useState("");
   // Matches the order the backend already delivers, so the first render is
   // not a resort of what the fold just sorted.
@@ -78,10 +76,7 @@ export function PlayerMapStatistics({ playerId }: Props) {
 
   // Loaded when this tab is opened rather than with the profile: the scan walks
   // the player's entire history, and someone who only wanted their rating
-  // should not pay for it.
-  useEffect(() => {
-    ipc.send({ kind: "PlayerCard", command: { type: "loadMapStats", payload: { playerId } } });
-  }, [playerId]);
+  // should not pay for it. Shared with the results tab; see `usePlayerHistory`.
 
   const generatedLabel = t("playerCard.maps.generated");
   const label = (entry: { map: string; generated: boolean }) =>

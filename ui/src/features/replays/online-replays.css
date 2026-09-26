@@ -1434,6 +1434,20 @@ button.vault-input {
   list-style: none;
 }
 
+/* A replay's sim mods open the mod vault (issue 343). The chip keeps its look
+   and gains a pointer, since it is a button now. */
+.replay-sim-mod {
+  font: inherit;
+  cursor: pointer;
+}
+
+.replay-sim-mod:hover,
+.replay-sim-mod:focus-visible {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+  outline: none;
+}
+
 .replay-team-outcome.unknown {
   color: var(--color-muted);
 }

@@ -103,6 +103,16 @@ pub trait ProcessPort: Send + Sync {
     /// configuration directly, keeping deployment choices behind the port.
     fn supports_live_launch(&self) -> bool;
 
+    /// Whether a replay window this port started is still open.
+    ///
+    /// Asked by the replay adapter, which hands a modded replay's sim mods to
+    /// `game.prefs` for the length of the replay and gives the player's own
+    /// back once the window is closed. A port that launches nothing has no
+    /// replay running, which is the default.
+    fn replay_running(&self) -> bool {
+        false
+    }
+
     /// Launch the game. Returns once the process has been spawned. Errors if the
     /// executable can't be resolved or started.
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String>;

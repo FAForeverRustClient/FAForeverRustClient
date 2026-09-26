@@ -1464,7 +1464,14 @@ impl ReplayPort for ReplayClient {
         // Independent of `replay_target_dir`: mods live in the shared,
         // install-independent mods folder/`game.prefs`, same as
         // `infra::mods`'s own posture.
-        if !replay.sim_mods.is_empty() {
+        //
+        // For the length of the replay only. The player's own set is kept
+        // aside and written back when the replay window closes (#343), so a
+        // game hosted afterwards is not quietly carrying the replay's mods.
+        let mut replay_mods_generation = None;
+        if replay.sim_mods.is_empty() {
+            crate::infra::mods::restore_own_mods_after_replay(None).await;
+        } else {
             match crate::infra::mods::list_installed_dir(&crate::infra::mods::mods_dir()).await {
                 Ok(installed) => {
                     let installed_uids: std::collections::HashSet<&str> =
@@ -1482,11 +1489,18 @@ impl ReplayPort for ReplayClient {
                         .map(|m| m.uid.clone())
                         .collect();
                     active_uids.extend(present.into_iter().map(|(uid, _)| uid.clone()));
-                    if let Err(e) =
-                        crate::infra::mods::write_active_mod_uids_to_disk(&active_uids).await
-                    {
-                        warning = Some(format!("could not set this replay's active mods: {e}"));
-                    } else if !missing.is_empty() {
+                    let own_uids: Vec<String> = installed
+                        .iter()
+                        .filter(|m| m.enabled)
+                        .map(|m| m.uid.clone())
+                        .collect();
+                    match crate::infra::mods::activate_replay_mods(own_uids, &active_uids).await {
+                        Ok(generation) => replay_mods_generation = Some(generation),
+                        Err(e) => {
+                            warning = Some(format!("could not set this replay's active mods: {e}"))
+                        }
+                    }
+                    if replay_mods_generation.is_some() && !missing.is_empty() {
                         let names: Vec<&str> =
                             missing.iter().map(|(_, name)| name.as_str()).collect();
                         warning = Some(format!("missing mod(s): {}", names.join(", ")));
@@ -1517,7 +1531,28 @@ impl ReplayPort for ReplayClient {
             args.push("/replayid".to_string());
             args.push(uid.to_string());
         }
-        self.process.launch_replay(args).await?;
+        if let Err(reason) = self.process.launch_replay(args).await {
+            // Nothing is playing the replay, so nothing needs its mods.
+            if let Some(generation) = replay_mods_generation {
+                crate::infra::mods::restore_own_mods_after_replay(Some(generation)).await;
+            }
+            return Err(reason);
+        }
+        if let Some(generation) = replay_mods_generation {
+            // Watched by polling, the way `GameProcess` watches the process
+            // itself: a replay lasts minutes, and a second or two of delay on
+            // the way back to the player's own mods costs nothing.
+            let process = self.process.clone();
+            tokio::spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    if !process.replay_running() {
+                        crate::infra::mods::restore_own_mods_after_replay(Some(generation)).await;
+                        return;
+                    }
+                }
+            });
+        }
         Ok(warning)
     }
 
