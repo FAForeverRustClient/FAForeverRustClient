@@ -50,6 +50,12 @@ pub enum NotificationKind {
     /// somebody mid-game to mention one would be exactly the interruption the
     /// request asked to avoid.
     StreamLive,
+    /// Somebody whose rating window takes yours has joined a matchmaker queue
+    /// the player asked to hear about, and the player is not searching it.
+    ///
+    /// Opt-in per queue, and off until then: see
+    /// `NotificationPreferences::queue_opponent_queues`.
+    QueueOpponent,
     Error,
 }
 
@@ -80,6 +86,10 @@ impl NotificationKind {
     ///   is to sit in a filling lobby with the client in the background: kept
     ///   to the notification centre, it only ever reached the one person it
     ///   cannot help, the one already looking at the client.
+    /// - [`Self::QueueOpponent`]: the same reasoning. It exists for somebody
+    ///   waiting with the client in the background for an opponent to turn up,
+    ///   it is off until a queue is picked, and the opponent it announces stops
+    ///   waiting the moment somebody else takes them.
     ///
     /// Everything else fails that test, including the loud-sounding ones. An
     /// error, a server notice, a cache warning and a new client version are all
@@ -98,6 +108,7 @@ impl NotificationKind {
                 | Self::MapGenerated
                 | Self::EventReminder
                 | Self::GameFull
+                | Self::QueueOpponent
         )
     }
 }
@@ -250,6 +261,7 @@ mod tests {
             NotificationKind::MapGenerated,
             NotificationKind::EventReminder,
             NotificationKind::GameFull,
+            NotificationKind::QueueOpponent,
         ] {
             assert!(kind.raises_os_notification(), "{kind:?} expires");
         }

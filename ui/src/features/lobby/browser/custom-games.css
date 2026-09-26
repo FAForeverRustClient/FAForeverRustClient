@@ -277,17 +277,27 @@
   letter-spacing: -.01em;
 }
 
+/* The host and the tags in two tracks rather than one run of text. Run
+   together, every row's tags began wherever its host's name happened to end,
+   so the same "faf" chip and the same rating range stood at a different place
+   in every row (issue 341). A host track of one width puts the tags of every
+   row on one line down the list. It is sized for a typical login, a longer one
+   is cut short with its full name on hover, and it gives way before the tags
+   do when the column is dragged narrow. */
 .game-browser-details {
-  display: flex;
+  display: grid;
+  grid-template-columns: min(150px, 45%) minmax(0, 1fr);
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
+  column-gap: 8px;
   font-size: 11px;
 }
 
 .game-browser-host {
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-muted);
   font-size: 11px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -297,9 +307,11 @@
 }
 
 .game-browser-tags {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
+  min-width: 0;
 }
 
 .game-browser-tags i {
