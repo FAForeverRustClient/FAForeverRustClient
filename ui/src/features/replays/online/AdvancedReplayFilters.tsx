@@ -13,10 +13,6 @@ const GAME_TYPES: { id: string; label: MessageKey }[] = [
   { id: "fafdevelop", label: "lobby.host.mod.fafdevelop" },
   { id: "nomads", label: "lobby.host.mod.nomads" },
 ];
-const GAME_TYPE_IDS = new Set(GAME_TYPES.map((type) => type.id));
-
-/** Featured mods the game-mode picker already offers. */
-const IN_GAME_MODES = new Set(["coop", "ladder1v1"]);
 
 const MAX_DURATION_MINUTES = 60;
 const MAX_MAP_SIZE_KM = 40;
@@ -52,15 +48,14 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
   const VICTORY_OPTIONS: MultiSelectOption[] = VICTORY_OPTION_KEYS.map(
     (option) => ({ value: option.value, label: t(option.label) }),
   );
-  const gameTypeOptions: MultiSelectOption[] = GAME_TYPES.map((type) => ({ value: type.id, label: t(type.label) }));
-  // Every other featured mod the vault knows: a whole different game built on
-  // FA rather than a version of FAF. The two the game-mode picker already
-  // offers are left out, so nothing can be asked for in two places.
-  const moddedOptions: MultiSelectOption[] = featuredMods
-    .filter((mod) => !GAME_TYPE_IDS.has(mod) && !IN_GAME_MODES.has(mod))
-    .map((mod) => ({ value: mod, label: mod }));
-  // Both pickers write the one `featuredMods` list the query carries, each
-  // keeping the other's half of it.
+  // The host dialog's four, in its order, less any the vault does not list:
+  // a type the vault has no games of is a filter that can only come back
+  // empty. Until the list has loaded all four are offered.
+  const gameTypeOptions: MultiSelectOption[] = GAME_TYPES
+    .filter((type) => featuredMods.length === 0 || featuredMods.includes(type.id))
+    .map((type) => ({ value: type.id, label: t(type.label) }));
+  // The picker writes the one `featuredMods` list the query carries, keeping
+  // what else is in it: the game-mode picker above puts co-op there.
   const pickFeatured = (within: MultiSelectOption[], picked: string[]) => {
     const own = new Set(within.map((option) => option.value));
     set("featuredMods", [...form.featuredMods.filter((mod) => !own.has(mod)), ...picked]);
@@ -189,9 +184,9 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
             swapped rows. */}
         {/* "Game type" is what a game is, and the host dialog's four are all
             there are: FAF, its beta and develop balances, and Nomads (#343).
-            Everything else the vault calls a featured mod is its own game,
-            under "Modded games". Co-op and the ladder are neither, since the
-            game-mode picker above already asks for them. Sim mods such as
+            The vault's other featured mods (Phantom-X, Murderparty and the
+            like) are not offered: searching for them turned up no replays,
+            and a filter that only comes back empty is worse than none. Sim mods such as
             Total Mayhem cannot be filtered on at all: the vault does not
             record which ones a game ran with. */}
         <div className="vault-field">
@@ -200,15 +195,6 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
             options={gameTypeOptions}
             selected={pickedFrom(gameTypeOptions)}
             onChange={(picked) => pickFeatured(gameTypeOptions, picked)}
-          />
-        </div>
-
-        <div className="vault-field">
-          <MultiSelect
-            label={t("replays.filters.moddedGames")}
-            options={moddedOptions}
-            selected={pickedFrom(moddedOptions)}
-            onChange={(picked) => pickFeatured(moddedOptions, picked)}
           />
         </div>
 
