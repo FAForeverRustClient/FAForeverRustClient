@@ -515,3 +515,81 @@
   flex: 1;
   font-size: 12px;
 }
+
+/* Managing every replay tag at once (issue 324). */
+.replay-tags-manage {
+  align-self: flex-start;
+  margin-top: var(--space-1);
+  padding: 0;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.replay-tags-manage:hover,
+.replay-tags-manage:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
+.replay-tags {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(560px, 90vw);
+}
+
+.replay-tags h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.replay-tags > p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.replay-tags-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 50vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.replay-tags-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.replay-tags-name {
+  overflow: hidden;
+  color: var(--color-accent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-tags-count {
+  font-size: 12px;
+}
+
+.replay-tags-input {
+  min-width: 0;
+}
+
+.replay-tags-actions {
+  display: flex;
+  justify-content: flex-end;
+}

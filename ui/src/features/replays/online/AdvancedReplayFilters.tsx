@@ -1,5 +1,6 @@
 import type { ReplayQuery } from "../../../ipc/bindings";
 import { MultiSelect, type MultiSelectOption } from "../../../design-system/MultiSelect";
+import { ManageReplayTagsButton } from "../ReplayTagsDialog";
 import { RangeSlider } from "../../../design-system/RangeSlider";
 import { FACTION_OPTIONS } from "../../../shared/factions";
 import type { MessageKey } from "../../../i18n";
@@ -141,6 +142,7 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
             selected={selectedTags}
             onChange={onTags}
           />
+          <ManageReplayTagsButton />
         </div>
 
         <div className="vault-field">

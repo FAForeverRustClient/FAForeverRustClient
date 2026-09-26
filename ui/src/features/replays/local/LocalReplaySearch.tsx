@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { MultiSelect } from "../../../design-system/MultiSelect";
+import { ManageReplayTagsButton } from "../ReplayTagsDialog";
 import { allReplayTags } from "../../../shared/rules/replayNotes";
 import { useAppStore } from "../../../store/store";
 import { Icon } from "../../../design-system/Icon";
@@ -260,6 +261,7 @@ export function LocalReplaySearch({
                 selected={form.tags}
                 onChange={(tags) => set("tags", tags)}
               />
+              <ManageReplayTagsButton />
             </div>
             <label className="vault-field">
               <span className="vault-field-label">{t("replays.search.recorder")}</span>

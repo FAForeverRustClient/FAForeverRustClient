@@ -277,6 +277,30 @@ impl SocialPreferences {
             .find(|entry| entry.replay_id == replay_id)
     }
 
+    /// Rename a tag on every replay that carries it, or remove it from all of
+    /// them when `to` is empty (#324). Matched case-insensitively, the way
+    /// tags are kept once per replay. A note left with neither comment nor
+    /// tag goes, and a rename onto a tag a replay already has merges the two.
+    pub fn rename_replay_tag(&mut self, from: &str, to: &str) {
+        let from = from.trim().to_lowercase();
+        if from.is_empty() {
+            return;
+        }
+        let to = to.trim();
+        for note in &mut self.replay_notes {
+            let mut renamed = Vec::with_capacity(note.tags.len());
+            for tag in std::mem::take(&mut note.tags) {
+                if tag.to_lowercase() != from {
+                    renamed.push(tag);
+                } else if !to.is_empty() {
+                    renamed.push(to.to_string());
+                }
+            }
+            note.tags = renamed;
+        }
+        *self = std::mem::take(self).normalized();
+    }
+
     /// Set or clear one replay's note. Empty comment and no tags clears it.
     pub fn set_replay_note(&mut self, replay_id: i32, comment: String, tags: Vec<String>) {
         if replay_id <= 0 {
@@ -2689,6 +2713,11 @@ pub enum SettingsCommand {
         comment: String,
         tags: Vec<String>,
     },
+    /// Rename a replay tag everywhere, or delete it when `to` is empty (#324).
+    RenameReplayTag {
+        from: String,
+        to: String,
+    },
     SetNotifications {
         preferences: NotificationPreferences,
     },
@@ -3681,6 +3710,32 @@ mod tests {
 
         preferences.set_replay_note(0, "no game".into(), Vec::new());
         assert!(preferences.replay_notes.is_empty());
+    }
+
+    #[test]
+    fn a_tag_is_renamed_or_removed_on_every_replay() {
+        let mut preferences = SocialPreferences::default();
+        preferences.set_replay_note(1, String::new(), vec!["Lots finals".into(), "casts".into()]);
+        preferences.set_replay_note(2, String::new(), vec!["lots finals".into()]);
+        preferences.set_replay_note(3, "keep me".into(), vec!["LOTS FINALS".into()]);
+
+        preferences.rename_replay_tag("lots FINALS", "Lots 2026");
+        assert_eq!(
+            preferences.replay_note_for(1).unwrap().tags,
+            ["Lots 2026", "casts"]
+        );
+        assert_eq!(preferences.replay_note_for(2).unwrap().tags, ["Lots 2026"]);
+
+        // Renaming onto a tag the replay already has merges the two.
+        preferences.rename_replay_tag("casts", "lots 2026");
+        assert_eq!(preferences.replay_note_for(1).unwrap().tags, ["Lots 2026"]);
+
+        // Deleting drops a note that is left with nothing, keeps one with a comment.
+        preferences.rename_replay_tag("Lots 2026", "");
+        assert!(preferences.replay_note_for(1).is_none());
+        assert!(preferences.replay_note_for(2).is_none());
+        assert_eq!(preferences.replay_note_for(3).unwrap().comment, "keep me");
+        assert!(preferences.replay_note_for(3).unwrap().tags.is_empty());
     }
 
     #[test]
