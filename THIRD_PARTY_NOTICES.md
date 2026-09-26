@@ -57,3 +57,17 @@ not have to find out the hard way.
 
 It is the only sound file the client ships. The other five notification tones
 are synthesised at runtime; see `ui/src/features/notifications/notificationSound.ts`.
+
+## Bundled typefaces
+
+Every typeface the client uses is self-hosted in `ui/public/fonts/` and
+declared in `ui/src/design-system/fonts.css`. Nothing is fetched from a font
+CDN at runtime, so the desktop app needs no network access to render text.
+
+| Family | Designer / publisher | Licence |
+| --- | --- | --- |
+| Geist, Geist Mono | Vercel | SIL Open Font License 1.1 |
+
+`docs/design/forgemaptoolkit-theme.css` names two more, Poppins and Space
+Mono, that an archived theme used. Neither is in the tree: that file records
+where to fetch them and under what licence if the theme is ever picked up.

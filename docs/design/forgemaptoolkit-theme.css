@@ -1,0 +1,514 @@
+/*
+ * ForgeMapToolkit as a theme for this client. Archived, not wired up.
+ *
+ * Nothing imports this file and nothing should. It is the complete recipe for
+ * the `test` theme that briefly replaced the Python client theme in September
+ * 2026: the token block, the glass rules, the typefaces and the wiring, kept
+ * in one place so the work survives the revert rather than living only in a
+ * branch nobody remembers the name of.
+ *
+ * It was pulled out again because the experiment was exactly that, and because
+ * the Python client theme is a reference-client aesthetic the project actually
+ * ships. Nothing here was wrong; it simply was not the decision.
+ *
+ * ── How to put it back ──────────────────────────────────────────────────
+ *
+ * 1. faf-domain, `state/settings.rs`: add the variant back to `Theme`. It was
+ *    called `Test` and serialised as `test`, which is the name to change if it
+ *    ships for real. Adding it next to `PythonClient` rather than replacing it
+ *    is the cheaper move: two themes cost one token block.
+ *
+ * 2. If it replaces a theme again rather than joining them, `settings_file.rs`
+ *    needs the rename in `migrated()`. A settings document naming a theme this
+ *    build does not know fails to parse, and a settings document that fails to
+ *    parse costs the player every setting in it, not just the theme:
+ *
+ *        if let Some(theme) = document.pointer_mut("/theme") {
+ *            if theme.as_str() == Some("pythonClient") {
+ *                *theme = serde_json::Value::String("test".into());
+ *            }
+ *        }
+ *
+ * 3. `cargo run -q -p faf-ipc --bin export-bindings` to regenerate
+ *    `ui/src/ipc/bindings.ts`.
+ *
+ * 4. `ui/src/features/settings/ThemePicker.tsx`: one entry in `THEMES`.
+ *
+ * 5. Six catalogues in `ui/src/i18n/catalog/`, two keys each. What they held:
+ *
+ *        en  "Test"    "ForgeMapToolkit look, work in progress"
+ *        de  "Test"    "ForgeMapToolkit-Optik, in Arbeit"
+ *        fr  "Test"    "Esthétique ForgeMapToolkit, en cours"
+ *        es  "Prueba"  "Estética de ForgeMapToolkit, en desarrollo"
+ *        pl  "Test"    "Estetyka ForgeMapToolkit, w toku"
+ *        ru  "Тест"    "Оформление в стиле ForgeMapToolkit, в разработке"
+ *
+ *    Build the values with `json.dumps(value, ensure_ascii=False)` and write
+ *    the file as UTF-8 if a script does it: `i18n.test.ts` has a mojibake gate
+ *    that a careless scripted edit trips every time.
+ *
+ * 6. The token block below goes into `ui/src/design-system/tokens.css`, which
+ *    is the only stylesheet allowed to name a colour.
+ *
+ * 7. The glass rules go into their own `ui/src/design-system/glass.css`,
+ *    imported from `styles.css`. They must not name a colour: the hex gate in
+ *    CI reads every `ui/src/**/*.css` except tokens.css.
+ *
+ * 8. The typefaces: re-fetch the woff2 files into `ui/public/fonts/` (the URLs
+ *    are beside the @font-face block at the bottom of this file), then put the
+ *    declarations into `ui/src/design-system/fonts.css`.
+ *
+ * ── What this is not ────────────────────────────────────────────────────
+ *
+ * The whole design language of ForgeMapToolkit does not fit in a token set,
+ * and the parts that did not fit are absent on purpose rather than forgotten:
+ * the uppercase labels at wide tracking, the corner brackets, the header orb
+ * that pulses. Each of those is a component change, and the brief was tokens.
+ *
+ * The source of the palette is `FMT_v2/root.css` in the ForgeMapToolkit
+ * repository. Read that first if this is ever picked up again; it will have
+ * moved on.
+ */
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   1. THE TOKEN BLOCK, for tokens.css
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── test: ForgeMapToolkit: near-black, sharp, orange, Poppins ────────
+ *
+ * The ForgeMapToolkit design language, expressed as nothing but tokens. It
+ * took the slot the Python client theme held, and it is called `test` because
+ * that is what it is for now: the name is meant to change once we decide
+ * whether to keep it, and dropping the experiment is one revert.
+ *
+ * Everything below is lifted from ForgeMapToolkit's own `root.css`, not
+ * approximated: its five backgrounds in their own order, its two border greys,
+ * its three text greys, its orange and that orange's glow. No component is
+ * touched, so what the theme cannot express in a token (the uppercase wide
+ * tracking, the dot grid, the pulsing header orb) is deliberately absent.
+ */
+[data-theme='test'] {
+  color-scheme: dark;
+  /* Two opaque grounds, and everything above them is glass.
+     --bg-secondary is the workspace and --bg-primary the sidebar, because in
+     ForgeMapToolkit the darkest surface is the navigation bar, not the page
+     behind it. These two stay opaque on purpose: they are what the panels are
+     transparent *against*, and glass.css draws the dot grid and the accent orb
+     onto them so there is something for the panels to let through. */
+  --color-bg: #111111;
+  --color-sidebar: #0a0a0a;
+  /* The three surfaces are ForgeMapToolkit's own card fill, which is a white
+     wash at a few per cent rather than a grey: `rgba(255,255,255,0.04)` is
+     literally what its tool cards are made of. Over #111111 this lands within
+     a shade of the #141414/#1a1a1a/#1f1f1f it used to be, so nothing gets
+     lighter; the difference is that the ground now shows through.
+     A floating overlay cannot be this thin and stay readable, so glass.css
+     gives every popover, menu and modal its own frosted fill. */
+  --color-surface: rgba(255, 255, 255, 0.035);
+  --color-surface-raised: rgba(255, 255, 255, 0.07);
+  --color-surface-hover: rgba(255, 255, 255, 0.105);
+  /* Lit white edges rather than flat grey. ForgeMapToolkit has both, and the
+     grey is its chrome while the white is its glass: a panel that is a white
+     wash wants the border the same wash leaves behind. */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+  --color-text: #ffffff;
+  --color-muted: #b0b0b0;
+  --color-subtle: #666666;
+  --color-accent: #ff8c00;
+  /* Near-black on the orange, not white: white on #ff8c00 is 2.2:1, and the
+     accent is a fill under button labels here, not a text colour. */
+  --color-accent-contrast: #0a0a0a;
+  --color-accent-glow: rgba(255, 140, 0, 0.35);
+  --color-brand-mark: #ffffff;
+  /* The lighter cut of the accent (--accent-light there). Unlike the two
+     reference-client themes this one does not need lifting for contrast: the
+     accent clears 8:1 on all three surfaces. It is lifted so a rating does not
+     read as one more accented control. */
+  --color-rating: #ffa533;
+  --color-ok: #4caf50;
+  --color-warn: #ff9800;
+  --color-error: #f44336;
+
+  /* Sharp. ForgeMapToolkit's cards, buttons and modals have no radius at all;
+     the 2 px left on the two largest steps is the 3 px top accent line its
+     panels carry, rounded down to something a panel corner can wear. */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+
+  /* Elevation is a glow here, not just a drop shadow: the two floating steps
+     carry the accent halo ForgeMapToolkit puts under a lifted card, over a
+     black deep enough to read against #0a0a0a. The hairline step stays black
+     only, because a halo under every small control is noise. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.55);
+  --shadow-md: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 50px var(--color-accent-glow);
+  --shadow-popover: 0 24px 70px rgba(0, 0, 0, 0.7), 0 0 60px var(--color-accent-glow);
+
+  /* Poppins for the interface, Space Mono for the technical voice, both
+     self-hosted (see fonts.css, which says why the mono slot is Space Mono and
+     not ForgeMapToolkit's own Space Grotesk). Geist sits behind each of them
+     rather than a generic fallback: neither has a Cyrillic cut, so Russian is
+     rendered by the font this client already ships rather than by whatever the
+     OS happens to offer. */
+  --font-sans: 'Poppins', 'Geist', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Space Mono', 'Geist Mono', ui-monospace, monospace;
+
+  /* Neon nicks to match a palette that is otherwise all saturated hues on
+     near-black. */
+  --chat-nick-saturation: 85%;
+  --chat-nick-lightness: 64%;
+
+  /*
+   * Glass. These five are the one place this file breaks its own rule that a
+   * token is semantic and lives in every theme: they describe a treatment, not
+   * a role, and only this theme has them. They earn it by keeping glass.css
+   * free of colour, so the whole effect is still tuned from here and a theme
+   * that does not define them simply never matches glass.css's selectors.
+   */
+  --glass-blur: blur(18px) saturate(150%);
+  /* The lit corner and the shaded one: ForgeMapToolkit's card gradient. */
+  --glass-sheen: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    rgba(255, 255, 255, 0.014) 46%,
+    rgba(0, 0, 0, 0.14) 100%
+  );
+  /* The hairline where light catches the top edge of a pane of glass. */
+  --glass-edge: rgba(255, 255, 255, 0.14);
+  /* A floating overlay's own fill: opaque enough to read a menu through. */
+  --glass-overlay: rgba(12, 12, 12, 0.74);
+  /* The ground the glass is held against: the dot grid and the accent orb.
+     The grid is ForgeMapToolkit's own 0.065, which is a dot you notice only
+     once something translucent is laid over it. */
+  --glass-grid: rgba(255, 255, 255, 0.065);
+  --glass-orb: rgba(255, 140, 0, 0.1);
+  /* Behind a modal. Lighter than the 68% black the other themes darken to,
+     because a frosted panel over a near-black scrim is just a dark panel. */
+  --glass-scrim: rgba(4, 4, 4, 0.5);
+}
+
+/*
+ * Reduced transparency. Windows has a system setting for it and Chromium
+ * reports it, so somebody who has asked their operating system for solid
+ * surfaces gets solid ones: the glass tokens collapse to the flat greys this
+ * theme had before, and every blur is dropped. Same theme, same layout, no
+ * glass. It lives here rather than in glass.css because these are token
+ * values, and tokens.css is the only stylesheet allowed to name a colour.
+ */
+@media (prefers-reduced-transparency: reduce) {
+  [data-theme='test'] {
+    --color-surface: #141414;
+    --color-surface-raised: #1a1a1a;
+    --color-surface-hover: #1f1f1f;
+    --color-border: #2a2a2a;
+    --color-border-strong: #333333;
+    --glass-overlay: #141414;
+    --glass-scrim: rgba(0, 0, 0, 0.68);
+    --glass-sheen: none;
+    --glass-blur: none;
+    --glass-grid: transparent;
+    --glass-orb: transparent;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   2. THE GLASS RULES, for a theme-scoped glass.css
+
+   Why a stylesheet at all, when a theme is meant to be a token set:
+   glassmorphism is three things and only one of them is a colour. The
+   translucent fill is a colour and rides on --color-surface. The other two
+   are not: something has to be behind the glass for translucency to show
+   anything, and backdrop-filter has to be declared on a rule.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/*
+ * Glass, for the `test` theme and nothing else.
+ *
+ * Every selector in this file is prefixed with `[data-theme='test']`, so the
+ * other three themes never match a rule in it and deleting the one import in
+ * styles.css removes the whole treatment. It carries no colour of its own
+ * either: every value here is a `--glass-*` token from tokens.css, which is
+ * where the effect is tuned.
+ *
+ * Why this file exists at all, when a theme is supposed to be a token set:
+ * glassmorphism is three things, and the token vocabulary can only express
+ * one of them. A translucent fill is a colour, so `--color-surface` carries
+ * it. The other two are not colours: something has to *be* behind the glass
+ * for translucency to show anything, and `backdrop-filter` has to be declared
+ * on a rule. Neither has a token to ride on, and inventing one would still
+ * need a rule to consume it.
+ *
+ * What this file deliberately does not do: move anything. No geometry, no
+ * spacing, no display, no position. Backgrounds, borders and filters only.
+ */
+
+/* ── The ground ──────────────────────────────────────────────────────────
+ *
+ * ForgeMapToolkit's dot grid and the ambient orange orb behind it, painted
+ * onto the two opaque surfaces the app is built on. Without this the panels
+ * above would be translucent against a flat fill, which looks like nothing at
+ * all: glass reads as glass because of what it lets through.
+ *
+ * A background layer rather than a pseudo-element on purpose. `::before` on a
+ * container would have to be positioned and stacked, and it would be one more
+ * thing that can end up on top of a tooltip. A background cannot overlap
+ * anything, and the colour underneath is still the theme's own --color-bg.
+ */
+[data-theme='test'] .workspace {
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--glass-grid) 1px, transparent 0),
+    radial-gradient(ellipse 1100px 720px at 78% -14%, var(--glass-orb), transparent 62%);
+  background-repeat: repeat, no-repeat;
+  background-size: 22px 22px, 100% 100%;
+}
+
+[data-theme='test'] .sidebar,
+[data-theme='test'] .centered {
+  background-image: radial-gradient(circle at 1px 1px, var(--glass-grid) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+/* ── The panes ───────────────────────────────────────────────────────────
+ *
+ * The sheen is the gradient ForgeMapToolkit puts on a tool card: lit at the
+ * top left corner, shaded at the bottom right, so a flat wash reads as a sheet
+ * with a light source. The lit top edge is the other half of the same trick.
+ *
+ * `border-top-color` rather than an inset box-shadow, because several of these
+ * carry a real shadow of their own (`--shadow-popover` on a modal) and a
+ * box-shadow here would replace it rather than join it.
+ *
+ * These rules are two selectors deep, which beats the one-deep rules in
+ * patterns.css and in the feature stylesheets whatever order Vite emits them
+ * in. That matters: this sheet is imported eagerly and most feature CSS is
+ * not.
+ */
+[data-theme='test'] .surface,
+[data-theme='test'] .surface-panel,
+[data-theme='test'] .surface-raised,
+[data-theme='test'] .surface-error,
+[data-theme='test'] .search-field,
+[data-theme='test'] .tag {
+  background-image: var(--glass-sheen);
+  border-top-color: var(--glass-edge);
+}
+
+/* ── The floating things ─────────────────────────────────────────────────
+ *
+ * The only place a real `backdrop-filter` is worth its cost, and the only
+ * place it is safe.
+ *
+ * Worth it, because these are the elements that actually have content passing
+ * behind them; a panel sitting in the page flow has only the ground behind it,
+ * which the translucent fill already shows.
+ *
+ * Safe, because `backdrop-filter` turns an element into the containing block
+ * for any `position: fixed` descendant. This client positions half a dozen
+ * menus and tooltips with fixed coordinates measured off the viewport
+ * (`.game-tile-tooltip` inside a lobby tile, `.chat-user-menu` inside the user
+ * list, and so on), and every one of those tiles is a `.surface`. Blurring
+ * `.surface` would silently move them. The elements listed here are the leaves
+ * of that tree: they are the floating thing, so nothing floats inside them.
+ *
+ * They also get an opaque-enough fill of their own. A menu at the three per
+ * cent wash the in-flow surfaces use would be a list of words hovering over
+ * whatever it covers.
+ */
+[data-theme='test'] .modal-panel,
+[data-theme='test'] .select-popover,
+[data-theme='test'] .multi-select-popover,
+[data-theme='test'] .game-tile-tooltip,
+[data-theme='test'] .game-context-menu,
+[data-theme='test'] .chat-game-popover,
+[data-theme='test'] .chat-user-menu,
+[data-theme='test'] .leaderboard-season-popover,
+[data-theme='test'] .live-delay-menu,
+[data-theme='test'] .notification-panel {
+  background-color: var(--glass-overlay);
+  background-image: var(--glass-sheen);
+  border-top-color: var(--glass-edge);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* The scrim a modal is opened over. It already carried a blur and was already
+   a containing block for fixed descendants, so this adds no new hazard; it
+   only stops lighting a frosted panel against near-black, which would make the
+   frosting invisible and the panel merely dark. */
+[data-theme='test'] .modal-backdrop {
+  background-color: var(--glass-scrim);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* A toast is read at a glance while something else is happening behind it, so
+   it gets the frosting but keeps whatever fill its own stylesheet chose. */
+[data-theme='test'] .notification-toasts > * {
+  backdrop-filter: var(--glass-blur);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   3. THE TYPEFACES, for fonts.css
+
+   Both are SIL Open Font License 1.1. Poppins is Indian Type Foundry and
+   Jonny Pinhorn; Space Mono is Colophon Foundry. The files below are the
+   Latin and Latin Extended subsets published by Google Fonts, self-hosted
+   like Geist so the desktop app needs no network access to draw text.
+
+   ForgeMapToolkit's own second face is Space Grotesk, not Space Mono. It was
+   swapped because Space Grotesk is not monospaced: measured out of the Google
+   Fonts file, its '1' is 16.7 px where its '0' is 25.6 px, which misaligns
+   every rating column, timestamp and game path that --font-mono exists for.
+   Space Mono is the typeface Space Grotesk was drawn from, so the technical
+   voice keeps the same skeleton and the columns keep their grid.
+
+   To re-fetch the files, request these two stylesheets with a browser user
+   agent and download the latin and latin-ext urls out of them:
+
+     https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700
+     https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700
+
+   That is 12 files and about 95 KB in total. Poppins has no Cyrillic cut and
+   Space Mono has none either, which is why the token stack keeps Geist right
+   behind both: the unicode-range on each face leaves Russian to the font that
+   can draw it.
+
+   One thing that has to stay whatever happens here: `fonts.css` is imported
+   from `styles.css`. It was not, before this experiment, so the self-hosted
+   Geist had never actually been fetched by anything. Declaring a face costs
+   nothing on its own, so that import is inert for every theme that does not
+   name one of these families.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/*
+ * Poppins + Space Mono: the two faces of the ForgeMapToolkit design language,
+ * self-hosted for the same reason Geist is. Only the 'test' theme asks for
+ * them, through --font-sans and --font-mono; every other theme never touches
+ * these files, because a @font-face nobody references is never fetched.
+ *
+ * ForgeMapToolkit's second face is Space Grotesk, and Space Mono stands in for
+ * it because Space Grotesk is not monospaced: measured out of the file, its
+ * '1' is 16.7 px where its '0' is 25.6 px, which would misalign every rating
+ * column, timestamp and game path --font-mono exists for. Space Mono is the
+ * typeface Space Grotesk was drawn from, so the technical voice keeps the same
+ * skeleton and the columns keep their grid.
+ *
+ * Poppins ships as static weights (it has no variable cut), so the four the
+ * client actually asks for are here, and the 450/550/650 this codebase uses in
+ * places snap to the nearest of them. It carries no Cyrillic at all, which is
+ * why the token stack keeps Geist right behind it: the unicode-range below
+ * leaves Russian to Geist rather than to a system fallback.
+ *
+ * Poppins: Indian Type Foundry / Jonny Pinhorn, SIL Open Font License 1.1.
+ * Space Mono: Colophon Foundry, SIL Open Font License 1.1.
+ */
+
+/* latin-ext */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/poppins-400-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/poppins-400-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/poppins-500-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/poppins-500-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/poppins-600-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/poppins-600-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/poppins-700-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/poppins-700-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/space-mono-400-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/space-mono-400-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/space-mono-700-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/space-mono-700-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
