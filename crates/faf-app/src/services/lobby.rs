@@ -1025,6 +1025,21 @@ fn players_in_rating_range(queue: &MatchmakerQueue, rating: &PlayerLobbyRating) 
     if windows.is_empty() {
         return None;
     }
+    if queue.team_size == 1 {
+        // The server's own 1v1 rule rather than the windows, which it never
+        // widens and does not match on. See `matchReach` in the twin.
+        let mean = matchmaking_mean(rating);
+        let reach = match_reach(f64::from(rating.deviation), SEARCH_EXPANSION_MAX);
+        return Some(
+            windows
+                .iter()
+                .filter(|window| {
+                    let centre = f64::from(window.min + window.max) / 2.0;
+                    (centre - mean).abs() <= reach
+                })
+                .count() as i32,
+        );
+    }
     let mean = rating.mean;
     Some(
         windows
@@ -1032,6 +1047,34 @@ fn players_in_rating_range(queue: &MatchmakerQueue, rating: &PlayerLobbyRating) 
             .filter(|window| window.min < mean && mean < window.max)
             .count() as i32,
     )
+}
+
+/// `trueskill.setup(beta=240)` in the server's `config.py`.
+const TRUESKILL_BETA: f64 = 240.0;
+/// `LADDER_SEARCH_EXPANSION_MAX`: how far a match threshold drops, at most.
+const SEARCH_EXPANSION_MAX: f64 = 0.25;
+
+/// The mean the server matches a 1v1 search on: pulled towards 500 until the
+/// account has played ten games (`NEWBIE_MIN_GAMES`, `NEWBIE_BASE_MEAN`).
+fn matchmaking_mean(rating: &PlayerLobbyRating) -> f64 {
+    let games = f64::from(rating.games_played.clamp(0, 10));
+    if rating.games_played > 10 {
+        return f64::from(rating.mean);
+    }
+    ((10.0 - games) * 500.0 + games * f64::from(rating.mean)) / 10.0
+}
+
+/// How far apart in mean two players of this deviation can be and still be
+/// matched in 1v1, with their thresholds dropped by `expansion`. Twin of
+/// `matchReach` in `queueRatingRange.ts`, which carries the derivation.
+fn match_reach(deviation: f64, expansion: f64) -> f64 {
+    let c2 = 2.0 * TRUESKILL_BETA.powi(2) + 2.0 * deviation.powi(2);
+    let self_quality = (2.0 * TRUESKILL_BETA.powi(2) / c2).sqrt();
+    let ratio = 0.8 - expansion / self_quality;
+    if ratio <= 0.0 {
+        return f64::INFINITY;
+    }
+    (-2.0 * c2 * ratio.ln()).sqrt()
 }
 
 impl GameNotificationTracker {

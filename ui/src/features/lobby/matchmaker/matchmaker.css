@@ -1443,6 +1443,15 @@
   font-size: 11px;
 }
 
+/* How "in range" is counted (issue 303). A sentence rather than a label, so it
+   wraps at the popup's width instead of stretching it. */
+.matchmaker-queue-breakdown .matchmaker-queue-breakdown-note {
+  max-width: 260px;
+  margin-top: 6px;
+  white-space: normal;
+  line-height: 1.35;
+}
+
 /* The latest matchmaker games (issue 301), as a table built like the
    live-replay one: fixed layout, widths from the colgroup, a draggable divider
    on the leading edge of every header cell after the first. */
