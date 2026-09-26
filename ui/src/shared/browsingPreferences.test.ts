@@ -92,6 +92,7 @@ describe("browsing preferences", () => {
       replayListColumns: [10, 200, 0, -5, 9999],
       liveReplayColumns: [],
       coopBoardColumns: [],
+      matchmakerRecentColumns: [],
       modVaultPreset: "  UI  ",
       modPresets: [
         { name: "  Replay watching  ", uids: ["  a  ", "A", "", "b"] },
