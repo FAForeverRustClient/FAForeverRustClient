@@ -161,9 +161,14 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
             `fafdevelop` game, which is a real search and a rare one, while the
             date is the bound half the searches in this vault want. The two
             swapped rows. */}
+        {/* "Game type", the word the host dialog and the live tab use for the
+            same list. `faf`, `fafbeta`, `fafdevelop` and `nomads` are what a
+            game is, not mods added to it, and calling the filter "Mod" had it
+            read as the place to look for sim mods, which the vault listing
+            does not carry at all (#343). */}
         <div className="vault-field">
           <MultiSelect
-            label={t("replays.search.mod")}
+            label={t("lobby.host.gameType")}
             options={modOptions}
             selected={form.featuredMods}
             onChange={(v) => set("featuredMods", v)}

@@ -27,6 +27,13 @@ import { PlayerName } from "../../../shared/components/nameColors";
 import { formatDecimal, type MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { isObserverTeam } from "../ReplayRoster";
+import { ipc } from "../../../ipc/client";
+import { requestModVaultFocus } from "../../../shared/modVaultFocus";
+
+function openModInVault(mod: string) {
+  requestModVaultFocus(mod);
+  ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "mods" } } });
+}
 
 type InsightTab =
   | "options"
@@ -484,8 +491,20 @@ export function ReplayInsights({
 
           {details && tab === "mods" && (
             <ul className="replay-sim-mod-list">
+              {/* Each one opens the mod vault on that mod (#343), the way a
+                  lobby's mod list does. The replay names its mods, not their
+                  vault ids, so the vault is searched by the name. */}
               {simMods.map((mod) => (
-                <li key={mod} className="surface-chip">{mod}</li>
+                <li key={mod}>
+                  <button
+                    type="button"
+                    className="surface-chip replay-sim-mod"
+                    title={t("lobby.details.openModInVault", { mod })}
+                    onClick={() => openModInVault(mod)}
+                  >
+                    {mod}
+                  </button>
+                </li>
               ))}
             </ul>
           )}
