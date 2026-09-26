@@ -192,6 +192,12 @@
   white-space: nowrap;
 }
 
+/* The former name an account was found by (issue 315), after its login. */
+.player-card-suggestion-former {
+  margin-left: var(--space-2);
+  font-size: 12px;
+}
+
 .player-card-search input,
 .player-history-toolbar select {
   min-height: 34px;

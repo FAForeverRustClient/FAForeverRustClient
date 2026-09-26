@@ -4665,6 +4665,36 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "the profile search's account suggestions replace each other",
+            vec![
+                PlayerCardEvent::AccountsFound {
+                    lookup: AccountLookup {
+                        query: "yud".into(),
+                        matches: vec![
+                            AccountLookupMatch {
+                                player_id: 3,
+                                login: "Yudi_Real".into(),
+                                former_name: None,
+                            },
+                            AccountLookupMatch {
+                                player_id: 2,
+                                login: "Later".into(),
+                                former_name: Some("yudi".into()),
+                            },
+                        ],
+                    },
+                }
+                .into(),
+                PlayerCardEvent::AccountsFound {
+                    lookup: AccountLookup {
+                        query: "yudi_".into(),
+                        matches: Vec::new(),
+                    },
+                }
+                .into(),
+            ],
+        ),
+        case(
             "mods load and report a failure",
             vec![
                 ModsEvent::VaultSearching.into(),

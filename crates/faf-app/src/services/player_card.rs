@@ -1,11 +1,33 @@
 //! Player-card orchestration. The port aggregates profile tabs; history stays lazy and pageable.
 
-use faf_domain::state::{PlayerCardCommand, PlayerCardEvent};
+use faf_domain::state::{AccountLookup, PlayerCardCommand, PlayerCardEvent};
+
+/// How many accounts the profile search suggests from the API.
+const ACCOUNT_LOOKUP_LIMIT: usize = 10;
 
 use crate::runtime::{EventSink, ServiceCtx};
 
 pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSink) {
     match command {
+        PlayerCardCommand::LookUpAccounts { query } => {
+            // No generation guard: the answer names the query it answers, and
+            // the search box shows only the one for what is typed now.
+            let matches = match ctx
+                .ports
+                .player_card
+                .lookup_accounts(&query, ACCOUNT_LOOKUP_LIMIT)
+                .await
+            {
+                Ok(matches) => matches,
+                Err(error) => {
+                    tracing::debug!(%error, %query, "account lookup failed");
+                    Vec::new()
+                }
+            };
+            out.emit(PlayerCardEvent::AccountsFound {
+                lookup: AccountLookup { query, matches },
+            });
+        }
         PlayerCardCommand::Open { player_id, login } => {
             let generation = ctx.player_card_profile_generation.begin();
             ctx.player_card_history_generation.invalidate();

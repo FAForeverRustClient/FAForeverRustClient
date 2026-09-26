@@ -58,7 +58,7 @@ export function liveReplayTeams(game: Game): ReplayTeam[] {
 
 interface Props {
   busy: boolean;
-  games: Array<{ game: Game; presentation: MapPresentation }>;
+  games: Array<{ game: Game; presentation: MapPresentation; mapSize: string | null }>;
   matchingCount: number;
   totalCount: number;
   batchSize: number;
@@ -95,9 +95,10 @@ export function LiveReplayCards(props: Props) {
   return (
     <div className="live-replay-card-wrap">
       <div className="replay-grid">
-        {props.games.map(({ game }) => (
+        {props.games.map(({ game, mapSize }) => (
           <LiveReplayCard
             key={game.id}
+            mapSize={mapSize}
             busy={props.busy}
             game={game}
             ageNow={ageNow}
@@ -141,9 +142,12 @@ const LiveReplayCard = memo(function LiveReplayCard({
   tracking,
   onOpen,
   onPlayerMenu,
+  mapSize,
 }: {
   busy: boolean;
   game: Game;
+  /** "10 km", or null when nothing knows it. */
+  mapSize: string | null;
   ageNow: number;
   waitSeconds: number;
   tracking: LiveReplayTracking | null;
@@ -244,7 +248,9 @@ const LiveReplayCard = memo(function LiveReplayCard({
             {title.display}
           </span>
           <span className="replay-card-submap muted">
-            {t("replays.card.onMap", { map: presentation.displayName || game.map })}
+            {t("replays.card.onMap", {
+              map: mapSize ? `${presentation.displayName || game.map} (${mapSize})` : presentation.displayName || game.map,
+            })}
           </span>
         </div>
         <ReplayCardRoster teams={teams} interactive onPlayerMenu={onPlayerMenu} />

@@ -265,6 +265,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   onToggle,
   onPlayerMenu,
   presentation,
+  mapSize,
   tracking,
 }: {
   busy: boolean;
@@ -275,10 +276,13 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   onToggle: (id: number) => void;
   onPlayerMenu: PlayerMenuOpener;
   presentation: MapPresentation;
+  /** "10 km", or null when nothing knows it. */
+  mapSize: string | null;
   tracking: LiveReplayTracking | null;
 }) {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const mapLabel = mapSize ? `${presentation.displayName} (${mapSize})` : presentation.displayName;
   // The vault's record of this match, which the lobby's `game_info` is not:
   // that carries team numbers and logins, and no faction and no rating. The
   // API's `game` row is written when the match launches, so a running game
@@ -386,7 +390,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
         <td>
           <button className="live-game-title" onClick={() => onToggle(game.id)} aria-expanded={expanded}>
             <strong>{game.title || presentation.displayName}</strong>
-            <small>{presentation.displayName} · {prettyGameType(game.gameType)}</small>
+            <small>{mapLabel} · {prettyGameType(game.gameType)}</small>
           </button>
         </td>
         <td className="live-number-cell"><strong>{game.players}</strong><small>/ {game.maxPlayers}</small></td>
@@ -429,7 +433,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
               <div className="live-detail-map">
                 <LiveMapThumbnail presentation={presentation} />
                 <div className="live-detail-map-name">
-                  <strong>{presentation.displayName}</strong>
+                  <strong>{mapLabel}</strong>
                   {/* The technical name, which is what somebody looking for
                       the map in the vault or on disk actually searches. */}
                   <code title={game.map}>{game.map}</code>
