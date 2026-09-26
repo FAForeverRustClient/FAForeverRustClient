@@ -26,4 +26,15 @@ pub trait UploadsPort: Send + Sync {
     /// still a working dialog, and a map with an unreadable preview is not a
     /// map that cannot be published.
     async fn map_preview(&self, request: UploadRequest) -> String;
+
+    /// The name the vault will file this upload under, read from the folder:
+    /// `name` in a mod's `mod_info.lua`, or in a map's `_scenario.lua`.
+    ///
+    /// The vault reads the name out of the archive, not out of the folder it
+    /// was zipped from, so a folder picked from disk is only known by the
+    /// wrong name until this has been asked. `None` when there is nothing to
+    /// read, and the caller keeps what it had.
+    async fn subject_name(&self, _request: UploadRequest) -> Option<String> {
+        None
+    }
 }
