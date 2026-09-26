@@ -1430,7 +1430,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.notes.open": "Заметки и теги",
   "replays.notes.close": "Закрыть заметки",
   "replays.filters.yourTags": "Ваши теги",
-  "replays.filters.moddedGames": "Игры с модами",
   "replays.filters.anyTag": "Любые",
   "replays.search.recorder": "Записал",
   "replays.tags.manage": "Управление тегами",
