@@ -11,6 +11,46 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(ReportingEvent::Opened { player_id, login });
             load_history(ctx, out, generation).await;
         }
+        ReportingCommand::OpenByLogin { login } => {
+            let wanted = login.trim().to_string();
+            if wanted.is_empty() {
+                return;
+            }
+            let found = ctx
+                .ports
+                .player_card
+                .players_by_login(std::slice::from_ref(&wanted))
+                .await;
+            match found {
+                Ok(players) => match players
+                    .into_iter()
+                    .find(|player| player.login.eq_ignore_ascii_case(&wanted))
+                {
+                    Some(player) => {
+                        let generation = next_generation(ctx);
+                        out.emit(ReportingEvent::Opened {
+                            player_id: player.id,
+                            login: player.login,
+                        });
+                        load_history(ctx, out, generation).await;
+                    }
+                    None => notifications::add(
+                        out,
+                        NotificationKind::Error,
+                        "Cannot report player",
+                        format!("No FAF account is called {wanted}."),
+                        None,
+                    ),
+                },
+                Err(error) => notifications::add(
+                    out,
+                    NotificationKind::Error,
+                    "Cannot report player",
+                    format!("Could not look up {wanted}: {error}"),
+                    None,
+                ),
+            }
+        }
         ReportingCommand::Close => {
             next_generation(ctx);
             out.emit(ReportingEvent::Closed);
