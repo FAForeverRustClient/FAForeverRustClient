@@ -1126,9 +1126,30 @@ fn participants(game: &Game) -> impl Iterator<Item = &str> {
 /// wants to know. Whoever is not in the lobby is not told, which is what keeps
 /// this from being a notification about every full game on the server.
 fn filled_up(old: &Game, game: &Game, player_name: &str) -> bool {
-    old.players < old.max_players
-        && game.players >= game.max_players
+    seated_players(old) < old.max_players
+        && seated_players(game) >= game.max_players
         && (game_has_player(game, player_name) || game_has_player(old, player_name))
+}
+
+/// How many of a lobby's seats are taken: the players in a team, observers
+/// left out.
+///
+/// The server's `num_players` counts everybody connected to the lobby, and an
+/// observer is connected without taking a slot. An eight-player map holding
+/// six players and one observer is therefore at seven, and the next player to
+/// join put it at eight: "game full", with a seat still open (#336). The teams
+/// say who sits where, with observers under `-1` or `null`, so they are what
+/// is counted. A game that reports no teams at all falls back to the server's
+/// number rather than to zero.
+fn seated_players(game: &Game) -> i32 {
+    if game.teams.is_empty() {
+        return game.players;
+    }
+    game.teams
+        .iter()
+        .filter(|(team, _)| team.as_str() != "-1" && team.as_str() != "null")
+        .map(|(_, players)| players.len() as i32)
+        .sum()
 }
 
 fn game_has_player(game: &Game, player_name: &str) -> bool {
@@ -1266,6 +1287,44 @@ mod tests {
                 .filter(|signal| matches!(signal, GameNotificationSignal::GameFull(_)))
                 .count(),
             1
+        );
+        assert!(signals.iter().any(
+            |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
+        ));
+    }
+
+    #[test]
+    fn an_observer_does_not_take_a_seat_in_a_full_lobby() {
+        let mut tracker = GameNotificationTracker::default();
+        let with_observer = |id, seated: &[&str], connected| {
+            let mut lobby = game(id, "Me", seated, connected, 8);
+            lobby.teams.insert("-1".into(), vec!["Watcher".into()]);
+            lobby
+        };
+        // Six players and an observer on an eight-player map: the server says
+        // seven.
+        tracker.observe_open(
+            &[with_observer(1, &["Me", "A", "B", "C", "D", "E"], 7)],
+            Some("me"),
+        );
+
+        // A seventh player joins. The server says eight, and a seat is open.
+        let signals = tracker.observe_open(
+            &[with_observer(1, &["Me", "A", "B", "C", "D", "E", "F"], 8)],
+            Some("me"),
+        );
+        assert!(!signals
+            .iter()
+            .any(|signal| matches!(signal, GameNotificationSignal::GameFull(_))));
+
+        // The eighth does fill it.
+        let signals = tracker.observe_open(
+            &[with_observer(
+                1,
+                &["Me", "A", "B", "C", "D", "E", "F", "G"],
+                9,
+            )],
+            Some("me"),
         );
         assert!(signals.iter().any(
             |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
