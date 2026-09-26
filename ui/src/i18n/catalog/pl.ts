@@ -2382,7 +2382,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingLockedTitle": "Gospodarz ograniczył tę poczekalnię do rankingów od {from} do {to}. Twój to {rating}.",
   "lobby.browser.footerCount": "Pokazano {shown} z {total} gier",
   "settings.notifications.desktopAllKinds": "Wysyłaj każde powiadomienie na pulpit",
-  "settings.notifications.desktopAllKindsHint": "Wyłączone: tylko to, na co ktoś czeka (mecz, zaproszenie, uruchomiona gra, gotowa mapa). Włączone: wszystko.",
+  "settings.notifications.desktopAllKindsHint": "Wyłączone: tylko to, na co ktoś czeka (mecz, zaproszenie, uruchomiona gra, gotowa mapa, pełne lobby, przypomnienie o wydarzeniu). Włączone: wszystko.",
   "settings.notifications.sound.silent": "Cisza",
   "settings.notifications.sound.soft": "Łagodny",
   "settings.notifications.sound.chime": "Dzwonek",

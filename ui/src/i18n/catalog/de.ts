@@ -1086,7 +1086,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.desktop": "Desktop-Benachrichtigungen",
   "settings.notifications.desktopHint": "Betriebssystem-Benachrichtigungen nutzen, wenn der Client im Hintergrund ist.",
   "settings.notifications.desktopAllKinds": "Alle Benachrichtigungen pushen",
-  "settings.notifications.desktopAllKindsHint": "Aus: nur, worauf jemand wartet (Match, Gruppeneinladung, gestartetes Spiel, fertige Karte). An: alles.",
+  "settings.notifications.desktopAllKindsHint": "Aus: nur, worauf jemand wartet (Match, Gruppeneinladung, gestartetes Spiel, fertige Karte, volle Lobby, Event-Erinnerung). An: alles.",
   "settings.notifications.sound": "Benachrichtigungstöne",
   "settings.notifications.soundHint": "Bei neuen Hinweisen einen kurzen Ton abspielen.",
   "settings.notifications.volume": "Lautstärke",

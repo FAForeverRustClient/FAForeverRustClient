@@ -1270,7 +1270,7 @@ export const en = {
   "settings.notifications.desktop": "Desktop notifications",
   "settings.notifications.desktopHint": "Use operating-system notifications when the client is in the background.",
   "settings.notifications.desktopAllKinds": "Push every notification",
-  "settings.notifications.desktopAllKindsHint": "Off: only what someone is waiting on (a match, a party invite, a launched game, a finished map). On: everything.",
+  "settings.notifications.desktopAllKindsHint": "Off: only what someone is waiting on (a match, a party invite, a launched game, a finished map, a full lobby, an event reminder). On: everything.",
   "settings.notifications.sound": "Notification sounds",
   "settings.notifications.soundHint": "Play a short sound for new alerts.",
   "settings.notifications.volume": "Sound volume",
