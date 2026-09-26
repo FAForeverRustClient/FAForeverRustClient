@@ -1401,6 +1401,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.notes.open": "Notas y etiquetas",
   "replays.notes.close": "Cerrar notas",
   "replays.filters.yourTags": "Tus etiquetas",
+  "replays.filters.moddedGames": "Partidas con mods",
   "replays.filters.anyTag": "Cualquiera",
   "replays.search.recorder": "Grabada por",
   "replays.tags.manage": "Gestionar etiquetas",

@@ -1360,6 +1360,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.notes.open": "Notatki i tagi",
   "replays.notes.close": "Zamknij notatki",
   "replays.filters.yourTags": "Twoje tagi",
+  "replays.filters.moddedGames": "Gry z modami",
   "replays.filters.anyTag": "Dowolne",
   "replays.search.recorder": "Nagrywający",
   "replays.tags.manage": "Zarządzaj tagami",

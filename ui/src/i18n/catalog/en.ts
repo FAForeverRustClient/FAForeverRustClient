@@ -2048,6 +2048,7 @@ export const en = {
   "replays.notes.open": "Notes and tags",
   "replays.notes.close": "Close notes",
   "replays.filters.yourTags": "Your tags",
+  "replays.filters.moddedGames": "Modded games",
   "replays.filters.anyTag": "Any",
   "replays.search.recorder": "Recorder",
   "replays.tags.manage": "Manage tags",

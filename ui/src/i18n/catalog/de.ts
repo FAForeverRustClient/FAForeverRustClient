@@ -1800,6 +1800,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.notes.open": "Notizen und Tags",
   "replays.notes.close": "Notizen schließen",
   "replays.filters.yourTags": "Deine Tags",
+  "replays.filters.moddedGames": "Mod-Spiele",
   "replays.filters.anyTag": "Beliebig",
   "replays.search.recorder": "Aufnehmender Spieler",
   "replays.tags.manage": "Tags verwalten",

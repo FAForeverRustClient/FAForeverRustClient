@@ -6,6 +6,18 @@ import { FACTION_OPTIONS } from "../../../shared/factions";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 
+/** The host dialog's game types, in its order. */
+const GAME_TYPES: { id: string; label: MessageKey }[] = [
+  { id: "faf", label: "lobby.host.mod.faf" },
+  { id: "fafbeta", label: "lobby.host.mod.fafbeta" },
+  { id: "fafdevelop", label: "lobby.host.mod.fafdevelop" },
+  { id: "nomads", label: "lobby.host.mod.nomads" },
+];
+const GAME_TYPE_IDS = new Set(GAME_TYPES.map((type) => type.id));
+
+/** Featured mods the game-mode picker already offers. */
+const IN_GAME_MODES = new Set(["coop", "ladder1v1"]);
+
 const MAX_DURATION_MINUTES = 60;
 const MAX_MAP_SIZE_KM = 40;
 const MAX_MAP_PLAYERS = 16;
@@ -40,7 +52,21 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
   const VICTORY_OPTIONS: MultiSelectOption[] = VICTORY_OPTION_KEYS.map(
     (option) => ({ value: option.value, label: t(option.label) }),
   );
-  const modOptions: MultiSelectOption[] = featuredMods.map((mod) => ({ value: mod, label: mod }));
+  const gameTypeOptions: MultiSelectOption[] = GAME_TYPES.map((type) => ({ value: type.id, label: t(type.label) }));
+  // Every other featured mod the vault knows: a whole different game built on
+  // FA rather than a version of FAF. The two the game-mode picker already
+  // offers are left out, so nothing can be asked for in two places.
+  const moddedOptions: MultiSelectOption[] = featuredMods
+    .filter((mod) => !GAME_TYPE_IDS.has(mod) && !IN_GAME_MODES.has(mod))
+    .map((mod) => ({ value: mod, label: mod }));
+  // Both pickers write the one `featuredMods` list the query carries, each
+  // keeping the other's half of it.
+  const pickFeatured = (within: MultiSelectOption[], picked: string[]) => {
+    const own = new Set(within.map((option) => option.value));
+    set("featuredMods", [...form.featuredMods.filter((mod) => !own.has(mod)), ...picked]);
+  };
+  const pickedFrom = (within: MultiSelectOption[]) =>
+    form.featuredMods.filter((mod) => within.some((option) => option.value === mod));
   return (
     <div className="vault-search-advanced search-panel-advanced">
       <div className="vault-search-sliders">
@@ -168,17 +194,28 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
             `fafdevelop` game, which is a real search and a rare one, while the
             date is the bound half the searches in this vault want. The two
             swapped rows. */}
-        {/* "Game type", the word the host dialog and the live tab use for the
-            same list. `faf`, `fafbeta`, `fafdevelop` and `nomads` are what a
-            game is, not mods added to it, and calling the filter "Mod" had it
-            read as the place to look for sim mods, which the vault listing
-            does not carry at all (#343). */}
+        {/* "Game type" is what a game is, and the host dialog's four are all
+            there are: FAF, its beta and develop balances, and Nomads (#343).
+            Everything else the vault calls a featured mod is its own game,
+            under "Modded games". Co-op and the ladder are neither, since the
+            game-mode picker above already asks for them. Sim mods such as
+            Total Mayhem cannot be filtered on at all: the vault does not
+            record which ones a game ran with. */}
         <div className="vault-field">
           <MultiSelect
             label={t("lobby.host.gameType")}
-            options={modOptions}
-            selected={form.featuredMods}
-            onChange={(v) => set("featuredMods", v)}
+            options={gameTypeOptions}
+            selected={pickedFrom(gameTypeOptions)}
+            onChange={(picked) => pickFeatured(gameTypeOptions, picked)}
+          />
+        </div>
+
+        <div className="vault-field">
+          <MultiSelect
+            label={t("replays.filters.moddedGames")}
+            options={moddedOptions}
+            selected={pickedFrom(moddedOptions)}
+            onChange={(picked) => pickFeatured(moddedOptions, picked)}
           />
         </div>
 
