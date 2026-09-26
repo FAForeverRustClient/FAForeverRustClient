@@ -1758,6 +1758,21 @@ button.vault-input {
   flex-shrink: 0;
 }
 
+/* The full generated-map name under the map line (issue 288). It is three
+   times as long as the seed it replaced, and it is what the copy button puts
+   on the clipboard, so it wraps instead of being cut short with an ellipsis. */
+.replay-card-seed {
+  align-items: flex-start;
+}
+
+.replay-card-seed .replay-fact-seed-code {
+  max-width: none;
+  min-width: 0;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .replay-card-main {
   display: flex;
   flex-direction: column;
@@ -2556,19 +2571,4 @@ button.vault-input {
 .friend-replay-option[aria-selected="true"] {
   color: var(--color-accent);
   font-weight: 600;
-}
-
-/* The full generated-map name under the map line (issue 288). It is three
-   times as long as the seed it replaced, and it is what the copy button puts
-   on the clipboard, so it wraps instead of being cut short with an ellipsis. */
-.replay-card-seed {
-  align-items: flex-start;
-}
-
-.replay-card-seed .replay-fact-seed-code {
-  max-width: none;
-  min-width: 0;
-  overflow: visible;
-  overflow-wrap: anywhere;
-  white-space: normal;
 }
