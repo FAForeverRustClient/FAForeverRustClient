@@ -26,7 +26,7 @@ use serde_json::Value;
 use crate::ports::{PreparationPhase, PreparationStep};
 
 use crate::infra::vault_install::{
-    bounded_body, bounded_body_with_progress, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
+    bounded_body, bounded_body_to_file, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
 };
 
 /// Byte offsets inside `ForgedAlliance.exe` where the 4-byte little-endian
@@ -778,10 +778,44 @@ async fn file_matches_checksum(target_dir: &Path, file: &FeaturedModFile) -> boo
     let Ok(target_path) = safe_join_file(target_dir, &file.group, &file.name) else {
         return false;
     };
-    let Ok(bytes) = tokio::fs::read(&target_path).await else {
-        return false;
-    };
-    format!("{:x}", md5::compute(&bytes)).eq_ignore_ascii_case(&file.md5)
+    file_md5(&target_path)
+        .await
+        .is_some_and(|md5| md5.eq_ignore_ascii_case(&file.md5))
+}
+
+/// The ceiling on one featured-mod file.
+///
+/// Not the vault's [`MAX_DOWNLOAD_BYTES`], which bounds a map or a mod a
+/// player picked and was shared with this path by accident. The co-op mod's
+/// `SCCA_FMV.nx2` is FAF's own content and larger than that, so every co-op
+/// launch failed on it, and `env.nx2` was 34 MiB short of failing too (#282).
+/// These files stream to disk rather than into memory and are checked against
+/// the API's MD5, so the bound is only there to stop a broken or hostile
+/// server from filling the disk.
+const MAX_FEATURED_FILE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+
+/// The MD5 of a file, read a block at a time, or `None` when it cannot be
+/// read. Featured-mod files run to hundreds of megabytes, and hashing one
+/// used to mean holding all of it in memory first.
+async fn file_md5(path: &Path) -> Option<String> {
+    let path = path.to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        use std::io::Read as _;
+        let mut file = std::fs::File::open(&path).ok()?;
+        let mut context = md5::Context::new();
+        let mut buffer = vec![0_u8; 1024 * 1024];
+        loop {
+            let read = file.read(&mut buffer).ok()?;
+            if read == 0 {
+                break;
+            }
+            context.consume(&buffer[..read]);
+        }
+        Some(format!("{:x}", context.compute()))
+    })
+    .await
+    .ok()
+    .flatten()
 }
 
 /// Whether a download URL the API handed us may be requested, and handed the
@@ -882,8 +916,8 @@ async fn update_file(
     }
 
     let cache_path = safe_join_file(cache_dir, &file.group, &file.md5)?;
-    if let Ok(cached) = tokio::fs::read(&cache_path).await {
-        if format!("{:x}", md5::compute(&cached)).eq_ignore_ascii_case(&file.md5) {
+    if let Some(cached) = file_md5(&cache_path).await {
+        if cached.eq_ignore_ascii_case(&file.md5) {
             tokio::fs::copy(&cache_path, &target_path)
                 .await
                 .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
@@ -927,10 +961,11 @@ async fn update_file(
     // chunk would put thousands of snapshots through the bus to redraw the
     // same bar.
     let last_percent = std::sync::atomic::AtomicU8::new(u8::MAX);
-    let bytes = bounded_body_with_progress(
+    // To a file, not into memory: see `MAX_FEATURED_FILE_BYTES`.
+    let downloaded = bounded_body_to_file(
         resp,
         &file.name,
-        MAX_DOWNLOAD_BYTES,
+        MAX_FEATURED_FILE_BYTES,
         &|received, declared| {
             let Some(size) = declared.filter(|size| *size > 0) else {
                 return;
@@ -952,7 +987,10 @@ async fn update_file(
         },
     )
     .await?;
-    if !format!("{:x}", md5::compute(&bytes)).eq_ignore_ascii_case(&file.md5) {
+    if !file_md5(downloaded.path())
+        .await
+        .is_some_and(|md5| md5.eq_ignore_ascii_case(&file.md5))
+    {
         return Err(format!("downloaded {} failed its checksum", file.name));
     }
 
@@ -961,10 +999,10 @@ async fn update_file(
             .await
             .map_err(|e| format!("could not create {}: {e}", parent.display()))?;
     }
-    tokio::fs::write(&cache_path, &bytes)
+    tokio::fs::copy(downloaded.path(), &cache_path)
         .await
         .map_err(|e| format!("could not write cache for {}: {e}", file.name))?;
-    tokio::fs::write(&target_path, &bytes)
+    tokio::fs::copy(downloaded.path(), &target_path)
         .await
         .map_err(|e| format!("could not write {}: {e}", target_path.display()))?;
     progress(PreparationStep::counted(

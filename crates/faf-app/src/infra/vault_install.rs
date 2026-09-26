@@ -66,6 +66,18 @@ fn same_origin_urls(raw: &str, configured_base: &str) -> Result<(url::Url, url::
     Ok((url, base))
 }
 
+/// The refusal both readers give, naming the size and the limit: "larger than
+/// the allowed download size" alone left a failed launch impossible to place
+/// from the toast (#282).
+fn too_large(subject: &str, size: u64, max_bytes: u64) -> String {
+    const MIB: f64 = 1024.0 * 1024.0;
+    format!(
+        "{subject} is {:.0} MiB, more than the {:.0} MiB allowed for one download",
+        size as f64 / MIB,
+        max_bytes as f64 / MIB
+    )
+}
+
 /// Read a response without trusting `Content-Length` or buffering forever.
 pub async fn bounded_body(
     response: reqwest::Response,
@@ -87,13 +99,8 @@ pub async fn bounded_body_with_progress(
     on_bytes: &(dyn Fn(u64, Option<u64>) + Sync),
 ) -> Result<Vec<u8>, String> {
     let declared = response.content_length();
-    if response
-        .content_length()
-        .is_some_and(|size| size > max_bytes)
-    {
-        return Err(format!(
-            "{subject} is larger than the allowed download size"
-        ));
+    if let Some(size) = declared.filter(|size| *size > max_bytes) {
+        return Err(too_large(subject, size, max_bytes));
     }
 
     let mut body = Vec::new();
@@ -105,9 +112,7 @@ pub async fn bounded_body_with_progress(
             .checked_add(chunk.len() as u64)
             .ok_or_else(|| format!("{subject} is too large"))?;
         if received > max_bytes {
-            return Err(format!(
-                "{subject} is larger than the allowed download size"
-            ));
+            return Err(too_large(subject, received, max_bytes));
         }
         body.extend_from_slice(&chunk);
         on_bytes(received, declared);
@@ -151,10 +156,8 @@ pub async fn bounded_body_to_file(
     on_bytes: &(dyn Fn(u64, Option<u64>) + Sync),
 ) -> Result<DownloadedArchive, String> {
     let declared = response.content_length();
-    if declared.is_some_and(|size| size > max_bytes) {
-        return Err(format!(
-            "{subject} is larger than the allowed download size"
-        ));
+    if let Some(size) = declared.filter(|size| *size > max_bytes) {
+        return Err(too_large(subject, size, max_bytes));
     }
 
     let directory = std::env::temp_dir().join(crate::infra::APP_SLUG);
@@ -177,9 +180,7 @@ pub async fn bounded_body_to_file(
             .checked_add(chunk.len() as u64)
             .ok_or_else(|| format!("{subject} is too large"))?;
         if received > max_bytes {
-            return Err(format!(
-                "{subject} is larger than the allowed download size"
-            ));
+            return Err(too_large(subject, received, max_bytes));
         }
         tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
             .await
