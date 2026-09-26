@@ -954,7 +954,9 @@
 }
 
 .player-metric-bars i {
-  display: block;
+  /* As wide as the number, not as the bar: `MetricBar` measures it to decide
+     whether it fits inside. */
+  display: inline-block;
   padding-left: var(--space-1);
   color: var(--color-accent-contrast);
   font-size: 11px;
@@ -963,9 +965,9 @@
   white-space: nowrap;
 }
 
-/* A bar too short to hold its number (see `MetricBar`) carries it just past
-   its end, in the text colour, since there it stands on the card and not on
-   the bar. */
+/* A bar too short to hold its number with its padding (see `MetricBar`)
+   carries it just past its end, in the text colour, since there it stands on
+   the card and not on the bar. */
 .player-metric-bars .is-label-outside i {
   position: absolute;
   top: 0;

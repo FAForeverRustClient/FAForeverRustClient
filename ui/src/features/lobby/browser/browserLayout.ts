@@ -19,10 +19,13 @@ import {
 } from "../../../shared/tableColumns";
 
 /**
- * The designed widths, in the order the header lists them: game, map, players,
- * rating, age.
+ * The designed widths, in the order the header lists them: game, tags, map,
+ * players, rating, age.
  */
-export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [320, 170, 80, 100, 75];
+export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [320, 190, 170, 80, 100, 75];
+
+/** How many columns the list had before the tags got one of their own. */
+const COLUMNS_BEFORE_TAGS = 5;
 
 /**
  * The game column, which is the flexible one.
@@ -38,9 +41,19 @@ export const FLEXIBLE_COLUMN = 0;
 /** The detail panel's designed width, matching `custom-games.css`. */
 export const DEFAULT_DETAIL_WIDTH = 270;
 
-/** Saved widths, padded and bounded into a usable set of five. */
+/**
+ * Saved widths, padded and bounded into a usable set of six.
+ *
+ * A set of exactly five was saved before the tags column existed, when the
+ * second width was the map's. It is read that way, with the tags column at
+ * its designed width (a zero), so nobody's map column turns into a tags
+ * column of the same width. Every set saved since is six long.
+ */
 export function columnWidths(stored: readonly number[] | undefined): number[] {
-  return resolveColumnWidths(stored, DEFAULT_COLUMN_WIDTHS).slice(0, MAX_BROWSER_COLUMNS);
+  const upgraded = stored?.length === COLUMNS_BEFORE_TAGS
+    ? [stored[0], 0, ...stored.slice(1)]
+    : stored;
+  return resolveColumnWidths(upgraded, DEFAULT_COLUMN_WIDTHS).slice(0, MAX_BROWSER_COLUMNS);
 }
 
 /**

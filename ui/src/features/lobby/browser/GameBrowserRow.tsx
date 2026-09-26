@@ -104,78 +104,82 @@ export const GameBrowserRow = memo(function GameBrowserRow({
               {game.title}
             </span>
             <div className="game-browser-details">
-              <span className="game-browser-host" title={`${t("lobby.browser.host")} ${game.host}`}>
+              <span className="game-browser-host">
                 {t("lobby.browser.host")}{" "}
                 <strong>
                   <PlayerName name={game.host} />
                 </strong>
               </span>
-              <span className="game-browser-tags">
-                <i>{game.modName || "faf"}</i>
-                {simModCount > 0 && (
-                  <i
-                    className={simModsRanked ? "modded is-ranked" : "modded"}
-                    title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
-                  >
-                    {simModCount} SIM
-                  </i>
-                )}
-                {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
-                {friends.length > 0 && (
-                  <i
-                    className="friend"
-                    onMouseEnter={(e) => {
-                      e.stopPropagation();
-                      showSocial(e.currentTarget, "friends");
-                    }}
-                    onMouseLeave={hideSocial}
-                    onFocus={(e) => {
-                      e.stopPropagation();
-                      showSocial(e.currentTarget, "friends");
-                    }}
-                    onBlur={hideSocial}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={t("lobby.browser.friendCount", { count: friends.length })}
-                    aria-describedby={socialPosition && socialCategory === "friends" ? socialPopoverId : undefined}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    {friendLabel}
-                  </i>
-                )}
-                {foes.length > 0 && (
-                  <i
-                    className="foe"
-                    onMouseEnter={(e) => {
-                      e.stopPropagation();
-                      showSocial(e.currentTarget, "foes");
-                    }}
-                    onMouseLeave={hideSocial}
-                    onFocus={(e) => {
-                      e.stopPropagation();
-                      showSocial(e.currentTarget, "foes");
-                    }}
-                    onBlur={hideSocial}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={t("lobby.browser.foeCount", { count: foes.length })}
-                    aria-describedby={socialPosition && socialCategory === "foes" ? socialPopoverId : undefined}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    {foeLabel}
-                  </i>
-                )}
-                {(game.ratingMin !== null || game.ratingMax !== null) && (
-                  <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
-                )}
-              </span>
             </div>
           </div>
         </div>
+
+        {/* The tags in a column of their own (#341). In the game cell they
+            began wherever each host's name happened to end, so the same chip
+            stood at a different place in every row. */}
+          <div className="game-browser-tags-col game-browser-tags">
+            <i>{game.modName || "faf"}</i>
+            {simModCount > 0 && (
+              <i
+                className={simModsRanked ? "modded is-ranked" : "modded"}
+                title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
+              >
+                {simModCount} SIM
+              </i>
+            )}
+            {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
+            {friends.length > 0 && (
+              <i
+                className="friend"
+                onMouseEnter={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "friends");
+                }}
+                onMouseLeave={hideSocial}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "friends");
+                }}
+                onBlur={hideSocial}
+                tabIndex={0}
+                role="button"
+                aria-label={t("lobby.browser.friendCount", { count: friends.length })}
+                aria-describedby={socialPosition && socialCategory === "friends" ? socialPopoverId : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                {friendLabel}
+              </i>
+            )}
+            {foes.length > 0 && (
+              <i
+                className="foe"
+                onMouseEnter={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "foes");
+                }}
+                onMouseLeave={hideSocial}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "foes");
+                }}
+                onBlur={hideSocial}
+                tabIndex={0}
+                role="button"
+                aria-label={t("lobby.browser.foeCount", { count: foes.length })}
+                aria-describedby={socialPosition && socialCategory === "foes" ? socialPopoverId : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                {foeLabel}
+              </i>
+            )}
+            {(game.ratingMin !== null || game.ratingMax !== null) && (
+              <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
+            )}
+          </div>
 
         <div className="game-browser-map-col">
           <strong title={presentation.displayName}>{presentation.displayName}</strong>

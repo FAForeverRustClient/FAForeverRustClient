@@ -886,6 +886,7 @@ export const en = {
   "lobby.browser.joinGame": "Join game",
   "lobby.browser.previewMap": "Preview map",
   "lobby.browser.column.game": "Game",
+  "lobby.browser.column.tags": "Tags",
   "lobby.browser.column.map": "Map",
   "lobby.browser.column.players": "Players",
   "lobby.browser.column.rating": "Ø Rating",

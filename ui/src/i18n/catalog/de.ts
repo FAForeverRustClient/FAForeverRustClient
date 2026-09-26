@@ -783,6 +783,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.joinGame": "Partie beitreten",
   "lobby.browser.previewMap": "Karte ansehen",
   "lobby.browser.column.game": "Partie",
+  "lobby.browser.column.tags": "Tags",
   "lobby.browser.column.map": "Karte",
   "lobby.browser.column.players": "Spieler",
   "lobby.browser.column.rating": "Ø-Rating",

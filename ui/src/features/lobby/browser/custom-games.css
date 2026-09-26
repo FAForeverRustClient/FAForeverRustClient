@@ -66,7 +66,7 @@
   /* The fallback for the moment before the saved widths arrive, in the shape
      the saved ones have: four columns at a fixed width and the game column
      taking the rest. */
-  grid-template-columns: minmax(0, 1fr) 170px 80px 100px 75px;
+  grid-template-columns: minmax(0, 1fr) 190px 170px 80px 100px 75px;
   align-items: center;
   gap: 16px;
 }
@@ -96,7 +96,12 @@
   cursor: pointer;
 }
 
-.game-browser-head-sort:hover,
+/* The tags column's header: a label, since the column orders nothing. */
+.game-browser-head-sort.is-static {
+  cursor: default;
+}
+
+.game-browser-head-sort:hover:not(.is-static),
 .game-browser-head-sort.is-active {
   color: var(--color-text);
 }
@@ -277,27 +282,17 @@
   letter-spacing: -.01em;
 }
 
-/* The host and the tags in two tracks rather than one run of text. Run
-   together, every row's tags began wherever its host's name happened to end,
-   so the same "faf" chip and the same rating range stood at a different place
-   in every row (issue 341). A host track of one width puts the tags of every
-   row on one line down the list. It is sized for a typical login, a longer one
-   is cut short with its full name on hover, and it gives way before the tags
-   do when the column is dragged narrow. */
 .game-browser-details {
-  display: grid;
-  grid-template-columns: min(150px, 45%) minmax(0, 1fr);
+  display: flex;
   align-items: center;
-  column-gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   font-size: 11px;
 }
 
 .game-browser-host {
-  min-width: 0;
-  overflow: hidden;
   color: var(--color-muted);
   font-size: 11px;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -312,6 +307,13 @@
   align-items: center;
   gap: 4px;
   min-width: 0;
+}
+
+/* The tags column (issue 341): the chips one after another, starting at the
+   column's leading edge like every other column's contents, and wrapping onto
+   a second line when the column is dragged narrower than they are. */
+.game-browser-tags-col {
+  justify-content: flex-start;
 }
 
 .game-browser-tags i {

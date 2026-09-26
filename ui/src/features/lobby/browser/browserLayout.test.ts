@@ -20,11 +20,25 @@ describe("the game list's column widths", () => {
     // release that adds or drops a column must not leave the list unusable.
     expect(columnWidths([])).toEqual([...DEFAULT_COLUMN_WIDTHS]);
     expect(columnWidths([400])).toEqual([400, ...DEFAULT_COLUMN_WIDTHS.slice(1)]);
-    expect(columnWidths([400, 0, 0, 0, 0, 999])).toEqual([
+    expect(columnWidths([400, 0, 0, 0, 0, 0, 999])).toEqual([
       400,
       ...DEFAULT_COLUMN_WIDTHS.slice(1),
     ]);
     expect(columnWidths(undefined)).toEqual([...DEFAULT_COLUMN_WIDTHS]);
+  });
+
+  it("reads a set saved before the tags column as the columns it described", () => {
+    // Five widths are game, map, players, rating and age. Taken position by
+    // position the map's width would become the tags column's, and every
+    // column after it would shift one place along.
+    expect(columnWidths([400, 210, 90, 110, 80])).toEqual([
+      400,
+      DEFAULT_COLUMN_WIDTHS[1],
+      210,
+      90,
+      110,
+      80,
+    ]);
   });
 
   it("moves the line under the cursor and nothing else", () => {

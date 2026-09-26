@@ -61,14 +61,17 @@ function saveSort(sort: CustomGameSort, sortReversed: boolean): void {
 }
 
 /**
- * The sort each column stands for, in the order the columns are drawn.
+ * The sort each column stands for, in the order the columns are drawn, or
+ * `null` for a column the list cannot be ordered by.
  *
- * Five columns, five orders, and the toolbar's sixth (`host`) has no column of
- * its own: a host is part of the game cell rather than a column, so it stays a
- * choice the select box makes and no header claims it.
+ * The tags column is the one without an order: a row's tags are several
+ * things at once, and none of them ranks one game above another. The
+ * toolbar's `host` order has no column of its own either: a host is part of
+ * the game cell, so it stays a choice the select box makes.
  */
-export const COLUMN_SORTS: readonly CustomGameSort[] = [
+export const COLUMN_SORTS: readonly (CustomGameSort | null)[] = [
   "title",
+  null,
   "map",
   "players",
   "rating",
@@ -144,6 +147,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
 
   const labels = [
     t("lobby.browser.column.game"),
+    t("lobby.browser.column.tags"),
     t("lobby.browser.column.map"),
     t("lobby.browser.column.players"),
     t("lobby.browser.column.rating"),
@@ -155,7 +159,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
       {labels.map((label, index) => {
         const column = COLUMN_SORTS[index];
         const active = column === sort;
-        const descending = sortsDescending(column, reversed);
+        const descending = column !== null && sortsDescending(column, reversed);
         return (
           <span key={label}>
             {/* One line in front of every column but the first, standing where
@@ -182,27 +186,34 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
                 were decoration. The label clips itself rather than letting the
                 cell do it: the grab handle reaches past the cell's edge, and a
                 cell with `overflow: hidden` cuts it off entirely. */}
-            <button
-              type="button"
-              className={active ? "game-browser-head-sort is-active" : "game-browser-head-sort"}
-              // `aria-sort` would be the right thing to say here and cannot be
-              // said: it is only meaningful on a `columnheader`, and this list
-              // is a CSS grid of plain elements rather than a table, so the
-              // role would be a claim about a structure that is not there. The
-              // label carries the order instead.
-              title={t("lobby.browser.sortByColumn", { column: label })}
-              aria-label={`${t("lobby.browser.sortByColumn", { column: label })}${
-                active
-                  ? ` (${t(descending ? "lobby.browser.sortDescending" : "lobby.browser.sortAscending")})`
-                  : ""
-              }`}
-              onClick={() => chooseSort(column)}
-            >
-              <span className="game-browser-head-label">{label}</span>
-              <span className="game-browser-head-arrow" aria-hidden="true">
-                {active ? (descending ? "↓" : "↑") : "⇅"}
+            {column === null ? (
+              // Nothing to order by: the label alone, in the button's place.
+              <span className="game-browser-head-sort is-static">
+                <span className="game-browser-head-label">{label}</span>
               </span>
-            </button>
+            ) : (
+              <button
+                type="button"
+                className={active ? "game-browser-head-sort is-active" : "game-browser-head-sort"}
+                // `aria-sort` would be the right thing to say here and cannot be
+                // said: it is only meaningful on a `columnheader`, and this list
+                // is a CSS grid of plain elements rather than a table, so the
+                // role would be a claim about a structure that is not there. The
+                // label carries the order instead.
+                title={t("lobby.browser.sortByColumn", { column: label })}
+                aria-label={`${t("lobby.browser.sortByColumn", { column: label })}${
+                  active
+                    ? ` (${t(descending ? "lobby.browser.sortDescending" : "lobby.browser.sortAscending")})`
+                    : ""
+                }`}
+                onClick={() => chooseSort(column)}
+              >
+                <span className="game-browser-head-label">{label}</span>
+                <span className="game-browser-head-arrow" aria-hidden="true">
+                  {active ? (descending ? "↓" : "↑") : "⇅"}
+                </span>
+              </button>
+            )}
           </span>
         );
       })}
