@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "../../../design-system/Button";
-import { MultiSelect } from "../../../design-system/MultiSelect";
-import { ManageReplayTagsButton } from "../ReplayTagsDialog";
+import { ReplayTagFilter } from "../ReplayTagsDialog";
 import { allReplayTags } from "../../../shared/rules/replayNotes";
 import { useAppStore } from "../../../store/store";
 import { Icon } from "../../../design-system/Icon";
@@ -13,6 +12,7 @@ import {
   type LocalReplayQuery,
   type LocalReplaySortField,
 } from "./localReplayQuery";
+import { activeLocalReplayPreset } from "../replayPresets";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 
@@ -105,6 +105,9 @@ export function LocalReplaySearch({
   };
 
   const hiddenFilterCount = localReplayAdvancedFilterCount(form);
+  // See `activeLocalReplayPreset`: which of the three scopes the archive is
+  // currently under, so the button says so.
+  const preset = activeLocalReplayPreset(form, self);
 
   return (
     <form className="vault-search local-vault-search search-panel surface-panel" onSubmit={submit}>
@@ -214,10 +217,28 @@ export function LocalReplaySearch({
       </div>
 
       <div className="vault-search-presets search-panel-secondary">
-        <Button type="button" onClick={() => applyPreset({})}>{t("replays.search.preset.newest")}</Button>
-        <Button type="button" onClick={() => applyPreset({ after: isoDaysAgo(365) })}>{t("replays.search.preset.lastYear")}</Button>
+        {/* Active states, as in the online vault: the three of them replace the
+            scope of the list and nothing said which one was in force. */}
         <Button
           type="button"
+          className={preset === "newest" ? "active" : ""}
+          aria-pressed={preset === "newest"}
+          onClick={() => applyPreset({})}
+        >
+          {t("replays.search.preset.newest")}
+        </Button>
+        <Button
+          type="button"
+          className={preset === "lastYear" ? "active" : ""}
+          aria-pressed={preset === "lastYear"}
+          onClick={() => applyPreset({ after: isoDaysAgo(365) })}
+        >
+          {t("replays.search.preset.lastYear")}
+        </Button>
+        <Button
+          type="button"
+          className={preset === "own" ? "active" : ""}
+          aria-pressed={preset === "own"}
           disabled={!self}
           onClick={() => applyPreset({ player: self, exactPlayer: true })}
         >
@@ -254,14 +275,7 @@ export function LocalReplaySearch({
               <input className="vault-input" type="search" value={form.note} onChange={(event) => set("note", event.target.value)} />
             </label>
             <div className="vault-field">
-              <MultiSelect
-                label={t("replays.filters.yourTags")}
-                anyLabel={t("replays.filters.anyTag")}
-                options={tagOptions.map((tag) => ({ value: tag, label: tag }))}
-                selected={form.tags}
-                onChange={(tags) => set("tags", tags)}
-              />
-              <ManageReplayTagsButton />
+              <ReplayTagFilter options={tagOptions} selected={form.tags} onChange={(tags) => set("tags", tags)} />
             </div>
             <label className="vault-field">
               <span className="vault-field-label">{t("replays.search.recorder")}</span>

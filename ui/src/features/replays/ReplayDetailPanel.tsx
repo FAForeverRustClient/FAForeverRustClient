@@ -27,7 +27,7 @@ import { replayMapPresentation } from "./coopReplayMap";
 import { ReplayInsights } from "./analysis/ReplayInsights";
 import { useAppStore } from "../../store/store";
 import { isObserverTeam, playerCount, ReplayDetailRoster, mergeReplayTeamsWithLocal } from "./ReplayRoster";
-import { isRated, localRatingNote, notRatedReason } from "./replayValidity";
+import { hasGameResult, localRatingNote, resultNote } from "./replayValidity";
 import { formatDecimal } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ReplayMapThumb } from "./ReplayCard";
@@ -297,10 +297,15 @@ export function ReplayDetailPanel({
   const validity = onlineLookup?.type === "found"
     ? onlineLookup.payload.validity ?? ""
     : replay.validity ?? "";
-  const rated = isRated(validity, detailTeams);
+  // Whether there is a result to show, not whether a rating moved: see
+  // `hasGameResult`. A game the server has called valid and recorded outcomes
+  // for has a winner worth showing whether or not the rating journal has
+  // arrived, and gating this on the journal left a plainly rated game with a
+  // dead "Game result" button and "Reason: VALID" underneath it.
+  const rated = hasGameResult(validity, detailTeams);
   const notRated = isLocal
     ? localRatingNote(replay.uid, onlineLookup, detailTeams)
-    : rated ? null : notRatedReason(validity);
+    : resultNote(validity, detailTeams);
   // `Modal` closes on Escape from a bubble-phase listener on the document, so
   // an overlay that wants Escape first has to take it in the capture phase:
   // stopping propagation there means the modal's listener never runs, and one
@@ -575,14 +580,23 @@ export function ReplayDetailPanel({
             {seed && (
               <div className="replay-card-seed">
                 <span className="replay-card-seed-label">{t("replays.detail.mapSeed")}</span>
-                <code className="replay-fact-seed-code" title={seed}>{seed}</code>
+                {/* The whole map name, shown and copied, not only the seed.
+                    A generated map's name is `neroxis_map_generator_<version>_
+                    <seed>_<options>` and all three parts are needed to rebuild
+                    it: the encoding is the generator's, so the same seed under
+                    a different version is a different map. The Reproduce field
+                    in the generator dialog therefore rejects a bare seed, which
+                    is exactly what this button used to hand it. What is shown
+                    is what is copied, so the line wraps rather than cutting
+                    the name short. */}
+                <code className="replay-fact-seed-code" title={effectiveMap}>{effectiveMap}</code>
                 <button
                   type="button"
                   className="replay-card-icon-btn"
                   aria-label={t(copiedSeed ? "replays.detail.seedCopied" : "replays.detail.copySeed")}
                   title={t(copiedSeed ? "replays.detail.seedCopied" : "replays.detail.copySeed")}
                   onClick={() =>
-                    ipc.run(navigator.clipboard.writeText(seed).then(() => setCopiedSeed(true)))
+                    ipc.run(navigator.clipboard.writeText(effectiveMap).then(() => setCopiedSeed(true)))
                   }
                 >
                   <Icon name={copiedSeed ? "check" : "copy"} size={13} />
@@ -681,7 +695,10 @@ export function ReplayDetailPanel({
                 to three lines and lifted one button off the other's baseline.
                 A notice the width of the panel reads in one line and is a
                 notice rather than a caption. */}
-            {!rated && (
+            {/* Also beside a result that can be shown: an unrated game with a
+                decisive outcome has both a winner and a reason it did not
+                count (see `hasGameResult`). */}
+            {(!rated || notRated !== null) && (
               <p className="replay-card-result-reason" id="replay-result-reason">
                 <Icon name="info" size={15} />
                 <span>{notRated ?? t("replays.detail.noResultYet")}</span>

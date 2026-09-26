@@ -68,6 +68,31 @@
   font-size: 12px;
 }
 
+/* The popover's own command (see `action` on MultiSelect), above the options
+   it acts on. Drawn as a row like them, so it reads as part of the list, and
+   ruled off below so it is not mistaken for one more thing to tick. */
+.multi-select-action {
+  font: inherit;
+  font-size: 13px;
+  width: 100%;
+  margin-bottom: var(--space-1);
+  padding: 5px var(--space-2);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.multi-select-action:hover,
+.multi-select-action:focus-visible {
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
 .multi-select-clear {
   font: inherit;
   font-size: 12px;
