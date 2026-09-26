@@ -730,12 +730,32 @@ pub(crate) fn mods_dir() -> PathBuf {
     crate::infra::faf_content::vault_dir().join("mods")
 }
 
-/// The tail of the `game.prefs` path, below whatever `%LOCALAPPDATA%` is.
-const GAME_PREFS_TAIL: [&str; 3] = [
-    "Gas Powered Games",
-    "Supreme Commander Forged Alliance",
-    "game.prefs",
-];
+/// The folders the prefs file sits in, below whatever `%LOCALAPPDATA%` is.
+const GAME_PREFS_DIR: [&str; 2] = ["Gas Powered Games", "Supreme Commander Forged Alliance"];
+
+/// The prefs file's name as the game writes it.
+///
+/// Capital G. Windows does not care, so `game.prefs` found it there, and a
+/// Linux filesystem does: under Wine the lower-case name matched nothing, the
+/// search for the prefix user who has played found nobody, and every mod
+/// toggle wrote a file the game never reads (#283).
+const GAME_PREFS_FILE: &str = "Game.prefs";
+
+/// The prefs file under `local`: the one on disk in whatever letter case it
+/// has, or where the game would write it when there is none yet.
+fn game_prefs_in(local: &Path) -> PathBuf {
+    let dir = GAME_PREFS_DIR
+        .iter()
+        .fold(local.to_path_buf(), |path, part| path.join(part));
+    let existing = std::fs::read_dir(&dir).ok().and_then(|entries| {
+        entries.flatten().map(|entry| entry.path()).find(|path| {
+            path.file_name()
+                .is_some_and(|name| name.to_string_lossy().eq_ignore_ascii_case(GAME_PREFS_FILE))
+                && path.is_file()
+        })
+    });
+    existing.unwrap_or_else(|| dir.join(GAME_PREFS_FILE))
+}
 
 /// FA's own `game.prefs` file: `%LOCALAPPDATA%\Gas Powered Games\Supreme
 /// Commander Forged Alliance\game.prefs` (confirmed via the Python
@@ -767,9 +787,7 @@ pub(crate) fn game_prefs_path() -> PathBuf {
             .map(|b| b.data_local_dir().to_path_buf())
             .unwrap_or_else(|| PathBuf::from("."))
     });
-    GAME_PREFS_TAIL
-        .iter()
-        .fold(local, |path, part| path.join(part))
+    game_prefs_in(&local)
 }
 
 /// The Wine prefix to look inside, off Windows.
@@ -803,12 +821,7 @@ fn wine_prefix_root() -> Option<PathBuf> {
 fn wine_local_app_data(prefix: &Path) -> Option<PathBuf> {
     let users = prefix.join("drive_c").join("users");
     let local_of = |user: &Path| user.join("AppData").join("Local");
-    let has_prefs = |local: &Path| {
-        GAME_PREFS_TAIL
-            .iter()
-            .fold(local.to_path_buf(), |path, part| path.join(part))
-            .is_file()
-    };
+    let has_prefs = |local: &Path| game_prefs_in(local).is_file();
 
     let mut candidates: Vec<PathBuf> = std::fs::read_dir(&users)
         .into_iter()
@@ -1295,9 +1308,12 @@ mod tests {
             .join(user)
             .join("AppData")
             .join("Local");
-        let prefs = GAME_PREFS_TAIL
+        // Spelled the way the game spells it, which is what the lookup has to
+        // find on a case-sensitive filesystem.
+        let prefs = GAME_PREFS_DIR
             .iter()
-            .fold(local.clone(), |path, part| path.join(part));
+            .fold(local.clone(), |path, part| path.join(part))
+            .join("Game.prefs");
         std::fs::create_dir_all(prefs.parent().unwrap()).unwrap();
         if with_prefs {
             std::fs::write(&prefs, "active_mods = { }").unwrap();
@@ -1330,6 +1346,15 @@ mod tests {
         );
         assert!(found.ends_with("AppData/Local") || found.ends_with(r"AppData\Local"));
         let _ = only;
+    }
+
+    #[test]
+    fn the_prefs_file_is_found_in_the_case_it_was_written_in() {
+        let temp = tempfile::tempdir().unwrap();
+        let local = wine_user(temp.path(), "steamuser", true);
+        let found = game_prefs_in(&local);
+        assert!(found.is_file(), "{found:?} is the file the game wrote");
+        assert_eq!(found.file_name().unwrap(), "Game.prefs");
     }
 
     #[test]

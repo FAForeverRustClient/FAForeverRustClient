@@ -1391,8 +1391,33 @@ fn live_map_dirs(maps_dir: &Path, vault_maps: Option<PathBuf>, map_folder: &str)
             dirs.push(vault_maps);
         }
     }
-    dirs.retain(|dir| !dir.join(map_folder).is_dir());
+    dirs.retain(|dir| !has_map_folder(dir, map_folder));
     dirs
+}
+
+/// Whether `dir` holds `map_folder`, in whatever letter case it was unpacked.
+///
+/// The lobby names a co-op map `scca_coop_e01.v0024` and the archive unpacks
+/// it as `SCCA_Coop_E01.v0024`: the same capitalisation gap `vault_map_url`
+/// already closes for the CDN. On Windows the two spellings are one folder.
+/// On a case-sensitive filesystem the lower-case one does not exist, so every
+/// launch after the first decided the map was missing, downloaded it again,
+/// and failed on the folder the first launch had left: "is already installed"
+/// (#283). The exact name is tried first; the directory is only read when it
+/// is not there.
+fn has_map_folder(dir: &Path, map_folder: &str) -> bool {
+    if dir.join(map_folder).is_dir() {
+        return true;
+    }
+    std::fs::read_dir(dir).is_ok_and(|entries| {
+        entries.flatten().any(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .eq_ignore_ascii_case(map_folder)
+                && entry.path().is_dir()
+        })
+    })
 }
 
 /// Where the vault keeps `map_folder`'s archive.
@@ -1427,7 +1452,10 @@ async fn stage_map(
     }
 
     let search_dirs = dirs.to_vec();
-    if search_dirs.iter().any(|dir| dir.join(map_folder).is_dir()) {
+    if search_dirs
+        .iter()
+        .any(|dir| has_map_folder(dir, map_folder))
+    {
         return Ok(()); // already somewhere FA will find it
     }
 
@@ -2147,6 +2175,22 @@ pub async fn inspect_game_cache(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_map_folder_is_found_whatever_its_letter_case() {
+        use super::{has_map_folder, live_map_dirs};
+        let root = std::env::temp_dir().join(format!(
+            "faf-map-case-{}-{}",
+            std::process::id(),
+            rand::random::<u32>()
+        ));
+        std::fs::create_dir_all(root.join("SCCA_Coop_E01.v0024")).unwrap();
+        assert!(has_map_folder(&root, "scca_coop_e01.v0024"));
+        assert!(has_map_folder(&root, "SCCA_Coop_E01.v0024"));
+        assert!(!has_map_folder(&root, "scca_coop_e02.v0024"));
+        assert!(live_map_dirs(&root, None, "scca_coop_e01.v0024").is_empty());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
     #[test]
     fn a_download_url_has_to_stay_on_faf() {
         use super::is_allowed_download_host as allowed;
