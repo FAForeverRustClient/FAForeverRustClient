@@ -1410,6 +1410,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.notes.open": "Notes et étiquettes",
   "replays.notes.close": "Fermer les notes",
   "replays.filters.yourTags": "Vos étiquettes",
+  "replays.filters.moddedGames": "Parties moddées",
   "replays.filters.anyTag": "Toutes",
   "replays.search.recorder": "Enregistré par",
   "replays.tags.manage": "Gérer les étiquettes",
