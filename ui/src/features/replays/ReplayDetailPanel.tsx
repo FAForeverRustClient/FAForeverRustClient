@@ -27,7 +27,7 @@ import { replayMapPresentation } from "./coopReplayMap";
 import { ReplayInsights } from "./analysis/ReplayInsights";
 import { useAppStore } from "../../store/store";
 import { isObserverTeam, playerCount, ReplayDetailRoster, mergeReplayTeamsWithLocal } from "./ReplayRoster";
-import { hasGameResult, localRatingNote, notRatedReason } from "./replayValidity";
+import { hasGameResult, localRatingNote, resultNote } from "./replayValidity";
 import { formatDecimal } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ReplayMapThumb } from "./ReplayCard";
@@ -305,7 +305,7 @@ export function ReplayDetailPanel({
   const rated = hasGameResult(validity, detailTeams);
   const notRated = isLocal
     ? localRatingNote(replay.uid, onlineLookup, detailTeams)
-    : rated ? null : notRatedReason(validity);
+    : resultNote(validity, detailTeams);
   // `Modal` closes on Escape from a bubble-phase listener on the document, so
   // an overlay that wants Escape first has to take it in the capture phase:
   // stopping propagation there means the modal's listener never runs, and one
@@ -698,7 +698,10 @@ export function ReplayDetailPanel({
                 to three lines and lifted one button off the other's baseline.
                 A notice the width of the panel reads in one line and is a
                 notice rather than a caption. */}
-            {!rated && (
+            {/* Also beside a result that can be shown: an unrated game with a
+                decisive outcome has both a winner and a reason it did not
+                count (see `hasGameResult`). */}
+            {(!rated || notRated !== null) && (
               <p className="replay-card-result-reason" id="replay-result-reason">
                 <Icon name="info" size={15} />
                 <span>{notRated ?? t("replays.detail.noResultYet")}</span>

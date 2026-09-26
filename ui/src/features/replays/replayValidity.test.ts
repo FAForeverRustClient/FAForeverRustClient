@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OnlineLookup, ReplayTeam, VaultReplay } from "../../ipc/bindings";
-import { hasGameResult, localRatingNote, notRatedReason } from "./replayValidity";
+import { hasGameResult, localRatingNote, notRatedReason, resultNote } from "./replayValidity";
 
 const teamsWithChange: ReplayTeam[] = [
   {
@@ -76,8 +76,27 @@ describe("hasGameResult", () => {
     expect(hasGameResult("VALID", teamsWithoutChange)).toBe(false);
   });
 
-  it("is false for a game the server refused, outcomes or not", () => {
+  it("is false for a game the server refused with a one-sided outcome", () => {
     expect(hasGameResult("HAS_AI", teamsWithChange)).toBe(false);
+  });
+
+  it("shows who won an unrated game when the outcome is decisive", () => {
+    // #325: a 1v1 played with cheats on, which Taxaa won.
+    const decided: ReplayTeam[] = [
+      { team: 1, players: [{ name: "Taxaa", faction: 1, rating: 1471, ratingChange: null, outcome: "VICTORY", score: null }] },
+      { team: 2, players: [{ name: "callasoiled", faction: 3, rating: 2644, ratingChange: null, outcome: "DEFEAT", score: null }] },
+    ];
+    expect(hasGameResult("CHEATS_ENABLED", decided)).toBe(true);
+    // ...and still says why it did not count.
+    expect(resultNote("CHEATS_ENABLED", decided)).toBe(notRatedReason("CHEATS_ENABLED"));
+  });
+
+  it("keeps an unrated game with defeat on both sides hidden", () => {
+    const nobodyWon: ReplayTeam[] = [
+      { team: 1, players: [{ name: "A", faction: 1, rating: 1000, ratingChange: null, outcome: "DEFEAT", score: null }] },
+      { team: 2, players: [{ name: "B", faction: 2, rating: 1000, ratingChange: null, outcome: "DEFEAT", score: null }] },
+    ];
+    expect(hasGameResult("OTHER_UNRANK", nobodyWon)).toBe(false);
   });
 });
 
