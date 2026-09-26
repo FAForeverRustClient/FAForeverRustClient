@@ -225,14 +225,16 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   // enough to cover it, plus the same run again so the next few pages are
   // already there.
   const [detailLimit, setDetailLimit] = useState(INITIAL_DETAIL_LIMIT);
+  const replayNotes = useAppStore((state) => state.state.settings.social.replayNotes);
 
   const matching = useMemo(
     () => filterLocalReplays(
       local,
       query,
       (replay) => replay.map ? mapPresentation(mapVault, replay.map, missions).displayName : "",
+      replayNotes,
     ),
-    [local, mapVault, missions, query],
+    [local, mapVault, missions, query, replayNotes],
   );
   const filtered = useMemo(
     () => watchedOnly ? matching.filter((replay) => watched.has(localReplayKey(replay))) : matching,

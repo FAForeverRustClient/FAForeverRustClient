@@ -2691,6 +2691,7 @@ fn helper_fixture() -> HelperFixture {
             .map(|(notes, player_id)| PlayerNoteLookupCase {
                 expected: SocialPreferences {
                     player_notes: notes.clone(),
+                    replay_notes: Vec::new(),
                 }
                 .note_for(player_id)
                 .map_or_else(String::new, |entry| entry.note.clone()),
@@ -3474,6 +3475,7 @@ fn cases() -> Vec<Case> {
                     conflicts: vec![ModVersionConflict {
                         required_uid: "old-uid".into(),
                         required_name: "Total Mayhem".into(),
+                        required_version: "11".into(),
                         folder_name: "Total Mayhem".into(),
                         installed_uid: "new-uid".into(),
                         installed_name: "Total Mayhem".into(),
@@ -4641,6 +4643,58 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a withdrawn map looked up by folder joins the index once",
+            vec![
+                MapsEvent::VaultLoaded {
+                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")],
+                }
+                .into(),
+                // Twice, and with the catalogue's own record in the second
+                // answer: neither may duplicate what the index already holds.
+                MapsEvent::VaultFoldersResolved {
+                    maps: vec![conformance_vault_map(3, 33, "withdrawn_map.v0002")],
+                }
+                .into(),
+                MapsEvent::VaultFoldersResolved {
+                    maps: vec![
+                        conformance_vault_map(3, 33, "withdrawn_map.v0002"),
+                        conformance_vault_map(1, 11, "scmp_009.v0001"),
+                    ],
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "the profile search's account suggestions replace each other",
+            vec![
+                PlayerCardEvent::AccountsFound {
+                    lookup: AccountLookup {
+                        query: "yud".into(),
+                        matches: vec![
+                            AccountLookupMatch {
+                                player_id: 3,
+                                login: "Yudi_Real".into(),
+                                former_name: None,
+                            },
+                            AccountLookupMatch {
+                                player_id: 2,
+                                login: "Later".into(),
+                                former_name: Some("yudi".into()),
+                            },
+                        ],
+                    },
+                }
+                .into(),
+                PlayerCardEvent::AccountsFound {
+                    lookup: AccountLookup {
+                        query: "yudi_".into(),
+                        matches: Vec::new(),
+                    },
+                }
+                .into(),
+            ],
+        ),
+        case(
             "mods load and report a failure",
             vec![
                 ModsEvent::VaultSearching.into(),
@@ -4913,7 +4967,6 @@ fn cases() -> Vec<Case> {
                         login: "Ada".into(),
                         country: String::new(),
                         registered_at: String::new(),
-                        last_seen_at: String::new(),
                         user_agent: String::new(),
                         avatars: vec![PlayerAvatar {
                             url: "old".into(),
@@ -4928,6 +4981,7 @@ fn cases() -> Vec<Case> {
                         events: Vec::new(),
                         achievements: Vec::new(),
                         warnings: Vec::new(),
+                        matched_former_name: None,
                     }),
                 }
                 .into(),
@@ -5012,6 +5066,21 @@ fn cases() -> Vec<Case> {
             ],
         ),
         // ── replays ──────────────────────────────────────────────────────
+        case(
+            "the matchmaker tab's recent games load beside the vault, not into it",
+            vec![
+                ReplayEvent::RecentMatchmakerLoading.into(),
+                ReplayEvent::RecentMatchmakerFailed {
+                    reason: "not logged in".into(),
+                }
+                .into(),
+                ReplayEvent::RecentMatchmakerLoading.into(),
+                ReplayEvent::RecentMatchmakerLoaded {
+                    replays: vec![vault_replay(61), vault_replay(60)],
+                }
+                .into(),
+            ],
+        ),
         case(
             "a replay connects, fails, and is dismissed",
             vec![
@@ -5327,6 +5396,31 @@ fn cases() -> Vec<Case> {
                                 note: "drop me".into(),
                             },
                         ],
+                        // Both reducers tidy these the same way: tags trimmed,
+                        // folded and deduplicated, the later note for a replay
+                        // winning, and an empty one dropped.
+                        replay_notes: vec![
+                            ReplayNote {
+                                replay_id: 9,
+                                comment: " first ".into(),
+                                tags: vec!["old".into()],
+                            },
+                            ReplayNote {
+                                replay_id: 12,
+                                comment: String::new(),
+                                tags: vec![" Lots  finals ".into(), "LOTS FINALS".into(), " ".into()],
+                            },
+                            ReplayNote {
+                                replay_id: 9,
+                                comment: "  Comeback  ".into(),
+                                tags: Vec::new(),
+                            },
+                            ReplayNote {
+                                replay_id: 30,
+                                comment: " ".into(),
+                                tags: Vec::new(),
+                            },
+                        ],
                     },
                 }
                 .into(),
@@ -5423,6 +5517,7 @@ fn cases() -> Vec<Case> {
                         replay_list_columns: vec![64, 240, 150],
                         live_replay_columns: vec![120, 200],
                         coop_board_columns: Vec::new(),
+                        matchmaker_recent_columns: Vec::new(),
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec!["games".into(), "updated".into()],
@@ -6004,7 +6099,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Maps:matchmakerPoolsLoading",
     "Maps:uninstallFailed",
     "Maps:uninstalled",
-    "Maps:vaultLoaded",
     "Mods:installFailed",
     "Mods:installed",
     "Mods:installedLoaded",

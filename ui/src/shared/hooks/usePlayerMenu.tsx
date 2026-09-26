@@ -192,6 +192,10 @@ export function usePlayerMenu(): {
               kind: "Reporting",
               command: { type: "open", payload: { playerId: profile.id, login: profile.login } },
             }),
+            reportPlayerByLogin: (login) => ipc.send({
+              kind: "Reporting",
+              command: { type: "openByLogin", payload: { login } },
+            }),
           }}
           onClose={closeMenu}
         />

@@ -189,10 +189,51 @@ pub struct PlayerNote {
     pub note: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+pub const REPLAY_NOTE_CHARACTER_LIMIT: usize = 500;
+pub const REPLAY_TAG_CHARACTER_LIMIT: usize = 32;
+pub const REPLAY_TAGS_PER_REPLAY: usize = 10;
+const REPLAY_NOTE_LIMIT: usize = 5_000;
+
+/// A private, local comment and set of tags on one replay (#324).
+///
+/// Keyed by the game id, which the vault and a downloaded file share, so a
+/// note written on the Online tab is there on the Local tab too. Nothing here
+/// leaves this machine: it is a personal index ("Lots finals"), not a review.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayNote {
+    pub replay_id: i32,
+    pub comment: String,
+    pub tags: Vec<String>,
+}
+
+/// The player's own annotations: notes on players and on replays.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SocialPreferences {
     pub player_notes: Vec<PlayerNote>,
+    pub replay_notes: Vec<ReplayNote>,
+}
+
+// Through a defaulting twin, so a settings file from before replay notes
+// loads, while the generated TypeScript keeps both fields required.
+impl<'de> Deserialize<'de> for SocialPreferences {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize, Default)]
+        #[serde(rename_all = "camelCase", default)]
+        struct Wire {
+            player_notes: Vec<PlayerNote>,
+            replay_notes: Vec<ReplayNote>,
+        }
+        let wire = Wire::deserialize(deserializer)?;
+        Ok(Self {
+            player_notes: wire.player_notes,
+            replay_notes: wire.replay_notes,
+        })
+    }
 }
 
 impl SocialPreferences {
@@ -230,7 +271,53 @@ impl SocialPreferences {
         *self = std::mem::take(self).normalized();
     }
 
+    pub fn replay_note_for(&self, replay_id: i32) -> Option<&ReplayNote> {
+        self.replay_notes
+            .iter()
+            .find(|entry| entry.replay_id == replay_id)
+    }
+
+    /// Rename a tag on every replay that carries it, or remove it from all of
+    /// them when `to` is empty (#324). Matched case-insensitively, the way
+    /// tags are kept once per replay. A note left with neither comment nor
+    /// tag goes, and a rename onto a tag a replay already has merges the two.
+    pub fn rename_replay_tag(&mut self, from: &str, to: &str) {
+        let from = from.trim().to_lowercase();
+        if from.is_empty() {
+            return;
+        }
+        let to = to.trim();
+        for note in &mut self.replay_notes {
+            let mut renamed = Vec::with_capacity(note.tags.len());
+            for tag in std::mem::take(&mut note.tags) {
+                if tag.to_lowercase() != from {
+                    renamed.push(tag);
+                } else if !to.is_empty() {
+                    renamed.push(to.to_string());
+                }
+            }
+            note.tags = renamed;
+        }
+        *self = std::mem::take(self).normalized();
+    }
+
+    /// Set or clear one replay's note. Empty comment and no tags clears it.
+    pub fn set_replay_note(&mut self, replay_id: i32, comment: String, tags: Vec<String>) {
+        if replay_id <= 0 {
+            return;
+        }
+        self.replay_notes
+            .retain(|entry| entry.replay_id != replay_id);
+        self.replay_notes.push(ReplayNote {
+            replay_id,
+            comment,
+            tags,
+        });
+        *self = std::mem::take(self).normalized();
+    }
+
     fn normalized(mut self) -> Self {
+        self.replay_notes = normalized_replay_notes(std::mem::take(&mut self.replay_notes));
         let mut notes = BTreeMap::new();
         for entry in self.player_notes {
             if entry.player_id <= 0 {
@@ -258,6 +345,63 @@ impl SocialPreferences {
         self.player_notes = notes.into_values().take(PLAYER_NOTE_LIMIT).collect();
         self
     }
+}
+
+/// Bound and tidy replay notes. Twin of `normalizeReplayNotes` in
+/// `ui/src/shared/rules/replayNotes.ts`.
+///
+/// A tag is trimmed, kept to one line and a bounded length, and kept once per
+/// replay however it is capitalised, the first spelling winning. The last note
+/// written for a replay wins, and a note left with neither a comment nor a tag
+/// is dropped, which is how a note is cleared.
+fn normalized_replay_notes(notes: Vec<ReplayNote>) -> Vec<ReplayNote> {
+    let mut by_id = BTreeMap::new();
+    for entry in notes {
+        if entry.replay_id <= 0 {
+            continue;
+        }
+        let comment: String = entry
+            .comment
+            .trim()
+            .chars()
+            .take(REPLAY_NOTE_CHARACTER_LIMIT)
+            .collect();
+        let mut tags: Vec<String> = Vec::new();
+        for tag in entry.tags {
+            let tag: String = tag
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+                .chars()
+                .take(REPLAY_TAG_CHARACTER_LIMIT)
+                .collect();
+            let tag = tag.trim().to_string();
+            if tag.is_empty()
+                || tags
+                    .iter()
+                    .any(|known| known.to_lowercase() == tag.to_lowercase())
+            {
+                continue;
+            }
+            tags.push(tag);
+            if tags.len() == REPLAY_TAGS_PER_REPLAY {
+                break;
+            }
+        }
+        if comment.is_empty() && tags.is_empty() {
+            by_id.remove(&entry.replay_id);
+            continue;
+        }
+        by_id.insert(
+            entry.replay_id,
+            ReplayNote {
+                replay_id: entry.replay_id,
+                comment,
+                tags,
+            },
+        );
+    }
+    by_id.into_values().take(REPLAY_NOTE_LIMIT).collect()
 }
 
 impl Default for GeneralPreferences {
@@ -322,6 +466,14 @@ pub struct AppearancePreferences {
     /// interactive, so reaching one means crossing the gap between the row and
     /// the panel, and a zero here makes everything in them unclickable.
     pub hover_close_delay_ms: u16,
+    /// Whether players' flags are drawn in replay lineups (#328).
+    ///
+    /// Off by default: the lineup already carries a faction, a rating and a
+    /// result per player, and a flag is mostly wanted by people preparing a
+    /// cast. The country comes from the replay file itself, and for an online
+    /// replay from players who are online right now, which is all the API
+    /// offers: it has no country for an account.
+    pub replay_flags: bool,
 }
 
 // A field-level `#[serde(default)]` would have been shorter, but specta turns
@@ -344,6 +496,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             hover_panels: bool,
             hover_open_delay_ms: u16,
             hover_close_delay_ms: u16,
+            replay_flags: bool,
         }
 
         impl Default for Wire {
@@ -358,6 +511,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
                     hover_panels: defaults.hover_panels,
                     hover_open_delay_ms: defaults.hover_open_delay_ms,
                     hover_close_delay_ms: defaults.hover_close_delay_ms,
+                    replay_flags: defaults.replay_flags,
                 }
             }
         }
@@ -374,6 +528,7 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             hover_panels: wire.hover_panels,
             hover_open_delay_ms: wire.hover_open_delay_ms.min(MAX_HOVER_DELAY_MS),
             hover_close_delay_ms: wire.hover_close_delay_ms.min(MAX_HOVER_DELAY_MS),
+            replay_flags: wire.replay_flags,
         })
     }
 }
@@ -428,6 +583,7 @@ impl Default for AppearancePreferences {
             // pointer crosses in well under 50 ms. A sixth of a second covers
             // that without the panel trailing the pointer down the list.
             hover_close_delay_ms: 160,
+            replay_flags: false,
         }
     }
 }
@@ -697,6 +853,12 @@ pub struct NotificationPreferences {
     /// for a switch to turn them on. Off is one click, in the same list as every
     /// other kind, which is what was asked for in the thread.
     pub stream_live: bool,
+    /// Whether a finished generated map is announced.
+    ///
+    /// On by default, because generation is slow and a lobby join waits on it.
+    /// Off silences only the success: a generator that failed still says so,
+    /// because a join blocked on a map that never arrives needs explaining.
+    pub map_generated: bool,
     /// Sound volume from 0 to 100.
     pub volume: u8,
 }
@@ -725,6 +887,7 @@ impl Default for NotificationPreferences {
             review_reminder: true,
             party_invites: true,
             stream_live: true,
+            map_generated: true,
             volume: 70,
         }
     }
@@ -762,6 +925,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             review_reminder: bool,
             party_invites: bool,
             stream_live: bool,
+            map_generated: bool,
             volume: u8,
         }
 
@@ -793,6 +957,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     review_reminder: defaults.review_reminder,
                     party_invites: defaults.party_invites,
                     stream_live: defaults.stream_live,
+                    map_generated: defaults.map_generated,
                     volume: defaults.volume,
                 }
             }
@@ -835,6 +1000,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             review_reminder: wire.review_reminder,
             party_invites: wire.party_invites,
             stream_live: wire.stream_live,
+            map_generated: wire.map_generated,
             volume: wire.volume,
         })
     }
@@ -1960,6 +2126,8 @@ pub struct BrowsingPreferences {
     pub live_replay_columns: Vec<u32>,
     /// And for the co-op leaderboard.
     pub coop_board_columns: Vec<u32>,
+    /// And for the matchmaker tab's recent games (#301).
+    pub matchmaker_recent_columns: Vec<u32>,
     /// Named mod sets the host dialog can re-apply in one click.
     ///
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -2017,6 +2185,7 @@ impl Default for BrowsingPreferences {
             replay_list_columns: Vec::new(),
             live_replay_columns: Vec::new(),
             coop_board_columns: Vec::new(),
+            matchmaker_recent_columns: Vec::new(),
             mod_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
@@ -2061,6 +2230,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             live_replay_columns: Vec<u32>,
             #[serde(default)]
             coop_board_columns: Vec<u32>,
+            matchmaker_recent_columns: Vec<u32>,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
             replay_vault_player: String,
@@ -2091,6 +2261,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     replay_list_columns: defaults.replay_list_columns,
                     live_replay_columns: defaults.live_replay_columns,
                     coop_board_columns: defaults.coop_board_columns,
+                    matchmaker_recent_columns: defaults.matchmaker_recent_columns,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     replay_vault_player: defaults.replay_vault_player,
@@ -2121,6 +2292,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             replay_list_columns: wire.replay_list_columns,
             live_replay_columns: wire.live_replay_columns,
             coop_board_columns: wire.coop_board_columns,
+            matchmaker_recent_columns: wire.matchmaker_recent_columns,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             replay_vault_player: wire.replay_vault_player,
@@ -2172,10 +2344,11 @@ impl BrowsingPreferences {
             selected_factions
         };
         self.live_replay_filters.search = truncate_trimmed(self.live_replay_filters.search, 200);
+        // Room for several choices: these hold comma-separated lists now.
         self.live_replay_filters.game_type =
-            truncate_trimmed(self.live_replay_filters.game_type, 64);
+            truncate_trimmed(self.live_replay_filters.game_type, 256);
         self.live_replay_filters.featured_mod =
-            truncate_trimmed(self.live_replay_filters.featured_mod, 128);
+            truncate_trimmed(self.live_replay_filters.featured_mod, 512);
         self.live_replay_filters.active_players =
             normalize_player_count(self.live_replay_filters.active_players);
         self.live_replay_filters.max_players =
@@ -2237,6 +2410,7 @@ impl BrowsingPreferences {
         self.replay_list_columns = normalize_column_widths(self.replay_list_columns);
         self.live_replay_columns = normalize_column_widths(self.live_replay_columns);
         self.coop_board_columns = normalize_column_widths(self.coop_board_columns);
+        self.matchmaker_recent_columns = normalize_column_widths(self.matchmaker_recent_columns);
         self
     }
 }
@@ -2532,6 +2706,18 @@ pub enum SettingsCommand {
         login: String,
         note: String,
     },
+    /// Write or clear the private note and tags on one replay (#324).
+    #[serde(rename_all = "camelCase")]
+    SetReplayNote {
+        replay_id: i32,
+        comment: String,
+        tags: Vec<String>,
+    },
+    /// Rename a replay tag everywhere, or delete it when `to` is empty (#324).
+    RenameReplayTag {
+        from: String,
+        to: String,
+    },
     SetNotifications {
         preferences: NotificationPreferences,
     },
@@ -2639,17 +2825,30 @@ fn truncate_trimmed(value: String, max_chars: usize) -> String {
     value.trim().chars().take(max_chars).collect()
 }
 
+/// A comma-separated list of player counts, since the live replay filters
+/// became multi-select (#326): each count is checked on its own, and one bad
+/// entry drops only itself. Twin of `normalizePlayerCount` in
+/// `ui/src/shared/browsingPreferences.ts`.
 fn normalize_player_count(value: String) -> String {
-    let value = value.trim();
-    if value.is_empty() || !value.chars().all(|character| character.is_ascii_digit()) {
-        return String::new();
+    let mut counts: Vec<String> = Vec::new();
+    for part in value.split(',') {
+        let part = part.trim();
+        if part.is_empty() || !part.chars().all(|character| character.is_ascii_digit()) {
+            continue;
+        }
+        let Some(count) = part
+            .parse::<u8>()
+            .ok()
+            .filter(|count| (1..=64).contains(count))
+        else {
+            continue;
+        };
+        let count = count.to_string();
+        if !counts.contains(&count) {
+            counts.push(count);
+        }
     }
-    value
-        .parse::<u8>()
-        .ok()
-        .filter(|count| (1..=64).contains(count))
-        .map(|count| count.to_string())
-        .unwrap_or_default()
+    counts.join(",")
 }
 
 /// Bound the user's saved mod sets the way every other list here is bounded.
@@ -3180,6 +3379,7 @@ mod tests {
                 replay_list_columns: vec![10, 200, 0, 9_999],
                 live_replay_columns: vec![1; 40],
                 coop_board_columns: Vec::new(),
+                matchmaker_recent_columns: Vec::new(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
@@ -3435,6 +3635,7 @@ mod tests {
     fn malformed_persisted_player_notes_are_normalized_away() {
         let settings = SettingsState {
             social: SocialPreferences {
+                replay_notes: Vec::new(),
                 player_notes: vec![
                     PlayerNote {
                         player_id: -1,
@@ -3478,5 +3679,68 @@ mod tests {
         )
         .unwrap();
         assert_eq!(parsed_exceeding.game_tile_columns, 6);
+    }
+
+    #[test]
+    fn player_count_filters_hold_a_list_and_drop_only_bad_entries() {
+        assert_eq!(normalize_player_count("2, 04,abc,999,2".into()), "2,4");
+        assert_eq!(normalize_player_count("04".into()), "4");
+        assert_eq!(normalize_player_count("999".into()), "");
+    }
+
+    #[test]
+    fn replay_notes_are_tidied_bounded_and_cleared_by_emptying() {
+        let mut preferences = SocialPreferences::default();
+        preferences.set_replay_note(
+            42,
+            "  great comeback  ".into(),
+            vec![
+                " Lots  finals ".into(),
+                "lots finals".into(),
+                String::new(),
+                "casts".into(),
+            ],
+        );
+        let note = preferences.replay_note_for(42).unwrap();
+        assert_eq!(note.comment, "great comeback");
+        assert_eq!(note.tags, ["Lots finals", "casts"]);
+
+        preferences.set_replay_note(42, " ".into(), Vec::new());
+        assert!(preferences.replay_note_for(42).is_none());
+
+        preferences.set_replay_note(0, "no game".into(), Vec::new());
+        assert!(preferences.replay_notes.is_empty());
+    }
+
+    #[test]
+    fn a_tag_is_renamed_or_removed_on_every_replay() {
+        let mut preferences = SocialPreferences::default();
+        preferences.set_replay_note(1, String::new(), vec!["Lots finals".into(), "casts".into()]);
+        preferences.set_replay_note(2, String::new(), vec!["lots finals".into()]);
+        preferences.set_replay_note(3, "keep me".into(), vec!["LOTS FINALS".into()]);
+
+        preferences.rename_replay_tag("lots FINALS", "Lots 2026");
+        assert_eq!(
+            preferences.replay_note_for(1).unwrap().tags,
+            ["Lots 2026", "casts"]
+        );
+        assert_eq!(preferences.replay_note_for(2).unwrap().tags, ["Lots 2026"]);
+
+        // Renaming onto a tag the replay already has merges the two.
+        preferences.rename_replay_tag("casts", "lots 2026");
+        assert_eq!(preferences.replay_note_for(1).unwrap().tags, ["Lots 2026"]);
+
+        // Deleting drops a note that is left with nothing, keeps one with a comment.
+        preferences.rename_replay_tag("Lots 2026", "");
+        assert!(preferences.replay_note_for(1).is_none());
+        assert!(preferences.replay_note_for(2).is_none());
+        assert_eq!(preferences.replay_note_for(3).unwrap().comment, "keep me");
+        assert!(preferences.replay_note_for(3).unwrap().tags.is_empty());
+    }
+
+    #[test]
+    fn a_settings_file_from_before_replay_notes_still_loads() {
+        let social: SocialPreferences = serde_json::from_str(r#"{"playerNotes":[]}"#).unwrap();
+        assert!(social.replay_notes.is_empty());
     }
 }

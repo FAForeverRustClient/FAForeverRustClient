@@ -58,7 +58,7 @@ const FLEXIBLE_COLUMN = 2;
 
 interface Props {
   busy: boolean;
-  games: Array<{ game: Game; presentation: MapPresentation }>;
+  games: Array<{ game: Game; presentation: MapPresentation; mapSize: string | null }>;
   matchingCount: number;
   totalCount: number;
   expandedId: number | null;
@@ -159,7 +159,7 @@ export function LiveReplayTable(props: Props) {
           </tr>
         </thead>
         <tbody>
-          {props.games.map(({ game, presentation }) => (
+          {props.games.map(({ game, presentation, mapSize }) => (
             <LiveReplayRow
               key={game.id}
               busy={props.busy}
@@ -170,6 +170,7 @@ export function LiveReplayTable(props: Props) {
               onToggle={props.onToggle}
               onPlayerMenu={props.onPlayerMenu}
               presentation={presentation}
+              mapSize={mapSize}
               tracking={props.tracking}
             />
           ))}

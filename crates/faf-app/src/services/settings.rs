@@ -196,6 +196,22 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(SettingsEvent::SocialChanged { preferences });
             persist(ctx, out).await;
         }
+        SettingsCommand::SetReplayNote {
+            replay_id,
+            comment,
+            tags,
+        } => {
+            let mut preferences = out.with_state(|state| state.settings.social.clone());
+            preferences.set_replay_note(replay_id, comment, tags);
+            out.emit(SettingsEvent::SocialChanged { preferences });
+            persist(ctx, out).await;
+        }
+        SettingsCommand::RenameReplayTag { from, to } => {
+            let mut preferences = out.with_state(|state| state.settings.social.clone());
+            preferences.rename_replay_tag(&from, &to);
+            out.emit(SettingsEvent::SocialChanged { preferences });
+            persist(ctx, out).await;
+        }
         SettingsCommand::SetNotifications { preferences } => {
             let mut next = out.with_state(|state| state.settings.clone());
             next.notifications = preferences;

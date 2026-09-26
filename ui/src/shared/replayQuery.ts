@@ -111,6 +111,8 @@ export function advancedReplayFilterCount(query: ReplayQuery): number {
     query.minPlayers !== null || query.maxPlayers !== null,
     query.mapMinSizeKm !== null || query.mapMaxSizeKm !== null,
     query.rankedMapOnly,
+    // The reader's tags, which arrive as the ids of the games carrying them.
+    (query.replayIds ?? []).length > 0,
     // The mod picker moved down here when the date range moved up, so it
     // counts now and the date range does not.
     query.featuredMods.some((mod) => mod !== COOP_FEATURED_MOD),

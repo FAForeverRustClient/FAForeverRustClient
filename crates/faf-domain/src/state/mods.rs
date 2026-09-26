@@ -106,6 +106,9 @@ pub struct ModVersionConflict {
     pub required_uid: String,
     /// What the vault calls that mod, for the prompt.
     pub required_name: String,
+    /// The vault's version number for the required uid, so the prompt can set
+    /// the host's version against the installed one. Empty when unknown.
+    pub required_version: String,
     /// The folder both versions want, relative to the mods directory.
     pub folder_name: String,
     /// The version standing in the way.

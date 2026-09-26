@@ -1674,32 +1674,24 @@
    follows the curve without tangent notches. Tint and edge are two signals for
    one fact, and the tint is the one that survives being glanced at.
 
-   A foe reads the same way in its own colour, which is why the appearance is
-   written once against `--tile-social` rather than twice against two colours.
-   The two setters below are the whole of the difference, and the order they
-   are in is the rule for a lobby holding both: the friend one is second, so it
-   wins. Spelling this out as one rule per state per colour meant four more
-   rules to say "friend, not foe" again, and one of them was already missing:
-   a selected tile with both took the friend border instead of the accent. */
-.game-tile.has-foe {
-  --tile-social: var(--color-foe);
-}
-
+   A foe does not get the same treatment (issue 280). A tile washed and ringed in red
+   read as a lobby "marked for hell" rather than one with somebody in it you
+   would rather avoid, and the red FOE tag inside it already says exactly that.
+   So the foe marking is the tag alone, in the tile and in the row. The
+   appearance is still written against `--tile-social`, so a second colour
+   would again be one setter. */
 .game-tile.has-friend {
   --tile-social: var(--color-friend);
 }
 
-.game-tile.has-friend,
-.game-tile.has-foe {
+.game-tile.has-friend {
   background: color-mix(in srgb, var(--tile-social) 7%, var(--color-surface));
   border-color: var(--tile-social);
   box-shadow: 0 0 1px 0 var(--tile-social);
 }
 
 .game-tile.has-friend:hover,
-.game-tile.has-friend:focus-within,
-.game-tile.has-foe:hover,
-.game-tile.has-foe:focus-within {
+.game-tile.has-friend:focus-within {
   background: color-mix(in srgb, var(--tile-social) 11%, var(--color-surface-hover));
   border-color: var(--tile-social);
   box-shadow: 0 0 1px 0 var(--tile-social);
@@ -1709,8 +1701,7 @@
    looked the same as an unselected one was the complaint. The accent takes the
    border back, so the feathering shadow goes with it rather than ringing an
    accent edge in green. */
-.game-tile.has-friend.active,
-.game-tile.has-foe.active {
+.game-tile.has-friend.active {
   background: color-mix(in srgb, var(--tile-social) 11%, var(--color-surface-raised));
   border-color: var(--color-accent);
   box-shadow: none;
@@ -1744,23 +1735,6 @@
   background: color-mix(in srgb, var(--color-friend) 24%, transparent);
   cursor: pointer;
   outline: none;
-}
-
-/* A lobby with a foe in it. */
-.game-browser-row.has-foe {
-  box-shadow: inset 3px 0 var(--color-foe);
-}
-
-.game-browser-row.has-foe.active {
-  box-shadow: inset 3px 0 var(--color-foe), inset 6px 0 var(--color-accent);
-}
-
-.game-browser-row.has-friend.has-foe {
-  box-shadow: inset 3px 0 var(--color-friend), inset 6px 0 var(--color-foe);
-}
-
-.game-browser-row.has-friend.has-foe.active {
-  box-shadow: inset 3px 0 var(--color-friend), inset 6px 0 var(--color-foe), inset 9px 0 var(--color-accent);
 }
 
 /* The foe tag, using --color-foe. */

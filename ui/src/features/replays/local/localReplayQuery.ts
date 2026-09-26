@@ -1,4 +1,5 @@
-import type { LocalReplay } from "../../../ipc/bindings";
+import type { LocalReplay, ReplayNote } from "../../../ipc/bindings";
+import { hasAnyTag, noteForReplay, replayNoteMatches } from "../../../shared/rules/replayNotes";
 import { matchesLocalGameMode, type LocalGameMode } from "./localGameModes";
 
 export type LocalReplaySortField = "date" | "title" | "map" | "players" | "size";
@@ -17,6 +18,10 @@ export interface LocalReplayQuery {
    */
   gameMode: LocalGameMode;
   title: string;
+  /** Words from the reader's own comment or tags on the replay (#324). */
+  note: string;
+  /** The reader's own tags: any of them matches (#324). */
+  tags: string[];
   recorder: string;
   simMod: string;
   minRating: number | null;
@@ -39,6 +44,8 @@ export const EMPTY_LOCAL_REPLAY_QUERY: LocalReplayQuery = {
   mod: "",
   gameMode: "",
   title: "",
+  note: "",
+  tags: [],
   recorder: "",
   simMod: "",
   minRating: null,
@@ -74,6 +81,7 @@ export function filterLocalReplays(
   replays: LocalReplay[],
   query: LocalReplayQuery,
   mapDisplayName: (replay: LocalReplay) => string = (replay) => replay.map,
+  replayNotes: readonly ReplayNote[] = [],
 ): LocalReplay[] {
   const targetPlayers = query.player
     .split(",")
@@ -98,6 +106,8 @@ export function filterLocalReplays(
       && (!query.mod || contains(replay.modName, query.mod))
       && matchesLocalGameMode(replay, query.gameMode)
       && (!query.title || contains(replay.title || replay.fileName, query.title))
+      && (!query.note.trim() || replayNoteMatches(noteForReplay(replayNotes, replay.uid), query.note))
+      && (query.tags.length === 0 || hasAnyTag(noteForReplay(replayNotes, replay.uid), query.tags))
       && (!query.recorder || contains(replay.recorder, query.recorder))
       && (!query.simMod || replay.simMods.some((mod) => contains(mod, query.simMod)))
       && (query.minRating === null || replay.averageRating !== null && replay.averageRating >= query.minRating)
@@ -127,6 +137,8 @@ export function localReplayAdvancedFilterCount(query: LocalReplayQuery): number 
     query.exactPlayer,
     query.mod !== "",
     query.title !== "",
+    query.note.trim() !== "",
+    query.tags.length > 0,
     query.recorder !== "",
     query.simMod !== "",
     query.after !== "" || query.before !== "",

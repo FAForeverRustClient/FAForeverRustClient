@@ -267,6 +267,12 @@ pub enum MapsEvent {
     VaultLoadFailed {
         reason: String,
     },
+    /// Catalogue records looked up by folder name for maps the catalogue does
+    /// not hold, which in practice means versions withdrawn from the vault.
+    /// Added to `vault`, never replacing anything in it.
+    VaultFoldersResolved {
+        maps: Vec<VaultMap>,
+    },
     InstalledLoading,
     InstalledLoaded {
         maps: Vec<InstalledMap>,
@@ -338,6 +344,18 @@ pub enum MapsCommand {
     SearchVault { query: MapVaultQuery },
     /// Scan the user's maps folder (mirrors `MapsManagerDialog::setup_maplist`).
     LoadInstalled,
+    /// Look maps up by folder name that the catalogue does not hold (#323).
+    ///
+    /// The catalogue is fetched with `latestVersion.hidden=='false'`, which is
+    /// right for browsing and wrong for everything else: a map withdrawn from
+    /// the vault can still be hosted, joined and downloaded, and "hidden" only
+    /// means the vault does not list it. A lobby on such a map found no record,
+    /// and the preview service could not stand in, because it names previews
+    /// after the version's zip rather than its folder. The record's own
+    /// thumbnail URL is the only reliable address, so the UI asks for it once a
+    /// tile has run out of other art.
+    #[serde(rename_all = "camelCase")]
+    ResolveVaultFolders { folder_names: Vec<String> },
     /// Read preview art straight out of the named installed map folders.
     ///
     /// On demand rather than with the folder scan: a full maps folder is
@@ -405,6 +423,17 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
         MapsEvent::VaultLoadFailed { reason } => {
             state.vault_status = MapListStatus::Failed {
                 reason: reason.clone(),
+            }
+        }
+        MapsEvent::VaultFoldersResolved { maps } => {
+            for map in maps {
+                if !state
+                    .vault
+                    .iter()
+                    .any(|known| known.version_id == map.version_id)
+                {
+                    state.vault.push(map.clone());
+                }
             }
         }
         MapsEvent::InstalledLoading => state.installed_status = MapListStatus::Loading,
@@ -810,5 +839,35 @@ mod tests {
 
         assert!(s.local_previews.is_empty());
         assert!(s.local_preview_order.is_empty());
+    }
+
+    #[test]
+    fn a_resolved_folder_is_added_to_the_index_once() {
+        let mut state = MapsState::default();
+        reduce(
+            &mut state,
+            &MapsEvent::VaultLoaded {
+                maps: vec![vault_map("scmp_009.v0001")],
+            },
+        );
+        let mut withdrawn = vault_map("withdrawn.v0002");
+        withdrawn.version_id = 2;
+        withdrawn.hidden = true;
+        for _ in 0..2 {
+            reduce(
+                &mut state,
+                &MapsEvent::VaultFoldersResolved {
+                    maps: vec![withdrawn.clone(), vault_map("scmp_009.v0001")],
+                },
+            );
+        }
+        assert_eq!(
+            state
+                .vault
+                .iter()
+                .map(|map| map.folder_name.as_str())
+                .collect::<Vec<_>>(),
+            ["scmp_009.v0001", "withdrawn.v0002"]
+        );
     }
 }

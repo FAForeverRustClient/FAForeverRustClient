@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../../../design-system/Icon";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
-import { mapPresentation } from "../../../shared/mapPresentation";
+import { isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { LiveReplayControls } from "./LiveReplayControls";
 import { LiveReplayCards } from "./LiveReplayCards";
@@ -15,6 +15,7 @@ import {
   LIVE_REPLAY_BATCH_SIZE,
   liveFeaturedModOptions,
   liveSortValue,
+  matchesFilterChoice,
   replayDelayRemaining,
   type IndexedLiveGame,
   type LiveFilters,
@@ -34,6 +35,7 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   // Live co-op games name a mission folder, which only the co-op catalogue can
   // turn into the mission's name and artwork.
   const missions = useAppStore((s) => s.state.coop.missions);
+  const decodedMaps = useAppStore((s) => s.state.mapGenerator.decoded);
   const mapVaultStatus = useAppStore((s) => s.state.maps.vaultStatus);
   const friends = useAppStore((s) => s.state.social.friends);
   const browsing = useAppStore((s) => s.state.settings.browsing);
@@ -141,10 +143,10 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
       .filter(({ game, players, searchText, simModCount }) => {
         return (
           (!search || searchText.includes(search)) &&
-          (!filters.gameType || game.gameType === filters.gameType) &&
-          (!filters.featuredMod || game.modName === filters.featuredMod) &&
-          (!filters.activePlayers || game.players === Number(filters.activePlayers)) &&
-          (!filters.maxPlayers || game.maxPlayers === Number(filters.maxPlayers)) &&
+          matchesFilterChoice(filters.gameType, game.gameType) &&
+          matchesFilterChoice(filters.featuredMod, game.modName) &&
+          matchesFilterChoice(filters.activePlayers, game.players) &&
+          matchesFilterChoice(filters.maxPlayers, game.maxPlayers) &&
           (!filters.hideModded || simModCount === 0) &&
           (!filters.hideSinglePlayer || game.players !== 1) &&
           (!filters.friendsOnly || players.some((name) => friendSet.has(name.toLocaleLowerCase())))
@@ -162,13 +164,28 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
       .map(({ game }) => game);
   }, [filters, friendSet, indexedGames, sortDirection, sortKey]);
 
+  // The map's size beside its name, everywhere the tab names a map (#327):
+  // "Map Name (10 km)" was the ask. A generated map carries its size in its
+  // name, and decoding that is one command for every such map on screen.
   const visibleGames = useMemo(
     () => filteredGames.slice(0, visibleCount).map((game) => ({
       game,
       presentation: mapPresentation(mapVault, game.map, missions),
+      mapSize: mapSize(mapVault, game.map, decodedMaps?.[game.map]?.mapSize)?.compact ?? null,
     })),
-    [filteredGames, mapVault, missions, visibleCount],
+    [decodedMaps, filteredGames, mapVault, missions, visibleCount],
   );
+
+  useEffect(() => {
+    const undecoded = visibleGames
+      .map(({ game }) => game.map)
+      .filter((map) => isGeneratedMap(map) && !decodedMaps?.[map]);
+    if (undecoded.length === 0) return;
+    ipc.send({
+      kind: "MapGenerator",
+      command: { type: "decodeNames", payload: { mapNames: [...new Set(undecoded)] } },
+    });
+  }, [decodedMaps, visibleGames]);
 
   // Ask the vault about the games on screen, once each.
   //

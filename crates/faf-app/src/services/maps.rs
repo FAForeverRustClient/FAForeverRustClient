@@ -81,6 +81,36 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(MapsEvent::InstalledLoadFailed { reason }),
             }
         }
+        MapsCommand::ResolveVaultFolders { folder_names } => {
+            // Only what the index still lacks: a sibling tile may have asked
+            // for the same folder and been answered in the meantime.
+            let wanted: Vec<String> = out.with_state(|state| {
+                folder_names
+                    .iter()
+                    .filter(|name| {
+                        let base = crate::infra::maps::base_folder_name(name);
+                        !state.maps.vault.iter().any(|map| {
+                            crate::infra::maps::base_folder_name(&map.folder_name) == base
+                        })
+                    })
+                    .cloned()
+                    .collect()
+            });
+            if wanted.is_empty() {
+                return;
+            }
+            match ctx.ports.maps.find_vault_maps_by_folder(&wanted).await {
+                Ok(maps) if !maps.is_empty() => {
+                    out.emit(MapsEvent::VaultFoldersResolved { maps });
+                }
+                Ok(_) => tracing::debug!(?wanted, "no vault record for these map folders"),
+                // Quiet on purpose: the tile already shows its placeholder, and
+                // this lookup is a nicety on top of a lobby that works anyway.
+                Err(reason) => {
+                    tracing::debug!(%reason, ?wanted, "could not look map folders up");
+                }
+            }
+        }
         MapsCommand::LoadLocalPreviews { folder_names } => {
             // Only what has not been looked at yet. The event records an empty
             // result too, so a map whose folder holds no art is asked about

@@ -81,7 +81,12 @@ export function SettingRow({
   children,
 }: {
   label: ReactNode;
-  hint: ReactNode;
+  /**
+   * Only for what the label and the control do not already say: a limit, a
+   * default, an edge case (#306). A self-explanatory setting has none, and
+   * the settings search then finds its row by the label alone.
+   */
+  hint?: ReactNode;
   className?: string;
   badge?: ReactNode;
   children: ReactNode;
@@ -94,7 +99,7 @@ export function SettingRow({
           {label}
           {badge}
         </span>
-        <span className="muted">{hint}</span>
+        {hint && <span className="muted">{hint}</span>}
       </div>
       <div className="setting-control">{children}</div>
     </div>

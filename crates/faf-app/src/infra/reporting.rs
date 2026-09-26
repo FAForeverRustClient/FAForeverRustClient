@@ -173,12 +173,17 @@ fn moderation_report_document(request: &ReportPlayerRequest) -> serde_json::Valu
     if let Some(game_id) = request.game_id {
         relationships["game"] = json!({ "data": { "type": "game", "id": game_id.to_string() } });
     }
+    // `gameIncidentTimecode`, with a lower-case c: that is the attribute's name
+    // on the API's `ModerationReport` entity. The Java client's DTO spells it
+    // `gameIncidentTimeCode` and maps it across by hand, and this document had
+    // copied the DTO's spelling. Elide refuses a document naming an attribute
+    // the entity does not have, so every report was rejected whole (#321).
     json!({
         "data": {
             "type": "moderationReport",
             "attributes": {
                 "reportDescription": request.description,
-                "gameIncidentTimeCode": request.incident_time,
+                "gameIncidentTimecode": request.incident_time,
             },
             "relationships": relationships,
         }
@@ -226,6 +231,11 @@ mod tests {
             document["data"]["attributes"]["reportDescription"],
             "Intentional team killing"
         );
+        // Exactly the entity's attribute names: Elide rejects any other.
+        let attributes = document["data"]["attributes"].as_object().unwrap();
+        let mut names: Vec<&str> = attributes.keys().map(String::as_str).collect();
+        names.sort_unstable();
+        assert_eq!(names, ["gameIncidentTimecode", "reportDescription"]);
         assert_eq!(
             document["data"]["relationships"]["reporter"]["data"]["id"],
             "7"

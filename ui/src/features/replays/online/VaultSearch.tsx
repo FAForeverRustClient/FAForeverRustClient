@@ -24,7 +24,7 @@
 // *executed* lives in `state.replays.vaultQuery`, so the results and their
 // description can't drift.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RatingLeaderboard, ReplayQuery, ReplaySortField } from "../../../ipc/bindings";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
@@ -37,7 +37,10 @@ import {
   isoDaysAgo,
 } from "../../../shared/replayQuery";
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
-import { replayGameModes, selectedGameMode, withGameMode } from "./replayGameModes";
+import { replayGameModes, selectedGameModes, withGameModes } from "./replayGameModes";
+import { MultiSelect } from "../../../design-system/MultiSelect";
+import { useAppStore } from "../../../store/store";
+import { allReplayTags, replayIdsTagged } from "../../../shared/rules/replayNotes";
 import "../../../design-system/search-panel.css";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -87,6 +90,18 @@ interface Props {
 export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, onSearch }: Props) {
   const { t } = useTranslation();
   const [form, setForm] = useState<ReplayQuery>(initialQuery);
+  // The tags picked in the filters, kept beside the form because the query
+  // only carries what they stand for: the ids of the games tagged with them.
+  const [pickedTags, setPickedTags] = useState<string[]>([]);
+  const replayNotes = useAppStore((state) => state.state.settings.social.replayNotes);
+  const tagOptions = useMemo(() => allReplayTags(replayNotes), [replayNotes]);
+  // Shown only while the ids they produced are still in the form, so a
+  // cleared or preset search does not keep claiming a tag filter.
+  const selectedTags = (form.replayIds ?? []).length > 0 ? pickedTags : [];
+  const pickTags = (tags: string[]) => {
+    setPickedTags(tags);
+    setForm((current) => ({ ...current, replayIds: replayIdsTagged(replayNotes, tags), page: 1 }));
+  };
   const [advanced, setAdvanced] = useState(false);
   // Reflects the date bound already in the query, so the button matches what is
   // actually being searched rather than a separate opinion about it. An empty
@@ -236,21 +251,18 @@ export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, on
         {/* The leaderboard picker, asked as the question people have: a
             leaderboard is how the API answers "which mode", not how anybody
             says it, and co-op, which is on no leaderboard at all, could not be
-            asked for before. One choice rather than several, because the two
-            clauses behind it are ANDed and "custom or co-op" would be a search
-            that cannot match anything. See `replayGameModes.ts`. */}
-        <label className="vault-field vault-search-mode search-panel-field">
-          <span className="vault-field-label search-panel-label">{t("replays.search.gameMode")}</span>
-          <select
-            className="vault-input search-panel-control"
-            value={selectedGameMode(form)}
-            onChange={(e) => setForm(withGameMode(form, e.target.value))}
-          >
-            {gameModes.map((mode) => (
-              <option key={mode.id} value={mode.id}>{mode.label}</option>
-            ))}
-          </select>
-        </label>
+            asked for before. Several at once (#326): "custom and matchmaker,
+            not co-op" is one question. See `replayGameModes.ts` for how co-op
+            beside a leaderboard stays answerable. */}
+        <div className="vault-field vault-search-mode search-panel-field">
+          <MultiSelect
+            label={t("replays.search.gameMode")}
+            anyLabel={t("replays.search.mode.any")}
+            options={gameModes.map((mode) => ({ value: mode.id, label: mode.label }))}
+            selected={selectedGameModes(form)}
+            onChange={(modes) => setForm(withGameModes(form, modes))}
+          />
+        </div>
 
         {/* Up here rather than three clicks into the advanced panel: "essential
             feature", and the feature it replaced in this row was the featured
@@ -435,6 +447,9 @@ export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, on
           featuredMods={featuredMods}
           set={set}
           setRange={setRange}
+          tagOptions={tagOptions}
+          selectedTags={selectedTags}
+          onTags={pickTags}
         />
       )}
     </form>

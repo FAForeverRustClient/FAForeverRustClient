@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    MatchmakerPlayerProfile, PlayerCardProfile, PlayerLeaguePlacement, PlayerMapStats,
-    PlayerSummary, RatingHistoryPage, RatingHistoryQuery,
+    AccountLookupMatch, MatchmakerPlayerProfile, PlayerCardProfile, PlayerLeaguePlacement,
+    PlayerMapStats, PlayerSummary, RatingHistoryPage, RatingHistoryQuery,
 };
 
 use super::RequestError;
@@ -20,6 +20,17 @@ pub trait PlayerCardPort: Send + Sync {
         query: &str,
         limit: i32,
     ) -> Result<Vec<PlayerSummary>, RequestError>;
+
+    /// Accounts whose current login or any former name starts with `query`,
+    /// current logins first (#315). Nothing for a query under three characters.
+    /// Defaults to nothing, which is what a stub needs.
+    async fn lookup_accounts(
+        &self,
+        _query: &str,
+        _limit: usize,
+    ) -> Result<Vec<AccountLookupMatch>, RequestError> {
+        Ok(Vec::new())
+    }
 
     /// Resolve a batch of exact logins in one request.
     ///

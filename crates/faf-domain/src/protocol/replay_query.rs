@@ -324,8 +324,16 @@ impl ReplayQuery {
     /// has no filters at all (the plain newest-first feed is cheap: the API
     /// just takes the first page of an index scan). Otherwise the Python
     /// client's rule: 3 months, or 6 when a player name is doing the narrowing.
+    ///
+    /// Also `None` for a lookup by game id. The id is the primary key, so the
+    /// query is cheap without a bound, and a bound only hides what was asked
+    /// for: a replay tagged a year ago (#324), or an old id typed by hand.
     pub fn fallback_months(&self) -> Option<u32> {
-        if !self.after.is_empty() || !self.has_narrowing_filter() {
+        if !self.after.is_empty()
+            || !self.has_narrowing_filter()
+            || !self.replay_id.is_empty()
+            || !self.replay_ids.is_empty()
+        {
             return None;
         }
         Some(if self.player.is_empty() { 3 } else { 6 })
@@ -428,6 +436,50 @@ pub fn build_scan_filter(
     join_clauses(clauses)
 }
 
+/// The featured mod `co-op` games are identified by. They are on no rating
+/// leaderboard, so this is how the game-mode picker asks for them.
+const COOP_FEATURED_MOD: &str = "coop";
+
+/// The featured-mod and leaderboard clauses.
+///
+/// Normally two clauses, ANDed like everything else. The exception is co-op
+/// picked beside one or more leaderboards, which the game-mode picker allows
+/// since it became multi-select (#326): co-op is asked for through the mod and
+/// a leaderboard through the rating changes, and a co-op game has no rating
+/// change, so ANDing them is a search that cannot match anything. What the
+/// reader means is either, so it becomes one OR group: co-op games, or games on
+/// those boards (still narrowed by any other mod picked in the advanced panel).
+fn mode_clauses(query: &ReplayQuery) -> Vec<String> {
+    let leaderboards = in_clause(
+        "playerStats.ratingChanges.leaderboard.technicalName",
+        &query.leaderboards,
+    );
+    let wants_coop = query
+        .featured_mods
+        .iter()
+        .any(|name| name == COOP_FEATURED_MOD);
+    match leaderboards {
+        Some(boards) if wants_coop => {
+            let other_mods: Vec<String> = query
+                .featured_mods
+                .iter()
+                .filter(|name| *name != COOP_FEATURED_MOD)
+                .cloned()
+                .collect();
+            let mut rated = vec![boards];
+            rated.extend(in_clause("featuredMod.technicalName", &other_mods));
+            vec![format!(
+                r#"(featuredMod.technicalName=="{COOP_FEATURED_MOD}",({}))"#,
+                rated.join(";")
+            )]
+        }
+        boards => in_clause("featuredMod.technicalName", &query.featured_mods)
+            .into_iter()
+            .chain(boards)
+            .collect(),
+    }
+}
+
 /// `(a;b;c)`, or `None` when nothing narrows the search.
 fn join_clauses(clauses: Vec<String>) -> Option<String> {
     if clauses.is_empty() {
@@ -465,15 +517,7 @@ fn common_clauses(query: &ReplayQuery, fallback_after: Option<&str>) -> Vec<Stri
     if !query.host.is_empty() {
         clauses.push(format!(r#"host.login=="{}""#, glob(&query.host)));
     }
-    if let Some(clause) = in_clause("featuredMod.technicalName", &query.featured_mods) {
-        clauses.push(clause);
-    }
-    if let Some(clause) = in_clause(
-        "playerStats.ratingChanges.leaderboard.technicalName",
-        &query.leaderboards,
-    ) {
-        clauses.push(clause);
-    }
+    clauses.extend(mode_clauses(query));
     if let Some(clause) = in_clause(
         "playerStats.faction",
         &query
@@ -1082,6 +1126,47 @@ mod tests {
         ] {
             assert!(filter.contains(expected), "missing {expected} in {filter}");
         }
+    }
+
+    #[test]
+    fn a_lookup_by_game_id_is_not_bounded_in_time() {
+        let tagged = ReplayQuery {
+            replay_ids: vec!["1234".into()],
+            ..query()
+        };
+        assert_eq!(tagged.fallback_months(), None);
+        let typed = ReplayQuery {
+            replay_id: "1234".into(),
+            ..query()
+        };
+        assert_eq!(typed.fallback_months(), None);
+        let named = ReplayQuery {
+            player: "Ada".into(),
+            ..query()
+        };
+        assert_eq!(named.fallback_months(), Some(6));
+    }
+
+    #[test]
+    fn coop_beside_leaderboards_is_either_not_both() {
+        let q = ReplayQuery {
+            featured_mods: vec!["coop".into(), "fafbeta".into()],
+            leaderboards: vec!["global".into(), "ladder_1v1".into()],
+            ..query()
+        };
+        assert_eq!(
+            build_filter(&q, None, None).unwrap(),
+            r#"((featuredMod.technicalName=="coop",(playerStats.ratingChanges.leaderboard.technicalName=in=("global","ladder_1v1");featuredMod.technicalName=in=("fafbeta"))))"#
+        );
+        // Co-op alone, and boards alone, are the plain clauses they always were.
+        let coop = ReplayQuery {
+            featured_mods: vec!["coop".into()],
+            ..query()
+        };
+        assert_eq!(
+            build_filter(&coop, None, None).unwrap(),
+            r#"(featuredMod.technicalName=in=("coop"))"#
+        );
     }
 
     #[test]

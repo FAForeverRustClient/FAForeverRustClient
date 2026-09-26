@@ -74,6 +74,16 @@ describe("the link directory", () => {
     expect(ids).not.toContain("gog");
   });
 
+  it("names no individual streamer, only FAF's own channels and the platforms' game pages", () => {
+    // A hand-picked list of casters reads as favouritism (#329).
+    const community = sectionLinks("watch", "community").map((link) => link.href);
+    expect(community).toEqual([
+      "https://www.twitch.tv/directory/category/supreme-commander-forged-alliance",
+      "https://www.youtube.com/channel/UChiCO27pbaXDR0d0JfxlIpw",
+      "https://kick.com/category/supreme-commander-forged-alliance",
+    ]);
+  });
+
   it("keeps the wiki as the only reference entry, since the units are a tab", () => {
     // The hub's other two reference links are covered elsewhere in the client:
     // the unit database is the Units tab, and the beginner guide is a page of
@@ -106,7 +116,7 @@ describe("marking a channel live", () => {
   });
 
   it("does not mark a card whose channel is not the one broadcasting", () => {
-    expect(liveStreamFor(link("stellar"), [stream("faflive")])).toBeNull();
+    expect(liveStreamFor(link("twitch"), [stream("somebodyelse")])).toBeNull();
   });
 
   it("never marks an entry that has no channel at all", () => {

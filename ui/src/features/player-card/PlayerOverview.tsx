@@ -61,6 +61,14 @@ export function PlayerOverview({ profile, note, onOpenHistory }: {
   const { t } = useTranslation();
   return (
     <div className="player-overview">
+      {/* Said up front, because a released name can belong to somebody else
+          now: this is the account that gave it up last, not necessarily the
+          person the reader has in mind. */}
+      {profile.matchedFormerName && (
+        <p className="player-card-former-name surface">
+          {t("playerCard.overview.foundByFormerName", { name: profile.matchedFormerName, login: profile.login })}
+        </p>
+      )}
       {profile.warnings.length > 0 && (
         <details className="player-card-warnings surface">
           <summary>{t("playerCard.overview.warnings")}</summary>
@@ -87,7 +95,6 @@ export function PlayerOverview({ profile, note, onOpenHistory }: {
           <dl className="player-account-details surface">
             <div><dt>{t("playerCard.overview.playerId")}</dt><dd>{profile.playerId}</dd></div>
             <div><dt>{t("playerCard.overview.registered")}</dt><dd>{displayDate(profile.registeredAt)}</dd></div>
-            <div><dt>{t("playerCard.overview.lastSeen")}</dt><dd>{displayDate(profile.lastSeenAt)}</dd></div>
             <div><dt>{t("playerCard.overview.userAgent")}</dt><dd title={profile.userAgent || undefined}>{formatUserAgent(profile.userAgent)}</dd></div>
             <div><dt>{t("playerCard.overview.clan")}</dt><dd>{profile.clan ? `[${profile.clan.tag}] ${profile.clan.name}` : t("playerCard.overview.noClan")}</dd></div>
             <div><dt>{t("playerCard.overview.clanJoined")}</dt><dd>{profile.clan ? displayDate(profile.clan.joinedAt) : "N/A"}</dd></div>

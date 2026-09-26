@@ -107,12 +107,12 @@ pub use notifications::{
 };
 pub use player_card::{
     aggregate_map_stats, is_retired_leaderboard, leaderboard_display_name,
-    leaderboard_display_rank, sort_league_placements, sort_rating_summaries, ClanMember,
-    MatchmakerPlayerProfile, PlayedGame, PlayerAchievement, PlayerAchievementState, PlayerAvatar,
-    PlayerCardCommand, PlayerCardEvent, PlayerCardProfile, PlayerCardState, PlayerCardStatus,
-    PlayerClan, PlayerEventCount, PlayerLeaguePlacement, PlayerMapStat, PlayerMapStats,
-    PlayerNameRecord, PlayerRatingSummary, PlayerSummary, RatingHistoryPage, RatingHistoryPeriod,
-    RatingHistoryPoint, RatingHistoryQuery,
+    leaderboard_display_rank, sort_league_placements, sort_rating_summaries, AccountLookup,
+    AccountLookupMatch, ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement,
+    PlayerAchievementState, PlayerAvatar, PlayerCardCommand, PlayerCardEvent, PlayerCardProfile,
+    PlayerCardState, PlayerCardStatus, PlayerClan, PlayerEventCount, PlayerLeaguePlacement,
+    PlayerMapStat, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary,
+    RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 pub use replays::{
     live_replay_delay_remaining, sort_vault_replays, LiveReplayTarget, LiveReplayTracking,
@@ -139,9 +139,9 @@ pub use settings::{
     DiscordPreferences, EventReminder, EventsPreferences, GameCacheInfo, GamePreferences,
     GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
     NotificationPreferences, NotificationSound, NotificationSoundChoices, PathPreferences,
-    PlayerNote, SettingsCommand, SettingsEvent, SettingsState, SocialPreferences, Theme,
-    ToastPosition, UiDensity, UpdatePreferences, WeekStart, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH,
-    SIDEBAR_RAIL_BELOW,
+    PlayerNote, ReplayNote, SettingsCommand, SettingsEvent, SettingsState, SocialPreferences,
+    Theme, ToastPosition, UiDensity, UpdatePreferences, WeekStart, MAX_SIDEBAR_WIDTH,
+    MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,

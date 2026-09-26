@@ -35,6 +35,8 @@ export function reducePlayerCard(state: PlayerCardState, event: PlayerCardEvent)
       };
     case "loadFailed":
       return { ...state, profileStatus: "failed", profileError: event.payload.reason };
+    case "accountsFound":
+      return { ...state, accountLookup: event.payload.lookup };
     case "closed":
       return { ...state, open: false, profileStatus: "idle", historyStatus: "idle" };
     case "historyLoading":

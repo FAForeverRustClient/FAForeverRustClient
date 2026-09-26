@@ -64,6 +64,8 @@ const INITIAL: AppState = {
     analysisError: null,
     onlineLookups: {},
     resolvedMaps: {},
+    recentMatchmaker: [],
+    recentMatchmakerStatus: { type: "idle" },
   },
   maps: {
     vault: [],
@@ -181,6 +183,7 @@ const INITIAL: AppState = {
       updatedAfter: null,
       updatedBefore: null,
       player: "",
+      includeFormerNames: false,
     },
     ratingPage: {
       entries: [],
@@ -219,6 +222,7 @@ const INITIAL: AppState = {
     mapStats: null,
     mapStatsStatus: "idle",
     mapStatsError: "",
+    accountLookup: { query: "", matches: [] },
   },
   reporting: {
     open: false,
@@ -433,8 +437,9 @@ const INITIAL: AppState = {
       hoverPanels: true,
       hoverOpenDelayMs: 500,
       hoverCloseDelayMs: 160,
+      replayFlags: false,
     },
-    social: { playerNotes: [] },
+    social: { playerNotes: [], replayNotes: [] },
     notifications: {
       enabled: true,
       desktop: true,
@@ -481,6 +486,7 @@ const INITIAL: AppState = {
       reviewReminder: true,
       partyInvites: true,
       streamLive: true,
+      mapGenerated: true,
       volume: 70,
     },
     chat: {
@@ -592,6 +598,7 @@ const INITIAL: AppState = {
       replayListColumns: [],
       liveReplayColumns: [],
       coopBoardColumns: [],
+      matchmakerRecentColumns: [],
       modPresets: [],
       leaderboardRatingColumns: ["games", "updated"],
       replayVaultPlayer: "",

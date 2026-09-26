@@ -1442,3 +1442,115 @@
   color: var(--color-subtle);
   font-size: 11px;
 }
+
+/* The latest matchmaker games (issue 301), as a table built like the
+   live-replay one: fixed layout, widths from the colgroup, a draggable divider
+   on the leading edge of every header cell after the first. */
+.matchmaker-recent {
+  padding: 20px;
+}
+
+.matchmaker-recent-state {
+  margin: var(--space-3) 0 0;
+}
+
+.matchmaker-recent-table-wrap {
+  min-width: 0;
+  margin-top: var(--space-3);
+  overflow: auto;
+}
+
+.matchmaker-recent-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+
+.matchmaker-recent-table th {
+  position: relative;
+  height: 36px;
+  padding: 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Two classes for the same reason as the live table's: `.resize-handle` sets
+   `position: relative`, and which single-class rule won depended on bundle
+   order. */
+.matchmaker-recent-table th > .matchmaker-recent-col-handle {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: -6px;
+  bottom: 0;
+  width: 12px;
+}
+
+.matchmaker-recent-row td {
+  height: 56px;
+  padding: 6px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.matchmaker-recent-row td:last-child {
+  overflow: visible;
+}
+
+.matchmaker-recent-row:hover td {
+  background: var(--color-surface-raised);
+}
+
+.matchmaker-recent-thumb {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: var(--color-subtle);
+  object-fit: cover;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.matchmaker-recent-map {
+  font-weight: 600;
+}
+
+.matchmaker-recent-mode {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.matchmaker-recent-outcome {
+  font-weight: 600;
+}
+
+.matchmaker-recent-outcome.is-victory,
+.matchmaker-recent-change.is-up {
+  color: var(--color-ok);
+}
+
+.matchmaker-recent-outcome.is-defeat,
+.matchmaker-recent-change.is-down {
+  color: var(--color-error);
+}
+
+.matchmaker-recent-change {
+  font-variant-numeric: tabular-nums;
+}
+
+.matchmaker-recent-actions {
+  display: flex;
+  gap: var(--space-1);
+}

@@ -426,3 +426,170 @@
   margin-top: var(--space-2);
   font-size: 11px;
 }
+
+/* A private comment and tags on the replay (issue 324), in an overlay over
+   the replay panel. Quiet on purpose: it is the reader's own index. */
+.replay-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  width: min(520px, 92vw);
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.replay-notes-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.replay-notes-head > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.replay-notes-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.replay-notes-head span {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-notes-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.replay-notes-field > span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.replay-notes-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.replay-notes-tags li {
+  padding: 2px var(--space-2);
+  color: var(--color-accent);
+  font-size: 12px;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.replay-notes-comment {
+  min-height: 84px;
+  resize: vertical;
+  font: inherit;
+}
+
+.replay-notes-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.replay-notes-actions > span {
+  flex: 1;
+  font-size: 12px;
+}
+
+/* Managing every replay tag at once (issue 324). */
+.replay-tags-manage {
+  align-self: flex-start;
+  margin-top: var(--space-1);
+  padding: 0;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.replay-tags-manage:hover,
+.replay-tags-manage:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
+.replay-tags {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(560px, 90vw);
+}
+
+.replay-tags h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.replay-tags > p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.replay-tags-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 50vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.replay-tags-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.replay-tags-name {
+  overflow: hidden;
+  color: var(--color-accent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-tags-count {
+  font-size: 12px;
+}
+
+.replay-tags-input {
+  min-width: 0;
+}
+
+.replay-tags-actions {
+  display: flex;
+  justify-content: flex-end;
+}

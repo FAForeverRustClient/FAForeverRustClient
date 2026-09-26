@@ -84,7 +84,6 @@ pub struct ClanMember {
     pub login: String,
     pub joined_at: String,
     pub account_created_at: String,
-    pub last_seen_at: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -204,7 +203,10 @@ pub struct PlayerCardProfile {
     pub login: String,
     pub country: String,
     pub registered_at: String,
-    pub last_seen_at: String,
+    // No "last seen": the API's `lastLogin` is readable only by the account
+    // itself and by moderators, and `updateTime`, which stood in for it, moves
+    // whenever anything writes the row. A bulk update set it to one date for a
+    // great many accounts that had not been online in years (#312).
     pub user_agent: String,
     pub avatars: Vec<PlayerAvatar>,
     pub names: Vec<PlayerNameRecord>,
@@ -215,6 +217,13 @@ pub struct PlayerCardProfile {
     pub achievements: Vec<PlayerAchievement>,
     /// Non-fatal API section failures. Identity still loads and the UI explains omissions.
     pub warnings: Vec<String>,
+    /// The name this profile was found by, when it is a former name rather
+    /// than the current login (#315).
+    ///
+    /// A name is released when its owner changes it and can be taken by
+    /// somebody else, so a hit on a former name is a candidate, not a proof,
+    /// and the card says so.
+    pub matched_former_name: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -245,6 +254,28 @@ pub struct RatingHistoryPage {
     pub maximum: Option<RatingHistoryPoint>,
     pub page: i32,
     pub total_pages: i32,
+}
+
+/// One account the profile search offers for a typed name (#315).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountLookupMatch {
+    pub player_id: i32,
+    pub login: String,
+    /// The former name the query matched, when it was not the current login.
+    /// A released name can have passed through several accounts, and this is
+    /// what tells them apart in the list.
+    pub former_name: Option<String>,
+}
+
+/// The accounts found for the text in the profile search, current logins
+/// and former names alike. `query` is what they answer, so a late reply to an
+/// older query is never shown under a newer one.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountLookup {
+    pub query: String,
+    pub matches: Vec<AccountLookupMatch>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -281,6 +312,8 @@ pub struct PlayerCardState {
     pub map_stats: Option<PlayerMapStats>,
     pub map_stats_status: PlayerCardStatus,
     pub map_stats_error: String,
+    /// Accounts matching the profile search's text (#315).
+    pub account_lookup: AccountLookup,
 }
 
 impl Default for PlayerCardState {
@@ -310,6 +343,7 @@ impl Default for PlayerCardState {
             map_stats: None,
             map_stats_status: PlayerCardStatus::default(),
             map_stats_error: String::new(),
+            account_lookup: AccountLookup::default(),
         }
     }
 }
@@ -321,6 +355,12 @@ pub enum PlayerCardCommand {
     Open {
         player_id: Option<i32>,
         login: String,
+    },
+    /// Find accounts whose current login or a former name starts with this
+    /// text, for the profile search's suggestions (#315).
+    #[serde(rename_all = "camelCase")]
+    LookUpAccounts {
+        query: String,
     },
     Close,
     /// Load the rating history for one queue over one period, all of it.
@@ -361,6 +401,10 @@ pub enum PlayerCardEvent {
     #[serde(rename_all = "camelCase")]
     Loading {
         login: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    AccountsFound {
+        lookup: AccountLookup,
     },
     #[serde(rename_all = "camelCase")]
     Loaded {
@@ -451,6 +495,9 @@ pub fn reduce(state: &mut PlayerCardState, event: &PlayerCardEvent) {
         PlayerCardEvent::LoadFailed { reason } => {
             state.profile_status = PlayerCardStatus::Failed;
             state.profile_error = reason.clone();
+        }
+        PlayerCardEvent::AccountsFound { lookup } => {
+            state.account_lookup = lookup.clone();
         }
         PlayerCardEvent::Closed => {
             state.open = false;
@@ -781,7 +828,6 @@ mod tests {
                 login: "Ada".into(),
                 country: String::new(),
                 registered_at: String::new(),
-                last_seen_at: String::new(),
                 user_agent: String::new(),
                 avatars: vec![PlayerAvatar {
                     url: "old".into(),
@@ -796,6 +842,7 @@ mod tests {
                 events: Vec::new(),
                 achievements: Vec::new(),
                 warnings: Vec::new(),
+                matched_former_name: None,
             }),
             ..PlayerCardState::default()
         };

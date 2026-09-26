@@ -790,6 +790,10 @@ async fn run_session(
                     "notice" => {
                         let (style, text) = parse_server_notice(&value);
                         tracing::info!(?style, %text, "lobby notice received");
+                        if is_unofficial_client_notice(style, &text) {
+                            // Logged above, shown nowhere: see the function.
+                            continue;
+                        }
                         if tx.send(LobbyUpdate::Notice { style, text }).await.is_err() {
                             break 'connection;
                         }
@@ -1066,6 +1070,20 @@ fn parse_server_notice(value: &Value) -> (ServerNoticeStyle, String) {
         _ => ServerNoticeStyle::Info,
     };
     (style, server_text(value, "The lobby server sent a notice."))
+}
+
+/// The server greets every client it does not recognise as the official one
+/// with "You are using an unofficial client version!", on every sign-in,
+/// including each silent reconnect. It is not addressed to anyone who could act
+/// on it (this client is unofficial on purpose), and it arrived as a required
+/// notification with a sound several times an hour (#310). It is dropped here,
+/// by its text, so any other `info` notice from the server still comes through.
+fn is_unofficial_client_notice(style: ServerNoticeStyle, text: &str) -> bool {
+    style == ServerNoticeStyle::Info
+        && text
+            .trim_start()
+            .to_ascii_lowercase()
+            .starts_with("you are using an unofficial client")
 }
 
 /// How long to wait before the next attempt, given how many in a row have
@@ -2296,6 +2314,24 @@ mod tests {
         let (_, text) = parse_server_notice(&json!({ "style": "warning", "text": oversized }));
         assert_eq!(text.chars().count(), MAX_SERVER_MESSAGE_CHARS);
         assert!(text.is_char_boundary(text.len()));
+    }
+
+    #[test]
+    fn only_the_unofficial_client_greeting_is_dropped() {
+        let greeting = "You are using an unofficial client version! Some features might not             work as expected. If you experience any problems please download the latest             version of the official client from <a href=\"https://www.faforever.com\">";
+        assert!(is_unofficial_client_notice(
+            ServerNoticeStyle::Info,
+            greeting
+        ));
+        // The same words as a warning are something the server chose to escalate.
+        assert!(!is_unofficial_client_notice(
+            ServerNoticeStyle::Warning,
+            greeting
+        ));
+        assert!(!is_unofficial_client_notice(
+            ServerNoticeStyle::Info,
+            "The server restarts in 10 minutes."
+        ));
     }
 
     #[test]

@@ -22,6 +22,7 @@
 // because they need separate backend flows. Player notes are local persisted
 // preferences and are available for every resolved FAF account.
 
+import { ColorInput } from "../../design-system/ColorInput";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Game, PlayerProfile } from "../../ipc/bindings";
@@ -52,6 +53,12 @@ export interface UserMenuActions {
   setNameColor: (nickname: string, color: string | null) => void;
   setMuted: (nickname: string, muted: boolean) => void;
   reportPlayer: (profile: PlayerProfile) => void;
+  /**
+   * Report somebody the lobby's player list does not know, by name: a
+   * replay's lineup is mostly players who are offline (#321). Absent where
+   * the caller cannot do that.
+   */
+  reportPlayerByLogin?: (login: string) => void;
   editNote: (profile: PlayerProfile) => void;
 }
 
@@ -149,9 +156,13 @@ export function UserMenu({
     }
   }
 
-  if (profile && !isSelf) {
+  if (!isSelf && (profile || actions.reportPlayerByLogin)) {
     separator();
-    item(t("chat.menu.reportPlayer"), () => actions.reportPlayer(profile), true);
+    item(
+      t("chat.menu.reportPlayer"),
+      () => (profile ? actions.reportPlayer(profile) : actions.reportPlayerByLogin?.(nickname)),
+      true,
+    );
   }
 
   // Keep the menu on screen: flip rather than clip when it would overflow.
@@ -231,11 +242,12 @@ export function UserMenu({
       <div className="chat-user-menu-color" role="group" aria-label={t("chat.menu.nameColorGroup", { nickname })}>
         <label>
           <span>{t("chat.menu.customColor")}</span>
-          <input
-            type="color"
+          <ColorInput
+            className="chat-user-menu-color-swatch"
+            showSwatch
             value={nameColor ?? DEFAULT_COLOR_PICKER_VALUE}
             aria-label={t("chat.menu.chooseColor", { nickname })}
-            onChange={(event) => actions.setNameColor(nickname, event.target.value)}
+            onChange={(next) => actions.setNameColor(nickname, next)}
           />
         </label>
         <button

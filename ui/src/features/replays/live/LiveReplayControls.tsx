@@ -1,6 +1,13 @@
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
-import { prettyFeaturedMod, prettyGameType, type LiveFilters } from "../../../shared/liveReplayModel";
+import { MultiSelect } from "../../../design-system/MultiSelect";
+import {
+  filterChoices,
+  joinFilterChoices,
+  prettyFeaturedMod,
+  prettyGameType,
+  type LiveFilters,
+} from "../../../shared/liveReplayModel";
 import { ReplayViewSwitch, type ReplayViewMode } from "../ReplayViewSwitch";
 import { useTranslation } from "../../../i18n/useTranslation";
 
@@ -78,40 +85,56 @@ export function LiveReplayControls(props: Props) {
         <ReplayViewSwitch value={props.viewMode} onChange={props.onViewMode} />
       </div>
 
+      {/* Checkbox lists rather than single selects (#326): "custom and
+          matchmaker, but not co-op" is one question, and a single select could
+          only answer it as "everything". Nothing ticked still means any. */}
       {props.filtersOpen && (
         <div className="live-replay-filters surface-panel">
-          <label>
-            <span>{t("replays.live.gameType")}</span>
-            <select value={filters.gameType} onChange={(event) => onFilter("gameType", event.target.value)}>
-              <option value="">{t("replays.live.anyType")}</option>
-              {props.gameTypes.map((type) => <option key={type} value={type}>{prettyGameType(type)}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>{t("replays.live.featuredMod")}</span>
-            <select value={filters.featuredMod} onChange={(event) => onFilter("featuredMod", event.target.value)}>
-              <option value="">{t("replays.live.anyMod")}</option>
-              {props.featuredMods.map((mod) => <option key={mod} value={mod}>{prettyFeaturedMod(mod)}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>{t("replays.live.activePlayers")}</span>
-            <select value={filters.activePlayers} onChange={(event) => onFilter("activePlayers", event.target.value)}>
-              <option value="">{t("replays.live.anyCount")}</option>
-              {props.activePlayerOptions.map((count) => <option key={count} value={count}>{count}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>{t("replays.live.gameSize")}</span>
-            <select value={filters.maxPlayers} onChange={(event) => onFilter("maxPlayers", event.target.value)}>
-              <option value="">{t("replays.live.anySize")}</option>
-              {props.maxPlayerOptions.map((count) => (
-                <option key={count} value={count}>{t("replays.live.slots", { count })}</option>
-              ))}
-            </select>
-          </label>
+          <MultiSelect
+            label={t("replays.live.gameType")}
+            anyLabel={t("replays.live.anyType")}
+            options={withChosen(props.gameTypes, filters.gameType).map((type) => ({ value: type, label: prettyGameType(type) }))}
+            selected={filterChoices(filters.gameType)}
+            onChange={(values) => onFilter("gameType", joinFilterChoices(values))}
+          />
+          <MultiSelect
+            label={t("replays.live.featuredMod")}
+            anyLabel={t("replays.live.anyMod")}
+            options={withChosen(props.featuredMods, filters.featuredMod).map((mod) => ({ value: mod, label: prettyFeaturedMod(mod) }))}
+            selected={filterChoices(filters.featuredMod)}
+            onChange={(values) => onFilter("featuredMod", joinFilterChoices(values))}
+          />
+          <MultiSelect
+            label={t("replays.live.activePlayers")}
+            anyLabel={t("replays.live.anyCount")}
+            options={withChosen(props.activePlayerOptions.map(String), filters.activePlayers).map((count) => ({ value: count, label: count }))}
+            selected={filterChoices(filters.activePlayers)}
+            onChange={(values) => onFilter("activePlayers", joinFilterChoices(values))}
+          />
+          <MultiSelect
+            label={t("replays.live.gameSize")}
+            anyLabel={t("replays.live.anySize")}
+            options={withChosen(props.maxPlayerOptions.map(String), filters.maxPlayers).map((count) => ({
+              value: count,
+              label: t("replays.live.slots", { count: Number(count) }),
+            }))}
+            selected={filterChoices(filters.maxPlayers)}
+            onChange={(values) => onFilter("maxPlayers", joinFilterChoices(values))}
+          />
         </div>
       )}
     </>
   );
+}
+
+/**
+ * The options the live list offers, plus any saved choice it no longer does.
+ *
+ * The lists are built from the games running right now, so a saved choice can
+ * outlive every game that had it. Left out of the options, it would still be
+ * filtering while no checkbox showed it ticked, and nothing could untick it.
+ */
+function withChosen(options: string[], stored: string): string[] {
+  const missing = filterChoices(stored).filter((choice) => !options.includes(choice));
+  return [...options, ...missing];
 }
