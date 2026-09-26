@@ -40,8 +40,83 @@ function windowsFor(
   return queue.boundary80s.length > 0 ? queue.boundary80s : queue.boundary75s;
 }
 
+// ── 1v1: the server's own rule, replicated ─────────────────────────────────
+//
+// The windows a queue publishes are fixed: ±200 (`boundary_80s`) and ±100
+// (`boundary_75s`) around each search's rating, rounded to ten. They never
+// widen with waiting, and the 1v1 matchmaker does not use them. It pairs two
+// searches when their TrueSkill match quality clears both of their thresholds,
+// and a threshold starts at 80% of the quality of a game against yourself and
+// drops with every queue pop that fails to match you (`server/matchmaker/
+// search.py`, `match_threshold`). That drop is why "0 in your range" could be
+// followed by a match (#303): after a few pops the reach is almost twice the
+// window. What the client cannot know is an opponent's own deviation, and it
+// is taken to be yours.
+
+/** `trueskill.setup(beta=240)` in the server's `config.py`. */
+const TRUESKILL_BETA = 240;
+/** `LADDER_SEARCH_EXPANSION_MAX`: how far a threshold drops, at most. */
+const SEARCH_EXPANSION_MAX = 0.25;
+/** `NEWBIE_MIN_GAMES` and `NEWBIE_BASE_MEAN`: a new account is matched on a
+ *  mean pulled towards 500 until it has played this many games. */
+const NEWBIE_MIN_GAMES = 10;
+const NEWBIE_BASE_MEAN = 500;
+
+/** The mean the server matches a 1v1 search on. */
+function matchmakingMean(rating: PlayerRatingSummary): number | null {
+  if (rating.mean === null) return null;
+  const games = rating.gamesPlayed;
+  if (games > NEWBIE_MIN_GAMES) return rating.mean;
+  return ((NEWBIE_MIN_GAMES - games) * NEWBIE_BASE_MEAN + games * rating.mean) / NEWBIE_MIN_GAMES;
+}
+
 /**
- * The number of queued searches whose window contains your rating, or `null`
+ * How far apart in mean two players can be and still be matched in 1v1, with
+ * their thresholds dropped by `expansion`. Two players with the same
+ * deviation `s`: quality is `sqrt(2b²/c²) * exp(-d²/2c²)` with
+ * `c² = 2b² + 2s²`, and the rule is quality >= 0.8 * sqrt(2b²/c²) - expansion.
+ */
+export function matchReach(deviation: number, expansion: number): number {
+  const c2 = 2 * TRUESKILL_BETA ** 2 + 2 * deviation ** 2;
+  const selfQuality = Math.sqrt((2 * TRUESKILL_BETA ** 2) / c2);
+  const ratio = 0.8 - expansion / selfQuality;
+  if (ratio <= 0) return Number.POSITIVE_INFINITY;
+  return Math.sqrt(-2 * c2 * Math.log(ratio));
+}
+
+/** The reach now, and after the threshold has dropped as far as it goes. */
+export function matchReaches(rating: PlayerRatingSummary): { now: number; waited: number } | null {
+  if (rating.deviation === null) return null;
+  return {
+    now: matchReach(rating.deviation, 0),
+    waited: matchReach(rating.deviation, SEARCH_EXPANSION_MAX),
+  };
+}
+
+/**
+ * Whether a published window's search could be matched with you: for 1v1 by
+ * the server's quality rule after a few minutes of waiting, measured from the
+ * middle of the window, which is that search's rating; elsewhere by the old
+ * overlap test, since the team matchmaker weighs team balance instead and
+ * nothing the queue publishes describes it.
+ */
+function reachesYou(
+  queue: MatchmakerQueue,
+  rating: PlayerRatingSummary,
+): ((window: { min: number; max: number }) => boolean) | null {
+  if (rating.mean === null || rating.deviation === null) return null;
+  if (queue.teamSize === 1) {
+    const mean = matchmakingMean(rating);
+    const reaches = matchReaches(rating);
+    if (mean === null || !reaches) return null;
+    return (window) => Math.abs((window.min + window.max) / 2 - mean) <= reaches.waited;
+  }
+  const mean = rating.mean;
+  return (window) => window.min < mean && mean < window.max;
+}
+
+/**
+ * The number of queued searches that could be matched with you, or `null`
  * when that cannot honestly be said.
  *
  * `null` means "no answer", not "nobody": an unrated queue, a rating the
@@ -66,9 +141,10 @@ export function playersInRatingRange(
   // The mean, not the displayed rating: the server builds these windows from
   // mu, while the client shows mu - 3*sigma everywhere else. Comparing the
   // displayed number against them would shift everybody down by their own
-  // uncertainty. Strict on both ends, as the reference does.
-  const mean = rating.mean;
-  const inRange = windows.filter((window) => window.min < mean && mean < window.max).length;
+  // uncertainty. See `reachesYou` for what counts as in range.
+  const reaches = reachesYou(queue, rating);
+  if (!reaches) return null;
+  const inRange = windows.filter(reaches).length;
   return Math.max(0, inRange - ownSearches);
 }
 
@@ -125,6 +201,7 @@ export function queueRatingBuckets(
   // one either.
   const mean =
     playersInRatingRange(queue, rating, 0) === null ? null : (rating?.mean ?? null);
+  const reaches = mean === null || !rating ? null : reachesYou(queue, rating);
   const bandOf = (value: number) => Math.floor(Math.max(0, value) / RATING_BUCKET) * RATING_BUCKET;
 
   const counts = new Map<number, { count: number; inRange: number }>();
@@ -134,7 +211,7 @@ export function queueRatingBuckets(
     const band = bandOf(middle);
     const tally = counts.get(band) ?? { count: 0, inRange: 0 };
     tally.count += 1;
-    if (mean !== null && window.min < mean && mean < window.max) tally.inRange += 1;
+    if (reaches?.(window)) tally.inRange += 1;
     counts.set(band, tally);
   }
 

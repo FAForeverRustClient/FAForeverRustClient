@@ -3,7 +3,7 @@ import { Icon } from "../../../design-system/Icon";
 import type { MatchmakerQueue, PlayerLeaguePlacement, PlayerRatingSummary } from "../../../ipc/bindings";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 import { formatClockDuration } from "../../../shared/format/durations";
-import { queueRatingBuckets } from "./queueRatingRange";
+import { matchReaches, queueRatingBuckets } from "./queueRatingRange";
 import { t } from "../../../i18n";
 
 export type QueueDisplayState = "idle" | "searching" | "found" | "launching" | "cancelled";
@@ -77,6 +77,7 @@ export function MatchmakerQueueCard({
   // question both leave open is whether the queue is empty around your rating
   // or empty everywhere, which decides whether waiting is worth it.
   const buckets = queueRatingBuckets(queue, rating, ownSearches);
+  const reaches = inRange !== null && rating ? matchReaches(rating) : null;
   return (
     <article
       className={
@@ -172,6 +173,18 @@ export function MatchmakerQueueCard({
                 {buckets.some((bucket) => bucket.mine) && (
                   <small>{t("lobby.matchmaker.yourBand")}</small>
                 )}
+                {/* How "in range" is counted, because the ranges the server
+                    publishes are not the ones it matches on (#303). */}
+                {reaches && queue.teamSize === 1 ? (
+                  <small className="matchmaker-queue-breakdown-note">
+                    {t("lobby.matchmaker.reachNote", {
+                      now: Math.round(reaches.now),
+                      waited: Math.round(reaches.waited),
+                    })}
+                  </small>
+                ) : queue.teamSize > 1 ? (
+                  <small className="matchmaker-queue-breakdown-note">{t("lobby.matchmaker.teamReachNote")}</small>
+                ) : null}
               </span>
             )}
           </span>

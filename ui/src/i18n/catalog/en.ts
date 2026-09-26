@@ -631,7 +631,9 @@ export const en = {
   "lobby.party.ofPlayers": "{count} of {max} players",
   "lobby.matchmaker.someOfBand": "{inRange} of {count}",
   "lobby.matchmaker.yourBand": "Highlighted: your rating band, and who in it would take you.",
-  "lobby.matchmaker.inRangeHint": "Players waiting in this queue whose rating range overlaps yours, excluding your own search. Outside 1v1 the server derives this from each party's first player.",
+  "lobby.matchmaker.inRangeHint": "Players waiting in this queue who could be matched with you after a few minutes of waiting, not counting your own search.",
+  "lobby.matchmaker.reachNote": "Counted the way the server matches 1v1: an opponent within {now} of your rating right away, within {waited} after a few minutes of waiting. Their rating's uncertainty is taken to be yours.",
+  "lobby.matchmaker.teamReachNote": "Team queues are matched on team balance, not on these ranges, so for them this count is only a rough guide.",
   "lobby.matchmaker.mapPool": "Map pool",
   // What a queue actually does to your game. The questions it answers are the
   // ones the maintainer says people ask: how am I matched, how far apart can we
