@@ -285,6 +285,14 @@
   overflow: auto;
 }
 
+.leaderboard-show-more {
+  display: flex;
+  min-height: 28px;
+  margin: 8px auto;
+  padding-block: 0;
+  font-size: 11px;
+}
+
 .leaderboard-table {
   width: 100%;
   border-collapse: collapse;

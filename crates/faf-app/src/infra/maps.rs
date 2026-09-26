@@ -128,7 +128,7 @@ impl MapsPort for MapsClient {
                     .append_pair("sort", "-createTime")
                     .append_pair("page[size]", &VAULT_PAGE_SIZE.to_string())
                     .append_pair("page[number]", &page.to_string())
-                    .append_pair("include", "latestVersion,author,reviewsSummary");
+                    .append_pair("include", MAP_VAULT_INCLUDE);
                 Ok(url)
             },
         )
@@ -159,7 +159,7 @@ impl MapsPort for MapsClient {
                 .append_pair("page[size]", &query.page_size.to_string())
                 .append_pair("page[number]", &query.page.max(1).to_string())
                 .append_key_only("page[totals]")
-                .append_pair("include", "latestVersion,author,reviewsSummary");
+                .append_pair("include", MAP_VAULT_INCLUDE);
         }
 
         let doc = fetch_document(&self.http, url, &token).await?;
@@ -886,6 +886,15 @@ fn parse_matchmaker_pools(doc: &JsonApiDoc) -> Vec<MatchmakerMapPool> {
     pools
 }
 
+/// What a vault listing has to bring back with each map.
+///
+/// `latestVersion.reviewsSummary` for the reason given on `MOD_VAULT_INCLUDE`
+/// in `infra::mods`: a review belongs to a map *version*, the summary hangs
+/// there, and a relationship that is linked without being included is an id
+/// the parser cannot resolve. The maps vault printed "N/A" for the same
+/// reason the mods vault did.
+const MAP_VAULT_INCLUDE: &str = "latestVersion,latestVersion.reviewsSummary,author,reviewsSummary";
+
 fn parse_reviews_summary(summary: &JsonApiResource) -> (i32, i32) {
     let reviews = value_i32(&summary.attributes, "reviews")
         .or_else(|| value_i32(&summary.attributes, "numReviews"))
@@ -929,36 +938,51 @@ fn parse_vault_maps(doc: &JsonApiDoc) -> Vec<VaultMap> {
                 .and_then(|a| a.attributes.get("login"))
                 .and_then(Value::as_str)
                 .map(str::to_string);
-            let reviews_summary = rel_target(&map_res.relationships, "reviewsSummary")
-                .or_else(|| rel_target(&map_res.relationships, "mapReviewsSummary"))
-                .or_else(|| rel_target(&version.relationships, "reviewsSummary"))
-                .or_else(|| rel_target(&version.relationships, "mapVersionReviewsSummary"))
-                .and_then(|rel| find_rel_resource(doc, &index, Some(rel)));
+            // Both summaries, not the first one found. A review is written
+            // against a version, so that is where the count usually is, while
+            // the older entries carry one on the parent as well. Taking the
+            // parent's whenever it existed is what printed "N/A" over a
+            // version with reviews on it: an empty summary is still a summary,
+            // and it won.
+            let reviews_summary = [
+                rel_target(&map_res.relationships, "reviewsSummary"),
+                rel_target(&map_res.relationships, "mapReviewsSummary"),
+                rel_target(&version.relationships, "reviewsSummary"),
+                rel_target(&version.relationships, "mapVersionReviewsSummary"),
+            ]
+            .into_iter()
+            .flatten()
+            .filter_map(|rel| find_rel_resource(doc, &index, Some(rel)))
+            .map(parse_reviews_summary)
+            // Ties keep the first, which is the parent's: the order above is
+            // the order to believe them in when they agree on how many.
+            .max_by_key(|(_, reviews)| *reviews);
 
-            let (rating_tenths, reviews) = if let Some(summary) = reviews_summary {
-                parse_reviews_summary(summary)
-            } else if let Some(summary_attr) = map_res
-                .attributes
-                .get("reviewsSummary")
-                .or_else(|| version.attributes.get("reviewsSummary"))
-            {
-                let r = value_i32(summary_attr, "reviews")
-                    .or_else(|| value_i32(summary_attr, "numReviews"))
-                    .unwrap_or(0);
-                let score = value_f64(summary_attr, "averageScore")
-                    .or_else(|| {
-                        let s = value_f64(summary_attr, "score")?;
-                        if r > 0 {
-                            Some(s / f64::from(r))
-                        } else {
-                            Some(s)
-                        }
-                    })
-                    .unwrap_or(0.0);
-                ((score * 10.0).round() as i32, r)
-            } else {
-                (0, 0)
-            };
+            let (rating_tenths, reviews) =
+                if let Some(summary) = reviews_summary.filter(|(_, reviews)| *reviews > 0) {
+                    summary
+                } else if let Some(summary_attr) = map_res
+                    .attributes
+                    .get("reviewsSummary")
+                    .or_else(|| version.attributes.get("reviewsSummary"))
+                {
+                    let r = value_i32(summary_attr, "reviews")
+                        .or_else(|| value_i32(summary_attr, "numReviews"))
+                        .unwrap_or(0);
+                    let score = value_f64(summary_attr, "averageScore")
+                        .or_else(|| {
+                            let s = value_f64(summary_attr, "score")?;
+                            if r > 0 {
+                                Some(s / f64::from(r))
+                            } else {
+                                Some(s)
+                            }
+                        })
+                        .unwrap_or(0.0);
+                    ((score * 10.0).round() as i32, r)
+                } else {
+                    (0, 0)
+                };
 
             Some(VaultMap {
                 map_id: map_res.id.parse().unwrap_or_default(),

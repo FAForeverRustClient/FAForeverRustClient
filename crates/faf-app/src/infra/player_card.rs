@@ -223,7 +223,7 @@ impl PlayerCardClient {
             let Some(board) = related(entry, "leaderboard", &index) else {
                 continue;
             };
-            let rating = number(entry, "rating").round() as i32;
+            let rating = displayed_rating(number(entry, "rating"));
             let board = text(board, "technicalName");
             for player in players.iter_mut().filter(|held| held.id == player_id) {
                 match board.as_str() {
@@ -872,6 +872,27 @@ fn integer(resource: &Resource, name: &str) -> i32 {
         .unwrap_or_default()
 }
 
+/// An already-displayed rating the API sent as a scalar, as an integer.
+///
+/// Truncated, never rounded. `leaderboardRating.rating` is the server's own
+/// `mean - 3 * deviation` and arrives with its fraction intact, and every other
+/// place this client turns one into an integer cuts that fraction off:
+/// `displayed_rating` in `infra::lobby_ws` and `displayed_rating_with_fields`
+/// in `infra::replay`, both of which say why. Java's `RatingUtil.getRating` is
+/// `(int) (mean - 3f * deviation)` and the Python client's `rating_estimate` is
+/// `int(rating.displayed())`.
+///
+/// These two call sites rounded, and were the only ones that did. So a player
+/// whose rating was 1985.78 read as 1986 on their profile card and 1985 in
+/// every lobby and replay in the client, which is the report: the same account,
+/// two numbers, one apart.
+fn displayed_rating(value: f64) -> i32 {
+    // `as i32` truncates toward zero and saturates rather than wrapping, which
+    // is what is wanted at both ends: a negative rating is real (a new or
+    // long-idle account has one) and is not clamped.
+    value as i32
+}
+
 fn number(resource: &Resource, name: &str) -> f64 {
     resource
         .attributes
@@ -1043,7 +1064,7 @@ fn parse_ratings(doc: &JsonApiDoc) -> Vec<PlayerRatingSummary> {
                 leaderboard_id: board.id.parse().ok()?,
                 name: pretty_board(&technical_name, &text(board, "nameKey")),
                 technical_name,
-                rating: number(rating, "rating").round() as i32,
+                rating: displayed_rating(number(rating, "rating")),
                 mean: number(rating, "mean"),
                 deviation: number(rating, "deviation"),
                 games_played: integer(rating, "totalGames"),
@@ -1836,6 +1857,35 @@ mod tests {
         let page = parse_history(&doc, &query);
         assert_eq!(page.points[0].rating, 1400.0);
         assert_eq!(page.total_pages, 2);
+    }
+
+    #[test]
+    fn a_profile_rating_is_truncated_like_every_other_one() {
+        // The report: the same account read 1986 on its profile card and 1985
+        // in the lobby, because this was the one place in the client that
+        // rounded. 1985.78 is the value the tracker shows for it.
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "leaderboardRating", "id": "1",
+                "attributes": { "rating": 1985.78, "mean": 2400.0, "deviation": 138.07, "totalGames": 900, "wonGames": 500, "updateTime": "2026-09-18T00:00:00Z" },
+                "relationships": { "leaderboard": { "data": { "type": "leaderboard", "id": "1" } } }
+            }],
+            "included": [{ "type": "leaderboard", "id": "1", "attributes": { "technicalName": "global", "nameKey": "global" } }]
+        })).unwrap();
+
+        let ratings = parse_ratings(&doc);
+        assert_eq!(ratings.len(), 1);
+        assert_eq!(ratings[0].rating, 1985);
+    }
+
+    #[test]
+    fn a_negative_profile_rating_is_not_flattened_by_the_truncation() {
+        // A new or long-idle account really is below zero, and truncating
+        // toward zero must not turn -137.6 into -137's neighbour on the wrong
+        // side or into 0.
+        assert_eq!(displayed_rating(-137.6), -137);
+        assert_eq!(displayed_rating(1985.78), 1985);
+        assert_eq!(displayed_rating(1986.0), 1986);
     }
 
     #[test]

@@ -8,6 +8,7 @@ use faf_domain::state::{
     LeaderboardEntry, LeaderboardTier, League, LeagueSeason, PlayerRatings, RatingLeaderboard,
     RatingPage, RatingQuery, SeasonLeaderboard,
 };
+use futures_util::{stream, StreamExt, TryStreamExt};
 use serde_json::Value;
 
 use crate::infra::env_or;
@@ -16,10 +17,22 @@ use crate::infra::jsonapi::{
 };
 use crate::ports::LeaderboardPort;
 
-const MAX_SEASON_ENTRIES: usize = 10_000;
+/// The most rows the API returns for one request, whatever `page[size]`
+/// asks for. A larger size is clamped to this without a word, so anything
+/// that needs more than a hundred rows has to page.
+const API_PAGE_SIZE: usize = 100;
+/// The most pages of one league season that are fetched: ten thousand placed
+/// players, several times the largest season FAF has had. The cap is there
+/// so a runaway page count cannot turn into a runaway number of requests.
+const MAX_SEASON_PAGES: i32 = 100;
+/// How many requests of one listing are in flight at once.
+const PAGE_CONCURRENCY: usize = 6;
 /// How many rows of a name search are worth one count query each.
 const MAX_RANK_LOOKUPS: usize = 25;
-const ID_CHUNK_SIZE: usize = 200;
+/// Player ids resolved per request. One page's worth, because the rows an
+/// `id=in=(...)` filter matches are paged like any other: a longer list came
+/// back with its first hundred players and left the rest unnamed.
+const ID_CHUNK_SIZE: usize = API_PAGE_SIZE;
 
 #[derive(Debug, Clone)]
 pub struct LeaderboardConfig {
@@ -110,15 +123,23 @@ impl LeaderboardClient {
         player_ids: &[i32],
         token: &str,
     ) -> Result<HashMap<i32, ResolvedPlayer>, String> {
+        let ids = unique_ids(player_ids);
+        // A whole league season is thousands of players, so the chunks go out
+        // several at a time rather than one after another.
+        let docs: Vec<JsonApiDoc> = stream::iter(ids.chunks(ID_CHUNK_SIZE).map(<[i32]>::to_vec))
+            .map(|chunk| async move {
+                let mut url = self.collection_url("player")?;
+                url.query_pairs_mut()
+                    .append_pair("filter", &format!("id=in=({})", csv_ids(&chunk)))
+                    .append_pair("include", "avatarAssignments.avatar")
+                    .append_pair("page[size]", &chunk.len().to_string());
+                self.get_json(url, token).await
+            })
+            .buffer_unordered(PAGE_CONCURRENCY)
+            .try_collect()
+            .await?;
         let mut players = HashMap::new();
-        for chunk in unique_ids(player_ids).chunks(ID_CHUNK_SIZE) {
-            let ids = csv_ids(chunk);
-            let mut url = self.collection_url("player")?;
-            url.query_pairs_mut()
-                .append_pair("filter", &format!("id=in=({ids})"))
-                .append_pair("include", "avatarAssignments.avatar")
-                .append_pair("page[size]", &chunk.len().to_string());
-            let doc = self.get_json(url, token).await?;
+        for doc in &docs {
             let index = resource_index(&doc.included);
             players.extend(doc.data.iter().filter_map(|resource| {
                 let (avatar_url, avatar_tooltip) = avatar_info(Some(resource), &index);
@@ -152,11 +173,47 @@ impl LeaderboardClient {
         Ok(parse_tiers(&doc))
     }
 
+    /// Every placed player of a season, best first.
+    ///
+    /// This used to be one request asking for ten thousand rows. The API
+    /// answers any `page[size]` above a hundred with a hundred, and because the
+    /// rows are sorted from the top division down, the board, its division
+    /// chart and its name search all saw the hundred best players of the
+    /// season and nobody else: a league with no Bronze, no Silver, no Gold.
+    ///
+    /// So it pages. The first page carries the API's own page count, and the
+    /// rest are asked for by number rather than by paging until a short page
+    /// turns up, since a short page is not the end of the results here. They
+    /// go out a few at a time and come back in order, because the order is
+    /// the ranking. One failed page fails the board: a season with a stretch
+    /// missing from its middle would rank everybody below the gap wrongly.
     async fn season_scores(
         &self,
         season_id: i32,
         token: &str,
     ) -> Result<Vec<RawSeasonEntry>, String> {
+        let first = self.season_scores_page(season_id, 1, token).await?;
+        let total_pages = meta_i32(&first.meta, "totalPages")
+            .unwrap_or(1)
+            .clamp(1, MAX_SEASON_PAGES);
+        let rest: Vec<JsonApiDoc> = stream::iter(2..=total_pages)
+            .map(|page| self.season_scores_page(season_id, page, token))
+            .buffered(PAGE_CONCURRENCY)
+            .try_collect()
+            .await?;
+        let mut entries = parse_raw_season_entries(&first);
+        for doc in &rest {
+            entries.extend(parse_raw_season_entries(doc));
+        }
+        Ok(entries)
+    }
+
+    async fn season_scores_page(
+        &self,
+        season_id: i32,
+        page: i32,
+        token: &str,
+    ) -> Result<JsonApiDoc, String> {
         let mut url = self.collection_url("leagueSeasonScore")?;
         url.query_pairs_mut()
             .append_pair(
@@ -165,15 +222,19 @@ impl LeaderboardClient {
             )
             .append_pair(
                 "sort",
-                "-leagueSeasonDivisionSubdivision.leagueSeasonDivision.divisionIndex,-leagueSeasonDivisionSubdivision.subdivisionIndex,-score",
+                // The id last, so two players on the same score cannot trade
+                // places between two page requests and turn up twice, or not
+                // at all, on either side of a page boundary.
+                "-leagueSeasonDivisionSubdivision.leagueSeasonDivision.divisionIndex,-leagueSeasonDivisionSubdivision.subdivisionIndex,-score,id",
             )
-            .append_pair("page[size]", &MAX_SEASON_ENTRIES.to_string())
+            .append_pair("page[number]", &page.to_string())
+            .append_pair("page[size]", &API_PAGE_SIZE.to_string())
+            .append_pair("page[totals]", "yes")
             .append_pair(
                 "include",
                 "leagueSeasonDivisionSubdivision.leagueSeasonDivision",
             );
-        let doc = self.get_json(url, token).await?;
-        Ok(parse_raw_season_entries(&doc))
+        self.get_json(url, token).await
     }
 
     /// How many players stand above this rating on the board being queried.

@@ -75,6 +75,11 @@ impl NotificationKind {
     ///   starts, and being told after it started is the one failure a reminder
     ///   has. It is also the only kind on this list the player opted into one
     ///   at a time.
+    /// - [`Self::GameFull`]: the lobby is complete and about to launch. It is
+    ///   off unless the player switched it on, and the reason to switch it on
+    ///   is to sit in a filling lobby with the client in the background: kept
+    ///   to the notification centre, it only ever reached the one person it
+    ///   cannot help, the one already looking at the client.
     ///
     /// Everything else fails that test, including the loud-sounding ones. An
     /// error, a server notice, a cache warning and a new client version are all
@@ -92,6 +97,7 @@ impl NotificationKind {
                 | Self::GameLaunched
                 | Self::MapGenerated
                 | Self::EventReminder
+                | Self::GameFull
         )
     }
 }
@@ -242,6 +248,8 @@ mod tests {
             NotificationKind::PartyInvite,
             NotificationKind::GameLaunched,
             NotificationKind::MapGenerated,
+            NotificationKind::EventReminder,
+            NotificationKind::GameFull,
         ] {
             assert!(kind.raises_os_notification(), "{kind:?} expires");
         }
@@ -262,7 +270,6 @@ mod tests {
             NotificationKind::FriendOffline,
             NotificationKind::FriendPlaying,
             NotificationKind::NewCustomGame,
-            NotificationKind::GameFull,
             NotificationKind::ReviewReminder,
             NotificationKind::ReplayAvailable,
             NotificationKind::ReportSubmitted,

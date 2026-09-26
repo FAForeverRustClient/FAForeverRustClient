@@ -620,6 +620,16 @@ pub struct LocalReplayPlayer {
     pub faction: Option<i32>,
     /// The displayed rating recorded in the replay header.
     pub rating: Option<i32>,
+    /// An army with no client behind it: an AI somebody added to the lobby.
+    ///
+    /// The vault lists accounts, so these are the players only the file knows
+    /// about, and the only ones worth adding to the vault's lineup. A person
+    /// the vault is missing by name has been renamed since, not left out: the
+    /// file carries the name they played under and the vault their current
+    /// one, and adding them read as the same player twice. `false` where the
+    /// file only had the header's name list to go on.
+    #[serde(default)]
+    pub ai: bool,
     /// Two-letter country code from the army table, where the file has one.
     #[serde(default)]
     pub country: Option<String>,
@@ -1619,12 +1629,14 @@ mod tests {
                         name: "host".into(),
                         faction: None,
                         rating: None,
+                        ai: false,
                         country: None,
                     },
                     LocalReplayPlayer {
                         name: "guest".into(),
                         faction: None,
                         rating: None,
+                        ai: false,
                         country: None,
                     },
                 ],
