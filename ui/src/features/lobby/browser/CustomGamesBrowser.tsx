@@ -128,6 +128,7 @@ export function CustomGamesBrowser({
         ) : (
           games.map((game) => (
             <GameBrowserRow
+              tagsFolded={columns.tagsFolded}
               key={game.id}
               game={game}
               vault={vault}
