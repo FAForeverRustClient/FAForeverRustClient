@@ -18,6 +18,8 @@ import { ipc } from "../../../ipc/client";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { formatAgeOrDate } from "../../../shared/format/dates";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
+import { PlayerName } from "../../../shared/components/nameColors";
+import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { useColumnWidths } from "../../../shared/hooks/useColumnWidths";
 import { mapPresentation } from "../../../shared/mapPresentation";
 import { tableMinWidth } from "../../../shared/tableColumns";
@@ -67,6 +69,7 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
   // Draggable like the live-replay table, and remembered like it: a table of
   // its own, so a drag here never moves the live tab's columns.
   const columns = useColumnWidths("matchmakerRecentColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN);
+  const { openPlayerMenu, playerMenu } = usePlayerMenu();
 
   // Once per visit to the tab, and again for another account.
   useEffect(() => {
@@ -155,7 +158,17 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
                     </td>
                     <td className="matchmaker-recent-map" title={mapName}>{mapName}</td>
                     <td className="matchmaker-recent-mode">{side.mode}</td>
-                    <td className="matchmaker-recent-opponents" title={side.opponents.join(", ")}>{side.opponents.join(", ")}</td>
+                    <td className="matchmaker-recent-opponents" title={side.opponents.join(", ")}>
+                      {/* Each name as the rest of the client draws it: the
+                          reader's friend, foe and custom colours, and the
+                          same right-click menu as a replay lineup. */}
+                      {side.opponents.map((name, index) => (
+                        <span key={name} onContextMenu={(event) => openPlayerMenu(name, event)}>
+                          {index > 0 && ", "}
+                          <PlayerName name={name} />
+                        </span>
+                      ))}
+                    </td>
                     <td className="muted">{formatAgeOrDate(game.startTime)}</td>
                     <td className={`matchmaker-recent-outcome${outcome ? ` is-${outcome}` : ""}`}>
                       {outcomeLabel(side.me?.outcome ?? "") || t("lobby.matchmaker.recent.noResult")}
@@ -184,6 +197,7 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
           </table>
         </div>
       )}
+      {playerMenu}
     </section>
   );
 }
