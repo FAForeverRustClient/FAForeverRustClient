@@ -122,8 +122,8 @@ describe("ReplayRoster outcomes", () => {
       // Numbered as the engine numbers them, which is not how the vault does.
       { team: "3", players: [{ name: "Player1", faction: 1, rating: null }] },
       { team: "4", players: [
-        { name: "Thel-Ilthow (AI: Adaptive)", faction: 4, rating: null },
-        { name: "June (AI: Adaptive)", faction: 2, rating: null },
+        { name: "Thel-Ilthow (AI: Adaptive)", faction: 4, rating: null, ai: true },
+        { name: "June (AI: Adaptive)", faction: 2, rating: null, ai: true },
       ] },
     ];
 
@@ -149,7 +149,7 @@ describe("ReplayRoster outcomes", () => {
       team: "7",
       players: [
         { name: "player1", faction: 1, rating: 1400 },
-        { name: "Shun-Ushi (AIx: random)", faction: 4, rating: null },
+        { name: "Shun-Ushi (AIx: random)", faction: 4, rating: null, ai: true },
       ],
     }];
 
@@ -159,6 +159,32 @@ describe("ReplayRoster outcomes", () => {
     expect(merged[0].team).toBe(2);
     expect(merged[0].players.map((player) => player.name))
       .toEqual(["Player1", "Shun-Ushi (AIx: random)"]);
+  });
+
+  // The reported case: the vault names an account as it is called today, the
+  // file as it was called when the game was played. A player renamed since is
+  // missing from the listing by name without being missing from the game, and
+  // appending them showed the same person twice, once under each name.
+  it("does not add a renamed player a second time under the old name", () => {
+    const teams: ReplayTeam[] = [{
+      team: 2,
+      players: [
+        { name: "Farms", faction: 1, rating: 1900, outcome: "", score: null },
+        { name: "Player2", faction: 2, rating: 1500, outcome: "", score: null },
+      ],
+    }];
+    const localTeams: LocalReplayTeam[] = [{
+      team: "2",
+      players: [
+        { name: "farmsletje", faction: 1, rating: 1900, ai: false },
+        { name: "Player2", faction: 2, rating: 1500, ai: false },
+      ],
+    }];
+
+    const merged = mergeReplayTeamsWithLocal(teams, localTeams);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].players.map((player) => player.name)).toEqual(["Farms", "Player2"]);
   });
 
   it("leaves an online-only lineup alone", () => {

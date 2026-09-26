@@ -19,6 +19,7 @@ import { Modal } from "../../design-system/Modal";
 import { ModPreview, UninstallDialog, cleanDescription } from "./ModVaultComponents";
 import { favoriteModKeys, isFavoriteMod, toggleFavoriteMod } from "./favoriteMods";
 import { modUpdateAvailable } from "./modVersions";
+import { modCounterparts } from "./modIdentity";
 import { useTranslation } from "../../i18n/useTranslation";
 
 type ModTypeFilter = "all" | "ui" | "sim";
@@ -316,7 +317,9 @@ export function InstalledModsView({
   const fittedPageSize = useGridPageSize(installedGrid, INSTALLED_MOD_CARD_PX, PAGE_SIZE);
 
   const note = loadStatusNote(installedStatus, t("mods.installed.scanning"), t("mods.installed.scanFailed"));
-  const vaultByUid = useMemo(() => new Map(vault.map((mod) => [mod.uid, mod])), [vault]);
+  // An installed copy may be an older version than the one the vault lists,
+  // and every version has its own uid: see `modIdentity`.
+  const { vaultFor } = useMemo(() => modCounterparts(installed, vault), [installed, vault]);
   const favorites = useMemo(() => favoriteModKeys(browsing.favoriteMods), [browsing.favoriteMods]);
   // The starred mods that are installed and off. This is what the one-click
   // button acts on, and what its count says, so the two cannot disagree: a
@@ -422,12 +425,12 @@ export function InstalledModsView({
     () => new Set(
       installed
         .filter((mod) => {
-          const meta = vaultByUid.get(mod.uid);
+          const meta = vaultFor(mod);
           return meta && modUpdateAvailable(mod.version, meta.version);
         })
         .map((mod) => mod.folderName),
     ),
-    [installed, vaultByUid],
+    [installed, vaultFor],
   );
   const updatesCount = updatableFolders.size;
 
@@ -440,7 +443,7 @@ export function InstalledModsView({
 
     return installed
       .filter((mod) => {
-        const meta = vaultByUid.get(mod.uid);
+        const meta = vaultFor(mod);
         const isRankedMod = meta?.ranked ?? false;
         const hasUpdate = meta && modUpdateAvailable(mod.version, meta.version);
 
@@ -490,8 +493,8 @@ export function InstalledModsView({
       })
       .slice()
       .sort((left, right) => {
-        const metaLeft = vaultByUid.get(left.uid);
-        const metaRight = vaultByUid.get(right.uid);
+        const metaLeft = vaultFor(left);
+        const metaRight = vaultFor(right);
 
         switch (sort) {
           case "state":
@@ -511,7 +514,7 @@ export function InstalledModsView({
       });
   }, [
     installed, search, creator, preset, sort, modType, enabled, ranked,
-    minimumRating, maximumRating, vaultByUid, favorites, favoriteCount,
+    minimumRating, maximumRating, vaultFor, favorites, favoriteCount,
   ]);
 
   // Looked up by folder rather than held as a copy: the list is replaced
@@ -710,7 +713,7 @@ export function InstalledModsView({
               <InstalledModCard
                 key={mod.folderName}
                 mod={mod}
-                metadata={vaultByUid.get(mod.uid)}
+                metadata={vaultFor(mod)}
                 busy={busy}
                 installing={installStatus.type === "installing" && installStatus.payload.uid === mod.uid}
                 toggling={toggleStatus.type === "toggling" && toggleStatus.payload.uid === mod.uid}
@@ -720,7 +723,7 @@ export function InstalledModsView({
                 onToggleFavorite={() => toggleFavoriteMod(browsing, mod.uid)}
                 onUpdate={updatableFolders.has(mod.folderName)
                   ? () => {
-                    const meta = vaultByUid.get(mod.uid);
+                    const meta = vaultFor(mod);
                     if (meta) updateMod(meta.uid, mod.folderName, meta.downloadUrl);
                   }
                   : undefined}
@@ -743,13 +746,13 @@ export function InstalledModsView({
       {opened && (
         <InstalledModDetail
           mod={opened}
-          metadata={vaultByUid.get(opened.uid)}
+          metadata={vaultFor(opened)}
           busy={busy}
           toggling={toggleStatus.type === "toggling" && toggleStatus.payload.uid === opened.uid}
           onClose={() => setOpenFolder(null)}
           onToggle={() => toggleMod(opened.uid, !opened.enabled)}
           onUpdate={() => {
-            const meta = vaultByUid.get(opened.uid);
+            const meta = vaultFor(opened);
             if (meta) updateMod(meta.uid, opened.folderName, meta.downloadUrl);
           }}
           onUninstall={() => {
@@ -758,7 +761,7 @@ export function InstalledModsView({
           }}
           onOpenInVault={() => {
             setOpenFolder(null);
-            onOpenInVault(vaultByUid.get(opened.uid)?.displayName ?? opened.displayName);
+            onOpenInVault(vaultFor(opened)?.displayName ?? opened.displayName);
           }}
         />
       )}

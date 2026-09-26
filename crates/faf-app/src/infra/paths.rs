@@ -167,4 +167,24 @@ mod tests {
             },
         );
     }
+
+    /// The map generator is built while the client starts, before Settings is
+    /// read. It used to take its folders at that moment, so a player whose
+    /// maps live somewhere else had every generated map written to the default
+    /// folder, which the game never mounts, and the map was never found.
+    #[test]
+    fn the_map_generator_follows_folders_configured_after_it_was_built() {
+        let config = crate::infra::MapGeneratorConfig::faf();
+        with_overrides(
+            PathPreferences {
+                maps_dir: "C:/faf/maps".into(),
+                map_generator_dir: "C:/faf/generator".into(),
+                ..PathPreferences::default()
+            },
+            || {
+                assert_eq!(config.maps_dir(), PathBuf::from("C:/faf/maps"));
+                assert_eq!(config.generator_dir(), PathBuf::from("C:/faf/generator"));
+            },
+        );
+    }
 }

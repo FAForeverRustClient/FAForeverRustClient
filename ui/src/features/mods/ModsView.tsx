@@ -34,6 +34,7 @@ import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { ModRenameDialog } from "./ModRenameDialog";
 import { requestModVaultFocus, takeModVaultFocus } from "../../shared/modVaultFocus";
 import { modUpdateAvailable } from "./modVersions";
+import { modCounterparts } from "./modIdentity";
 import { favoriteModKeys, toggleFavoriteMod } from "./favoriteMods";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -219,7 +220,9 @@ function VaultView({ busy }: { busy: boolean }) {
   }, []);
 
   const note = loadStatusNote(vaultStatus, t("mods.view.loadingVault"), t("mods.view.vaultFailed"));
-  const installedByUid = useMemo(() => new Map(installed.map((mod) => [mod.uid, mod])), [installed]);
+  // A vault card is the mod's latest version and an installed copy may be an
+  // older one, so the two are not matched by uid alone: see `modIdentity`.
+  const { installedFor } = useMemo(() => modCounterparts(installed, vault), [installed, vault]);
   // Shared with the installed list, which stars the same mods into the same
   // preference: one spelling of a uid counts as the same mod in both.
   const favoriteUids = useMemo(() => favoriteModKeys(browsing.favoriteMods), [browsing.favoriteMods]);
@@ -360,14 +363,14 @@ function VaultView({ busy }: { busy: boolean }) {
     const source = localFavorites ? favorites : browse;
     if (applied.installFilter === "all") return source;
     return source.filter((mod) => {
-      const installedMod = installedByUid.get(mod.uid);
+      const installedMod = installedFor(mod);
       if (applied.installFilter === "installed") return Boolean(installedMod);
       if (applied.installFilter === "updates") {
         return Boolean(installedMod && modUpdateAvailable(installedMod.version, mod.version));
       }
       return !installedMod;
     });
-  }, [applied.installFilter, browse, favorites, installedByUid, localFavorites]);
+  }, [applied.installFilter, browse, favorites, installedFor, localFavorites]);
 
   // Same rule as the Maps tab: the count in state describes the search it came
   // back with, not the one whose results are still on their way.
@@ -526,7 +529,7 @@ function VaultView({ busy }: { busy: boolean }) {
             <section className="vault-browser">
               <div className="mod-vault-grid">
                 {pageMods.map((mod) => {
-                  const installedMod = installedByUid.get(mod.uid);
+                  const installedMod = installedFor(mod);
                   const isBusy = busy && (
                     (installStatus.type === "installing" && installStatus.payload.uid === mod.uid)
                     || (toggleStatus.type === "toggling" && toggleStatus.payload.uid === mod.uid)
@@ -556,7 +559,7 @@ function VaultView({ busy }: { busy: boolean }) {
               )}
             </section>
             {selected && (() => {
-              const installedMod = installedByUid.get(selected.uid);
+              const installedMod = installedFor(selected);
               const installing = installStatus.type === "installing" && installStatus.payload.uid === selected.uid;
               const toggling = toggleStatus.type === "toggling" && toggleStatus.payload.uid === selected.uid;
               return (
@@ -590,10 +593,10 @@ function VaultView({ busy }: { busy: boolean }) {
           }}
         />
       )}
-      {renaming && installedByUid.get(renaming.uid) && (
+      {renaming && installedFor(renaming) && (
         <ModRenameDialog
           mod={renaming}
-          installed={installedByUid.get(renaming.uid)!}
+          installed={installedFor(renaming)!}
           onClose={() => setRenaming(null)}
         />
       )}

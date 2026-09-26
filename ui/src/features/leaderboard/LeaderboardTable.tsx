@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "../../design-system/Button";
 import type { LeaderboardEntry, PlayerRatings, RatingLeaderboard } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -238,6 +239,13 @@ interface LeaderboardTableProps {
    * locally would answer a different question than the header asks.
    */
   onRankBy?: (board: string) => void;
+  /**
+   * Draw the first this many rows of the sorted list, with a button under
+   * them for the next batch. For a list that is loaded whole, like a league
+   * season of several thousand players: every row is still sorted and
+   * searched, only the drawing is held back. Unset draws everything.
+   */
+  rowBatch?: number;
 }
 
 const NO_CROSS_RATINGS: CrossRatings = new Map();
@@ -252,12 +260,16 @@ export function LeaderboardTable({
   activeBoard = "",
   crossRatings = NO_CROSS_RATINGS,
   onRankBy,
+  rowBatch,
 }: LeaderboardTableProps) {
   const { t } = useTranslation();
   const [sort, setSort] = useState<{ column: TableColumn; descending: boolean }>({
     column: "rank",
     descending: false,
   });
+  const [shown, setShown] = useState(rowBatch ?? Infinity);
+  // A new list, a new filter or a new order starts from the top batch again.
+  useEffect(() => setShown(rowBatch ?? Infinity), [entries, rowBatch, sort]);
   const boardNames = useMemo(
     () => new Map(boards.map((board) => [board.technicalName, board.name])),
     [boards],
@@ -307,7 +319,7 @@ export function LeaderboardTable({
           </tr>
         </thead>
         <tbody>
-          {sorted.map((entry) => (
+          {sorted.slice(0, shown).map((entry) => (
             <tr
               key={`${entry.playerId}-${entry.rank}`}
               className={selectedPlayerId === entry.playerId ? "surface-interactive is-selected" : "surface-interactive"}
@@ -340,6 +352,11 @@ export function LeaderboardTable({
           ))}
         </tbody>
       </table>
+      {rowBatch !== undefined && sorted.length > shown && (
+        <Button className="leaderboard-show-more" onClick={() => setShown((current) => current + rowBatch)}>
+          {t("leaderboard.showMore", { count: Math.min(rowBatch, sorted.length - shown) })}
+        </Button>
+      )}
     </div>
   );
 }
