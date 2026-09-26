@@ -482,7 +482,11 @@
       "partyPlacements": {},
       "mapStats": null,
       "mapStatsStatus": "idle",
-      "mapStatsError": ""
+      "mapStatsError": "",
+      "accountLookup": {
+        "query": "",
+        "matches": []
+      }
     },
     "reporting": {
       "open": false,
@@ -1184,6 +1188,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -1236,6 +1244,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -1288,6 +1300,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -1320,6 +1336,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -23810,6 +23830,111 @@
       ]
     },
     {
+      "name": "the profile search's account suggestions replace each other",
+      "steps": [
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "accountsFound",
+              "payload": {
+                "lookup": {
+                  "query": "yud",
+                  "matches": [
+                    {
+                      "playerId": 3,
+                      "login": "Yudi_Real",
+                      "formerName": null
+                    },
+                    {
+                      "playerId": 2,
+                      "login": "Later",
+                      "formerName": "yudi"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountLookup": {
+              "matches": [
+                {
+                  "formerName": null,
+                  "login": "Yudi_Real",
+                  "playerId": 3
+                },
+                {
+                  "formerName": "yudi",
+                  "login": "Later",
+                  "playerId": 2
+                }
+              ],
+              "query": "yud"
+            },
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "partyPlacements": {},
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        },
+        {
+          "event": {
+            "kind": "PlayerCard",
+            "event": {
+              "type": "accountsFound",
+              "payload": {
+                "lookup": {
+                  "query": "yudi_",
+                  "matches": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": "yudi_"
+            },
+            "history": [],
+            "historyError": "",
+            "historyMaximum": null,
+            "historyPage": 0,
+            "historyQuery": null,
+            "historyStatus": "idle",
+            "historyTotalPages": 1,
+            "mapStats": null,
+            "mapStatsError": "",
+            "mapStatsStatus": "idle",
+            "matchmakerProfile": null,
+            "matchmakerProfileError": "",
+            "matchmakerProfileStatus": "idle",
+            "open": false,
+            "partyPlacements": {},
+            "profile": null,
+            "profileError": "",
+            "profileStatus": "idle",
+            "requestedLogin": ""
+          }
+        }
+      ]
+    },
+    {
       "name": "mods load and report a failure",
       "steps": [
         {
@@ -27189,6 +27314,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -27221,6 +27350,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -27250,6 +27383,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -27309,6 +27446,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -27365,6 +27506,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -27427,6 +27572,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -27492,6 +27641,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -27535,6 +27688,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -27579,6 +27736,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -27641,6 +27802,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
@@ -27700,6 +27865,10 @@
             }
           },
           "expected": {
+            "accountLookup": {
+              "matches": [],
+              "query": ""
+            },
             "history": [],
             "historyError": "",
             "historyMaximum": null,
