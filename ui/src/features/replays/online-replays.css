@@ -2556,6 +2556,8 @@ button.vault-input {
 .friend-replay-option[aria-selected="true"] {
   color: var(--color-accent);
   font-weight: 600;
+}
+
 /* A replay's sim mods open the mod vault (issue 343). The chip keeps its look
    and gains a pointer, since it is a button now. */
 .replay-sim-mod {
