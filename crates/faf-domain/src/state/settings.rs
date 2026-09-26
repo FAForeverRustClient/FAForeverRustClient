@@ -1922,9 +1922,9 @@ impl CustomGameBrowserPreferences {
     }
 }
 
-/// The list view has five columns, and a saved width past these bounds is a
+/// The list view has six columns, and a saved width past these bounds is a
 /// column that cannot be dragged back into view.
-pub const MAX_BROWSER_COLUMNS: usize = 5;
+pub const MAX_BROWSER_COLUMNS: usize = 6;
 /// The widest table the client draws, plus room. Only a bound on a file.
 pub const MAX_TABLE_COLUMNS: usize = 16;
 
@@ -3332,9 +3332,9 @@ mod tests {
                             value: String::new(),
                         },
                     ],
-                    // Out of bounds in both directions, plus a sixth column
+                    // Out of bounds in both directions, plus a seventh column
                     // the list does not have.
-                    column_widths: vec![10, 5_000, 200, 200, 200, 200],
+                    column_widths: vec![10, 5_000, 200, 200, 200, 200, 200],
                     detail_width: 40,
                 },
                 matchmaker_unselected_queues: vec![
@@ -3467,8 +3467,8 @@ mod tests {
         let browser = &settings.browsing.custom_games_browser;
         assert_eq!(
             browser.column_widths,
-            [10, 5_000, 200, 200, 200],
-            "five columns at whatever width they were dragged to, narrow or wide"
+            [10, 5_000, 200, 200, 200, 200],
+            "six columns at whatever width they were dragged to, narrow or wide"
         );
         assert_eq!(browser.detail_width, MIN_DETAIL_PX);
         assert_eq!(

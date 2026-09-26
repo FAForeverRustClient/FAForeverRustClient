@@ -1860,6 +1860,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.joinGame": "Войти в игру",
   "lobby.browser.previewMap": "Посмотреть карту",
   "lobby.browser.column.game": "Игра",
+  "lobby.browser.column.tags": "Теги",
   "lobby.browser.column.map": "Карта",
   "lobby.browser.column.players": "Игроков",
   "lobby.browser.column.rating": "Ср. рейтинг",

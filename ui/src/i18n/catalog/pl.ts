@@ -1789,6 +1789,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.joinGame": "Dołącz do gry",
   "lobby.browser.previewMap": "Podgląd mapy",
   "lobby.browser.column.game": "Gra",
+  "lobby.browser.column.tags": "Tagi",
   "lobby.browser.column.map": "Mapa",
   "lobby.browser.column.players": "Gracze",
   "lobby.browser.column.rating": "Ranking",
