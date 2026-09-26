@@ -21,8 +21,13 @@
   color: var(--color-text);
 }
 
+/* Hidden overflow is what the ellipsis needs, and it clips to the line box:
+   with the control's `line-height: normal` that box is shorter than the
+   descenders of this typeface, so g and y lost their tails. A line box tall
+   enough to hold them keeps the ellipsis and the letters. */
 .multi-select-summary {
   overflow: hidden;
+  line-height: 1.5;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
