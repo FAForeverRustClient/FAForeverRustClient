@@ -27,7 +27,7 @@ import { replayMapPresentation } from "./coopReplayMap";
 import { ReplayInsights } from "./analysis/ReplayInsights";
 import { useAppStore } from "../../store/store";
 import { isObserverTeam, playerCount, ReplayDetailRoster, mergeReplayTeamsWithLocal } from "./ReplayRoster";
-import { isRated, localRatingNote, notRatedReason } from "./replayValidity";
+import { hasGameResult, localRatingNote, notRatedReason } from "./replayValidity";
 import { formatDecimal } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ReplayMapThumb } from "./ReplayCard";
@@ -297,7 +297,12 @@ export function ReplayDetailPanel({
   const validity = onlineLookup?.type === "found"
     ? onlineLookup.payload.validity ?? ""
     : replay.validity ?? "";
-  const rated = isRated(validity, detailTeams);
+  // Whether there is a result to show, not whether a rating moved: see
+  // `hasGameResult`. A game the server has called valid and recorded outcomes
+  // for has a winner worth showing whether or not the rating journal has
+  // arrived, and gating this on the journal left a plainly rated game with a
+  // dead "Game result" button and "Reason: VALID" underneath it.
+  const rated = hasGameResult(validity, detailTeams);
   const notRated = isLocal
     ? localRatingNote(replay.uid, onlineLookup, detailTeams)
     : rated ? null : notRatedReason(validity);
