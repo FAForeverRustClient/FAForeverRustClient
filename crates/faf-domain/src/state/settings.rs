@@ -859,6 +859,15 @@ pub struct NotificationPreferences {
     /// Off silences only the success: a generator that failed still says so,
     /// because a join blocked on a map that never arrives needs explaining.
     pub map_generated: bool,
+    /// The matchmaker queues (`ladder1v1`, `tmm2v2`, ...) in which a new
+    /// opponent within the player's rating range is announced. Empty, the
+    /// default, announces nothing.
+    ///
+    /// A list rather than a switch because the request was "for all queues, or
+    /// one queue": somebody who only plays 1v1 does not want to hear about 4v4.
+    /// It is only asked while the player is not searching that queue, since a
+    /// search that finds the same opponent says so itself.
+    pub queue_opponent_queues: Vec<String>,
     /// Sound volume from 0 to 100.
     pub volume: u8,
 }
@@ -888,6 +897,7 @@ impl Default for NotificationPreferences {
             party_invites: true,
             stream_live: true,
             map_generated: true,
+            queue_opponent_queues: Vec::new(),
             volume: 70,
         }
     }
@@ -926,6 +936,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             party_invites: bool,
             stream_live: bool,
             map_generated: bool,
+            queue_opponent_queues: Vec<String>,
             volume: u8,
         }
 
@@ -958,6 +969,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     party_invites: defaults.party_invites,
                     stream_live: defaults.stream_live,
                     map_generated: defaults.map_generated,
+                    queue_opponent_queues: defaults.queue_opponent_queues,
                     volume: defaults.volume,
                 }
             }
@@ -1001,6 +1013,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             party_invites: wire.party_invites,
             stream_live: wire.stream_live,
             map_generated: wire.map_generated,
+            queue_opponent_queues: wire.queue_opponent_queues,
             volume: wire.volume,
         })
     }
