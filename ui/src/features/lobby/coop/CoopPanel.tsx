@@ -182,6 +182,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
               {columns.header}
               {games.map((game) => (
                 <GameBrowserRow
+                  tagsFolded={columns.tagsFolded}
                   key={game.id}
                   game={game}
                   vault={maps.vault}

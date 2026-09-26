@@ -6,7 +6,7 @@
 // laid out one way in one tab and another way in the next, and half of them
 // could not be dragged at all. One hook, one header, both lists.
 
-import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
 import type { CustomGameSort } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
@@ -17,7 +17,11 @@ import {
   columnTemplate,
   columnWidths,
   FLEXIBLE_COLUMN,
+  TAGS_COLUMN,
+  tagsColumnFolds,
   withColumnResized,
+  withoutTagsColumn,
+  withTagsColumn,
 } from "./browserLayout";
 
 /**
@@ -84,6 +88,9 @@ export interface GameBrowserColumns {
   style: CSSProperties | undefined;
   /// The header row itself, dividers included.
   header: JSX.Element;
+  /// The list is too narrow for a tags column: the rows carry their tags in
+  /// the game cell instead. See `tagsColumnFolds`.
+  tagsFolded: boolean;
 }
 
 /**
@@ -108,17 +115,41 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   const [dragWidths, setDragWidths] = useState<number[] | null>(null);
   const widths = dragWidths ?? columnWidths(savedWidths);
   const dragOrigin = useRef<number[] | null>(null);
+
+  // The header spans the list, so its width is the list's. Watched rather than
+  // read once: the detail panel, the window and the chat sidebar all move it.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [listWidth, setListWidth] = useState(0);
+  useEffect(() => {
+    const element = headerRef.current;
+    if (!enabled || !element || typeof ResizeObserver === "undefined") return;
+    const measure = () => setListWidth(element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [enabled]);
+  const tagsFolded = enabled && tagsColumnFolds(listWidth, widths);
+  // The columns actually drawn, and the index of each in the full set.
+  const shown = tagsFolded ? withoutTagsColumn(widths) : widths;
+  const fullIndex = (index: number) => (tagsFolded && index >= TAGS_COLUMN ? index + 1 : index);
+
   const style = useMemo(
-    () => (enabled ? { gridTemplateColumns: columnTemplate(widths) } : undefined),
+    () => (enabled ? { gridTemplateColumns: columnTemplate(shown) } : undefined),
     // The template is a string, so comparing the array by value is what keeps
     // every row from re-rendering on an unrelated settings write.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [enabled, widths.join(",")],
+    [enabled, shown.join(",")],
   );
 
   const onDrag = (boundary: number, delta: number) => {
     dragOrigin.current ??= widths;
-    setDragWidths(withColumnResized(dragOrigin.current, boundary, delta));
+    const origin = dragOrigin.current;
+    // A folded list drags the columns it shows, and the hidden tags width
+    // rides along unchanged.
+    setDragWidths(tagsFolded
+      ? withTagsColumn(withColumnResized(withoutTagsColumn(origin), boundary, delta), origin[TAGS_COLUMN])
+      : withColumnResized(origin, boundary, delta));
   };
   const onCommit = () => {
     dragOrigin.current = null;
@@ -145,7 +176,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     saveSort(column, column === sort ? !reversed : false);
   };
 
-  const labels = [
+  const allLabels = [
     t("lobby.browser.column.game"),
     t("lobby.browser.column.tags"),
     t("lobby.browser.column.map"),
@@ -153,11 +184,12 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     t("lobby.browser.column.rating"),
     t("lobby.browser.column.age"),
   ];
+  const labels = tagsFolded ? allLabels.filter((_, index) => index !== TAGS_COLUMN) : allLabels;
 
   const header = (
-    <div className="game-browser-head" style={style}>
+    <div className="game-browser-head" style={style} ref={headerRef}>
       {labels.map((label, index) => {
-        const column = COLUMN_SORTS[index];
+        const column = COLUMN_SORTS[fullIndex(index)];
         const active = column === sort;
         const descending = column !== null && sortsDescending(column, reversed);
         return (
@@ -220,5 +252,5 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     </div>
   );
 
-  return { style, header };
+  return { style, header, tagsFolded };
 }
