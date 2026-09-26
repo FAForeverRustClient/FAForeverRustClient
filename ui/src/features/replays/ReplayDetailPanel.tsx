@@ -580,19 +580,16 @@ export function ReplayDetailPanel({
             {seed && (
               <div className="replay-card-seed">
                 <span className="replay-card-seed-label">{t("replays.detail.mapSeed")}</span>
-                <code className="replay-fact-seed-code" title={effectiveMap}>{seed}</code>
-                {/* The whole map name is copied, not the seed the line shows.
+                {/* The whole map name, shown and copied, not only the seed.
                     A generated map's name is `neroxis_map_generator_<version>_
                     <seed>_<options>` and all three parts are needed to rebuild
                     it: the encoding is the generator's, so the same seed under
                     a different version is a different map. The Reproduce field
                     in the generator dialog therefore rejects a bare seed, which
-                    is exactly what this button used to hand it.
-
-                    The line still shows only the seed. It is the part that
-                    identifies the map to a person, and the full name is three
-                    times as long as the row it would have to sit in; it is the
-                    hover text here, and it is what lands in the clipboard. */}
+                    is exactly what this button used to hand it. What is shown
+                    is what is copied, so the line wraps rather than cutting
+                    the name short. */}
+                <code className="replay-fact-seed-code" title={effectiveMap}>{effectiveMap}</code>
                 <button
                   type="button"
                   className="replay-card-icon-btn"
