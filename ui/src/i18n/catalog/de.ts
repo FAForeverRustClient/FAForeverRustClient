@@ -1584,6 +1584,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.tab.names": "Frühere Namen",
   "playerCard.tab.clan": "Clan",
   "playerCard.lookup.placeholder": "Anderen Spieler nachschlagen…",
+  "playerCard.lookup.formerly": "früher {name}",
   "playerCard.lookup.label": "Anderen Spieler nachschlagen",
   "playerCard.lookup.submit": "Suchen",
   "playerCard.action.copyName": "Namen kopieren",

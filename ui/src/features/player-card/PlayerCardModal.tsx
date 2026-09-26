@@ -48,6 +48,16 @@ const PERIODS: Array<{ value: RatingHistoryPeriod; label: MessageKey }> = [
   { value: "all", label: "playerCard.period.all" },
 ];
 
+/** One entry in the profile search's list: an online player or an API match. */
+interface LookupSuggestion {
+  id: number;
+  login: string;
+  country: string;
+  clan: string;
+  /** The former name that matched, when it was not the current login. */
+  formerName: string | null;
+}
+
 function PlayerLookupSearch({
   players,
   onSelect,
@@ -63,8 +73,23 @@ function PlayerLookupSearch({
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const suggestions = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+  // Players online now answer at once from the lobby's list. Everybody else,
+  // and every former name, comes from the API a moment after typing stops
+  // (#315): the list of who is online was the only source, so an offline
+  // account could not be suggested and of several accounts that once shared a
+  // name only the one Enter resolved to could be reached.
+  const lookup = useAppStore((state) => state.state.playerCard.accountLookup);
+  const trimmedQuery = query.trim();
+  useEffect(() => {
+    if (trimmedQuery.length < 3) return;
+    const timer = window.setTimeout(() => {
+      ipc.send({ kind: "PlayerCard", command: { type: "lookUpAccounts", payload: { query: trimmedQuery } } });
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [trimmedQuery]);
+
+  const suggestions = useMemo((): LookupSuggestion[] => {
+    const needle = trimmedQuery.toLowerCase();
     if (!needle) return [];
     const matches = players.filter((p) => p.login.toLowerCase().includes(needle));
     matches.sort((a, b) => {
@@ -74,8 +99,31 @@ function PlayerLookupSearch({
       if (!aStarts && bStarts) return 1;
       return a.login.localeCompare(b.login);
     });
-    return matches.slice(0, 8);
-  }, [query, players]);
+    const online: LookupSuggestion[] = matches.slice(0, 8).map((player) => ({
+      id: player.id,
+      login: player.login,
+      country: player.country,
+      clan: player.clan,
+      formerName: null,
+    }));
+    // The API's answer only while it still answers what is typed.
+    const known = new Set(online.map((entry) => entry.id));
+    const fromApi = lookup.query === trimmedQuery
+      ? lookup.matches
+        .filter((match) => !known.has(match.playerId))
+        .map((match): LookupSuggestion => {
+          const directory = players.find((player) => player.id === match.playerId);
+          return {
+            id: match.playerId,
+            login: match.login,
+            country: directory?.country ?? "",
+            clan: directory?.clan ?? "",
+            formerName: match.formerName,
+          };
+        })
+      : [];
+    return [...online, ...fromApi].slice(0, 12);
+  }, [lookup, trimmedQuery, players]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -184,6 +232,11 @@ function PlayerLookupSearch({
               <span className="player-card-suggestion-name">
                 {player.clan && <span className="chat-clan">[{player.clan}]</span>}
                 {player.login}
+                {player.formerName && (
+                  <small className="player-card-suggestion-former muted">
+                    {t("playerCard.lookup.formerly", { name: player.formerName })}
+                  </small>
+                )}
               </span>
             </li>
           ))}

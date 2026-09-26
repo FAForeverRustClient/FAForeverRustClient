@@ -758,6 +758,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "playerCard.tab.names": "Nombres anteriores",
   "playerCard.tab.clan": "Clan",
   "playerCard.lookup.placeholder": "Consultar otro jugador…",
+  "playerCard.lookup.formerly": "antes {name}",
   "playerCard.lookup.label": "Consultar otro jugador",
   "playerCard.lookup.submit": "Buscar",
   "playerCard.action.copyName": "Copiar el nombre",

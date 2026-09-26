@@ -1820,6 +1820,7 @@ export const en = {
   "playerCard.tab.names": "Previous names",
   "playerCard.tab.clan": "Clan",
   "playerCard.lookup.placeholder": "Investigate another player…",
+  "playerCard.lookup.formerly": "formerly {name}",
   "playerCard.lookup.label": "Investigate another player",
   "playerCard.lookup.submit": "Search",
   "playerCard.action.copyName": "Copy name",

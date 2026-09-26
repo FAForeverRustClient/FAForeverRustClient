@@ -222,6 +222,7 @@ const INITIAL: AppState = {
     mapStats: null,
     mapStatsStatus: "idle",
     mapStatsError: "",
+    accountLookup: { query: "", matches: [] },
   },
   reporting: {
     open: false,

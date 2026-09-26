@@ -759,6 +759,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "playerCard.tab.names": "Anciens pseudos",
   "playerCard.tab.clan": "Clan",
   "playerCard.lookup.placeholder": "Consulter un autre joueur…",
+  "playerCard.lookup.formerly": "anciennement {name}",
   "playerCard.lookup.label": "Consulter un autre joueur",
   "playerCard.lookup.submit": "Rechercher",
   "playerCard.action.copyName": "Copier le nom",

@@ -781,6 +781,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "playerCard.tab.names": "Прежние имена",
   "playerCard.tab.clan": "Клан",
   "playerCard.lookup.placeholder": "Посмотреть другого игрока…",
+  "playerCard.lookup.formerly": "ранее {name}",
   "playerCard.lookup.label": "Посмотреть другого игрока",
   "playerCard.lookup.submit": "Найти",
   "playerCard.action.copyName": "Копировать имя",
