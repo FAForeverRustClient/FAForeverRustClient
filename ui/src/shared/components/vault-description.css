@@ -1,0 +1,44 @@
+/* The heading row of a vault description: the label on the left, the copy
+   icon on the right, on one line so the icon costs no height at all. */
+.vault-description-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 22px;
+}
+
+.vault-description-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.vault-description-copy:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* Selectable explicitly: a description is something people copy out of, and a
+   webview that inherits a non-selectable default would silently make the copy
+   button the only way to get at it. */
+.vault-description-text {
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.vault-description-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}

@@ -13,8 +13,7 @@ import type {
   VaultMod,
 } from "../../ipc/bindings";
 import { formatShortDate } from "../../shared/format/dates";
-import { openHttpsUrl } from "../../shared/externalLinks";
-import { linkifyText } from "../../shared/linkify";
+import { VaultDescription } from "../../shared/components/VaultDescription";
 import { modUpdateAvailable } from "./modVersions";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -37,66 +36,6 @@ export function toggleNote(status: ModToggleStatus): string | null {
 
 export function cleanDescription(value: string): string {
   return value.replace(/^<LOC\s+[^>]+>/i, "").trim();
-}
-
-/**
- * A mod description, with its links followed rather than transcribed.
- *
- * Authors put the URL of the real readme in here, and it was drawn as flat
- * text: the only way to reach it was to type it out by hand. The text stays
- * selectable beside the link, and the copy button covers the rest of the
- * description, so neither half of "you cannot copy text from a mod
- * description" survives.
- */
-export function ModDescription({ description }: { description: string }) {
-  const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timeout = window.setTimeout(() => setCopied(false), 2_000);
-    return () => window.clearTimeout(timeout);
-  }, [copied]);
-
-  if (!description) return <p className="mod-vault-description-text">{t("mods.vault.noDescription")}</p>;
-
-  return (
-    <>
-      <p className="mod-vault-description-text">
-        {linkifyText(description).map(({ text, href }, index) =>
-          href === null ? (
-            <span key={index}>{text}</span>
-          ) : (
-            <a
-              key={index}
-              href={href}
-              className="mod-vault-description-link"
-              onClick={(event) => {
-                event.preventDefault();
-                void openHttpsUrl(href);
-              }}
-            >
-              {text}
-            </a>
-          ),
-        )}
-      </p>
-      <Button
-        className="mod-vault-description-copy"
-        onClick={() => {
-          void navigator.clipboard?.writeText(description).then(
-            () => setCopied(true),
-            // A refused clipboard is not worth an error dialog: the text is
-            // right there and selectable.
-            () => setCopied(false),
-          );
-        }}
-      >
-        <Icon name="copy" size={13} />
-        {t(copied ? "mods.vault.descriptionCopied" : "mods.vault.copyDescription")}
-      </Button>
-    </>
-  );
 }
 
 function ratingLabel(mod: VaultMod): string {
@@ -355,10 +294,12 @@ export function ModDetailPanel({
           </div>
         </div>
 
-        <section className="vault-detail-description mod-vault-description">
-          <h3>{t("mods.vault.description")}</h3>
-          <ModDescription description={description} />
-        </section>
+        <VaultDescription
+          className="mod-vault-description"
+          title={t("mods.vault.description")}
+          description={description}
+          empty={t("mods.vault.noDescription")}
+        />
 
         <div className="vault-detail-actions mod-vault-detail-actions">
           <div className="vault-detail-actions-left">
