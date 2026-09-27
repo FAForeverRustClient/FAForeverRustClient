@@ -111,10 +111,10 @@ impl IcePort for SelectableIce {
         *self.preferred.lock().unwrap() = adapter;
     }
 
-    fn hosting_adapter(&self) -> IceAdapter {
+    fn hosting_adapter(&self, picked: IceAdapter) -> IceAdapter {
         adapter_override()
             .unwrap_or_else(|| *self.preferred.lock().unwrap())
-            .for_hosting()
+            .for_hosting(picked)
     }
 
     /// Pushed to both backends rather than only the selected one: the
@@ -192,7 +192,7 @@ mod tests {
     async fn dynamic_joins_a_marked_lobby_on_go_and_every_other_on_java() {
         let (java, go, ice) = pair();
         ice.set_backend(IceAdapter::Dynamic);
-        ice.start(titled("Friday 4v4 [pioneer]")).await.unwrap();
+        ice.start(titled("Friday 4v4 [go-adapter]")).await.unwrap();
         assert_eq!(go.started.load(Ordering::SeqCst), 1, "the host is on Go");
         ice.stop();
         ice.start(titled("Friday 4v4")).await.unwrap();
@@ -204,22 +204,27 @@ mod tests {
     async fn an_explicit_choice_ignores_the_mark() {
         let (java, go, ice) = pair();
         ice.set_backend(IceAdapter::Java);
-        ice.start(titled("Friday 4v4 [pioneer]")).await.unwrap();
+        ice.start(titled("Friday 4v4 [go-adapter]")).await.unwrap();
         assert_eq!(java.started.load(Ordering::SeqCst), 1);
         assert_eq!(go.started.load(Ordering::SeqCst), 0);
     }
 
     #[test]
-    fn only_a_go_choice_hosts_on_go() {
+    fn dynamic_hosts_on_the_dialogs_pick_and_an_explicit_choice_on_itself() {
         let (_java, _go, ice) = pair();
-        for (preference, hosts_on) in [
-            (IceAdapter::Dynamic, IceAdapter::Java),
-            (IceAdapter::Java, IceAdapter::Java),
-            (IceAdapter::Go, IceAdapter::Go),
+        for (preference, picked, hosts_on) in [
+            (IceAdapter::Dynamic, IceAdapter::Java, IceAdapter::Java),
+            (IceAdapter::Dynamic, IceAdapter::Go, IceAdapter::Go),
+            (IceAdapter::Java, IceAdapter::Go, IceAdapter::Java),
+            (IceAdapter::Go, IceAdapter::Java, IceAdapter::Go),
         ] {
             ice.set_backend(preference);
             if adapter_override().is_none() {
-                assert_eq!(ice.hosting_adapter(), hosts_on, "{preference:?}");
+                assert_eq!(
+                    ice.hosting_adapter(picked),
+                    hosts_on,
+                    "{preference:?}, {picked:?}"
+                );
             }
         }
     }

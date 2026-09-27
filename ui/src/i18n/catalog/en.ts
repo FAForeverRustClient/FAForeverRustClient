@@ -860,8 +860,8 @@ export const en = {
   "lobby.browser.ranking": "Ranking",
   "lobby.browser.ranked": "Ranked",
   "lobby.browser.unranked": "Unranked",
-  "lobby.browser.pioneer": "Pioneer",
-  "lobby.browser.pioneerTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
+  "lobby.browser.goAdapter": "Go adapter",
+  "lobby.browser.goAdapterTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
   // The sim-mod tag says how many, and its tooltip says the thing the count
   // does not: whether those mods cost the game its rating. Plural because
   // German needs a different noun form, which a ternary could not express.
@@ -962,6 +962,10 @@ export const en = {
   "lobby.host.password": "Password",
   "lobby.host.passwordAria": "Game password",
   "lobby.host.enforceRating": "Enforce player rating",
+  "lobby.host.iceAdapter": "Connectivity adapter",
+  "lobby.host.iceAdapterJava": "Java adapter",
+  "lobby.host.iceAdapterGo": "Go adapter (experimental)",
+  "lobby.host.iceAdapterHint": "Hosting on Go adds [go-adapter] to the title. Players on Dynamic in this client join on Go automatically; everybody else has to choose Go themselves.",
   "lobby.host.minRating": "Minimum rating",
   "lobby.host.maxRating": "Maximum rating",
   "lobby.host.selectedMap": "Selected Map",
@@ -1567,7 +1571,7 @@ export const en = {
   "settings.game.openLocalFolder": "Open local cache folder for {name}",
   "settings.game.openReleaseNotes": "Open {name} on GitHub",
   "settings.connectivity.connectivityAdapter": "Connectivity adapter",
-  "settings.connectivity.connectivityAdapterHint": "Dynamic joins every lobby on its host's adapter and hosts on Java. Hosting on Go adds [pioneer] to your game's title so other players can tell. Applies from your next game.",
+  "settings.connectivity.connectivityAdapterHint": "Dynamic joins every lobby on its host's adapter, and when you host you pick Java or Go in the host dialog. Hosting on Go adds [go-adapter] to your game's title so other players can tell. Applies from your next game.",
   "settings.connectivity.dynamic": "Dynamic (follows the host, recommended)",
   "settings.discord.richPresence": "Rich Presence",
   "settings.discord.richPresenceHint": "Show the game you host or play on your Discord profile.",

@@ -68,6 +68,7 @@ export const DEFAULT_HOST_GAME_PREFERENCES: HostGamePreferences = {
   enforceRatingRange: false,
   ratingMin: 800,
   ratingMax: 1500,
+  iceAdapter: "java",
 };
 
 export const DEFAULT_LEADERBOARD_RATING_COLUMNS = [
@@ -333,6 +334,8 @@ function normalizeHostGamePreferences(
     password: [...preferences.password].slice(0, 25).join(""),
     ratingMin: minimum,
     ratingMax: maximum,
+    // The host dialog offers two; Dynamic is not something to host on.
+    iceAdapter: preferences.iceAdapter === "go" ? "go" : "java",
   };
 }
 

@@ -5504,6 +5504,7 @@ fn cases() -> Vec<Case> {
                             enforce_rating_range: true,
                             rating_min: Some(700),
                             rating_max: Some(1_700),
+                            ice_adapter: faf_domain::state::IceAdapter::Java,
                         },
                         // Its own block, normalised the same way: one dialog's
                         // setup must never land in the other's.
@@ -5517,6 +5518,7 @@ fn cases() -> Vec<Case> {
                             enforce_rating_range: false,
                             rating_min: Some(800),
                             rating_max: Some(1_500),
+                            ice_adapter: faf_domain::state::IceAdapter::Java,
                         },
                         favorite_maps: vec!["adaptive_tabula.v0006".into()],
                         favorite_mods: vec!["eco_graph".into()],
