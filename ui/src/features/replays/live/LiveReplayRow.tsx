@@ -12,28 +12,74 @@ import { gameStartedAt, prettyGameType } from "../../../shared/liveReplayModel";
 import { liveReplayTeams } from "./LiveReplayCards";
 import { ReplayDetailRoster } from "../ReplayRoster";
 import { useAppStore } from "../../../store/store";
+import { MapThumbnail } from "../../../shared/components/MapThumbnail";
+import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
 import { formatRelativeDuration as relativeDuration } from "../../../shared/format/durations";
-import { t } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { clientIntlTag } from "../../../shared/format/dates";
 
-export function LiveMapThumbnail({ presentation }: { presentation: MapPresentation }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [presentation.thumbnailUrl]);
-
-  return presentation.thumbnailUrl && !failed ? (
-    <img
-      className="live-replay-map-thumb"
-      src={presentation.thumbnailUrl}
-      alt={t("replays.live.mapPreview", { map: presentation.displayName })}
-      loading="lazy"
-      decoding="async"
-      onError={() => setFailed(true)}
-    />
-  ) : (
-    <span className="live-replay-map-placeholder" aria-hidden="true">
-      <Icon name="maps" size={18} />
+/**
+ * A running game's map, as the rest of the client draws maps.
+ *
+ * It used to read only the vault's thumbnail URL, so a generated map stayed a
+ * grey placeholder here even after its preview had been made, and nothing in
+ * the list offered to make one: "generate a mapgen preview in live replays"
+ * (issue 298) only ever reached the detail dialog. `MapThumbnail` knows the
+ * generated previews, the campaign missions and the vault, and the button on
+ * top makes the preview, the way the chat's hover card does.
+ */
+export function LiveMapThumbnail({
+  mapName,
+  presentation,
+}: {
+  mapName: string;
+  presentation: MapPresentation;
+}) {
+  const vault = useAppStore((state) => state.state.maps.vault);
+  return (
+    <span className="live-map-thumb-wrap">
+      <MapThumbnail
+        mapName={mapName}
+        vault={vault}
+        url={presentation.thumbnailUrl}
+        className="live-replay-map-thumb"
+        placeholderClassName="live-replay-map-thumb live-replay-map-placeholder"
+        iconSize={18}
+      />
+      <LiveMapGenerateButton mapName={mapName} />
     </span>
+  );
+}
+
+/**
+ * "Generate map" on a live game's thumbnail, for a generated map that is not
+ * on disk yet. Nothing for any other map.
+ *
+ * The row and the card both act on a click (open, watch), so the button keeps
+ * its clicks to itself.
+ */
+export function LiveMapGenerateButton({ mapName, large = false }: { mapName: string; large?: boolean }) {
+  const mapGen = useNamedMapGeneration(mapName);
+  if (!mapGen.canGenerate && !mapGen.isGenerating) return null;
+  return (
+    <button
+      type="button"
+      className={large ? "live-map-generate is-large" : "live-map-generate"}
+      disabled={mapGen.isGenerating}
+      title={mapGen.generateLabel}
+      aria-label={mapGen.generateLabel}
+      onClick={(event) => {
+        event.stopPropagation();
+        mapGen.generate();
+      }}
+      onDoubleClick={(event) => event.stopPropagation()}
+    >
+      <Icon
+        name={mapGen.isGenerating ? "refresh" : "plus"}
+        size={large ? 14 : 12}
+        className={mapGen.isGenerating ? "spin" : undefined}
+      />
+    </button>
   );
 }
 
@@ -382,7 +428,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
           }
         }}
       >
-        <td><LiveMapThumbnail presentation={presentation} /></td>
+        <td><LiveMapThumbnail mapName={game.map} presentation={presentation} /></td>
         <td className="live-start-cell">
           <strong>{started ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" }) : "N/A"}</strong>
           <LiveReplayAge game={game} now={ageNow} />
@@ -431,7 +477,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
                 them. */}
             <div className="live-replay-details">
               <div className="live-detail-map">
-                <LiveMapThumbnail presentation={presentation} />
+                <LiveMapThumbnail mapName={game.map} presentation={presentation} />
                 <div className="live-detail-map-name">
                   <strong>{mapLabel}</strong>
                   {/* The technical name, which is what somebody looking for
