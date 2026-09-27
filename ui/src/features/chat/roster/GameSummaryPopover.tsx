@@ -10,7 +10,6 @@ import { GameSummaryCard, STATUS_LABEL } from "./GameSummaryCard";
 import { GameStatusSword } from "./GameStatusSword";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { joinGame } from "../../../shared/joinGame";
-import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
 import {
   hoverCloseDelay,
   hoverOpenDelay,
@@ -33,7 +32,6 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
   const openTimer = useRef<number | undefined>(undefined);
   const tooltipId = useId();
   const presentation = mapPresentation(vault, presence.game.map);
-  const mapGen = useNamedMapGeneration(presence.game.map);
 
   // The delays are the ones Settings, Appearance holds: see
   // `shared/hoverPanels`. The card is interactive, so the closing one is not
@@ -175,31 +173,24 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
               was the one place the two drifted, and a hover card that is a
               cut-down copy of a panel three pixels away is just a second
               design. */}
-          <GameSummaryCard presence={presence} social={social} vault={vault} now={now} showMap />
           {/* The card is reachable now, so the action the double-click on the
               badge performs is spelled out here too. Nothing about a pair of
-              crossed swords says "double-click me to spectate". */}
-          <div className="chat-game-popover-actions">
-            {(mapGen.canGenerate || mapGen.isGenerating) && (
-              <button
-                type="button"
-                className="chat-head-action chat-game-popover-action"
-                disabled={mapGen.isGenerating}
-                onClick={mapGen.generate}
-              >
-                <Icon
-                  name={mapGen.isGenerating ? "refresh" : "plus"}
-                  size={14}
-                  className={mapGen.isGenerating ? "spin" : undefined}
-                />
-                {mapGen.generateLabel}
+              crossed swords says "double-click me to spectate". It sits in the
+              header beside the map; generating a mapgen map is the button on
+              the thumbnail itself, so the card no longer carries it twice. */}
+          <GameSummaryCard
+            presence={presence}
+            social={social}
+            vault={vault}
+            now={now}
+            showMap
+            action={(
+              <button type="button" className="chat-head-action chat-game-popover-action" onClick={act}>
+                <Icon name={watching ? "eye" : "play"} size={14} />
+                {watching ? t("chat.aside.watch") : t("chat.aside.join")}
               </button>
             )}
-            <button type="button" className="chat-head-action chat-game-popover-action" onClick={act}>
-              <Icon name={watching ? "eye" : "play"} size={14} />
-              {watching ? t("chat.aside.watch") : t("chat.aside.join")}
-            </button>
-          </div>
+          />
         </aside>,
         document.body,
       )}
