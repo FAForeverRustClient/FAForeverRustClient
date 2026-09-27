@@ -42,22 +42,34 @@ export const FLEXIBLE_COLUMN = 0;
 const COLUMN_GAP_PX = 16;
 /** A row's own padding either side, matching `.game-browser-row`. */
 const ROW_PADDING_PX = 16;
-/** The narrowest the game column gets: a thumbnail, a title and a host. */
-export const MIN_GAME_COLUMN_PX = 240;
+/** The narrowest the game column can be dragged: a thumbnail and a word. */
+export const MIN_GAME_COLUMN_PX = 120;
+/** However narrow the list, the columns keep at least this share. */
+const MIN_COLUMN_SCALE = 0.25;
 
 /**
- * How wide a row has to be for every column to keep its width.
+ * What the columns are drawn at, from 1 (as dragged) down, so that the row
+ * fits a list `listWidth` wide.
  *
- * The game column is the one that gives when the list is narrow, and with
- * the tags column (issue 341) it gave everything on a smaller screen: the
- * title and host went, the columns on the right ran past the edge, and the
- * columns behaved differently there than on a large screen. With this as the
- * rows' minimum width the list scrolls sideways instead, and every column is
- * the width it was dragged to on any screen.
+ * The list is always as wide as the space it has (issue 341). Forced wider,
+ * it scrolled sideways on a smaller screen and was far wider than anything in
+ * it; left to squeeze one column, that column went first and then everything
+ * spilled. So a list narrower than the columns together draws every column
+ * narrower in proportion, the game column included, and the widths stored are
+ * untouched: on a wider screen they come back exactly. A list wider than the
+ * columns gives what is left over to the game column.
  */
-export function minimumRowWidth(widths: readonly number[]): number {
-  const fixed = widths.reduce((sum, width, index) => (index === FLEXIBLE_COLUMN ? sum : sum + width), 0);
-  return fixed + COLUMN_GAP_PX * (widths.length - 1) + MIN_GAME_COLUMN_PX + 2 * ROW_PADDING_PX;
+export function columnScale(listWidth: number, widths: readonly number[]): number {
+  if (listWidth <= 0) return 1;
+  const total = widths.reduce((sum, width) => sum + width, 0);
+  if (total <= 0) return 1;
+  const usable = listWidth - 2 * ROW_PADDING_PX - COLUMN_GAP_PX * (widths.length - 1);
+  return Math.min(1, Math.max(MIN_COLUMN_SCALE, usable / total));
+}
+
+/** The widths as drawn at `scale`. */
+export function scaledColumnWidths(widths: readonly number[], scale: number): number[] {
+  return widths.map((width) => Math.max(1, Math.round(width * scale)));
 }
 
 /** The detail panel's designed width, matching `custom-games.css`. */
@@ -78,6 +90,9 @@ export function columnWidths(stored: readonly number[] | undefined): number[] {
   return resolveColumnWidths(upgraded, DEFAULT_COLUMN_WIDTHS).slice(0, MAX_BROWSER_COLUMNS);
 }
 
+/** For `withBoundaryDragged`: every column of the game list has a width of its own. */
+const NO_FLEXIBLE_COLUMN = -1;
+
 /**
  * The widths after the divider in front of `boundary` has been dragged.
  *
@@ -91,9 +106,15 @@ export function withColumnResized(
   widths: readonly number[],
   boundary: number,
   delta: number,
-  gameRoom = Number.POSITIVE_INFINITY,
 ): number[] {
-  return withBoundaryDragged(widths, boundary, delta, FLEXIBLE_COLUMN, gameRoom);
+  // The game column trades width like any other now: it has a width of its
+  // own, so the divider in front of the tags column moves both of its
+  // neighbours and nothing else, on any screen. It stops at a readable floor.
+  const gameGives = boundary === FLEXIBLE_COLUMN + 1 && delta < 0;
+  const bounded = gameGives
+    ? Math.max(delta, Math.min(0, MIN_GAME_COLUMN_PX - widths[FLEXIBLE_COLUMN]))
+    : delta;
+  return withBoundaryDragged(widths, boundary, bounded, NO_FLEXIBLE_COLUMN);
 }
 
 /**

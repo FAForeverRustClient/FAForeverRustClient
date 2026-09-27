@@ -6,7 +6,7 @@
 // laid out one way in one tab and another way in the next, and half of them
 // could not be dragged at all. One hook, one header, both lists.
 
-import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
 import type { CustomGameSort } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
@@ -17,11 +17,10 @@ import {
   columnTemplate,
   columnWidths,
   FLEXIBLE_COLUMN,
-  MIN_GAME_COLUMN_PX,
-  minimumRowWidth,
+  columnScale,
+  scaledColumnWidths,
   withColumnResized,
 } from "./browserLayout";
-import { flexibleRoomFrom } from "../../../shared/tableColumns";
 
 /**
  * Persist the list's column widths.
@@ -111,29 +110,53 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   const [dragWidths, setDragWidths] = useState<number[] | null>(null);
   const widths = dragWidths ?? columnWidths(savedWidths);
   const dragOrigin = useRef<number[] | null>(null);
+
+  // The list's width, from its header: the header is as wide as the list.
+  // Watched, because the window, the detail panel and the chat sidebar all
+  // change it. See `columnScale`.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [listWidth, setListWidth] = useState(0);
+  useEffect(() => {
+    const element = headerRef.current;
+    if (!enabled || !element || typeof ResizeObserver === "undefined") return;
+    const measure = () => setListWidth(element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [enabled]);
+  const scale = columnScale(listWidth, widths);
+  const shown = scaledColumnWidths(widths, scale);
+
   const style = useMemo(
-    () => (enabled
-      ? { gridTemplateColumns: columnTemplate(widths), minWidth: minimumRowWidth(widths) }
-      : undefined),
+    () => (enabled ? { gridTemplateColumns: columnTemplate(shown) } : undefined),
     // The template is a string, so comparing the array by value is what keeps
     // every row from re-rendering on an unrelated settings write.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [enabled, widths.join(",")],
+    [enabled, shown.join(",")],
   );
 
-  // What the game column had above its minimum when the drag began: the
-  // divider next to it stops there instead of widening the whole row.
-  const gameRoom = useRef(Number.POSITIVE_INFINITY);
+  // The game column's drawn width when a drag begins. On a list wider than
+  // its columns the game column is drawn wider than its stored width, and a
+  // drag starts from what is on screen, or the divider would jump.
+  const drawnGame = useRef<number | null>(null);
   const onStart = (handle: HTMLElement) => {
-    gameRoom.current = flexibleRoomFrom(handle, FLEXIBLE_COLUMN, MIN_GAME_COLUMN_PX);
+    const cell = handle.parentElement?.parentElement?.children[FLEXIBLE_COLUMN];
+    drawnGame.current = scale >= 1 && cell ? Math.round(cell.getBoundingClientRect().width) : null;
   };
   const onDrag = (boundary: number, delta: number) => {
-    dragOrigin.current ??= widths;
-    setDragWidths(withColumnResized(dragOrigin.current, boundary, delta, gameRoom.current));
+    dragOrigin.current ??= drawnGame.current === null
+      ? widths
+      : widths.map((width, index) => (index === FLEXIBLE_COLUMN ? drawnGame.current ?? width : width));
+    // The pointer moves in drawn pixels and the widths are stored unscaled:
+    // at half scale a stored width changes twice as far, which is what keeps
+    // the divider under the cursor. A trade keeps the total, so the scale
+    // holds still for the whole drag.
+    setDragWidths(withColumnResized(dragOrigin.current, boundary, delta / scale));
   };
   const onCommit = () => {
     dragOrigin.current = null;
-    gameRoom.current = Number.POSITIVE_INFINITY;
+    drawnGame.current = null;
     if (dragWidths) saveColumnWidths(dragWidths);
     setDragWidths(null);
   };
@@ -167,7 +190,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   ];
 
   const header = (
-    <div className="game-browser-head" style={style}>
+    <div className="game-browser-head" style={style} ref={headerRef}>
       {labels.map((label, index) => {
         const column = COLUMN_SORTS[index];
         const active = column === sort;
