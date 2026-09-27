@@ -19,7 +19,8 @@ use crate::services;
 
 mod policies;
 pub use policies::{
-    AutoReconnect, CancelledJoin, LatestRequest, RunningGame, SerialMutation, SingleFlight,
+    AutoReconnect, CancelledJoin, LatestRequest, LoadedFromDisk, RunningGame, SerialMutation,
+    SingleFlight,
 };
 
 /// Read-only context handed to every service: shared dependencies.
@@ -69,6 +70,10 @@ pub struct ServiceCtx {
     /// Settings commands run concurrently. Serializing the snapshot + write
     /// prevents an older command from reaching disk after a newer one.
     pub settings_persist: SerialMutation,
+    /// Whether the settings file has been read yet. Nothing may be persisted
+    /// before it has, or a preference set during startup writes a document
+    /// made of defaults over the user's own.
+    pub settings_loaded: LoadedFromDisk,
     /// When a composing notice was last sent per channel, so the composer can
     /// report on every keystroke while the wire sees one line every few
     /// seconds.
@@ -326,6 +331,7 @@ impl App {
             client_update_active: SingleFlight::default(),
             galactic_war_active: SingleFlight::default(),
             settings_persist: SerialMutation::default(),
+            settings_loaded: LoadedFromDisk::default(),
             chat_typing_sent: std::sync::Mutex::new(std::collections::HashMap::new()),
             chat_read_marker_persist_generation: LatestRequest::default(),
             leaderboard_catalog_generation: LatestRequest::default(),

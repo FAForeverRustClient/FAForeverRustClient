@@ -18,7 +18,17 @@ struct RecordingSettings {
 #[async_trait]
 impl SettingsPort for RecordingSettings {
     async fn load(&self) -> SettingsState {
-        SettingsState::default()
+        SettingsState {
+            // Off, so the startup cache pass this test has to run cannot sweep
+            // the real game-files cache on whoever runs the suite. The
+            // measuring half only reads. See `cache_dir` in `infra`, which is
+            // not injectable.
+            game: faf_domain::state::GamePreferences {
+                cache_lifetime_days: None,
+                ..faf_domain::state::GamePreferences::default()
+            },
+            ..SettingsState::default()
+        }
     }
 
     async fn save(&self, settings: &SettingsState) {
@@ -73,6 +83,14 @@ async fn setting_and_clearing_a_player_note_crosses_the_app_loop() {
     };
     let (app, app_loop) = App::new("test", ports);
     tokio::spawn(app_loop.run());
+
+    // The settings file has to have been read before anything may be written
+    // back over it, so the startup load comes first here as it does in the
+    // client. See `crates/faf-app/tests/settings_startup.rs`.
+    app.dispatch_and_wait(SettingsCommand::Load.into())
+        .await
+        .unwrap();
+    saved.lock().unwrap().clear();
 
     app.dispatch(
         SettingsCommand::SetPlayerNote {

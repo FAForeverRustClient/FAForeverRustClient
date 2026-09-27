@@ -87,37 +87,27 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             let start_page = settings.general.start_page;
             let show_joins_parts = settings.chat.show_joins_parts;
-            if let Ok(cache_root) = crate::infra::cache_dir() {
-                let game_files_cache = cache_root.join("game_files");
-                if let Some(days) = settings.game.cache_lifetime_days {
-                    let _ = crate::infra::game_updater::clean_expired_cache_files(
-                        &game_files_cache,
-                        days,
-                    )
-                    .await;
-                }
-                let mut install_dirs = Vec::new();
-                if !settings.game_path.is_empty() {
-                    install_dirs.push(std::path::PathBuf::from(&settings.game_path));
-                }
-                if !settings.replay_game_path.is_empty() {
-                    install_dirs.push(std::path::PathBuf::from(&settings.replay_game_path));
-                }
-                settings.cache_info = crate::infra::game_updater::inspect_game_cache(
-                    &game_files_cache,
-                    &install_dirs,
-                )
-                .await;
-            }
             // The map generator keeps its own working copy of these options,
             // so a persisted set has to be handed over explicitly: without
             // this the dialog would open on defaults every session and "save
             // settings" would look like it had done nothing.
             let generator_options = settings.map_generator.clone();
-            check_cache_size_alert(out, &settings.cache_info, settings.game.cache_size_alert_gb);
+            // Nothing slow between reading the file and this line. `cache_info`
+            // is measured further down instead, because measuring it walks the
+            // whole game-files cache and both install directories, stat-ing
+            // every file: seconds on a real install, longer on a cold disk or
+            // behind a scanner. It used to sit here, ahead of the emit, and for
+            // all that time the rest of the client saw `SettingsState::default`
+            // and the webview was already rendering and taking clicks. That is
+            // the window the "settings reset themselves" report came out of.
+            // `cache_info` is not persisted (see `SettingsState`'s `Deserialize`),
+            // so arriving a moment later costs nothing.
             out.emit(SettingsEvent::Loaded {
                 settings: Box::new(settings),
             });
+            // Only now may anything be written back: state finally holds the
+            // player's settings rather than defaults.
+            ctx.settings_loaded.mark_loaded();
             out.emit(MapGeneratorEvent::OptionsChanged {
                 options: generator_options,
             });
@@ -126,6 +116,7 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             out.emit(NavEvent::TabSelected { tab: start_page });
             sync_runtime_preferences(ctx, out);
+            expire_and_measure_game_cache(out).await;
             // Last, and deliberately here rather than in the session handshake:
             // the release channel is a preference, so a check that ran any
             // earlier would always use the stable default no matter what the
@@ -307,7 +298,28 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
     }
 }
 
+/// Write the whole settings document back, once there is one to write.
+///
+/// The guard is not defensive programming. Settings are persisted as a whole
+/// document read back out of state, and until [`SettingsCommand::Load`] has
+/// finished that state is `SettingsState::default()`. Every command runs on
+/// its own task, and the webview renders and accepts clicks as soon as it has
+/// a snapshot, which is long before the load it is racing has emitted
+/// anything. A preference set in that window used to save defaults for
+/// everything else in the same breath: one click during startup and the
+/// player's theme, paths, column widths, favourites and vetoes were gone. That
+/// is the "my settings reset themselves" report.
+///
+/// Skipping the write rather than queueing it loses the early change itself,
+/// which `Loaded` is about to overwrite in state anyway. Losing one deliberate
+/// click beats erasing everything the player ever configured.
 pub(crate) async fn persist(ctx: &ServiceCtx, out: &EventSink) {
+    if !ctx.settings_loaded.has_loaded() {
+        tracing::warn!(
+            "a settings change arrived before the settings file was read; not writing defaults over it"
+        );
+        return;
+    }
     let _guard = ctx.settings_persist.acquire().await;
     let settings = out.with_state(|state| state.settings.clone());
     ctx.ports.settings.save(&settings).await;
@@ -524,6 +536,23 @@ fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
         replay_pending: present.replay_pending,
         resolved,
     });
+}
+
+/// The startup cache pass: drop what has expired, then measure what is left.
+///
+/// Runs after `Loaded` rather than before it. Both halves walk directory trees
+/// and stat every file they find, and doing that in front of the emit is what
+/// made startup settings a several-second race rather than a file read.
+async fn expire_and_measure_game_cache(out: &EventSink) {
+    let lifetime_days = out.with_state(|state| state.settings.game.cache_lifetime_days);
+    if let (Some(days), Ok(cache_root)) = (lifetime_days, crate::infra::cache_dir()) {
+        let _ = crate::infra::game_updater::clean_expired_cache_files(
+            &cache_root.join("game_files"),
+            days,
+        )
+        .await;
+    }
+    sync_game_cache(out).await;
 }
 
 async fn sync_game_cache(out: &EventSink) {

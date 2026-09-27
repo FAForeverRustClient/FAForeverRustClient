@@ -64,8 +64,9 @@ export function MapCard({
           </small>
         </span>
         <span className="map-vault-card-facts">
-          {/* Only ever set in "my maps": every other search filters withdrawn
-              versions out server side. */}
+          {/* "My maps", or the vault's own "Withdrawn versions: Shown". Every
+              other search asks the API to leave these out and the tab drops
+              any that arrive anyway, so reaching this badge is deliberate. */}
           {map.hidden && (
             <span className="map-vault-type is-hidden" title={t("maps.vault.hiddenTitle")}>
               {t("maps.vault.hidden")}

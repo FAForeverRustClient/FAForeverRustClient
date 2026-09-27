@@ -616,6 +616,10 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.view.installation": "Установка",
   "maps.view.uploadedAfter": "Загружена после",
   "maps.view.uploadedBefore": "Загружена до",
+  "maps.view.withdrawn": "Отозванные версии",
+  "maps.view.withdrawnTitle": "Карты, последнюю версию которых автор убрал из хранилища. По умолчанию скрыты.",
+  "maps.view.withdrawnExclude": "Скрыты",
+  "maps.view.withdrawnInclude": "Показаны",
   "maps.view.width": "Ширина",
   "maps.view.height": "Высота",
   "maps.view.map": "Карта",
@@ -1276,6 +1280,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.roster.combinedRating": "Суммарный отображаемый рейтинг",
   "replays.roster.rating": "Рейтинг",
   "replays.roster.playerActions": "Действия для {name}",
+  "replays.roster.playedAs": "играл как {name}",
   "replays.roster.score": "Счет",
 
   "replays.source.aria": "Источники реплеев",

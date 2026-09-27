@@ -271,4 +271,78 @@ describe("ReplayRoster outcomes", () => {
     expect(markup).toContain("Observers");
     expect(markup).not.toContain("Team 1");
   });
+
+  it("matches renamed players by rating without creating duplicate rows", () => {
+    const teams: ReplayTeam[] = [
+      {
+        team: 2,
+        players: [
+          { name: "KnownSniper", faction: 1, rating: 2731, outcome: "VICTORY", score: 100 },
+          { name: "BrainDeadCommand", faction: 3, rating: 2240, outcome: "VICTORY", score: 90 },
+          { name: "UnchangedPlayer", faction: 2, rating: 1800, outcome: "VICTORY", score: 80 },
+        ],
+      },
+    ];
+
+    const localTeams: LocalReplayTeam[] = [
+      {
+        team: "2",
+        players: [
+          { name: "TheWeakie", faction: 1, rating: 2731 },
+          { name: "Protect", faction: 3, rating: 2240 },
+          { name: "UnchangedPlayer", faction: 2, rating: 1800 },
+        ],
+      },
+    ];
+
+    const merged = mergeReplayTeamsWithLocal(teams, localTeams);
+
+    // There should still only be 3 players, not 5
+    expect(merged[0].players).toHaveLength(3);
+
+    expect(merged[0].players[0].name).toBe("KnownSniper");
+    expect(merged[0].players[0].alias).toBe("TheWeakie");
+
+    expect(merged[0].players[1].name).toBe("BrainDeadCommand");
+    expect(merged[0].players[1].alias).toBe("Protect");
+
+    expect(merged[0].players[2].name).toBe("UnchangedPlayer");
+    expect(merged[0].players[2].alias).toBeUndefined();
+  });
+
+  it("renders renamed player alias in ReplayDetailRoster and tooltip", () => {
+    const teams = [
+      {
+        team: 2,
+        players: [
+          { name: "KnownSniper", alias: "TheWeakie", faction: 1, rating: 2731, outcome: "", score: null },
+        ],
+      },
+    ];
+
+    const markup = renderToStaticMarkup(<ReplayDetailRoster teams={teams} />);
+
+    expect(markup).toContain('class="replay-player-alias"');
+    expect(markup).toContain("(TheWeakie)");
+    expect(markup).toContain('title="played as TheWeakie"');
+    expect(markup).toContain("KnownSniper");
+  });
+
+  it("includes played-as alias in ReplayCardRoster titles", () => {
+    const teams = [
+      {
+        team: 2,
+        players: [
+          { name: "KnownSniper", alias: "TheWeakie", faction: 1, rating: 2731, outcome: "", score: null },
+        ],
+      },
+    ];
+
+    const interactiveMarkup = renderToStaticMarkup(<ReplayCardRoster teams={teams} interactive={true} />);
+    expect(interactiveMarkup).toContain("KnownSniper");
+    expect(interactiveMarkup).toContain("played as TheWeakie");
+
+    const nonInteractiveMarkup = renderToStaticMarkup(<ReplayCardRoster teams={teams} interactive={false} />);
+    expect(nonInteractiveMarkup).toContain('title="played as TheWeakie"');
+  });
 });
