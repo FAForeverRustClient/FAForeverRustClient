@@ -1592,7 +1592,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.someOfBand": "{inRange} de {count}",
   "lobby.matchmaker.yourBand": "Resaltado: tu franja de puntuación y quién en ella te aceptaría.",
   "lobby.matchmaker.inRangeHint": "Jugadores en esta cola con los que podrías emparejarte tras unos minutos de espera, sin contar tu propia búsqueda.",
-  "lobby.matchmaker.reachNote": "Distancia máx.: ±{now}, ±{waited} tras esperar",
+  "lobby.matchmaker.reachNote": "Distancia máx.: ±{now}, +{step} por cada {interval} de espera",
   "lobby.matchmaker.teamReachNote": "Colas por equipos: estimación aproximada",
   "lobby.matchmaker.mapPool": "Conjunto de mapas",
   "lobby.matchmaker.state.searching": "Buscando",

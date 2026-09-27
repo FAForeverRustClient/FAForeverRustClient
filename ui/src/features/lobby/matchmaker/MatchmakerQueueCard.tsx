@@ -3,7 +3,7 @@ import { Icon } from "../../../design-system/Icon";
 import type { MatchmakerQueue, PlayerLeaguePlacement, PlayerRatingSummary } from "../../../ipc/bindings";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 import { formatClockDuration } from "../../../shared/format/durations";
-import { matchReaches, queueRatingBuckets } from "./queueRatingRange";
+import { matchReaches, QUEUE_POP_INTERVAL_SECONDS, queueRatingBuckets } from "./queueRatingRange";
 import { t } from "../../../i18n";
 
 export type QueueDisplayState = "idle" | "searching" | "found" | "launching" | "cancelled";
@@ -179,7 +179,8 @@ export function MatchmakerQueueCard({
                   <small className="matchmaker-queue-breakdown-note">
                     {t("lobby.matchmaker.reachNote", {
                       now: Math.round(reaches.now),
-                      waited: Math.round(reaches.waited),
+                      step: Math.round(reaches.perPop),
+                      interval: formatClockDuration(QUEUE_POP_INTERVAL_SECONDS),
                     })}
                   </small>
                 ) : queue.teamSize > 1 ? (

@@ -632,7 +632,7 @@ export const en = {
   "lobby.matchmaker.someOfBand": "{inRange} of {count}",
   "lobby.matchmaker.yourBand": "Highlighted: your rating band, and who in it would take you.",
   "lobby.matchmaker.inRangeHint": "Players waiting in this queue who could be matched with you after a few minutes of waiting, not counting your own search.",
-  "lobby.matchmaker.reachNote": "Max. distance: ±{now}, ±{waited} after waiting",
+  "lobby.matchmaker.reachNote": "Max. distance: ±{now}, +{step} per {interval} waiting",
   "lobby.matchmaker.teamReachNote": "Team queues: rough estimate",
   "lobby.matchmaker.mapPool": "Map pool",
   // What a queue actually does to your game. The questions it answers are the

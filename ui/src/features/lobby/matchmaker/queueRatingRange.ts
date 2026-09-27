@@ -57,6 +57,10 @@ function windowsFor(
 const TRUESKILL_BETA = 240;
 /** `LADDER_SEARCH_EXPANSION_MAX`: how far a threshold drops, at most. */
 const SEARCH_EXPANSION_MAX = 0.25;
+/** `LADDER_SEARCH_EXPANSION_STEP`: how far it drops per pop that fails to match. */
+const SEARCH_EXPANSION_STEP = 0.05;
+/** `QUEUE_POP_TIME_MAX`: the longest the server waits between two pops. */
+export const QUEUE_POP_INTERVAL_SECONDS = 90;
 /** `NEWBIE_MIN_GAMES` and `NEWBIE_BASE_MEAN`: a new account is matched on a
  *  mean pulled towards 500 until it has played this many games. */
 const NEWBIE_MIN_GAMES = 10;
@@ -84,13 +88,17 @@ export function matchReach(deviation: number, expansion: number): number {
   return Math.sqrt(-2 * c2 * Math.log(ratio));
 }
 
-/** The reach now, and after the threshold has dropped as far as it goes. */
-export function matchReaches(rating: PlayerRatingSummary): { now: number; waited: number } | null {
+/**
+ * The reach now, after the threshold has dropped as far as it goes, and how
+ * much it grows per pop on the way there, averaged over the pops it takes.
+ */
+export function matchReaches(
+  rating: PlayerRatingSummary,
+): { now: number; waited: number; perPop: number } | null {
   if (rating.deviation === null) return null;
-  return {
-    now: matchReach(rating.deviation, 0),
-    waited: matchReach(rating.deviation, SEARCH_EXPANSION_MAX),
-  };
+  const now = matchReach(rating.deviation, 0);
+  const waited = matchReach(rating.deviation, SEARCH_EXPANSION_MAX);
+  return { now, waited, perPop: (waited - now) / (SEARCH_EXPANSION_MAX / SEARCH_EXPANSION_STEP) };
 }
 
 /**

@@ -1619,7 +1619,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.someOfBand": "{inRange} z {count}",
   "lobby.matchmaker.yourBand": "Wyróżnione: twój przedział rankingu i kto w nim do ciebie pasuje.",
   "lobby.matchmaker.inRangeHint": "Gracze w tej kolejce, z którymi możesz zostać dobrany po kilku minutach czekania, bez twojego własnego wyszukiwania.",
-  "lobby.matchmaker.reachNote": "Maks. różnica: ±{now}, ±{waited} po czekaniu",
+  "lobby.matchmaker.reachNote": "Maks. różnica: ±{now}, +{step} na każde {interval} czekania",
   "lobby.matchmaker.teamReachNote": "Kolejki drużynowe: przybliżenie",
   "lobby.matchmaker.mapPool": "Pula map",
   "lobby.matchmaker.state.searching": "Szukanie",

@@ -1594,7 +1594,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.someOfBand": "{inRange} sur {count}",
   "lobby.matchmaker.yourBand": "En surbrillance : votre tranche de classement, et qui y accepterait votre partie.",
   "lobby.matchmaker.inRangeHint": "Joueurs de cette file avec qui vous pourriez être apparié après quelques minutes d'attente, sans compter votre propre recherche.",
-  "lobby.matchmaker.reachNote": "Écart max. : ±{now}, ±{waited} après attente",
+  "lobby.matchmaker.reachNote": "Écart max. : ±{now}, +{step} par {interval} d'attente",
   "lobby.matchmaker.teamReachNote": "Files en équipe : estimation approximative",
   "lobby.matchmaker.mapPool": "Pool de cartes",
   "lobby.matchmaker.state.searching": "Recherche",
