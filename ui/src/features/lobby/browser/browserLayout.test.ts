@@ -5,9 +5,7 @@ import {
   DEFAULT_COLUMN_WIDTHS,
   DEFAULT_DETAIL_WIDTH,
   detailWidth,
-  tagsColumnFolds,
-  withTagsColumn,
-  withoutTagsColumn,
+  minimumRowWidth,
   withColumnResized,
   withDetailResized,
 } from "./browserLayout";
@@ -30,20 +28,12 @@ describe("the game list's column widths", () => {
     expect(columnWidths(undefined)).toEqual([...DEFAULT_COLUMN_WIDTHS]);
   });
 
-  it("folds the tags column away when the list is too narrow for it", () => {
-    // Designed widths: 615 px of fixed columns and five 16 px gaps, plus the
-    // 260 px the game column needs, is 955.
-    expect(tagsColumnFolds(1200, DEFAULT_COLUMN_WIDTHS)).toBe(false);
-    expect(tagsColumnFolds(955, DEFAULT_COLUMN_WIDTHS)).toBe(false);
-    expect(tagsColumnFolds(954, DEFAULT_COLUMN_WIDTHS)).toBe(true);
-    // Not measured yet: nothing to fold for.
-    expect(tagsColumnFolds(0, DEFAULT_COLUMN_WIDTHS)).toBe(false);
-  });
-
-  it("keeps the tags width while its column is folded away", () => {
-    const widths = [320, 190, 170, 80, 100, 75];
-    expect(withoutTagsColumn(widths)).toEqual([320, 170, 80, 100, 75]);
-    expect(withTagsColumn([320, 150, 80, 100, 75], 190)).toEqual([320, 190, 150, 80, 100, 75]);
+  it("keeps every column its width by making the row at least this wide", () => {
+    // 615 px of fixed columns, five 16 px gaps, 240 for the game column and
+    // 16 px of padding either side.
+    expect(minimumRowWidth(DEFAULT_COLUMN_WIDTHS)).toBe(615 + 80 + 240 + 32);
+    // A wider tags column widens the row rather than squeezing the game one.
+    expect(minimumRowWidth([320, 290, 170, 80, 100, 75])).toBe(minimumRowWidth(DEFAULT_COLUMN_WIDTHS) + 100);
   });
 
   it("reads a set saved before the tags column as the columns it described", () => {

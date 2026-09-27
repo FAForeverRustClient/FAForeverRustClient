@@ -38,42 +38,26 @@ const COLUMNS_BEFORE_TAGS = 5;
  */
 export const FLEXIBLE_COLUMN = 0;
 
-/** The tags column's position in the full set of widths. */
-export const TAGS_COLUMN = 1;
-
-/** The gap between two columns, matching `.game-browser-row` in the stylesheet. */
+/** The gap between two columns, matching `.game-browser-row`. */
 const COLUMN_GAP_PX = 16;
+/** A row's own padding either side, matching `.game-browser-row`. */
+const ROW_PADDING_PX = 16;
+/** The narrowest the game column gets: a thumbnail, a title and a host. */
+const MIN_GAME_COLUMN_PX = 240;
 
 /**
- * The narrowest the game column may get before the tags column gives up its
- * place. The title, the host and a thumbnail need about this much to be read.
- */
-const MIN_GAME_COLUMN_PX = 260;
-
-/**
- * Whether a list this wide has to fold the tags back into the game cell.
+ * How wide a row has to be for every column to keep its width.
  *
- * The tags column is a luxury of a wide window (issue 341). Every other column
- * has a fixed width, so on a narrow one the game column is what gives, and
- * with the tags column taking another 190 px the title and host were squeezed
- * to nothing and the columns on the right ran off the edge. Below this, the
- * tags go back under the host line and their column is not drawn.
+ * The game column is the one that gives when the list is narrow, and with
+ * the tags column (issue 341) it gave everything on a smaller screen: the
+ * title and host went, the columns on the right ran past the edge, and the
+ * columns behaved differently there than on a large screen. With this as the
+ * rows' minimum width the list scrolls sideways instead, and every column is
+ * the width it was dragged to on any screen.
  */
-export function tagsColumnFolds(listWidth: number, widths: readonly number[]): boolean {
-  if (listWidth <= 0) return false;
+export function minimumRowWidth(widths: readonly number[]): number {
   const fixed = widths.reduce((sum, width, index) => (index === FLEXIBLE_COLUMN ? sum : sum + width), 0);
-  const gaps = COLUMN_GAP_PX * (widths.length - 1);
-  return listWidth < fixed + gaps + MIN_GAME_COLUMN_PX;
-}
-
-/** The widths without the tags column, for a list that folded it away. */
-export function withoutTagsColumn(widths: readonly number[]): number[] {
-  return widths.filter((_, index) => index !== TAGS_COLUMN);
-}
-
-/** The full set again, the tags column's width put back where it was. */
-export function withTagsColumn(folded: readonly number[], tagsWidth: number): number[] {
-  return [...folded.slice(0, TAGS_COLUMN), tagsWidth, ...folded.slice(TAGS_COLUMN)];
+  return fixed + COLUMN_GAP_PX * (widths.length - 1) + MIN_GAME_COLUMN_PX + 2 * ROW_PADDING_PX;
 }
 
 /** The detail panel's designed width, matching `custom-games.css`. */
