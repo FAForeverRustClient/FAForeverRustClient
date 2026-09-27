@@ -3589,11 +3589,17 @@ fn resolve_reviews(
         .get("averageScore")
         .and_then(Value::as_f64)
         .map(|v| v as f32);
-    let count = summary
-        .attributes
-        .get("numReviews")
-        .and_then(Value::as_i64)
-        .map(|v| v as i32);
+    // `reviews` is the API's name for it (`GameReviewsSummary.getReviews`);
+    // this read `numReviews`, which no summary has, so a rated replay's count
+    // was always empty and the card hid its stars. The maps and mods vaults
+    // read the same pair in the same order.
+    let count = ["reviews", "numReviews"].iter().find_map(|key| {
+        summary
+            .attributes
+            .get(*key)
+            .and_then(Value::as_i64)
+            .map(|v| v as i32)
+    });
     (average, count)
 }
 
@@ -5232,7 +5238,7 @@ mod tests {
                 {
                     "type": "gameReviewsSummary",
                     "id": "12345",
-                    "attributes": { "averageScore": 4.5, "numReviews": 2 },
+                    "attributes": { "averageScore": 4.5, "reviews": 2 },
                 },
             ],
         }))
