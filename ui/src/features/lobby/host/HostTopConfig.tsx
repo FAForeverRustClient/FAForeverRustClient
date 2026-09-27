@@ -4,7 +4,7 @@
 
 import { useTranslation } from "../../../i18n/useTranslation";
 import type { HostLobbySettings } from "./hostLobbySettings";
-import { NumberInput } from "../../../design-system/NumberInput";
+import { OptionalNumberInput } from "../../../design-system/NumberInput";
 import { useAppStore } from "../../../store/store";
 
 export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
@@ -92,8 +92,9 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
             <span>{t("lobby.host.enforceRating")}</span>
           </label>
           <div className="host-rating-inputs">
-            <NumberInput
+            <OptionalNumberInput
               className="number-input"
+              placeholder={t("common.any")}
               disabled={!settings.ratingEnabled}
               value={settings.ratingMin}
               min={-9999}
@@ -103,8 +104,9 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
               aria-label={t("lobby.host.minRating")}
             />
             <span className="muted">to</span>
-            <NumberInput
+            <OptionalNumberInput
               className="number-input"
+              placeholder={t("common.any")}
               disabled={!settings.ratingEnabled}
               value={settings.ratingMax}
               min={-9999}

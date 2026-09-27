@@ -316,8 +316,14 @@ function normalizeCustomGamesBrowser(
 function normalizeHostGamePreferences(
   preferences: HostGamePreferences,
 ): HostGamePreferences {
-  const minimum = clampInteger(preferences.ratingMin, -9999, 9999, 800);
-  const maximum = clampInteger(preferences.ratingMax, -9999, 9999, 1500);
+  // `null` is an open end and stays one; a number is bounded, and a pair the
+  // wrong way round is swapped. Twin of `HostGamePreferences::normalized`.
+  const bound = (rating: number | null) => (rating === null ? null : clampInteger(rating, -9999, 9999, 0));
+  let minimum = bound(preferences.ratingMin);
+  let maximum = bound(preferences.ratingMax);
+  if (minimum !== null && maximum !== null && minimum > maximum) {
+    [minimum, maximum] = [maximum, minimum];
+  }
   return {
     ...preferences,
     title: truncateTrimmed(preferences.title, 128),
@@ -325,8 +331,8 @@ function normalizeHostGamePreferences(
     visibility: asciiLower(preferences.visibility.trim()) === "friends" ? "friends" : "public",
     map: truncateTrimmed(preferences.map, 256),
     password: [...preferences.password].slice(0, 25).join(""),
-    ratingMin: Math.min(minimum, maximum),
-    ratingMax: Math.max(minimum, maximum),
+    ratingMin: minimum,
+    ratingMax: maximum,
   };
 }
 
