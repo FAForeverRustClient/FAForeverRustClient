@@ -215,6 +215,7 @@ fn compare_on(a: &VaultReplay, b: &VaultReplay, sort_by: ReplaySortField) -> Ord
         ReplaySortField::Title => a.title.to_lowercase().cmp(&b.title.to_lowercase()),
         ReplaySortField::Id => a.uid.cmp(&b.uid),
         ReplaySortField::VictoryCondition => a.victory_condition.cmp(&b.victory_condition),
+        ReplaySortField::AverageRating => a.average_rating.cmp(&b.average_rating),
     }
 }
 
@@ -232,6 +233,7 @@ fn sort_value_missing(replay: &VaultReplay, sort_by: ReplaySortField) -> bool {
         // Every row has one: it is the vault key.
         ReplaySortField::Id => false,
         ReplaySortField::VictoryCondition => replay.victory_condition.is_empty(),
+        ReplaySortField::AverageRating => replay.average_rating.is_none(),
     }
 }
 

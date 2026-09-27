@@ -69,6 +69,7 @@ const SORT_LABELS: Record<ReplaySortField, MessageKey> = {
   title: "replays.search.sort.gameTitle",
   id: "replays.search.sort.replayId",
   victoryCondition: "replays.search.sort.victoryCondition",
+  averageRating: "replays.search.sort.averageRating",
 };
 
 /** The Java client's show-room categories, as one-click presets. */
@@ -488,6 +489,10 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
           {t("replays.search.clear")}
         </Button>
       </div>
+
+      {form.sortBy === "averageRating" && (
+        <p className="muted vault-search-note">{t("replays.search.sort.averageRatingNote")}</p>
+      )}
 
       {advanced && (
         <AdvancedReplayFilters

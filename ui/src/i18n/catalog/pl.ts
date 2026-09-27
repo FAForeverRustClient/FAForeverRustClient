@@ -1347,6 +1347,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.search.sort.gameTitle": "Tytuł gry",
   "replays.search.sort.replayId": "ID powtórki",
   "replays.search.sort.victoryCondition": "Warunek zwycięstwa",
+  "replays.search.sort.averageRating": "Średni ranking",
+  "replays.search.sort.averageRatingNote": "API nie potrafi sortować według rankingu, więc klient czyta do 1600 najnowszych pasujących gier i porządkuje je. Zawęź daty, aby objąć cały dzień lub tydzień.",
   "replays.search.sort.mapName": "Nazwa mapy",
   "replays.search.sort.playerCount": "Liczba graczy",
   "replays.search.sort.fileSize": "Rozmiar pliku",

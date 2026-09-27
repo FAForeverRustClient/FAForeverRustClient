@@ -1417,6 +1417,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.search.sort.gameTitle": "Название игры",
   "replays.search.sort.replayId": "ID реплея",
   "replays.search.sort.victoryCondition": "Условие победы",
+  "replays.search.sort.averageRating": "Средний рейтинг",
+  "replays.search.sort.averageRatingNote": "API не умеет сортировать по рейтингу, поэтому клиент читает до 1600 самых новых подходящих игр и упорядочивает их. Сузьте даты, чтобы охватить целый день или неделю.",
   "replays.search.sort.mapName": "Название карты",
   "replays.search.sort.playerCount": "Число игроков",
   "replays.search.sort.fileSize": "Размер файла",

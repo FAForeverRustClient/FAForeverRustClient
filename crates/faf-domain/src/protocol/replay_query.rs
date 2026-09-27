@@ -57,7 +57,8 @@ pub const MIN_RATING: i32 = -1000;
 pub const MAX_RATING: i32 = 4000;
 
 /// Which property the results are ordered by. The sortable subset of the Java
-/// client's `GAME_PROPERTY_MAPPING` (its `Property::sortable` flag).
+/// client's `GAME_PROPERTY_MAPPING` (its `Property::sortable` flag), and one
+/// the API cannot sort by at all: see [`ReplaySortField::sorts_locally`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum ReplaySortField {
@@ -69,10 +70,24 @@ pub enum ReplaySortField {
     Title,
     Id,
     VictoryCondition,
+    /// The game's average rating before it was played (issue 292), which is
+    /// only on the rows, as the mean of each player's `meanBefore`.
+    AverageRating,
 }
 
 impl ReplaySortField {
-    /// The API property name behind this option.
+    /// Whether the API cannot order by this, so that the client has to.
+    ///
+    /// A game has no rating of its own in the API, only its players do, and
+    /// a to-many relation is not something the API sorts by. So an average
+    /// rating order reads the vault newest-first, as far as a locally
+    /// filtered scan reads, and orders what it read.
+    pub fn sorts_locally(self) -> bool {
+        matches!(self, ReplaySortField::AverageRating)
+    }
+
+    /// The API property name behind this option. For an order the client
+    /// applies itself, the order the vault is read in: newest first.
     pub fn property(self) -> &'static str {
         match self {
             ReplaySortField::StartTime => "startTime",
@@ -82,6 +97,7 @@ impl ReplaySortField {
             ReplaySortField::Title => "name",
             ReplaySortField::Id => "id",
             ReplaySortField::VictoryCondition => "victoryCondition",
+            ReplaySortField::AverageRating => "startTime",
         }
     }
 }
@@ -278,7 +294,9 @@ impl ReplayQuery {
     /// The API's `sort` parameter. A leading `-` means descending.
     pub fn sort_param(&self) -> String {
         let property = self.sort_by.property();
-        if self.sort_descending {
+        // Newest first whichever way the rating order points: the direction
+        // is applied to the rows, not to the reading.
+        if self.sort_descending || self.sort_by.sorts_locally() {
             format!("-{property}")
         } else {
             property.to_string()
@@ -316,6 +334,13 @@ impl ReplayQuery {
     /// size otherwise looks like a bug.
     pub fn has_local_filter(&self) -> bool {
         self.min_players.is_some() || self.max_players.is_some()
+    }
+
+    /// Whether this search has to read the vault page by page and decide on
+    /// the rows itself: for a filter the API cannot express, or for an order
+    /// it cannot sort by.
+    pub fn needs_local_scan(&self) -> bool {
+        self.has_local_filter() || self.sort_by.sorts_locally()
     }
 
     /// How far back an otherwise unbounded search should reach, in months.
@@ -1255,8 +1280,29 @@ mod tests {
             (ReplaySortField::Title, "name"),
             (ReplaySortField::Id, "id"),
             (ReplaySortField::VictoryCondition, "victoryCondition"),
+            // Not an API property: the order the vault is read in before the
+            // client sorts it.
+            (ReplaySortField::AverageRating, "startTime"),
         ] {
             assert_eq!(field.property(), property);
+            assert_eq!(
+                field.sorts_locally(),
+                field == ReplaySortField::AverageRating
+            );
+        }
+    }
+
+    #[test]
+    fn an_average_rating_order_reads_newest_first_and_scans() {
+        for descending in [true, false] {
+            let q = ReplayQuery {
+                sort_by: ReplaySortField::AverageRating,
+                sort_descending: descending,
+                ..query()
+            };
+            assert_eq!(q.sort_param(), "-startTime");
+            assert!(q.needs_local_scan());
+            assert!(!q.has_local_filter());
         }
     }
 

@@ -760,8 +760,12 @@ impl ReplayClient {
             .append_pair("filter", &filter);
 
         let doc = fetch_document(&self.http, url, token).await?;
+        let mut replays = retain_locally_matching(query, parse_vault_replays(&doc));
+        if query.sort_by.sorts_locally() {
+            sort_vault_replays(&mut replays, query.sort_by, query.sort_descending);
+        }
         Ok(VaultSearchResult {
-            replays: retain_locally_matching(query, parse_vault_replays(&doc)),
+            replays,
             total_pages: Some(total_pages),
             total_records: Some(total_records),
         })
@@ -804,9 +808,13 @@ impl ReplayClient {
             .as_ref()
             .filter(|(cached_key, _)| *cached_key == key)
             // Usable when it already holds enough for this page, or when
-            // scanning again could not add to it.
+            // scanning again could not add to it. An order the client applies
+            // needs everything the scan can read: the highest rated game can
+            // be on its last page.
             .filter(|(_, scan)| {
-                scan.exhausted || scan.scanned >= LOCAL_SCAN_PAGES || scan.matched.len() >= needed
+                scan.exhausted
+                    || scan.scanned >= LOCAL_SCAN_PAGES
+                    || (!query.sort_by.sorts_locally() && scan.matched.len() >= needed)
             })
             .map(|(_, scan)| scan.clone());
 
@@ -903,7 +911,9 @@ impl ReplayClient {
                 exhausted = true;
                 break;
             }
-            if matched.len() >= needed {
+            // Enough for the page, unless the order is the client's own: then
+            // a row further in can still belong at the top.
+            if matched.len() >= needed && !query.sort_by.sorts_locally() {
                 break;
             }
         }
@@ -1066,6 +1076,13 @@ impl ReplayClient {
         shared: Vec<i32>,
         token: &str,
     ) -> Result<Vec<i32>, String> {
+        // An average rating order has nothing the server can sort by: the
+        // intersection stays newest first and each page is ordered once its
+        // rows are in, which for the few games two players share is usually
+        // all of them.
+        if query.sort_by.sorts_locally() {
+            return Ok(shared);
+        }
         let by_id = matches!(
             query.sort_by,
             replay_query::ReplaySortField::StartTime | replay_query::ReplaySortField::Id
@@ -1581,7 +1598,7 @@ impl ReplayPort for ReplayClient {
         // A filter the API cannot express has to be applied to rows that have
         // already arrived, which means one API page is not one page of
         // results: see `search_locally_filtered`.
-        if query.has_local_filter() {
+        if query.needs_local_scan() {
             return self.search_locally_filtered(&query, &token).await;
         }
 
