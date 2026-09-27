@@ -287,12 +287,20 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
   font-size: 11px;
 }
 
+/* Cut off at the column's edge like the title above it, with the whole name
+   on hover. Without it a long host name ran out of a narrow game column and
+   under the tags beside it. */
 .game-browser-host {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   color: var(--color-muted);
   font-size: 11px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

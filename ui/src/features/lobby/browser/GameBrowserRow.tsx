@@ -104,7 +104,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
               {game.title}
             </span>
             <div className="game-browser-details">
-              <span className="game-browser-host">
+              <span className="game-browser-host" title={`${t("lobby.browser.host")} ${game.host}`}>
                 {t("lobby.browser.host")}{" "}
                 <strong>
                   <PlayerName name={game.host} />
