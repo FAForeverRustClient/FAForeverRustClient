@@ -212,6 +212,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "common.unknown": "Desconocido",
   "common.now": "Ahora",
   "common.any": "Cualquiera",
+  "common.pickDate": "Elegir una fecha",
   "common.close": "Cerrar",
   "common.cancel": "Cancelar",
   "common.retry": "Reintentar",

@@ -1,5 +1,6 @@
 import { getLocale, intlTag, t } from "../../i18n";
 import { formatRelativeDuration } from "./durations";
+import { formatWithTokens, systemDateTokens } from "./systemDate";
 
 const SHORT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   year: "numeric",
@@ -16,9 +17,22 @@ const SHORT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
  * it explicitly is also what keeps `scripts/check-architecture.mjs` satisfied,
  * which rejects any `Intl` or `toLocale*String` call that omits the locale and
  * would therefore inherit the host's.
+ *
+ * The one thing taken from the system is the order of a numeric date, which
+ * has no words in it: see `numericDate`.
  */
 export function clientIntlTag(): string {
   return intlTag(getLocale());
+}
+
+/**
+ * A date as numbers only, in the order of the user's regional format where
+ * the system names one (`16.09.2026` for a day-first region, whatever the
+ * language), and in the client language's order otherwise (issue 292).
+ */
+function numericDate(date: Date): string {
+  const tokens = systemDateTokens();
+  return tokens ? formatWithTokens(tokens, date) : date.toLocaleDateString(clientIntlTag());
 }
 
 export function formatDate(
@@ -28,7 +42,8 @@ export function formatDate(
 ): string {
   if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? fallback : date.toLocaleDateString(clientIntlTag(), options);
+  if (Number.isNaN(date.getTime())) return fallback;
+  return options ? date.toLocaleDateString(clientIntlTag(), options) : numericDate(date);
 }
 
 export function formatShortDate(value: string | number, fallback = t("common.unknown")): string {
@@ -54,15 +69,17 @@ export function formatTime(value: string | number, fallback = t("common.unknown"
 export function formatShortDateTime(value: string | number, fallback = t("common.unknown")): string {
   if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
   const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? fallback
-    : date.toLocaleString(clientIntlTag(), {
-        year: "numeric",
-        month: "numeric",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+  if (Number.isNaN(date.getTime())) return fallback;
+  if (systemDateTokens()) {
+    return `${numericDate(date)} ${date.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" })}`;
+  }
+  return date.toLocaleString(clientIntlTag(), {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export function formatDateTime(value: string | number, fallback = t("common.unknown")): string {

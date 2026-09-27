@@ -2875,6 +2875,7 @@ export const en = {
   "common.any": "Any",
   "common.close": "Close",
   "common.cancel": "Cancel",
+  "common.pickDate": "Pick a date",
   "common.retry": "Retry",
   "common.rangeBetween": "{low} to {high}",
   "reporting.error.tooShort": "Please describe the incident in at least 10 characters.",

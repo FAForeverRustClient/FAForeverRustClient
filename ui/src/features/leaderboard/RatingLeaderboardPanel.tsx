@@ -15,6 +15,7 @@ import type { LeaderboardEntry, RatingQuery } from "../../ipc/bindings";
 import { formatNumber, type MessageKey } from "../../i18n";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
+import { DateInput } from "../../design-system/DateInput";
 
 /**
  * The columns beside the boards.
@@ -248,10 +249,10 @@ export function RatingLeaderboardPanel() {
           {t("leaderboard.ratings.includeFormerNames")}
         </label>
         <SearchField label={t("leaderboard.ratings.updatedAfter")} className="leaderboard-search-date">
-          <input className="search-panel-control" type="date" value={after} readOnly={activeOnly} aria-disabled={activeOnly} onChange={(event) => setAfter(event.target.value)} />
+          <DateInput className="search-panel-control" value={after} readOnly={activeOnly} aria-disabled={activeOnly} onChange={setAfter} />
         </SearchField>
         <SearchField label={t("leaderboard.ratings.updatedBefore")} className="leaderboard-search-date">
-          <input className="search-panel-control" type="date" value={before} readOnly={activeOnly} aria-disabled={activeOnly} onChange={(event) => setBefore(event.target.value)} />
+          <DateInput className="search-panel-control" value={before} readOnly={activeOnly} aria-disabled={activeOnly} onChange={setBefore} />
         </SearchField>
         <SearchField label={t("leaderboard.ratings.rows")} className="leaderboard-search-rows">
           <select className="search-panel-control" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>

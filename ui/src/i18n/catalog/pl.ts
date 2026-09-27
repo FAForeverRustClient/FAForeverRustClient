@@ -214,6 +214,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "common.unknown": "Nieznane",
   "common.now": "Teraz",
   "common.any": "Dowolne",
+  "common.pickDate": "Wybierz datę",
   "common.close": "Zamknij",
   "common.cancel": "Anuluj",
   "common.retry": "Spróbuj ponownie",

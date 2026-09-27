@@ -2586,6 +2586,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "common.any": "Beliebig",
   "common.close": "Schließen",
   "common.cancel": "Abbrechen",
+  "common.pickDate": "Datum wählen",
   "common.retry": "Erneut versuchen",
   "common.rangeBetween": "{low} bis {high}",
   "reporting.error.tooShort": "Beschreibe den Vorfall mit mindestens 10 Zeichen.",

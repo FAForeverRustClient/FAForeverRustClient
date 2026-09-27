@@ -220,6 +220,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "common.unknown": "Неизвестно",
   "common.now": "Сейчас",
   "common.any": "Любой",
+  "common.pickDate": "Выбрать дату",
   "common.close": "Закрыть",
   "common.cancel": "Отмена",
   "common.retry": "Повторить",
