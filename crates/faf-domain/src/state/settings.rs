@@ -1339,23 +1339,21 @@ impl IceAdapter {
             chosen => chosen,
         }
     }
-
-    /// The adapter a game this client hosts runs on, before its title is
-    /// marked. `Dynamic` has no host to follow, so it takes what the host
-    /// dialog picked, and anything but Go there is Java.
-    pub fn for_hosting(self, picked: Self) -> Self {
-        match (self, picked) {
-            (Self::Dynamic, Self::Go) => Self::Go,
-            (Self::Dynamic, _) => Self::Java,
-            (explicit, _) => explicit,
-        }
-    }
 }
 
+/// Two choices, because joining and hosting are different questions.
+///
+/// Joining can follow the host (`Dynamic`), since the host's title says which
+/// adapter it runs; hosting has nobody to follow, so it is a plain Java or Go.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectivityPreferences {
+    /// The adapter games are joined on. `Dynamic` by default.
     pub adapter: IceAdapter,
+    /// The adapter games this client hosts run on: Java or Go, Java by
+    /// default. Hosting on Go marks the title (see
+    /// `lobby::GO_ADAPTER_TITLE_TAG`) so a `Dynamic` joiner follows.
+    pub host_adapter: IceAdapter,
     /// Version of the explicit adapter choice. Version zero was written by
     /// builds where Pioneer was the implicit/default path, so a stored `go`
     /// value from that era is not evidence that the user opted into an
@@ -1371,7 +1369,19 @@ impl Default for ConnectivityPreferences {
     fn default() -> Self {
         Self {
             adapter: IceAdapter::Dynamic,
+            host_adapter: IceAdapter::Java,
             selection_version: CONNECTIVITY_SELECTION_VERSION,
+        }
+    }
+}
+
+impl ConnectivityPreferences {
+    /// The adapter a hosted game runs on. Never `Dynamic`: there is no host to
+    /// follow when this client is the host.
+    pub fn hosting(&self) -> IceAdapter {
+        match self.host_adapter {
+            IceAdapter::Go => IceAdapter::Go,
+            _ => IceAdapter::Java,
         }
     }
 }
@@ -1385,6 +1395,7 @@ impl<'de> Deserialize<'de> for ConnectivityPreferences {
         #[serde(rename_all = "camelCase", default)]
         struct Wire {
             adapter: IceAdapter,
+            host_adapter: Option<IceAdapter>,
             selection_version: u8,
         }
 
@@ -1397,8 +1408,17 @@ impl<'de> Deserialize<'de> for ConnectivityPreferences {
             (0 | 1, IceAdapter::Java) => IceAdapter::Dynamic,
             (_, adapter) => adapter,
         };
+        // Absent before hosting had its own choice. A player who had set Go
+        // for everything meant hosting on it too.
+        let host_adapter = match wire.host_adapter {
+            Some(IceAdapter::Go) => IceAdapter::Go,
+            Some(_) => IceAdapter::Java,
+            None if adapter == IceAdapter::Go => IceAdapter::Go,
+            None => IceAdapter::Java,
+        };
         Ok(Self {
             adapter,
+            host_adapter,
             selection_version: CONNECTIVITY_SELECTION_VERSION,
         })
     }
@@ -2005,9 +2025,6 @@ pub struct HostGamePreferences {
     pub rating_min: Option<i32>,
     /// `None` is an open end, as for [`Self::rating_min`].
     pub rating_max: Option<i32>,
-    /// The adapter last picked in the host dialog: Java or Go. Offered only
-    /// while the connectivity preference is `Dynamic`.
-    pub ice_adapter: IceAdapter,
 }
 
 impl<'de> Deserialize<'de> for HostGamePreferences {
@@ -2027,7 +2044,6 @@ impl<'de> Deserialize<'de> for HostGamePreferences {
             enforce_rating_range: bool,
             rating_min: Option<i32>,
             rating_max: Option<i32>,
-            ice_adapter: IceAdapter,
         }
 
         impl Default for Wire {
@@ -2043,7 +2059,6 @@ impl<'de> Deserialize<'de> for HostGamePreferences {
                     enforce_rating_range: defaults.enforce_rating_range,
                     rating_min: defaults.rating_min,
                     rating_max: defaults.rating_max,
-                    ice_adapter: defaults.ice_adapter,
                 }
             }
         }
@@ -2059,7 +2074,6 @@ impl<'de> Deserialize<'de> for HostGamePreferences {
             enforce_rating_range: wire.enforce_rating_range,
             rating_min: wire.rating_min,
             rating_max: wire.rating_max,
-            ice_adapter: wire.ice_adapter,
         })
     }
 }
@@ -2076,7 +2090,6 @@ impl Default for HostGamePreferences {
             enforce_rating_range: false,
             rating_min: Some(800),
             rating_max: Some(1_500),
-            ice_adapter: IceAdapter::Java,
         }
     }
 }
@@ -2093,10 +2106,6 @@ impl HostGamePreferences {
             _ => "public".into(),
         };
         self.map = truncate_trimmed(self.map, 256);
-        // The dialog offers two, and `Dynamic` is not a thing to host on.
-        if self.ice_adapter != IceAdapter::Go {
-            self.ice_adapter = IceAdapter::Java;
-        }
         self.password = self.password.chars().take(25).collect();
         self.rating_min = self.rating_min.map(|rating| rating.clamp(-9_999, 9_999));
         self.rating_max = self.rating_max.map(|rating| rating.clamp(-9_999, 9_999));
@@ -3251,31 +3260,45 @@ mod tests {
             IceAdapter::Go
         );
         assert_eq!(IceAdapter::Dynamic.for_game("Friday 4v4"), IceAdapter::Java);
-        assert_eq!(
-            IceAdapter::Dynamic.for_hosting(IceAdapter::Java),
-            IceAdapter::Java
-        );
-        assert_eq!(
-            IceAdapter::Dynamic.for_hosting(IceAdapter::Go),
-            IceAdapter::Go
-        );
-        assert_eq!(
-            IceAdapter::Dynamic.for_hosting(IceAdapter::Dynamic),
-            IceAdapter::Java
-        );
-        // An explicit preference is what the game runs on, so the dialog's
-        // pick cannot contradict it.
-        assert_eq!(
-            IceAdapter::Java.for_hosting(IceAdapter::Go),
-            IceAdapter::Java
-        );
         // An explicit choice is never second-guessed by the title.
         assert_eq!(
             IceAdapter::Java.for_game("Friday 4v4 [go-adapter]"),
             IceAdapter::Java
         );
         assert_eq!(IceAdapter::Go.for_game("Friday 4v4"), IceAdapter::Go);
-        assert_eq!(IceAdapter::Go.for_hosting(IceAdapter::Java), IceAdapter::Go);
+
+        let defaults = ConnectivityPreferences::default();
+        assert_eq!(defaults.host_adapter, IceAdapter::Java);
+        assert_eq!(defaults.hosting(), IceAdapter::Java);
+        let odd = ConnectivityPreferences {
+            host_adapter: IceAdapter::Dynamic,
+            ..defaults
+        };
+        assert_eq!(
+            odd.hosting(),
+            IceAdapter::Java,
+            "nobody to follow when hosting"
+        );
+    }
+
+    #[test]
+    fn hosting_has_its_own_choice_and_an_old_go_carries_over() {
+        let settings: SettingsState =
+            serde_json::from_str(r#"{"connectivity":{"adapter":"go","selectionVersion":2}}"#)
+                .unwrap();
+        assert_eq!(settings.connectivity.host_adapter, IceAdapter::Go);
+
+        let settings: SettingsState = serde_json::from_str(
+            r#"{"connectivity":{"adapter":"dynamic","hostAdapter":"go","selectionVersion":2}}"#,
+        )
+        .unwrap();
+        assert_eq!(settings.connectivity.adapter, IceAdapter::Dynamic);
+        assert_eq!(settings.connectivity.hosting(), IceAdapter::Go);
+
+        let settings: SettingsState =
+            serde_json::from_str(r#"{"connectivity":{"adapter":"dynamic","selectionVersion":2}}"#)
+                .unwrap();
+        assert_eq!(settings.connectivity.hosting(), IceAdapter::Java);
     }
 
     #[test]
@@ -3476,7 +3499,6 @@ mod tests {
                     enforce_rating_range: true,
                     rating_min: Some(1_500),
                     rating_max: Some(800),
-                    ice_adapter: IceAdapter::Java,
                 },
                 host_coop: HostGamePreferences {
                     title: "  Operation Ivy  ".into(),
@@ -3488,7 +3510,6 @@ mod tests {
                     enforce_rating_range: false,
                     rating_min: None,
                     rating_max: Some(1_500),
-                    ice_adapter: IceAdapter::Java,
                 },
                 favorite_maps: vec![
                     "  Adaptive_Tabula.v0006  ".into(),

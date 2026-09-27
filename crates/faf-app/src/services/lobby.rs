@@ -193,7 +193,6 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                     // An open end stays open: see `HostGamePreferences::rating_min`.
                     rating_min: config.rating_min,
                     rating_max: config.rating_max,
-                    ice_adapter: config.ice_adapter,
                 };
                 if config.mod_name == "coop" {
                     browsing.host_coop = remembered;
@@ -206,8 +205,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 // Hosted on Go, the title says so, for everybody on Dynamic to
                 // join on Go as well; see `GO_ADAPTER_TITLE_TAG`. After the
                 // remembered form above, which keeps the title as typed.
-                let config = if ctx.ports.ice.hosting_adapter(config.ice_adapter) == IceAdapter::Go
-                {
+                let config = if ctx.ports.ice.hosting_adapter() == IceAdapter::Go {
                     HostGameConfig {
                         title: with_go_adapter_tag(&config.title),
                         ..config
@@ -215,6 +213,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 } else {
                     config
                 };
+                *ctx.hosted_title.lock().unwrap() = Some(config.title.clone());
                 ctx.ports.lobby.host(config);
                 crate::services::settings::persist(ctx, out).await;
             }

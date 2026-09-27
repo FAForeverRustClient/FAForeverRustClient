@@ -14,8 +14,15 @@ const save = (preferences: ConnectivityPreferences) =>
 
 // Dynamic first: it is the default, and the one that is right for any game
 // whose host is on Java or hosts on Go in this client.
-const ADAPTERS: Record<IceAdapter, MessageKey> = {
+const JOIN_ADAPTERS: Record<IceAdapter, MessageKey> = {
   dynamic: "settings.connectivity.dynamic",
+  java: "settings.connectivity.java",
+  go: "settings.connectivity.go",
+};
+
+// Hosting has no host to follow, so it is a plain choice between the two.
+type HostAdapter = Exclude<IceAdapter, "dynamic">;
+const HOST_ADAPTERS: Record<HostAdapter, MessageKey> = {
   java: "settings.connectivity.java",
   go: "settings.connectivity.go",
 };
@@ -23,30 +30,45 @@ const ADAPTERS: Record<IceAdapter, MessageKey> = {
 export function ConnectivitySettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.connectivity);
+  const change = (next: Partial<ConnectivityPreferences>) =>
+    void save({ ...preferences, ...next, selectionVersion: 2 });
 
   return (
-    <SettingRow
-      label={t("settings.connectivity.connectivityAdapter")}
-      hint={t("settings.connectivity.connectivityAdapterHint")}
-    >
-      <select
-        className="settings-select"
-        value={preferences.adapter}
-        onChange={(event) =>
-          void save({
-            ...preferences,
-            adapter: event.target.value as IceAdapter,
-            selectionVersion: 2,
-          })
-        }
-        aria-label={t("settings.connectivity.connectivityAdapter")}
+    <>
+      <SettingRow
+        label={t("settings.connectivity.connectivityAdapter")}
+        hint={t("settings.connectivity.connectivityAdapterHint")}
       >
-        {recordEntries(ADAPTERS).map(([value, label]) => (
-          <option key={value} value={value}>
-            {t(label)}
-          </option>
-        ))}
-      </select>
-    </SettingRow>
+        <select
+          className="settings-select"
+          value={preferences.adapter}
+          onChange={(event) => change({ adapter: event.target.value as IceAdapter })}
+          aria-label={t("settings.connectivity.connectivityAdapter")}
+        >
+          {recordEntries(JOIN_ADAPTERS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {t(label)}
+            </option>
+          ))}
+        </select>
+      </SettingRow>
+      <SettingRow
+        label={t("settings.connectivity.hostAdapter")}
+        hint={t("settings.connectivity.hostAdapterHint")}
+      >
+        <select
+          className="settings-select"
+          value={preferences.hostAdapter === "go" ? "go" : "java"}
+          onChange={(event) => change({ hostAdapter: event.target.value === "go" ? "go" : "java" })}
+          aria-label={t("settings.connectivity.hostAdapter")}
+        >
+          {recordEntries(HOST_ADAPTERS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {t(label)}
+            </option>
+          ))}
+        </select>
+      </SettingRow>
+    </>
   );
 }

@@ -601,7 +601,7 @@ impl IcePort for GoHostingIce {
         Err("not started in this test".into())
     }
     fn stop(&self) {}
-    fn hosting_adapter(&self, _picked: IceAdapter) -> IceAdapter {
+    fn hosting_adapter(&self) -> IceAdapter {
         IceAdapter::Go
     }
 }
@@ -680,7 +680,6 @@ fn host_config(map: &str) -> HostGameConfig {
         enforce_rating_range: false,
         rating_min: None,
         rating_max: None,
-        ice_adapter: Default::default(),
     }
 }
 

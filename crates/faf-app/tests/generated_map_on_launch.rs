@@ -166,7 +166,6 @@ async fn host(app: &App, map: &str) {
                 enforce_rating_range: false,
                 rating_min: None,
                 rating_max: None,
-                ice_adapter: Default::default(),
             },
         }
         .into(),

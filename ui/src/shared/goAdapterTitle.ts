@@ -1,12 +1,12 @@
 // The Go-adapter mark in a lobby title, read for display.
 //
 // Twin of `GO_ADAPTER_TITLE_TAG` and `title_marks_go_adapter` in the domain's
-// `state/lobby.rs`: a lobby hosted on the Go ICE adapter (faf-pioneer) carries
-// "[go-adapter]" in its title, because nothing the server sends names the
-// host's adapter and the two adapters cannot connect to each other. The
-// backend reads the mark to pick the adapter; this reads it to show a chip
-// instead of the raw tag. Other clients show the tag as typed, which is how
-// their players learn the lobby needs Go.
+// `state/lobby.rs`: a lobby hosted on the Go ICE adapter carries "[go-adapter]"
+// in its title, because nothing the server sends names the host's adapter and
+// the two adapters cannot connect to each other. The backend reads the mark to
+// pick the adapter; this reads it to show a "Go adapter" chip instead of the
+// raw tag. Other clients show the tag as typed, which is how their players learn
+// the lobby needs Go.
 
 export const GO_ADAPTER_TITLE_TAG = "[go-adapter]";
 

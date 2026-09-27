@@ -104,12 +104,6 @@ pub struct HostGameConfig {
     pub enforce_rating_range: bool,
     pub rating_min: Option<i32>,
     pub rating_max: Option<i32>,
-    /// The adapter picked in the host dialog. Only read while the connectivity
-    /// preference is `Dynamic`, which has no host to follow when this client
-    /// is the host; an explicit Java or Go preference decides by itself.
-    /// Anything but `Go` hosts on Java.
-    #[serde(default)]
-    pub ice_adapter: crate::state::IceAdapter,
 }
 
 impl HostGameConfig {
@@ -1679,7 +1673,6 @@ mod tests {
             enforce_rating_range: true,
             rating_min: Some(800),
             rating_max: Some(1_500),
-            ice_adapter: Default::default(),
         }
     }
 

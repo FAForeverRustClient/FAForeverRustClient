@@ -1407,8 +1407,21 @@ export type Competition = "team" | "freeForAll";
 /**  Connection state of the backend session. */
 export type ConnectionStatus = "disconnected" | "connecting" | "connected";
 
+/**
+ *  Two choices, because joining and hosting are different questions.
+ *
+ *  Joining can follow the host (`Dynamic`), since the host's title says which
+ *  adapter it runs; hosting has nobody to follow, so it is a plain Java or Go.
+ */
 export type ConnectivityPreferences = {
+	/**  The adapter games are joined on. `Dynamic` by default. */
 	adapter: IceAdapter,
+	/**
+	 *  The adapter games this client hosts run on: Java or Go, Java by
+	 *  default. Hosting on Go marks the title (see
+	 *  `lobby::GO_ADAPTER_TITLE_TAG`) so a `Dynamic` joiner follows.
+	 */
+	hostAdapter: IceAdapter,
 	/**
 	 *  Version of the explicit adapter choice. Version zero was written by
 	 *  builds where Pioneer was the implicit/default path, so a stored `go`
@@ -2838,13 +2851,6 @@ export type HostGameConfig = {
 	enforceRatingRange: boolean,
 	ratingMin: number | null,
 	ratingMax: number | null,
-	/**
-	 *  The adapter picked in the host dialog. Only read while the connectivity
-	 *  preference is `Dynamic`, which has no host to follow when this client
-	 *  is the host; an explicit Java or Go preference decides by itself.
-	 *  Anything but `Go` hosts on Java.
-	 */
-	iceAdapter?: IceAdapter,
 };
 
 /**
@@ -2867,11 +2873,6 @@ export type HostGamePreferences = {
 	ratingMin: number | null,
 	/**  `None` is an open end, as for [`Self::rating_min`]. */
 	ratingMax: number | null,
-	/**
-	 *  The adapter last picked in the host dialog: Java or Go. Offered only
-	 *  while the connectivity preference is `Dynamic`.
-	 */
-	iceAdapter: IceAdapter,
 };
 
 /**

@@ -474,9 +474,9 @@ fn sync_paths(ctx: &ServiceCtx, out: &EventSink) {
 /// Applied on load as well as on change, so a preference chosen in a previous
 /// session is honoured from the first game rather than the second.
 fn sync_connectivity(ctx: &ServiceCtx, out: &EventSink) {
-    ctx.ports
-        .ice
-        .set_backend(out.with_state(|state| state.settings.connectivity.adapter));
+    let connectivity = out.with_state(|state| state.settings.connectivity);
+    ctx.ports.ice.set_backend(connectivity.adapter);
+    ctx.ports.ice.set_host_backend(connectivity.hosting());
 }
 
 fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {

@@ -1239,8 +1239,10 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.game.launchWrapperNote": "Это не оболочка: кавычки объединяют слова, больше ничего не разбирается. Пустое поле запускает игру напрямую.",
   "settings.game.saveArguments": "Сохранить аргументы",
 
-  "settings.connectivity.connectivityAdapter": "Адаптер подключения",
-  "settings.connectivity.connectivityAdapterHint": "Динамический подключается к каждому лобби с адаптером его хоста, а при хостинге вы выбираете Java или Go в окне создания игры. При хостинге через Go к названию игры добавляется [go-adapter], чтобы другие игроки это видели. Применяется со следующей игры.",
+  "settings.connectivity.connectivityAdapter": "Подключение через",
+  "settings.connectivity.connectivityAdapterHint": "Динамический использует адаптер хоста: Go для лобби с [go-adapter] в названии, Java для всех остальных. Применяется со следующей игры.",
+  "settings.connectivity.hostAdapter": "Хостинг через",
+  "settings.connectivity.hostAdapterHint": "При хостинге через Go к названию игры добавляется [go-adapter]: игроки с динамическим режимом в этом клиенте подключатся через Go сами, остальным нужно переключиться на Go. Применяется со следующей игры.",
   "settings.connectivity.dynamic": "Динамический (как у хоста, рекомендуется)",
   "settings.connectivity.java": "Java (faf-ice-adapter)",
   "settings.connectivity.go": "Go (faf-pioneer, экспериментальный)",
@@ -1969,10 +1971,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   // игроков с [800] до [1500]". The review's version ended in another
   // "рейтинга", which repeats the word the label opens with.
   "lobby.host.enforceRating": "Ограничить рейтинг игроков с",
-  "lobby.host.iceAdapter": "Адаптер подключения",
-  "lobby.host.iceAdapterJava": "Java-адаптер",
-  "lobby.host.iceAdapterGo": "Go-адаптер (экспериментальный)",
-  "lobby.host.iceAdapterHint": "При хостинге через Go к названию добавляется [go-adapter]. Игроки с динамическим режимом в этом клиенте подключатся через Go автоматически, остальным нужно выбрать Go вручную.",
   "lobby.host.minRating": "Минимальный рейтинг",
   "lobby.host.maxRating": "Максимальный рейтинг",
   "lobby.host.selectedMap": "Выбранная карта",
