@@ -10,6 +10,7 @@ import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { useAppStore } from "../../store/store";
+import { useGameRating } from "./useGameRating";
 import { playerCount, ReplayCardRoster, mergeReplayTeamsWithLocal } from "./ReplayRoster";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -48,10 +49,11 @@ export interface ReplayCardData {
 }
 
 function ReplayStars({ replay }: { replay: ReplayCardData }) {
-  if (replay.reviewsCount == null || replay.reviewsCount === 0) return null;
+  const rating = useGameRating(replay.uid, replay.reviewsAverage, replay.reviewsCount);
+  if (rating.count === 0) return null;
   return (
     <span className="replay-stars">
-      {"★".repeat(Math.round(replay.reviewsAverage ?? 0))} ({replay.reviewsCount})
+      {"★".repeat(Math.round(rating.average ?? 0))} ({rating.count})
     </span>
   );
 }
