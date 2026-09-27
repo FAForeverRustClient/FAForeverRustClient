@@ -2286,7 +2286,6 @@ mod tests {
             enforce_rating_range: false,
             rating_min: None,
             rating_max: None,
-            ice_adapter: Default::default(),
         };
 
         // The server stores whatever arrives and advertises the game as

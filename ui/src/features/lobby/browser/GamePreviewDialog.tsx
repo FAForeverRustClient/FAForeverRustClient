@@ -1,7 +1,7 @@
 // The game opened out of the list: map, settings, lineup, and the join button.
 
 import { memo, useEffect, useState } from "react";
-import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
+import { splitPioneerTitle } from "../../../shared/pioneerTitle";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { Game, VaultMap } from "../../../ipc/bindings";
@@ -142,7 +142,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
         <div>
           <span className="game-preview-dialog-kicker">{t("lobby.browser.mapPreview")}</span>
           <h2>{presentation.displayName}</h2>
-          <p>{splitGoAdapterTitle(game.title).title}</p>
+          <p>{splitPioneerTitle(game.title).title}</p>
         </div>
       </header>
       {/* The same zoom the Maps tab has. This is the dialog somebody opens

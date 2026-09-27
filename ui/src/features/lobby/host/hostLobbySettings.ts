@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "../../../i18n/useTranslation";
-import type { HostGamePreferences, IceAdapter } from "../../../ipc/bindings";
+import type { HostGamePreferences } from "../../../ipc/bindings";
 import { useAppStore } from "../../../store/store";
 
 const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
@@ -19,8 +19,6 @@ export interface HostAdmissionConfig {
   enforceRatingRange: boolean;
   ratingMin: number | null;
   ratingMax: number | null;
-  /** Read by the backend only while the connectivity preference is Dynamic. */
-  iceAdapter: IceAdapter;
 }
 
 /** Which remembered form a dialog seeds from and writes back to. */
@@ -42,9 +40,6 @@ export interface HostLobbySettings {
   setRatingMin: (rating: number | null) => void;
   ratingMax: number | null;
   setRatingMax: (rating: number | null) => void;
-  /** The adapter this game is hosted on: Java or Go. */
-  iceAdapter: IceAdapter;
-  setIceAdapter: (adapter: IceAdapter) => void;
   /** Empty when the field is fine; the dialog's submit is blocked by any of them. */
   titleError: string;
   passwordError: string;
@@ -81,7 +76,6 @@ export function useHostLobbySettings(
   const [ratingEnabled, setRatingEnabled] = useState(remembered.enforceRatingRange);
   const [ratingMin, setRatingMin] = useState(remembered.ratingMin);
   const [ratingMax, setRatingMax] = useState(remembered.ratingMax);
-  const [iceAdapter, setIceAdapter] = useState<IceAdapter>(remembered.iceAdapter === "go" ? "go" : "java");
 
   const titleError = !title.trim()
     ? t("lobby.host.error.title")
@@ -113,8 +107,6 @@ export function useHostLobbySettings(
     setRatingMin,
     ratingMax,
     setRatingMax,
-    iceAdapter,
-    setIceAdapter,
     titleError,
     passwordError,
     ratingError,
@@ -125,7 +117,6 @@ export function useHostLobbySettings(
       enforceRatingRange: ratingEnabled,
       ratingMin: ratingEnabled ? ratingMin : null,
       ratingMax: ratingEnabled ? ratingMax : null,
-      iceAdapter,
     }),
     remembered: (featuredMod, map) => ({
       title,
@@ -137,7 +128,6 @@ export function useHostLobbySettings(
       enforceRatingRange: ratingEnabled,
       ratingMin,
       ratingMax,
-      iceAdapter,
     }),
   };
 }

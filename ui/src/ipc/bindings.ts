@@ -2838,13 +2838,6 @@ export type HostGameConfig = {
 	enforceRatingRange: boolean,
 	ratingMin: number | null,
 	ratingMax: number | null,
-	/**
-	 *  The adapter picked in the host dialog. Only read while the connectivity
-	 *  preference is `Dynamic`, which has no host to follow when this client
-	 *  is the host; an explicit Java or Go preference decides by itself.
-	 *  Anything but `Go` hosts on Java.
-	 */
-	iceAdapter?: IceAdapter,
 };
 
 /**
@@ -2867,11 +2860,6 @@ export type HostGamePreferences = {
 	ratingMin: number | null,
 	/**  `None` is an open end, as for [`Self::rating_min`]. */
 	ratingMax: number | null,
-	/**
-	 *  The adapter last picked in the host dialog: Java or Go. Offered only
-	 *  while the connectivity preference is `Dynamic`.
-	 */
-	iceAdapter: IceAdapter,
 };
 
 /**
@@ -2898,8 +2886,8 @@ export type HostingStatus = {
  */
 export type IceAdapter =
 /**
- *  Follow the host: Go for a lobby whose title carries the go-adapter mark
- *  (see `lobby::GO_ADAPTER_TITLE_TAG`), Java for every other game, and Java
+ *  Follow the host: Go for a lobby whose title carries the pioneer mark
+ *  (see `lobby::PIONEER_TITLE_TAG`), Java for every other game, and Java
  *  when hosting. The default, because it is right wherever the host is on
  *  Java, which is every client's default, or on Go in this client.
  */

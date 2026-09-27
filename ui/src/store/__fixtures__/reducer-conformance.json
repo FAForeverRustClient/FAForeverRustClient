@@ -854,8 +854,7 @@
           "password": "",
           "enforceRatingRange": false,
           "ratingMin": 800,
-          "ratingMax": 1500,
-          "iceAdapter": "java"
+          "ratingMax": 1500
         },
         "hostCoop": {
           "title": "",
@@ -866,8 +865,7 @@
           "password": "",
           "enforceRatingRange": false,
           "ratingMin": 800,
-          "ratingMax": 1500,
-          "iceAdapter": "java"
+          "ratingMax": 1500
         },
         "favoriteMaps": [],
         "favoriteMods": [],
@@ -2091,7 +2089,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -2103,7 +2100,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -31324,7 +31320,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -31336,7 +31331,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -31586,7 +31580,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -31598,7 +31591,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -31857,7 +31849,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -31869,7 +31860,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -32123,7 +32113,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -32135,7 +32124,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -32389,7 +32377,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -32401,7 +32388,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -32665,7 +32651,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -32677,7 +32662,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -32947,7 +32931,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -32959,7 +32942,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -33269,7 +33251,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -33281,7 +33262,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -33567,7 +33547,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -33579,7 +33558,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -33867,7 +33845,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -33879,7 +33856,6 @@
               "hostGame": {
                 "enforceRatingRange": false,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "",
                 "password": "",
                 "passwordEnabled": false,
@@ -34187,8 +34163,7 @@
                     "password": " secret ",
                     "enforceRatingRange": true,
                     "ratingMin": 700,
-                    "ratingMax": 1700,
-                    "iceAdapter": "java"
+                    "ratingMax": 1700
                   },
                   "hostCoop": {
                     "title": " Operation Ivy ",
@@ -34199,8 +34174,7 @@
                     "password": "",
                     "enforceRatingRange": false,
                     "ratingMin": 800,
-                    "ratingMax": 1500,
-                    "iceAdapter": "java"
+                    "ratingMax": 1500
                   },
                   "favoriteMaps": [
                     "adaptive_tabula.v0006"
@@ -34283,7 +34257,6 @@
               "hostCoop": {
                 "enforceRatingRange": false,
                 "featuredMod": "coop",
-                "iceAdapter": "java",
                 "map": "SCCA_Coop_A03.v0023",
                 "password": "",
                 "passwordEnabled": false,
@@ -34295,7 +34268,6 @@
               "hostGame": {
                 "enforceRatingRange": true,
                 "featuredMod": "faf",
-                "iceAdapter": "java",
                 "map": "scmp_009",
                 "password": " secret ",
                 "passwordEnabled": true,

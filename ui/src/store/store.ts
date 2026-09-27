@@ -577,7 +577,6 @@ const INITIAL: AppState = {
         enforceRatingRange: false,
         ratingMin: 800,
         ratingMax: 1500,
-        iceAdapter: "java",
       },
       hostCoop: {
         title: "",
@@ -589,7 +588,6 @@ const INITIAL: AppState = {
         enforceRatingRange: false,
         ratingMin: 800,
         ratingMax: 1500,
-        iceAdapter: "java",
       },
       favoriteMaps: [],
       favoriteMods: [],

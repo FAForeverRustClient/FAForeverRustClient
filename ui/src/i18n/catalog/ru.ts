@@ -1240,7 +1240,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.game.saveArguments": "Сохранить аргументы",
 
   "settings.connectivity.connectivityAdapter": "Адаптер подключения",
-  "settings.connectivity.connectivityAdapterHint": "Динамический подключается к каждому лобби с адаптером его хоста, а при хостинге вы выбираете Java или Go в окне создания игры. При хостинге через Go к названию игры добавляется [go-adapter], чтобы другие игроки это видели. Применяется со следующей игры.",
+  "settings.connectivity.connectivityAdapterHint": "Динамический подключается к каждому лобби с адаптером его хоста, а хостит через Java. При хостинге через Go к названию игры добавляется [pioneer], чтобы другие игроки это видели. Применяется со следующей игры.",
   "settings.connectivity.dynamic": "Динамический (как у хоста, рекомендуется)",
   "settings.connectivity.java": "Java (faf-ice-adapter)",
   "settings.connectivity.go": "Go (faf-pioneer, экспериментальный)",
@@ -1866,8 +1866,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranking": "Рейтинг",
   "lobby.browser.ranked": "Рейтинговая",
   "lobby.browser.unranked": "Без рейтинга",
-  "lobby.browser.goAdapter": "Go-адаптер",
-  "lobby.browser.goAdapterTitle": "Хост использует Go-адаптер (faf-pioneer). В динамическом режиме вы подключитесь через Go автоматически; иначе выберите Go в настройках подключения.",
+  "lobby.browser.pioneer": "Pioneer",
+  "lobby.browser.pioneerTitle": "Хост использует Go-адаптер (faf-pioneer). В динамическом режиме вы подключитесь через Go автоматически; иначе выберите Go в настройках подключения.",
   "lobby.browser.mapSize": "Размер карты",
   "lobby.browser.unrated": "Без рейтинга",
   "lobby.browser.public": "Публичная",
@@ -1969,10 +1969,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   // игроков с [800] до [1500]". The review's version ended in another
   // "рейтинга", which repeats the word the label opens with.
   "lobby.host.enforceRating": "Ограничить рейтинг игроков с",
-  "lobby.host.iceAdapter": "Адаптер подключения",
-  "lobby.host.iceAdapterJava": "Java-адаптер",
-  "lobby.host.iceAdapterGo": "Go-адаптер (экспериментальный)",
-  "lobby.host.iceAdapterHint": "При хостинге через Go к названию добавляется [go-adapter]. Игроки с динамическим режимом в этом клиенте подключатся через Go автоматически, остальным нужно выбрать Go вручную.",
   "lobby.host.minRating": "Минимальный рейтинг",
   "lobby.host.maxRating": "Максимальный рейтинг",
   "lobby.host.selectedMap": "Выбранная карта",

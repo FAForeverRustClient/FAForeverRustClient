@@ -10,7 +10,7 @@ import { t } from "../../../i18n";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { formatAge, playingCount, showsUnrankedTag, simModsKeepGameRanked } from "./gameRules";
 import { RatingRangeTag } from "./RatingRangeTag";
-import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
+import { splitPioneerTitle } from "../../../shared/pioneerTitle";
 import { hideGlobalLineup, useGameLineupPosition, useGameSocialPosition } from "./hoverPopovers";
 import { GameLineup } from "./GameLineup";
 import { GameSocialPopover, foesHere, friendsHere } from "./GameSocialPopover";
@@ -61,7 +61,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
     showSocial,
     hideSocial,
   } = useGameSocialPosition(game.id);
-  const { title: shownTitle, goAdapter } = splitGoAdapterTitle(game.title);
+  const { title: shownTitle, pioneer } = splitPioneerTitle(game.title);
   return (
     <>
       <button
@@ -121,7 +121,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
             stood at a different place in every row. */}
           <div className="game-browser-tags-col game-browser-tags">
             <i>{game.modName || "faf"}</i>
-            {goAdapter && <i className="go-adapter" title={t("lobby.browser.goAdapterTitle")}>{t("lobby.browser.goAdapter")}</i>}
+            {pioneer && <i className="pioneer" title={t("lobby.browser.pioneerTitle")}>{t("lobby.browser.pioneer")}</i>}
             {simModCount > 0 && (
               <i
                 className={simModsRanked ? "modded is-ranked" : "modded"}

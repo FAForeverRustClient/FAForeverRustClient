@@ -43,7 +43,7 @@ import { assignedPlayerColor, includesName, nickKey } from "../../shared/nameCol
 import { noteForPlayer } from "../../shared/rules/playerNotes";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { requestReplaySearch } from "../../shared/replaySearchIntent";
-import { splitGoAdapterTitle } from "../../shared/goAdapterTitle";
+import { splitPioneerTitle } from "../../shared/pioneerTitle";
 import "./browser/custom-games.css";
 import "./game-dialogs.css";
 import "./play.css";
@@ -257,7 +257,7 @@ function GameDetails({
       </div>
       <div className="game-detail-content">
         <div className="game-detail-title">
-          <h2>{splitGoAdapterTitle(game.title).title}</h2>
+          <h2>{splitPioneerTitle(game.title).title}</h2>
           <p>
             {t("lobby.details.hostLabel")}{" "}
             <button
