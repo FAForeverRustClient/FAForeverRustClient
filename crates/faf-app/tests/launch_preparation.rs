@@ -525,6 +525,72 @@ fn host_harness(outcome: Result<(), String>) -> (App, FakeLobby, Arc<Mutex<Vec<G
     (app, lobby, prepared)
 }
 
+#[tokio::test]
+async fn cancelling_while_a_host_prepares_sends_no_host_request() {
+    // A co-op mission is hosted, not joined, and its preparation is the
+    // longest download the client makes. Cancel closed the dialog, but the
+    // host request still went out once the files were in, and the server's
+    // launch order started the game anyway.
+    let lobby = FakeLobby::default();
+    let launched = Arc::new(Mutex::new(false));
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        lobby: Arc::new(lobby.clone()),
+        process: Arc::new(LaunchableProcess {
+            launched: launched.clone(),
+            install_dir: Some(PathBuf::from("C:/fake-fa-install")),
+            exits_after: None,
+        }),
+        updater: Arc::new(SlowUpdater {
+            steps: 12,
+            gap: Duration::from_millis(40),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+
+    app.dispatch(
+        LobbyCommand::Host {
+            config: host_config("adaptive_gadostb.v0002"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if matches!(
+                events.recv().await,
+                Ok(AppEvent::Lobby(LobbyEvent::Preparing { .. }))
+            ) {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("preparation never started");
+
+    app.dispatch(LobbyCommand::CancelJoin.into()).await.unwrap();
+
+    // Longer than the updater's remaining steps, so a request sent after
+    // them has every chance to arrive.
+    tokio::time::sleep(Duration::from_millis(900)).await;
+    assert!(
+        lobby.hosted_configs().is_empty(),
+        "a cancelled host must not ask the server for a lobby"
+    );
+    assert!(
+        !*launched.lock().unwrap(),
+        "a cancelled host must not start the game"
+    );
+}
+
 fn host_config(map: &str) -> HostGameConfig {
     HostGameConfig {
         title: "Friday game".into(),
