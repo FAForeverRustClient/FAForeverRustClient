@@ -628,7 +628,7 @@ export function ReplayDetailPanel({
                 which replay this is, which is a fact about the game and not
                 an action on the file, so it sits with the facts. */}
             <div className="replay-card-fact-id">
-              <dt><Icon name="list" size={14} />{t("replays.detail.replayIdLabel")}</dt>
+              <dt><Icon name="list" size={18} />{t("replays.detail.replayIdLabel")}</dt>
               <dd>
                 {replay.uid > 0 ? (
                   <>
@@ -657,14 +657,14 @@ export function ReplayDetailPanel({
                 )}
               </dd>
             </div>
-            <div><dt><Icon name="calendar" size={14} />{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
-            <div><dt><Icon name="users" size={14} />{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
-            <div><dt><Icon name="leaderboard" size={14} />{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
-            <div><dt><Icon name="hourglass" size={14} />{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
-            <div><dt><Icon name="clock" size={14} />{t("replays.detail.time")}</dt><dd>{formatTime(replay.startTime, t("replays.detail.unknown"))}</dd></div>
-            <div><dt><Icon name="settings" size={14} />{t("replays.detail.featuredMod")}</dt><dd>{replay.modName || t("replays.detail.unknown")}</dd></div>
-            <div><dt><Icon name="activity" size={14} />{t("replays.detail.quality")}</dt><dd>{replay.quality !== null ? `${replay.quality}%` : t("replays.detail.unknown")}</dd></div>
-            <div><dt><Icon name="play" size={14} />{t("replays.detail.realTime")}</dt><dd>{replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : t("replays.detail.unknown")}</dd></div>
+            <div><dt><Icon name="calendar" size={18} />{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
+            <div><dt><Icon name="users" size={18} />{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
+            <div><dt><Icon name="leaderboard" size={18} />{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
+            <div><dt><Icon name="hourglass" size={18} />{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
+            <div><dt><Icon name="clock" size={18} />{t("replays.detail.time")}</dt><dd>{formatTime(replay.startTime, t("replays.detail.unknown"))}</dd></div>
+            <div><dt><Icon name="settings" size={18} />{t("replays.detail.featuredMod")}</dt><dd>{replay.modName || t("replays.detail.unknown")}</dd></div>
+            <div><dt><Icon name="activity" size={18} />{t("replays.detail.quality")}</dt><dd>{replay.quality !== null ? `${replay.quality}%` : t("replays.detail.unknown")}</dd></div>
+            <div><dt><Icon name="play" size={18} />{t("replays.detail.realTime")}</dt><dd>{replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : t("replays.detail.unknown")}</dd></div>
           </dl>
           {/* Named by its summary rather than by a heading: the team
               panels carry their own headings, and a third one above them
