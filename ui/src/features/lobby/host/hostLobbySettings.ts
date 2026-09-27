@@ -35,10 +35,11 @@ export interface HostLobbySettings {
   setPassword: (password: string) => void;
   ratingEnabled: boolean;
   setRatingEnabled: (enabled: boolean) => void;
-  ratingMin: number;
-  setRatingMin: (rating: number) => void;
-  ratingMax: number;
-  setRatingMax: (rating: number) => void;
+  /** `null` is an open end: no bound on that side. */
+  ratingMin: number | null;
+  setRatingMin: (rating: number | null) => void;
+  ratingMax: number | null;
+  setRatingMax: (rating: number | null) => void;
   /** Empty when the field is fine; the dialog's submit is blocked by any of them. */
   titleError: string;
   passwordError: string;
@@ -86,7 +87,10 @@ export function useHostLobbySettings(
   // Checked whether or not the range is enforced: a back-to-front range is a
   // mistake worth pointing out while it is being typed, not only once the
   // checkbox is ticked.
-  const ratingError = ratingMin > ratingMax ? t("lobby.host.error.ratingOrder") : "";
+  const ratingError =
+    ratingMin !== null && ratingMax !== null && ratingMin > ratingMax
+      ? t("lobby.host.error.ratingOrder")
+      : "";
 
   return {
     title,

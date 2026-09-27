@@ -56,3 +56,47 @@ export function NumberInput({ value, onChange, onBlur, ...rest }: Props) {
     />
   );
 }
+
+type OptionalProps = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type"> & {
+  value: number | null;
+  onChange: (value: number | null) => void;
+};
+
+/**
+ * `NumberInput` for a number that may also be absent, such as one end of a
+ * rating range.
+ *
+ * Emptying the field is a value here: `null`, shown as the placeholder. In
+ * `NumberInput` an emptied field puts the last number back when it is left,
+ * which is right for a field that must hold a number and made a rating range
+ * impossible to take away again once one had been typed.
+ */
+export function OptionalNumberInput({ value, onChange, onBlur, ...rest }: OptionalProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const change = (event: ChangeEvent<HTMLInputElement>) => {
+    const text = event.target.value;
+    setDraft(text);
+    if (text.trim() === "") {
+      onChange(null);
+      return;
+    }
+    const parsed = numberFromEdit(text);
+    if (parsed !== null) onChange(parsed);
+  };
+
+  const blur = (event: FocusEvent<HTMLInputElement>) => {
+    setDraft(null);
+    onBlur?.(event);
+  };
+
+  return (
+    <input
+      {...rest}
+      type="number"
+      value={draft ?? (value === null ? "" : String(value))}
+      onChange={change}
+      onBlur={blur}
+    />
+  );
+}

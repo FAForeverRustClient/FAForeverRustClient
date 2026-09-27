@@ -39,7 +39,7 @@ const REPOSITORIES = [
   {
     name: "contribution.repo.rust",
     description: "contribution.repo.rustHint",
-    href: "https://github.com/FAForeverRustClient/FAForever-Rust-Client",
+    href: "https://github.com/FAForeverRustClient/FAForeverRustClient",
   },
   {
     name: "contribution.repo.java",

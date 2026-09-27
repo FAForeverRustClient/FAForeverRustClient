@@ -18,7 +18,7 @@ import { useHostLobbySettings } from "./hostLobbySettings";
 import { FeaturedModIcon } from "./FeaturedModIcon";
 import { useTranslation } from "../../../i18n/useTranslation";
 import type { MessageKey } from "../../../i18n/catalog/en";
-import { NumberInput } from "../../../design-system/NumberInput";
+import { OptionalNumberInput } from "../../../design-system/NumberInput";
 // The map column's two tabs borrow the shared tab strip. Imported here rather
 // than relied on: this dialog is reachable from screens that never load it.
 import "../../../design-system/section-tabs.css";
@@ -576,8 +576,9 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                 is found is a range nobody sets, and the numbers are useful on
                 their own: unenforced they are the sign on the door, enforced
                 they are the door. */}
-            <NumberInput
+            <OptionalNumberInput
               className="number-input"
+              placeholder={t("common.any")}
               value={ratingMin}
               min={-9999}
               max={9999}
@@ -586,8 +587,9 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
               aria-label={t("lobby.host.minRating")}
             />
             <span className="muted">{t("lobby.host.ratingTo")}</span>
-            <NumberInput
+            <OptionalNumberInput
               className="number-input"
+              placeholder={t("common.any")}
               value={ratingMax}
               min={-9999}
               max={9999}

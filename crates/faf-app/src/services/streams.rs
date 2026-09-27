@@ -88,11 +88,7 @@ fn announce(out: &EventSink) {
         services::notifications::add(
             out,
             NotificationKind::StreamLive,
-            format!(
-                "{} is live on {}",
-                stream.display_name,
-                stream.platform.label()
-            ),
+            title(stream),
             body(stream),
             Some(NotificationAction::OpenStream {
                 url: stream.url.clone(),
@@ -101,19 +97,27 @@ fn announce(out: &EventSink) {
     }
 }
 
-/// What the notification says under the title: the stream's own title, and the
-/// viewer count when the platform gave one.
+/// The notification's title: "FAF Live: " and the stream's own title (#155).
 ///
 /// The broadcaster's words rather than the client's, because they are the only
 /// thing that says whether this is a grand final or somebody testing their
-/// encoder.
-fn body(stream: &LiveStream) -> String {
+/// encoder. A stream with no title is just "FAF Live". Which platform it is on
+/// is the icon the card carries, not a word in the title.
+fn title(stream: &LiveStream) -> String {
     let title = stream.title.trim();
-    match (title.is_empty(), stream.viewers) {
-        (true, None) => "Watch now.".to_string(),
-        (true, Some(viewers)) => format!("{} watching now.", viewers),
-        (false, None) => title.to_string(),
-        (false, Some(viewers)) => format!("{title} ({viewers} watching)"),
+    if title.is_empty() {
+        "FAF Live".to_string()
+    } else {
+        format!("FAF Live: {title}")
+    }
+}
+
+/// What the notification says under the title: how many are watching, when
+/// the platform said, and where.
+fn body(stream: &LiveStream) -> String {
+    match stream.viewers {
+        Some(viewers) => format!("{viewers} watching on {}.", stream.platform.label()),
+        None => format!("Live on {}.", stream.platform.label()),
     }
 }
 
@@ -158,17 +162,20 @@ mod tests {
     }
 
     #[test]
-    fn the_broadcasters_own_title_is_the_body() {
+    fn the_broadcasters_own_title_follows_faf_live() {
+        assert_eq!(
+            title(&stream("Setons Summer Slam: Grand Final", Some(412))),
+            "FAF Live: Setons Summer Slam: Grand Final",
+        );
         assert_eq!(
             body(&stream("Setons Summer Slam: Grand Final", Some(412))),
-            "Setons Summer Slam: Grand Final (412 watching)",
+            "412 watching on Twitch.",
         );
-        assert_eq!(body(&stream("Ladder night", None)), "Ladder night");
+        assert_eq!(body(&stream("Ladder night", None)), "Live on Twitch.");
     }
 
     #[test]
     fn a_stream_with_no_title_still_says_something() {
-        assert_eq!(body(&stream("   ", None)), "Watch now.");
-        assert_eq!(body(&stream("", Some(7))), "7 watching now.");
+        assert_eq!(title(&stream("   ", None)), "FAF Live");
     }
 }
