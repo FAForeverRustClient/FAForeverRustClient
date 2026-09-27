@@ -38,6 +38,8 @@ import {
 } from "../../../shared/replayQuery";
 import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
 import { replayGameModes, selectedGameModes, withGameModes } from "./replayGameModes";
+import { activeReplayPreset } from "../replayPresets";
+import { FriendReplayPicker } from "./FriendReplayPicker";
 import { MultiSelect } from "../../../design-system/MultiSelect";
 import { useAppStore } from "../../../store/store";
 import { allReplayTags, replayIdsTagged } from "../../../shared/rules/replayNotes";
@@ -82,12 +84,14 @@ interface Props {
   leaderboards: RatingLeaderboard[];
   /** Logged-in player, for the "My replays" preset. */
   self: string;
+  /** Logins from `social.friends`, for the friends picker beside it. */
+  friends: string[];
   /** Executed query (or the first query about to execute) when this form mounts. */
   initialQuery: ReplayQuery;
   onSearch: (query: ReplayQuery) => void;
 }
 
-export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, onSearch }: Props) {
+export function VaultSearch({ featuredMods, leaderboards, self, friends, initialQuery, onSearch }: Props) {
   const { t } = useTranslation();
   const [form, setForm] = useState<ReplayQuery>(initialQuery);
   // The tags picked in the filters, kept beside the form because the query
@@ -210,6 +214,10 @@ export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, on
 
   const gameModes = replayGameModes(leaderboards);
   const hiddenFilterCount = advancedReplayFilterCount(form);
+  // Which scope button is lit. Read off the form, so it follows a search
+  // arrived at by hand or handed over from a player card as well as one of
+  // these three presses. See `activeReplayPreset`.
+  const preset = activeReplayPreset(form, self);
 
   return (
     <form className="vault-search online-vault-search search-panel surface-panel" onSubmit={submit}>
@@ -346,15 +354,56 @@ export function VaultSearch({ featuredMods, leaderboards, self, initialQuery, on
       </div>
 
       <div className="vault-search-presets search-panel-secondary">
-        <Button type="button" onClick={() => applyPreset("newest")}>
+        {/* Drawn active the same way the toggles to the right of the divider
+            are. Three buttons that never changed gave no sign which scope the
+            list was under, which was the report. */}
+        <Button
+          type="button"
+          className={preset === "newest" ? "active" : ""}
+          aria-pressed={preset === "newest"}
+          onClick={() => applyPreset("newest")}
+        >
           {t("replays.search.preset.newest")}
         </Button>
-        <Button type="button" onClick={() => applyPreset("highestRated")}>
+        <Button
+          type="button"
+          className={preset === "highestRated" ? "active" : ""}
+          aria-pressed={preset === "highestRated"}
+          onClick={() => applyPreset("highestRated")}
+        >
           {t("replays.search.preset.bestReviewed")}
         </Button>
-        <Button type="button" disabled={!self} onClick={() => applyPreset("own")}>
+        <Button
+          type="button"
+          className={preset === "own" ? "active" : ""}
+          aria-pressed={preset === "own"}
+          disabled={!self}
+          onClick={() => applyPreset("own")}
+        >
           {t("replays.search.preset.myReplays")}
         </Button>
+        {/* Beside "My replays", because it is the same scope for somebody
+            else. Typing a full FAF login by hand every time was the whole
+            complaint. See `FriendReplayPicker`. */}
+        <FriendReplayPicker
+          friends={friends}
+          current={form.player}
+          onPick={(login) => {
+            const query: ReplayQuery = {
+              ...form,
+              player: login,
+              exactPlayer: true,
+              // The same explicit bound "My replays" sets, and for the same
+              // reason: a player filter counts as narrowing, so an empty
+              // `after` hands the backend its invisible six-month floor.
+              after: isoDaysAgo(365),
+              page: 1,
+            };
+            setForm(query);
+            setRecentOnly(isRecentBound(query.after));
+            onSearch(query);
+          }}
+        />
         {/* The divider is load-bearing: everything left of it replaces the
             search, everything right of it modifies the one you have. Without it
             the toggle reads as a fourth preset, and "All replays" next to

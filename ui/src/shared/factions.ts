@@ -20,6 +20,33 @@ export const FACTION_OPTIONS = Object.entries(FACTION_NAMES).map(([value, label]
 }));
 
 /**
+ * The order the four playable factions are drawn in, wherever a list of them
+ * is shown: UEF, Cybran, Aeon, Seraphim.
+ *
+ * Not the numeric order, and not alphabetical. It is the order the rest of FAF
+ * lists them in, and a player reading a row of emblems is matching a shape
+ * against a habit rather than reading a list, so the habit is what the row has
+ * to agree with. The numbering above stays what it is: it is the game's, and
+ * changing it would change every glyph.
+ */
+export const FACTION_DISPLAY_ORDER: readonly number[] = [1, 3, 2, 4];
+
+/**
+ * The same order, applied to a list of faction *names* off the wire.
+ *
+ * A faction this client does not recognise keeps its place at the end rather
+ * than being dropped or sorted to the front: see [`factionIdFromName`].
+ */
+export function orderFactionNames(names: readonly string[]): string[] {
+  const rank = (name: string) => {
+    const id = factionIdFromName(name);
+    const index = id === null ? -1 : FACTION_DISPLAY_ORDER.indexOf(id);
+    return index < 0 ? FACTION_DISPLAY_ORDER.length : index;
+  };
+  return [...names].sort((left, right) => rank(left) - rank(right));
+}
+
+/**
  * The id behind a faction *name*, for the places that are handed one.
  *
  * The lobby's party message carries factions as the words a player picked

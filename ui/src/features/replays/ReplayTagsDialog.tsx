@@ -9,6 +9,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
+import { MultiSelect } from "../../design-system/MultiSelect";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { allReplayTags, REPLAY_TAG_CHARACTER_LIMIT } from "../../shared/rules/replayNotes";
@@ -100,15 +101,33 @@ export function ReplayTagsDialog({ onClose }: { onClose: () => void }) {
 }
 
 /** The "Manage tags" link under a tag picker, with its dialog. */
-export function ManageReplayTagsButton() {
+/**
+ * The "Your tags" filter both replay tabs show. "Manage tags" is the first
+ * entry of its dropdown: it acts on the very list the dropdown holds, and a
+ * link underneath the field was easy to miss and looked like a stray note.
+ */
+export function ReplayTagFilter({
+  options,
+  selected,
+  onChange,
+}: {
+  options: string[];
+  selected: string[];
+  onChange: (tags: string[]) => void;
+}) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [managing, setManaging] = useState(false);
   return (
     <>
-      <button type="button" className="replay-tags-manage" onClick={() => setOpen(true)}>
-        {t("replays.tags.manage")}
-      </button>
-      {open && <ReplayTagsDialog onClose={() => setOpen(false)} />}
+      <MultiSelect
+        label={t("replays.filters.yourTags")}
+        anyLabel={t("replays.filters.anyTag")}
+        options={options.map((tag) => ({ value: tag, label: tag }))}
+        selected={selected}
+        onChange={onChange}
+        action={{ label: t("replays.tags.manage"), onSelect: () => setManaging(true) }}
+      />
+      {managing && <ReplayTagsDialog onClose={() => setManaging(false)} />}
     </>
   );
 }

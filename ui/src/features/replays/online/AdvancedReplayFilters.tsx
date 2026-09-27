@@ -1,6 +1,6 @@
 import type { ReplayQuery } from "../../../ipc/bindings";
 import { MultiSelect, type MultiSelectOption } from "../../../design-system/MultiSelect";
-import { ManageReplayTagsButton } from "../ReplayTagsDialog";
+import { ReplayTagFilter } from "../ReplayTagsDialog";
 import { RangeSlider } from "../../../design-system/RangeSlider";
 import { FACTION_OPTIONS } from "../../../shared/factions";
 import type { MessageKey } from "../../../i18n";
@@ -135,14 +135,7 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
             so the picked tags become the ids of the games carrying them, and
             the search asks for exactly those. */}
         <div className="vault-field">
-          <MultiSelect
-            label={t("replays.filters.yourTags")}
-            anyLabel={t("replays.filters.anyTag")}
-            options={tagOptions.map((tag) => ({ value: tag, label: tag }))}
-            selected={selectedTags}
-            onChange={onTags}
-          />
-          <ManageReplayTagsButton />
+          <ReplayTagFilter options={tagOptions} selected={selectedTags} onChange={onTags} />
         </div>
 
         <div className="vault-field">

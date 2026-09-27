@@ -1758,6 +1758,21 @@ button.vault-input {
   flex-shrink: 0;
 }
 
+/* The full generated-map name under the map line (issue 288). It is three
+   times as long as the seed it replaced, and it is what the copy button puts
+   on the clipboard, so it wraps instead of being cut short with an ellipsis. */
+.replay-card-seed {
+  align-items: flex-start;
+}
+
+.replay-card-seed .replay-fact-seed-code {
+  max-width: none;
+  min-width: 0;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .replay-card-main {
   display: flex;
   flex-direction: column;
@@ -2509,4 +2524,51 @@ button.vault-input {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: 999px;
+}
+
+/* ── Replays of friends (FriendReplayPicker.tsx) ──────────────────────── */
+
+/* The trigger is a preset button and sits in the preset row, so it is laid out
+   as one rather than as the labelled field `MultiSelect` is: no label above
+   it, and no column to stretch. The popover below is `MultiSelect`'s, which is
+   why that file's rules are imported. */
+.friend-replay-picker {
+  flex-direction: row;
+  align-items: center;
+}
+
+/* Wider than the trigger, because a login is longer than "Friends" and a name
+   that wraps is a name that is hard to pick out of a list. */
+.friend-replay-popover {
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.friend-replay-filter {
+  width: 100%;
+  margin-bottom: var(--space-1);
+  padding: 5px var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+/* A row is a button rather than the label a checkbox needs: picking one is an
+   action that closes the popover, not a value being ticked. */
+.friend-replay-option {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.friend-replay-option[aria-selected="true"] {
+  color: var(--color-accent);
+  font-weight: 600;
 }

@@ -517,25 +517,6 @@
 }
 
 /* Managing every replay tag at once (issue 324). */
-.replay-tags-manage {
-  align-self: flex-start;
-  margin-top: var(--space-1);
-  padding: 0;
-  color: var(--color-muted);
-  font: inherit;
-  font-size: 12px;
-  text-decoration: underline;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-}
-
-.replay-tags-manage:hover,
-.replay-tags-manage:focus-visible {
-  color: var(--color-text);
-  outline: none;
-}
-
 .replay-tags {
   display: flex;
   flex-direction: column;

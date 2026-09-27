@@ -30,6 +30,12 @@ interface Props {
   anyLabel?: string;
   /** Whether options are currently being loaded in the background. */
   loading?: boolean;
+  /**
+   * A command that belongs to the list rather than to one entry of it, such as
+   * managing the entries themselves. It is the first row of the popover, set
+   * apart from the checkboxes below, and choosing it closes the popover.
+   */
+  action?: { label: string; onSelect: () => void };
 }
 
 export function MultiSelect({
@@ -39,6 +45,7 @@ export function MultiSelect({
   onChange,
   anyLabel,
   loading = false,
+  action,
 }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -90,6 +97,18 @@ export function MultiSelect({
 
       {open && (
         <div className="multi-select-popover" role="group" aria-label={label}>
+          {action && (
+            <button
+              type="button"
+              className="multi-select-action"
+              onClick={() => {
+                setOpen(false);
+                action.onSelect();
+              }}
+            >
+              {action.label}
+            </button>
+          )}
           {loading && options.length === 0 ? (
             <p className="muted multi-select-empty">{t("designSystem.multiSelect.loading")}</p>
           ) : options.length === 0 ? (

@@ -52,6 +52,10 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   const featuredMods = useAppStore((s) => s.state.replays.featuredMods);
   const leaderboards = useAppStore((s) => s.state.leaderboard.ratingLeaderboards);
   const self = useAppStore((s) => s.state.auth.player?.name ?? "");
+  // Names for the friends picker in the search bar. A plain array off the
+  // state, which the store keeps sorted and replaces wholesale, so the
+  // identity check upstream is enough and nothing needs memoising here.
+  const friends = useAppStore((s) => s.state.social.friends);
   const note = loadStatusNote(vaultStatus, t("replays.vault.searching"), t("replays.vault.loadFailed"));
   const browsing = useAppStore((s) => s.state.settings.browsing);
   const viewMode: ReplayViewMode = browsing.replaysView;
@@ -70,7 +74,14 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     loadStoredSet(WATCHED_STORAGE_KEY, (value): value is number => typeof value === "number"),
   );
 
-  const initialPlayer = browsing.replayVaultPlayer || self;
+  // The vault opens on your own replays, every time, which is what was asked
+  // for: a trainer who looks up a dozen other people in one sitting should not
+  // find the twelfth of them waiting the next time the tab is opened.
+  //
+  // `replayVaultPlayer` still remembers the last name searched, and is still
+  // what the form shows while a search is running, but it no longer decides
+  // where the tab lands. Signed out there is no "own", so it is the fallback.
+  const initialPlayer = self || browsing.replayVaultPlayer;
 
   // Somebody else's search wins over the default one, and having run it, the
   // default must not fire behind it: the store has not caught up yet, so
@@ -87,7 +98,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
 
   useEffect(() => {
     const state = useAppStore.getState().state;
-    const playerToSearch = state.settings.browsing.replayVaultPlayer || self;
+    const playerToSearch = self || state.settings.browsing.replayVaultPlayer;
     if (!runRequestedSearch() && !handedOver.current) {
       if (state.replays.vaultStatus.type === "idle" && playerToSearch) {
         searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
@@ -165,15 +176,11 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   const totalPages = useAppStore((s) => s.state.replays.vaultTotalPages);
   const totalRecords = useAppStore((s) => s.state.replays.vaultTotalRecords);
 
-  const formInitialQuery: ReplayQuery = useMemo(() => {
-    const base = vaultStatus.type === "idle"
+  const formInitialQuery: ReplayQuery = useMemo(() =>
+    vaultStatus.type === "idle"
       ? personalReplayQuery(initialPlayer, isoDaysAgo(365))
-      : query;
-    if (base.player === self && !browsing.replayVaultPlayer) {
-      return { ...base, player: "" };
-    }
-    return base;
-  }, [vaultStatus.type, initialPlayer, query, self, browsing.replayVaultPlayer]);
+      : query,
+  [vaultStatus.type, initialPlayer, query]);
 
   return (
     <>
@@ -181,6 +188,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         featuredMods={featuredMods}
         leaderboards={leaderboards}
         self={self}
+        friends={friends}
         initialQuery={formInitialQuery}
         onSearch={handleSearch}
       />

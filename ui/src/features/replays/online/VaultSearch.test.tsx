@@ -10,6 +10,7 @@ describe("VaultSearch", () => {
         featuredMods={["faf"]}
         leaderboards={[]}
         self="TestPlayer"
+        friends={["Nuggets", "wilson_"]}
         initialQuery={EMPTY_REPLAY_QUERY}
         onSearch={() => undefined}
       />,
