@@ -1216,8 +1216,9 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.game.saveArguments": "Guardar los argumentos",
 
   "settings.connectivity.connectivityAdapter": "Adaptador de conexión",
-  "settings.connectivity.connectivityAdapterHint": "Java es el adaptador consolidado, Pioneer es experimental. Se aplica desde la próxima partida.",
-  "settings.connectivity.java": "Java (faf-ice-adapter, recomendado)",
+  "settings.connectivity.connectivityAdapterHint": "Dinámico se une a cada sala con el adaptador de su anfitrión y aloja con Java. Alojar con Go añade [pioneer] al título de la partida para que los demás lo sepan. Se aplica desde la próxima partida.",
+  "settings.connectivity.dynamic": "Dinámico (sigue al anfitrión, recomendado)",
+  "settings.connectivity.java": "Java (faf-ice-adapter)",
   "settings.connectivity.go": "Go (faf-pioneer, experimental)",
 
   "settings.discord.richPresence": "Rich Presence",
@@ -1794,6 +1795,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranking": "Clasificación",
   "lobby.browser.ranked": "Clasificatorio",
   "lobby.browser.unranked": "No clasificatorio",
+  "lobby.browser.pioneer": "Pioneer",
+  "lobby.browser.pioneerTitle": "Alojada con el adaptador Go (faf-pioneer). En Dinámico te unes con Go automáticamente; si no, elige Go en los ajustes de conexión.",
   "lobby.browser.mapSize": "Tamaño del mapa",
   "lobby.browser.unrated": "Sin puntuación",
   "lobby.browser.public": "Pública",

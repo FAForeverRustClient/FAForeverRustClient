@@ -1240,8 +1240,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.game.saveArguments": "Сохранить аргументы",
 
   "settings.connectivity.connectivityAdapter": "Адаптер подключения",
-  "settings.connectivity.connectivityAdapterHint": "Java: проверенный адаптер, Pioneer экспериментальный. Применяется со следующей игры.",
-  "settings.connectivity.java": "Java (faf-ice-adapter, рекомендуется)",
+  "settings.connectivity.connectivityAdapterHint": "Динамический подключается к каждому лобби с адаптером его хоста, а хостит через Java. При хостинге через Go к названию игры добавляется [pioneer], чтобы другие игроки это видели. Применяется со следующей игры.",
+  "settings.connectivity.dynamic": "Динамический (как у хоста, рекомендуется)",
+  "settings.connectivity.java": "Java (faf-ice-adapter)",
   "settings.connectivity.go": "Go (faf-pioneer, экспериментальный)",
 
   "settings.discord.richPresence": "Rich Presence",
@@ -1865,6 +1866,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranking": "Рейтинг",
   "lobby.browser.ranked": "Рейтинговая",
   "lobby.browser.unranked": "Без рейтинга",
+  "lobby.browser.pioneer": "Pioneer",
+  "lobby.browser.pioneerTitle": "Хост использует Go-адаптер (faf-pioneer). В динамическом режиме вы подключитесь через Go автоматически; иначе выберите Go в настройках подключения.",
   "lobby.browser.mapSize": "Размер карты",
   "lobby.browser.unrated": "Без рейтинга",
   "lobby.browser.public": "Публичная",

@@ -1413,7 +1413,9 @@ export type ConnectivityPreferences = {
 	 *  Version of the explicit adapter choice. Version zero was written by
 	 *  builds where Pioneer was the implicit/default path, so a stored `go`
 	 *  value from that era is not evidence that the user opted into an
-	 *  experimental backend.
+	 *  experimental backend. Version one had Java as the default, so a stored
+	 *  `java` from it is the default rather than a choice: version two moves it
+	 *  to `Dynamic`, which behaves the same for every unmarked game.
 	 */
 	selectionVersion: number,
 };
@@ -2879,9 +2881,17 @@ export type HostingStatus = {
  *
  *  The long-standing Java `faf-ice-adapter` is the production default used by
  *  the established clients. The newer Go faf-pioneer remains available for
- *  explicit testing while it is experimental.
+ *  explicit testing while it is experimental. The two cannot connect to each
+ *  other, so a game only works when everybody in it uses the host's adapter.
  */
 export type IceAdapter =
+/**
+ *  Follow the host: Go for a lobby whose title carries the pioneer mark
+ *  (see `lobby::PIONEER_TITLE_TAG`), Java for every other game, and Java
+ *  when hosting. The default, because it is right wherever the host is on
+ *  Java, which is every client's default, or on Go in this client.
+ */
+"dynamic" |
 /**  `faf-ice-adapter`, driven over JSON-RPC. */
 "java" |
 /**

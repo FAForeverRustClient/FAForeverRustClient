@@ -12,7 +12,10 @@ const save = (preferences: ConnectivityPreferences) =>
     command: { type: "setConnectivity", payload: { preferences } },
   });
 
+// Dynamic first: it is the default, and the one that is right for any game
+// whose host is on Java or hosts on Go in this client.
 const ADAPTERS: Record<IceAdapter, MessageKey> = {
+  dynamic: "settings.connectivity.dynamic",
   java: "settings.connectivity.java",
   go: "settings.connectivity.go",
 };
@@ -33,7 +36,7 @@ export function ConnectivitySettingsSection() {
           void save({
             ...preferences,
             adapter: event.target.value as IceAdapter,
-            selectionVersion: 1,
+            selectionVersion: 2,
           })
         }
         aria-label={t("settings.connectivity.connectivityAdapter")}

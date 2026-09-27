@@ -860,6 +860,8 @@ export const en = {
   "lobby.browser.ranking": "Ranking",
   "lobby.browser.ranked": "Ranked",
   "lobby.browser.unranked": "Unranked",
+  "lobby.browser.pioneer": "Pioneer",
+  "lobby.browser.pioneerTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
   // The sim-mod tag says how many, and its tooltip says the thing the count
   // does not: whether those mods cost the game its rating. Plural because
   // German needs a different noun form, which a ternary could not express.
@@ -1565,7 +1567,8 @@ export const en = {
   "settings.game.openLocalFolder": "Open local cache folder for {name}",
   "settings.game.openReleaseNotes": "Open {name} on GitHub",
   "settings.connectivity.connectivityAdapter": "Connectivity adapter",
-  "settings.connectivity.connectivityAdapterHint": "Java is the established adapter, Pioneer is experimental. Applies from your next game.",
+  "settings.connectivity.connectivityAdapterHint": "Dynamic joins every lobby on its host's adapter and hosts on Java. Hosting on Go adds [pioneer] to your game's title so other players can tell. Applies from your next game.",
+  "settings.connectivity.dynamic": "Dynamic (follows the host, recommended)",
   "settings.discord.richPresence": "Rich Presence",
   "settings.discord.richPresenceHint": "Show the game you host or play on your Discord profile.",
   "settings.discord.disallowJoinsVia": "Disallow joins via Discord",
@@ -1670,7 +1673,7 @@ export const en = {
   "settings.updates.newerAvailable": "{version} is available",
   "settings.updates.aNewerVersion": "a newer version",
   "settings.updates.lastChecked": "checked {time}",
-  "settings.connectivity.java": "Java (faf-ice-adapter, recommended)",
+  "settings.connectivity.java": "Java (faf-ice-adapter)",
   "settings.connectivity.go": "Go (faf-pioneer, experimental)",
   "settings.theme.forgeDark": "FAF Dark",
   "settings.theme.forgeLight": "FAF Light",

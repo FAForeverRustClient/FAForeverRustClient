@@ -58,14 +58,19 @@ impl SelectableIce {
         }
     }
 
-    /// The backend the next launch will use.
-    fn selected(&self) -> IceAdapter {
-        adapter_override().unwrap_or_else(|| *self.preferred.lock().unwrap())
+    /// The backend a game with this title starts on: the development
+    /// override, else the preference, with `Dynamic` following the host's mark.
+    fn selected(&self, game_title: &str) -> IceAdapter {
+        adapter_override()
+            .unwrap_or_else(|| *self.preferred.lock().unwrap())
+            .for_game(game_title)
     }
 
     fn backend(&self, adapter: IceAdapter) -> &Arc<dyn IcePort> {
         match adapter {
-            IceAdapter::Java => &self.java,
+            // `for_game` never returns `Dynamic`; Java is the safe reading of
+            // an undecided choice all the same.
+            IceAdapter::Java | IceAdapter::Dynamic => &self.java,
             IceAdapter::Go => &self.go,
         }
     }
@@ -74,7 +79,7 @@ impl SelectableIce {
 #[async_trait]
 impl IcePort for SelectableIce {
     async fn start(&self, params: IceParams) -> Result<ConnectivitySession, String> {
-        let adapter = self.selected();
+        let adapter = self.selected(&params.game_title);
         tracing::info!(backend = adapter.label(), "starting selected ICE backend");
         let session = self.backend(adapter).start(params).await.map_err(|error| {
             format!(
@@ -104,6 +109,12 @@ impl IcePort for SelectableIce {
 
     fn set_backend(&self, adapter: IceAdapter) {
         *self.preferred.lock().unwrap() = adapter;
+    }
+
+    fn hosting_adapter(&self) -> IceAdapter {
+        adapter_override()
+            .unwrap_or_else(|| *self.preferred.lock().unwrap())
+            .for_hosting()
     }
 
     /// Pushed to both backends rather than only the selected one: the
@@ -149,11 +160,16 @@ mod tests {
     }
 
     fn params() -> IceParams {
+        titled("Friday 4v4")
+    }
+
+    fn titled(title: &str) -> IceParams {
         IceParams {
             player_id: 7,
             player_login: "Ada".into(),
             game_id: 1,
             init_mode: 0,
+            game_title: title.into(),
         }
     }
 
@@ -170,6 +186,42 @@ mod tests {
         ice.start(params()).await.unwrap();
         assert_eq!(java.started.load(Ordering::SeqCst), 1);
         assert_eq!(go.started.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn dynamic_joins_a_marked_lobby_on_go_and_every_other_on_java() {
+        let (java, go, ice) = pair();
+        ice.set_backend(IceAdapter::Dynamic);
+        ice.start(titled("Friday 4v4 [pioneer]")).await.unwrap();
+        assert_eq!(go.started.load(Ordering::SeqCst), 1, "the host is on Go");
+        ice.stop();
+        ice.start(titled("Friday 4v4")).await.unwrap();
+        assert_eq!(java.started.load(Ordering::SeqCst), 1, "no mark, so Java");
+        assert_eq!(go.started.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn an_explicit_choice_ignores_the_mark() {
+        let (java, go, ice) = pair();
+        ice.set_backend(IceAdapter::Java);
+        ice.start(titled("Friday 4v4 [pioneer]")).await.unwrap();
+        assert_eq!(java.started.load(Ordering::SeqCst), 1);
+        assert_eq!(go.started.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn only_a_go_choice_hosts_on_go() {
+        let (_java, _go, ice) = pair();
+        for (preference, hosts_on) in [
+            (IceAdapter::Dynamic, IceAdapter::Java),
+            (IceAdapter::Java, IceAdapter::Java),
+            (IceAdapter::Go, IceAdapter::Go),
+        ] {
+            ice.set_backend(preference);
+            if adapter_override().is_none() {
+                assert_eq!(ice.hosting_adapter(), hosts_on, "{preference:?}");
+            }
+        }
     }
 
     #[tokio::test]

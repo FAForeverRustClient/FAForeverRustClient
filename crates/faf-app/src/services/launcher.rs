@@ -125,6 +125,7 @@ pub async fn start(
             player_login: player.name.clone(),
             game_id: launch.uid,
             init_mode,
+            game_title: launch.name.clone(),
         })
         .await
     {

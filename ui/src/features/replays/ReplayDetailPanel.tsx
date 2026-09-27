@@ -23,6 +23,7 @@ import {
 import { MapPreviewFrame } from "../../shared/components/MapPreviewZoom";
 import { onlineReplayLink } from "../../shared/replayLinks";
 import { openReviews } from "../../shared/openReviews";
+import { useGameRating } from "./useGameRating";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { replayMapPresentation } from "./coopReplayMap";
 import { ReplayInsights } from "./analysis/ReplayInsights";
@@ -343,7 +344,10 @@ export function ReplayDetailPanel({
     : players;
   const mapLabel = presentation.displayName || effectiveMap;
   const cardTitle = replay.title || mapLabel;
-  const stars = replay.reviewsAverage ?? null;
+  // Fresh from the reviews panel once it has been open on this game: the
+  // vault's own number is whatever the search that listed it returned.
+  const rating = useGameRating(replay.uid, replay.reviewsAverage ?? null, replay.reviewsCount ?? null);
+  const stars = rating.average;
   const starsLabel = stars === null
     ? t("replays.detail.noRatingYet")
     : t("reviews.scoreAria", { score: stars.toFixed(1), of: 5 });
@@ -485,8 +489,8 @@ export function ReplayDetailPanel({
             )}
             <span className="replay-card-rating-value">
               {stars === null ? t("replays.detail.unrated") : formatDecimal(stars)}
-              {replay.reviewsCount ? (
-                <span className="muted"> · {replay.reviewsCount}</span>
+              {rating.count ? (
+                <span className="muted"> · {rating.count}</span>
               ) : null}
             </span>
           </div>
