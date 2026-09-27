@@ -799,6 +799,7 @@
       },
       "connectivity": {
         "adapter": "dynamic",
+        "hostAdapter": "java",
         "selectionVersion": 2
       },
       "debug": {
@@ -2178,6 +2179,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -31409,6 +31411,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -31669,6 +31672,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -31938,6 +31942,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -32202,6 +32207,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -32466,6 +32472,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -32740,6 +32747,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -33020,6 +33028,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -33340,6 +33349,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -33636,6 +33646,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -33934,6 +33945,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
@@ -34352,6 +34364,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "hostAdapter": "java",
               "selectionVersion": 2
             },
             "debug": {
