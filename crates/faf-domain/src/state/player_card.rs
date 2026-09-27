@@ -1033,8 +1033,10 @@ mod tests {
 /// Produced by the infrastructure from a `game` document and folded by
 /// [`aggregate_map_stats`]. A separate type so the folding is testable without
 /// a JSON:API document in the way.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PlayedGame {
+    /// The game's id, which is also its replay's.
+    pub game_id: i32,
     pub map: String,
     /// What the game was, after
     /// [`crate::protocol::game_outcome::outcome_for`] has applied every rule.
@@ -1055,6 +1057,37 @@ pub struct PlayedGame {
     pub ladder: bool,
     /// ISO timestamp, or empty when the API did not state one.
     pub played_at: String,
+    /// The leaderboard the game was played for (`global`, `ladder_1v1`, ...),
+    /// decided the way `faftracker`'s `inferQueueCategory` decides it.
+    pub queue: String,
+    /// This player's change in displayed rating, rounded to two decimals as
+    /// the tracker rounds it, or `None` when no journal carries one.
+    pub rating_delta: Option<f64>,
+}
+
+/// One game of a player's results list (#344), newest first.
+///
+/// The per-game view of the same scan the map record folds, which is
+/// faftracker's "Game History": the games whose outcome is known, with the
+/// queue, the map and what the game did to the rating.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerGameResult {
+    /// The game's id, which is also its replay's.
+    pub game_id: i32,
+    /// ISO timestamp, or empty when the API did not state one.
+    pub played_at: String,
+    /// The leaderboard's technical name (`global`, `ladder_1v1`, ...).
+    pub queue: String,
+    /// Empty for a generated map, like [`PlayerMapStat::map`].
+    pub map: String,
+    pub generated: bool,
+    /// `win`, `loss` or `draw`. Games with no known outcome are not listed.
+    pub outcome: String,
+    /// The change in displayed rating in hundredths of a point (`-1114` is
+    /// -11.14), or `None` when no rating journal carries one. Hundredths
+    /// rather than a float so the state keeps its `Eq`.
+    pub rating_change_hundredths: Option<i32>,
 }
 
 /// A player's record on one map.
@@ -1131,6 +1164,14 @@ pub struct PlayerMapStats {
     /// Set when the scan hit its safety limit, so the view can say the numbers
     /// cover a prefix of the history rather than all of it.
     pub truncated: bool,
+    /// Whose history this is. The scan is the most expensive thing a profile
+    /// loads, so the two tabs reading it (maps and results) ask for it only
+    /// when what they hold belongs to somebody else.
+    #[serde(default)]
+    pub player_id: i32,
+    /// Every game with a known outcome, newest first. See [`PlayerGameResult`].
+    #[serde(default)]
+    pub games: Vec<PlayerGameResult>,
 }
 
 /// Whether a map name came out of the Neroxis generator.
@@ -1233,6 +1274,36 @@ pub fn aggregate_map_stats(games: &[PlayedGame], truncated: bool) -> PlayerMapSt
         }
     }
 
+    // The results list, in the order the scan delivered it: newest first.
+    stats.games = games
+        .iter()
+        .filter_map(|game| {
+            let outcome = match game.outcome {
+                Outcome::Win => "win",
+                Outcome::Loss => "loss",
+                Outcome::Draw => "draw",
+                Outcome::Unknown => return None,
+            };
+            let generated = game.map.is_empty() || is_generated_map_name(&game.map);
+            Some(PlayerGameResult {
+                game_id: game.game_id,
+                played_at: game.played_at.clone(),
+                queue: game.queue.clone(),
+                map: if generated {
+                    String::new()
+                } else {
+                    game.map.clone()
+                },
+                generated,
+                outcome: outcome.to_string(),
+                rating_change_hundredths: game
+                    .rating_delta
+                    .filter(|delta| delta.is_finite())
+                    .map(|delta| (delta * 100.0).round() as i32),
+            })
+        })
+        .collect();
+
     stats.maps = by_map.into_values().collect();
     stats
         .maps
@@ -1251,7 +1322,44 @@ mod map_stats_tests {
             rating_moved: true,
             ladder: false,
             played_at: played_at.into(),
+            game_id: 0,
+            queue: "global".into(),
+            rating_delta: None,
         }
+    }
+
+    #[test]
+    fn the_results_list_keeps_known_outcomes_newest_first() {
+        let games = [
+            PlayedGame {
+                game_id: 3,
+                rating_delta: Some(-11.14),
+                ..game("Seton's Clutch", Outcome::Loss, "2026-09-14")
+            },
+            PlayedGame {
+                game_id: 2,
+                ..game("Loki", Outcome::Unknown, "2026-09-10")
+            },
+            PlayedGame {
+                game_id: 1,
+                ..game("", Outcome::Win, "2026-09-07")
+            },
+        ];
+        let stats = aggregate_map_stats(&games, false);
+
+        let ids: Vec<i32> = stats.games.iter().map(|game| game.game_id).collect();
+        assert_eq!(
+            ids,
+            [3, 1],
+            "the game nobody knows the outcome of is left out"
+        );
+        assert_eq!(stats.games[0].outcome, "loss");
+        assert_eq!(stats.games[0].rating_change_hundredths, Some(-1114));
+        assert!(
+            stats.games[1].generated,
+            "a nameless map is a generated one"
+        );
+        assert_eq!(stats.games[1].rating_change_hundredths, None);
     }
 
     #[test]
@@ -1370,6 +1478,9 @@ mod map_stats_tests {
             rating_moved: false,
             ladder: true,
             played_at: "2026-01-01".into(),
+            game_id: 0,
+            queue: "global".into(),
+            rating_delta: None,
         };
         let custom = PlayedGame {
             ladder: false,
@@ -1477,6 +1588,9 @@ mod generated_map_tests {
             rating_moved: true,
             ladder: false,
             played_at: "2026-01-01".into(),
+            game_id: 0,
+            queue: "global".into(),
+            rating_delta: None,
         }
     }
 
@@ -1496,6 +1610,9 @@ mod generated_map_tests {
                     rating_moved: true,
                     ladder: false,
                     played_at: "2026-01-02".into(),
+                    game_id: 0,
+                    queue: "global".into(),
+                    rating_delta: None,
                 },
             ],
             false,

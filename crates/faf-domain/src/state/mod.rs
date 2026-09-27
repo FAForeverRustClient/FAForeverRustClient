@@ -110,9 +110,9 @@ pub use player_card::{
     leaderboard_display_rank, sort_league_placements, sort_rating_summaries, AccountLookup,
     AccountLookupMatch, ClanMember, MatchmakerPlayerProfile, PlayedGame, PlayerAchievement,
     PlayerAchievementState, PlayerAvatar, PlayerCardCommand, PlayerCardEvent, PlayerCardProfile,
-    PlayerCardState, PlayerCardStatus, PlayerClan, PlayerEventCount, PlayerLeaguePlacement,
-    PlayerMapStat, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary, PlayerSummary,
-    RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    PlayerCardState, PlayerCardStatus, PlayerClan, PlayerEventCount, PlayerGameResult,
+    PlayerLeaguePlacement, PlayerMapStat, PlayerMapStats, PlayerNameRecord, PlayerRatingSummary,
+    PlayerSummary, RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
 };
 pub use replays::{
     live_replay_delay_remaining, sort_vault_replays, LiveReplayTarget, LiveReplayTracking,

@@ -5209,6 +5209,33 @@ export type PlayerEventCount = {
 	count: number,
 };
 
+/**
+ *  One game of a player's results list (#344), newest first.
+ *
+ *  The per-game view of the same scan the map record folds, which is
+ *  faftracker's "Game History": the games whose outcome is known, with the
+ *  queue, the map and what the game did to the rating.
+ */
+export type PlayerGameResult = {
+	/**  The game's id, which is also its replay's. */
+	gameId: number,
+	/**  ISO timestamp, or empty when the API did not state one. */
+	playedAt: string,
+	/**  The leaderboard's technical name (`global`, `ladder_1v1`, ...). */
+	queue: string,
+	/**  Empty for a generated map, like [`PlayerMapStat::map`]. */
+	map: string,
+	generated: boolean,
+	/**  `win`, `loss` or `draw`. Games with no known outcome are not listed. */
+	outcome: string,
+	/**
+	 *  The change in displayed rating in hundredths of a point (`-1114` is
+	 *  -11.14), or `None` when no rating journal carries one. Hundredths
+	 *  rather than a float so the state keeps its `Eq`.
+	 */
+	ratingChangeHundredths: number | null,
+};
+
 export type PlayerLeaguePlacement = {
 	/**
 	 *  The leaderboard's technical name (`ladder_1v1`, `tmm_2v2`, ...).
@@ -5335,6 +5362,14 @@ export type PlayerMapStats = {
 	 *  cover a prefix of the history rather than all of it.
 	 */
 	truncated: boolean,
+	/**
+	 *  Whose history this is. The scan is the most expensive thing a profile
+	 *  loads, so the two tabs reading it (maps and results) ask for it only
+	 *  when what they hold belongs to somebody else.
+	 */
+	playerId?: number,
+	/**  Every game with a known outcome, newest first. See [`PlayerGameResult`]. */
+	games?: PlayerGameResult[],
 };
 
 export type PlayerNameRecord = {

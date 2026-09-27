@@ -6,6 +6,14 @@ import { FACTION_OPTIONS } from "../../../shared/factions";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 
+/** The host dialog's game types, in its order. */
+const GAME_TYPES: { id: string; label: MessageKey }[] = [
+  { id: "faf", label: "lobby.host.mod.faf" },
+  { id: "fafbeta", label: "lobby.host.mod.fafbeta" },
+  { id: "fafdevelop", label: "lobby.host.mod.fafdevelop" },
+  { id: "nomads", label: "lobby.host.mod.nomads" },
+];
+
 const MAX_DURATION_MINUTES = 60;
 const MAX_MAP_SIZE_KM = 40;
 const MAX_MAP_PLAYERS = 16;
@@ -40,7 +48,20 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
   const VICTORY_OPTIONS: MultiSelectOption[] = VICTORY_OPTION_KEYS.map(
     (option) => ({ value: option.value, label: t(option.label) }),
   );
-  const modOptions: MultiSelectOption[] = featuredMods.map((mod) => ({ value: mod, label: mod }));
+  // The host dialog's four, in its order, less any the vault does not list:
+  // a type the vault has no games of is a filter that can only come back
+  // empty. Until the list has loaded all four are offered.
+  const gameTypeOptions: MultiSelectOption[] = GAME_TYPES
+    .filter((type) => featuredMods.length === 0 || featuredMods.includes(type.id))
+    .map((type) => ({ value: type.id, label: t(type.label) }));
+  // The picker writes the one `featuredMods` list the query carries, keeping
+  // what else is in it: the game-mode picker above puts co-op there.
+  const pickFeatured = (within: MultiSelectOption[], picked: string[]) => {
+    const own = new Set(within.map((option) => option.value));
+    set("featuredMods", [...form.featuredMods.filter((mod) => !own.has(mod)), ...picked]);
+  };
+  const pickedFrom = (within: MultiSelectOption[]) =>
+    form.featuredMods.filter((mod) => within.some((option) => option.value === mod));
   return (
     <div className="vault-search-advanced search-panel-advanced">
       <div className="vault-search-sliders">
@@ -161,12 +182,19 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
             `fafdevelop` game, which is a real search and a rare one, while the
             date is the bound half the searches in this vault want. The two
             swapped rows. */}
+        {/* "Game type" is what a game is, and the host dialog's four are all
+            there are: FAF, its beta and develop balances, and Nomads (#343).
+            The vault's other featured mods (Phantom-X, Murderparty and the
+            like) are not offered: searching for them turned up no replays,
+            and a filter that only comes back empty is worse than none. Sim mods such as
+            Total Mayhem cannot be filtered on at all: the vault does not
+            record which ones a game ran with. */}
         <div className="vault-field">
           <MultiSelect
-            label={t("replays.search.mod")}
-            options={modOptions}
-            selected={form.featuredMods}
-            onChange={(v) => set("featuredMods", v)}
+            label={t("lobby.host.gameType")}
+            options={gameTypeOptions}
+            selected={pickedFrom(gameTypeOptions)}
+            onChange={(picked) => pickFeatured(gameTypeOptions, picked)}
           />
         </div>
 

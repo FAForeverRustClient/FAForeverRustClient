@@ -853,6 +853,67 @@ async fn read_active_mod_uids() -> Vec<String> {
     }
 }
 
+/// The player's own active mods, set aside while a replay's sim mods stand in
+/// for them in `game.prefs`, with a count of how often that has happened.
+///
+/// A modded replay needs its own sim mods active to play back at all, and it
+/// used to leave them there. The next game the player hosted then carried a
+/// replay's mods nobody chose, which is the accident the request was about
+/// (#343). So the set the player had is kept here, once, however many modded
+/// replays follow each other, and written back when the last of them closes.
+///
+/// Process memory rather than a file: a client restarted mid-replay forgets
+/// it and leaves the replay's set in place, which is what every replay did
+/// before and no worse.
+static OWN_MODS_DURING_REPLAY: std::sync::Mutex<Option<Vec<String>>> = std::sync::Mutex::new(None);
+static REPLAY_MODS_GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Put a replay's mod set in place, keeping the player's own for later.
+///
+/// Returns the generation of this override. The restore that belongs to it
+/// only acts while no later replay has replaced it: see
+/// [`restore_own_mods_after_replay`].
+pub(crate) async fn activate_replay_mods(
+    own: Vec<String>,
+    replay: &[String],
+) -> Result<u64, String> {
+    {
+        let mut saved = OWN_MODS_DURING_REPLAY.lock().unwrap();
+        // The first modded replay's view of the player's set is the real one;
+        // a second one would only see the first replay's mods.
+        if saved.is_none() {
+            *saved = Some(own);
+        }
+    }
+    let generation = REPLAY_MODS_GENERATION.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+    write_active_mod_uids_to_disk(replay).await?;
+    Ok(generation)
+}
+
+/// Give the player's own mods back, if a replay set them aside.
+///
+/// `Some(generation)` is the restore a replay's watcher performs when its
+/// window closes, and it does nothing if a later replay has taken over since:
+/// that one owns the restore now. `None` restores unconditionally, which is
+/// what a replay *without* sim mods does before it launches, so it does not
+/// start with the previous replay's mods still active.
+pub(crate) async fn restore_own_mods_after_replay(generation: Option<u64>) {
+    let own = {
+        let current = REPLAY_MODS_GENERATION.load(std::sync::atomic::Ordering::SeqCst);
+        if generation.is_some_and(|expected| expected != current) {
+            return;
+        }
+        OWN_MODS_DURING_REPLAY.lock().unwrap().take()
+    };
+    let Some(own) = own else {
+        return;
+    };
+    REPLAY_MODS_GENERATION.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    if let Err(reason) = write_active_mod_uids_to_disk(&own).await {
+        tracing::warn!(%reason, "could not give the player's own mods back after a replay");
+    }
+}
+
 pub(crate) async fn write_active_mod_uids_to_disk(uids: &[String]) -> Result<(), String> {
     let path = game_prefs_path();
     // A read failure (missing file, locked, non-UTF-8 bytes, …) must abort,
