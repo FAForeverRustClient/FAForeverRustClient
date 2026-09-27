@@ -29,6 +29,16 @@ describe("a table's stored column widths", () => {
 });
 
 describe("dragging the line in front of a column", () => {
+  it("stops at what the flexible column has left to give", () => {
+    // The line in front of column 3 widens it at the flexible column's cost.
+    // With 40 px left above the flexible column's floor, a 100 px drag moves
+    // it 40 and stops, rather than widening the whole list and pushing the
+    // columns on the right along with it.
+    expect(withBoundaryDragged(WIDTHS, 3, -100, FLEXIBLE, 40)[3]).toBe(84 + 40);
+    // The other way the flexible column takes on width, which never stops.
+    expect(withBoundaryDragged(WIDTHS, 3, 60, FLEXIBLE, 0)[3]).toBe(84 - 60);
+  });
+
   it("trades width between the two columns it separates", () => {
     // Which is what keeps the line under the cursor: the totals do not change,
     // so the flexible column does not move and neither does any other line.

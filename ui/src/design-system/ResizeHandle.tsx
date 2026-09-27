@@ -13,6 +13,12 @@ interface Props {
   orientation?: "vertical" | "horizontal";
   /** Pixels moved since the drag began, along the handle's axis. */
   onDrag: (delta: number) => void;
+  /**
+   * A drag is starting, from this handle. Called before the first `onDrag` of
+   * a pointer drag and of a keyboard nudge, so the caller can measure the
+   * layout the drag starts from.
+   */
+  onStart?: (handle: HTMLElement) => void;
   /** The drag finished; the caller persists whatever it settled on. */
   onEnd: () => void;
   /** Restores the designed size, on a double click and on Home. */
@@ -27,6 +33,7 @@ interface Props {
 export function ResizeHandle({
   orientation = "vertical",
   onDrag,
+  onStart,
   onEnd,
   onReset,
   label,
@@ -47,6 +54,7 @@ export function ResizeHandle({
         // right click on a divider is somebody reaching for the menu behind it.
         if (event.button !== 0) return;
         event.preventDefault();
+        onStart?.(event.currentTarget);
         origin.current = orientation === "vertical" ? event.clientX : event.clientY;
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
@@ -76,6 +84,7 @@ export function ResizeHandle({
               : 0;
         if (nudge !== 0) {
           event.preventDefault();
+          onStart?.(event.currentTarget);
           onDrag(nudge);
           onEnd();
           return;

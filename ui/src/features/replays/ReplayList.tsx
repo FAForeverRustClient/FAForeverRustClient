@@ -291,6 +291,7 @@ export function ReplayList({
                 label={t("lobby.browser.resizeColumn", {
                   column: t(COLUMNS[index - 1 === FLEXIBLE_COLUMN ? index : index - 1].label),
                 })}
+                onStart={columns.onStart}
                 onDrag={(delta) => columns.onDrag(index, delta)}
                 onEnd={columns.onCommit}
                 onReset={columns.onReset}
