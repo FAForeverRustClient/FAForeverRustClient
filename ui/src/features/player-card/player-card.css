@@ -927,16 +927,22 @@
   background: var(--color-error);
 }
 
+/* One label column for the whole chart, as wide as its longest label, and the
+   bars starting straight after it. It was 35% of the card, which on the
+   full-width units chart left a gap wider than most bars between "Air" and
+   its numbers (issue 351). The rows are subgrids so every label shares the
+   one track. */
 .player-metric-list {
   display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: var(--space-3);
 }
 
 .player-metric {
   display: grid;
-  grid-template-columns: minmax(84px, 0.35fr) minmax(0, 1fr);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: var(--space-3);
   color: var(--color-muted);
   font-size: 11px;
 }
@@ -1291,7 +1297,15 @@
   border-radius: var(--radius-sm);
 }
 
+/* A span, not an image: without a box of its own the 34px square collapsed to
+   the icon's line, and the map glyph sat high and off to the left of the
+   thumbnails in the rows around it (issue 351). */
 .player-maps-thumb-empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  color: var(--color-subtle);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
 }

@@ -1699,6 +1699,24 @@ button.vault-input {
   fill: currentColor;
 }
 
+/* The stars as the way into the game's reviews: a button without a button's
+   chrome, lit on hover so it reads as something to press. */
+.replay-card-stars-button {
+  padding: 2px 4px;
+  margin: -2px -4px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.replay-card-stars-button:hover,
+.replay-card-stars-button:focus-visible {
+  color: var(--color-muted);
+  background: var(--color-surface-hover);
+}
+
 .replay-card-rating-value {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
@@ -1849,7 +1867,9 @@ button.vault-input {
   flex-direction: column;
   gap: 1px;
   min-width: 0;
-  padding: var(--space-2) var(--space-3) var(--space-2) 36px;
+  /* Room for an 18px icon: at 14 the icons were a speck beside a 15px bold
+     value and read as bullet points rather than as pictures (issue 351). */
+  padding: var(--space-2) var(--space-3) var(--space-2) 42px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

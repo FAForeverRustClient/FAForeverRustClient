@@ -799,9 +799,13 @@
   background: var(--color-surface-hover);
 }
 
+/* The second pixel of the ring is drawn inside the card, not outside it: the
+   settings page scrolls with overflow-x hidden, and an outer ring on the
+   first card in the grid was clipped along its top and left edges (issue
+   351). */
 .theme-card-active {
   border-color: var(--color-text);
-  box-shadow: 0 0 0 1px var(--color-text);
+  box-shadow: inset 0 0 0 1px var(--color-text);
 }
 
 .theme-card-label {

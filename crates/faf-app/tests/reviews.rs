@@ -19,9 +19,18 @@ use std::time::Duration;
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Call {
     List,
-    Create { version_id: i32, score: i32 },
-    Update { review_id: i32, score: i32 },
-    Delete { review_id: i32 },
+    Create {
+        version_id: i32,
+        player_id: i32,
+        score: i32,
+    },
+    Update {
+        review_id: i32,
+        score: i32,
+    },
+    Delete {
+        review_id: i32,
+    },
 }
 
 struct StubReviews {
@@ -45,13 +54,15 @@ impl ReviewsPort for StubReviews {
         &self,
         _kind: ReviewKind,
         version_id: i32,
+        player_id: i32,
         score: i32,
         text: String,
     ) -> Result<Review, String> {
-        self.calls
-            .lock()
-            .unwrap()
-            .push(Call::Create { version_id, score });
+        self.calls.lock().unwrap().push(Call::Create {
+            version_id,
+            player_id,
+            score,
+        });
         if let Some(error) = &self.write_error {
             return Err(error.clone());
         }
@@ -233,6 +244,7 @@ async fn a_first_review_is_created_against_the_latest_version() {
     assert!(
         calls.contains(&Call::Create {
             version_id: 30,
+            player_id: 7,
             score: 4
         }),
         "expected a create, saw {calls:?}"
@@ -298,6 +310,7 @@ async fn a_score_outside_the_range_is_clamped_before_it_reaches_the_api() {
     let calls = h.calls.lock().unwrap().clone();
     assert!(calls.contains(&Call::Create {
         version_id: 30,
+        player_id: 7,
         score: 5
     }));
 }

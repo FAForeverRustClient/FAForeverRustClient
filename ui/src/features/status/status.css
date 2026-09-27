@@ -163,7 +163,12 @@ html[data-reduced-motion="true"] .client-status-progress[data-indeterminate="tru
   right: 6px;
   bottom: calc(100% + 5px);
   z-index: 10;
-  width: 190px;
+  /* As wide as its words, 190px at the least. A fixed 190 wrapped the
+     heading onto two lines in Russian and French and squeezed
+     "Переподключить" into a 90px half it does not fit (issue 351). */
+  width: max-content;
+  min-width: 190px;
+  max-width: calc(100vw - 16px);
   padding: 8px;
   color: var(--color-text);
   background: var(--color-surface-raised);

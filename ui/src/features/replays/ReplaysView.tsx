@@ -7,6 +7,7 @@ import { useAppStore } from "../../store/store";
 import { LiveReplayView } from "./live/LiveReplayView";
 import { LocalReplayView } from "./local/LocalReplayView";
 import { OnlineReplayView } from "./online/OnlineReplayView";
+import { subscribeReplaySearch } from "../../shared/replaySearchIntent";
 import "./replays.css";
 import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -47,6 +48,13 @@ const SUB_VIEWS: Record<
 export function ReplaysView() {
   const { t: translate } = useTranslation();
   const [subView, setSubView] = useState<SubView>("online");
+  // Every "Replays" button elsewhere in the client (a profile, a leaderboard
+  // row, a matchmaker result) asks for a vault search, and the vault is the
+  // Online tab. Opened from a player who was clicked in the Replays tab
+  // itself, the workspace is already mounted and kept whichever tab was in
+  // front: Live, where the search sat unread until somebody happened to click
+  // Online (issue 351).
+  useEffect(() => subscribeReplaySearch(() => setSubView("online")), []);
   // An offline session has the archive on this disk and nothing else: the
   // vault and the live games are both server questions.
   const offline = useAppStore((state) => state.state.auth.mode === "offline");

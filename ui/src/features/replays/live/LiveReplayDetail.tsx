@@ -238,7 +238,7 @@ export function LiveReplayDetail({
             {/* The id with the facts rather than off in the rail, the way the
                 vault panel and the list view's opened row both have it. */}
             <div className="replay-card-fact-id">
-              <dt><Icon name="list" size={14} />{t("replays.detail.replayIdLabel")}</dt>
+              <dt><Icon name="list" size={18} />{t("replays.detail.replayIdLabel")}</dt>
               <dd>
                 <span className="replay-card-idvalue">#{game.id}</span>
                 <button
@@ -256,7 +256,7 @@ export function LiveReplayDetail({
             </div>
             {facts.map((fact) => (
               <div key={fact.label}>
-                <dt><Icon name={fact.icon} size={14} />{fact.label}</dt>
+                <dt><Icon name={fact.icon} size={18} />{fact.label}</dt>
                 <dd>{fact.value}</dd>
               </div>
             ))}

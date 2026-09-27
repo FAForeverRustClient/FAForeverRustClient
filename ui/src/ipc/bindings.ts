@@ -6656,17 +6656,22 @@ export type Review = {
 	player: string,
 	/**
 	 *  Which version of the map or mod was reviewed: a two-year-old review of
-	 *  version 1 says little about version 9.
+	 *  version 1 says little about version 9. Empty for a game, which has no
+	 *  versions.
 	 */
 	version: string,
 };
 
 /**
- *  What is being reviewed. Maps and mods have separate API resources with
- *  identical shapes, so the kind travels with the id rather than forking every
- *  type in this module.
+ *  What is being reviewed. Maps, mods and games have separate API resources
+ *  with identical shapes, so the kind travels with the id rather than forking
+ *  every type in this module.
+ *
+ *  A game is the one kind without versions: its reviews hang off the game
+ *  itself (`gameReview`), which is what the replay panel rates. The Java
+ *  client's `ReviewService.getReplayReviews` reads them the same way.
  */
-export type ReviewKind = "map" | "mod";
+export type ReviewKind = "map" | "mod" | "game";
 
 /**  Why a review request is not ready to post. */
 export type ReviewProblem =
@@ -6728,7 +6733,7 @@ export type ReviewSummary = {
 	counts: number[],
 };
 
-/**  Which map or mod's reviews are open. */
+/**  Which map, mod or game's reviews are open. */
 export type ReviewTarget = {
 	kind: ReviewKind,
 	id: number,

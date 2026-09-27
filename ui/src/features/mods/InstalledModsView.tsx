@@ -14,6 +14,7 @@ import type { InstalledMod, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { includesNormalized, isWithinNumberRange } from "../../shared/filterRanges";
 import { loadStatusNote } from "../../shared/loadStatusNote";
+import { VaultDescription } from "../../shared/components/VaultDescription";
 import { useAppStore } from "../../store/store";
 import { Modal } from "../../design-system/Modal";
 import { ModPreview, UninstallDialog, cleanDescription } from "./ModVaultComponents";
@@ -248,10 +249,12 @@ function InstalledModDetail({
             </div>
           </div>
 
-          <section className="vault-detail-description mod-vault-description">
-            <h3>{t("mods.vault.description")}</h3>
-            <p>{description || t("mods.vault.noDescription")}</p>
-          </section>
+          <VaultDescription
+            className="mod-vault-description"
+            title={t("mods.vault.description")}
+            description={description}
+            empty={t("mods.vault.noDescription")}
+          />
 
           <div className="vault-detail-actions mod-vault-detail-actions">
             <div className="vault-detail-actions-left">

@@ -40,18 +40,22 @@ pub async fn handle(cmd: ReviewsCommand, ctx: &ServiceCtx, out: &EventSink) {
 
 async fn submit(score: i32, text: String, ctx: &ServiceCtx, out: &EventSink) {
     let generation = next_generation(ctx);
-    let (target, login, existing) = out.with_state(|state| {
-        let login = state.auth.player.as_ref().map(|player| player.name.clone());
-        let existing = login
-            .as_deref()
-            .and_then(|login| own_review(&state.reviews.reviews, login))
+    let (target, player, existing) = out.with_state(|state| {
+        let player = state
+            .auth
+            .player
+            .as_ref()
+            .map(|player| (player.id, player.name.clone()));
+        let existing = player
+            .as_ref()
+            .and_then(|(_, login)| own_review(&state.reviews.reviews, login))
             .map(|review| review.id);
-        (state.reviews.target.clone(), login, existing)
+        (state.reviews.target.clone(), player, existing)
     });
     let Some(target) = target else {
         return; // The panel closed while the request was being typed.
     };
-    let Some(_login) = login else {
+    let Some((player_id, _login)) = player else {
         out.emit(ReviewsEvent::SaveFailed {
             reason: "sign in to write a review".into(),
         });
@@ -91,7 +95,7 @@ async fn submit(score: i32, text: String, ctx: &ServiceCtx, out: &EventSink) {
             };
             ctx.ports
                 .reviews
-                .create(target.kind, version_id, score, text)
+                .create(target.kind, version_id, player_id, score, text)
                 .await
                 .map(|_| ())
         }

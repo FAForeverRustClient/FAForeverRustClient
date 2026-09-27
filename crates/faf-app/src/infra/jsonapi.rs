@@ -211,17 +211,21 @@ const MEDIA_TYPE: &str = "application/vnd.api+json";
 ///
 /// The first *write* path in this client; every other API client here reads.
 /// `attributes` is the resource's own fields: the caller supplies the type
-/// and the URL decides the parent.
+/// and the URL decides the parent. `relationships` is any other link the
+/// resource needs, such as a review's author; `Value::Null` sends none.
 pub(crate) async fn post_resource(
     http: &reqwest::Client,
     url: url::Url,
     token: &str,
     resource_type: &str,
     attributes: Value,
+    relationships: Value,
 ) -> Result<JsonApiDoc, String> {
-    let body = serde_json::json!({
-        "data": { "type": resource_type, "attributes": attributes },
-    });
+    let mut data = serde_json::json!({ "type": resource_type, "attributes": attributes });
+    if !relationships.is_null() {
+        data["relationships"] = relationships;
+    }
+    let body = serde_json::json!({ "data": data });
     let response = http
         .post(url.clone())
         .bearer_auth(token)

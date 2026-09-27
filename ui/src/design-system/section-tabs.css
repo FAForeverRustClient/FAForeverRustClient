@@ -50,15 +50,21 @@
   white-space: nowrap;
 }
 
+/* A rounded rectangle rather than a capsule, and a line box exactly one em
+   tall: the inherited 1.45 line height left the digits a pixel off the
+   middle of an 18px badge, which is what "the numbers are misaligned" was
+   (issue 351). */
 .section-tab-count {
-  display: grid;
+  display: inline-flex;
   min-width: 20px;
   height: 18px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   padding: 0 5px;
   color: var(--color-muted);
   background: var(--color-surface-raised);
-  border-radius: var(--radius-pill);
+  border-radius: calc(var(--radius-sm) - 2px);
+  line-height: 1;
   /* The 11px floor (AGENTS.md, UI Design Language) applies to badge text too. */
   font-size: 11px;
   font-weight: 550;
