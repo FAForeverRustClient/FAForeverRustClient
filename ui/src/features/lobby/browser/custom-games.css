@@ -309,11 +309,16 @@
   min-width: 0;
 }
 
-/* The tags column (issue 341): the chips one after another, starting at the
-   column's leading edge like every other column's contents, and wrapping onto
-   a second line when the column is dragged narrower than they are. */
+/* The tags column (issue 341): the chips one after another on one line,
+   starting at the column's leading edge like every other column's contents.
+   Cut off at the column's edge when it is dragged narrower than they are, the
+   way a title or a map name is. Wrapping instead stacked them into a tower
+   that made the whole row taller, and a chip wider than the column spilled
+   over the map name beside it. */
 .game-browser-tags-col {
+  flex-wrap: nowrap;
   justify-content: flex-start;
+  overflow: hidden;
 }
 
 .game-browser-tags i {
