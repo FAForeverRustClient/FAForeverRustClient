@@ -36,7 +36,7 @@ describe("browsing preferences", () => {
         hideUnranked: true,
         hideFoes: true,
         applyFilters: true,
-        columnWidths: [10, 5000, 200, 200, 200, 200],
+        columnWidths: [10, 5000, 200, 200, 200, 200, 200],
         detailWidth: 40,
         rules: [
           { field: "title", constraint: "contains", value: "  no rush  " },
@@ -159,6 +159,7 @@ describe("browsing preferences", () => {
     expect(normalized.customGamesBrowser.columnWidths).toEqual([
       10,
       5000,
+      200,
       200,
       200,
       200,
