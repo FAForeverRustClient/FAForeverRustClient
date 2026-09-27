@@ -127,12 +127,13 @@
 
 .live-replay-table-wrap {
   min-width: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
+/* As wide as the space it has, every column on screen (issue 341). */
 .live-replay-table {
   width: 100%;
-  min-width: 1040px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 12px;

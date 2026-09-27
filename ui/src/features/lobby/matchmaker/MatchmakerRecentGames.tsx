@@ -22,7 +22,6 @@ import { PlayerName } from "../../../shared/components/nameColors";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { useColumnWidths } from "../../../shared/hooks/useColumnWidths";
 import { mapPresentation } from "../../../shared/mapPresentation";
-import { tableMinWidth } from "../../../shared/tableColumns";
 import { EMPTY_REPLAY_QUERY } from "../../../shared/replayQuery";
 import { requestReplaySearch } from "../../../shared/replaySearchIntent";
 import { useAppStore } from "../../../store/store";
@@ -121,9 +120,9 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
         </p>
       ) : (
         <div className="matchmaker-recent-table-wrap">
-          <table className="matchmaker-recent-table" style={{ minWidth: `${tableMinWidth(columns.widths)}px` }}>
+          <table className="matchmaker-recent-table" ref={columns.containerRef}>
             <colgroup>
-              {columns.widths.map((width, index) =>
+              {columns.drawn.map((width, index) =>
                 index === FLEXIBLE_COLUMN
                   ? <col key={columnLabels[index]} />
                   : <col key={columnLabels[index]} style={{ width: `${width}px` }} />,

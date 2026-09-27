@@ -8,11 +8,19 @@
 // actually does to the widths lives in `tableColumns`, which the game
 // browser's grid shares.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { BrowsingPreferences } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { flexibleRoomFrom, resolveColumnWidths, withBoundaryDragged } from "../tableColumns";
+import { MIN_BROWSER_COLUMN_PX } from "../browsingPreferences";
+import {
+  drawnColumnWidth,
+  fitScale,
+  gridColumnSpace,
+  resolveColumnWidths,
+  scaledWidths,
+  withBoundaryTraded,
+} from "../tableColumns";
 
 /** The settings fields that hold a table's column widths. */
 type ColumnField = {
@@ -20,8 +28,18 @@ type ColumnField = {
 }[keyof BrowsingPreferences];
 
 export interface ColumnWidths {
-  /** What to draw with now: the drag in progress, or what was saved. */
+  /** The widths as stored: the drag in progress, or what was saved. */
   widths: number[];
+  /**
+   * What to draw with: `widths` fitted to the list's space. See the note on
+   * fitting in `tableColumns`.
+   */
+  drawn: number[];
+  /**
+   * For the element whose width the columns share: a grid list's header row,
+   * or a table.
+   */
+  containerRef: (element: HTMLElement | null) => void;
   /**
    * Where the divider in front of `boundary` has been dragged to: pixels from
    * where the drag began, not since the last pointer move. The column before
@@ -29,7 +47,7 @@ export interface ColumnWidths {
    * nothing else does.
    */
   onDrag: (boundary: number, delta: number) => void;
-  /** A drag starts from this divider: see `flexibleRoomFrom`. */
+  /** A drag starts from this divider: it measures where the columns stand. */
   onStart: (handle: HTMLElement) => void;
   /** The drag ended: persist it. */
   onCommit: () => void;
@@ -46,6 +64,8 @@ export function useColumnWidths(
   field: ColumnField,
   defaults: readonly number[],
   flexible: number,
+  layout: "grid" | "table" = "table",
+  flexibleFloor = 80,
 ): ColumnWidths {
   const stored = useAppStore((state) => state.state.settings.browsing[field]);
   // Local until the pointer is released: persisting per frame would write a
@@ -56,34 +76,55 @@ export function useColumnWidths(
   // same widths; adding each report to the last one instead makes a column run
   // away from the cursor, faster the further it is dragged.
   const origin = useRef<number[] | null>(null);
-  // How much the flexible column had to give when the drag began. Its stored
-  // width is its floor: the tables are at least as wide as every width
-  // together, so it is never drawn narrower than that.
-  const flexibleRoom = useRef(Number.POSITIVE_INFINITY);
+  const [container, setContainer] = useState<HTMLElement | null>(null);
+  const [space, setSpace] = useState(0);
+  useEffect(() => {
+    if (!container || typeof ResizeObserver === "undefined") return;
+    const measure = () =>
+      setSpace(layout === "grid" ? gridColumnSpace(container, defaults.length) : container.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [container, layout, defaults.length]);
+
+  // The scale a drag started at: the pointer moves in drawn pixels.
+  const dragScale = useRef(1);
+  const floorOf = (index: number) => (index === flexible ? flexibleFloor : MIN_BROWSER_COLUMN_PX);
 
   const resolve = () => resolveColumnWidths(stored, defaults);
+  const current = dragged ?? resolve();
+  const scale = fitScale(space, current);
 
   const save = (widths: number[]) => {
-    const current = useAppStore.getState().state.settings.browsing;
+    const browsing = useAppStore.getState().state.settings.browsing;
     ipc.send({
       kind: "Settings",
-      command: { type: "setBrowsing", payload: { preferences: { ...current, [field]: widths } } },
+      command: { type: "setBrowsing", payload: { preferences: { ...browsing, [field]: widths } } },
     });
   };
 
   return {
-    widths: dragged ?? resolve(),
-    onDrag: (boundary, delta) => {
-      const base = (origin.current ??= dragged ?? resolve());
-      setDragged(withBoundaryDragged(base, boundary, delta, flexible, flexibleRoom.current));
-    },
+    widths: current,
+    drawn: scaledWidths(current, scale),
+    containerRef: setContainer,
     onStart: (handle) => {
-      const widths = dragged ?? resolve();
-      flexibleRoom.current = flexibleRoomFrom(handle, flexible, widths[flexible]);
+      dragScale.current = scale;
+      // A list wider than its columns draws the flexible column wider than
+      // its stored width. The drag starts from what is on screen, or the
+      // divider would jump by the difference.
+      const drawnFlexible = scale >= 1 ? drawnColumnWidth(handle, flexible) : null;
+      origin.current = drawnFlexible === null
+        ? current
+        : current.map((width, index) => (index === flexible ? Math.max(width, drawnFlexible) : width));
+    },
+    onDrag: (boundary, delta) => {
+      const base = (origin.current ??= current);
+      setDragged(withBoundaryTraded(base, boundary, delta / dragScale.current, floorOf));
     },
     onCommit: () => {
       origin.current = null;
-      flexibleRoom.current = Number.POSITIVE_INFINITY;
+      dragScale.current = 1;
       if (dragged) save(dragged);
       setDragged(null);
     },

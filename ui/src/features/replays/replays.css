@@ -52,10 +52,12 @@
 }
 
 /* The online and local list views deliberately share one column contract. */
+/* As wide as the space it has: every column stays on screen and is drawn
+   narrower in proportion when the space is short (issue 341). */
 .replay-list-wrap {
   --replay-list-columns: 56px minmax(190px, 1.35fr) 140px 110px 70px 82px 126px 150px;
   min-width: 0;
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 /* The header's cells hold the drag handles, which are positioned against
@@ -89,7 +91,6 @@
   display: grid;
   grid-template-columns: var(--replay-list-columns);
   column-gap: var(--space-4);
-  min-width: 1120px;
   align-items: center;
 }
 
@@ -128,7 +129,7 @@
 }
 
 .replay-list-body {
-  min-width: 1120px;
+  min-width: 0;
 }
 
 .replay-list-group-header {
