@@ -23,7 +23,6 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   foeSet = EMPTY_SET,
   now,
   columnStyle,
-  tagsFolded = false,
   selected,
   onSelect,
   onJoin,
@@ -40,8 +39,6 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   now?: number;
   /** The column template, built once by the browser and shared by every row. */
   columnStyle?: React.CSSProperties;
-  /** The list has no tags column: the tags go under the host line. */
-  tagsFolded?: boolean;
   selected: boolean;
   onSelect: () => void;
   onJoin: () => void;
@@ -63,74 +60,6 @@ export const GameBrowserRow = memo(function GameBrowserRow({
     showSocial,
     hideSocial,
   } = useGameSocialPosition(game.id);
-  // The chips, drawn in their own column or, in a list too narrow for one,
-  // under the host line where they used to be. See `tagsColumnFolds`.
-  const tags = (
-    <>
-      <i>{game.modName || "faf"}</i>
-      {simModCount > 0 && (
-        <i
-          className={simModsRanked ? "modded is-ranked" : "modded"}
-          title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
-        >
-          {simModCount} SIM
-        </i>
-      )}
-      {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
-      {friends.length > 0 && (
-        <i
-          className="friend"
-          onMouseEnter={(e) => {
-            e.stopPropagation();
-            showSocial(e.currentTarget, "friends");
-          }}
-          onMouseLeave={hideSocial}
-          onFocus={(e) => {
-            e.stopPropagation();
-            showSocial(e.currentTarget, "friends");
-          }}
-          onBlur={hideSocial}
-          tabIndex={0}
-          role="button"
-          aria-label={t("lobby.browser.friendCount", { count: friends.length })}
-          aria-describedby={socialPosition && socialCategory === "friends" ? socialPopoverId : undefined}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          {friendLabel}
-        </i>
-      )}
-      {foes.length > 0 && (
-        <i
-          className="foe"
-          onMouseEnter={(e) => {
-            e.stopPropagation();
-            showSocial(e.currentTarget, "foes");
-          }}
-          onMouseLeave={hideSocial}
-          onFocus={(e) => {
-            e.stopPropagation();
-            showSocial(e.currentTarget, "foes");
-          }}
-          onBlur={hideSocial}
-          tabIndex={0}
-          role="button"
-          aria-label={t("lobby.browser.foeCount", { count: foes.length })}
-          aria-describedby={socialPosition && socialCategory === "foes" ? socialPopoverId : undefined}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          {foeLabel}
-        </i>
-      )}
-      {(game.ratingMin !== null || game.ratingMax !== null) && (
-        <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
-      )}
-    </>
-  );
-
   return (
     <>
       <button
@@ -181,7 +110,6 @@ export const GameBrowserRow = memo(function GameBrowserRow({
                   <PlayerName name={game.host} />
                 </strong>
               </span>
-              {tagsFolded && <span className="game-browser-tags">{tags}</span>}
             </div>
           </div>
         </div>
@@ -189,7 +117,69 @@ export const GameBrowserRow = memo(function GameBrowserRow({
         {/* The tags in a column of their own (#341). In the game cell they
             began wherever each host's name happened to end, so the same chip
             stood at a different place in every row. */}
-        {!tagsFolded && <div className="game-browser-tags-col game-browser-tags">{tags}</div>}
+          <div className="game-browser-tags-col game-browser-tags">
+            <i>{game.modName || "faf"}</i>
+            {simModCount > 0 && (
+              <i
+                className={simModsRanked ? "modded is-ranked" : "modded"}
+                title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
+              >
+                {simModCount} SIM
+              </i>
+            )}
+            {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
+            {friends.length > 0 && (
+              <i
+                className="friend"
+                onMouseEnter={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "friends");
+                }}
+                onMouseLeave={hideSocial}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "friends");
+                }}
+                onBlur={hideSocial}
+                tabIndex={0}
+                role="button"
+                aria-label={t("lobby.browser.friendCount", { count: friends.length })}
+                aria-describedby={socialPosition && socialCategory === "friends" ? socialPopoverId : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                {friendLabel}
+              </i>
+            )}
+            {foes.length > 0 && (
+              <i
+                className="foe"
+                onMouseEnter={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "foes");
+                }}
+                onMouseLeave={hideSocial}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "foes");
+                }}
+                onBlur={hideSocial}
+                tabIndex={0}
+                role="button"
+                aria-label={t("lobby.browser.foeCount", { count: foes.length })}
+                aria-describedby={socialPosition && socialCategory === "foes" ? socialPopoverId : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                {foeLabel}
+              </i>
+            )}
+            {(game.ratingMin !== null || game.ratingMax !== null) && (
+              <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
+            )}
+          </div>
 
         <div className="game-browser-map-col">
           <strong title={presentation.displayName}>{presentation.displayName}</strong>
