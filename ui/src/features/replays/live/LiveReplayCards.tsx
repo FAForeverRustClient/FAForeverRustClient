@@ -24,7 +24,7 @@ import { mapPresentation, type MapPresentation } from "../../../shared/mapPresen
 import { ReplayMapThumb, ReplayMetaFact, replayCardTitle } from "../ReplayCard";
 import { ReplayCardRoster } from "../ReplayRoster";
 import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
-import { LiveReplayAge, LiveWatchButton } from "./LiveReplayRow";
+import { LiveMapGenerateButton, LiveReplayAge, LiveWatchButton } from "./LiveReplayRow";
 import { prettyGameType, replayDelayRemaining } from "../../../shared/liveReplayModel";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -193,13 +193,16 @@ const LiveReplayCard = memo(function LiveReplayCard({
       }}
     >
       <div className="replay-card-left">
-        <ReplayMapThumb
-          url=""
-          mapName={game.map}
-          className="replay-card-thumb"
-          emptyClassName="replay-card-thumb-empty"
-          iconSize={32}
-        />
+        <span className="live-map-thumb-wrap">
+          <ReplayMapThumb
+            url=""
+            mapName={game.map}
+            className="replay-card-thumb"
+            emptyClassName="replay-card-thumb-empty"
+            iconSize={32}
+          />
+          <LiveMapGenerateButton mapName={game.map} large />
+        </span>
         {/* The slot the vault card spends on review stars. A running game has
             none and will have none while it is running, so it holds the one
             fact only a live game has: how long it has been going. */}

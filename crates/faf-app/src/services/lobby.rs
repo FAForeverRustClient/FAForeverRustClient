@@ -153,6 +153,8 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
         LobbyCommand::ClearHostPrefill => out.emit(LobbyEvent::HostPrefillCleared),
         LobbyCommand::Host { config } => match config.validated() {
             Ok(config) => {
+                // A new host starts uncancelled, whatever the last join did.
+                ctx.lobby_join_cancelled.clear();
                 // The map has to be on disk before the server is asked for a
                 // lobby, because its reply will not mention one: see
                 // `launcher::prepare_host`. Guarded the way the join path is,
@@ -160,6 +162,19 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 if ctx.ports.process.supports_live_launch() {
                     if let Err(reason) = launcher::prepare_host(&config, ctx, out).await {
                         launcher::report_failure(ctx, out, reason);
+                        return;
+                    }
+                    // Cancelled while the files came down, which for a co-op
+                    // mission is a long download. The join path has always
+                    // stopped here; the host path sent its request anyway, the
+                    // server answered with a launch order, and the game Cancel
+                    // had just been pressed on started regardless. The dialog
+                    // already closed on `CancelJoin`, so there is nothing to
+                    // emit, only a request not to send.
+                    if ctx.lobby_join_cancelled.is_cancelled() {
+                        tracing::info!(
+                            "lobby: the host was cancelled during preparation; not hosting"
+                        );
                         return;
                     }
                 }

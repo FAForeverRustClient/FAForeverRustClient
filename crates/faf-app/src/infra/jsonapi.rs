@@ -20,7 +20,12 @@ const MAX_DOCUMENT_BYTES: u64 = 32 * 1024 * 1024;
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub(crate) struct JsonApiDoc {
-    #[serde(default)]
+    /// Always a list here, whatever the server sent. JSON:API makes `data` an
+    /// array for a collection and a single object for one resource, which is
+    /// what every write echoes back: a created review came back as
+    /// `{"data": {...}}`, failed to parse as a list, and the panel reported
+    /// "invalid JSON" for a review the server had in fact saved.
+    #[serde(default, deserialize_with = "one_or_many")]
     pub(crate) data: Vec<JsonApiResource>,
     #[serde(default)]
     pub(crate) included: Vec<JsonApiResource>,
@@ -37,6 +42,25 @@ pub(crate) struct JsonApiResource {
     pub(crate) attributes: Value,
     #[serde(default)]
     pub(crate) relationships: Value,
+}
+
+/// `data` as a list, from either of the two shapes JSON:API allows, or from
+/// `null` (a to-one lookup that found nothing).
+fn one_or_many<'de, D>(deserializer: D) -> Result<Vec<JsonApiResource>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum OneOrMany {
+        Many(Vec<JsonApiResource>),
+        One(Box<JsonApiResource>),
+    }
+    Ok(match Option::<OneOrMany>::deserialize(deserializer)? {
+        Some(OneOrMany::Many(resources)) => resources,
+        Some(OneOrMany::One(resource)) => vec![*resource],
+        None => Vec::new(),
+    })
 }
 
 pub(crate) type ResourceIndex<'a> = HashMap<(String, String), &'a JsonApiResource>;
@@ -734,6 +758,24 @@ mod paging_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_single_resource_document_parses_as_a_one_item_list() {
+        // What a POST or PATCH echoes back: the resource it wrote, as an
+        // object rather than an array.
+        let doc: JsonApiDoc = serde_json::from_str(
+            r#"{"data":{"type":"gameReview","id":"12","attributes":{"score":4,"text":"gg"}}}"#,
+        )
+        .expect("a single-resource document");
+        assert_eq!(doc.data.len(), 1);
+        assert_eq!(doc.data[0].kind, "gameReview");
+        assert_eq!(doc.data[0].id, "12");
+
+        let empty: JsonApiDoc = serde_json::from_str(r#"{"data":null}"#).expect("null data");
+        assert!(empty.data.is_empty());
+        let list: JsonApiDoc = serde_json::from_str(r#"{"data":[]}"#).expect("an empty list");
+        assert!(list.data.is_empty());
+    }
 
     #[test]
     fn indexes_included_resources_and_reads_relationships() {

@@ -50,11 +50,18 @@
   white-space: nowrap;
 }
 
-/* A rounded rectangle rather than a capsule, and a line box exactly one em
-   tall: the inherited 1.45 line height left the digits a pixel off the
-   middle of an 18px badge, which is what "the numbers are misaligned" was
-   (issue 351). */
+/* A rounded rectangle rather than a capsule, with the digits centred on
+   their own ink rather than on the font's line box (issue 351).
+
+   A one-em line box was not enough. Segoe UI, which is what the default
+   theme falls back to where Inter is not installed, reserves more room
+   below the baseline than above the digits, so a centred line box leaves
+   the digits about 0.6px low in 18px. `text-box` trims the box to cap
+   height and baseline, and the flex centring then centres the digits
+   themselves, whatever the font. The one-em line height stays as the
+   fallback for an engine without `text-box`. */
 .section-tab-count {
+  text-box: trim-both cap alphabetic;
   display: inline-flex;
   min-width: 20px;
   height: 18px;

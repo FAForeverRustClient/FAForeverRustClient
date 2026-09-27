@@ -74,15 +74,25 @@
   gap: var(--space-2);
 }
 
+/* The destructive action, in the tinted form the vault already uses for its
+   Uninstall buttons, so the dialog's confirm looks like the button that opened
+   it. Every value is a theme token: the hover used to darken against a
+   literal `black`, and the text sat in `--color-text` on solid red, which the
+   light theme turns dark-on-red. */
 .btn-danger {
-  color: var(--color-text);
-  background: var(--color-error);
-  border: 1px solid var(--color-error);
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-error) 55%, var(--color-border));
   font-weight: 550;
 }
 
 .btn-danger:hover:not(:disabled),
 .btn-danger:focus-visible:not(:disabled) {
-  background: color-mix(in srgb, var(--color-error) 85%, black);
-  border-color: color-mix(in srgb, var(--color-error) 85%, black);
+  background: color-mix(in srgb, var(--color-error) 22%, transparent);
+  border-color: var(--color-error);
+}
+
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: default;
 }

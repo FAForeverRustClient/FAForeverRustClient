@@ -228,6 +228,50 @@
   box-shadow: inset 2px 0 var(--color-text);
 }
 
+/* The thumbnail and the "Generate map" button over its corner (issue 298).
+   Inline so the table cell and the card column keep the thumbnail where it
+   was. */
+.live-map-thumb-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.live-map-generate {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+
+.live-map-generate.is-large {
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+}
+
+.live-map-generate:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.live-map-generate:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .live-replay-map-thumb,
 .live-replay-map-placeholder {
   display: grid;
