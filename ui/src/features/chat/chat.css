@@ -1269,15 +1269,6 @@ img.chat-game-map {
   box-shadow: var(--shadow-popover);
 }
 
-.chat-game-popover-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-border);
-}
-
 /* One team is not a matchup, and the hover card is 410 px wide because two of
    them stand side by side in it. Holding one, most of that width was empty and
    the row below spread itself across it to fill the gap. A co-op game, a
@@ -1292,23 +1283,21 @@ img.chat-game-map {
 /* The card holds a button now, so the pointer has to be able to reach it. It
    used to be `pointer-events: none`, which is the right answer for a card that
    is purely a label and the wrong one the moment it is not. `GameSummaryPopover`
-   keeps it open while the pointer is over it. */
-.chat-game-popover-action {
+   keeps it open while the pointer is over it.
+
+   The status and the action share the header's right edge, the status where it
+   always was and the button under it, level with the map (issue 351). */
+.chat-game-popover-side {
+  flex: none;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-border);
-  border-radius: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
-.chat-game-popover-actions .chat-game-popover-action {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-  flex: 1;
+.chat-game-popover-action {
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .chat-game-popover-head {
@@ -1321,7 +1310,7 @@ img.chat-game-map {
 }
 
 .chat-game-popover-info,
-.chat-game-popover-head > div:not(.chat-game-card-map-wrap) {
+.chat-game-popover-head > div:not(.chat-game-card-map-wrap, .chat-game-popover-side) {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -1341,14 +1330,14 @@ img.chat-game-map {
 }
 
 .chat-game-popover-info > span,
-.chat-game-popover-head > div:not(.chat-game-card-map-wrap) > span,
+.chat-game-popover-head > div:not(.chat-game-card-map-wrap, .chat-game-popover-side) > span,
 .chat-game-meta,
 .chat-game-team li small {
   color: var(--color-muted);
 }
 
 .chat-game-popover-info > span,
-.chat-game-popover-head > div:not(.chat-game-card-map-wrap) > span {
+.chat-game-popover-head > div:not(.chat-game-card-map-wrap, .chat-game-popover-side) > span {
   font-size: 12px;
 }
 

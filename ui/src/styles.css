@@ -133,9 +133,13 @@ html[data-reduced-motion="true"] *::after {
   padding: calc(var(--space-4) * 1.5);
 }
 
-/* Buttons */
+/* Buttons. The shape is shared by every variant, `btn-danger` included: it
+   lives in modal.css beside the confirmation it belongs to, and without this
+   selector it had only colours, so the destructive button in every uninstall
+   dialog drew with the browser's own padding and square corners. */
 .btn-primary,
-.btn-ghost {
+.btn-ghost,
+.btn-danger {
   display: inline-flex;
   align-items: center;
   justify-content: center;

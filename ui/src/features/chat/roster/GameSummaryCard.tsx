@@ -5,6 +5,8 @@
 // Two copies would have drifted the moment either grew a field, and the second
 // place exists precisely because the first one is not always enough.
 
+import type { ReactNode } from "react";
+
 import type { SocialState, VaultMap } from "../../../ipc/bindings";
 import { Icon } from "../../../design-system/Icon";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
@@ -52,6 +54,13 @@ interface Props {
    */
   onOpenConversation?: (nickname: string) => void;
   onPlayerContextMenu?: (nickname: string, event: React.MouseEvent) => void;
+  /**
+   * The one thing to do with this game, drawn under the status in the header,
+   * beside the map. The hover card puts "Watch live" or "Join game" here: at
+   * the foot of the card it sat a lineup's height away from the map people
+   * point at, and on a full 6v6 below the fold (issue 351).
+   */
+  action?: ReactNode;
 }
 
 /**
@@ -122,6 +131,7 @@ export function GameSummaryCard({
   showMap = false,
   onOpenConversation,
   onPlayerContextMenu,
+  action,
 }: Props) {
   const countryOf = useCountryLabel();
   const { t } = useTranslation();
@@ -174,18 +184,28 @@ export function GameSummaryCard({
           <strong>{presence.game.title || t("chat.game.untitled")}</strong>
           <span>{presentation.displayName}</span>
         </div>
-        <span className={`chat-game-status is-${presence.status}`}>{status}</span>
+        {action ? (
+          <div className="chat-game-popover-side">
+            <span className={`chat-game-status is-${presence.status}`}>{status}</span>
+            {action}
+          </div>
+        ) : (
+          <span className={`chat-game-status is-${presence.status}`}>{status}</span>
+        )}
       </header>
       <div className="chat-game-meta">
         <span>{presence.game.modName.toUpperCase()}</span>
-        <span>{presence.game.players}/{presence.game.maxPlayers} players</span>
+        <span>{t("chat.game.players", { count: presence.game.players, max: presence.game.maxPlayers })}</span>
         {/* Named where it is not the global board, and so is every rating in
             the lineup below it. */}
         {presence.game.averageRating > 0 && (
           <span>
-            {presence.game.averageRating} {leaderboard === GLOBAL_LEADERBOARD
-              ? "average"
-              : `${leaderboardLabel(leaderboard)} average`}
+            {leaderboard === GLOBAL_LEADERBOARD
+              ? t("chat.game.average", { rating: presence.game.averageRating })
+              : t("chat.game.boardAverage", {
+                  rating: presence.game.averageRating,
+                  board: leaderboardLabel(leaderboard),
+                })}
           </span>
         )}
         {elapsed !== null && (

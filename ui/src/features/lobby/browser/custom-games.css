@@ -410,9 +410,13 @@
   font-size: 12px;
 }
 
+/* Centred in its bar: stretched, the two labels sat against the top of a
+   34px strip whose padding only looked even at one font size (issue 351). */
 .game-browser-footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
   min-height: 34px;
   padding: 8px 14px;
   color: var(--color-subtle);
@@ -1669,23 +1673,29 @@
   }
 }
 
-/* A lobby with a friend in it.
-   The edge rather than a filled background: the browser is a hundred rows on a
-   busy evening, and a tinted row that competes with the selected one turns the
-   list into a colour chart. The tag inside the row is what names them. */
+/* A lobby with a friend in it: the same wash the grid view's tile gets.
+   It used to be a coloured edge, and every true fact added one more: a
+   selected lobby with a friend in it wore a green bar and a white one side by
+   side, which read as a colour chart rather than as two facts (issue 351).
+   The edge now means one thing, selected, and the friend is the tint and the
+   tag inside the row. A foe gets neither, for the reason the tile below
+   gives. */
 .game-browser-row.has-friend {
-  box-shadow: inset 3px 0 var(--color-friend);
+  background: color-mix(in srgb, var(--color-friend) 7%, transparent);
+}
+
+.game-browser-row.has-friend:hover {
+  background: color-mix(in srgb, var(--color-friend) 11%, var(--color-surface-hover));
 }
 
 .game-browser-row.has-friend.active {
-  box-shadow: inset 3px 0 var(--color-friend), inset 6px 0 var(--color-accent);
+  background: color-mix(in srgb, var(--color-friend) 11%, var(--color-surface-raised));
 }
 
 /* The tile is filled, not just outlined. A grid of tiles is scanned rather
    than read line by line, so a 1 px edge is the wrong signal there: the whole
-   card has to be the thing that catches the eye. The row above keeps its edge,
-   because a list *is* read line by line and a hundred tinted rows would be a
-   colour chart.
+   card has to be the thing that catches the eye. The list row above takes the
+   same tint since issue 351, and leaves its edge to the selection alone.
 
    Mixed into the surface rather than laid over it, so the tint follows every
    theme's own background and the text on top keeps its contrast. The hover and

@@ -2,16 +2,17 @@
 //
 // Mirrors the Java client's `ReviewsController`: an average with a star
 // distribution at the top, your own review in an editable block, and
-// everyone else's beneath. Opened from a map or mod's detail pane.
+// everyone else's beneath. Opened from a map or mod's detail pane, and from
+// a replay's stars.
 
 import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
-import type { Review, ReviewSummary } from "../../ipc/bindings";
+import type { Review, ReviewKind, ReviewSummary } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { t } from "../../i18n";
+import { t, type MessageKey } from "../../i18n";
 import "./reviews.css";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -41,10 +42,33 @@ function Stars({ score, of = 5 }: { score: number; of?: number }) {
   );
 }
 
+const HEADING = {
+  map: "reviews.mapReviews",
+  mod: "reviews.modReviews",
+  game: "reviews.gameReviews",
+} as const satisfies Record<ReviewKind, MessageKey>;
+
 export function ReviewsPanel() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.reviews);
   const player = useAppStore((store) => store.state.auth.player);
+  const open = state.target !== null;
+
+  // A replay's reviews open on top of the replay panel, which is a `Modal`
+  // too, and every `Modal` closes on Escape from a bubble-phase listener on
+  // the document: one press shut both. Taken in the capture phase, as the
+  // replay panel's own enlarged preview does, it closes only this one.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      void close();
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [open]);
 
   if (state.target === null) return null;
 
@@ -56,13 +80,13 @@ export function ReviewsPanel() {
       <header className="reviews-head">
         <div>
           <span className="reviews-eyebrow">
-            {t(state.target.kind === "map" ? "reviews.mapReviews" : "reviews.modReviews")}
+            {t(HEADING[state.target.kind])}
           </span>
           <h2>{state.target.name}</h2>
         </div>
       </header>
 
-      {state.status.type === "loading" && <p className="muted">Loading reviews…</p>}
+      {state.status.type === "loading" && <p className="muted">{t("reviews.loading")}</p>}
       {state.status.type === "failed" && (
         <p className="surface-error reviews-error">{state.status.payload.reason}</p>
       )}

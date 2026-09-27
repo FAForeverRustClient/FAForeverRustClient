@@ -22,6 +22,8 @@ import {
 } from "../../shared/mapPresentation";
 import { MapPreviewFrame } from "../../shared/components/MapPreviewZoom";
 import { onlineReplayLink } from "../../shared/replayLinks";
+import { openReviews } from "../../shared/openReviews";
+import { useGameRating } from "./useGameRating";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { replayMapPresentation } from "./coopReplayMap";
 import { ReplayInsights } from "./analysis/ReplayInsights";
@@ -127,6 +129,7 @@ export function ReplayDetailPanel({
   // Subscribed, not read once: the answer arrives from the vault after the
   // panel is already open, and the map is what the header of it says.
   const resolvedMap = useAppStore((state) => state.state.replays.resolvedMaps?.[replay.uid]);
+  const offline = useAppStore((state) => state.state.auth.mode === "offline");
   const avatarByLogin = useMemo(() => {
     const avatars = new Map<string, string>();
     for (const player of socialPlayers) {
@@ -341,7 +344,21 @@ export function ReplayDetailPanel({
     : players;
   const mapLabel = presentation.displayName || effectiveMap;
   const cardTitle = replay.title || mapLabel;
-  const stars = replay.reviewsAverage ?? null;
+  // Fresh from the reviews panel once it has been open on this game: the
+  // vault's own number is whatever the search that listed it returned.
+  const rating = useGameRating(replay.uid, replay.reviewsAverage ?? null, replay.reviewsCount ?? null);
+  const stars = rating.average;
+  const starsLabel = stars === null
+    ? t("replays.detail.noRatingYet")
+    : t("reviews.scoreAria", { score: stars.toFixed(1), of: 5 });
+  const starIcons = [1, 2, 3, 4, 5].map((step) => (
+    <Icon
+      key={step}
+      name="star"
+      size={15}
+      className={stars !== null && stars >= step - 0.5 ? "is-filled" : "is-empty"}
+    />
+  ));
   // Rebuilding a generated map from its seed, which is how a generated map is
   // obtained: there is nothing to download. Its own value rather than only a
   // branch of the thumbnail's action below, because the heatmap wants the
@@ -448,30 +465,32 @@ export function ReplayDetailPanel({
               </div>
             )}
           </div>
-          {/* Read-only: FAF carries a replay's score but this client has no way
-              to write one back, and a rating control that cannot rate is worse
-              than none. */}
+          {/* The stars open the game's reviews, where it can be rated: the
+              same panel the map and mod vaults use, on FAF's gameReview
+              resource (issue 351). It used to be read-only, and a row of stars
+              that cannot be clicked was read as a broken rating control. A
+              game the server has no number for, or a session without the
+              API, has nothing to open, so there it stays a label. */}
           <div className="replay-card-rating">
-            <span
-              className="replay-card-stars"
-              role="img"
-              aria-label={stars === null
-                ? t("replays.detail.noRatingYet")
-                : t("reviews.scoreAria", { score: stars.toFixed(1), of: 5 })}
-            >
-              {[1, 2, 3, 4, 5].map((step) => (
-                <Icon
-                  key={step}
-                  name="star"
-                  size={15}
-                  className={stars !== null && stars >= step - 0.5 ? "is-filled" : "is-empty"}
-                />
-              ))}
-            </span>
+            {replay.uid > 0 && !offline ? (
+              <button
+                type="button"
+                className="replay-card-stars replay-card-stars-button"
+                title={t("replays.detail.rateReplay")}
+                aria-label={`${t("replays.detail.rateReplay")}: ${starsLabel}`}
+                onClick={() => openReviews("game", replay.uid, cardTitle)}
+              >
+                {starIcons}
+              </button>
+            ) : (
+              <span className="replay-card-stars" role="img" aria-label={starsLabel}>
+                {starIcons}
+              </span>
+            )}
             <span className="replay-card-rating-value">
               {stars === null ? t("replays.detail.unrated") : formatDecimal(stars)}
-              {replay.reviewsCount ? (
-                <span className="muted"> · {replay.reviewsCount}</span>
+              {rating.count ? (
+                <span className="muted"> · {rating.count}</span>
               ) : null}
             </span>
           </div>
@@ -628,7 +647,7 @@ export function ReplayDetailPanel({
                 which replay this is, which is a fact about the game and not
                 an action on the file, so it sits with the facts. */}
             <div className="replay-card-fact-id">
-              <dt><Icon name="list" size={14} />{t("replays.detail.replayIdLabel")}</dt>
+              <dt><Icon name="list" size={18} />{t("replays.detail.replayIdLabel")}</dt>
               <dd>
                 {replay.uid > 0 ? (
                   <>
@@ -657,14 +676,14 @@ export function ReplayDetailPanel({
                 )}
               </dd>
             </div>
-            <div><dt><Icon name="calendar" size={14} />{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
-            <div><dt><Icon name="users" size={14} />{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
-            <div><dt><Icon name="leaderboard" size={14} />{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
-            <div><dt><Icon name="hourglass" size={14} />{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
-            <div><dt><Icon name="clock" size={14} />{t("replays.detail.time")}</dt><dd>{formatTime(replay.startTime, t("replays.detail.unknown"))}</dd></div>
-            <div><dt><Icon name="settings" size={14} />{t("replays.detail.featuredMod")}</dt><dd>{replay.modName || t("replays.detail.unknown")}</dd></div>
-            <div><dt><Icon name="activity" size={14} />{t("replays.detail.quality")}</dt><dd>{replay.quality !== null ? `${replay.quality}%` : t("replays.detail.unknown")}</dd></div>
-            <div><dt><Icon name="play" size={14} />{t("replays.detail.realTime")}</dt><dd>{replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : t("replays.detail.unknown")}</dd></div>
+            <div><dt><Icon name="calendar" size={18} />{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
+            <div><dt><Icon name="users" size={18} />{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
+            <div><dt><Icon name="leaderboard" size={18} />{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
+            <div><dt><Icon name="hourglass" size={18} />{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
+            <div><dt><Icon name="clock" size={18} />{t("replays.detail.time")}</dt><dd>{formatTime(replay.startTime, t("replays.detail.unknown"))}</dd></div>
+            <div><dt><Icon name="settings" size={18} />{t("replays.detail.featuredMod")}</dt><dd>{replay.modName || t("replays.detail.unknown")}</dd></div>
+            <div><dt><Icon name="activity" size={18} />{t("replays.detail.quality")}</dt><dd>{replay.quality !== null ? `${replay.quality}%` : t("replays.detail.unknown")}</dd></div>
+            <div><dt><Icon name="play" size={18} />{t("replays.detail.realTime")}</dt><dd>{replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : t("replays.detail.unknown")}</dd></div>
           </dl>
           {/* Named by its summary rather than by a heading: the team
               panels carry their own headings, and a third one above them

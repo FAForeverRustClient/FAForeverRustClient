@@ -7,6 +7,7 @@ import type { VaultMap } from "../../ipc/bindings";
 import { clientIntlTag, formatShortDate } from "../../shared/format/dates";
 import { openReviews } from "../../shared/openReviews";
 import { ReportDialog } from "../../shared/components/ReportDialog";
+import { VaultDescription } from "../../shared/components/VaultDescription";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 import { isOfficialMap, ratingLabel, sizeLabel } from "../../shared/mapPresentation";
@@ -237,10 +238,12 @@ export function MapDetailPanel({
           )}
         </div>
 
-        <section className="vault-detail-description map-vault-description">
-          <h3>{t("maps.vault.description")}</h3>
-          <p>{description || t("maps.vault.noDescription")}</p>
-        </section>
+        <VaultDescription
+          className="map-vault-description"
+          title={t("maps.vault.description")}
+          description={description}
+          empty={t("maps.vault.noDescription")}
+        />
 
         <div className="vault-detail-actions map-vault-detail-actions">
           <div className="vault-detail-actions-left">
