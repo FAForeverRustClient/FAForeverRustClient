@@ -1309,8 +1309,8 @@ fn marker_timestamp(value: &str) -> Option<i64> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum IceAdapter {
-    /// Follow the host: Go for a lobby whose title carries the pioneer mark
-    /// (see `lobby::PIONEER_TITLE_TAG`), Java for every other game, and Java
+    /// Follow the host: Go for a lobby whose title carries the go-adapter mark
+    /// (see `lobby::GO_ADAPTER_TITLE_TAG`), Java for every other game, and Java
     /// when hosting. The default, because it is right wherever the host is on
     /// Java, which is every client's default, or on Go in this client.
     #[default]
@@ -1334,18 +1334,20 @@ impl IceAdapter {
     /// The adapter a game with this title starts on. Never `Dynamic`.
     pub fn for_game(self, title: &str) -> Self {
         match self {
-            Self::Dynamic if crate::state::lobby::title_marks_pioneer(title) => Self::Go,
+            Self::Dynamic if crate::state::lobby::title_marks_go_adapter(title) => Self::Go,
             Self::Dynamic => Self::Java,
             chosen => chosen,
         }
     }
 
     /// The adapter a game this client hosts runs on, before its title is
-    /// marked. `Dynamic` has no host to follow, so it hosts on Java.
-    pub fn for_hosting(self) -> Self {
-        match self {
-            Self::Dynamic => Self::Java,
-            chosen => chosen,
+    /// marked. `Dynamic` has no host to follow, so it takes what the host
+    /// dialog picked, and anything but Go there is Java.
+    pub fn for_hosting(self, picked: Self) -> Self {
+        match (self, picked) {
+            (Self::Dynamic, Self::Go) => Self::Go,
+            (Self::Dynamic, _) => Self::Java,
+            (explicit, _) => explicit,
         }
     }
 }
@@ -2003,6 +2005,9 @@ pub struct HostGamePreferences {
     pub rating_min: Option<i32>,
     /// `None` is an open end, as for [`Self::rating_min`].
     pub rating_max: Option<i32>,
+    /// The adapter last picked in the host dialog: Java or Go. Offered only
+    /// while the connectivity preference is `Dynamic`.
+    pub ice_adapter: IceAdapter,
 }
 
 impl<'de> Deserialize<'de> for HostGamePreferences {
@@ -2022,6 +2027,7 @@ impl<'de> Deserialize<'de> for HostGamePreferences {
             enforce_rating_range: bool,
             rating_min: Option<i32>,
             rating_max: Option<i32>,
+            ice_adapter: IceAdapter,
         }
 
         impl Default for Wire {
@@ -2037,6 +2043,7 @@ impl<'de> Deserialize<'de> for HostGamePreferences {
                     enforce_rating_range: defaults.enforce_rating_range,
                     rating_min: defaults.rating_min,
                     rating_max: defaults.rating_max,
+                    ice_adapter: defaults.ice_adapter,
                 }
             }
         }
@@ -2052,6 +2059,7 @@ impl<'de> Deserialize<'de> for HostGamePreferences {
             enforce_rating_range: wire.enforce_rating_range,
             rating_min: wire.rating_min,
             rating_max: wire.rating_max,
+            ice_adapter: wire.ice_adapter,
         })
     }
 }
@@ -2068,6 +2076,7 @@ impl Default for HostGamePreferences {
             enforce_rating_range: false,
             rating_min: Some(800),
             rating_max: Some(1_500),
+            ice_adapter: IceAdapter::Java,
         }
     }
 }
@@ -2084,6 +2093,10 @@ impl HostGamePreferences {
             _ => "public".into(),
         };
         self.map = truncate_trimmed(self.map, 256);
+        // The dialog offers two, and `Dynamic` is not a thing to host on.
+        if self.ice_adapter != IceAdapter::Go {
+            self.ice_adapter = IceAdapter::Java;
+        }
         self.password = self.password.chars().take(25).collect();
         self.rating_min = self.rating_min.map(|rating| rating.clamp(-9_999, 9_999));
         self.rating_max = self.rating_max.map(|rating| rating.clamp(-9_999, 9_999));
@@ -3230,22 +3243,39 @@ mod tests {
             IceAdapter::Dynamic
         );
         assert_eq!(
-            IceAdapter::Dynamic.for_game("Friday 4v4 [pioneer]"),
+            IceAdapter::Dynamic.for_game("Friday 4v4 [go-adapter]"),
             IceAdapter::Go
         );
         assert_eq!(
-            IceAdapter::Dynamic.for_game("Friday 4v4 [PIONEER]"),
+            IceAdapter::Dynamic.for_game("Friday 4v4 [GO-ADAPTER]"),
             IceAdapter::Go
         );
         assert_eq!(IceAdapter::Dynamic.for_game("Friday 4v4"), IceAdapter::Java);
-        assert_eq!(IceAdapter::Dynamic.for_hosting(), IceAdapter::Java);
+        assert_eq!(
+            IceAdapter::Dynamic.for_hosting(IceAdapter::Java),
+            IceAdapter::Java
+        );
+        assert_eq!(
+            IceAdapter::Dynamic.for_hosting(IceAdapter::Go),
+            IceAdapter::Go
+        );
+        assert_eq!(
+            IceAdapter::Dynamic.for_hosting(IceAdapter::Dynamic),
+            IceAdapter::Java
+        );
+        // An explicit preference is what the game runs on, so the dialog's
+        // pick cannot contradict it.
+        assert_eq!(
+            IceAdapter::Java.for_hosting(IceAdapter::Go),
+            IceAdapter::Java
+        );
         // An explicit choice is never second-guessed by the title.
         assert_eq!(
-            IceAdapter::Java.for_game("Friday 4v4 [pioneer]"),
+            IceAdapter::Java.for_game("Friday 4v4 [go-adapter]"),
             IceAdapter::Java
         );
         assert_eq!(IceAdapter::Go.for_game("Friday 4v4"), IceAdapter::Go);
-        assert_eq!(IceAdapter::Go.for_hosting(), IceAdapter::Go);
+        assert_eq!(IceAdapter::Go.for_hosting(IceAdapter::Java), IceAdapter::Go);
     }
 
     #[test]
@@ -3446,6 +3476,7 @@ mod tests {
                     enforce_rating_range: true,
                     rating_min: Some(1_500),
                     rating_max: Some(800),
+                    ice_adapter: IceAdapter::Java,
                 },
                 host_coop: HostGamePreferences {
                     title: "  Operation Ivy  ".into(),
@@ -3457,6 +3488,7 @@ mod tests {
                     enforce_rating_range: false,
                     rating_min: None,
                     rating_max: Some(1_500),
+                    ice_adapter: IceAdapter::Java,
                 },
                 favorite_maps: vec![
                     "  Adaptive_Tabula.v0006  ".into(),

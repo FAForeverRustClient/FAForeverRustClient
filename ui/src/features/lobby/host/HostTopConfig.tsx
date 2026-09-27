@@ -14,6 +14,10 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
   // name is deliberately not one Chromium reads as an address or a person, so
   // the field is treated as ordinary text and `autocomplete` is honoured.
   const rememberTypedEntries = useAppStore((s) => s.state.settings.general.rememberTypedEntries);
+  // Dynamic has no host to follow when you are the host, so the host picks.
+  // An explicit Java or Go preference is what the game runs on, and a second
+  // control that could contradict it would only be a way to get it wrong.
+  const pickAdapter = useAppStore((s) => s.state.settings.connectivity.adapter === "dynamic");
 
   return (
     <section className="host-top-config surface-panel">
@@ -120,6 +124,23 @@ export function HostTopConfig({ settings }: { settings: HostLobbySettings }) {
             <small className="host-field-error host-rating-error">{settings.ratingError}</small>
           )}
         </div>
+
+        {pickAdapter && (
+          <div className="host-option-item host-adapter-option" title={t("lobby.host.iceAdapterHint")}>
+            <label className="host-top-label" htmlFor="host-ice-adapter">
+              {t("lobby.host.iceAdapter")}
+            </label>
+            <select
+              id="host-ice-adapter"
+              className="compact-input"
+              value={settings.iceAdapter}
+              onChange={(event) => settings.setIceAdapter(event.target.value === "go" ? "go" : "java")}
+            >
+              <option value="java">{t("lobby.host.iceAdapterJava")}</option>
+              <option value="go">{t("lobby.host.iceAdapterGo")}</option>
+            </select>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -101,6 +101,7 @@ fn host_config() -> HostGameConfig {
         enforce_rating_range: true,
         rating_min: Some(800),
         rating_max: Some(1_500),
+        ice_adapter: Default::default(),
     }
 }
 

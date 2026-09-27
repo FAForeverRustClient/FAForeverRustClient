@@ -601,7 +601,7 @@ impl IcePort for GoHostingIce {
         Err("not started in this test".into())
     }
     fn stop(&self) {}
-    fn hosting_adapter(&self) -> IceAdapter {
+    fn hosting_adapter(&self, _picked: IceAdapter) -> IceAdapter {
         IceAdapter::Go
     }
 }
@@ -647,7 +647,7 @@ async fn hosting_on_go_marks_the_title_for_dynamic_joiners() {
         wait_for(|| !lobby.hosted_configs().is_empty()).await,
         "the host request never reached the lobby"
     );
-    assert_eq!(lobby.hosted_configs()[0].title, "Friday game [pioneer]");
+    assert_eq!(lobby.hosted_configs()[0].title, "Friday game [go-adapter]");
     assert_eq!(
         app.snapshot().settings.browsing.host_game.title,
         "Friday game",
@@ -680,6 +680,7 @@ fn host_config(map: &str) -> HostGameConfig {
         enforce_rating_range: false,
         rating_min: None,
         rating_max: None,
+        ice_adapter: Default::default(),
     }
 }
 
