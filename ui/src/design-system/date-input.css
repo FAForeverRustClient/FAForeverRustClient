@@ -1,0 +1,63 @@
+/* The date field in the regional format. See DateInput.tsx for why it exists. */
+
+/* Takes the place of the field it wraps: as wide as its cell, the button
+   inside the field's own right edge. */
+.date-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.date-input > input[type="text"] {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding-right: 30px;
+}
+
+.date-input-button {
+  position: absolute;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.date-input-button:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.date-input-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.date-input-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* The native field, kept only for its calendar: rendered, so the calendar
+   opens under the button, and out of sight and out of reach otherwise. */
+.date-input-picker {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}

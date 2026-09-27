@@ -36,6 +36,7 @@ import { useGridPageSize } from "../../shared/hooks/useGridPageSize";
 import "./maps.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { DateInput } from "../../design-system/DateInput";
 
 type SubView = "vault" | "installed";
 type VaultSort = "rating" | "newest" | "played" | "name" | "size";
@@ -418,8 +419,8 @@ function VaultView({ busy }: { busy: boolean }) {
           <div className="search-panel-advanced">
             <div className="search-panel-advanced-grid">
               <SearchField label={t("maps.view.installation")}><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">{t("maps.view.any")}</option><option value="installed">{t("maps.view.installed")}</option><option value="available">{t("maps.view.notInstalled")}</option></select></SearchField>
-              <SearchField label={t("maps.view.uploadedAfter")}><input className="search-panel-control" type="date" value={createdAfter} onChange={(event) => setCreatedAfter(event.target.value)} /></SearchField>
-              <SearchField label={t("maps.view.uploadedBefore")}><input className="search-panel-control" type="date" value={createdBefore} onChange={(event) => setCreatedBefore(event.target.value)} /></SearchField>
+              <SearchField label={t("maps.view.uploadedAfter")}><DateInput className="search-panel-control" value={createdAfter} onChange={setCreatedAfter} /></SearchField>
+              <SearchField label={t("maps.view.uploadedBefore")}><DateInput className="search-panel-control" value={createdBefore} onChange={setCreatedBefore} /></SearchField>
               <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
               <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
             </div>

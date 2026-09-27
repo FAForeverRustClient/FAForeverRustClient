@@ -6408,9 +6408,15 @@ export type ReplayScenario = {
 
 /**
  *  Which property the results are ordered by. The sortable subset of the Java
- *  client's `GAME_PROPERTY_MAPPING` (its `Property::sortable` flag).
+ *  client's `GAME_PROPERTY_MAPPING` (its `Property::sortable` flag), and one
+ *  the API cannot sort by at all: see [`ReplaySortField::sorts_locally`].
  */
-export type ReplaySortField = "startTime" | "endTime" | "duration" | "reviewScore" | "title" | "id" | "victoryCondition";
+export type ReplaySortField = "startTime" | "endTime" | "duration" | "reviewScore" | "title" | "id" | "victoryCondition" |
+/**
+ *  The game's average rating before it was played (issue 292), which is
+ *  only on the rows, as the mean of each player's `meanBefore`.
+ */
+"averageRating";
 
 export type ReplayState = {
 	status: ReplayStatus,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
@@ -63,6 +63,9 @@ const INITIAL_DETAIL_LIMIT = 360;
 /// came from, and every press of Refresh raised "Converting circular structure
 /// to JSON" over the replay list. `onRefresh` is typed `() => void`, which a
 /// function with a defaulted parameter satisfies, so nothing caught it.
+/** How long after a game ends the folder is read again: see the effect using it. */
+const GAME_END_RESCAN_DELAY_MS = 2000;
+
 const loadLocal = (limit: number) =>
   ipc.send({ kind: "Replays", command: { type: "loadLocal", payload: { limit } } });
 const deleteLocal = (path: string) =>
@@ -225,6 +228,23 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   // enough to cover it, plus the same run again so the next few pages are
   // already there.
   const [detailLimit, setDetailLimit] = useState(INITIAL_DETAIL_LIMIT);
+
+  // A game that ends while this tab is open (#292). Opening the tab reads
+  // the folder, but a replay written after that was only found by a
+  // Refresh or another visit, which is what "local replays take ages to
+  // appear" was. The recorder writes the file once the game has closed its
+  // stream, a moment after the game itself ends, so the read waits that
+  // moment out.
+  const joinType = useAppStore((state) => state.state.lobby.join.type);
+  const wasPlaying = useRef(false);
+  useEffect(() => {
+    const playing = joinType === "inGame" || joinType === "launched";
+    const ended = wasPlaying.current && !playing;
+    wasPlaying.current = playing;
+    if (!ended) return;
+    const timer = window.setTimeout(() => loadLocal(detailLimit), GAME_END_RESCAN_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [joinType, detailLimit]);
   const replayNotes = useAppStore((state) => state.state.settings.social.replayNotes);
 
   const matching = useMemo(

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Game, VaultMap, VaultMod } from "../../../ipc/bindings";
 import { hideGlobalLineup, setGlobalLineup, getActiveLineupSnapshot } from "./hoverPopovers";
-import { isCoopGame, showsUnrankedTag, simModsKeepGameRanked } from "./gameRules";
+import { isCoopGame, isFreeForAll, showsUnrankedTag, simModsKeepGameRanked } from "./gameRules";
 
 function game(overrides: Partial<Game> = {}): Game {
   return {
@@ -55,6 +55,22 @@ describe("CustomGamesBrowser global lineup tooltip state", () => {
 
     hideGlobalLineup();
     expect(getActiveLineupSnapshot()).toBeNull();
+  });
+});
+
+describe("a free-for-all", () => {
+  it("is three or more players with one of them on no team, as the server rules", () => {
+    const ffa = game({ teams: { "1": ["A", "B", "C"] } });
+    expect(isFreeForAll(ffa)).toBe(true);
+    expect(showsUnrankedTag(ffa, [rankedMap], noMods)).toBe(true);
+    // One player left on no team among teams still makes it one.
+    expect(isFreeForAll(game({ teams: { "1": ["A"], "2": ["B"], "3": ["C"] } }))).toBe(true);
+  });
+
+  it("is not a 1v1, a game in teams, or a lobby of observers", () => {
+    expect(isFreeForAll(game({ teams: { "1": ["A", "B"] } }))).toBe(false);
+    expect(isFreeForAll(game({ teams: { "2": ["A", "B"], "3": ["C", "D"] } }))).toBe(false);
+    expect(isFreeForAll(game({ teams: { "1": ["A"], "-1": ["B", "C"] } }))).toBe(false);
   });
 });
 
