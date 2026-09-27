@@ -28,6 +28,9 @@ pub struct IceParams {
     pub game_id: i32,
     /// Lobby init mode: 0 = normal (custom), 1 = auto (matchmaker).
     pub init_mode: i32,
+    /// The game's title, from the launch order. `IceAdapter::Dynamic` reads the
+    /// host's adapter off it: see `faf_domain::state::PIONEER_TITLE_TAG`.
+    pub game_title: String,
 }
 
 /// The live connectivity session handed back to the launcher.
@@ -71,6 +74,14 @@ pub trait IcePort: Send + Sync {
     /// changes, so switching takes effect on the next game rather than after
     /// a restart.
     fn set_backend(&self, _adapter: faf_domain::state::IceAdapter) {}
+
+    /// The backend a game this client hosts will run on, so the host can mark
+    /// its title for `Dynamic` joiners. Java unless the selectable wrapper
+    /// knows better: a concrete adapter used directly is not the Go one this
+    /// needs to announce, and neither is the fake.
+    fn hosting_adapter(&self) -> faf_domain::state::IceAdapter {
+        faf_domain::state::IceAdapter::Java
+    }
 
     /// Which diagnostic surfaces the next launch should raise. All off by
     /// default, and like [`IcePort::set_backend`] pushed by the settings

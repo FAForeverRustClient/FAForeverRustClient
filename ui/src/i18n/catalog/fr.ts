@@ -1217,8 +1217,9 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.game.saveArguments": "Enregistrer les arguments",
 
   "settings.connectivity.connectivityAdapter": "Adaptateur de connexion",
-  "settings.connectivity.connectivityAdapterHint": "Java est l'adaptateur éprouvé, Pioneer est expérimental. S'applique dès la prochaine partie.",
-  "settings.connectivity.java": "Java (faf-ice-adapter, recommandé)",
+  "settings.connectivity.connectivityAdapterHint": "Dynamique rejoint chaque salon avec l'adaptateur de son hôte et héberge avec Java. Héberger avec Go ajoute [pioneer] au titre de la partie pour que les autres le sachent. S'applique dès la prochaine partie.",
+  "settings.connectivity.dynamic": "Dynamique (suit l'hôte, recommandé)",
+  "settings.connectivity.java": "Java (faf-ice-adapter)",
   "settings.connectivity.go": "Go (faf-pioneer, expérimental)",
 
   "settings.discord.richPresence": "Rich Presence",
@@ -1796,6 +1797,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranking": "Classement",
   "lobby.browser.ranked": "Classé",
   "lobby.browser.unranked": "Non classé",
+  "lobby.browser.pioneer": "Pioneer",
+  "lobby.browser.pioneerTitle": "Hébergée avec l'adaptateur Go (faf-pioneer). En Dynamique, vous rejoignez automatiquement avec Go ; sinon choisissez Go dans les paramètres de connexion.",
   "lobby.browser.mapSize": "Taille de la carte",
   "lobby.browser.unrated": "Non classée",
   "lobby.browser.public": "Publique",

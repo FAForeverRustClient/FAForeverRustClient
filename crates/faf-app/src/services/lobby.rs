@@ -15,10 +15,10 @@
 use std::collections::HashMap;
 
 use faf_domain::state::{
-    ChatEvent, ChatStatus, Game, HostGameConfig, HostGamePreferences, JoinState, LobbyCommand,
-    LobbyEvent, MatchmakerQueue, MatchmakingState, NotificationAction, NotificationKind,
-    NotificationPreferences, PartyState, PlayerCardEvent, PlayerLobbyRating, SettingsEvent,
-    SocialEvent,
+    with_pioneer_tag, ChatEvent, ChatStatus, Game, HostGameConfig, HostGamePreferences, IceAdapter,
+    JoinState, LobbyCommand, LobbyEvent, MatchmakerQueue, MatchmakingState, NotificationAction,
+    NotificationKind, NotificationPreferences, PartyState, PlayerCardEvent, PlayerLobbyRating,
+    SettingsEvent, SocialEvent,
 };
 
 use crate::ports::LobbyUpdate;
@@ -202,6 +202,17 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 out.emit(SettingsEvent::BrowsingChanged {
                     preferences: Box::new(browsing),
                 });
+                // Hosted on Go, the title says so, for everybody on Dynamic to
+                // join on Go as well; see `PIONEER_TITLE_TAG`. After the
+                // remembered form above, which keeps the title as typed.
+                let config = if ctx.ports.ice.hosting_adapter() == IceAdapter::Go {
+                    HostGameConfig {
+                        title: with_pioneer_tag(&config.title),
+                        ..config
+                    }
+                } else {
+                    config
+                };
                 ctx.ports.lobby.host(config);
                 crate::services::settings::persist(ctx, out).await;
             }

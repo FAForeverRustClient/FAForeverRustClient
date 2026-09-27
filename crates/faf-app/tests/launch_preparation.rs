@@ -13,12 +13,13 @@ use std::time::Duration;
 use async_trait::async_trait;
 use faf_app::infra::{fake_ports, FakeAuth, FakeLobby};
 use faf_app::ports::{
-    GameLaunchParams, GamePreparation, GameUpdaterPort, InstallPresence, PreparationPhase,
-    PreparationStep, ProcessPort, UpdateProgress,
+    ConnectivitySession, GameLaunchParams, GamePreparation, GameUpdaterPort, IceParams, IcePort,
+    InstallPresence, PreparationPhase, PreparationStep, ProcessPort, UpdateProgress,
 };
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    AuthCommand, HostGameConfig, JoinState, LobbyCommand, LobbyEvent, NotificationKind, Player,
+    AuthCommand, HostGameConfig, IceAdapter, JoinState, LobbyCommand, LobbyEvent, NotificationKind,
+    Player,
 };
 use faf_domain::AppEvent;
 use tokio::sync::mpsc;
@@ -589,6 +590,84 @@ async fn cancelling_while_a_host_prepares_sends_no_host_request() {
         !*launched.lock().unwrap(),
         "a cancelled host must not start the game"
     );
+}
+
+/// An adapter selector set to Go, which is all the host path asks of it.
+struct GoHostingIce;
+
+#[async_trait]
+impl IcePort for GoHostingIce {
+    async fn start(&self, _params: IceParams) -> Result<ConnectivitySession, String> {
+        Err("not started in this test".into())
+    }
+    fn stop(&self) {}
+    fn hosting_adapter(&self) -> IceAdapter {
+        IceAdapter::Go
+    }
+}
+
+#[tokio::test]
+async fn hosting_on_go_marks_the_title_for_dynamic_joiners() {
+    // Nothing the server sends names the host's adapter, and the two cannot
+    // connect to each other: the title is how a Dynamic joiner knows.
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        lobby: Arc::new(lobby.clone()),
+        ice: Arc::new(GoHostingIce),
+        process: Arc::new(LaunchableProcess {
+            launched: Arc::new(Mutex::new(false)),
+            install_dir: Some(PathBuf::from("C:/fake-fa-install")),
+            exits_after: None,
+        }),
+        updater: Arc::new(ScriptedUpdater {
+            steps: Vec::new(),
+            outcome: Ok(()),
+            seen: Arc::new(Mutex::new(Vec::new())),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+
+    app.dispatch(
+        LobbyCommand::Host {
+            config: host_config("adaptive_gadostb.v0002"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        wait_for(|| !lobby.hosted_configs().is_empty()).await,
+        "the host request never reached the lobby"
+    );
+    assert_eq!(lobby.hosted_configs()[0].title, "Friday game [pioneer]");
+    assert_eq!(
+        app.snapshot().settings.browsing.host_game.title,
+        "Friday game",
+        "the remembered form keeps the title as it was typed"
+    );
+}
+
+#[tokio::test]
+async fn hosting_on_java_leaves_the_title_alone() {
+    let (app, lobby, _prepared) = host_harness(Ok(()));
+    app.dispatch(
+        LobbyCommand::Host {
+            config: host_config("adaptive_gadostb.v0002"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    assert!(wait_for(|| !lobby.hosted_configs().is_empty()).await);
+    assert_eq!(lobby.hosted_configs()[0].title, "Friday game");
 }
 
 fn host_config(map: &str) -> HostGameConfig {

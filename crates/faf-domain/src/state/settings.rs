@@ -1304,12 +1304,18 @@ fn marker_timestamp(value: &str) -> Option<i64> {
 ///
 /// The long-standing Java `faf-ice-adapter` is the production default used by
 /// the established clients. The newer Go faf-pioneer remains available for
-/// explicit testing while it is experimental.
+/// explicit testing while it is experimental. The two cannot connect to each
+/// other, so a game only works when everybody in it uses the host's adapter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum IceAdapter {
-    /// `faf-ice-adapter`, driven over JSON-RPC.
+    /// Follow the host: Go for a lobby whose title carries the pioneer mark
+    /// (see `lobby::PIONEER_TITLE_TAG`), Java for every other game, and Java
+    /// when hosting. The default, because it is right wherever the host is on
+    /// Java, which is every client's default, or on Go in this client.
     #[default]
+    Dynamic,
+    /// `faf-ice-adapter`, driven over JSON-RPC.
     Java,
     /// Experimental faf-pioneer backend. Owns a local GPGNet relay the Java
     /// adapter has no equivalent of.
@@ -1319,8 +1325,27 @@ pub enum IceAdapter {
 impl IceAdapter {
     pub fn label(&self) -> &'static str {
         match self {
+            Self::Dynamic => "Dynamic (follows the host)",
             Self::Java => "Java (faf-ice-adapter)",
             Self::Go => "Go (faf-pioneer)",
+        }
+    }
+
+    /// The adapter a game with this title starts on. Never `Dynamic`.
+    pub fn for_game(self, title: &str) -> Self {
+        match self {
+            Self::Dynamic if crate::state::lobby::title_marks_pioneer(title) => Self::Go,
+            Self::Dynamic => Self::Java,
+            chosen => chosen,
+        }
+    }
+
+    /// The adapter a game this client hosts runs on, before its title is
+    /// marked. `Dynamic` has no host to follow, so it hosts on Java.
+    pub fn for_hosting(self) -> Self {
+        match self {
+            Self::Dynamic => Self::Java,
+            chosen => chosen,
         }
     }
 }
@@ -1332,16 +1357,18 @@ pub struct ConnectivityPreferences {
     /// Version of the explicit adapter choice. Version zero was written by
     /// builds where Pioneer was the implicit/default path, so a stored `go`
     /// value from that era is not evidence that the user opted into an
-    /// experimental backend.
+    /// experimental backend. Version one had Java as the default, so a stored
+    /// `java` from it is the default rather than a choice: version two moves it
+    /// to `Dynamic`, which behaves the same for every unmarked game.
     pub selection_version: u8,
 }
 
-const CONNECTIVITY_SELECTION_VERSION: u8 = 1;
+const CONNECTIVITY_SELECTION_VERSION: u8 = 2;
 
 impl Default for ConnectivityPreferences {
     fn default() -> Self {
         Self {
-            adapter: IceAdapter::Java,
+            adapter: IceAdapter::Dynamic,
             selection_version: CONNECTIVITY_SELECTION_VERSION,
         }
     }
@@ -1360,14 +1387,16 @@ impl<'de> Deserialize<'de> for ConnectivityPreferences {
         }
 
         let wire = Wire::deserialize(deserializer)?;
+        let adapter = match (wire.selection_version, wire.adapter) {
+            // Pioneer was the implicit path then, not a choice.
+            (0, IceAdapter::Go) => IceAdapter::Dynamic,
+            // Java was the default until version two; Dynamic is Java for
+            // every game that is not marked as hosted on Go.
+            (0 | 1, IceAdapter::Java) => IceAdapter::Dynamic,
+            (_, adapter) => adapter,
+        };
         Ok(Self {
-            adapter: if wire.selection_version < CONNECTIVITY_SELECTION_VERSION
-                && wire.adapter == IceAdapter::Go
-            {
-                IceAdapter::Java
-            } else {
-                wire.adapter
-            },
+            adapter,
             selection_version: CONNECTIVITY_SELECTION_VERSION,
         })
     }
@@ -3163,15 +3192,60 @@ mod tests {
     }
 
     #[test]
-    fn legacy_pioneer_default_migrates_to_java() {
+    fn legacy_pioneer_default_migrates_to_dynamic() {
         let settings: SettingsState =
             serde_json::from_str(r#"{"connectivity":{"adapter":"go"}}"#).unwrap();
 
-        assert_eq!(settings.connectivity.adapter, IceAdapter::Java);
+        assert_eq!(settings.connectivity.adapter, IceAdapter::Dynamic);
         assert_eq!(
             settings.connectivity.selection_version,
             CONNECTIVITY_SELECTION_VERSION
         );
+    }
+
+    #[test]
+    fn the_old_java_default_becomes_dynamic() {
+        // Java was what everybody had without choosing it, and Dynamic starts
+        // Java for every game that is not marked as hosted on Go.
+        let settings: SettingsState =
+            serde_json::from_str(r#"{"connectivity":{"adapter":"java","selectionVersion":1}}"#)
+                .unwrap();
+        assert_eq!(settings.connectivity.adapter, IceAdapter::Dynamic);
+        assert_eq!(
+            settings.connectivity.selection_version,
+            CONNECTIVITY_SELECTION_VERSION
+        );
+
+        // A Java chosen once Dynamic existed is a choice, and it stays.
+        let settings: SettingsState =
+            serde_json::from_str(r#"{"connectivity":{"adapter":"java","selectionVersion":2}}"#)
+                .unwrap();
+        assert_eq!(settings.connectivity.adapter, IceAdapter::Java);
+    }
+
+    #[test]
+    fn dynamic_is_the_default_and_follows_the_host() {
+        assert_eq!(
+            SettingsState::default().connectivity.adapter,
+            IceAdapter::Dynamic
+        );
+        assert_eq!(
+            IceAdapter::Dynamic.for_game("Friday 4v4 [pioneer]"),
+            IceAdapter::Go
+        );
+        assert_eq!(
+            IceAdapter::Dynamic.for_game("Friday 4v4 [PIONEER]"),
+            IceAdapter::Go
+        );
+        assert_eq!(IceAdapter::Dynamic.for_game("Friday 4v4"), IceAdapter::Java);
+        assert_eq!(IceAdapter::Dynamic.for_hosting(), IceAdapter::Java);
+        // An explicit choice is never second-guessed by the title.
+        assert_eq!(
+            IceAdapter::Java.for_game("Friday 4v4 [pioneer]"),
+            IceAdapter::Java
+        );
+        assert_eq!(IceAdapter::Go.for_game("Friday 4v4"), IceAdapter::Go);
+        assert_eq!(IceAdapter::Go.for_hosting(), IceAdapter::Go);
     }
 
     #[test]
