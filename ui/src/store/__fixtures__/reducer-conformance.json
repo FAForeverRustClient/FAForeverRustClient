@@ -798,8 +798,9 @@
         "disallowJoins": false
       },
       "connectivity": {
-        "adapter": "java",
-        "selectionVersion": 1
+        "adapter": "dynamic",
+        "hostAdapter": "java",
+        "selectionVersion": 2
       },
       "debug": {
         "iceAdapterDebugWindow": false,
@@ -2177,8 +2178,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": false,
@@ -31408,8 +31410,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": false,
@@ -31668,8 +31671,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": false,
@@ -31937,8 +31941,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": false,
@@ -32201,8 +32206,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": false,
@@ -32465,8 +32471,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": false,
@@ -32739,8 +32746,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": false,
@@ -33019,8 +33027,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": false,
@@ -33339,8 +33348,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": false,
@@ -33635,8 +33645,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": false,
@@ -33933,8 +33944,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": true,
@@ -34351,8 +34363,9 @@
               "visibleMessageLimit": 500
             },
             "connectivity": {
-              "adapter": "java",
-              "selectionVersion": 1
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
             },
             "debug": {
               "iceAdapterConsoleWindow": true,

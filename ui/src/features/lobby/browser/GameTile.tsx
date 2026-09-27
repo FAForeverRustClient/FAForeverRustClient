@@ -11,6 +11,7 @@ import { t } from "../../../i18n";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { formatAge, playingCount, showsUnrankedTag, simModsKeepGameRanked } from "./gameRules";
 import { RatingRangeTag } from "./RatingRangeTag";
+import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
 import { hideGlobalLineup, useGameLineupPosition, useGameSocialPosition } from "./hoverPopovers";
 import { GameLineup } from "./GameLineup";
 import { GameSocialPopover, foesHere, friendsHere } from "./GameSocialPopover";
@@ -58,6 +59,7 @@ export const GameTile = memo(function GameTile({
     showSocial,
     hideSocial,
   } = useGameSocialPosition(game.id);
+  const { title: shownTitle, goAdapter } = splitGoAdapterTitle(game.title);
 
   return (
     <article
@@ -108,11 +110,11 @@ export const GameTile = memo(function GameTile({
         className="game-tile-body"
         onClick={onSelect}
         onDoubleClick={onJoin}
-        aria-label={t("lobby.browser.tileAria", { title: game.title, host: game.host })}
+        aria-label={t("lobby.browser.tileAria", { title: shownTitle, host: game.host })}
         aria-pressed={selected}
         aria-describedby={tooltipPosition ? tooltipId : undefined}
       >
-        <span className="game-tile-title" title={game.title}>{game.title}</span>
+        <span className="game-tile-title" title={shownTitle}>{shownTitle}</span>
         {/* Four facts, not a tag and three facts. The featured mod was a tag
             among "unranked" and "3 SIM", which read as something the lobby had
             switched on; it is a property of the game in the way its size and
@@ -132,6 +134,7 @@ export const GameTile = memo(function GameTile({
           <span><b>{formatAge(game.hostedAt, now)}</b><small>{t("lobby.browser.column.age")}</small></span>
         </span>
         <span className="game-tile-flags">
+          {goAdapter && <i className="go-adapter" title={t("lobby.browser.goAdapterTitle")}>{t("lobby.browser.goAdapter")}</i>}
           {simModCount > 0 && (
             <i
               className={simModsRanked ? "modded is-ranked" : "modded"}

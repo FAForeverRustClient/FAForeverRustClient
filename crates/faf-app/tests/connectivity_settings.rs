@@ -62,6 +62,7 @@ async fn choosing_an_adapter_reaches_the_port_and_is_stored() {
         SettingsCommand::SetConnectivity {
             preferences: ConnectivityPreferences {
                 adapter: IceAdapter::Go,
+                host_adapter: IceAdapter::Java,
                 selection_version: 1,
             },
         }
@@ -89,10 +90,10 @@ async fn a_stored_preference_is_applied_on_load() {
     app.dispatch(SettingsCommand::Load.into()).await.unwrap();
     settle(&chosen, 1).await;
 
-    // The fake settings port loads defaults, so the established Java adapter
-    // is expected here. Loading must push the persisted/default choice into the
-    // live selector rather than leaving its startup value implicit.
-    assert_eq!(*chosen.lock().unwrap(), vec![IceAdapter::Java]);
+    // The fake settings port loads defaults, so Dynamic, which follows the
+    // host, is expected here. Loading must push the persisted/default choice
+    // into the live selector rather than leaving its startup value implicit.
+    assert_eq!(*chosen.lock().unwrap(), vec![IceAdapter::Dynamic]);
 }
 
 #[tokio::test]
@@ -106,6 +107,7 @@ async fn both_backends_remain_selectable() {
             SettingsCommand::SetConnectivity {
                 preferences: ConnectivityPreferences {
                     adapter,
+                    host_adapter: IceAdapter::Java,
                     selection_version: 1,
                 },
             }
