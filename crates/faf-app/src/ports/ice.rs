@@ -29,8 +29,11 @@ pub struct IceParams {
     /// Lobby init mode: 0 = normal (custom), 1 = auto (matchmaker).
     pub init_mode: i32,
     /// The game's title, from the launch order. `IceAdapter::Dynamic` reads the
-    /// host's adapter off it: see `faf_domain::state::PIONEER_TITLE_TAG`.
+    /// host's adapter off it: see `faf_domain::state::GO_ADAPTER_TITLE_TAG`.
     pub game_title: String,
+    /// This client hosted the game, so it runs on the hosting preference
+    /// rather than on the joining one.
+    pub hosted: bool,
 }
 
 /// The live connectivity session handed back to the launcher.
@@ -74,6 +77,10 @@ pub trait IcePort: Send + Sync {
     /// changes, so switching takes effect on the next game rather than after
     /// a restart.
     fn set_backend(&self, _adapter: faf_domain::state::IceAdapter) {}
+
+    /// Choose which backend games this client hosts run on. Pushed by the
+    /// settings service beside [`IcePort::set_backend`].
+    fn set_host_backend(&self, _adapter: faf_domain::state::IceAdapter) {}
 
     /// The backend a game this client hosts will run on, so the host can mark
     /// its title for `Dynamic` joiners. Java unless the selectable wrapper

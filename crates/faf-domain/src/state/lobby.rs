@@ -65,29 +65,29 @@ pub struct Game {
 /// `IceAdapter::Dynamic` joins. In other clients it stays visible, which is
 /// what tells their players this lobby needs Go. A server field would replace
 /// it; until one exists, this is the convention.
-pub const PIONEER_TITLE_TAG: &str = "[pioneer]";
+pub const GO_ADAPTER_TITLE_TAG: &str = "[go-adapter]";
 
-/// Whether a lobby title carries [`PIONEER_TITLE_TAG`], in any letter case.
-pub fn title_marks_pioneer(title: &str) -> bool {
+/// Whether a lobby title carries [`GO_ADAPTER_TITLE_TAG`], in any letter case.
+pub fn title_marks_go_adapter(title: &str) -> bool {
     title
         .to_ascii_lowercase()
-        .contains(&PIONEER_TITLE_TAG.to_ascii_lowercase())
+        .contains(&GO_ADAPTER_TITLE_TAG.to_ascii_lowercase())
 }
 
-/// The title with [`PIONEER_TITLE_TAG`] at its end, once, and shortened so the
+/// The title with [`GO_ADAPTER_TITLE_TAG`] at its end, once, and shortened so the
 /// whole still fits [`HostGameConfig::MAX_TITLE_CHARS`].
-pub fn with_pioneer_tag(title: &str) -> String {
+pub fn with_go_adapter_tag(title: &str) -> String {
     let title = title.trim();
-    if title_marks_pioneer(title) {
+    if title_marks_go_adapter(title) {
         return title.to_owned();
     }
-    let room = HostGameConfig::MAX_TITLE_CHARS - PIONEER_TITLE_TAG.chars().count() - 1;
+    let room = HostGameConfig::MAX_TITLE_CHARS - GO_ADAPTER_TITLE_TAG.chars().count() - 1;
     let kept: String = title.chars().take(room).collect();
     let kept = kept.trim_end();
     if kept.is_empty() {
-        PIONEER_TITLE_TAG.to_owned()
+        GO_ADAPTER_TITLE_TAG.to_owned()
     } else {
-        format!("{kept} {PIONEER_TITLE_TAG}")
+        format!("{kept} {GO_ADAPTER_TITLE_TAG}")
     }
 }
 
@@ -961,25 +961,30 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn a_pioneer_title_is_marked_once_and_still_fits() {
-        use super::{title_marks_pioneer, with_pioneer_tag, HostGameConfig, PIONEER_TITLE_TAG};
+    fn a_go_adapter_title_is_marked_once_and_still_fits() {
+        use super::{
+            title_marks_go_adapter, with_go_adapter_tag, HostGameConfig, GO_ADAPTER_TITLE_TAG,
+        };
 
-        assert_eq!(with_pioneer_tag("Friday 4v4"), "Friday 4v4 [pioneer]");
-        assert_eq!(with_pioneer_tag("  Friday 4v4  "), "Friday 4v4 [pioneer]");
+        assert_eq!(with_go_adapter_tag("Friday 4v4"), "Friday 4v4 [go-adapter]");
+        assert_eq!(
+            with_go_adapter_tag("  Friday 4v4  "),
+            "Friday 4v4 [go-adapter]"
+        );
         // Idempotent, whatever case the mark was typed in.
         assert_eq!(
-            with_pioneer_tag("Friday [Pioneer] 4v4"),
-            "Friday [Pioneer] 4v4"
+            with_go_adapter_tag("Friday [Go-Adapter] 4v4"),
+            "Friday [Go-Adapter] 4v4"
         );
-        assert_eq!(with_pioneer_tag(""), PIONEER_TITLE_TAG);
+        assert_eq!(with_go_adapter_tag(""), GO_ADAPTER_TITLE_TAG);
 
         let long = "x".repeat(HostGameConfig::MAX_TITLE_CHARS);
-        let marked = with_pioneer_tag(&long);
+        let marked = with_go_adapter_tag(&long);
         assert_eq!(marked.chars().count(), HostGameConfig::MAX_TITLE_CHARS);
-        assert!(marked.ends_with(PIONEER_TITLE_TAG));
+        assert!(marked.ends_with(GO_ADAPTER_TITLE_TAG));
 
-        assert!(title_marks_pioneer("gg [PIONEER]"));
-        assert!(!title_marks_pioneer("pioneer rush"));
+        assert!(title_marks_go_adapter("gg [GO-ADAPTER]"));
+        assert!(!title_marks_go_adapter("pioneer rush"));
     }
 
     use super::*;

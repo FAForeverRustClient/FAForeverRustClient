@@ -530,7 +530,7 @@ const INITIAL: AppState = {
       keepGeneratedMapsLimit: 0,
     },
     discord: { enabled: true, disallowJoins: false },
-    connectivity: { adapter: "dynamic", selectionVersion: 2 },
+    connectivity: { adapter: "dynamic", hostAdapter: "java", selectionVersion: 2 },
     debug: {
       iceAdapterDebugWindow: false,
       iceAdapterInfoWindow: false,

@@ -41,8 +41,12 @@ pub(crate) fn parse_adapter(raw: &str) -> IceAdapter {
 pub struct SelectableIce {
     java: Arc<dyn IcePort>,
     go: Arc<dyn IcePort>,
-    /// The user's choice. Ignored while [`adapter_override`] returns a value.
+    /// The user's choice for joining. Ignored while [`adapter_override`]
+    /// returns a value.
     preferred: Mutex<IceAdapter>,
+    /// The user's choice for hosting, Java or Go. Ignored while
+    /// [`adapter_override`] returns a value.
+    preferred_host: Mutex<IceAdapter>,
     /// Which backend was last started, so [`IcePort::stop`] reaches the one
     /// that is actually running even if the preference changed meanwhile.
     running: Mutex<Option<IceAdapter>>,
@@ -54,16 +58,22 @@ impl SelectableIce {
             java,
             go,
             preferred: Mutex::new(IceAdapter::default()),
+            preferred_host: Mutex::new(IceAdapter::Java),
             running: Mutex::new(None),
         }
     }
 
-    /// The backend a game with this title starts on: the development
-    /// override, else the preference, with `Dynamic` following the host's mark.
-    fn selected(&self, game_title: &str) -> IceAdapter {
-        adapter_override()
-            .unwrap_or_else(|| *self.preferred.lock().unwrap())
-            .for_game(game_title)
+    /// The backend a game starts on: the development override, else the
+    /// hosting preference for a game this client hosted, else the joining
+    /// preference, with `Dynamic` following the host's mark.
+    fn selected(&self, params: &IceParams) -> IceAdapter {
+        if let Some(adapter) = adapter_override() {
+            return adapter.for_game(&params.game_title);
+        }
+        if params.hosted {
+            return self.hosting_adapter();
+        }
+        self.preferred.lock().unwrap().for_game(&params.game_title)
     }
 
     fn backend(&self, adapter: IceAdapter) -> &Arc<dyn IcePort> {
@@ -79,7 +89,7 @@ impl SelectableIce {
 #[async_trait]
 impl IcePort for SelectableIce {
     async fn start(&self, params: IceParams) -> Result<ConnectivitySession, String> {
-        let adapter = self.selected(&params.game_title);
+        let adapter = self.selected(&params);
         tracing::info!(backend = adapter.label(), "starting selected ICE backend");
         let session = self.backend(adapter).start(params).await.map_err(|error| {
             format!(
@@ -111,10 +121,15 @@ impl IcePort for SelectableIce {
         *self.preferred.lock().unwrap() = adapter;
     }
 
+    fn set_host_backend(&self, adapter: IceAdapter) {
+        *self.preferred_host.lock().unwrap() = adapter;
+    }
+
     fn hosting_adapter(&self) -> IceAdapter {
-        adapter_override()
-            .unwrap_or_else(|| *self.preferred.lock().unwrap())
-            .for_hosting()
+        match adapter_override().unwrap_or_else(|| *self.preferred_host.lock().unwrap()) {
+            IceAdapter::Go => IceAdapter::Go,
+            _ => IceAdapter::Java,
+        }
     }
 
     /// Pushed to both backends rather than only the selected one: the
@@ -170,6 +185,7 @@ mod tests {
             game_id: 1,
             init_mode: 0,
             game_title: title.into(),
+            hosted: false,
         }
     }
 
@@ -192,7 +208,7 @@ mod tests {
     async fn dynamic_joins_a_marked_lobby_on_go_and_every_other_on_java() {
         let (java, go, ice) = pair();
         ice.set_backend(IceAdapter::Dynamic);
-        ice.start(titled("Friday 4v4 [pioneer]")).await.unwrap();
+        ice.start(titled("Friday 4v4 [go-adapter]")).await.unwrap();
         assert_eq!(go.started.load(Ordering::SeqCst), 1, "the host is on Go");
         ice.stop();
         ice.start(titled("Friday 4v4")).await.unwrap();
@@ -204,24 +220,52 @@ mod tests {
     async fn an_explicit_choice_ignores_the_mark() {
         let (java, go, ice) = pair();
         ice.set_backend(IceAdapter::Java);
-        ice.start(titled("Friday 4v4 [pioneer]")).await.unwrap();
+        ice.start(titled("Friday 4v4 [go-adapter]")).await.unwrap();
         assert_eq!(java.started.load(Ordering::SeqCst), 1);
         assert_eq!(go.started.load(Ordering::SeqCst), 0);
     }
 
     #[test]
-    fn only_a_go_choice_hosts_on_go() {
+    fn hosting_has_its_own_choice() {
         let (_java, _go, ice) = pair();
-        for (preference, hosts_on) in [
-            (IceAdapter::Dynamic, IceAdapter::Java),
-            (IceAdapter::Java, IceAdapter::Java),
-            (IceAdapter::Go, IceAdapter::Go),
-        ] {
-            ice.set_backend(preference);
-            if adapter_override().is_none() {
-                assert_eq!(ice.hosting_adapter(), hosts_on, "{preference:?}");
-            }
+        if adapter_override().is_some() {
+            return;
         }
+        assert_eq!(ice.hosting_adapter(), IceAdapter::Java, "the default");
+        ice.set_backend(IceAdapter::Go);
+        assert_eq!(
+            ice.hosting_adapter(),
+            IceAdapter::Java,
+            "joining on Go says nothing about hosting"
+        );
+        ice.set_host_backend(IceAdapter::Go);
+        assert_eq!(ice.hosting_adapter(), IceAdapter::Go);
+        ice.set_host_backend(IceAdapter::Dynamic);
+        assert_eq!(
+            ice.hosting_adapter(),
+            IceAdapter::Java,
+            "nobody to follow when hosting"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_hosted_game_starts_on_the_hosting_choice() {
+        // Joining on explicit Java while hosting on Go: the title carries the
+        // mark, and the host's own game has to run on what the mark says.
+        let (java, go, ice) = pair();
+        if adapter_override().is_some() {
+            return;
+        }
+        ice.set_backend(IceAdapter::Java);
+        ice.set_host_backend(IceAdapter::Go);
+        ice.start(IceParams {
+            hosted: true,
+            ..titled("Friday 4v4 [go-adapter]")
+        })
+        .await
+        .unwrap();
+        assert_eq!(go.started.load(Ordering::SeqCst), 1);
+        assert_eq!(java.started.load(Ordering::SeqCst), 0);
     }
 
     #[tokio::test]

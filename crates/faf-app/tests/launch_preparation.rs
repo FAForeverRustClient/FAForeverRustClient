@@ -647,7 +647,7 @@ async fn hosting_on_go_marks_the_title_for_dynamic_joiners() {
         wait_for(|| !lobby.hosted_configs().is_empty()).await,
         "the host request never reached the lobby"
     );
-    assert_eq!(lobby.hosted_configs()[0].title, "Friday game [pioneer]");
+    assert_eq!(lobby.hosted_configs()[0].title, "Friday game [go-adapter]");
     assert_eq!(
         app.snapshot().settings.browsing.host_game.title,
         "Friday game",

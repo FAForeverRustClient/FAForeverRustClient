@@ -1,21 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { splitPioneerTitle } from "./pioneerTitle";
+import { splitGoAdapterTitle } from "./goAdapterTitle";
 
-describe("splitPioneerTitle", () => {
+describe("splitGoAdapterTitle", () => {
   it("takes the mark out of a marked title", () => {
-    expect(splitPioneerTitle("Friday 4v4 [pioneer]")).toEqual({ title: "Friday 4v4", pioneer: true });
+    expect(splitGoAdapterTitle("Friday 4v4 [go-adapter]")).toEqual({ title: "Friday 4v4", goAdapter: true });
   });
 
   it("reads the mark in any case and anywhere", () => {
-    expect(splitPioneerTitle("Friday [PIONEER] 4v4")).toEqual({ title: "Friday 4v4", pioneer: true });
+    expect(splitGoAdapterTitle("Friday [GO-ADAPTER] 4v4")).toEqual({ title: "Friday 4v4", goAdapter: true });
   });
 
   it("leaves an unmarked title alone", () => {
-    expect(splitPioneerTitle("pioneer rush")).toEqual({ title: "pioneer rush", pioneer: false });
+    expect(splitGoAdapterTitle("pioneer rush")).toEqual({ title: "pioneer rush", goAdapter: false });
   });
 
   it("gives an empty title back for a mark on its own", () => {
-    expect(splitPioneerTitle("[pioneer]")).toEqual({ title: "", pioneer: true });
+    expect(splitGoAdapterTitle("[go-adapter]")).toEqual({ title: "", goAdapter: true });
   });
 });

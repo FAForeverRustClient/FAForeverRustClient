@@ -117,6 +117,15 @@ pub async fn start(
     }
 
     // 2. Bring up the connectivity backend (it picks its own ports / control plane).
+    // A game this client asked to host runs on the hosting preference, which
+    // is what its title's mark announced. Taken either way: the next launch
+    // is somebody else's game unless a new host request says otherwise.
+    let hosted = ctx
+        .hosted_title
+        .lock()
+        .unwrap()
+        .take()
+        .is_some_and(|title| title == launch.name);
     let session = match ctx
         .ports
         .ice
@@ -126,6 +135,7 @@ pub async fn start(
             game_id: launch.uid,
             init_mode,
             game_title: launch.name.clone(),
+            hosted,
         })
         .await
     {

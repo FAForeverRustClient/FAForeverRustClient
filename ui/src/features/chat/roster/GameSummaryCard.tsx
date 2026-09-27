@@ -19,7 +19,7 @@ import { flagSrc } from "../../../shared/countryFlags";
 import { useCountryLabel } from "../../../shared/hooks/useCountryLabel";
 import { formatGameTime } from "../../../shared/format/durations";
 import { mapPresentation } from "../../../shared/mapPresentation";
-import { splitPioneerTitle } from "../../../shared/pioneerTitle";
+import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
 import {
   gameElapsedSeconds,
   gameTeamSummaries,
@@ -182,7 +182,7 @@ export function GameSummaryCard({
           </div>
         )}
         <div className="chat-game-popover-info">
-          <strong>{splitPioneerTitle(presence.game.title).title || t("chat.game.untitled")}</strong>
+          <strong>{splitGoAdapterTitle(presence.game.title).title || t("chat.game.untitled")}</strong>
           <span>{presentation.displayName}</span>
         </div>
         {action ? (

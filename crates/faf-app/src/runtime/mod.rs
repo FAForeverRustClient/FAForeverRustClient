@@ -38,6 +38,10 @@ pub struct ServiceCtx {
     pub lobby_join_active: SingleFlight,
     /// Whether the join that guard is holding has been called off.
     pub lobby_join_cancelled: CancelledJoin,
+    /// The title of the game this client last asked the server to host, so
+    /// the launch order that answers it starts on the hosting preference.
+    /// Taken by that launch; see `launcher::launch`.
+    pub hosted_title: std::sync::Mutex<Option<String>>,
     /// The game this client is currently playing, if any. Read when the lobby
     /// socket comes back, so the server can be told to restore the game
     /// session it dropped along with the connection.
@@ -313,6 +317,7 @@ impl App {
             lobby_active: SingleFlight::default(),
             lobby_join_active: SingleFlight::default(),
             lobby_join_cancelled: CancelledJoin::default(),
+            hosted_title: std::sync::Mutex::new(None),
             running_game: RunningGame::default(),
             chat_active: SingleFlight::default(),
             lobby_auto_reconnect: AutoReconnect::default(),

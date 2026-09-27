@@ -62,6 +62,7 @@ async fn choosing_an_adapter_reaches_the_port_and_is_stored() {
         SettingsCommand::SetConnectivity {
             preferences: ConnectivityPreferences {
                 adapter: IceAdapter::Go,
+                host_adapter: IceAdapter::Java,
                 selection_version: 1,
             },
         }
@@ -106,6 +107,7 @@ async fn both_backends_remain_selectable() {
             SettingsCommand::SetConnectivity {
                 preferences: ConnectivityPreferences {
                     adapter,
+                    host_adapter: IceAdapter::Java,
                     selection_version: 1,
                 },
             }

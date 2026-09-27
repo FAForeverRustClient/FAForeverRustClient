@@ -860,8 +860,8 @@ export const en = {
   "lobby.browser.ranking": "Ranking",
   "lobby.browser.ranked": "Ranked",
   "lobby.browser.unranked": "Unranked",
-  "lobby.browser.pioneer": "Pioneer",
-  "lobby.browser.pioneerTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
+  "lobby.browser.goAdapter": "Go adapter",
+  "lobby.browser.goAdapterTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
   // The sim-mod tag says how many, and its tooltip says the thing the count
   // does not: whether those mods cost the game its rating. Plural because
   // German needs a different noun form, which a ternary could not express.
@@ -1566,8 +1566,10 @@ export const en = {
   "settings.game.openCacheFolder": "Open cache folder",
   "settings.game.openLocalFolder": "Open local cache folder for {name}",
   "settings.game.openReleaseNotes": "Open {name} on GitHub",
-  "settings.connectivity.connectivityAdapter": "Connectivity adapter",
-  "settings.connectivity.connectivityAdapterHint": "Dynamic joins every lobby on its host's adapter and hosts on Java. Hosting on Go adds [pioneer] to your game's title so other players can tell. Applies from your next game.",
+  "settings.connectivity.connectivityAdapter": "Joining games",
+  "settings.connectivity.connectivityAdapterHint": "Dynamic uses whatever adapter the host uses: Go for a lobby with [go-adapter] in its title, Java for everything else. Applies from your next game.",
+  "settings.connectivity.hostAdapter": "Hosting games",
+  "settings.connectivity.hostAdapterHint": "Hosting on Go adds [go-adapter] to your game's title: players on Dynamic in this client then join on Go by themselves, everybody else has to switch to Go. Applies from your next game.",
   "settings.connectivity.dynamic": "Dynamic (follows the host, recommended)",
   "settings.discord.richPresence": "Rich Presence",
   "settings.discord.richPresenceHint": "Show the game you host or play on your Discord profile.",
