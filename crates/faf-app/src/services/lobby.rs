@@ -174,8 +174,9 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                     password_enabled: config.password.is_some(),
                     password: config.password.clone().unwrap_or_default(),
                     enforce_rating_range: config.enforce_rating_range,
-                    rating_min: config.rating_min.unwrap_or(800),
-                    rating_max: config.rating_max.unwrap_or(1_500),
+                    // An open end stays open: see `HostGamePreferences::rating_min`.
+                    rating_min: config.rating_min,
+                    rating_max: config.rating_max,
                 };
                 if config.mod_name == "coop" {
                     browsing.host_coop = remembered;

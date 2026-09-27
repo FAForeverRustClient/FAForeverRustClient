@@ -1955,8 +1955,12 @@ pub struct HostGamePreferences {
     pub password_enabled: bool,
     pub password: String,
     pub enforce_rating_range: bool,
-    pub rating_min: i32,
-    pub rating_max: i32,
+    /// `None` is an open end: no lower bound, "Any" in the field. A range
+    /// could be typed but never taken away again, because the field put the
+    /// last number back when it was emptied.
+    pub rating_min: Option<i32>,
+    /// `None` is an open end, as for [`Self::rating_min`].
+    pub rating_max: Option<i32>,
 }
 
 impl<'de> Deserialize<'de> for HostGamePreferences {
@@ -1974,8 +1978,8 @@ impl<'de> Deserialize<'de> for HostGamePreferences {
             password_enabled: bool,
             password: String,
             enforce_rating_range: bool,
-            rating_min: i32,
-            rating_max: i32,
+            rating_min: Option<i32>,
+            rating_max: Option<i32>,
         }
 
         impl Default for Wire {
@@ -2020,8 +2024,8 @@ impl Default for HostGamePreferences {
             password_enabled: false,
             password: String::new(),
             enforce_rating_range: false,
-            rating_min: 800,
-            rating_max: 1_500,
+            rating_min: Some(800),
+            rating_max: Some(1_500),
         }
     }
 }
@@ -2039,10 +2043,13 @@ impl HostGamePreferences {
         };
         self.map = truncate_trimmed(self.map, 256);
         self.password = self.password.chars().take(25).collect();
-        self.rating_min = self.rating_min.clamp(-9_999, 9_999);
-        self.rating_max = self.rating_max.clamp(-9_999, 9_999);
-        if self.rating_min > self.rating_max {
-            std::mem::swap(&mut self.rating_min, &mut self.rating_max);
+        self.rating_min = self.rating_min.map(|rating| rating.clamp(-9_999, 9_999));
+        self.rating_max = self.rating_max.map(|rating| rating.clamp(-9_999, 9_999));
+        if let (Some(min), Some(max)) = (self.rating_min, self.rating_max) {
+            if min > max {
+                self.rating_min = Some(max);
+                self.rating_max = Some(min);
+            }
         }
         self
     }
@@ -3350,8 +3357,8 @@ mod tests {
                     password_enabled: true,
                     password: "  secret  ".into(),
                     enforce_rating_range: true,
-                    rating_min: 1_500,
-                    rating_max: 800,
+                    rating_min: Some(1_500),
+                    rating_max: Some(800),
                 },
                 host_coop: HostGamePreferences {
                     title: "  Operation Ivy  ".into(),
@@ -3361,8 +3368,8 @@ mod tests {
                     password_enabled: false,
                     password: String::new(),
                     enforce_rating_range: false,
-                    rating_min: 800,
-                    rating_max: 1_500,
+                    rating_min: None,
+                    rating_max: Some(1_500),
                 },
                 favorite_maps: vec![
                     "  Adaptive_Tabula.v0006  ".into(),
@@ -3430,8 +3437,11 @@ mod tests {
         assert_eq!(settings.browsing.host_game.visibility, "friends");
         assert_eq!(settings.browsing.host_game.map, "scmp_009");
         assert_eq!(settings.browsing.host_game.password, "  secret  ");
-        assert_eq!(settings.browsing.host_game.rating_min, 800);
-        assert_eq!(settings.browsing.host_game.rating_max, 1_500);
+        assert_eq!(settings.browsing.host_game.rating_min, Some(800));
+        assert_eq!(settings.browsing.host_game.rating_max, Some(1_500));
+        // An open end is kept open, not filled in with a default.
+        assert_eq!(settings.browsing.host_coop.rating_min, None);
+        assert_eq!(settings.browsing.host_coop.rating_max, Some(1_500));
         assert_eq!(settings.browsing.favorite_maps, ["adaptive_tabula.v0006"]);
         assert_eq!(settings.browsing.favorite_mods, ["eco_graph"]);
         assert_eq!(

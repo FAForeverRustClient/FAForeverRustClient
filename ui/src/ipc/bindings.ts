@@ -2850,8 +2850,14 @@ export type HostGamePreferences = {
 	passwordEnabled: boolean,
 	password: string,
 	enforceRatingRange: boolean,
-	ratingMin: number,
-	ratingMax: number,
+	/**
+	 *  `None` is an open end: no lower bound, "Any" in the field. A range
+	 *  could be typed but never taken away again, because the field put the
+	 *  last number back when it was emptied.
+	 */
+	ratingMin: number | null,
+	/**  `None` is an open end, as for [`Self::rating_min`]. */
+	ratingMax: number | null,
 };
 
 /**

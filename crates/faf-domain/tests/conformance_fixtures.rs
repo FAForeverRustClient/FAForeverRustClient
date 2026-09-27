@@ -5492,8 +5492,8 @@ fn cases() -> Vec<Case> {
                             password_enabled: true,
                             password: " secret ".into(),
                             enforce_rating_range: true,
-                            rating_min: 700,
-                            rating_max: 1_700,
+                            rating_min: Some(700),
+                            rating_max: Some(1_700),
                         },
                         // Its own block, normalised the same way: one dialog's
                         // setup must never land in the other's.
@@ -5505,8 +5505,8 @@ fn cases() -> Vec<Case> {
                             password_enabled: false,
                             password: String::new(),
                             enforce_rating_range: false,
-                            rating_min: 800,
-                            rating_max: 1_500,
+                            rating_min: Some(800),
+                            rating_max: Some(1_500),
                         },
                         favorite_maps: vec!["adaptive_tabula.v0006".into()],
                         favorite_mods: vec!["eco_graph".into()],
