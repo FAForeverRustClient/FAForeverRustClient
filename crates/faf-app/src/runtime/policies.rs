@@ -48,6 +48,33 @@ impl Drop for SingleFlightGuard<'_> {
     }
 }
 
+/// Whether the persisted copy of a slice has been read into state yet.
+///
+/// One way: it starts closed, opens once, and never closes again. It exists so
+/// that a writer can tell "this is what the user has" from "this is what the
+/// defaults are, because the file has not been read yet", which nothing else
+/// in the loop can distinguish: `SettingsState::default()` and a genuinely
+/// empty settings file look identical in state.
+///
+/// That distinction is the difference between saving a preference and erasing
+/// every other one with it. Commands run on their own tasks, so a write can
+/// reach the service before the load that is still in flight, and settings are
+/// persisted as a whole document.
+#[derive(Debug, Default)]
+pub struct LoadedFromDisk(AtomicBool);
+
+impl LoadedFromDisk {
+    /// The stored copy is now in state, whether it came from a file or from
+    /// there being no file to read.
+    pub fn mark_loaded(&self) {
+        self.0.store(true, Ordering::Release);
+    }
+
+    pub fn has_loaded(&self) -> bool {
+        self.0.load(Ordering::Acquire)
+    }
+}
+
 /// Whether a long-lived connection should be brought back after it drops.
 ///
 /// Armed by an explicit `Connect` and disarmed by an explicit `Disconnect`, so

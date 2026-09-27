@@ -3472,6 +3472,40 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a matchmaker game that ends releases the queue",
+            vec![
+                LobbyEvent::Connected.into(),
+                // The launch sequence the server drives: paired, then ordered
+                // to start.
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::MatchFound {
+                        queue_name: "ladder1v1".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "ladder1v1".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::InGame.into(),
+                // The game exiting has to put the panel back, or the Start
+                // button stays locked for the rest of the session.
+                LobbyEvent::GameTerminated.into(),
+                // A search in progress is not a launch and must survive one:
+                // the queue can be rejoined while the last game's process is
+                // still shutting down.
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Searching {
+                        queue_names: vec!["ladder1v1".into()],
+                    },
+                }
+                .into(),
+                LobbyEvent::GameTerminated.into(),
+            ],
+        ),
+        case(
             "a mod version conflict parks the join until it is answered",
             vec![
                 LobbyEvent::Connected.into(),
@@ -6093,7 +6127,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Lobby:launching",
     "Lobby:liveGamesChanged",
     "Lobby:liveGamesUpdated",
-    "Lobby:matchmakingUpdated",
     "Lobby:partyUpdated",
     "Lobby:vetoesUpdated",
     "MapGenerator:optionsChanged",

@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type RankedFilter, useMapFilterDraft } from "./mapFilterDraft";
+import { type InstallFilter, visibleVaultMaps } from "./mapVaultResults";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
@@ -40,7 +41,6 @@ import { DateInput } from "../../design-system/DateInput";
 
 type SubView = "vault" | "installed";
 type VaultSort = "rating" | "newest" | "played" | "name" | "size";
-type InstallFilter = "all" | "installed" | "available";
 type VaultPreset = "recommended" | "favorites" | "mine" | "rating" | "newest" | "played" | "all";
 
 const MAP_SIZES = [64, 128, 256, 512, 1024, 2048, 4096];
@@ -91,6 +91,8 @@ interface MapFilterState {
   installFilter: InstallFilter;
   createdAfter: string;
   createdBefore: string;
+  /** Show versions the author withdrew from the vault. Off by default. */
+  showHidden: boolean;
   minimumRating: number | null;
   maximumRating: number | null;
   minimumPlayers: number | null;
@@ -103,10 +105,11 @@ interface MapFilterState {
  * The tab's filter state as the API query it stands for.
  *
  * The presets are sorts plus two flags the API models elsewhere: `recommended`
- * on the map itself, and `mine`, which narrows to one author and is the only
- * view that asks for hidden versions (mirrors Java's `SearchType.OWN`, which
- * filters `map.author.id`). `favorites` has no server equivalent and is handled
- * by the caller.
+ * on the map itself, and `mine`, which narrows to one author (mirrors Java's
+ * `SearchType.OWN`, which filters `map.author.id`) and always asks for hidden
+ * versions, because an author is the one person who needs to see what they
+ * withdrew. Everywhere else the "Withdrawn versions" filter decides.
+ * `favorites` has no server equivalent and is handled by the caller.
  */
 function mapVaultQuery(
   applied: MapFilterState,
@@ -126,9 +129,7 @@ function mapVaultQuery(
     search: applied.search.trim(),
     author: applied.author.trim(),
     authorId: mine ? playerId : null,
-    // Only here: an author is the one person who still needs to see what they
-    // withdrew, and neither reference client can show them.
-    includeHidden: mine,
+    includeHidden: mine || applied.showHidden,
     ranked: applied.ranked === "all" ? null : applied.ranked === "ranked",
     recommended: preset === "recommended",
     // The domain carries review scores in tenths so the whole state stays
@@ -184,6 +185,7 @@ function VaultView({ busy }: { busy: boolean }) {
   const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
   const [createdAfter, setCreatedAfter] = useState("");
   const [createdBefore, setCreatedBefore] = useState("");
+  const [showHidden, setShowHidden] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -199,6 +201,7 @@ function VaultView({ busy }: { busy: boolean }) {
     installFilter: "all",
     createdAfter: "",
     createdBefore: "",
+    showHidden: false,
     minimumRating: null,
     maximumRating: null,
     minimumPlayers: null,
@@ -251,7 +254,7 @@ function VaultView({ busy }: { busy: boolean }) {
   }, [preset]);
 
   const applySearch = () => {
-    setApplied({ ...draft, sort, installFilter, createdAfter, createdBefore });
+    setApplied({ ...draft, sort, installFilter, createdAfter, createdBefore, showHidden });
     setPage(1);
   };
 
@@ -304,6 +307,7 @@ function VaultView({ busy }: { busy: boolean }) {
     setInstallFilter("all");
     setCreatedAfter("");
     setCreatedBefore("");
+    setShowHidden(false);
     setApplied({
       search: "",
       author: "",
@@ -312,6 +316,7 @@ function VaultView({ busy }: { busy: boolean }) {
       installFilter: "all",
       createdAfter: "",
       createdBefore: "",
+      showHidden: false,
       minimumRating: null,
       maximumRating: null,
       minimumPlayers: null,
@@ -348,16 +353,19 @@ function VaultView({ busy }: { busy: boolean }) {
     [localFavorites, vault, favoriteFolders],
   );
 
-  // Installed/available is the other filter the server cannot apply, and unlike
-  // favourites it has no complete local set to fall back on, so it narrows the
-  // page that came back. `MapsView`'s result count says so.
-  const results = useMemo(() => {
-    const source = localFavorites ? favorites : browse;
-    if (applied.installFilter === "all") return source;
-    return source.filter(
-      (map) => mapInstalled(map, installedFolders) === (applied.installFilter === "installed"),
-    );
-  }, [applied.installFilter, browse, favorites, installedFolders, localFavorites]);
+  // The filters the server cannot answer for this tab, applied to the page
+  // that came back. `MapsView`'s result count says "on this page" for exactly
+  // this reason. See `mapVaultResults.ts` for why withdrawn versions are among
+  // them even though the query asks about them.
+  const results = useMemo(
+    () => visibleVaultMaps(localFavorites ? favorites : browse, {
+      showHidden: applied.showHidden,
+      ownMaps: preset === "mine",
+      installFilter: applied.installFilter,
+      installedFolders,
+    }),
+    [applied.installFilter, applied.showHidden, browse, favorites, installedFolders, localFavorites, preset],
+  );
 
   // A page count belongs to the search that produced it. While a new filter's
   // results are still on their way, the count in state still describes the old
@@ -373,7 +381,8 @@ function VaultView({ busy }: { busy: boolean }) {
   const hiddenFilterCount = Number(installFilter !== "all")
     + Number(createdAfter !== "" || createdBefore !== "")
     + Number(width > 0)
-    + Number(height > 0);
+    + Number(height > 0)
+    + Number(showHidden);
 
   return (
     <>
@@ -423,6 +432,21 @@ function VaultView({ busy }: { busy: boolean }) {
               <SearchField label={t("maps.view.uploadedBefore")}><DateInput className="search-panel-control" value={createdBefore} onChange={setCreatedBefore} /></SearchField>
               <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
               <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
+              {/* "My maps" shows them regardless, so the control would be a
+                  lie there: an author is meant to see what they withdrew. */}
+              {preset !== "mine" && (
+                <SearchField label={t("maps.view.withdrawn")}>
+                  <select
+                    className="search-panel-control"
+                    value={showHidden ? "include" : "exclude"}
+                    title={t("maps.view.withdrawnTitle")}
+                    onChange={(event) => setShowHidden(event.target.value === "include")}
+                  >
+                    <option value="exclude">{t("maps.view.withdrawnExclude")}</option>
+                    <option value="include">{t("maps.view.withdrawnInclude")}</option>
+                  </select>
+                </SearchField>
+              )}
             </div>
           </div>
         ) : undefined}

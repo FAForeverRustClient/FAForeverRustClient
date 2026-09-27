@@ -1009,6 +1009,19 @@ button.vault-input {
   line-height: 1;
 }
 
+.replay-player-alias {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-muted);
+  line-height: 1;
+  flex: 0 1 auto;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .replay-player-rating-change {
   display: inline-block;
   font-size: 12px;

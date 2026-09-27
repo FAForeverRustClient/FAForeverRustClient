@@ -1083,6 +1083,7 @@ export const en = {
   "replays.roster.combinedRating": "Combined displayed rating",
   "replays.roster.rating": "Rating",
   "replays.roster.playerActions": "Actions for {name}",
+  "replays.roster.playedAs": "played as {name}",
   "replays.roster.score": "Score",
 
   // Live replay list.
@@ -1685,6 +1686,10 @@ export const en = {
   "maps.view.installation": "Installation",
   "maps.view.uploadedAfter": "Uploaded after",
   "maps.view.uploadedBefore": "Uploaded before",
+  "maps.view.withdrawn": "Withdrawn versions",
+  "maps.view.withdrawnTitle": "Maps whose latest version the author has withdrawn from the vault. Hidden by default.",
+  "maps.view.withdrawnExclude": "Hidden",
+  "maps.view.withdrawnInclude": "Shown",
   "maps.view.width": "Width",
   "maps.view.height": "Height",
   "maps.view.map": "Map",

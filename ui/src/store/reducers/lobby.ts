@@ -165,7 +165,20 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
     case "launchFailed":
       return { ...state, join: { type: "launchFailed", payload: { reason: event.payload.reason } } };
     case "gameTerminated":
-      return { ...state, join: { type: "idle" } };
+      // A matchmaker game that ends leaves the search finished too. The server
+      // sends no `search_info` when a match ends, so without this the panel
+      // kept the Start button locked behind "Starting your match" until the
+      // client was restarted. Only the two states a launch produces are
+      // cleared; `searching` is left alone, because the queue can be rejoined
+      // while the previous game's process is still shutting down.
+      return {
+        ...state,
+        join: { type: "idle" },
+        matchmaking:
+          state.matchmaking.type === "launching" || state.matchmaking.type === "matchFound"
+            ? { type: "idle" }
+            : state.matchmaking,
+      };
     case "disconnected":
       return {
         ...state,

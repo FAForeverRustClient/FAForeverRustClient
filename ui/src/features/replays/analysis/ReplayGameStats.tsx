@@ -101,10 +101,14 @@ function BarChart({
     (most, bars) => bars.reduce((inner, bar) => Math.max(inner, bar.value), most),
     0,
   );
-  const plotHeight = HEIGHT - PAD_BOTTOM - PAD_TOP;
   const plotWidth = WIDTH - PAD_LEFT;
   const slot = Math.min(MAX_SLOT_WIDTH, plotWidth / Math.max(1, players.length));
-  // The band of groups, centred in whatever the slots do not use.
+  const maxNameLength = players.reduce((max, player) => Math.max(max, player.length), 0);
+  const angled = slot < 100 || maxNameLength * 8.5 > slot * 0.85;
+
+  const height = angled ? 320 : HEIGHT;
+  const padBottom = angled ? 64 : PAD_BOTTOM;
+  const plotHeight = height - padBottom - PAD_TOP;
   const bandLeft = PAD_LEFT + (plotWidth - slot * players.length) / 2;
   const barCount = Math.max(1, groups[0]?.length ?? 1);
   const barWidth = Math.min(MAX_BAR_WIDTH, (slot * 0.8) / barCount);
@@ -136,7 +140,7 @@ function BarChart({
         </div>
       )}
     >
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={title}>
+      <svg viewBox={`0 0 ${WIDTH} ${height}`} role="img" aria-label={title}>
         {gridValues.map((value, index) => (
           <g key={index}>
             <line
@@ -159,6 +163,10 @@ function BarChart({
         {players.map((player, index) => {
           const bars = groups[index] ?? [];
           const left = bandLeft + slot * index + (slot - groupWidth) / 2;
+          const centerX = bandLeft + slot * index + slot / 2;
+          const textY = angled ? baseline + 12 : height - 14;
+          const maxChars = angled ? 16 : Math.max(3, Math.floor((slot - 8) / 8.5));
+          const label = player.length > maxChars ? `${player.slice(0, Math.max(1, maxChars - 1))}…` : player;
           return (
             <g key={`${player}-${index}`}>
               {bars.map((bar, barIndex) => {
@@ -190,11 +198,14 @@ function BarChart({
               })}
               <text
                 className="replay-chart-label is-axis"
-                x={bandLeft + slot * index + slot / 2}
-                y={HEIGHT - 14}
-                textAnchor="middle"
+                x={centerX}
+                y={textY}
+                textAnchor={angled ? "end" : "middle"}
+                transform={angled ? `rotate(-38, ${centerX}, ${textY})` : undefined}
+                style={{ fontSize: angled ? (slot < 70 ? "11px" : "12px") : undefined }}
               >
-                {player.length > 14 ? `${player.slice(0, 13)}…` : player}
+                <title>{player}</title>
+                {label}
               </text>
             </g>
           );

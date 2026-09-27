@@ -1,6 +1,6 @@
 import { Fragment, type MouseEvent as ReactMouseEvent } from "react";
 import { Icon } from "../../design-system/Icon";
-import type { LocalReplayTeam, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
+import type { LocalReplayPlayer, LocalReplayTeam, ReplayPlayer, ReplayTeam } from "../../ipc/bindings";
 import { FactionIcon } from "../../shared/components/FactionIcon";
 import { openPlayerCard } from "../../shared/playerCardActions";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
@@ -59,80 +59,171 @@ export function teamOutcome(players: ReplayPlayer[]): OutcomeKind | "unknown" {
   return "unknown";
 }
 
+export type RosterPlayer = ReplayPlayer & {
+  alias?: string;
+};
+
+export type RosterTeam = Omit<ReplayTeam, "players"> & {
+  players: RosterPlayer[];
+};
+
+
+
 /**
- * Local replay headers can contain the exact rating even when the vault
- * response has no rating journal included. Keep the richer vault player data
- * and fill only values that are missing from it.
+ * Local replay headers can contain the exact rating and faction even when the vault
+ * response has no rating journal or faction included. Keep the richer vault player data
+ * and fill values that are missing from it.
+ *
+ * Players who renamed since the game was played are matched to their online account
+ * counterpart so their old nicknames enrich the player rather than appearing as duplicate
+ * phantom rows.
  */
 export function mergeReplayTeamsWithLocal(
   teams: ReplayTeam[],
   localTeams?: LocalReplayTeam[],
-): ReplayTeam[] {
+): RosterTeam[] {
   if (!localTeams || localTeams.length === 0) return teams;
   const localByTeam = new Map(localTeams.map((team) => [team.team, team]));
-  // The JSON header uses the engine's team numbers, while the vault API can
-  // use a different offset for the same teams. Player names are the stable
-  // identity across both sources, so keep a fallback index as well.
-  const localByPlayer = new Map(
-    localTeams.flatMap((team) =>
-      team.players.map((player) => [player.name.toLocaleLowerCase(), player] as const),
-    ),
-  );
-  const enriched = teams.map((team) => {
-    const localTeam = localByTeam.get(String(team.team));
+
+  // Which listed team each local team turned into. The two number their teams
+  // differently often enough that the key cannot be trusted, so it is derived
+  // from where the players that are in both ended up; a local team whose
+  // players are all missing from the listing keeps its own number.
+  const teamOf = new Map<string, number>();
+  for (const localTeam of localTeams) {
+    const landed = teams.find((team) =>
+      team.players.some((player) =>
+        localTeam.players.some(
+          (local) => local.name.toLocaleLowerCase() === player.name.toLocaleLowerCase(),
+        ),
+      ),
+    );
+    if (landed) teamOf.set(localTeam.team, landed.team);
+  }
+
+  // Track which local players have been matched: Set of `${localTeam.team}:${localPlayerIndex}`
+  const matchedLocalIndices = new Set<string>();
+
+  const enriched = teams.map((team, teamIndex) => {
+    let localTeam = localTeams.find((lt) => teamOf.get(lt.team) === team.team);
+    if (!localTeam) {
+      localTeam = localByTeam.get(String(team.team));
+    }
+    if (!localTeam && localTeams.length === teams.length) {
+      localTeam = localTeams[teamIndex];
+    }
+
+    if (!localTeam) {
+      return { ...team, players: [...team.players] };
+    }
+
+    const localPlayers = localTeam.players;
+    const teamKey = localTeam.team;
+
+    type MatchResult = {
+      localPlayer: LocalReplayPlayer;
+      localIndex: number;
+    };
+    const playerMatches = new Map<number, MatchResult>();
+
+    // Pass 1: Match by exact name (case-insensitive)
+    team.players.forEach((player, pIdx) => {
+      const pName = player.name.toLocaleLowerCase();
+      const localIdx = localPlayers.findIndex(
+        (lp, lIdx) =>
+          !matchedLocalIndices.has(`${teamKey}:${lIdx}`) &&
+          lp.name.toLocaleLowerCase() === pName,
+      );
+      if (localIdx >= 0) {
+        matchedLocalIndices.add(`${teamKey}:${localIdx}`);
+        playerMatches.set(pIdx, {
+          localPlayer: localPlayers[localIdx],
+          localIndex: localIdx,
+        });
+      }
+    });
+
+    // Pass 2: Match renamed players (unmatched online players to unmatched local human players in the same team)
+    const unmatchedOnlineIndices = team.players
+      .map((_, idx) => idx)
+      .filter((idx) => !playerMatches.has(idx));
+
+    const unmatchedLocalHumanIndices = localPlayers
+      .map((_, idx) => idx)
+      .filter(
+        (idx) =>
+          !matchedLocalIndices.has(`${teamKey}:${idx}`) &&
+          localPlayers[idx].ai !== true,
+      );
+
+    if (unmatchedOnlineIndices.length > 0 && unmatchedLocalHumanIndices.length > 0) {
+      // 2a. Match by exact displayed rating if available
+      for (const pIdx of [...unmatchedOnlineIndices]) {
+        const player = team.players[pIdx];
+        if (player.rating !== null && player.rating !== undefined) {
+          const foundHumanIdx = unmatchedLocalHumanIndices.find(
+            (lIdx) => localPlayers[lIdx].rating === player.rating,
+          );
+          if (foundHumanIdx !== undefined) {
+            matchedLocalIndices.add(`${teamKey}:${foundHumanIdx}`);
+            playerMatches.set(pIdx, {
+              localPlayer: localPlayers[foundHumanIdx],
+              localIndex: foundHumanIdx,
+            });
+            unmatchedOnlineIndices.splice(unmatchedOnlineIndices.indexOf(pIdx), 1);
+            unmatchedLocalHumanIndices.splice(unmatchedLocalHumanIndices.indexOf(foundHumanIdx), 1);
+          }
+        }
+      }
+
+      // 2b. Match remaining 1-to-1 in order of appearance
+      const toMatchCount = Math.min(unmatchedOnlineIndices.length, unmatchedLocalHumanIndices.length);
+      for (let i = 0; i < toMatchCount; i++) {
+        const pIdx = unmatchedOnlineIndices[i];
+        const lIdx = unmatchedLocalHumanIndices[i];
+        matchedLocalIndices.add(`${teamKey}:${lIdx}`);
+        playerMatches.set(pIdx, {
+          localPlayer: localPlayers[lIdx],
+          localIndex: lIdx,
+        });
+      }
+    }
+
     return {
       ...team,
-      players: team.players.map((player) => {
-        const key = player.name.toLocaleLowerCase();
-        const localPlayer = localTeam?.players.find(
-          (candidate) => candidate.name.toLocaleLowerCase() === key,
-        ) ?? localByPlayer.get(key);
-        if (!localPlayer) return player;
+      players: team.players.map((player, pIdx): RosterPlayer => {
+        const match = playerMatches.get(pIdx);
+        if (!match) return player;
+        const local = match.localPlayer;
+        const isRenamed = local.name.toLocaleLowerCase() !== player.name.toLocaleLowerCase();
         return {
           ...player,
-          faction: player.faction ?? localPlayer.faction,
-          rating: player.rating ?? localPlayer.rating,
-          country: player.country ?? localPlayer.country ?? null,
+          faction: player.faction ?? local.faction,
+          rating: player.rating ?? local.rating,
+          country: player.country ?? local.country ?? null,
+          ...(isRenamed ? { alias: local.name } : {}),
         };
       }),
     };
   });
 
-  // The AI the file has and the listing cannot. The vault's roster is
-  // `playerStats`, one row per account, so a game against three AI arrives
-  // from the server as a lineup of one; the replay's own army table has all
-  // four. The grid card reads that table directly and showed them, the panel
-  // took the server's list and did not, and the same game therefore had two
-  // different lineups depending on where you looked at it.
+  // Everyone the file has and the listing does not, which in practice means
+  // the AI. The vault's roster is playerStats, one row per account, so a
+  // game against three AI arrives from the server as a lineup of one; the
+  // replay's own army table has all four. The grid card reads that table
+  // directly and showed them, the panel took the server's list and did not.
   //
-  // Only the AI, though, and not everyone the listing is missing by name. The
-  // listing names an account as it is called today and the file as it was
-  // called on the day of the game, so a player who has been renamed since is
-  // "missing" from the listing too, and was added a second time under the old
-  // name. The file marks which armies had no client behind them.
-  const online = new Set(
-    enriched.flatMap((team) => team.players.map((player) => player.name.toLocaleLowerCase())),
-  );
-
-  // Which listed team each local team turned into. The two number their teams
-  // differently often enough that the key cannot be trusted, so it is derived
-  // from where the players that *are* in both ended up; a local team whose
-  // players are all missing from the listing keeps its own number.
-  const teamOf = new Map<string, number>();
+  // Only AI players are added from the local replay file: human participants
+  // are already fully accounted for by the online server roster, and an unmatched
+  // human name represents a player who changed nicknames, never an extra player.
+  const merged: RosterTeam[] = enriched.map((team) => ({ ...team, players: [...team.players] }));
   for (const localTeam of localTeams) {
-    const landed = enriched.find((team) => team.players.some((player) =>
-      localTeam.players.some((local) =>
-        local.name.toLocaleLowerCase() === player.name.toLocaleLowerCase())));
-    if (landed) teamOf.set(localTeam.team, landed.team);
-  }
-
-  const merged = enriched.map((team) => ({ ...team, players: [...team.players] }));
-  for (const localTeam of localTeams) {
-    const missing = localTeam.players.filter(
-      (player) => player.ai === true && !online.has(player.name.toLocaleLowerCase()),
+    const teamKey = localTeam.team;
+    const missingAi = localTeam.players.filter(
+      (player, idx) => !matchedLocalIndices.has(`${teamKey}:${idx}`) && player.ai === true,
     );
-    if (missing.length === 0) continue;
-    const added = missing.map((player) => ({
+    if (missingAi.length === 0) continue;
+    const added: RosterPlayer[] = missingAi.map((player) => ({
       name: player.name,
       faction: player.faction,
       rating: player.rating,
@@ -195,10 +286,18 @@ function openPlayerActions(
   void openPlayerCard(null, name);
 }
 
-function playerActionTitle(name: string, onPlayerMenu: PlayerMenuOpener | undefined): string {
-  return onPlayerMenu
+function playerActionTitle(
+  name: string,
+  alias: string | undefined,
+  onPlayerMenu: PlayerMenuOpener | undefined,
+): string {
+  const base = onPlayerMenu
     ? t("replays.roster.playerActions", { name })
     : t("lobby.browser.openProfile", { name });
+  if (alias && alias.toLocaleLowerCase() !== name.toLocaleLowerCase()) {
+    return `${base} (${t("replays.roster.playedAs", { name: alias })})`;
+  }
+  return base;
 }
 
 export function ReplayCardRoster({
@@ -206,7 +305,7 @@ export function ReplayCardRoster({
   interactive = false,
   onPlayerMenu,
 }: {
-  teams: ReplayTeam[];
+  teams: (ReplayTeam | RosterTeam)[];
   /**
    * Whether a name in here is a control at all.
    *
@@ -249,54 +348,68 @@ export function ReplayCardRoster({
               className={`replay-card-team-roster ${isSplit ? "is-split" : ""}`}
               style={rowCount ? { gridTemplateRows: `repeat(${rowCount}, auto)` } : undefined}
             >
-              {team.players.map((player) => (
-                <div key={player.name} className="replay-player">
-                  {interactive ? (
-                    <button
-                      type="button"
-                      className="replay-player-identity replay-player-link"
-                      title={playerActionTitle(player.name, onPlayerMenu)}
-                      onClick={(event) => {
-                        // The card around this one opens the game; this opens
-                        // the player. Both are reasonable readings of a click
-                        // on a name, and the nearer target wins.
-                        event.stopPropagation();
-                        openPlayerActions(player.name, event, onPlayerMenu);
-                      }}
-                      onContextMenu={(event) => {
-                        if (!onPlayerMenu) return;
-                        event.stopPropagation();
-                        onPlayerMenu(player.name, event);
-                      }}
-                    >
-                      <ReplayPlayerMarker player={player} observer={observer} size={17} />
-                      <ReplayPlayerFlag player={player} />
-                      {/* The class the hover underline hangs off, which is how
-                          a name says it can be clicked before it is. Same one
-                          the detail roster's names carry. */}
-                      <PlayerName name={player.name} className="replay-player-name-text" />
-                    </button>
-                  ) : (
-                    /* Not a control: a card that is itself one big target
-                       cannot hold buttons. The context menu is still reachable,
-                       which is the gesture the channel roster answers on a name
-                       too, and the only one a span can offer. */
-                    <span
-                      className={onPlayerMenu ? "replay-player-identity replay-player-menuable" : "replay-player-identity"}
-                      title={onPlayerMenu ? t("replays.roster.playerActions", { name: player.name }) : undefined}
-                      onContextMenu={onPlayerMenu && ((event) => {
-                        event.stopPropagation();
-                        onPlayerMenu(player.name, event);
-                      })}
-                    >
-                      <ReplayPlayerMarker player={player} observer={observer} size={17} />
-                      <ReplayPlayerFlag player={player} />
-                      <PlayerName name={player.name} />
-                    </span>
-                  )}
-                  {player.rating !== null && <span className="muted">{player.rating}</span>}
-                </div>
-              ))}
+              {team.players.map((player) => {
+                const alias = (player as RosterPlayer).alias;
+                const isRenamed = Boolean(
+                  alias && alias.toLocaleLowerCase() !== player.name.toLocaleLowerCase(),
+                );
+                return (
+                  <div key={player.name} className="replay-player">
+                    {interactive ? (
+                      <button
+                        type="button"
+                        className="replay-player-identity replay-player-link"
+                        title={playerActionTitle(player.name, alias, onPlayerMenu)}
+                        onClick={(event) => {
+                          // The card around this one opens the game; this opens
+                          // the player. Both are reasonable readings of a click
+                          // on a name, and the nearer target wins.
+                          event.stopPropagation();
+                          openPlayerActions(player.name, event, onPlayerMenu);
+                        }}
+                        onContextMenu={(event) => {
+                          if (!onPlayerMenu) return;
+                          event.stopPropagation();
+                          onPlayerMenu(player.name, event);
+                        }}
+                      >
+                        <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                        <ReplayPlayerFlag player={player} />
+                        {/* The class the hover underline hangs off, which is how
+                            a name says it can be clicked before it is. Same one
+                            the detail roster's names carry. */}
+                        <PlayerName name={player.name} className="replay-player-name-text" />
+                      </button>
+                    ) : (
+                      /* Not a control: a card that is itself one big target
+                         cannot hold buttons. The context menu is still reachable,
+                         which is the gesture the channel roster answers on a name
+                         too, and the only one a span can offer. */
+                      <span
+                        className={onPlayerMenu ? "replay-player-identity replay-player-menuable" : "replay-player-identity"}
+                        title={
+                          isRenamed
+                            ? onPlayerMenu
+                              ? `${t("replays.roster.playerActions", { name: player.name })} (${t("replays.roster.playedAs", { name: alias! })})`
+                              : t("replays.roster.playedAs", { name: alias! })
+                            : onPlayerMenu
+                              ? t("replays.roster.playerActions", { name: player.name })
+                              : undefined
+                        }
+                        onContextMenu={onPlayerMenu && ((event) => {
+                          event.stopPropagation();
+                          onPlayerMenu(player.name, event);
+                        })}
+                      >
+                        <ReplayPlayerMarker player={player} observer={observer} size={17} />
+                        <ReplayPlayerFlag player={player} />
+                        <PlayerName name={player.name} />
+                      </span>
+                    )}
+                    {player.rating !== null && <span className="muted">{player.rating}</span>}
+                  </div>
+                );
+              })}
             </div>
           </section>
         );
@@ -337,7 +450,7 @@ export function ReplayDetailRoster({
   avatarByLogin,
   onPlayerMenu,
 }: {
-  teams: ReplayTeam[];
+  teams: (ReplayTeam | RosterTeam)[];
   /**
    * Whether the result is on screen. Java hides its result labels entirely for
    * a game that was not rated; showing outcomes anyway is what put "Defeat" on
@@ -421,32 +534,45 @@ export function ReplayDetailRoster({
                 className={`replay-detail-roster ${isSplit ? "is-split" : ""}`}
                 style={rowCount ? { gridTemplateRows: `repeat(${rowCount}, auto)` } : undefined}
               >
-                {team.players.map((player) => (
-                  <div key={player.name} className="replay-detail-player">
-                    <button
-                      type="button"
-                      className="replay-player-identity replay-player-link"
-                      title={playerActionTitle(player.name, onPlayerMenu)}
-                      onClick={(event) => openPlayerActions(player.name, event, onPlayerMenu)}
-                      onContextMenu={(event) => onPlayerMenu?.(player.name, event)}
-                    >
-                      <ReplayPlayerAvatar player={player} avatarByLogin={avatarByLogin} />
-                      {observer || player.faction ? (
-                        <ReplayPlayerMarker player={player} observer={observer} size={18} />
-                      ) : (
-                        <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
-                      )}
-                      <ReplayPlayerFlag player={player} />
-                      <span className="replay-player-name-group">
-                        <PlayerName name={player.name} className="replay-player-name-text" />
-                        {player.rating !== null && (
-                          <span className="replay-player-rating" title={t("replays.roster.rating")}>
-                            ({player.rating})
-                          </span>
+                {team.players.map((player) => {
+                  const alias = (player as RosterPlayer).alias;
+                  const isRenamed = Boolean(
+                    alias && alias.toLocaleLowerCase() !== player.name.toLocaleLowerCase(),
+                  );
+                  return (
+                    <div key={player.name} className="replay-detail-player">
+                      <button
+                        type="button"
+                        className="replay-player-identity replay-player-link"
+                        title={playerActionTitle(player.name, alias, onPlayerMenu)}
+                        onClick={(event) => openPlayerActions(player.name, event, onPlayerMenu)}
+                        onContextMenu={(event) => onPlayerMenu?.(player.name, event)}
+                      >
+                        <ReplayPlayerAvatar player={player} avatarByLogin={avatarByLogin} />
+                        {observer || player.faction ? (
+                          <ReplayPlayerMarker player={player} observer={observer} size={18} />
+                        ) : (
+                          <span className="replay-player-faction replay-player-faction-empty" aria-hidden />
                         )}
-                      </span>
-                    </button>
-                    <span className="replay-player-stats">
+                        <ReplayPlayerFlag player={player} />
+                        <span className="replay-player-name-group">
+                          <PlayerName name={player.name} className="replay-player-name-text" />
+                          {isRenamed && (
+                            <span
+                              className="replay-player-alias"
+                              title={t("replays.roster.playedAs", { name: alias! })}
+                            >
+                              ({alias})
+                            </span>
+                          )}
+                          {player.rating !== null && (
+                            <span className="replay-player-rating" title={t("replays.roster.rating")}>
+                              ({player.rating})
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                      <span className="replay-player-stats">
                       {/* What the game did to this player's rating, not the
                           game score that used to sit here: the score is the
                           same number for everyone on a team and exists even
@@ -463,8 +589,9 @@ export function ReplayDetailRoster({
                         </span>
                       )}
                     </span>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           </Fragment>
