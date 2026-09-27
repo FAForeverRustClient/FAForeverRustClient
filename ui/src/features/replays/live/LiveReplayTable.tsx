@@ -8,7 +8,6 @@ import { replayDelayRemaining, type LiveSortKey, type SortDirection } from "../.
 import { useTranslation } from "../../../i18n/useTranslation";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
 import { useColumnWidths } from "../../../shared/hooks/useColumnWidths";
-import { tableMinWidth } from "../../../shared/tableColumns";
 
 function SortHeader({
   label,
@@ -118,6 +117,7 @@ export function LiveReplayTable(props: Props) {
       label={t("lobby.browser.resizeColumn", {
         column: columnLabels[boundary - 1 === FLEXIBLE_COLUMN ? boundary : boundary - 1],
       })}
+      onStart={columns.onStart}
       onDrag={(delta) => columns.onDrag(boundary, delta)}
       onEnd={columns.onCommit}
       onReset={columns.onReset}
@@ -126,10 +126,7 @@ export function LiveReplayTable(props: Props) {
 
   return (
     <div className="live-replay-table-wrap surface-panel">
-      <table
-        className="live-replay-table"
-        style={{ minWidth: `${tableMinWidth(columns.widths)}px` }}
-      >
+      <table className="live-replay-table" ref={columns.containerRef}>
         {/* `table-layout: fixed` plus a colgroup is how a real table takes
             dragged widths: putting them on the cells would let the widest row
             win instead. */}
@@ -138,7 +135,7 @@ export function LiveReplayTable(props: Props) {
             it for one release, and the table then stopped a third of the way
             across a wide window while the titles beside it were cut off. */}
         <colgroup>
-          {columns.widths.map((width, index) =>
+          {columns.drawn.map((width, index) =>
             index === FLEXIBLE_COLUMN ? (
               <col key={columnLabels[index]} />
             ) : (

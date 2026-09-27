@@ -92,6 +92,13 @@ impl UploadsPort for UploadsClient {
             .unwrap_or_default()
     }
 
+    async fn subject_name(&self, request: UploadRequest) -> Option<String> {
+        tokio::task::spawn_blocking(move || read_subject_name(&request))
+            .await
+            .ok()
+            .flatten()
+    }
+
     async fn publish(&self, request: UploadRequest) -> mpsc::Receiver<UploadStatus> {
         let (tx, rx) = mpsc::channel(16);
         let config = self.config.clone();
@@ -222,6 +229,34 @@ fn source_folder(request: &UploadRequest) -> Result<PathBuf, String> {
 }
 
 /// Refuse a folder that plainly is not a map or mod folder.
+/// See [`UploadsPort::subject_name`].
+///
+/// Reads the same file the vault will: a mod's root `mod_info.lua`, or the
+/// map's `_scenario.lua`. A folder that fails [`source_folder`]'s checks has no
+/// name worth showing, since it will not be published either.
+fn read_subject_name(request: &UploadRequest) -> Option<String> {
+    let folder = source_folder(request).ok()?;
+    let name = match request.kind {
+        UploadKind::Mod => {
+            let contents = std::fs::read_to_string(folder.join("mod_info.lua")).ok()?;
+            crate::infra::mods::mod_info_name(&contents)?
+        }
+        UploadKind::Map => {
+            let scenario = std::fs::read_dir(&folder).ok()?.flatten().find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .to_ascii_lowercase()
+                    .ends_with("_scenario.lua")
+            })?;
+            let contents = std::fs::read_to_string(scenario.path()).ok()?;
+            crate::infra::maps::parse_scenario_lua(&contents).name?
+        }
+    };
+    let name = name.trim();
+    (!name.is_empty()).then(|| name.to_string())
+}
+
 fn looks_like(folder: &Path, kind: UploadKind) -> Result<(), String> {
     let entries = std::fs::read_dir(folder)
         .map_err(|error| format!("could not read {}: {error}", folder.display()))?;
@@ -903,6 +938,51 @@ mod tests {
 
         let on_disk = std::fs::read_to_string(source.join("mod_info.lua")).unwrap();
         assert_eq!(on_disk, original, "the author's own folder was edited");
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_picked_folder_is_named_by_its_own_metadata_not_by_the_folder() {
+        let root = temp_dir("subject-name");
+        let mod_folder = root.join("my-working-copy");
+        std::fs::create_dir_all(&mod_folder).unwrap();
+        std::fs::write(
+            mod_folder.join("mod_info.lua"),
+            "name = \"Real Mod Name\"
+uid = \"0a1b2c3d\"
+version = 3
+",
+        )
+        .unwrap();
+        let map_folder = root.join("map-draft");
+        std::fs::create_dir_all(&map_folder).unwrap();
+        std::fs::write(map_folder.join("draft.scmap"), b"").unwrap();
+        std::fs::write(
+            map_folder.join("draft_scenario.lua"),
+            "ScenarioInfo = {
+    name = 'Real Map Name',
+}
+",
+        )
+        .unwrap();
+
+        let picked = |kind, folder: &Path| UploadRequest {
+            kind,
+            folder_name: folder.file_name().unwrap().to_string_lossy().into_owned(),
+            display_name: folder.file_name().unwrap().to_string_lossy().into_owned(),
+            ranked: false,
+            source_path: Some(folder.to_string_lossy().into_owned()),
+            rename_to: String::new(),
+        };
+        assert_eq!(
+            read_subject_name(&picked(UploadKind::Mod, &mod_folder)).as_deref(),
+            Some("Real Mod Name")
+        );
+        assert_eq!(
+            read_subject_name(&picked(UploadKind::Map, &map_folder)).as_deref(),
+            Some("Real Map Name")
+        );
 
         let _ = std::fs::remove_dir_all(&root);
     }

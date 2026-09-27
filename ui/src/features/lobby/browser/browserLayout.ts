@@ -19,10 +19,13 @@ import {
 } from "../../../shared/tableColumns";
 
 /**
- * The designed widths, in the order the header lists them: game, map, players,
- * rating, age.
+ * The designed widths, in the order the header lists them: game, tags, map,
+ * players, rating, age.
  */
-export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [320, 170, 80, 100, 75];
+export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [320, 190, 170, 80, 100, 75];
+
+/** How many columns the list had before the tags got one of their own. */
+const COLUMNS_BEFORE_TAGS = 5;
 
 /**
  * The game column, which is the flexible one.
@@ -35,13 +38,60 @@ export const DEFAULT_COLUMN_WIDTHS: readonly number[] = [320, 170, 80, 100, 75];
  */
 export const FLEXIBLE_COLUMN = 0;
 
+/** The gap between two columns, matching `.game-browser-row`. */
+const COLUMN_GAP_PX = 16;
+/** A row's own padding either side, matching `.game-browser-row`. */
+const ROW_PADDING_PX = 16;
+/** The narrowest the game column can be dragged: a thumbnail and a word. */
+export const MIN_GAME_COLUMN_PX = 120;
+/** The smallest share a column is drawn at: only a window a few dozen pixels wide gets there. */
+const MIN_COLUMN_SCALE = 0.02;
+
+/**
+ * What the columns are drawn at, from 1 (as dragged) down, so that the row
+ * fits a list `listWidth` wide.
+ *
+ * The list is always as wide as the space it has (issue 341). Forced wider,
+ * it scrolled sideways on a smaller screen and was far wider than anything in
+ * it; left to squeeze one column, that column went first and then everything
+ * spilled. So a list narrower than the columns together draws every column
+ * narrower in proportion, the game column included, and the widths stored are
+ * untouched: on a wider screen they come back exactly. A list wider than the
+ * columns gives what is left over to the game column.
+ */
+export function columnScale(listWidth: number, widths: readonly number[]): number {
+  if (listWidth <= 0) return 1;
+  const total = widths.reduce((sum, width) => sum + width, 0);
+  if (total <= 0) return 1;
+  const usable = listWidth - 2 * ROW_PADDING_PX - COLUMN_GAP_PX * (widths.length - 1);
+  return Math.min(1, Math.max(MIN_COLUMN_SCALE, usable / total));
+}
+
+/** The widths as drawn at `scale`. */
+export function scaledColumnWidths(widths: readonly number[], scale: number): number[] {
+  return widths.map((width) => Math.max(1, Math.round(width * scale)));
+}
+
 /** The detail panel's designed width, matching `custom-games.css`. */
 export const DEFAULT_DETAIL_WIDTH = 270;
 
-/** Saved widths, padded and bounded into a usable set of five. */
+/**
+ * Saved widths, padded and bounded into a usable set of six.
+ *
+ * A set of exactly five was saved before the tags column existed, when the
+ * second width was the map's. It is read that way, with the tags column at
+ * its designed width (a zero), so nobody's map column turns into a tags
+ * column of the same width. Every set saved since is six long.
+ */
 export function columnWidths(stored: readonly number[] | undefined): number[] {
-  return resolveColumnWidths(stored, DEFAULT_COLUMN_WIDTHS).slice(0, MAX_BROWSER_COLUMNS);
+  const upgraded = stored?.length === COLUMNS_BEFORE_TAGS
+    ? [stored[0], 0, ...stored.slice(1)]
+    : stored;
+  return resolveColumnWidths(upgraded, DEFAULT_COLUMN_WIDTHS).slice(0, MAX_BROWSER_COLUMNS);
 }
+
+/** For `withBoundaryDragged`: every column of the game list has a width of its own. */
+const NO_FLEXIBLE_COLUMN = -1;
 
 /**
  * The widths after the divider in front of `boundary` has been dragged.
@@ -57,7 +107,14 @@ export function withColumnResized(
   boundary: number,
   delta: number,
 ): number[] {
-  return withBoundaryDragged(widths, boundary, delta, FLEXIBLE_COLUMN);
+  // The game column trades width like any other now: it has a width of its
+  // own, so the divider in front of the tags column moves both of its
+  // neighbours and nothing else, on any screen. It stops at a readable floor.
+  const gameGives = boundary === FLEXIBLE_COLUMN + 1 && delta < 0;
+  const bounded = gameGives
+    ? Math.max(delta, Math.min(0, MIN_GAME_COLUMN_PX - widths[FLEXIBLE_COLUMN]))
+    : delta;
+  return withBoundaryDragged(widths, boundary, bounded, NO_FLEXIBLE_COLUMN);
 }
 
 /**

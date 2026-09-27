@@ -268,8 +268,8 @@ export function ReplayList({
   footer: ReactNode;
 }) {
   const { t } = useTranslation();
-  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN);
-  const template = columnTemplate(columns.widths, FLEXIBLE_COLUMN);
+  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN, "grid");
+  const template = columnTemplate(columns.drawn, FLEXIBLE_COLUMN);
 
   return (
     <section
@@ -278,7 +278,7 @@ export function ReplayList({
       aria-label={t("replays.list.aria")}
       style={{ "--replay-list-columns": template } as CSSProperties}
     >
-      <div className="replay-list-header" role="row">
+      <div className="replay-list-header" role="row" ref={columns.containerRef}>
         {COLUMNS.map((column, index) => (
           <span className={column.className} key={column.label} role="columnheader">
             {/* One line in front of every column but the first, standing
@@ -291,6 +291,7 @@ export function ReplayList({
                 label={t("lobby.browser.resizeColumn", {
                   column: t(COLUMNS[index - 1 === FLEXIBLE_COLUMN ? index : index - 1].label),
                 })}
+                onStart={columns.onStart}
                 onDrag={(delta) => columns.onDrag(index, delta)}
                 onEnd={columns.onCommit}
                 onReset={columns.onReset}

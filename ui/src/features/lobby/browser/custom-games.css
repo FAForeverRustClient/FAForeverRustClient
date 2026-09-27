@@ -66,7 +66,7 @@
   /* The fallback for the moment before the saved widths arrive, in the shape
      the saved ones have: four columns at a fixed width and the game column
      taking the rest. */
-  grid-template-columns: minmax(0, 1fr) 170px 80px 100px 75px;
+  grid-template-columns: minmax(0, 1fr) 190px 170px 80px 100px 75px;
   align-items: center;
   gap: 16px;
 }
@@ -96,7 +96,12 @@
   cursor: pointer;
 }
 
-.game-browser-head-sort:hover,
+/* The tags column's header: a label, since the column orders nothing. */
+.game-browser-head-sort.is-static {
+  cursor: default;
+}
+
+.game-browser-head-sort:hover:not(.is-static),
 .game-browser-head-sort.is-active {
   color: var(--color-text);
 }
@@ -282,12 +287,20 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
   font-size: 11px;
 }
 
+/* Cut off at the column's edge like the title above it, with the whole name
+   on hover. Without it a long host name ran out of a narrow game column and
+   under the tags beside it. */
 .game-browser-host {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   color: var(--color-muted);
   font-size: 11px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -297,9 +310,23 @@
 }
 
 .game-browser-tags {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+}
+
+/* The tags column (issue 341): the chips one after another on one line,
+   starting at the column's leading edge like every other column's contents.
+   Cut off at the column's edge when it is dragged narrower than they are, the
+   way a title or a map name is. Wrapping instead stacked them into a tower
+   that made the whole row taller, and a chip wider than the column spilled
+   over the map name beside it. */
+.game-browser-tags-col {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow: hidden;
 }
 
 .game-browser-tags i {

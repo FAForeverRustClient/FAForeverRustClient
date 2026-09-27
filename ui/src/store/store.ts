@@ -487,6 +487,7 @@ const INITIAL: AppState = {
       partyInvites: true,
       streamLive: true,
       mapGenerated: true,
+      queueOpponentQueues: [],
       volume: 70,
     },
     chat: {

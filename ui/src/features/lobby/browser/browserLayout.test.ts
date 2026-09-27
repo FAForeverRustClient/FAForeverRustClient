@@ -5,6 +5,9 @@ import {
   DEFAULT_COLUMN_WIDTHS,
   DEFAULT_DETAIL_WIDTH,
   detailWidth,
+  columnScale,
+  MIN_GAME_COLUMN_PX,
+  scaledColumnWidths,
   withColumnResized,
   withDetailResized,
 } from "./browserLayout";
@@ -20,11 +23,40 @@ describe("the game list's column widths", () => {
     // release that adds or drops a column must not leave the list unusable.
     expect(columnWidths([])).toEqual([...DEFAULT_COLUMN_WIDTHS]);
     expect(columnWidths([400])).toEqual([400, ...DEFAULT_COLUMN_WIDTHS.slice(1)]);
-    expect(columnWidths([400, 0, 0, 0, 0, 999])).toEqual([
+    expect(columnWidths([400, 0, 0, 0, 0, 0, 999])).toEqual([
       400,
       ...DEFAULT_COLUMN_WIDTHS.slice(1),
     ]);
     expect(columnWidths(undefined)).toEqual([...DEFAULT_COLUMN_WIDTHS]);
+  });
+
+  it("draws the columns as dragged while the list has room for them", () => {
+    // 935 px of columns, five 16 px gaps and 32 px of padding: 1047.
+    expect(columnScale(1200, DEFAULT_COLUMN_WIDTHS)).toBe(1);
+    expect(columnScale(1047, DEFAULT_COLUMN_WIDTHS)).toBe(1);
+    // Not measured yet.
+    expect(columnScale(0, DEFAULT_COLUMN_WIDTHS)).toBe(1);
+  });
+
+  it("narrows every column in proportion when it does not", () => {
+    const scale = columnScale(1047 - 187, DEFAULT_COLUMN_WIDTHS);
+    expect(scale).toBeCloseTo(748 / 935);
+    const shown = scaledColumnWidths(DEFAULT_COLUMN_WIDTHS, scale);
+    expect(shown.reduce((sum, width) => sum + width, 0)).toBeCloseTo(748, -1);
+  });
+
+  it("reads a set saved before the tags column as the columns it described", () => {
+    // Five widths are game, map, players, rating and age. Taken position by
+    // position the map's width would become the tags column's, and every
+    // column after it would shift one place along.
+    expect(columnWidths([400, 210, 90, 110, 80])).toEqual([
+      400,
+      DEFAULT_COLUMN_WIDTHS[1],
+      210,
+      90,
+      110,
+      80,
+    ]);
   });
 
   it("moves the line under the cursor and nothing else", () => {
@@ -37,12 +69,18 @@ describe("the game list's column widths", () => {
     expect(withColumnResized(widths, 2, -20)).toEqual([320, 150, 100, 100, 75]);
   });
 
-  it("takes from the game column for the line in front of Map", () => {
-    // The game column has no width of its own, so the line in front of Map
-    // only has to move Map: what Map gives up the title takes on.
-    const widths = [320, 170, 80, 100, 75];
-    expect(withColumnResized(widths, 1, 40)).toEqual([320, 130, 80, 100, 75]);
-    expect(withColumnResized(widths, 1, -40)).toEqual([320, 210, 80, 100, 75]);
+  it("moves the game column's edge for the line in front of Tags", () => {
+    // The game column has a width of its own, so the line in front of Tags
+    // moves like any other: the game column gives what Tags takes.
+    const widths = [320, 190, 170, 80, 100, 75];
+    expect(withColumnResized(widths, 1, 40)).toEqual([360, 150, 170, 80, 100, 75]);
+    expect(withColumnResized(widths, 1, -40)).toEqual([280, 230, 170, 80, 100, 75]);
+  });
+
+  it("stops the game column at a readable width", () => {
+    const widths = [320, 190, 170, 80, 100, 75];
+    expect(withColumnResized(widths, 1, -5000)[0]).toBe(MIN_GAME_COLUMN_PX);
+    expect(withColumnResized(widths, 1, -5000)[1]).toBe(190 + 320 - MIN_GAME_COLUMN_PX);
   });
 
   it("travels until the column it is closing has nothing left", () => {

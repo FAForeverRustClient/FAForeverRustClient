@@ -649,19 +649,32 @@ pub(crate) fn parse_scenario_lua(content: &str) -> ScenarioInfo {
         }
     }
 
-    // 4. Armies count / max players: count unique ARMY_N entries
-    let mut army_numbers = std::collections::BTreeSet::new();
-    for token in content.split(|c: char| !c.is_alphanumeric() && c != '_') {
-        if let Some(num_str) = token.strip_prefix("ARMY_") {
-            if let Ok(num) = num_str.parse::<u32>() {
-                if (1..=16).contains(&num) {
-                    army_numbers.insert(num);
+    // 4. Max players: the armies the teams list, which is what the Java client
+    // counts too (`Configurations.standard.teams[].armies`).
+    //
+    // Counting every `ARMY_N` token in the file instead picks up the one in
+    // `ExtraArmies = STRING( 'ARMY_9 NEUTRAL_CIVILIAN' )`, the civilians a map
+    // places, so Seton's Clutch read as nine players (#345); over a hundred of
+    // 451 maps in one real folder were off by one that way. It also found none
+    // at all on a map whose armies are not called `ARMY_N`. The token scan
+    // stays as the fallback for a file without a readable teams block.
+    let team_armies = team_army_names(content);
+    if !team_armies.is_empty() {
+        info.max_players = team_armies.len() as i32;
+    } else {
+        let mut army_numbers = std::collections::BTreeSet::new();
+        for token in content.split(|c: char| !c.is_alphanumeric() && c != '_') {
+            if let Some(num_str) = token.strip_prefix("ARMY_") {
+                if let Ok(num) = num_str.parse::<u32>() {
+                    if (1..=16).contains(&num) {
+                        army_numbers.insert(num);
+                    }
                 }
             }
         }
-    }
-    if !army_numbers.is_empty() {
-        info.max_players = army_numbers.len() as i32;
+        if !army_numbers.is_empty() {
+            info.max_players = army_numbers.len() as i32;
+        }
     }
 
     // 5. Description
@@ -687,6 +700,46 @@ pub(crate) fn parse_scenario_lua(content: &str) -> ScenarioInfo {
     }
 
     info
+}
+
+/// Every army named in an `armies = { ... }` list of the scenario's teams.
+///
+/// A set, because a scenario with more than one configuration lists the same
+/// armies once per configuration. `ExtraArmies` does not match: the key is
+/// case-sensitive and has to stand on its own, not end another word.
+fn team_army_names(content: &str) -> std::collections::BTreeSet<String> {
+    let mut names = std::collections::BTreeSet::new();
+    let mut rest = content;
+    while let Some(index) = rest.find("armies") {
+        let starts_word = rest[..index]
+            .chars()
+            .next_back()
+            .is_none_or(|c| !(c.is_alphanumeric() || c == '_'));
+        let after = &rest[index + "armies".len()..];
+        rest = after;
+        if !starts_word {
+            continue;
+        }
+        let Some(list) = after.trim_start().strip_prefix('=') else {
+            continue;
+        };
+        let Some(list) = list.trim_start().strip_prefix('{') else {
+            continue;
+        };
+        let Some(end) = list.find('}') else {
+            continue;
+        };
+        for entry in list[..end].split(',') {
+            let name = entry
+                .trim()
+                .trim_matches(|c: char| c == '\'' || c == '"')
+                .trim();
+            if !name.is_empty() {
+                names.insert(name.to_string());
+            }
+        }
+    }
+    names
 }
 
 fn extract_quoted_string(line: &str) -> Option<String> {
@@ -1611,6 +1664,39 @@ ScenarioInfo = {
             info.description.as_deref(),
             Some("A balanced battleground for 4 players.")
         );
+    }
+
+    #[test]
+    fn scenario_players_leave_out_the_civilian_extra_army() {
+        // Seton's Clutch as it ships: eight players and the civilians as a
+        // ninth army that nobody can take a seat in.
+        let content = r#"
+    Configurations = {
+        ['standard'] = {
+            teams = {
+                { name = 'FFA', armies = {'ARMY_1','ARMY_2','ARMY_3','ARMY_4','ARMY_5','ARMY_6','ARMY_7','ARMY_8',} },
+            },
+            customprops = {
+                ['ExtraArmies'] = STRING( 'ARMY_9 NEUTRAL_CIVILIAN' ),
+            },
+        },
+    }
+"#;
+        assert_eq!(parse_scenario_lua(content).max_players, 8);
+    }
+
+    #[test]
+    fn scenario_players_count_armies_not_called_army_n() {
+        let content = r#"
+    Configurations = {
+        ['standard'] = {
+            teams = {
+                { name = 'FFA', armies = { "NORTH", "SOUTH" } },
+            },
+        },
+    }
+"#;
+        assert_eq!(parse_scenario_lua(content).max_players, 2);
     }
 
     #[tokio::test]

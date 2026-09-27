@@ -8,7 +8,18 @@ use crate::runtime::{EventSink, ServiceCtx};
 
 pub async fn handle(cmd: UploadsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
-        UploadsCommand::Open { request } => {
+        UploadsCommand::Open { mut request } => {
+            // A folder picked from disk arrives named after the folder, which
+            // is not the name the vault will give it: that is the `name` inside
+            // `mod_info.lua` or the scenario, read out of the archive. The
+            // dialog printed the folder's name instead, and an author who
+            // had named the folder differently was left not trusting the
+            // upload (#337). One small file read, done before the dialog opens
+            // so it never shows the wrong name first; the name also decides
+            // the "new" or "update" badge, which is checked against the vault.
+            if let Some(name) = ctx.ports.uploads.subject_name(request.clone()).await {
+                request.display_name = name;
+            }
             // The dialog opens now and the picture arrives when it arrives:
             // reading a `.scmap` is a file read and a PNG build, and a dialog
             // that waits for its own illustration is a dialog that stutters.

@@ -4669,7 +4669,15 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  *  somebody mid-game to mention one would be exactly the interruption the
  *  request asked to avoid.
  */
-"streamLive" | "error";
+"streamLive" |
+/**
+ *  Somebody whose rating window takes yours has joined a matchmaker queue
+ *  the player asked to hear about, and the player is not searching it.
+ *
+ *  Opt-in per queue, and off until then: see
+ *  `NotificationPreferences::queue_opponent_queues`.
+ */
+"queueOpponent" | "error";
 
 export type NotificationPreferences = {
 	enabled: boolean,
@@ -4738,6 +4746,17 @@ export type NotificationPreferences = {
 	 *  because a join blocked on a map that never arrives needs explaining.
 	 */
 	mapGenerated: boolean,
+	/**
+	 *  The matchmaker queues (`ladder1v1`, `tmm2v2`, ...) in which a new
+	 *  opponent within the player's rating range is announced. Empty, the
+	 *  default, announces nothing.
+	 *
+	 *  A list rather than a switch because the request was "for all queues, or
+	 *  one queue": somebody who only plays 1v1 does not want to hear about 4v4.
+	 *  It is only asked while the player is not searching that queue, since a
+	 *  search that finds the same opponent says so itself.
+	 */
+	queueOpponentQueues: string[],
 	/**  Sound volume from 0 to 100. */
 	volume: number,
 };

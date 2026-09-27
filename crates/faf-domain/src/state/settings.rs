@@ -859,6 +859,15 @@ pub struct NotificationPreferences {
     /// Off silences only the success: a generator that failed still says so,
     /// because a join blocked on a map that never arrives needs explaining.
     pub map_generated: bool,
+    /// The matchmaker queues (`ladder1v1`, `tmm2v2`, ...) in which a new
+    /// opponent within the player's rating range is announced. Empty, the
+    /// default, announces nothing.
+    ///
+    /// A list rather than a switch because the request was "for all queues, or
+    /// one queue": somebody who only plays 1v1 does not want to hear about 4v4.
+    /// It is only asked while the player is not searching that queue, since a
+    /// search that finds the same opponent says so itself.
+    pub queue_opponent_queues: Vec<String>,
     /// Sound volume from 0 to 100.
     pub volume: u8,
 }
@@ -888,6 +897,7 @@ impl Default for NotificationPreferences {
             party_invites: true,
             stream_live: true,
             map_generated: true,
+            queue_opponent_queues: Vec::new(),
             volume: 70,
         }
     }
@@ -926,6 +936,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             party_invites: bool,
             stream_live: bool,
             map_generated: bool,
+            queue_opponent_queues: Vec<String>,
             volume: u8,
         }
 
@@ -958,6 +969,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     party_invites: defaults.party_invites,
                     stream_live: defaults.stream_live,
                     map_generated: defaults.map_generated,
+                    queue_opponent_queues: defaults.queue_opponent_queues,
                     volume: defaults.volume,
                 }
             }
@@ -1001,6 +1013,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             party_invites: wire.party_invites,
             stream_live: wire.stream_live,
             map_generated: wire.map_generated,
+            queue_opponent_queues: wire.queue_opponent_queues,
             volume: wire.volume,
         })
     }
@@ -1909,9 +1922,9 @@ impl CustomGameBrowserPreferences {
     }
 }
 
-/// The list view has five columns, and a saved width past these bounds is a
+/// The list view has six columns, and a saved width past these bounds is a
 /// column that cannot be dragged back into view.
-pub const MAX_BROWSER_COLUMNS: usize = 5;
+pub const MAX_BROWSER_COLUMNS: usize = 6;
 /// The widest table the client draws, plus room. Only a bound on a file.
 pub const MAX_TABLE_COLUMNS: usize = 16;
 
@@ -3319,9 +3332,9 @@ mod tests {
                             value: String::new(),
                         },
                     ],
-                    // Out of bounds in both directions, plus a sixth column
+                    // Out of bounds in both directions, plus a seventh column
                     // the list does not have.
-                    column_widths: vec![10, 5_000, 200, 200, 200, 200],
+                    column_widths: vec![10, 5_000, 200, 200, 200, 200, 200],
                     detail_width: 40,
                 },
                 matchmaker_unselected_queues: vec![
@@ -3454,8 +3467,8 @@ mod tests {
         let browser = &settings.browsing.custom_games_browser;
         assert_eq!(
             browser.column_widths,
-            [10, 5_000, 200, 200, 200],
-            "five columns at whatever width they were dragged to, narrow or wide"
+            [10, 5_000, 200, 200, 200, 200],
+            "six columns at whatever width they were dragged to, narrow or wide"
         );
         assert_eq!(browser.detail_width, MIN_DETAIL_PX);
         assert_eq!(

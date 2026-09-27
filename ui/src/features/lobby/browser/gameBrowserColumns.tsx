@@ -6,7 +6,7 @@
 // laid out one way in one tab and another way in the next, and half of them
 // could not be dragged at all. One hook, one header, both lists.
 
-import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
 import type { CustomGameSort } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
@@ -17,6 +17,8 @@ import {
   columnTemplate,
   columnWidths,
   FLEXIBLE_COLUMN,
+  columnScale,
+  scaledColumnWidths,
   withColumnResized,
 } from "./browserLayout";
 
@@ -61,14 +63,17 @@ function saveSort(sort: CustomGameSort, sortReversed: boolean): void {
 }
 
 /**
- * The sort each column stands for, in the order the columns are drawn.
+ * The sort each column stands for, in the order the columns are drawn, or
+ * `null` for a column the list cannot be ordered by.
  *
- * Five columns, five orders, and the toolbar's sixth (`host`) has no column of
- * its own: a host is part of the game cell rather than a column, so it stays a
- * choice the select box makes and no header claims it.
+ * The tags column is the one without an order: a row's tags are several
+ * things at once, and none of them ranks one game above another. The
+ * toolbar's `host` order has no column of its own either: a host is part of
+ * the game cell, so it stays a choice the select box makes.
  */
-export const COLUMN_SORTS: readonly CustomGameSort[] = [
+export const COLUMN_SORTS: readonly (CustomGameSort | null)[] = [
   "title",
+  null,
   "map",
   "players",
   "rating",
@@ -105,20 +110,53 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   const [dragWidths, setDragWidths] = useState<number[] | null>(null);
   const widths = dragWidths ?? columnWidths(savedWidths);
   const dragOrigin = useRef<number[] | null>(null);
+
+  // The list's width, from its header: the header is as wide as the list.
+  // Watched, because the window, the detail panel and the chat sidebar all
+  // change it. See `columnScale`.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [listWidth, setListWidth] = useState(0);
+  useEffect(() => {
+    const element = headerRef.current;
+    if (!enabled || !element || typeof ResizeObserver === "undefined") return;
+    const measure = () => setListWidth(element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [enabled]);
+  const scale = columnScale(listWidth, widths);
+  const shown = scaledColumnWidths(widths, scale);
+
   const style = useMemo(
-    () => (enabled ? { gridTemplateColumns: columnTemplate(widths) } : undefined),
+    () => (enabled ? { gridTemplateColumns: columnTemplate(shown) } : undefined),
     // The template is a string, so comparing the array by value is what keeps
     // every row from re-rendering on an unrelated settings write.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [enabled, widths.join(",")],
+    [enabled, shown.join(",")],
   );
 
+  // The game column's drawn width when a drag begins. On a list wider than
+  // its columns the game column is drawn wider than its stored width, and a
+  // drag starts from what is on screen, or the divider would jump.
+  const drawnGame = useRef<number | null>(null);
+  const onStart = (handle: HTMLElement) => {
+    const cell = handle.parentElement?.parentElement?.children[FLEXIBLE_COLUMN];
+    drawnGame.current = scale >= 1 && cell ? Math.round(cell.getBoundingClientRect().width) : null;
+  };
   const onDrag = (boundary: number, delta: number) => {
-    dragOrigin.current ??= widths;
-    setDragWidths(withColumnResized(dragOrigin.current, boundary, delta));
+    dragOrigin.current ??= drawnGame.current === null
+      ? widths
+      : widths.map((width, index) => (index === FLEXIBLE_COLUMN ? drawnGame.current ?? width : width));
+    // The pointer moves in drawn pixels and the widths are stored unscaled:
+    // at half scale a stored width changes twice as far, which is what keeps
+    // the divider under the cursor. A trade keeps the total, so the scale
+    // holds still for the whole drag.
+    setDragWidths(withColumnResized(dragOrigin.current, boundary, delta / scale));
   };
   const onCommit = () => {
     dragOrigin.current = null;
+    drawnGame.current = null;
     if (dragWidths) saveColumnWidths(dragWidths);
     setDragWidths(null);
   };
@@ -144,6 +182,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
 
   const labels = [
     t("lobby.browser.column.game"),
+    t("lobby.browser.column.tags"),
     t("lobby.browser.column.map"),
     t("lobby.browser.column.players"),
     t("lobby.browser.column.rating"),
@@ -151,11 +190,11 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   ];
 
   const header = (
-    <div className="game-browser-head" style={style}>
+    <div className="game-browser-head" style={style} ref={headerRef}>
       {labels.map((label, index) => {
         const column = COLUMN_SORTS[index];
         const active = column === sort;
-        const descending = sortsDescending(column, reversed);
+        const descending = column !== null && sortsDescending(column, reversed);
         return (
           <span key={label}>
             {/* One line in front of every column but the first, standing where
@@ -170,6 +209,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
                 label={t("lobby.browser.resizeColumn", {
                   column: labels[index - 1 === FLEXIBLE_COLUMN ? index : index - 1],
                 })}
+                onStart={onStart}
                 onDrag={(delta) => onDrag(index, delta)}
                 onEnd={onCommit}
                 onReset={onReset}
@@ -182,27 +222,34 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
                 were decoration. The label clips itself rather than letting the
                 cell do it: the grab handle reaches past the cell's edge, and a
                 cell with `overflow: hidden` cuts it off entirely. */}
-            <button
-              type="button"
-              className={active ? "game-browser-head-sort is-active" : "game-browser-head-sort"}
-              // `aria-sort` would be the right thing to say here and cannot be
-              // said: it is only meaningful on a `columnheader`, and this list
-              // is a CSS grid of plain elements rather than a table, so the
-              // role would be a claim about a structure that is not there. The
-              // label carries the order instead.
-              title={t("lobby.browser.sortByColumn", { column: label })}
-              aria-label={`${t("lobby.browser.sortByColumn", { column: label })}${
-                active
-                  ? ` (${t(descending ? "lobby.browser.sortDescending" : "lobby.browser.sortAscending")})`
-                  : ""
-              }`}
-              onClick={() => chooseSort(column)}
-            >
-              <span className="game-browser-head-label">{label}</span>
-              <span className="game-browser-head-arrow" aria-hidden="true">
-                {active ? (descending ? "↓" : "↑") : "⇅"}
+            {column === null ? (
+              // Nothing to order by: the label alone, in the button's place.
+              <span className="game-browser-head-sort is-static">
+                <span className="game-browser-head-label">{label}</span>
               </span>
-            </button>
+            ) : (
+              <button
+                type="button"
+                className={active ? "game-browser-head-sort is-active" : "game-browser-head-sort"}
+                // `aria-sort` would be the right thing to say here and cannot be
+                // said: it is only meaningful on a `columnheader`, and this list
+                // is a CSS grid of plain elements rather than a table, so the
+                // role would be a claim about a structure that is not there. The
+                // label carries the order instead.
+                title={t("lobby.browser.sortByColumn", { column: label })}
+                aria-label={`${t("lobby.browser.sortByColumn", { column: label })}${
+                  active
+                    ? ` (${t(descending ? "lobby.browser.sortDescending" : "lobby.browser.sortAscending")})`
+                    : ""
+                }`}
+                onClick={() => chooseSort(column)}
+              >
+                <span className="game-browser-head-label">{label}</span>
+                <span className="game-browser-head-arrow" aria-hidden="true">
+                  {active ? (descending ? "↓" : "↑") : "⇅"}
+                </span>
+              </button>
+            )}
           </span>
         );
       })}

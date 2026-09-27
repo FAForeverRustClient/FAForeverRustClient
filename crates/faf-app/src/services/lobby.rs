@@ -16,8 +16,9 @@ use std::collections::HashMap;
 
 use faf_domain::state::{
     ChatEvent, ChatStatus, Game, HostGameConfig, HostGamePreferences, JoinState, LobbyCommand,
-    LobbyEvent, MatchmakingState, NotificationAction, NotificationKind, NotificationPreferences,
-    PartyState, PlayerCardEvent, SettingsEvent, SocialEvent,
+    LobbyEvent, MatchmakerQueue, MatchmakingState, NotificationAction, NotificationKind,
+    NotificationPreferences, PartyState, PlayerCardEvent, PlayerLobbyRating, SettingsEvent,
+    SocialEvent,
 };
 
 use crate::ports::LobbyUpdate;
@@ -520,6 +521,61 @@ async fn handle_update(
             out.emit(LobbyEvent::LiveGamesChanged { upserted, removed });
         }
         LobbyUpdate::MatchmakerQueues(queues) => {
+            let (watched, ratings, searching) = out.with_state(|state| {
+                let own_ratings = state
+                    .auth
+                    .player
+                    .as_ref()
+                    .and_then(|player| {
+                        state
+                            .social
+                            .players
+                            .iter()
+                            .find(|profile| profile.login.eq_ignore_ascii_case(&player.name))
+                    })
+                    .map(|profile| profile.ratings.clone())
+                    .unwrap_or_default();
+                let searching = match &state.lobby.matchmaking {
+                    MatchmakingState::Searching { queue_names } => queue_names.clone(),
+                    _ => Vec::new(),
+                };
+                // Somebody in a match, or on the way into one, is not looking
+                // for an opponent, whichever queue a stranger just joined.
+                let busy = matches!(
+                    state.lobby.matchmaking,
+                    MatchmakingState::MatchFound { .. } | MatchmakingState::Launching { .. }
+                ) || matches!(
+                    state.lobby.join,
+                    JoinState::Launched { .. } | JoinState::InGame
+                );
+                let watched = if state.settings.notifications.enabled && !busy {
+                    state.settings.notifications.queue_opponent_queues.clone()
+                } else {
+                    Vec::new()
+                };
+                (watched, own_ratings, searching)
+            });
+            for (queue, count) in game_notifications.queue_opponents.observe(
+                &queues,
+                &ratings,
+                &searching,
+                &watched,
+                Instant::now(),
+            ) {
+                notifications::add(
+                    out,
+                    NotificationKind::QueueOpponent,
+                    "Opponent in your range",
+                    format!(
+                        "{count} {} near your rating {} waiting in {} vs {}.",
+                        if count == 1 { "player" } else { "players" },
+                        if count == 1 { "is" } else { "are" },
+                        queue.team_size,
+                        queue.team_size,
+                    ),
+                    Some(NotificationAction::OpenMatchmaking),
+                );
+            }
             out.emit(LobbyEvent::MatchmakerQueuesUpdated { queues })
         }
         LobbyUpdate::Matchmaking(state) => {
@@ -849,6 +905,176 @@ struct GameNotificationTracker {
     open: Option<HashMap<i32, Game>>,
     live: Option<HashMap<i32, Game>>,
     suppress_until: Option<Instant>,
+    queue_opponents: QueueOpponentTracker,
+}
+
+/// How long a queue keeps quiet after announcing an opponent.
+///
+/// Rating windows widen while a search waits and a search can be re-queued, so
+/// the in-range count can drop to zero and come back within a minute for the
+/// very same opponent. One announcement per queue in this window is enough to
+/// bring somebody to the client; a toast on every flicker would be the spam
+/// that makes people switch it off.
+const QUEUE_OPPONENT_COOLDOWN: Duration = Duration::from_secs(5 * 60);
+
+/// Notices a matchmaker queue going from nobody in the player's rating range
+/// to somebody (#340).
+///
+/// Edge-triggered on the in-range count, which is the number the Play tab
+/// prints on the queue card and computed the same way (see
+/// `queueRatingRange.ts`). The first sight of a queue only records it: a queue
+/// that already has somebody in range when the client connects is on screen
+/// the moment the player opens the Play tab, and announcing it at login would
+/// announce every watched queue at once.
+#[derive(Default)]
+struct QueueOpponentTracker {
+    in_range: HashMap<String, i32>,
+    announced_at: HashMap<String, Instant>,
+}
+
+impl QueueOpponentTracker {
+    /// The watched queues that just gained an opponent, with how many are in
+    /// range now. Every queue's count is recorded whether or not it is
+    /// watched, so switching a queue on does not announce the opponent who
+    /// was already waiting in it.
+    fn observe(
+        &mut self,
+        queues: &[MatchmakerQueue],
+        ratings: &[PlayerLobbyRating],
+        searching: &[String],
+        watched: &[String],
+        now: Instant,
+    ) -> Vec<(MatchmakerQueue, i32)> {
+        let mut signals = Vec::new();
+        for queue in queues {
+            let own_search = searching
+                .iter()
+                .any(|name| name.eq_ignore_ascii_case(&queue.queue_name));
+            let count = rating_for_queue(ratings, &queue.queue_name)
+                .and_then(|rating| players_in_rating_range(queue, rating))
+                // The server counts the player's own search among the others.
+                .map(|in_range| (in_range - i32::from(own_search)).max(0))
+                .unwrap_or(0);
+            let Some(previous) = self.in_range.insert(queue.queue_name.clone(), count) else {
+                continue;
+            };
+            if previous > 0 || count == 0 || own_search {
+                continue;
+            }
+            if !watched
+                .iter()
+                .any(|name| name.eq_ignore_ascii_case(&queue.queue_name))
+            {
+                continue;
+            }
+            if self
+                .announced_at
+                .get(&queue.queue_name)
+                .is_some_and(|at| now.duration_since(*at) < QUEUE_OPPONENT_COOLDOWN)
+            {
+                continue;
+            }
+            self.announced_at.insert(queue.queue_name.clone(), now);
+            signals.push((queue.clone(), count));
+        }
+        signals
+    }
+}
+
+/// The player's lobby rating for a queue. Queue names (`ladder1v1`,
+/// `tmm4v4_full_share`) and leaderboard names (`ladder_1v1`) differ only in
+/// punctuation, apart from old snapshots calling the full-share queue `tmm4v4`.
+/// Twin of `ratingForQueue` in `matchmakerRatings.ts`.
+fn rating_for_queue<'a>(
+    ratings: &'a [PlayerLobbyRating],
+    queue_name: &str,
+) -> Option<&'a PlayerLobbyRating> {
+    let key = |value: &str| {
+        value
+            .chars()
+            .filter(char::is_ascii_alphanumeric)
+            .collect::<String>()
+            .to_ascii_lowercase()
+    };
+    let wanted = match key(queue_name).as_str() {
+        "tmm4v4" => "tmm4v4fullshare".to_string(),
+        other => other.to_string(),
+    };
+    ratings
+        .iter()
+        .find(|rating| key(&rating.leaderboard) == wanted)
+}
+
+/// How many queued searches would take the player, or `None` when that cannot
+/// honestly be said. Twin of `playersInRatingRange` in `queueRatingRange.ts`,
+/// which carries the reasoning: the windows are the server's, they are built
+/// from the mean rather than the displayed rating, and a rating the server is
+/// still unsure of has no answer.
+fn players_in_rating_range(queue: &MatchmakerQueue, rating: &PlayerLobbyRating) -> Option<i32> {
+    if rating.mean == 0 && rating.deviation == 0 {
+        return None; // The lobby sent no rating for this board.
+    }
+    if rating.deviation > 200 {
+        return None;
+    }
+    let windows = if rating.deviation < 100 {
+        &queue.boundary_80s
+    } else {
+        &queue.boundary_75s
+    };
+    if windows.is_empty() {
+        return None;
+    }
+    if queue.team_size == 1 {
+        // The server's own 1v1 rule rather than the windows, which it never
+        // widens and does not match on. See `matchReach` in the twin.
+        let mean = matchmaking_mean(rating);
+        let reach = match_reach(f64::from(rating.deviation), SEARCH_EXPANSION_MAX);
+        return Some(
+            windows
+                .iter()
+                .filter(|window| {
+                    let centre = f64::from(window.min + window.max) / 2.0;
+                    (centre - mean).abs() <= reach
+                })
+                .count() as i32,
+        );
+    }
+    let mean = rating.mean;
+    Some(
+        windows
+            .iter()
+            .filter(|window| window.min < mean && mean < window.max)
+            .count() as i32,
+    )
+}
+
+/// `trueskill.setup(beta=240)` in the server's `config.py`.
+const TRUESKILL_BETA: f64 = 240.0;
+/// `LADDER_SEARCH_EXPANSION_MAX`: how far a match threshold drops, at most.
+const SEARCH_EXPANSION_MAX: f64 = 0.25;
+
+/// The mean the server matches a 1v1 search on: pulled towards 500 until the
+/// account has played ten games (`NEWBIE_MIN_GAMES`, `NEWBIE_BASE_MEAN`).
+fn matchmaking_mean(rating: &PlayerLobbyRating) -> f64 {
+    let games = f64::from(rating.games_played.clamp(0, 10));
+    if rating.games_played > 10 {
+        return f64::from(rating.mean);
+    }
+    ((10.0 - games) * 500.0 + games * f64::from(rating.mean)) / 10.0
+}
+
+/// How far apart in mean two players of this deviation can be and still be
+/// matched in 1v1, with their thresholds dropped by `expansion`. Twin of
+/// `matchReach` in `queueRatingRange.ts`, which carries the derivation.
+fn match_reach(deviation: f64, expansion: f64) -> f64 {
+    let c2 = 2.0 * TRUESKILL_BETA.powi(2) + 2.0 * deviation.powi(2);
+    let self_quality = (2.0 * TRUESKILL_BETA.powi(2) / c2).sqrt();
+    let ratio = 0.8 - expansion / self_quality;
+    if ratio <= 0.0 {
+        return f64::INFINITY;
+    }
+    (-2.0 * c2 * ratio.ln()).sqrt()
 }
 
 impl GameNotificationTracker {
@@ -1126,9 +1352,30 @@ fn participants(game: &Game) -> impl Iterator<Item = &str> {
 /// wants to know. Whoever is not in the lobby is not told, which is what keeps
 /// this from being a notification about every full game on the server.
 fn filled_up(old: &Game, game: &Game, player_name: &str) -> bool {
-    old.players < old.max_players
-        && game.players >= game.max_players
+    seated_players(old) < old.max_players
+        && seated_players(game) >= game.max_players
         && (game_has_player(game, player_name) || game_has_player(old, player_name))
+}
+
+/// How many of a lobby's seats are taken: the players in a team, observers
+/// left out.
+///
+/// The server's `num_players` counts everybody connected to the lobby, and an
+/// observer is connected without taking a slot. An eight-player map holding
+/// six players and one observer is therefore at seven, and the next player to
+/// join put it at eight: "game full", with a seat still open (#336). The teams
+/// say who sits where, with observers under `-1` or `null`, so they are what
+/// is counted. A game that reports no teams at all falls back to the server's
+/// number rather than to zero.
+fn seated_players(game: &Game) -> i32 {
+    if game.teams.is_empty() {
+        return game.players;
+    }
+    game.teams
+        .iter()
+        .filter(|(team, _)| team.as_str() != "-1" && team.as_str() != "null")
+        .map(|(_, players)| players.len() as i32)
+        .sum()
 }
 
 fn game_has_player(game: &Game, player_name: &str) -> bool {
@@ -1270,6 +1517,143 @@ mod tests {
         assert!(signals.iter().any(
             |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
         ));
+    }
+
+    #[test]
+    fn an_observer_does_not_take_a_seat_in_a_full_lobby() {
+        let mut tracker = GameNotificationTracker::default();
+        let with_observer = |id, seated: &[&str], connected| {
+            let mut lobby = game(id, "Me", seated, connected, 8);
+            lobby.teams.insert("-1".into(), vec!["Watcher".into()]);
+            lobby
+        };
+        // Six players and an observer on an eight-player map: the server says
+        // seven.
+        tracker.observe_open(
+            &[with_observer(1, &["Me", "A", "B", "C", "D", "E"], 7)],
+            Some("me"),
+        );
+
+        // A seventh player joins. The server says eight, and a seat is open.
+        let signals = tracker.observe_open(
+            &[with_observer(1, &["Me", "A", "B", "C", "D", "E", "F"], 8)],
+            Some("me"),
+        );
+        assert!(!signals
+            .iter()
+            .any(|signal| matches!(signal, GameNotificationSignal::GameFull(_))));
+
+        // The eighth does fill it.
+        let signals = tracker.observe_open(
+            &[with_observer(
+                1,
+                &["Me", "A", "B", "C", "D", "E", "F", "G"],
+                9,
+            )],
+            Some("me"),
+        );
+        assert!(signals.iter().any(
+            |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
+        ));
+    }
+
+    fn queue(name: &str, windows: &[(i32, i32)]) -> MatchmakerQueue {
+        MatchmakerQueue {
+            queue_name: name.into(),
+            team_size: 1,
+            num_players: windows.len() as i32,
+            queue_pop_time_seconds: 30,
+            boundary_80s: windows
+                .iter()
+                .map(|&(min, max)| faf_domain::state::RatingRange { min, max })
+                .collect(),
+            boundary_75s: Vec::new(),
+        }
+    }
+
+    fn rating(leaderboard: &str, mean: i32) -> PlayerLobbyRating {
+        PlayerLobbyRating {
+            leaderboard: leaderboard.into(),
+            rating: mean - 150,
+            mean,
+            deviation: 50,
+            games_played: 100,
+        }
+    }
+
+    #[test]
+    fn a_watched_queue_announces_an_opponent_once() {
+        let mut tracker = QueueOpponentTracker::default();
+        let ratings = [rating("ladder_1v1", 1500)];
+        let watched = vec!["ladder1v1".to_string()];
+        let start = Instant::now();
+
+        // First sight only records the queue.
+        assert!(tracker
+            .observe(&[queue("ladder1v1", &[])], &ratings, &[], &watched, start)
+            .is_empty());
+        // Somebody whose window takes 1500 joins.
+        let signals = tracker.observe(
+            &[queue("ladder1v1", &[(1300, 1700)])],
+            &ratings,
+            &[],
+            &watched,
+            start,
+        );
+        assert_eq!(signals.len(), 1);
+        assert_eq!(signals[0].1, 1);
+        // They leave and come back within the cooldown: quiet.
+        tracker.observe(&[queue("ladder1v1", &[])], &ratings, &[], &watched, start);
+        assert!(tracker
+            .observe(
+                &[queue("ladder1v1", &[(1300, 1700)])],
+                &ratings,
+                &[],
+                &watched,
+                start + Duration::from_secs(60),
+            )
+            .is_empty());
+    }
+
+    #[test]
+    fn a_queue_stays_quiet_when_unwatched_out_of_range_or_searched() {
+        let mut tracker = QueueOpponentTracker::default();
+        let ratings = [rating("tmm_2v2", 1500), rating("ladder_1v1", 1500)];
+        let now = Instant::now();
+        let empty = [queue("ladder1v1", &[]), queue("tmm2v2", &[])];
+        tracker.observe(&empty, &ratings, &[], &["ladder1v1".into()], now);
+
+        // tmm2v2 is not watched; ladder1v1's newcomer is far out of range.
+        let signals = tracker.observe(
+            &[
+                queue("ladder1v1", &[(2200, 2600)]),
+                queue("tmm2v2", &[(1300, 1700)]),
+            ],
+            &ratings,
+            &[],
+            &["ladder1v1".into()],
+            now,
+        );
+        assert!(signals.is_empty());
+
+        // Searching the queue yourself: your own window is not an opponent,
+        // and the search will find the real one by itself.
+        let mut tracker = QueueOpponentTracker::default();
+        tracker.observe(
+            &[queue("ladder1v1", &[])],
+            &ratings,
+            &[],
+            &["ladder1v1".into()],
+            now,
+        );
+        let signals = tracker.observe(
+            &[queue("ladder1v1", &[(1300, 1700), (1400, 1600)])],
+            &ratings,
+            &["ladder1v1".into()],
+            &["ladder1v1".into()],
+            now,
+        );
+        assert!(signals.is_empty());
     }
 
     #[test]

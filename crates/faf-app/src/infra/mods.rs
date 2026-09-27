@@ -670,6 +670,12 @@ struct ModInfoFields {
 /// full Lua parser: see the module docs for why that's fine for these six
 /// scalar fields. Returns `None` if `uid` is missing (mirrors Python
 /// logging a warning and skipping the mod).
+/// The `name` a `mod_info.lua` declares, which is what the vault files the mod
+/// under. See [`crate::ports::UploadsPort::subject_name`].
+pub(crate) fn mod_info_name(contents: &str) -> Option<String> {
+    parse_mod_info(contents).map(|fields| fields.name)
+}
+
 fn parse_mod_info(contents: &str) -> Option<ModInfoFields> {
     let mut fields: HashMap<String, String> = HashMap::new();
     for raw_line in contents.lines() {

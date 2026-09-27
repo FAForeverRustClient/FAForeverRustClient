@@ -112,7 +112,7 @@ export const VALID_MOD_VAULT_PRESETS = [
  * backend normalizes anything it is handed, so these exist so the UI never
  * *offers* a value the backend would then quietly change underneath it.
  */
-export const MAX_BROWSER_COLUMNS = 5;
+export const MAX_BROWSER_COLUMNS = 6;
 /**
  * One pixel, which is not a usable column and is not meant to be.
  *

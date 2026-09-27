@@ -14,6 +14,7 @@ describe("which notifications leave the client", () => {
       "mapGenerated",
       "eventReminder",
       "gameFull",
+      "queueOpponent",
     ];
     for (const kind of expiring) {
       expect(raisesOsNotification(kind)).toBe(true);

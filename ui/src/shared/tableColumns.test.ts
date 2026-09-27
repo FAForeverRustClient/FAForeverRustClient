@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import { MIN_BROWSER_COLUMN_PX } from "./browsingPreferences";
 import {
   columnTemplate,
+  fitScale,
   resolveColumnWidths,
+  scaledWidths,
   tableMinWidth,
   withBoundaryDragged,
+  withBoundaryTraded,
 } from "./tableColumns";
 
 const WIDTHS = [120, 110, 260, 84, 84, 150, 130, 128];
@@ -29,6 +32,16 @@ describe("a table's stored column widths", () => {
 });
 
 describe("dragging the line in front of a column", () => {
+  it("stops at what the flexible column has left to give", () => {
+    // The line in front of column 3 widens it at the flexible column's cost.
+    // With 40 px left above the flexible column's floor, a 100 px drag moves
+    // it 40 and stops, rather than widening the whole list and pushing the
+    // columns on the right along with it.
+    expect(withBoundaryDragged(WIDTHS, 3, -100, FLEXIBLE, 40)[3]).toBe(84 + 40);
+    // The other way the flexible column takes on width, which never stops.
+    expect(withBoundaryDragged(WIDTHS, 3, 60, FLEXIBLE, 0)[3]).toBe(84 - 60);
+  });
+
   it("trades width between the two columns it separates", () => {
     // Which is what keeps the line under the cursor: the totals do not change,
     // so the flexible column does not move and neither does any other line.
@@ -89,5 +102,27 @@ describe("the template a set of widths draws", () => {
 
   it("measures a table by the widths it was given, floor included", () => {
     expect(tableMinWidth(WIDTHS)).toBe(1066);
+  });
+});
+
+describe("fitting a list to its space", () => {
+  it("draws the columns as dragged while they fit, and in proportion when not", () => {
+    expect(fitScale(2000, WIDTHS)).toBe(1);
+    expect(fitScale(0, WIDTHS)).toBe(1);
+    const total = WIDTHS.reduce((sum, width) => sum + width, 0);
+    expect(fitScale(total / 2, WIDTHS)).toBeCloseTo(0.5);
+    // Every column is still there, just narrower.
+    const drawn = scaledWidths(WIDTHS, 0.5);
+    expect(drawn).toHaveLength(WIDTHS.length);
+    expect(drawn.every((width) => width >= 1)).toBe(true);
+  });
+
+  it("trades width between the two columns of a divider, the flexible one included", () => {
+    const floor = (index: number) => (index === FLEXIBLE ? 80 : MIN_BROWSER_COLUMN_PX);
+    // The line in front of column 3 moves both of its neighbours.
+    expect(withBoundaryTraded(WIDTHS, 3, -50, floor).slice(2, 4)).toEqual([210, 134]);
+    // And the flexible column stops at its floor.
+    expect(withBoundaryTraded(WIDTHS, 3, -5000, floor)[2]).toBe(80);
+    expect(withBoundaryTraded(WIDTHS, 3, -5000, floor)[3]).toBe(84 + 260 - 80);
   });
 });

@@ -1105,3 +1105,15 @@
   align-items: center;
   gap: var(--space-2);
 }
+
+/* A multi-select in a settings row (the queues an opponent is announced for,
+   issue 340). The row already names the control, so the label the picker draws
+   above its trigger would say it a second time; it still names the trigger for
+   a screen reader through its `aria-label`. */
+.settings-multi-select {
+  min-width: 180px;
+}
+
+.settings-multi-select .multi-select > .search-panel-label {
+  display: none;
+}

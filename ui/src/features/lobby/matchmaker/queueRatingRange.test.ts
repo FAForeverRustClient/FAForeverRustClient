@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MatchmakerQueue, PlayerRatingSummary } from "../../../ipc/bindings";
-import { playersInRatingRange, queueRatingBuckets } from "./queueRatingRange";
+import { matchReach, playersInRatingRange, queueRatingBuckets } from "./queueRatingRange";
 
 function queue(overrides: Partial<MatchmakerQueue> = {}): MatchmakerQueue {
   return {
@@ -37,15 +37,25 @@ function rating(mean: number | null, deviation: number | null): PlayerRatingSumm
 }
 
 describe("players in your rating range", () => {
-  it("counts the windows that contain your rating", () => {
-    // 1150 sits inside both of the first two 80% windows, not the third.
+  it("counts the 1v1 searches the server would match with you after waiting", () => {
+    // Searches at 1000, 1300 and 1800. From 1150 with a deviation of 60 the
+    // reach is about 387 after waiting: the first two, not the third.
     expect(playersInRatingRange(queue(), rating(1150, 60), 0)).toBe(2);
   });
 
-  it("uses the wider windows when the rating is less certain", () => {
-    // 1050: one 80% window contains it, but two of the 75% ones do.
-    expect(playersInRatingRange(queue(), rating(1050, 60), 0)).toBe(1);
-    expect(playersInRatingRange(queue(), rating(1050, 150), 0)).toBe(2);
+  it("reaches further than the published window, the way the server does", () => {
+    // The report behind this (#303): 1300 is 250 away from 1050, outside the
+    // ±200 window the server publishes, and within what it actually matches
+    // after a few failed pops.
+    expect(playersInRatingRange(queue(), rating(1050, 60), 0)).toBe(2);
+  });
+
+  it("keeps the published windows for team queues", () => {
+    // The team matchmaker weighs team balance and ignores these ranges, so
+    // there is no rule to replicate: the windows are all there is.
+    const team = queue({ teamSize: 2, queueName: "tmm2v2" });
+    expect(playersInRatingRange(team, rating(1050, 60), 0)).toBe(1);
+    expect(playersInRatingRange(team, rating(1050, 150), 0)).toBe(2);
   });
 
   it("does not count your own search", () => {
@@ -148,5 +158,18 @@ describe("the queue breakdown by rating", () => {
     expect(buckets.map((bucket) => bucket.min)).toEqual(
       queueRatingBuckets(queue()).map((bucket) => bucket.min),
     );
+  });
+});
+
+describe("the 1v1 reach", () => {
+  it("follows the server's quality rule", () => {
+    // beta 240, deviation 60: about 234 at once, 387 after the threshold has
+    // dropped by its full 0.25.
+    expect(Math.round(matchReach(60, 0))).toBe(234);
+    expect(Math.round(matchReach(60, 0.25))).toBe(387);
+  });
+
+  it("widens with the deviation", () => {
+    expect(matchReach(150, 0.25)).toBeGreaterThan(matchReach(60, 0.25));
   });
 });

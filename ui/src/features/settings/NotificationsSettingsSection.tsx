@@ -19,6 +19,7 @@ import {
   soundOptionValue,
 } from "../notifications/notificationSound";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { MultiSelect } from "../../design-system/MultiSelect";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -129,6 +130,13 @@ export function NotificationsSettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.notifications);
   const volume = preferences.volume;
+  const queues = useAppStore((state) => state.state.lobby.matchmakerQueues);
+  const queueOpponentOptions = [
+    ...queues.map((queue) => ({ value: queue.queueName, label: `${queue.teamSize} vs ${queue.teamSize}` })),
+    ...preferences.queueOpponentQueues
+      .filter((name) => !queues.some((queue) => queue.queueName === name))
+      .map((name) => ({ value: name, label: name })),
+  ];
   const update = (patch: Partial<NotificationPreferences>) =>
     void save({ ...preferences, ...patch });
   const setSound = (patch: Partial<NotificationSoundChoices>) =>
@@ -349,6 +357,21 @@ export function NotificationsSettingsSection() {
       <SettingRow label={t("settings.notifications.gameFull")} hint={t("settings.notifications.gameFullHint")}>
         <SoundChoice value={preferences.sounds.gameFull} disabled={mute || !preferences.gameFull} what={t("settings.notifications.gameFull")} onChange={(gameFull) => setSound({ gameFull })} custom={customSounds} onAdd={addSound} />
         <SettingsSwitch checked={preferences.gameFull} disabled={!preferences.enabled} onChange={(gameFull) => update({ gameFull })} label={t("settings.notifications.gameFull")} />
+      </SettingRow>
+      {/* A list of queues rather than a switch (#340): "for all queues, or one
+          queue". Nothing picked is off, which is the default. The queues are
+          the ones the server announces, plus any picked earlier that it has
+          not announced this session, so a choice never disappears from view. */}
+      <SettingRow label={t("settings.notifications.queueOpponent")} hint={t("settings.notifications.queueOpponentHint")}>
+        <div className="settings-multi-select">
+          <MultiSelect
+            label={t("settings.notifications.queueOpponent")}
+            anyLabel={t("settings.notifications.queueOpponentOff")}
+            options={queueOpponentOptions}
+            selected={preferences.queueOpponentQueues}
+            onChange={(queueOpponentQueues) => update({ queueOpponentQueues })}
+          />
+        </div>
       </SettingRow>
       <SettingRow label={t("settings.notifications.gameLaunched")} hint={t("settings.notifications.gameLaunchedHint")}>
         <SoundChoice value={preferences.sounds.gameLaunched} disabled={mute || !preferences.gameLaunched} what={t("settings.notifications.gameLaunched")} onChange={(gameLaunched) => setSound({ gameLaunched })} custom={customSounds} onAdd={addSound} />
