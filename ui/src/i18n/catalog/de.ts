@@ -548,7 +548,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.someOfBand": "{inRange} von {count}",
   "lobby.matchmaker.yourBand": "Hervorgehoben: dein Ratingbereich und wer darin zu dir passt.",
   "lobby.matchmaker.inRangeHint": "Spieler in dieser Queue, mit denen du nach ein paar Minuten Wartezeit gematcht werden könntest, ohne deine eigene Suche.",
-  "lobby.matchmaker.reachNote": "Max. Abstand: ±{now}, ±{waited} nach Wartezeit",
+  "lobby.matchmaker.reachNote": "Max. Abstand: ±{now}, +{step} pro {interval} Wartezeit",
   "lobby.matchmaker.teamReachNote": "Team-Queues: grobe Schätzung",
   "lobby.matchmaker.mapPool": "Kartenpool",
   "lobby.matchmaker.explain.open": "Wie es funktioniert",

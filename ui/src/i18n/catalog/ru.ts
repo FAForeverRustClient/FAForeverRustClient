@@ -1657,7 +1657,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.someOfBand": "{inRange} из {count}",
   "lobby.matchmaker.yourBand": "Выделено: ваш диапазон рейтинга и те, кто в нём вам подходит.",
   "lobby.matchmaker.inRangeHint": "Игроки в этой очереди, с которыми вас могут свести после нескольких минут ожидания, без учёта вашего собственного поиска.",
-  "lobby.matchmaker.reachNote": "Макс. разница: ±{now}, ±{waited} после ожидания",
+  "lobby.matchmaker.reachNote": "Макс. разница: ±{now}, +{step} за каждые {interval} ожидания",
   "lobby.matchmaker.teamReachNote": "Командные очереди: приблизительно",
   "lobby.matchmaker.mapPool": "Пул карт",
   "lobby.matchmaker.state.searching": "Поиск",

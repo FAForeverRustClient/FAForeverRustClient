@@ -73,11 +73,35 @@ export function tableMinWidth(widths: readonly number[]): number {
   return widths.reduce((total, width) => total + width, 0);
 }
 
+/**
+ * How much the flexible column can give up, measured from a divider as a
+ * drag starts: the on-screen width of the flexible column's header cell,
+ * less its floor.
+ *
+ * Every list draws its dividers inside its header cells, and each header row
+ * holds one cell per column, so the flexible column's cell is the row's child
+ * at that index.
+ */
+export function flexibleRoomFrom(handle: HTMLElement, flexible: number, floor: number): number {
+  const cell = handle.parentElement?.parentElement?.children[flexible];
+  if (!cell) return Number.POSITIVE_INFINITY;
+  return Math.max(0, Math.floor(cell.getBoundingClientRect().width) - floor);
+}
+
 /** How much a column may still give up (`grow: false`) or take on. */
-function room(widths: readonly number[], index: number, flexible: number, grow: boolean): number {
-  // The flexible column has no width of its own, so it never limits a drag:
-  // it simply takes up what its neighbour gives away.
-  if (index === flexible) return Number.POSITIVE_INFINITY;
+function room(
+  widths: readonly number[],
+  index: number,
+  flexible: number,
+  grow: boolean,
+  flexibleRoom: number,
+): number {
+  // The flexible column has no width of its own. It takes up whatever its
+  // neighbour gives away, and gives up only what it has on screen above its
+  // floor: past that the list used to grow instead, so the column beyond the
+  // divider slid to the right while the divider stayed under the cursor. On a
+  // small screen that happened almost at once, and the divider now stops.
+  if (index === flexible) return grow ? Number.POSITIVE_INFINITY : flexibleRoom;
   // Growing is unbounded. A divider that stops while the cursor keeps going is
   // the complaint this answers, and there is nothing a wide column can break:
   // the two columns either side of a divider trade width, so the row's total
@@ -100,6 +124,7 @@ export function withBoundaryDragged(
   boundary: number,
   delta: number,
   flexible: number,
+  flexibleRoom = Number.POSITIVE_INFINITY,
 ): number[] {
   const left = boundary - 1;
   const right = boundary;
@@ -108,8 +133,14 @@ export function withBoundaryDragged(
   // How far the line may travel before one of its two columns hits a bound.
   // Dragging further than that has to stop rather than carry on changing one
   // side, or the two would drift apart and the line would leave the cursor.
-  const forward = Math.min(room(widths, left, flexible, true), room(widths, right, flexible, false));
-  const back = Math.min(room(widths, left, flexible, false), room(widths, right, flexible, true));
+  const forward = Math.min(
+    room(widths, left, flexible, true, flexibleRoom),
+    room(widths, right, flexible, false, flexibleRoom),
+  );
+  const back = Math.min(
+    room(widths, left, flexible, false, flexibleRoom),
+    room(widths, right, flexible, true, flexibleRoom),
+  );
   const moved = Math.max(-back, Math.min(forward, Math.round(delta)));
 
   const next = [...widths];

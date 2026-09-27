@@ -118,6 +118,7 @@ export function LiveReplayTable(props: Props) {
       label={t("lobby.browser.resizeColumn", {
         column: columnLabels[boundary - 1 === FLEXIBLE_COLUMN ? boundary : boundary - 1],
       })}
+      onStart={columns.onStart}
       onDrag={(delta) => columns.onDrag(boundary, delta)}
       onEnd={columns.onCommit}
       onReset={columns.onReset}

@@ -17,9 +17,11 @@ import {
   columnTemplate,
   columnWidths,
   FLEXIBLE_COLUMN,
+  MIN_GAME_COLUMN_PX,
   minimumRowWidth,
   withColumnResized,
 } from "./browserLayout";
+import { flexibleRoomFrom } from "../../../shared/tableColumns";
 
 /**
  * Persist the list's column widths.
@@ -119,12 +121,19 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     [enabled, widths.join(",")],
   );
 
+  // What the game column had above its minimum when the drag began: the
+  // divider next to it stops there instead of widening the whole row.
+  const gameRoom = useRef(Number.POSITIVE_INFINITY);
+  const onStart = (handle: HTMLElement) => {
+    gameRoom.current = flexibleRoomFrom(handle, FLEXIBLE_COLUMN, MIN_GAME_COLUMN_PX);
+  };
   const onDrag = (boundary: number, delta: number) => {
     dragOrigin.current ??= widths;
-    setDragWidths(withColumnResized(dragOrigin.current, boundary, delta));
+    setDragWidths(withColumnResized(dragOrigin.current, boundary, delta, gameRoom.current));
   };
   const onCommit = () => {
     dragOrigin.current = null;
+    gameRoom.current = Number.POSITIVE_INFINITY;
     if (dragWidths) saveColumnWidths(dragWidths);
     setDragWidths(null);
   };
@@ -177,6 +186,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
                 label={t("lobby.browser.resizeColumn", {
                   column: labels[index - 1 === FLEXIBLE_COLUMN ? index : index - 1],
                 })}
+                onStart={onStart}
                 onDrag={(delta) => onDrag(index, delta)}
                 onEnd={onCommit}
                 onReset={onReset}

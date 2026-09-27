@@ -43,7 +43,7 @@ const COLUMN_GAP_PX = 16;
 /** A row's own padding either side, matching `.game-browser-row`. */
 const ROW_PADDING_PX = 16;
 /** The narrowest the game column gets: a thumbnail, a title and a host. */
-const MIN_GAME_COLUMN_PX = 240;
+export const MIN_GAME_COLUMN_PX = 240;
 
 /**
  * How wide a row has to be for every column to keep its width.
@@ -91,8 +91,9 @@ export function withColumnResized(
   widths: readonly number[],
   boundary: number,
   delta: number,
+  gameRoom = Number.POSITIVE_INFINITY,
 ): number[] {
-  return withBoundaryDragged(widths, boundary, delta, FLEXIBLE_COLUMN);
+  return withBoundaryDragged(widths, boundary, delta, FLEXIBLE_COLUMN, gameRoom);
 }
 
 /**

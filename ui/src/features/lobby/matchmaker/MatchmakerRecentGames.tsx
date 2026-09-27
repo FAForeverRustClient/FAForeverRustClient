@@ -97,6 +97,7 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
     <ResizeHandle
       className="matchmaker-recent-col-handle is-ruled"
       label={t("lobby.browser.resizeColumn", { column: columnLabels[boundary] })}
+      onStart={columns.onStart}
       onDrag={(delta) => columns.onDrag(boundary, delta)}
       onEnd={columns.onCommit}
       onReset={columns.onReset}

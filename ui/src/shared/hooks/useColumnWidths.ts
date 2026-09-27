@@ -12,7 +12,7 @@ import { useRef, useState } from "react";
 import type { BrowsingPreferences } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
-import { resolveColumnWidths, withBoundaryDragged } from "../tableColumns";
+import { flexibleRoomFrom, resolveColumnWidths, withBoundaryDragged } from "../tableColumns";
 
 /** The settings fields that hold a table's column widths. */
 type ColumnField = {
@@ -29,6 +29,8 @@ export interface ColumnWidths {
    * nothing else does.
    */
   onDrag: (boundary: number, delta: number) => void;
+  /** A drag starts from this divider: see `flexibleRoomFrom`. */
+  onStart: (handle: HTMLElement) => void;
   /** The drag ended: persist it. */
   onCommit: () => void;
   /** Back to the designed widths, and stay there across a restart. */
@@ -54,6 +56,10 @@ export function useColumnWidths(
   // same widths; adding each report to the last one instead makes a column run
   // away from the cursor, faster the further it is dragged.
   const origin = useRef<number[] | null>(null);
+  // How much the flexible column had to give when the drag began. Its stored
+  // width is its floor: the tables are at least as wide as every width
+  // together, so it is never drawn narrower than that.
+  const flexibleRoom = useRef(Number.POSITIVE_INFINITY);
 
   const resolve = () => resolveColumnWidths(stored, defaults);
 
@@ -69,10 +75,15 @@ export function useColumnWidths(
     widths: dragged ?? resolve(),
     onDrag: (boundary, delta) => {
       const base = (origin.current ??= dragged ?? resolve());
-      setDragged(withBoundaryDragged(base, boundary, delta, flexible));
+      setDragged(withBoundaryDragged(base, boundary, delta, flexible, flexibleRoom.current));
+    },
+    onStart: (handle) => {
+      const widths = dragged ?? resolve();
+      flexibleRoom.current = flexibleRoomFrom(handle, flexible, widths[flexible]);
     },
     onCommit: () => {
       origin.current = null;
+      flexibleRoom.current = Number.POSITIVE_INFINITY;
       if (dragged) save(dragged);
       setDragged(null);
     },
