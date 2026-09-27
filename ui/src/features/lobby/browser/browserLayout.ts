@@ -44,8 +44,8 @@ const COLUMN_GAP_PX = 16;
 const ROW_PADDING_PX = 16;
 /** The narrowest the game column can be dragged: a thumbnail and a word. */
 export const MIN_GAME_COLUMN_PX = 120;
-/** However narrow the list, the columns keep at least this share. */
-const MIN_COLUMN_SCALE = 0.25;
+/** The smallest share a column is drawn at: only a window a few dozen pixels wide gets there. */
+const MIN_COLUMN_SCALE = 0.02;
 
 /**
  * What the columns are drawn at, from 1 (as dragged) down, so that the row
