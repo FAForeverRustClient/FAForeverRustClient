@@ -313,7 +313,7 @@ fn short_date_pattern() -> Option<String> {
     }
     /// From `winnls.h`.
     const LOCALE_SSHORTDATE: u32 = 0x0000_001F;
-    /// `LOCALE_NAME_MAX_LENGTH` is 85; a pattern is far shorter.
+    // `LOCALE_NAME_MAX_LENGTH` is 85; a pattern is far shorter.
     let mut buffer = [0u16; 128];
     // Sound: a null locale name is `LOCALE_NAME_USER_DEFAULT`, the buffer is
     // writable for the length passed, and the call writes at most that many
