@@ -2,19 +2,21 @@
 //!
 //! Reads mirror the Java client's `ReviewService.getMapReviews`/`getModReviews`:
 //! walk the subject's *versions* and collect the reviews hanging off each,
-//! with the reviewer resolved.
+//! with the reviewer resolved. A game has no versions, so its reviews are read
+//! straight off it, as `getReplayReviews` does.
 //!
 //! ```text
 //! GET /data/{map|mod}/{id}/versions?include=reviews,reviews.player
+//! GET /data/game/{id}/reviews?include=player
 //! ```
 //!
 //! Writes are the same shape Java uses, and are the only writes this client
 //! makes anywhere:
 //!
 //! ```text
-//! POST   /data/{map|mod}Version/{versionId}/reviews
-//! PATCH  /data/{map|mod}VersionReview/{reviewId}
-//! DELETE /data/{map|mod}VersionReview/{reviewId}
+//! POST   /data/{map|mod}Version/{versionId}/reviews    (and game/{id}/reviews)
+//! PATCH  /data/{map|mod}VersionReview/{reviewId}       (and gameReview/{id})
+//! DELETE /data/{map|mod}VersionReview/{reviewId}       (and gameReview/{id})
 //! ```
 
 use async_trait::async_trait;
@@ -75,6 +77,9 @@ impl ReviewsClient {
 impl ReviewsPort for ReviewsClient {
     async fn list(&self, kind: ReviewKind, subject_id: i32) -> Result<ReviewPage, String> {
         let token = self.token()?;
+        if !kind.is_versioned() {
+            return self.list_unversioned(kind, subject_id, &token).await;
+        }
         let mut url = self.url(&format!(
             "{}/{subject_id}/versions",
             kind.subject_resource()
@@ -121,13 +126,14 @@ impl ReviewsPort for ReviewsClient {
         &self,
         kind: ReviewKind,
         version_id: i32,
+        player_id: i32,
         score: i32,
         text: String,
     ) -> Result<Review, String> {
         let token = self.token()?;
         // Posting to the version's own reviews collection is what associates
-        // the two: the body carries no relationship of its own, matching
-        // Java, which nulls the subject before sending.
+        // the two, so the subject is not in the body: Java nulls it before
+        // sending. The author is, because nothing on the server fills it in.
         let url = self.url(&format!("{}/{version_id}/reviews", kind.version_resource()))?;
 
         let doc = post_resource(
@@ -136,6 +142,7 @@ impl ReviewsPort for ReviewsClient {
             &token,
             kind.review_resource(),
             json!({ "score": clamp_score(score), "text": text }),
+            author_relationship(player_id),
         )
         .await?;
 
@@ -174,6 +181,39 @@ impl ReviewsPort for ReviewsClient {
         let url = self.url(&format!("{}/{review_id}", kind.review_resource()))?;
         delete_resource(&self.http, url, &token).await
     }
+}
+
+impl ReviewsClient {
+    /// A subject that owns its reviews directly: a game.
+    async fn list_unversioned(
+        &self,
+        kind: ReviewKind,
+        subject_id: i32,
+        token: &str,
+    ) -> Result<ReviewPage, String> {
+        let mut url = self.url(&format!("{}/{subject_id}/reviews", kind.subject_resource()))?;
+        url.query_pairs_mut()
+            .append_pair("include", "player")
+            .append_pair("page[size]", "100");
+
+        let doc = fetch_document(&self.http, url, token).await?;
+        let index = document_index(&doc);
+        let reviews = doc
+            .data
+            .iter()
+            .filter_map(|resource| parse_review(resource, &index, ""))
+            .collect();
+        Ok(ReviewPage {
+            reviews,
+            // The game is where a new review goes.
+            latest_version_id: Some(subject_id),
+        })
+    }
+}
+
+/// The `player` link a new review carries.
+fn author_relationship(player_id: i32) -> serde_json::Value {
+    json!({ "player": { "data": { "type": "player", "id": player_id.to_string() } } })
 }
 
 fn parse_review(
@@ -236,6 +276,7 @@ impl ReviewsPort for FakeReviews {
         &self,
         _kind: ReviewKind,
         _version_id: i32,
+        _player_id: i32,
         score: i32,
         text: String,
     ) -> Result<Review, String> {
@@ -394,6 +435,38 @@ mod tests {
                 .as_str(),
             "https://api.example.invalid/data/modVersionReview/5"
         );
+
+        // A game has no versions: a review is posted on the game itself and
+        // edited as a `gameReview`.
+        assert_eq!(
+            client
+                .url(&format!(
+                    "{}/27793625/reviews",
+                    ReviewKind::Game.version_resource()
+                ))
+                .unwrap()
+                .as_str(),
+            "https://api.example.invalid/data/game/27793625/reviews"
+        );
+        assert_eq!(
+            client
+                .url(&format!("{}/5", ReviewKind::Game.review_resource()))
+                .unwrap()
+                .as_str(),
+            "https://api.example.invalid/data/gameReview/5"
+        );
+        assert!(!ReviewKind::Game.is_versioned());
+        assert!(ReviewKind::Map.is_versioned() && ReviewKind::Mod.is_versioned());
+    }
+
+    #[test]
+    fn a_new_review_names_its_author() {
+        // Nothing on the server fills the author in, so an unlinked review
+        // would have nobody to belong to and nobody allowed to edit it.
+        assert_eq!(
+            author_relationship(7),
+            json!({ "player": { "data": { "type": "player", "id": "7" } } })
+        );
     }
 
     #[tokio::test]
@@ -403,7 +476,7 @@ mod tests {
         let before = fake.list(ReviewKind::Map, 1).await.unwrap().reviews.len();
 
         let created = fake
-            .create(ReviewKind::Map, 30, 9, "Too good".into())
+            .create(ReviewKind::Map, 30, 7, 9, "Too good".into())
             .await
             .unwrap();
         assert_eq!(created.score, 5, "clamped to the API's range");

@@ -172,6 +172,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "reviews.saved": "Enregistré.",
   "reviews.mapReviews": "Avis sur la carte",
   "reviews.modReviews": "Avis sur le mod",
+  "reviews.gameReviews": "Avis sur le replay",
+  "reviews.loading": "Chargement des avis…",
   "reviews.noOthers": "Aucun autre avis pour l'instant",
   "reviews.unknownPlayer": "Joueur inconnu",
   "reviews.yours": "Votre avis",
@@ -3611,5 +3613,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.detail.gameResult": "Résultat de la partie",
   "replays.detail.noResultYet": "Cette partie n'a aucun résultat à afficher.",
   "replays.detail.noRatingYet": "Personne n'a encore noté ce replay",
+  "replays.detail.rateReplay": "Évaluer ce replay",
   "lobby.host.modVersion": "Version {version}",
 };

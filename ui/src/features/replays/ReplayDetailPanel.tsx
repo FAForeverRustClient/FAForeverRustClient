@@ -22,6 +22,7 @@ import {
 } from "../../shared/mapPresentation";
 import { MapPreviewFrame } from "../../shared/components/MapPreviewZoom";
 import { onlineReplayLink } from "../../shared/replayLinks";
+import { openReviews } from "../../shared/openReviews";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { replayMapPresentation } from "./coopReplayMap";
 import { ReplayInsights } from "./analysis/ReplayInsights";
@@ -127,6 +128,7 @@ export function ReplayDetailPanel({
   // Subscribed, not read once: the answer arrives from the vault after the
   // panel is already open, and the map is what the header of it says.
   const resolvedMap = useAppStore((state) => state.state.replays.resolvedMaps?.[replay.uid]);
+  const offline = useAppStore((state) => state.state.auth.mode === "offline");
   const avatarByLogin = useMemo(() => {
     const avatars = new Map<string, string>();
     for (const player of socialPlayers) {
@@ -342,6 +344,17 @@ export function ReplayDetailPanel({
   const mapLabel = presentation.displayName || effectiveMap;
   const cardTitle = replay.title || mapLabel;
   const stars = replay.reviewsAverage ?? null;
+  const starsLabel = stars === null
+    ? t("replays.detail.noRatingYet")
+    : t("reviews.scoreAria", { score: stars.toFixed(1), of: 5 });
+  const starIcons = [1, 2, 3, 4, 5].map((step) => (
+    <Icon
+      key={step}
+      name="star"
+      size={15}
+      className={stars !== null && stars >= step - 0.5 ? "is-filled" : "is-empty"}
+    />
+  ));
   // Rebuilding a generated map from its seed, which is how a generated map is
   // obtained: there is nothing to download. Its own value rather than only a
   // branch of the thumbnail's action below, because the heatmap wants the
@@ -448,26 +461,28 @@ export function ReplayDetailPanel({
               </div>
             )}
           </div>
-          {/* Read-only: FAF carries a replay's score but this client has no way
-              to write one back, and a rating control that cannot rate is worse
-              than none. */}
+          {/* The stars open the game's reviews, where it can be rated: the
+              same panel the map and mod vaults use, on FAF's gameReview
+              resource (issue 351). It used to be read-only, and a row of stars
+              that cannot be clicked was read as a broken rating control. A
+              game the server has no number for, or a session without the
+              API, has nothing to open, so there it stays a label. */}
           <div className="replay-card-rating">
-            <span
-              className="replay-card-stars"
-              role="img"
-              aria-label={stars === null
-                ? t("replays.detail.noRatingYet")
-                : t("reviews.scoreAria", { score: stars.toFixed(1), of: 5 })}
-            >
-              {[1, 2, 3, 4, 5].map((step) => (
-                <Icon
-                  key={step}
-                  name="star"
-                  size={15}
-                  className={stars !== null && stars >= step - 0.5 ? "is-filled" : "is-empty"}
-                />
-              ))}
-            </span>
+            {replay.uid > 0 && !offline ? (
+              <button
+                type="button"
+                className="replay-card-stars replay-card-stars-button"
+                title={t("replays.detail.rateReplay")}
+                aria-label={`${t("replays.detail.rateReplay")}: ${starsLabel}`}
+                onClick={() => openReviews("game", replay.uid, cardTitle)}
+              >
+                {starIcons}
+              </button>
+            ) : (
+              <span className="replay-card-stars" role="img" aria-label={starsLabel}>
+                {starIcons}
+              </span>
+            )}
             <span className="replay-card-rating-value">
               {stars === null ? t("replays.detail.unrated") : formatDecimal(stars)}
               {replay.reviewsCount ? (

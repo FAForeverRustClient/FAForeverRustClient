@@ -1,4 +1,5 @@
-//! Vault reviews: the community's rating and comments on a map or mod.
+//! Vault reviews: the community's rating and comments on a map, a mod or a
+//! replay.
 //!
 //! Until now the client showed a review *average* and nothing else. Both
 //! reference clients show the reviews themselves, the score distribution, and
@@ -17,14 +18,19 @@ use specta::Type;
 pub const MIN_SCORE: i32 = 1;
 pub const MAX_SCORE: i32 = 5;
 
-/// What is being reviewed. Maps and mods have separate API resources with
-/// identical shapes, so the kind travels with the id rather than forking every
-/// type in this module.
+/// What is being reviewed. Maps, mods and games have separate API resources
+/// with identical shapes, so the kind travels with the id rather than forking
+/// every type in this module.
+///
+/// A game is the one kind without versions: its reviews hang off the game
+/// itself (`gameReview`), which is what the replay panel rates. The Java
+/// client's `ReviewService.getReplayReviews` reads them the same way.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum ReviewKind {
     Map,
     Mod,
+    Game,
 }
 
 impl ReviewKind {
@@ -33,15 +39,24 @@ impl ReviewKind {
         match self {
             Self::Map => "mapVersionReview",
             Self::Mod => "modVersionReview",
+            Self::Game => "gameReview",
         }
     }
 
-    /// The resource owning the reviews: a *version*, not the map or mod.
+    /// The resource owning the reviews: a *version*, not the map or mod. A
+    /// game owns its own.
     pub fn version_resource(&self) -> &'static str {
         match self {
             Self::Map => "mapVersion",
             Self::Mod => "modVersion",
+            Self::Game => "game",
         }
+    }
+
+    /// Whether the reviews hang off versions of the subject rather than off
+    /// the subject itself.
+    pub fn is_versioned(&self) -> bool {
+        !matches!(self, Self::Game)
     }
 
     /// The top-level resource, whose versions carry the reviews.
@@ -49,11 +64,12 @@ impl ReviewKind {
         match self {
             Self::Map => "map",
             Self::Mod => "mod",
+            Self::Game => "game",
         }
     }
 }
 
-/// Which map or mod's reviews are open.
+/// Which map, mod or game's reviews are open.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReviewTarget {
@@ -74,7 +90,8 @@ pub struct Review {
     /// The reviewer's login. Empty when the API did not resolve the player.
     pub player: String,
     /// Which version of the map or mod was reviewed: a two-year-old review of
-    /// version 1 says little about version 9.
+    /// version 1 says little about version 9. Empty for a game, which has no
+    /// versions.
     pub version: String,
 }
 
@@ -400,6 +417,9 @@ mod tests {
         assert_eq!(ReviewKind::Mod.review_resource(), "modVersionReview");
         assert_eq!(ReviewKind::Mod.version_resource(), "modVersion");
         assert_eq!(ReviewKind::Mod.subject_resource(), "mod");
+        assert_eq!(ReviewKind::Game.review_resource(), "gameReview");
+        assert_eq!(ReviewKind::Game.version_resource(), "game");
+        assert_eq!(ReviewKind::Game.subject_resource(), "game");
     }
 
     #[test]

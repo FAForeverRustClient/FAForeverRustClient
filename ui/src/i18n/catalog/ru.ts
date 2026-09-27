@@ -179,6 +179,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "reviews.saved": "Сохранено.",
   "reviews.mapReviews": "Отзывы о карте",
   "reviews.modReviews": "Отзывы о моде",
+  "reviews.gameReviews": "Отзывы о реплее",
+  "reviews.loading": "Загрузка отзывов…",
   "reviews.noOthers": "Других отзывов пока нет",
   "reviews.unknownPlayer": "Неизвестный игрок",
   "reviews.yours": "Ваш отзыв",
@@ -3684,5 +3686,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.detail.gameResult": "Результат игры",
   "replays.detail.noResultYet": "У этой игры нет результата, который можно показать.",
   "replays.detail.noRatingYet": "Этот реплей ещё никто не оценил",
+  "replays.detail.rateReplay": "Оценить этот реплей",
   "lobby.host.modVersion": "Версия {version}",
 };

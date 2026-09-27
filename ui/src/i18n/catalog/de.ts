@@ -2656,6 +2656,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "contribution.repo.githubHint": "Alle quelloffenen FAF-Projekte entdecken",
   "reviews.mapReviews": "Kartenbewertungen",
   "reviews.modReviews": "Mod-Bewertungen",
+  "reviews.gameReviews": "Replay-Bewertungen",
+  "reviews.loading": "Bewertungen werden geladen…",
   "reviews.noOthers": "Noch keine weiteren Bewertungen",
   "reviews.unknownPlayer": "Unbekannter Spieler",
   "reviews.yours": "Deine Bewertung",
@@ -3837,5 +3839,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.detail.gameResult": "Spielergebnis",
   "replays.detail.noResultYet": "Für dieses Spiel gibt es kein Ergebnis zu zeigen.",
   "replays.detail.noRatingYet": "Dieses Replay hat noch niemand bewertet",
+  "replays.detail.rateReplay": "Dieses Replay bewerten",
   "lobby.host.modVersion": "Version {version}",
 };
