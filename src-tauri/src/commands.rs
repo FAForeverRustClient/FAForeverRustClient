@@ -292,3 +292,46 @@ pub(crate) fn webview_engine() -> WebviewEngine {
         webkit_version: webkit_version(),
     }
 }
+
+/// The short date pattern of the user's regional format, as Windows spells it
+/// (`dd.MM.yyyy`, `M/d/yyyy`, `yyyy-MM-dd`), or `None` where there is none.
+///
+/// The regional format is a setting of its own in Windows, apart from the
+/// display language: an English Windows set to a German or Ukrainian region
+/// writes the day first everywhere except in a webview, which formats dates
+/// after its language (issue 292). The frontend writes numeric dates in this
+/// pattern instead.
+#[tauri::command]
+pub(crate) fn system_date_pattern() -> Option<String> {
+    short_date_pattern()
+}
+
+#[cfg(windows)]
+fn short_date_pattern() -> Option<String> {
+    extern "system" {
+        fn GetLocaleInfoEx(locale: *const u16, kind: u32, data: *mut u16, length: i32) -> i32;
+    }
+    /// From `winnls.h`.
+    const LOCALE_SSHORTDATE: u32 = 0x0000_001F;
+    /// `LOCALE_NAME_MAX_LENGTH` is 85; a pattern is far shorter.
+    let mut buffer = [0u16; 128];
+    // Sound: a null locale name is `LOCALE_NAME_USER_DEFAULT`, the buffer is
+    // writable for the length passed, and the call writes at most that many
+    // units, the terminating null included, returning how many it wrote.
+    let written = unsafe {
+        GetLocaleInfoEx(
+            std::ptr::null(),
+            LOCALE_SSHORTDATE,
+            buffer.as_mut_ptr(),
+            buffer.len() as i32,
+        )
+    };
+    let length = usize::try_from(written).ok()?.checked_sub(1)?;
+    let pattern = String::from_utf16(&buffer[..length]).ok()?;
+    (!pattern.trim().is_empty()).then_some(pattern)
+}
+
+#[cfg(not(windows))]
+fn short_date_pattern() -> Option<String> {
+    None
+}

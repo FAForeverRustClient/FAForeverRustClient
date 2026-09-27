@@ -116,6 +116,14 @@ export const native = {
     return openUrl(url);
   },
 
+  /**
+   * The short date pattern of the user's regional format (`dd.MM.yyyy`), or
+   * null where the system has none. See `shared/format/systemDate.ts`.
+   */
+  systemDatePattern(): Promise<string | null> {
+    return invoke<string | null>("system_date_pattern");
+  },
+
   /** Which engine the interface is being rendered by. */
   webviewEngine(): Promise<WebviewEngine> {
     return invoke<WebviewEngine>("webview_engine");

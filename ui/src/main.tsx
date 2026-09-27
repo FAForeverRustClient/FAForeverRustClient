@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { FAF_LOGO_URL } from "./shared/branding";
 import { installDesktopContextMenuPolicy } from "./shared/contextMenuPolicy";
+import { loadSystemDatePattern } from "./shared/format/systemDate";
 import "./styles.css";
 import "./design-system/patterns.css";
 import "./design-system/vault.css";
@@ -22,8 +23,12 @@ window.addEventListener("scroll", () => {
   }
 });
 
-createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+// Before the first render, so no date is drawn in one order and then redrawn
+// in the other. It is one synchronous call in the shell and never rejects.
+void loadSystemDatePattern().then(() => {
+  createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  );
+});

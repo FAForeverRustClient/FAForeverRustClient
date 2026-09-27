@@ -45,6 +45,11 @@ export function isCustomGameRanked(
     return false;
   }
 
+  // 0. A free-for-all is never rated (#292). See `isFreeForAll`.
+  if (isFreeForAll(game)) {
+    return false;
+  }
+
   // 1. Check map ranked status
   const mapMeta = findVaultMapByFolder(vaultMaps, game.map);
   if (mapMeta && !mapMeta.ranked) {
@@ -66,6 +71,26 @@ export function isCustomGameRanked(
 
   return true;
 }
+
+/** The team a player without one sits on: `FFA_TEAM` in the server's config. */
+const FFA_TEAM = "1";
+
+/**
+ * Would the server rate this lobby as it stands a free-for-all?
+ *
+ * The server's own rule (`Game.is_ffa` in `server/games/game.py`): three or
+ * more players, at least one of them on team 1, which is the "no team" slot.
+ * A game launched like that is marked `FFA_NOT_RANKED` and rates nobody, so
+ * "Hide unranked" hides it and the row carries the "Unranked" tag. It says
+ * what the lobby is now: a lobby still putting players into teams reads as
+ * unranked until it has.
+ */
+export function isFreeForAll(game: Game): boolean {
+  const seated = Object.entries(game.teams).filter(([team]) => !observerTeam(team));
+  const players = seated.reduce((total, [, members]) => total + members.length, 0);
+  return players >= 3 && seated.some(([team, members]) => team === FFA_TEAM && members.length > 0);
+}
+
 
 /**
  * Is this a co-op mission rather than a custom game?

@@ -46,6 +46,7 @@ import { allReplayTags, replayIdsTagged } from "../../../shared/rules/replayNote
 import "../../../design-system/search-panel.css";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { DateInput } from "../../../design-system/DateInput";
 
 /**
  * What counts as a game too short to be worth watching.
@@ -68,6 +69,7 @@ const SORT_LABELS: Record<ReplaySortField, MessageKey> = {
   title: "replays.search.sort.gameTitle",
   id: "replays.search.sort.replayId",
   victoryCondition: "replays.search.sort.victoryCondition",
+  averageRating: "replays.search.sort.averageRating",
 };
 
 /** The Java client's show-room categories, as one-click presets. */
@@ -280,21 +282,19 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
         <div className="vault-field vault-search-dates search-panel-field">
           <span className="vault-field-label search-panel-label">{t("replays.search.datePlayed")}</span>
           <div className="vault-search-date-pair">
-            <input
+            <DateInput
               className="vault-input search-panel-control"
-              type="date"
               value={form.after}
               aria-label={t("replays.filters.playedAfter")}
               title={t("replays.filters.playedAfter")}
-              onChange={(e) => set("after", e.target.value)}
+              onChange={(value) => set("after", value)}
             />
-            <input
+            <DateInput
               className="vault-input search-panel-control"
-              type="date"
               value={form.before}
               aria-label={t("replays.filters.playedBefore")}
               title={t("replays.filters.playedBefore")}
-              onChange={(e) => set("before", e.target.value)}
+              onChange={(value) => set("before", value)}
             />
           </div>
         </div>
@@ -489,6 +489,10 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
           {t("replays.search.clear")}
         </Button>
       </div>
+
+      {form.sortBy === "averageRating" && (
+        <p className="muted vault-search-note">{t("replays.search.sort.averageRatingNote")}</p>
+      )}
 
       {advanced && (
         <AdvancedReplayFilters

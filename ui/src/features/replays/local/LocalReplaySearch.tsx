@@ -15,6 +15,7 @@ import {
 import { activeLocalReplayPreset } from "../replayPresets";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { DateInput } from "../../../design-system/DateInput";
 
 const SORT_LABELS: Record<LocalReplaySortField, MessageKey> = {
   date: "replays.search.sort.datePlayed",
@@ -301,11 +302,11 @@ export function LocalReplaySearch({
             </label>
             <label className="vault-field">
               <span className="vault-field-label">{t("replays.search.playedAfter")}</span>
-              <input className="vault-input" type="date" value={form.after} onChange={(event) => set("after", event.target.value)} />
+              <DateInput className="vault-input" value={form.after} onChange={(value) => set("after", value)} />
             </label>
             <label className="vault-field">
               <span className="vault-field-label">{t("replays.search.playedBefore")}</span>
-              <input className="vault-input" type="date" value={form.before} onChange={(event) => set("before", event.target.value)} />
+              <DateInput className="vault-input" value={form.before} onChange={(value) => set("before", value)} />
             </label>
           </div>
           <div className="vault-search-checks">

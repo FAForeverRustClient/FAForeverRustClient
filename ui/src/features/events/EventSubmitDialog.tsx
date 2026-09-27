@@ -25,6 +25,7 @@ import {
   type DraftRecurrence,
   type EventDraft,
 } from "./eventSubmission";
+import { DateInput } from "../../design-system/DateInput";
 
 const RECURRENCES: DraftRecurrence[] = ["none", "weekly", "fortnightly", "monthly"];
 
@@ -60,11 +61,7 @@ export function EventSubmitDialog({ submitUrl, onClose }: Props) {
 
         <label>
           <span>{t("events.submit.day")}</span>
-          <input
-            type="date"
-            value={draft.day}
-            onChange={(change) => set({ day: change.target.value })}
-          />
+          <DateInput value={draft.day} onChange={(day) => set({ day })} />
         </label>
         <label>
           <span>{t("events.submit.time")}</span>

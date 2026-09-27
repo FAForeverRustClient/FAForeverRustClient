@@ -39,6 +39,7 @@ import { favoriteModKeys, toggleFavoriteMod } from "./favoriteMods";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
+import { DateInput } from "../../design-system/DateInput";
 
 type SubView = "vault" | "installed";
 type ModSort = "rating" | "newest" | "updated" | "name";
@@ -429,8 +430,8 @@ function VaultView({ busy }: { busy: boolean }) {
             <div className="search-panel-advanced-grid">
               <SearchField label={t("mods.view.installation")}><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">{t("mods.view.any")}</option><option value="installed">{t("mods.view.installed")}</option><option value="available">{t("mods.view.notInstalled")}</option><option value="updates">{t("mods.view.updatesAvailable")}</option></select></SearchField>
               <SearchField label={t("mods.view.dateField")}><select className="search-panel-control" value={dateField} onChange={(event) => setDateField(event.target.value as DateField)}><option value="updated">{t("mods.view.lastUpdated")}</option><option value="uploaded">{t("mods.view.uploaded")}</option></select></SearchField>
-              <SearchField label={t("mods.view.after")}><input className="search-panel-control" type="date" value={dateAfter} onChange={(event) => setDateAfter(event.target.value)} /></SearchField>
-              <SearchField label={t("mods.view.before")}><input className="search-panel-control" type="date" value={dateBefore} onChange={(event) => setDateBefore(event.target.value)} /></SearchField>
+              <SearchField label={t("mods.view.after")}><DateInput className="search-panel-control" value={dateAfter} onChange={setDateAfter} /></SearchField>
+              <SearchField label={t("mods.view.before")}><DateInput className="search-panel-control" value={dateBefore} onChange={setDateBefore} /></SearchField>
             </div>
           </div>
         ) : undefined}
