@@ -52,6 +52,23 @@ export function ReviewsPanel() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.reviews);
   const player = useAppStore((store) => store.state.auth.player);
+  const open = state.target !== null;
+
+  // A replay's reviews open on top of the replay panel, which is a `Modal`
+  // too, and every `Modal` closes on Escape from a bubble-phase listener on
+  // the document: one press shut both. Taken in the capture phase, as the
+  // replay panel's own enlarged preview does, it closes only this one.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      void close();
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [open]);
 
   if (state.target === null) return null;
 
