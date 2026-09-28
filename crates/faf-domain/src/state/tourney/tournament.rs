@@ -224,6 +224,10 @@ pub struct Tourney {
     /// Maps pinned to a round directly, for events without vetoes.
     pub round_maps: Vec<RoundMaps>,
     pub organisers: Vec<String>,
+    /// The public organisers' Discord handles, where they listed one, for the
+    /// chat's "organisers may not be around yet" notice. Same order as
+    /// `organisers`; an organiser without a handle is simply absent.
+    pub organiser_discords: Vec<String>,
     /// The organiser's announcements, newest first.
     pub news: Vec<NewsPost>,
     /// People the organiser invited. Empty for anyone who is not one: the

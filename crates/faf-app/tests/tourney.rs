@@ -191,7 +191,13 @@ impl TourneyPort for RefusingTourney {
     async fn chat_read(&self, t: &str, room: &str) -> Result<Vec<ChatPost>, RequestError> {
         self.inner.chat_read(t, room).await
     }
-    async fn chat_post(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+    async fn chat_post(
+        &self,
+        _: &str,
+        _: &str,
+        _: &str,
+        _: Option<&str>,
+    ) -> Result<(), RequestError> {
         self.refused()
     }
     async fn articles(&self) -> Result<Vec<Article>, RequestError> {
@@ -1324,6 +1330,7 @@ async fn posting_reloads_the_room_and_not_the_whole_tournament() {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "  on my way  ".into(),
+            reply_to: None,
         }
         .into(),
     )
@@ -1341,6 +1348,7 @@ async fn posting_reloads_the_room_and_not_the_whole_tournament() {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "   ".into(),
+            reply_to: None,
         }
         .into(),
     )
@@ -1738,7 +1746,13 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         async fn chat_read(&self, _: &str, _: &str) -> Result<Vec<ChatPost>, RequestError> {
             unreachable!()
         }
-        async fn chat_post(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+        async fn chat_post(
+            &self,
+            _: &str,
+            _: &str,
+            _: &str,
+            _: Option<&str>,
+        ) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn articles(&self) -> Result<Vec<Article>, RequestError> {
@@ -3671,6 +3685,7 @@ async fn refreshing_a_room_brings_in_what_somebody_else_wrote() {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "on my way".into(),
+            reply_to: None,
         }
         .into(),
     )

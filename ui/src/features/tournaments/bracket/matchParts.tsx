@@ -6,6 +6,7 @@
 // report or answer" could drift from the others. The rules live in
 // `tourneyRules`; this is the one place that turns them into buttons.
 
+import { useContext } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { PlayerSummary, Tourney, TourneyMatch } from "../../../ipc/bindings";
@@ -14,6 +15,7 @@ import { mayReport, maySubmit } from "../../../shared/rules/tourneyRules";
 import { PlayerChip } from "../PlayerChip";
 import { isMyMatch, myTeamId } from "../tourneyPresentation";
 import { hasVeto, myVetoSteps } from "./vetoPresentation";
+import { MatchChatContext, mayOpenMatchChat } from "./matchChat";
 
 /**
  * A slot's name as the bracket prints it, or null for a slot nobody holds yet.
@@ -110,6 +112,19 @@ export function MatchActions({
   // A map step or faction choices this account owes, so the button that opens
   // the run says so rather than looking like every other match's.
   const owed = myVetoSteps(event, entry);
+  const chat = useContext(MatchChatContext);
+  const chatUnread = chat === null ? 0 : chat.unread(entry);
+  const chatButton = chat !== null && mayOpenMatchChat(event, entry) && (
+    <button
+      type="button"
+      className="tournament-round-pool-toggle"
+      title={t("tournaments.chat.matchChatHint")}
+      onClick={() => chat.open(entry)}
+    >
+      <Icon name="chat" size={12} /> {t("tournaments.chat.matchChat")}
+      {chatUnread > 0 && <span className="tournament-badge">{chatUnread > 9 ? "9+" : chatUnread}</span>}
+    </button>
+  );
 
   if (mayAnswer) {
     return (
@@ -120,11 +135,13 @@ export function MatchActions({
         <Button onClick={() => onAnswer(false)} disabled={busy}>
           {t("tournaments.match.reject")}
         </Button>
+        {chatButton}
       </>
     );
   }
   return (
     <>
+      {chatButton}
       {mayHost && (
         <Button onClick={onHost} title={t("tournaments.match.hostHint")}>
           <Icon name="play" size={14} /> {t("tournaments.match.host")}

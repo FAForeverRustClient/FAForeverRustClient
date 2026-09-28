@@ -398,11 +398,11 @@ export function TournamentsView() {
               onOpenRoom={(roomId) =>
                 act({ type: "openRoom", payload: { tournamentId: open.id, roomId } })
               }
-              onPost={(body) => {
+              onPost={(body, replyTo) => {
                 if (state.openRoomId === null) return;
                 act({
                   type: "postChat",
-                  payload: { tournamentId: open.id, roomId: state.openRoomId, body },
+                  payload: { tournamentId: open.id, roomId: state.openRoomId, body, replyTo },
                 });
               }}
               onAssignPool={(roundKey, poolId) =>

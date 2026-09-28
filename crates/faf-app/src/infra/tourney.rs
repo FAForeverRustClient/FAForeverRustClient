@@ -667,11 +667,12 @@ impl TourneyPort for TourneyClient {
         tournament_id: &str,
         room_id: &str,
         body: &str,
+        reply_to: Option<&str>,
     ) -> Result<(), RequestError> {
         self.act(
             tournament_id,
             "chat_post",
-            json!({ "room": room_id, "text": body }),
+            tourney::chat_post_body(room_id, body, reply_to),
         )
         .await
     }

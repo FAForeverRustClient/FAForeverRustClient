@@ -312,12 +312,13 @@ pub trait TourneyPort: Send + Sync {
         room_id: &str,
     ) -> Result<Vec<ChatPost>, RequestError>;
 
-    /// Post to one room.
+    /// Post to one room, optionally as a reply to one of its posts.
     async fn chat_post(
         &self,
         tournament_id: &str,
         room_id: &str,
         body: &str,
+        reply_to: Option<&str>,
     ) -> Result<(), RequestError>;
 
     /// The rules and FAQ pages, shown alongside official tournaments.

@@ -84,4 +84,20 @@ pub struct ChatPost {
     /// The server's own announcements, such as dice rolls and organiser pings, which the
     /// room shows differently from something a person typed.
     pub system: bool,
+    /// The post this one answers, as the service snapshotted it when it was
+    /// sent: its author and the first 140 characters. A snapshot rather than a
+    /// link, so the quote survives the original being deleted or scrolled out.
+    pub reply_to: Option<ChatQuote>,
+    /// Posted with `@everyone` by an organiser, which pinged every player who
+    /// can read the room. The room marks it.
+    pub everyone: bool,
+}
+
+/// The quoted post above a reply.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatQuote {
+    pub id: String,
+    pub author: String,
+    pub body: String,
 }

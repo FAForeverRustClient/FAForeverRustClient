@@ -6,7 +6,8 @@
 // something come first, newest round on top, and the settled ones follow, so
 // the tab opens on what is waiting rather than on history.
 
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { Icon } from "../../../design-system/Icon";
 import type { PlayerSummary, Tourney, TourneyMatch, VaultMap } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { byPlayOrder, matchLabel } from "../bracket/matchLabels";
@@ -14,6 +15,7 @@ import { TeamName } from "../bracket/matchParts";
 import { isBye } from "../bracket/swissRecords";
 import { VetoPanel, type VetoHandlers } from "../bracket/VetoPanel";
 import { hasVeto, vetoSettled } from "../bracket/vetoPresentation";
+import { MatchChatContext, mayOpenMatchChat } from "../bracket/matchChat";
 
 interface VetoesPanelProps {
   event: Tourney;
@@ -35,6 +37,7 @@ export function VetoesPanel(props: VetoesPanelProps) {
   const { event } = props;
   const { t } = useTranslation();
   const [scope, setScope] = useState<"mine" | "all">("mine");
+  const chat = useContext(MatchChatContext);
 
   const all = vetoMatches(event);
   const myTeam = event.viewer.memberTeamId;
@@ -68,6 +71,17 @@ export function VetoesPanel(props: VetoesPanelProps) {
             <span className="muted"> {t("tournaments.swiss.vs")} </span>
             <TeamName event={event} profiles={props.profiles} teamId={entry.team2} />
           </span>
+          {chat !== null && mayOpenMatchChat(event, entry) && (
+            <button
+              type="button"
+              className="tournament-round-pool-toggle"
+              title={t("tournaments.chat.matchChatHint")}
+              onClick={() => chat.open(entry)}
+            >
+              <Icon name="chat" size={12} /> {t("tournaments.chat.matchChat")}
+              {chat.unread(entry) > 0 && <span className="tournament-badge">{chat.unread(entry)}</span>}
+            </button>
+          )}
         </header>
         <VetoPanel
           event={event}

@@ -950,6 +950,17 @@ export type ChatPost = {
 	 *  room shows differently from something a person typed.
 	 */
 	system: boolean,
+	/**
+	 *  The post this one answers, as the service snapshotted it when it was
+	 *  sent: its author and the first 140 characters. A snapshot rather than a
+	 *  link, so the quote survives the original being deleted or scrolled out.
+	 */
+	replyTo: ChatQuote | null,
+	/**
+	 *  Posted with `@everyone` by an organiser, which pinged every player who
+	 *  can read the room. The room marks it.
+	 */
+	everyone: boolean,
 };
 
 export type ChatPreferences = {
@@ -1009,6 +1020,13 @@ export type ChatPreferences = {
 	 *  without moving this field, by widening the value to a map.
 	 */
 	hiddenRosterCategories: string[],
+};
+
+/**  The quoted post above a reply. */
+export type ChatQuote = {
+	id: string,
+	author: string,
+	body: string,
 };
 
 /**
@@ -7652,6 +7670,12 @@ export type Tourney = {
 	/**  Maps pinned to a round directly, for events without vetoes. */
 	roundMaps: RoundMaps[],
 	organisers: string[],
+	/**
+	 *  The public organisers' Discord handles, where they listed one, for the
+	 *  chat's "organisers may not be around yet" notice. Same order as
+	 *  `organisers`; an organiser without a handle is simply absent.
+	 */
+	organiserDiscords: string[],
 	/**  The organiser's announcements, newest first. */
 	news: NewsPost[],
 	/**
@@ -7888,6 +7912,11 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 	roomId: string,
 	body: string,
+	/**
+	 *  The post this answers, by id. The service snapshots it into the
+	 *  reply, and quietly drops the link if the post is not in the room.
+	 */
+	replyTo?: string | null,
 } } |
 /**
  *  Re-read the open room and the room list, without saying so.

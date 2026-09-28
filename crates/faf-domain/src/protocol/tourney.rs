@@ -26,13 +26,13 @@ use serde_json::{json, Value};
 use crate::protocol::markup::to_plain_text;
 use crate::state::{
     Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
-    ChatRoom, Competition, Currency, FactionChoices, FactionResult, FactionStep, FactionVetoConfig,
-    FactionVetoGame, Formation, HostingStatus, InviteStatus, MapPool, MapSpec, MatchFactionVeto,
-    MatchLink, MatchPlan, MatchReport, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
-    PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind, RoundMaps, Seeding,
-    SignupMode, Stream, SwissCuts, SwissTiebreak, TeamExit, TeamRequest, Tourney, TourneyCategory,
-    TourneyDraft, TourneyFaction, TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase,
-    TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
+    ChatQuote, ChatRoom, Competition, Currency, FactionChoices, FactionResult, FactionStep,
+    FactionVetoConfig, FactionVetoGame, Formation, HostingStatus, InviteStatus, MapPool, MapSpec,
+    MatchFactionVeto, MatchLink, MatchPlan, MatchReport, MatchStatus, NewsPost, Organiser,
+    PendingReport, PoolAction, PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind,
+    RoundMaps, Seeding, SignupMode, Stream, SwissCuts, SwissTiebreak, TeamExit, TeamRequest,
+    Tourney, TourneyCategory, TourneyDraft, TourneyFaction, TourneyInvite, TourneyMap,
+    TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
@@ -395,6 +395,11 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .iter()
             .map(|entry| text(entry, "name"))
             .filter(|name| !name.is_empty())
+            .collect(),
+        organiser_discords: array(document, "organizersPublic")
+            .iter()
+            .map(|entry| text(entry, "discord").trim().to_string())
+            .filter(|handle| !handle.is_empty())
             .collect(),
         news: array(document, "news")
             .iter()
@@ -1010,9 +1015,32 @@ pub fn parse_chat_posts(document: &Value) -> Vec<ChatPost> {
                 body: to_plain_text(&text(post, "text")),
                 at: moment(post, "at"),
                 system: flag(post, "sys"),
+                reply_to: post
+                    .get("replyTo")
+                    .filter(|held| held.is_object())
+                    .and_then(|quote| {
+                        Some(ChatQuote {
+                            id: id(quote, "id")?,
+                            author: text(quote, "who"),
+                            body: to_plain_text(&text(quote, "text")),
+                        })
+                    }),
+                everyone: flag(post, "everyone"),
             })
         })
         .collect()
+}
+
+/// The body for `POST /api/t/{id}/chat_post`.
+///
+/// `replyTo` only when answering: the service looks the id up in the same room
+/// and stores a snapshot of it, so an absent key is an ordinary post.
+pub fn chat_post_body(room_id: &str, body: &str, reply_to: Option<&str>) -> Value {
+    let mut out = json!({ "room": room_id, "text": body });
+    if let Some(reply_to) = reply_to.filter(|id| !id.trim().is_empty()) {
+        out["replyTo"] = json!(reply_to.trim());
+    }
+    out
 }
 
 /// The pages from `GET /api/articles`, in the order the editors put them.
@@ -1750,6 +1778,7 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(event.players.len(), 2);
         assert_eq!(event.teams.len(), 1);
         assert_eq!(event.organisers, vec!["TD".to_string()]);
+        assert_eq!(event.organiser_discords, vec!["td#1".to_string()]);
     }
 
     #[test]
@@ -2076,6 +2105,37 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(posts[0].at, Some(1_785_300_000));
         assert!(!posts[0].system);
         assert!(posts[1].system, "the server rolled that, not a person");
+    }
+
+    #[test]
+    fn a_reply_carries_its_quote_and_an_everyone_post_its_mark() {
+        let posts = parse_chat_posts(&json!({
+            "messages": [
+                { "id": "c3", "who": "Ada", "text": "yes", "everyone": 1,
+                  "replyTo": { "id": "c1", "who": "Nuggets", "text": "gl <i>hf</i>" } },
+                { "id": "c4", "who": "Ada", "text": "no", "replyTo": null }
+            ]
+        }));
+        assert_eq!(
+            posts[0].reply_to,
+            Some(ChatQuote {
+                id: "c1".into(),
+                author: "Nuggets".into(),
+                body: "gl hf".into(),
+            })
+        );
+        assert!(posts[0].everyone);
+        assert_eq!(posts[1].reply_to, None);
+        assert!(!posts[1].everyone);
+
+        assert_eq!(
+            chat_post_body("global", "yes", Some("c1")),
+            json!({ "room": "global", "text": "yes", "replyTo": "c1" })
+        );
+        assert_eq!(
+            chat_post_body("global", "yes", None),
+            json!({ "room": "global", "text": "yes" })
+        );
     }
 
     #[test]

@@ -67,6 +67,10 @@ pub enum TourneyCommand {
         tournament_id: String,
         room_id: String,
         body: String,
+        /// The post this answers, by id. The service snapshots it into the
+        /// reply, and quietly drops the link if the post is not in the room.
+        #[serde(default)]
+        reply_to: Option<String>,
     },
     /// Re-read the open room and the room list, without saying so.
     ///

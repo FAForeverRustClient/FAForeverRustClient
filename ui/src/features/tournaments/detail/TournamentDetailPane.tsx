@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
+import { Modal } from "../../../design-system/Modal";
 import type {
   AccountSearch,
   Article,
@@ -51,6 +52,10 @@ import { myVetoSteps, vetoSettled } from "../bracket/vetoPresentation";
 import { MapsPanel } from "./MapsPanel";
 import { listedMatches, MatchesPanel } from "./MatchesPanel";
 import { vetoMatches, VetoesPanel } from "./VetoesPanel";
+import { ChatRoomView } from "./ChatRoomView";
+import { MatchChatContext, matchRoomId, type MatchChatApi } from "../bracket/matchChat";
+import { matchLabel } from "../bracket/matchLabels";
+import { teamNameOf } from "../bracket/matchParts";
 import { formatMoment, formatOf } from "../tourneyPresentation";
 import { selfOrganised, standingsKind, unreadNews, unreadTotal } from "../../../shared/rules/tourneyRules";
 
@@ -135,7 +140,7 @@ interface TournamentDetailPaneProps {
   onHost: (entry: TourneyMatch) => void;
   onOpenChat: () => void;
   onOpenRoom: (roomId: string) => void;
-  onPost: (body: string) => void;
+  onPost: (body: string, replyTo: string | null) => void;
   onAssignPool: (roundKey: string, poolId: string) => void;
   onOpenUrl: (url: string) => void;
   /** Play a FAF replay by its vault id, in the client. */
@@ -259,7 +264,22 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     if (next === "news" && unreadNews(event) > 0) props.onMarkNewsRead();
   };
 
+  // The match whose chat is open in the popup, if any. The room itself is the
+  // tab's one open room, so the popup and the Chat tab never disagree about it.
+  const [matchChat, setMatchChat] = useState<TourneyMatch | null>(null);
+  const chatApi: MatchChatApi = {
+    open: (entry) => {
+      // The room list carries the unread counts; load it if the Chat tab
+      // never has.
+      if (props.chatRooms.length === 0) props.onOpenChat();
+      setMatchChat(entry);
+      props.onOpenRoom(matchRoomId(entry));
+    },
+    unread: (entry) => props.chatRooms.find((room) => room.id === matchRoomId(entry))?.unread ?? 0,
+  };
+
   return (
+    <MatchChatContext.Provider value={chatApi}>
     <div className="surface tournament-detail">
       <header className="tournament-detail-header">
         <div>
@@ -379,7 +399,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         className={
           section === "bracket"
             ? "tournament-section-body is-wide"
-            : "tournament-section-body"
+            : section === "chat"
+              ? "tournament-section-body is-wide is-fill"
+              : "tournament-section-body"
         }
       >
 
@@ -557,6 +579,32 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       )}
       </div>
     </div>
+    {matchChat !== null && props.openRoomId === matchRoomId(matchChat) && (
+      <Modal
+        onClose={() => setMatchChat(null)}
+        className="tournament-match-chat"
+        ariaLabel={t("tournaments.chat.matchChat")}
+      >
+        <h3>{t("tournaments.chat.matchChat")}</h3>
+        <p className="muted">
+          {matchLabel(event, matchChat, t)}: {teamNameOf(event, matchChat.team1) ?? ""}{" "}
+          {t("tournaments.swiss.vs")} {teamNameOf(event, matchChat.team2) ?? ""}
+        </p>
+        <ChatRoomView
+          event={event}
+          roomId={matchRoomId(matchChat)}
+          posts={props.chatPosts}
+          status={props.chatStatus}
+          busy={busy}
+          onPost={props.onPost}
+          onDeletePost={props.onDeleteChatPost}
+          onMute={props.onMute}
+          onRefresh={props.onRefreshChat}
+          compact
+        />
+      </Modal>
+    )}
+    </MatchChatContext.Provider>
   );
 }
 

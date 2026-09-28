@@ -542,6 +542,8 @@ fn switching_events_drops_the_previous_ones_conversation_at_once() {
                     body: "gl hf".into(),
                     at: None,
                     system: false,
+                    reply_to: None,
+                    everyone: false,
                 }],
             },
             TourneyEvent::Selected {
@@ -612,6 +614,8 @@ fn posts_for_a_room_that_is_no_longer_open_are_ignored() {
                     body: "wrong room".into(),
                     at: None,
                     system: false,
+                    reply_to: None,
+                    everyone: false,
                 }],
             },
         ],

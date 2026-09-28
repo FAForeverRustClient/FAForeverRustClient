@@ -4333,6 +4333,8 @@ fn cases() -> Vec<Case> {
                         body: "gl hf".into(),
                         at: Some(1_700_000_100),
                         system: false,
+                        reply_to: None,
+                        everyone: false,
                     }],
                 }
                 .into(),

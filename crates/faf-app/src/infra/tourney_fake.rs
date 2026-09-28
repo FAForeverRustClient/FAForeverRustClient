@@ -1282,6 +1282,9 @@ impl TourneyPort for FakeTourney {
         tournament_id: &str,
         room_id: &str,
         body: &str,
+        // Replies are not simulated, like every chat feature added after
+        // 2026-09-28: the post lands as an ordinary one.
+        _reply_to: Option<&str>,
     ) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
             if body.trim().is_empty() {
@@ -1298,6 +1301,8 @@ impl TourneyPort for FakeTourney {
                     body: body.trim().to_string(),
                     at: Some(1_785_400_000),
                     system: false,
+                    reply_to: None,
+                    everyone: false,
                 });
             Ok(())
         })
@@ -2884,6 +2889,8 @@ fn running_event() -> FakeEvent {
             body: "Semifinals start at 19:00 UTC. Post your replay ids when you report.".into(),
             at: Some(1_785_300_000),
             system: false,
+            reply_to: None,
+            everyone: false,
         }],
     );
 
@@ -3356,13 +3363,16 @@ mod tests {
             "nothing has been played, so nothing folds away yet"
         );
 
-        fake.chat_post("e9z9z", "match:m1", "  gl hf  ")
+        fake.chat_post("e9z9z", "match:m1", "  gl hf  ", None)
             .await
             .unwrap();
         let posts = fake.chat_read("e9z9z", "match:m1").await.unwrap();
         assert_eq!(posts.len(), 1);
         assert_eq!(posts[0].body, "gl hf");
-        assert!(fake.chat_post("e9z9z", "match:m1", "   ").await.is_err());
+        assert!(fake
+            .chat_post("e9z9z", "match:m1", "   ", None)
+            .await
+            .is_err());
     }
 
     #[tokio::test]

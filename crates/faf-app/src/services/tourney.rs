@@ -171,6 +171,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             tournament_id,
             room_id,
             body,
+            reply_to,
         } => {
             if body.trim().is_empty() {
                 return;
@@ -188,7 +189,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             match ctx
                 .ports
                 .tourney
-                .chat_post(&tournament_id, &room_id, body.trim())
+                .chat_post(&tournament_id, &room_id, body.trim(), reply_to.as_deref())
                 .await
             {
                 Ok(()) => {
