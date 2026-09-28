@@ -303,7 +303,6 @@ fn every_field_the_service_sends_is_either_read_or_knowingly_ignored() {
         "importedGroups",
         "importedStandings",
         "importedType",
-        "maps",
         "myMentionCount",
         "myUnreadCount",
         "perRoundBo",
