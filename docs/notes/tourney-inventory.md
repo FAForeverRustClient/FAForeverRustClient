@@ -13,6 +13,29 @@ replacement for the tournament website.
   `app.bracket.js` +960, two new modules `lib/picks.js` and `lib/presets.js`),
   so several of their statuses are now wrong. Section 9 lists which.
 
+## Decisions taken on 2026-09-28
+
+Settled by the maintainer after reading the first edition of this document.
+
+1. **The client replaces the website entirely, mobile apart.** Everything in
+   section 3.19 (the site-admin and director console, bans, requests, archived
+   tournaments, articles, the Challonge import) is in scope, and so is every
+   other **Decide** that asked "is the website staying for this".
+2. **Player-reported scores come back**, as on the website: the create form and
+   the details panel offer "Allow players to submit scores", and a player can
+   submit a result with replay ids for the opponent to confirm. Finding 1.8
+   is a defect, not a policy.
+3. **Host game** is offered to the players of both sides and to anyone with
+   organiser rights (organisers, directors on official events, site admins),
+   and to nobody else.
+4. **Share links**: open question, see the answer in the conversation. The
+   proposal is to copy both links in the client, and to accept a pasted
+   late-signup link in the client's own signup.
+5. **The offline fake is not extended.** Nobody uses it. New actions get no twin
+   in `infra/tourney_fake.rs`; what it already does stays so the existing tests
+   keep running, and new behaviour is covered at the codec level against
+   recorded server documents instead.
+
 ## How this was measured
 
 Everything below was extracted mechanically from both trees and then checked
