@@ -7651,6 +7651,12 @@ export type Tourney = {
 	 */
 	swissCuts: SwissCuts,
 	/**
+	 *  The Swiss round count the draw was started with (`cfg.rounds`), or the
+	 *  plan's before it starts; zero where neither says. With record cuts the
+	 *  cuts decide instead, see [`SwissCuts::rounds`].
+	 */
+	swissRounds: number,
+	/**
 	 *  Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
 	 *  that is the tiebreak.
 	 */

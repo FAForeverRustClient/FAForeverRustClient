@@ -74,6 +74,7 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     swissOrder: [],
     swissTiebreak: "gameDiff",
     swissCuts: { wins: 0, losses: 0 },
+    swissRounds: 0,
     swissBeaten: {},
     abandoned: false,
     chatMutedMe: false,

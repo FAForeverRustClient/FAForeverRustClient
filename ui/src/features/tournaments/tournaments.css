@@ -2752,3 +2752,176 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
+
+/* -- The Swiss stage --------------------------------------------------------
+   One block per round, newest on top, and each round a list: the website's
+   layout. A match row reads left to right as the question a Swiss round asks,
+   "which record, who against whom, how did it end", so the record chip leads
+   and the controls trail. */
+
+.tournament-swiss {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 1180px;
+}
+
+.tournament-swiss-round {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-swiss-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.tournament-swiss-head h5 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tournament-swiss-note {
+  margin: 0;
+  font-size: 12px;
+}
+
+.tournament-swiss-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The left edge says where a match stands: accent while it can be played, the
+   warning colour while it is live, and quiet once it is over. */
+.tournament-swiss-match {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+
+.tournament-swiss-match.is-live {
+  border-left-color: var(--color-warn);
+}
+
+.tournament-swiss-match.is-done,
+.tournament-swiss-match.is-waiting {
+  border-left-color: var(--color-border-strong);
+}
+
+.tournament-swiss-match.is-mine {
+  background: var(--color-surface-raised);
+}
+
+.tournament-swiss-record {
+  flex: none;
+  min-width: 44px;
+  text-align: center;
+  padding: 1px var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+/* A score group's divider: the record everyone under it brought in. */
+.tournament-swiss-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.tournament-swiss-group::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.tournament-swiss-group:first-child {
+  margin-top: 0;
+}
+
+/* Round 1 has no record to show: everybody starts at 0-0. */
+.tournament-swiss-record:empty {
+  display: none;
+}
+
+.tournament-swiss-teams {
+  flex: 1 1 240px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex-wrap: wrap;
+  font-weight: 600;
+}
+
+.tournament-swiss-side {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tournament-swiss-side.is-winner {
+  color: var(--color-ok);
+}
+
+.tournament-swiss-match.is-done .tournament-swiss-side:not(.is-winner) {
+  color: var(--color-muted);
+}
+
+.tournament-swiss-vs {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-muted);
+  text-transform: uppercase;
+}
+
+.tournament-swiss-score {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tournament-swiss-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.tournament-swiss-actions:empty {
+  display: none;
+}
+
+.tournament-swiss-veto {
+  padding: var(--space-3);
+}
+
+.tournament-swiss-round.is-upcoming .tournament-swiss-head h5 {
+  color: var(--color-muted);
+}

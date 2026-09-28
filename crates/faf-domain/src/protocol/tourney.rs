@@ -426,6 +426,11 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         swiss_order: string_list(document, "swissOrder"),
         swiss_tiebreak: SwissTiebreak::from_wire(&text(document, "tiebreak")),
         swiss_cuts: swiss_cuts(document),
+        swiss_rounds: ["cfg", "plan"]
+            .iter()
+            .filter_map(|key| document.get(*key).filter(|value| value.is_object()))
+            .find_map(|held| int(held, "rounds").filter(|rounds| *rounds > 0))
+            .unwrap_or(0),
         swiss_beaten: parse_beaten(document.get("swissSB")),
         viewer: parse_viewer(document),
     })
@@ -2530,6 +2535,24 @@ See the [rules](https://x.invalid/r)."
 
         let no_plan = parse_tourney(&json!({ "id": "e4", "plan": null })).expect("a tournament");
         assert_eq!(no_plan.swiss_cuts.rounds(), None);
+    }
+
+    #[test]
+    fn the_swiss_round_count_is_the_draws_then_the_plans() {
+        let started = parse_tourney(&json!({
+            "id": "e1",
+            "cfg": { "rounds": 5, "bo": 3 },
+            "plan": { "rounds": 4 },
+        }))
+        .expect("a tournament");
+        assert_eq!(started.swiss_rounds, 5, "the draw's own count wins");
+
+        let planned = parse_tourney(&json!({ "id": "e2", "cfg": null, "plan": { "rounds": 4 } }))
+            .expect("a tournament");
+        assert_eq!(planned.swiss_rounds, 4);
+
+        let neither = parse_tourney(&json!({ "id": "e3" })).expect("a tournament");
+        assert_eq!(neither.swiss_rounds, 0);
     }
 
     /// The Swiss table's order, tiebreak and numbers are the server's to give.

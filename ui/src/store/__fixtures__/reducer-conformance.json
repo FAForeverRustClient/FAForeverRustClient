@@ -7390,6 +7390,7 @@
                       "wins": 0,
                       "losses": 0
                     },
+                    "swissRounds": 0,
                     "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
@@ -7502,6 +7503,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -7682,6 +7684,7 @@
                       "wins": 0,
                       "losses": 0
                     },
+                    "swissRounds": 0,
                     "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
@@ -7775,6 +7778,7 @@
                       "wins": 0,
                       "losses": 0
                     },
+                    "swissRounds": 0,
                     "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
@@ -7887,6 +7891,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -7980,6 +7985,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -8125,6 +8131,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -8218,6 +8225,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -8360,6 +8368,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -8453,6 +8462,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -8579,6 +8589,7 @@
                     "wins": 0,
                     "losses": 0
                   },
+                  "swissRounds": 0,
                   "swissBeaten": {},
                   "viewer": {
                     "loggedIn": false,
@@ -8683,6 +8694,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -8782,6 +8794,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -8875,6 +8888,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -9015,6 +9029,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -9114,6 +9129,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -9207,6 +9223,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -9359,6 +9376,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -9458,6 +9476,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -9551,6 +9570,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -9686,6 +9706,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -9785,6 +9806,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -9878,6 +9900,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -10018,6 +10041,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -10117,6 +10141,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -10210,6 +10235,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -10353,6 +10379,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -10452,6 +10479,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -10545,6 +10573,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -10692,6 +10721,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -10800,6 +10830,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -10893,6 +10924,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -11033,6 +11065,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -11141,6 +11174,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -11234,6 +11268,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -11384,6 +11419,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -11477,6 +11513,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -11626,6 +11663,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -11719,6 +11757,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -11878,6 +11917,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -11971,6 +12011,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -12097,6 +12138,7 @@
                     "wins": 0,
                     "losses": 0
                   },
+                  "swissRounds": 0,
                   "swissBeaten": {},
                   "viewer": {
                     "loggedIn": false,
@@ -12215,6 +12257,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -12308,6 +12351,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -12435,6 +12479,7 @@
                       "wins": 0,
                       "losses": 0
                     },
+                    "swissRounds": 0,
                     "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
@@ -12554,6 +12599,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -13843,6 +13889,7 @@
                       "wins": 0,
                       "losses": 0
                     },
+                    "swissRounds": 0,
                     "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
@@ -13936,6 +13983,7 @@
                       "wins": 0,
                       "losses": 0
                     },
+                    "swissRounds": 0,
                     "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
@@ -14048,6 +14096,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -14141,6 +14190,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -14267,6 +14317,7 @@
                     "wins": 0,
                     "losses": 0
                   },
+                  "swissRounds": 0,
                   "swissBeaten": {},
                   "viewer": {
                     "loggedIn": false,
@@ -14371,6 +14422,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -14470,6 +14522,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -14563,6 +14616,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -14739,6 +14793,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -14838,6 +14893,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -14931,6 +14987,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -15088,6 +15145,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -15187,6 +15245,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -15280,6 +15339,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -15434,6 +15494,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -15533,6 +15594,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -15626,6 +15688,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -15802,6 +15865,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -15901,6 +15965,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -15994,6 +16059,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -16161,6 +16227,7 @@
                 "wins": 0
               },
               "swissOrder": [],
+              "swissRounds": 0,
               "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
@@ -16260,6 +16327,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -16353,6 +16421,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -16498,6 +16567,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -16591,6 +16661,7 @@
                   "wins": 0
                 },
                 "swissOrder": [],
+                "swissRounds": 0,
                 "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
@@ -35877,6 +35948,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -36122,6 +36194,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -36273,6 +36346,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -36401,6 +36475,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -36629,6 +36704,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -36857,6 +36933,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -37087,6 +37164,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -37315,6 +37393,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -37543,6 +37622,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -37703,6 +37783,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -37864,6 +37945,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -38093,6 +38175,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -38323,6 +38406,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -39631,6 +39715,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -39828,6 +39913,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -40065,6 +40151,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -40403,6 +40490,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -40765,6 +40853,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {
             "t1": 0,
             "t2": 1
@@ -40958,6 +41047,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -41178,6 +41268,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -41320,6 +41411,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -41840,6 +41932,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -42057,6 +42150,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -42274,6 +42368,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -42491,6 +42586,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -42708,6 +42804,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -42925,6 +43022,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -43142,6 +43240,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -43359,6 +43458,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -43548,6 +43648,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -43810,6 +43911,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -44089,6 +44191,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -44364,6 +44467,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -44643,6 +44747,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -44911,6 +45016,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -45180,6 +45286,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -45448,6 +45555,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -45717,6 +45825,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -45955,6 +46064,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -46192,6 +46302,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -46429,6 +46540,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -46646,6 +46758,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -46857,6 +46970,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -47068,6 +47182,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -47283,6 +47398,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -47498,6 +47614,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -47713,6 +47830,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -47928,6 +48046,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -48139,6 +48258,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -48354,6 +48474,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -48565,6 +48686,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -48684,6 +48806,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -48777,6 +48900,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -48892,6 +49016,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -48985,6 +49110,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -49100,6 +49226,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -49193,6 +49320,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -49308,6 +49436,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -49401,6 +49530,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -49516,6 +49646,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -49609,6 +49740,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -49724,6 +49856,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -49817,6 +49950,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -49932,6 +50066,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -50025,6 +50160,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -50145,6 +50281,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -50270,6 +50407,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -50395,6 +50533,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -50520,6 +50659,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -50645,6 +50785,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -50770,6 +50911,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -50895,6 +51037,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -51020,6 +51163,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -51145,6 +51289,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
@@ -51270,6 +51415,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -51485,6 +51631,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -51599,6 +51746,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -51850,6 +51998,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -51970,6 +52119,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -52120,6 +52270,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -52260,6 +52411,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -52361,6 +52513,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -52544,6 +52697,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -52955,6 +53109,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -53153,6 +53308,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -53381,6 +53537,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -53617,6 +53774,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -53845,6 +54003,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
@@ -53976,6 +54135,7 @@
             "wins": 0,
             "losses": 0
           },
+          "swissRounds": 0,
           "swissBeaten": {},
           "viewer": {
             "loggedIn": false,

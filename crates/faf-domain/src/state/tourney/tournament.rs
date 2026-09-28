@@ -276,6 +276,10 @@ pub struct Tourney {
     /// website for now; the client reads them so the start dialog does not ask
     /// for a round count the server would replace.
     pub swiss_cuts: SwissCuts,
+    /// The Swiss round count the draw was started with (`cfg.rounds`), or the
+    /// plan's before it starts; zero where neither says. With record cuts the
+    /// cuts decide instead, see [`SwissCuts::rounds`].
+    pub swiss_rounds: i32,
     /// Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
     /// that is the tiebreak.
     pub swiss_beaten: std::collections::BTreeMap<String, i32>,
