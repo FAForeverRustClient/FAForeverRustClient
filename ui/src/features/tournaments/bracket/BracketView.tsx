@@ -459,6 +459,11 @@ function MatchCard({
     (entry.status === "ready" || entry.status === "live") &&
     entry.team1 !== null &&
     entry.team2 !== null;
+  // Hosting belongs to the two sides and to whoever runs the event, which is
+  // what `viewer.organiser` already means (organisers, a director on an
+  // official event, a site admin). It used to be offered to everyone watching,
+  // so a spectator saw a Host game button on somebody else's match (issue 367).
+  const mayHost = playable && (isMyMatch(event, entry) || event.viewer.organiser);
   const reportable = mayReport(event, entry);
   const mayAnswer = pending !== null && isMyMatch(event, entry) && pending.byTeam !== mine;
 
@@ -558,9 +563,7 @@ function MatchCard({
         )}
         {!mayAnswer && (
           <>
-            {/* Hosting is offered to everyone watching, not just the two
-                players: a caster or an organiser opening the lobby is normal. */}
-            {playable && (
+            {mayHost && (
               <Button onClick={onHost} title={t("tournaments.match.hostHint")}>
                 <Icon name="play" size={14} /> {t("tournaments.match.host")}
               </Button>
