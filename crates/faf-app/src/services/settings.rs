@@ -492,7 +492,7 @@ fn sync_connectivity(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
-    let (arguments, wrapper, wine_prefix, pipe_live_replay, auto_generate_maps) =
+    let (arguments, wrapper, wine_prefix, pipe_live_replay, auto_generate_maps, steam_presence) =
         out.with_state(|state| {
             (
                 state.settings.game.additional_arguments.clone(),
@@ -500,9 +500,11 @@ fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
                 state.settings.paths.wine_prefix.clone(),
                 state.settings.game.pipe_live_replay,
                 state.settings.game.auto_generate_maps,
+                state.settings.game.steam_presence,
             )
         });
     ctx.ports.process.set_additional_arguments(arguments);
+    ctx.ports.process.set_steam_presence(steam_presence);
     // The two halves of "run a Windows game on Linux" arrive from two
     // different preference groups, because that is where each one belongs: the
     // wrapper is about launching, the prefix is a path. The launcher needs

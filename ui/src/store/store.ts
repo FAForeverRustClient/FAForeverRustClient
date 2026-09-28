@@ -528,6 +528,7 @@ const INITIAL: AppState = {
       pipeLiveReplay: false,
       keepGeneratedMaps: false,
       keepGeneratedMapsLimit: 0,
+      steamPresence: false,
     },
     discord: { enabled: true, disallowJoins: false },
     connectivity: { adapter: "dynamic", hostAdapter: "java", selectionVersion: 2 },

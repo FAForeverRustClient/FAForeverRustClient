@@ -791,7 +791,8 @@
         "cacheRollingBranches": false,
         "pipeLiveReplay": false,
         "keepGeneratedMaps": false,
-        "keepGeneratedMapsLimit": 0
+        "keepGeneratedMapsLimit": 0,
+        "steamPresence": false
       },
       "discord": {
         "enabled": true,
@@ -2214,7 +2215,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "",
             "general": {
@@ -31712,7 +31714,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "",
             "general": {
@@ -31973,7 +31976,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -32243,7 +32247,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -32508,7 +32513,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -32773,7 +32779,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -33048,7 +33055,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -33329,7 +33337,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -33650,7 +33659,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -33947,7 +33957,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -34246,7 +34257,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
@@ -34665,7 +34677,8 @@
               "keepGeneratedMaps": false,
               "keepGeneratedMapsLimit": 0,
               "launchWrapper": "",
-              "pipeLiveReplay": false
+              "pipeLiveReplay": false,
+              "steamPresence": false
             },
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {

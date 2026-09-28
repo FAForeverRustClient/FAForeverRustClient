@@ -27,7 +27,8 @@
 //! * **Processes we start**: `game` (Forged Alliance), `ice_java`,
 //!   `ice_pioneer` and `ice_select` (the connectivity adapter and how one is
 //!   chosen), `java_runtime`, `map_generator`, `galactic_war`, and
-//!   `client_update` (the installer).
+//!   `client_update` (the installer), and `steam_presence`, which is this
+//!   client's own executable started again to show a game on Steam.
 //! * **Files on disk**: `settings_file`, `paths`, `vault_install` (archives),
 //!   `game_updater` and `updater` (patching; `updater` holds the port impl,
 //!   `game_updater` its cache and manifest logic), `game_logs`, `scmap`,
@@ -98,6 +99,7 @@ pub mod scmap;
 pub mod session;
 pub mod settings_fake;
 pub mod settings_file;
+pub mod steam_presence;
 pub mod streams;
 pub mod tourney;
 pub mod tourney_fake;

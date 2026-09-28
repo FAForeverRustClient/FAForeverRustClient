@@ -24,6 +24,7 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use std::time::Duration;
@@ -138,6 +139,9 @@ pub struct GameProcess {
     /// deliberately not fatal, here or at launch time, because a replay that
     /// only exists locally is still a replay.
     replay_relay: Option<crate::infra::replay_relay::ReplayRelayConfig>,
+    /// Show each game on Steam while it runs; see `infra::steam_presence`.
+    /// Off until Settings says otherwise, which is also its default there.
+    steam_presence: AtomicBool,
 }
 
 impl GameProcess {
@@ -149,6 +153,7 @@ impl GameProcess {
             exited: Arc::new(Notify::new()),
             replay_recorder: Mutex::new(None),
             replay_relay: None,
+            steam_presence: AtomicBool::new(false),
         }
     }
 
@@ -345,6 +350,7 @@ impl GameProcess {
         // froze on a blank post-shader-compile screen with zero further disk
         // activity, no crash, no error. `start_kill()` mirrors
         // `ProcessPort::kill`'s own termination call.
+        let game_pid = child.id();
         let running = Running {
             child,
             exe: install_key(&exe),
@@ -353,6 +359,16 @@ impl GameProcess {
             let _ = prev.child.start_kill();
         }
         self.watch_for_exit(slot);
+
+        // The game slot only: a live game or a tutorial is Forged Alliance
+        // being played, and a replay window is somebody watching one. Nothing
+        // to stop later, because the helper waits on this very process and
+        // ends when it does.
+        if slot == Slot::Game && self.steam_presence.load(Ordering::Relaxed) {
+            if let Some(game_pid) = game_pid {
+                crate::infra::steam_presence::start(game_pid);
+            }
+        }
         Ok(())
     }
 
@@ -503,6 +519,10 @@ impl ProcessPort for GameProcess {
         let mut config = self.config.lock().unwrap();
         config.launch_wrapper = wrapper;
         config.wine_prefix = wine_prefix;
+    }
+
+    fn set_steam_presence(&self, enabled: bool) {
+        self.steam_presence.store(enabled, Ordering::Relaxed);
     }
 
     fn game_argument_path(&self, path: &Path) -> String {

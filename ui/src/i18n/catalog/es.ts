@@ -1231,6 +1231,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.discord.richPresenceHint": "Mostrar en tu perfil de Discord la partida que alojas o juegas.",
   "settings.discord.disallowJoinsVia": "Impedir unirse desde Discord",
   "settings.discord.disallowJoinsViaHint": "Mantener el estado visible, pero quitar el botón de unirse para que nadie entre en tu sala desde Discord.",
+  "settings.steam.presence": "Estado de Steam",
+  "settings.steam.presenceHint": "Mientras estás en una partida, Steam te muestra jugando a Forged Alliance y cuenta las horas. Tener el cliente abierto no cuenta. Requiere Steam en ejecución y Forged Alliance en tu biblioteca de Steam. Usa la biblioteca Steamworks de Valve, bajo las condiciones de Valve.",
 
   "replays.view.aria": "Vista de repeticiones",
   "replays.view.tile": "Vista en mosaico",

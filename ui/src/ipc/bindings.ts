@@ -2429,6 +2429,20 @@ export type GamePreferences = {
 	 *  rather than a quota that refuses new maps once it is full.
 	 */
 	keepGeneratedMapsLimit?: number,
+	/**
+	 *  Show Forged Alliance as being played on Steam while a game runs, and
+	 *  only then (issue 364).
+	 *
+	 *  The Java client does this from the moment it opens until it closes,
+	 *  so Steam records the client's hours rather than the game's. Here it
+	 *  covers the game process and nothing else.
+	 *
+	 *  Off by default, and a switch rather than a given: it tells Steam, and
+	 *  through it your friends list, when you play. It also needs Valve's own
+	 *  library, Steam running, and Forged Alliance in the signed-in account's
+	 *  library; without any of those it does nothing. Windows only.
+	 */
+	steamPresence?: boolean,
 };
 
 export type GeneralPreferences = {

@@ -43,6 +43,15 @@ enum FrontendMessage {
 struct Core(Arc<App>);
 
 pub fn run() {
+    // Before anything else: this process may be the Steam status helper the
+    // launcher starts beside a game, which is not a client. It must not open a
+    // window, and it must not reach the single-instance check below, which
+    // would hand it to the running client as a second start.
+    let arguments: Vec<String> = std::env::args().collect();
+    if let Some(code) = faf_app::infra::steam_presence::run_helper_if_asked(&arguments) {
+        std::process::exit(code);
+    }
+
     #[cfg(windows)]
     if std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_err() {
         std::env::set_var(
