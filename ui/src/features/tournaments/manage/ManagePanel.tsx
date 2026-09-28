@@ -96,6 +96,8 @@ interface ManagePanelProps {
   event: Tourney;
   vault: VaultMap[];
   vaultStatus: MapListStatus;
+  /** Where the service lives, for the organisers' uploaded map pictures. */
+  assetBase: string;
   /** Every series, for the picker. */
   series: TourneySeries[];
   /** The other events, as candidates for a qualifier link. */
@@ -414,6 +416,7 @@ export function ManagePanel({
                     event={event}
                     vault={vault}
                     vaultStatus={rest.vaultStatus}
+                    assetBase={rest.assetBase}
                     busy={busy}
                     onSave={rest.onSaveMap}
                     onPublish={rest.onPublishMap}
@@ -449,6 +452,7 @@ export function ManagePanel({
                   <MapPoolPanel
                     event={event}
                     vault={vault}
+                    assetBase={rest.assetBase}
                     busy={busy}
                     onAssign={onAssignPool}
                     onSavePool={rest.onSavePool}

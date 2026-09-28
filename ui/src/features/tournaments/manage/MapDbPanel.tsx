@@ -15,13 +15,19 @@ import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { MapDraft, MapListStatus, Tourney, VaultMap } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { mapIsSubmittable, matchVaultMap } from "../../../shared/rules/tourneyRules";
+import {
+  mapIsSubmittable,
+  matchVaultMap,
+  tourneyMapImage,
+} from "../../../shared/rules/tourneyRules";
 import { MapVaultPicker } from "./MapVaultPicker";
 
 interface MapDbPanelProps {
   event: Tourney;
   vault: VaultMap[];
   vaultStatus: MapListStatus;
+  /** Where the service lives, for the organisers' uploaded map pictures. */
+  assetBase: string;
   busy: boolean;
   onSave: (map: MapDraft) => void;
   onPublish: (mapId: string, published: boolean) => void;
@@ -107,7 +113,7 @@ export function MapDbPanel(props: MapDbPanelProps) {
           const vaultMap = matchVaultMap(held, vault);
           // FAF's own preview first: it is the picture players already know
           // from the maps tab. The event's own copy is for maps never uploaded.
-          const preview = vaultMap?.thumbnailUrl || held.imageUrl;
+          const preview = tourneyMapImage(held, props.assetBase, vault);
                   return (
             <li className="tournament-map-row" key={held.id}>
               {preview ? (

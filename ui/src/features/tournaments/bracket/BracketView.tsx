@@ -38,6 +38,7 @@ import { VetoPanel } from "./VetoPanel";
 import { BRACKET_LABELS, isMyMatch, myTeamId } from "../tourneyPresentation";
 import {
   matchVaultMap,
+  tourneyMapImage,
   mayReport,
   maySubmit,
   poolForRound,
@@ -162,6 +163,8 @@ interface BracketViewProps {
   onAnswer: (entry: TourneyMatch, accept: boolean) => void;
   onHost: (entry: TourneyMatch) => void;
   vault: VaultMap[];
+  /** Where the service lives, for the organisers' uploaded map pictures. */
+  assetBase: string;
   onVetoAct: (matchId: string, mapId: string) => void;
   onVetoSetSides: (matchId: string, teamA: string) => void;
   onVetoUndo: (matchId: string) => void;
@@ -176,6 +179,7 @@ export function BracketView({
   onAnswer,
   onHost,
   vault,
+  assetBase,
   onVetoAct,
   onVetoSetSides,
   onVetoUndo,
@@ -273,6 +277,7 @@ export function BracketView({
                       event={event}
                       entry={entry}
                       vault={vault}
+                      assetBase={assetBase}
                       profiles={profiles}
                       busy={busyMatchId === entry.id}
                       onAct={onVetoAct}
@@ -291,6 +296,7 @@ export function BracketView({
                 <PoolPanel
                   event={event}
                   vault={vault}
+                  assetBase={assetBase}
                   roundKey={openPool}
                   onClose={() => setOpenPool(null)}
                 />
@@ -342,18 +348,19 @@ function PoolToggle({
 /**
  * The maps one round is played on.
  *
- * The maps come from the event's own database, with a preview from FAF's vault
- * where the name matches something in it, which is the one thing this client can
- * show here that the website cannot.
+ * The maps come from the event's own database, pictured by the organiser's own
+ * upload, or by FAF's vault where the name matches and the vault is loaded.
  */
 function PoolPanel({
   event,
   vault,
+  assetBase,
   roundKey,
   onClose,
 }: {
   event: Tourney;
   vault: VaultMap[];
+  assetBase: string;
   roundKey: string;
   onClose: () => void;
 }) {
@@ -367,7 +374,7 @@ function PoolPanel({
     const vaultMap = matchVaultMap(held, vault);
     return {
       name: vaultMap?.displayName ?? held.name,
-      image: vaultMap?.thumbnailUrl || held.imageUrl,
+      image: tourneyMapImage(held, assetBase, vault),
     };
   };
 

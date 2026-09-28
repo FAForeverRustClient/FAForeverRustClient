@@ -23,18 +23,32 @@ import type { MapPool, PoolDraft, Tourney, VaultMap } from "../../../ipc/binding
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { BRACKET_LABELS } from "../tourneyPresentation";
-import { matchVaultMap, roundPlan, type RoundKey } from "../../../shared/rules/tourneyRules";
+import {
+  matchVaultMap,
+  roundPlan,
+  tourneyMapImage,
+  type RoundKey,
+} from "../../../shared/rules/tourneyRules";
 
 interface MapPoolPanelProps {
   event: Tourney;
   vault: VaultMap[];
+  /** Where the service lives, for the organisers' uploaded map pictures. */
+  assetBase: string;
   busy: boolean;
   onAssign: (roundKey: string, poolId: string) => void;
   /** Create the pool a combination needs. The same write the pool editor makes. */
   onSavePool: (pool: PoolDraft) => void;
 }
 
-export function MapPoolPanel({ event, vault, busy, onAssign, onSavePool }: MapPoolPanelProps) {
+export function MapPoolPanel({
+  event,
+  vault,
+  assetBase,
+  busy,
+  onAssign,
+  onSavePool,
+}: MapPoolPanelProps) {
   const { t } = useTranslation();
   const plan = roundPlan(event);
   const rounds = plan.keys;
@@ -244,7 +258,7 @@ export function MapPoolPanel({ event, vault, busy, onAssign, onSavePool }: MapPo
                   // FAF's own preview is preferred: it is the picture players
                   // already recognise from the maps tab. The tournament
                   // server's copy is the fallback for a map never uploaded.
-                  const preview = vaultMap?.thumbnailUrl || held.imageUrl;
+                  const preview = tourneyMapImage(held, assetBase, vault);
                   return (
                     <li className="tournament-pool-map" key={mapId}>
                       {preview ? (

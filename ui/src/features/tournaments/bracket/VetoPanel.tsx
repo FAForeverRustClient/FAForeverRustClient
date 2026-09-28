@@ -11,12 +11,20 @@
 import { Button } from "../../../design-system/Button";
 import type { PlayerSummary, Tourney, TourneyMatch, VaultMap } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { matchVaultMap, maySetVetoSides, mayVeto, vetoTurn } from "../../../shared/rules/tourneyRules";
+import {
+  matchVaultMap,
+  maySetVetoSides,
+  mayVeto,
+  tourneyMapImage,
+  vetoTurn,
+} from "../../../shared/rules/tourneyRules";
 
 interface VetoPanelProps {
   event: Tourney;
   entry: TourneyMatch;
   vault: VaultMap[];
+  /** Where the service lives, for the organisers' uploaded map pictures. */
+  assetBase: string;
   profiles: PlayerSummary[];
   busy: boolean;
   onAct: (matchId: string, mapId: string) => void;
@@ -51,7 +59,7 @@ export function VetoPanel(props: VetoPanelProps) {
   const preview = (mapId: string) => {
     const held = event.mapDb.find((candidate) => candidate.id === mapId);
     if (held === undefined) return "";
-    return matchVaultMap(held, props.vault)?.thumbnailUrl || held.imageUrl;
+    return tourneyMapImage(held, props.assetBase, props.vault);
   };
 
   const tile = (mapId: string, extra?: string) => {

@@ -218,7 +218,11 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
    * tournament to another while standing on Manage left every map without a
    * preview, and so did anything that re-mounted the pane.
    */
-  const needsVault = section === "manage" || section === "bracket";
+  // Manage only. The rounds used to ask for it too, for the veto previews, and
+  // a player opening a match's vetoes waited on the whole catalogue before a
+  // single picture appeared; those pictures are the organiser's own uploads
+  // now, which the website shows too.
+  const needsVault = section === "manage";
   useEffect(() => {
     if (needsVault) props.onNeedVault();
     // The callback is stable per render of the view above; re-running on it
@@ -397,6 +401,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onAnswer={props.onAnswer}
           onHost={props.onHost}
           vault={props.vault}
+          assetBase={props.assetBase}
           onVetoAct={props.onVetoAct}
           onVetoSetSides={props.onVetoSetSides}
           onVetoUndo={props.onVetoUndo}
@@ -443,6 +448,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           event={event}
           vault={props.vault}
           vaultStatus={props.vaultStatus}
+          assetBase={props.assetBase}
           series={props.series}
           events={props.events}
           profiles={props.profiles}

@@ -181,14 +181,71 @@ function withoutVersion(folder: string): string {
 export function matchVaultMap(tourneyMap: TourneyMap, vault: VaultMap[]): VaultMap | null {
   const wanted = mapKey(tourneyMap.name);
   if (wanted === "") return null;
-  const byName = vault.find((candidate) => mapKey(candidate.displayName) === wanted);
+  const index = vaultIndex(vault);
+  const byName = index.byName.get(wanted);
   if (byName !== undefined) return byName;
   // The version has to come off both sides: an organiser who copied
   // `scmp_009.v0001` out of their maps directory means the vault's v0002 too.
   const wantedFolder = mapKey(withoutVersion(tourneyMap.name.trim()));
-  return (
-    vault.find((candidate) => mapKey(withoutVersion(candidate.folderName)) === wantedFolder) ?? null
-  );
+  return index.byFolder.get(wantedFolder) ?? null;
+}
+
+interface VaultIndex {
+  byName: Map<string, VaultMap>;
+  byFolder: Map<string, VaultMap>;
+}
+
+/**
+ * The vault keyed the two ways `matchVaultMap` looks a map up, built once per
+ * vault array.
+ *
+ * The lookup used to be two linear scans that folded every entry's name on the
+ * way, and it ran for every map tile on every render: twenty thousand entries
+ * times a veto grid of maps, again on each keystroke anywhere in the pane. The
+ * first entry under a key wins, which is what `find` answered too.
+ */
+const VAULT_INDEXES = new WeakMap<VaultMap[], VaultIndex>();
+
+function vaultIndex(vault: VaultMap[]): VaultIndex {
+  const held = VAULT_INDEXES.get(vault);
+  if (held !== undefined) return held;
+  const index: VaultIndex = { byName: new Map(), byFolder: new Map() };
+  for (const candidate of vault) {
+    const name = mapKey(candidate.displayName);
+    if (!index.byName.has(name)) index.byName.set(name, candidate);
+    const folder = mapKey(withoutVersion(candidate.folderName));
+    if (!index.byFolder.has(folder)) index.byFolder.set(folder, candidate);
+  }
+  VAULT_INDEXES.set(vault, index);
+  return index;
+}
+
+/**
+ * The picture for one of the event's maps, or "" for none.
+ *
+ * The organiser's own upload first, which is the only picture the website
+ * shows: the service sends it as a bare file name under `/map-images/`, a path
+ * on the tournament server rather than anything a desktop client can load, so
+ * it is resolved against the deployment's base the way the description images
+ * are. This used to be put into `src` as it came, loaded nothing, and left
+ * every preview waiting on FAF's whole map vault instead.
+ *
+ * The vault is only a fallback now, and only when something else already loaded
+ * it: a map nobody uploaded a picture for still gets FAF's thumbnail then.
+ */
+export function tourneyMapImage(
+  tourneyMap: TourneyMap,
+  assetBase: string,
+  vault: VaultMap[],
+): string {
+  const own = tourneyMap.imageUrl.trim();
+  if (own.startsWith("https://") && !/[<>"'\s]/.test(own)) return own;
+  const file = own.replace(/^\/?map-images\//, "");
+  const base = assetBase.trim().replace(/\/+$/, "");
+  if (file !== "" && base !== "" && /^[A-Za-z0-9_.-]+$/.test(file)) {
+    return `${base}/map-images/${encodeURIComponent(file)}`;
+  }
+  return vault.length === 0 ? "" : (matchVaultMap(tourneyMap, vault)?.thumbnailUrl ?? "");
 }
 
 /** Twin of `Tourney::team_rating`: what `maxTeamRating` is measured against. */
