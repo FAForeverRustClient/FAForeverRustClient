@@ -17,7 +17,8 @@
 //! * **FAF Data API (JSON:API over HTTPS)**: `jsonapi` is the shared client;
 //!   `changelog`, `clan`, `coop`, `events`, `guides`, `leaderboard`, `maps`,
 //!   `mods`, `player_card`, `reporting`, `reviews`, `streams`, `tourney`,
-//!   `training`, `tutorials`, `uploads` are one adapter each. `http` builds
+//!   `training`, `tutorials`, `uploads` are one adapter each;
+//!   `review_totals` adds a map's or mod's reviews up over its versions. `http` builds
 //!   the `reqwest` client every adapter shares; `oauth` is the login.
 //! * **Long-lived sockets**: `lobby_ws` is the FAF lobby (WebSocket JSON);
 //!   `irc` and `irc_session` are chat; `jsonrpc`, `relay`, `replay_relay` and
@@ -93,6 +94,7 @@ pub(crate) mod replay_analysis;
 pub(crate) mod replay_recorder;
 pub(crate) mod replay_relay;
 pub mod reporting;
+pub(crate) mod review_totals;
 pub mod reviews;
 pub mod scmap;
 pub mod session;
