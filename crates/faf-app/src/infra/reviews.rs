@@ -19,6 +19,8 @@
 //! DELETE /data/{map|mod}VersionReview/{reviewId}       (and gameReview/{id})
 //! ```
 
+use std::cmp::Reverse;
+
 use async_trait::async_trait;
 use faf_domain::state::{clamp_score, Review, ReviewKind};
 use serde_json::json;
@@ -115,8 +117,8 @@ impl ReviewsPort for ReviewsClient {
 
         // Each review kept beside the version number it was written against,
         // so the list can be ordered by it below.
-        let mut numbered: Vec<(i32, Review)> = Vec::new();
-        let mut latest: Option<(i32, i32)> = None;
+        let mut numbered: Vec<NumberedReview> = Vec::new();
+        let mut latest: Option<NewestVersion> = None;
 
         for doc in &docs {
             let (page, newest) = page_reviews(doc);
@@ -237,7 +239,7 @@ impl ReviewsClient {
         }
         // Newest first, as above. A game has no versions, so the review id is
         // the whole of the order.
-        reviews.sort_by(|left, right| right.id.cmp(&left.id));
+        reviews.sort_by_key(|review| Reverse(review.id));
         Ok(ReviewPage {
             reviews,
             // The game is where a new review goes.
@@ -246,13 +248,19 @@ impl ReviewsClient {
     }
 }
 
+/// A review with the number of the version it was written against.
+type NumberedReview = (i32, Review);
+
+/// The highest version number a page of the walk carries, with its id.
+type NewestVersion = (i32, i32);
+
 /// One page of the versions walk: every review on it beside the version number
 /// it was written against, and the highest version number the page carries
 /// with that version's id.
-fn page_reviews(doc: &JsonApiDoc) -> (Vec<(i32, Review)>, Option<(i32, i32)>) {
+fn page_reviews(doc: &JsonApiDoc) -> (Vec<NumberedReview>, Option<NewestVersion>) {
     let index = document_index(doc);
     let mut reviews = Vec::new();
-    let mut latest: Option<(i32, i32)> = None;
+    let mut latest: Option<NewestVersion> = None;
 
     for version in &doc.data {
         let Ok(version_id) = version.id.parse::<i32>() else {
@@ -285,13 +293,8 @@ fn page_reviews(doc: &JsonApiDoc) -> (Vec<(i32, Review)>, Option<(i32, i32)>) {
 /// mod that was at v25. A review carries no date in this document, so the
 /// version it was written against is the order, and the review id settles two
 /// reviews of one version, which is the order they were written in.
-fn newest_first(reviews: &mut [(i32, Review)]) {
-    reviews.sort_by(|left, right| {
-        right
-            .0
-            .cmp(&left.0)
-            .then_with(|| right.1.id.cmp(&left.1.id))
-    });
+fn newest_first(reviews: &mut [NumberedReview]) {
+    reviews.sort_by_key(|(number, review)| (Reverse(*number), Reverse(review.id)));
 }
 
 /// The `player` link a new review carries.
