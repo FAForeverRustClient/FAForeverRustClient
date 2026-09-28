@@ -67,13 +67,17 @@ const load = () => {
 /**
  * The three groups that are always open, in the order they are read.
  *
+ * The website's order: your drafts, then what is being played right now, then
+ * what is coming. Ongoing sat below Upcoming until issue 367, which put the
+ * event people are following under a list of events that have not started.
+ *
  * The fourth, the finished and abandoned, folds away behind a disclosure and is
  * rendered on its own below.
  */
 const LIVE_GROUPS: [Exclude<ListGroup, "past">, MessageKey][] = [
   ["drafts", "tournaments.list.drafts"],
-  ["upcoming", "tournaments.list.upcoming"],
   ["ongoing", "tournaments.list.ongoing"],
+  ["upcoming", "tournaments.list.upcoming"],
 ];
 
 /** How often the countdowns are recomputed. Minute resolution, minute ticks. */
