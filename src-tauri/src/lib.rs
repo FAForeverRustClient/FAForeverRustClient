@@ -174,6 +174,11 @@ mod tests {
             .expect("valid windows tauri config")
     }
 
+    fn linux_config() -> serde_json::Value {
+        serde_json::from_str(include_str!("../tauri.linux.conf.json"))
+            .expect("valid linux tauri config")
+    }
+
     fn capabilities() -> serde_json::Value {
         serde_json::from_str(include_str!("../capabilities/default.json"))
             .expect("valid capabilities")
@@ -269,6 +274,47 @@ mod tests {
         assert_eq!(
             windows["../natives/jre/"], "natives/jre/",
             "the packaged Java resolver expects this directory layout"
+        );
+    }
+
+    /// Valve's library is a different file on each platform, and the steam
+    /// status looks for it under `natives/steam/` by the name the SDK gives
+    /// it there. So each platform file bundles its own, with the notice that
+    /// says it is not MIT beside it, and the base bundles neither.
+    #[test]
+    fn each_platform_bundles_its_own_steamworks_library_and_its_notice() {
+        let base = tauri_config();
+        let base = base["bundle"]["resources"]
+            .as_object()
+            .expect("base resources");
+        assert!(base.keys().all(|source| !source.contains("steamworks")));
+
+        for (config, source, name) in [
+            (windows_config(), "win64", "steam_api64.dll"),
+            (linux_config(), "linux64", "libsteam_api.so"),
+        ] {
+            let resources = config["bundle"]["resources"]
+                .as_object()
+                .expect("platform resources")
+                .clone();
+            assert_eq!(
+                resources[&format!("../vendor/steamworks/{source}/{name}")],
+                format!("natives/steam/{name}")
+            );
+            assert_eq!(
+                resources["../vendor/steamworks/README.md"],
+                "natives/steam/README.md"
+            );
+        }
+        assert_eq!(
+            faf_app::infra::steam_presence::LIBRARY.map(|(name, _)| name),
+            if cfg!(windows) {
+                Some("steam_api64.dll")
+            } else if cfg!(target_os = "linux") {
+                Some("libsteam_api.so")
+            } else {
+                None
+            }
         );
     }
 

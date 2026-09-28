@@ -34,10 +34,11 @@ distributed under the MIT License by its contributors.
 
 ## Steamworks API library (Valve)
 
-Windows builds include `steam_api64.dll` from Valve Corporation's Steamworks
-SDK, kept in the repository at `vendor/steamworks/win64/` and installed under
-`natives/steam/`. It is proprietary software of Valve Corporation and is **not**
-licensed under this project's MIT License: it is redistributed, unmodified,
+Windows and Linux builds include Valve Corporation's Steamworks API library
+(`steam_api64.dll` and `libsteam_api.so`, SDK 1.65), kept in the repository
+under `vendor/steamworks/` and installed under `natives/steam/`. It is
+proprietary software of Valve Corporation and is **not** licensed under this
+project's MIT License: it is redistributed, unmodified,
 under section 1.1(b) of the
 [Steamworks SDK Access Agreement](https://partner.steamgames.com/documentation/sdk_access_agreement),
 and all rights not granted there remain with Valve. It is used only by the
