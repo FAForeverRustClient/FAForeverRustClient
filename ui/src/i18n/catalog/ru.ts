@@ -2880,6 +2880,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.standings.wins": "П",
   "tournaments.standings.losses": "П",
   "tournaments.standings.gameDiff": "Разница карт",
+  "tournaments.standings.beaten": "Побеждённые",
+  "tournaments.standings.beatenHint": "Сумма побед в швейцарской системе всех соперников, которых обыграл этот игрок. Решает при равном счёте, дальше жребий.",
   "tournaments.standings.unplaced": "-",
   "tournaments.standings.champion": "Чемпион",
   "tournaments.standings.stillIn": "Ещё в игре",

@@ -993,6 +993,50 @@ fn tourney_standings_cases() -> Vec<TourneyStandingsCase> {
         ],
         ..Tourney::default()
     };
+    // 2-0 on +2 against 2-1 on +3: the server ranks the unbeaten one first.
+    let result = |id: &str, winner: &str, loser: &str, high: i32, low: i32| {
+        standings_match(
+            id,
+            MatchStatus::Done,
+            (Some(winner), Some(loser)),
+            (Some(high), Some(low)),
+            (Some(winner), Some(loser)),
+        )
+    };
+    let fewer_losses = Tourney {
+        id: "fewer-losses".into(),
+        status: TourneyStatus::Running,
+        bracket_kind: BracketKind::Swiss,
+        teams: ["t1", "t2", "t3", "t4", "t5"]
+            .iter()
+            .enumerate()
+            .map(|(index, id)| standings_team(id, index as i32 + 1, None))
+            .collect(),
+        matches: vec![
+            result("m1", "t1", "t3", 1, 0),
+            result("m2", "t1", "t4", 1, 0),
+            result("m3", "t2", "t3", 2, 0),
+            result("m4", "t2", "t4", 2, 0),
+            result("m5", "t5", "t2", 1, 0),
+        ],
+        ..Tourney::default()
+    };
+    // The same table as the server ordered it, under the beaten tiebreak.
+    let server_order = Tourney {
+        id: "server-order".into(),
+        swiss_order: vec![
+            "t2".into(),
+            "t1".into(),
+            "t5".into(),
+            "t3".into(),
+            "t4".into(),
+        ],
+        swiss_tiebreak: SwissTiebreak::Beaten,
+        swiss_beaten: [("t1".to_string(), 0), ("t2".to_string(), 1)]
+            .into_iter()
+            .collect(),
+        ..fewer_losses.clone()
+    };
     // An import, which often carries a final table and nothing else.
     let imported = Tourney {
         id: "imported".into(),
@@ -1064,6 +1108,14 @@ fn tourney_standings_cases() -> Vec<TourneyStandingsCase> {
         ),
         ("mid-event, where nobody has a place yet", running),
         ("a Swiss table, including a bye", swiss),
+        (
+            "a Swiss table, where fewer losses outrank game difference",
+            fewer_losses,
+        ),
+        (
+            "a Swiss table in the server's own order, beaten tiebreak",
+            server_order,
+        ),
         ("an import, which carries only its own placings", imported),
         (
             "a scored free-for-all, where seed breaks a points tie",

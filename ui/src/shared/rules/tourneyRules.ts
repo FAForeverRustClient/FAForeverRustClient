@@ -283,6 +283,8 @@ export interface Standing {
   wins: number;
   losses: number;
   gameDiff: number;
+  /** The Swiss `beaten` tiebreak's number, where that is the tiebreak. */
+  beaten: number | null;
 }
 
 /** Why a team sits where it does. */
@@ -867,9 +869,13 @@ const blank = (teamId: string, outcome: Standing["outcome"]): Standing => ({
   wins: 0,
   losses: 0,
   gameDiff: 0,
+  beaten: null,
 });
 
-/** A bye counts as a win worth one game, as the service's own table does. */
+/**
+ * A bye counts as a win worth one game, as the service's own table does.
+ * Twin of `Tourney::swiss_standings`, including reading `swissOrder`.
+ */
 function swissStandings(event: Tourney): Standing[] {
   const rows = event.teams.map((team) => blank(team.id, "swiss"));
   const at = (id: string | null) =>
@@ -904,14 +910,32 @@ function swissStandings(event: Tourney): Standing[] {
     }
   }
 
+  const beatenCounts = event.swissTiebreak === "beaten";
+  if (beatenCounts) {
+    for (const row of rows) row.beaten = event.swissBeaten[row.teamId] ?? 0;
+  }
+
+  // The server's order wherever it sent one; without it, its rule as far as
+  // it can be followed here: wins, fewer losses, the event's tiebreak, seed.
   const seedOf = (teamId: string) =>
     event.teams.find((team) => team.id === teamId)?.seed ?? Number.MAX_SAFE_INTEGER;
-  rows.sort(
-    (left, right) =>
+  const positionOf = (teamId: string) => event.swissOrder.indexOf(teamId);
+  rows.sort((left, right) => {
+    const first = positionOf(left.teamId);
+    const second = positionOf(right.teamId);
+    if (first >= 0 && second >= 0) return first - second;
+    if (first >= 0) return -1;
+    if (second >= 0) return 1;
+    const tiebreak = beatenCounts
+      ? (right.beaten ?? 0) - (left.beaten ?? 0)
+      : right.gameDiff - left.gameDiff;
+    return (
       right.wins - left.wins ||
-      right.gameDiff - left.gameDiff ||
-      seedOf(left.teamId) - seedOf(right.teamId),
-  );
+      left.losses - right.losses ||
+      tiebreak ||
+      seedOf(left.teamId) - seedOf(right.teamId)
+    );
+  });
   return rows.map((row, index) => ({
     ...row,
     place: index + 1,

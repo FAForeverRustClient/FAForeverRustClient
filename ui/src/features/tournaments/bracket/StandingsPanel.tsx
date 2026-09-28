@@ -13,7 +13,7 @@
 import type { PlayerSummary, Tourney, TourneyTeam } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { PlayerChip } from "../PlayerChip";
+import { EntrantName } from "../EntrantName";
 import { BRACKET_LABELS } from "../tourneyPresentation";
 import { profileOf, standings, standingsKind, teamMembers } from "../../../shared/rules/tourneyRules";
 
@@ -51,12 +51,14 @@ export function StandingsPanel({ event, profiles }: StandingsPanelProps) {
       const only = teamMembers(event, team)[0];
       if (only !== undefined) {
         const profile = profileOf(profiles, only);
-        return profile ? <PlayerChip player={profile} overrideName={only.name} /> : only.name;
+        return <EntrantName name={only.name} fafId={only.fafId} profile={profile} />;
       }
     }
     const named = team.name.trim();
     return named === "" ? teamId : named;
   };
+
+  const showBeaten = kind === "swiss" && rows.some((row) => row.beaten !== null);
 
   const resultOf = (row: (typeof rows)[number]) => {
     if (typeof row.outcome === "object") {
@@ -83,6 +85,13 @@ export function StandingsPanel({ event, profiles }: StandingsPanelProps) {
                 <th scope="col">{t("tournaments.standings.wins")}</th>
                 <th scope="col">{t("tournaments.standings.losses")}</th>
                 <th scope="col">{t("tournaments.standings.gameDiff")}</th>
+                {/* Only where the event breaks ties this way, so the order the
+                    server sends can be checked against the number behind it. */}
+                {showBeaten && (
+                  <th scope="col" title={t("tournaments.standings.beatenHint")}>
+                    {t("tournaments.standings.beaten")}
+                  </th>
+                )}
               </>
             )}
             {/* A points table carries its total in the same field a Swiss table
@@ -114,6 +123,7 @@ export function StandingsPanel({ event, profiles }: StandingsPanelProps) {
                     {row.gameDiff > 0 ? "+" : ""}
                     {row.gameDiff}
                   </td>
+                  {showBeaten && <td className="mono">{row.beaten ?? 0}</td>}
                 </>
               )}
               {kind === "points" && <td className="mono">{row.wins}</td>}

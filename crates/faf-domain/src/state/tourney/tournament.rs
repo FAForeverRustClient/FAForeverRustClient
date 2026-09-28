@@ -262,6 +262,19 @@ pub struct Tourney {
     /// from every other tournament's links, never stored on this side.
     pub feeds_into: Option<FeedsInto>,
     pub champion_team_id: Option<String>,
+    /// The Swiss table in the server's own order (`swissOrder`), or empty
+    /// where it sends none: before the stage runs, and for free-for-all.
+    ///
+    /// Read rather than recomputed, because the order is not something the
+    /// client can reproduce: the `beaten` tiebreak ends in a coin flip seeded
+    /// from a draw seed the server never sends, and the same order decides
+    /// the playoff seeds.
+    pub swiss_order: Vec<String>,
+    /// How equal Swiss records are separated (`tiebreak`).
+    pub swiss_tiebreak: SwissTiebreak,
+    /// Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
+    /// that is the tiebreak.
+    pub swiss_beaten: std::collections::BTreeMap<String, i32>,
     /// What this account may do here, as the server sees it.
     pub viewer: TourneyViewer,
 }
@@ -491,7 +504,8 @@ impl Tourney {
         }
     }
 
-    /// Wins, losses and game difference over the Swiss rounds.
+    /// Wins, losses and game difference over the Swiss rounds, in the order
+    /// the server ranks them.
     ///
     /// A bye counts as a win worth one game, as the service's own table does: a
     /// team that drew the odd number should not sit behind one that played.
@@ -506,6 +520,7 @@ impl Tourney {
                 wins: 0,
                 losses: 0,
                 game_diff: 0,
+                beaten: None,
             })
             .collect();
 
@@ -551,11 +566,36 @@ impl Tourney {
             }
         }
 
+        let beaten_counts = self.swiss_tiebreak == SwissTiebreak::Beaten;
+        if beaten_counts {
+            for row in &mut rows {
+                row.beaten = Some(self.swiss_beaten.get(&row.team_id).copied().unwrap_or(0));
+            }
+        }
+
+        // The server's order wherever it sent one. Without it, its rule as far
+        // as the client can follow it: wins, then fewer losses (a 3-0 above a
+        // 3-2 whatever the game difference), then the event's tiebreak, then
+        // seed. The `beaten` tiebreak's coin flip cannot be reproduced here,
+        // which is why the order is read in the first place.
+        let position = |team_id: &str| self.swiss_order.iter().position(|held| held == team_id);
         rows.sort_by(|left, right| {
+            match (position(&left.team_id), position(&right.team_id)) {
+                (Some(first), Some(second)) => return first.cmp(&second),
+                (Some(_), None) => return std::cmp::Ordering::Less,
+                (None, Some(_)) => return std::cmp::Ordering::Greater,
+                (None, None) => {}
+            }
+            let tiebreak = if beaten_counts {
+                right.beaten.cmp(&left.beaten)
+            } else {
+                right.game_diff.cmp(&left.game_diff)
+            };
             right
                 .wins
                 .cmp(&left.wins)
-                .then(right.game_diff.cmp(&left.game_diff))
+                .then(left.losses.cmp(&right.losses))
+                .then(tiebreak)
                 .then(
                     self.seed_of(&left.team_id)
                         .cmp(&self.seed_of(&right.team_id)),
@@ -594,6 +634,7 @@ impl Tourney {
                 wins: 0,
                 losses: 0,
                 game_diff: 0,
+                beaten: None,
             })
             .collect();
 
@@ -645,6 +686,7 @@ impl Tourney {
                 wins: 0,
                 losses: 0,
                 game_diff: 0,
+                beaten: None,
             })
             .collect()
     }
@@ -698,6 +740,7 @@ impl Tourney {
                 wins: 0,
                 losses: 0,
                 game_diff: 0,
+                beaten: None,
             });
         }
         rows

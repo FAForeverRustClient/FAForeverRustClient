@@ -2745,6 +2745,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "tournaments.standings.wins": "V",
   "tournaments.standings.losses": "D",
   "tournaments.standings.gameDiff": "Diff. de cartes",
+  "tournaments.standings.beaten": "Adv. battus",
+  "tournaments.standings.beatenHint": "La somme des victoires suisses de chaque adversaire battu par ce joueur. Elle départage les bilans égaux, puis un tirage au sort décide.",
   "tournaments.standings.unplaced": "-",
   "tournaments.standings.champion": "Champion",
   "tournaments.standings.stillIn": "Encore en lice",

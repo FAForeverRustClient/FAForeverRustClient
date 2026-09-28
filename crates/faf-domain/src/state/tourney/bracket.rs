@@ -113,6 +113,34 @@ pub struct Standing {
     pub wins: i32,
     pub losses: i32,
     pub game_diff: i32,
+    /// The Swiss tiebreak "sum of the Swiss wins of every opponent this team
+    /// beat", when the event breaks ties that way; `None` everywhere else.
+    pub beaten: Option<i32>,
+}
+
+/// How a Swiss event separates equal records, after wins and fewer losses.
+///
+/// The website's per-tournament choice (`tiebreak`): game difference, which is
+/// what every event created before the choice keeps, or the sum of the scores
+/// of the opponents beaten followed by a seeded coin flip, the Invitational's
+/// rule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum SwissTiebreak {
+    #[default]
+    GameDiff,
+    Beaten,
+}
+
+impl SwissTiebreak {
+    /// Anything but `beaten` is game difference, as the service reads it.
+    pub fn from_wire(value: &str) -> Self {
+        if value == "beaten" {
+            Self::Beaten
+        } else {
+            Self::GameDiff
+        }
+    }
 }
 
 /// Why a team sits where it does.

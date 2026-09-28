@@ -7304,6 +7304,16 @@ export type SubmitStatus = { type: "idle" } | { type: "sending" } |
 } };
 
 /**
+ *  How a Swiss event separates equal records, after wins and fewer losses.
+ *
+ *  The website's per-tournament choice (`tiebreak`): game difference, which is
+ *  what every event created before the choice keeps, or the sum of the scores
+ *  of the opponents beaten followed by a seeded coin flip, the Invitational's
+ *  rule.
+ */
+export type SwissTiebreak = "gameDiff" | "beaten";
+
+/**
  *  A top-level destination. Most are placeholders today; each gets its feature
  *  slice as it lands. The frontend tab registry maps these 1:1 to views.
  */
@@ -7609,6 +7619,23 @@ export type Tourney = {
 	 */
 	feedsInto: FeedsInto | null,
 	championTeamId: string | null,
+	/**
+	 *  The Swiss table in the server's own order (`swissOrder`), or empty
+	 *  where it sends none: before the stage runs, and for free-for-all.
+	 *
+	 *  Read rather than recomputed, because the order is not something the
+	 *  client can reproduce: the `beaten` tiebreak ends in a coin flip seeded
+	 *  from a draw seed the server never sends, and the same order decides
+	 *  the playoff seeds.
+	 */
+	swissOrder: string[],
+	/**  How equal Swiss records are separated (`tiebreak`). */
+	swissTiebreak: SwissTiebreak,
+	/**
+	 *  Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
+	 *  that is the tiebreak.
+	 */
+	swissBeaten: { [key in string]: number },
 	/**  What this account may do here, as the server sees it. */
 	viewer: TourneyViewer,
 };

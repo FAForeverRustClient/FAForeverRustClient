@@ -2775,6 +2775,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "tournaments.standings.wins": "Z",
   "tournaments.standings.losses": "P",
   "tournaments.standings.gameDiff": "Różnica map",
+  "tournaments.standings.beaten": "Pokonani",
+  "tournaments.standings.beatenHint": "Suma zwycięstw w systemie szwajcarskim wszystkich rywali pokonanych przez tego gracza. Rozstrzyga remisy przy tym samym bilansie, a potem losowanie.",
   "tournaments.standings.unplaced": "-",
   "tournaments.standings.champion": "Mistrz",
   "tournaments.standings.stillIn": "Wciąż w grze",

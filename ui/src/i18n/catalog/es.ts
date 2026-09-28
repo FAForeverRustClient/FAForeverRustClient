@@ -2744,6 +2744,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "tournaments.standings.wins": "V",
   "tournaments.standings.losses": "D",
   "tournaments.standings.gameDiff": "Dif. de mapas",
+  "tournaments.standings.beaten": "Rivales vencidos",
+  "tournaments.standings.beatenHint": "La suma de las victorias suizas de cada rival al que venció este jugador. Desempata registros iguales y, después, decide un sorteo.",
   "tournaments.standings.unplaced": "-",
   "tournaments.standings.champion": "Campeón",
   "tournaments.standings.stillIn": "Sigue dentro",

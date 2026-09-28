@@ -2770,6 +2770,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.standings.wins": "S",
   "tournaments.standings.losses": "N",
   "tournaments.standings.gameDiff": "Spieldifferenz",
+  "tournaments.standings.beaten": "Besiegte Gegner",
+  "tournaments.standings.beatenHint": "Die Summe der Swiss-Siege aller Gegner, die dieser Spieler besiegt hat. Sie entscheidet bei gleicher Bilanz, danach ein gelosteter Münzwurf.",
   "tournaments.standings.unplaced": "-",
   "tournaments.standings.champion": "Sieger",
   "tournaments.standings.stillIn": "Noch dabei",

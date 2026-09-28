@@ -150,7 +150,6 @@ pub use social::{
 pub use streams::{
     LiveStream, StreamPlatform, StreamsCommand, StreamsEvent, StreamsState, StreamsStatus,
 };
-pub use tourney::MapSpec;
 pub use tourney::{
     map_key, match_vault_map, Article, AuditEntry, BracketKind, BracketSide, ChatMute, ChatPost,
     ChatRoom, Competition, DraftRejection, Formation, HostingStatus, InviteStatus, MapDraft,
@@ -170,6 +169,7 @@ pub use tourney::{
     Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
     VetoDecider, VetoMode, VetoTurn,
 };
+pub use tourney::{MapSpec, SwissTiebreak};
 pub use training::{
     compose_contribution, compose_review_request, compose_url, contribution_problem, derive_level,
     derive_topics, filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label,

@@ -29,8 +29,9 @@ use crate::state::{
     ChatRoom, Competition, Currency, Formation, HostingStatus, InviteStatus, MapPool, MapSpec,
     MatchLink, MatchPlan, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
     PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream,
-    TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite, TourneyMap,
-    TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
+    SwissTiebreak, TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite,
+    TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam,
+    TourneyViewer,
 };
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
@@ -401,8 +402,27 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .collect(),
         feeds_into: parse_feeds_into(document.get("feedsInto")),
         champion_team_id: id(document, "championTeamId"),
+        swiss_order: string_list(document, "swissOrder"),
+        swiss_tiebreak: SwissTiebreak::from_wire(&text(document, "tiebreak")),
+        swiss_beaten: parse_beaten(document.get("swissSB")),
         viewer: parse_viewer(document),
     })
+}
+
+/// The `beaten` tiebreak's number per team, from `swissSB`: an object keyed by
+/// team id, or `null` when the event breaks ties by game difference.
+fn parse_beaten(value: Option<&Value>) -> std::collections::BTreeMap<String, i32> {
+    value
+        .and_then(Value::as_object)
+        .map(|held| {
+            held.iter()
+                .filter_map(|(team_id, sum)| {
+                    let sum = sum.as_i64().and_then(|n| i32::try_from(n).ok())?;
+                    Some((team_id.clone(), sum))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Who the service says is asking, and what they are in this tournament.
@@ -2402,5 +2422,28 @@ See the [rules](https://x.invalid/r)."
             );
         }
         assert_eq!(map_spec_body(None), Value::Null);
+    }
+
+    /// The Swiss table's order, tiebreak and numbers are the server's to give.
+    #[test]
+    fn the_swiss_order_and_its_tiebreak_are_read() {
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "swissOrder": ["t2", "t1"],
+            "tiebreak": "beaten",
+            "swissSB": { "t1": 0, "t2": 3 },
+        }))
+        .expect("a tournament");
+        assert_eq!(event.swiss_order, vec!["t2", "t1"]);
+        assert_eq!(event.swiss_tiebreak, SwissTiebreak::Beaten);
+        assert_eq!(event.swiss_beaten.get("t2"), Some(&3));
+
+        let plain = parse_tourney(
+            &json!({ "id": "e2", "swissOrder": null, "tiebreak": "gd", "swissSB": null }),
+        )
+        .expect("a tournament");
+        assert!(plain.swiss_order.is_empty());
+        assert_eq!(plain.swiss_tiebreak, SwissTiebreak::GameDiff);
+        assert!(plain.swiss_beaten.is_empty());
     }
 }

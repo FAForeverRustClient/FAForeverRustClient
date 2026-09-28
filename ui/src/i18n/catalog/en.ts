@@ -3068,6 +3068,8 @@ export const en = {
   "tournaments.standings.wins": "W",
   "tournaments.standings.losses": "L",
   "tournaments.standings.gameDiff": "Game diff",
+  "tournaments.standings.beaten": "Beaten opp.",
+  "tournaments.standings.beatenHint": "The sum of the Swiss wins of every opponent this player beat. It breaks ties between equal records, and after it a seeded coin flip.",
   "tournaments.standings.unplaced": "-",
   "tournaments.standings.champion": "Champion",
   "tournaments.standings.stillIn": "Still in",
