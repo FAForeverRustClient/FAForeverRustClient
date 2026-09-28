@@ -595,6 +595,10 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "maps.view.installation": "Instalación",
   "maps.view.uploadedAfter": "Subido después de",
   "maps.view.uploadedBefore": "Subido antes de",
+  "maps.view.withdrawn": "Versiones retiradas",
+  "maps.view.withdrawnTitle": "Mapas cuya última versión el autor ha retirado del almacén. Ocultos de forma predeterminada.",
+  "maps.view.withdrawnExclude": "Ocultas",
+  "maps.view.withdrawnInclude": "Mostradas",
   "maps.view.width": "Ancho",
   "maps.view.height": "Alto",
   "maps.view.map": "Mapa",
@@ -1257,6 +1261,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.roster.combinedRating": "Puntuación mostrada combinada",
   "replays.roster.rating": "Puntuación",
   "replays.roster.playerActions": "Acciones para {name}",
+  "replays.roster.playedAs": "jugó como {name}",
   "replays.roster.score": "Puntuación",
 
   "replays.source.aria": "Fuentes de repeticiones",

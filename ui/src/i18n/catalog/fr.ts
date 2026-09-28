@@ -596,6 +596,10 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "maps.view.installation": "Installation",
   "maps.view.uploadedAfter": "Mis en ligne après",
   "maps.view.uploadedBefore": "Mis en ligne avant",
+  "maps.view.withdrawn": "Versions retirées",
+  "maps.view.withdrawnTitle": "Cartes dont l'auteur a retiré la dernière version du vault. Masquées par défaut.",
+  "maps.view.withdrawnExclude": "Masquées",
+  "maps.view.withdrawnInclude": "Affichées",
   "maps.view.width": "Largeur",
   "maps.view.height": "Hauteur",
   "maps.view.map": "Carte",
@@ -1258,6 +1262,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.roster.combinedRating": "Somme des classements affichés",
   "replays.roster.rating": "Classement",
   "replays.roster.playerActions": "Actions pour {name}",
+  "replays.roster.playedAs": "a joué en tant que {name}",
   "replays.roster.score": "Score",
 
   "replays.source.aria": "Sources de replays",

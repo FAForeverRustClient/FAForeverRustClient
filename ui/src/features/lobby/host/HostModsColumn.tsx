@@ -19,7 +19,29 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { useAppStore } from "../../../store/store";
 import { ModPresetModal } from "./ModPresetModal";
 
-type ModTab = "ui" | "sim";
+export type ModTab = "ui" | "sim";
+
+// Alphabetical order only: sorting by enabled state used to jump newly
+// toggled mods to the top of the list, which made the browser scroll the list
+// up to track the focused checkbox and kicked the user out of position.
+export function filterAndSortHostMods(
+  installedMods: InstalledMod[],
+  modTab: ModTab,
+  modSearch: string,
+): InstalledMod[] {
+  const query = modSearch.trim().toLowerCase();
+  return installedMods
+    .filter((mod) => {
+      if (mod.modType !== modTab) return false;
+      if (!query) return true;
+      return (
+        mod.displayName.toLowerCase().includes(query) ||
+        (mod.modType === "ui" && query === "ui") ||
+        (mod.modType === "sim" && query === "sim")
+      );
+    })
+    .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.uid.localeCompare(b.uid));
+}
 
 export function HostModsColumn() {
   const { t } = useTranslation();
@@ -66,23 +88,10 @@ export function HostModsColumn() {
   );
   const uiMods = useMemo(() => installedMods.filter((mod) => mod.modType === "ui"), [installedMods]);
 
-  const filteredMods = useMemo(() => {
-    const query = modSearch.trim().toLowerCase();
-    return installedMods
-      .filter((mod) => {
-        if (mod.modType !== modTab) return false;
-        if (!query) return true;
-        return (
-          mod.displayName.toLowerCase().includes(query) ||
-          (mod.modType === "ui" && query === "ui") ||
-          (mod.modType === "sim" && query === "sim")
-        );
-      })
-      .sort(
-        (a, b) =>
-          Number(b.enabled) - Number(a.enabled) || a.displayName.localeCompare(b.displayName),
-      );
-  }, [installedMods, modSearch, modTab]);
+  const filteredMods = useMemo(
+    () => filterAndSortHostMods(installedMods, modTab, modSearch),
+    [installedMods, modSearch, modTab],
+  );
 
   // One command rather than one per mod: each `toggleMod` rewrites
   // `game.prefs` and rescans every mod folder, so a bulk action across twenty

@@ -946,6 +946,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.roster.combinedRating": "Summe der angezeigten Ratings",
   "replays.roster.rating": "Rating",
   "replays.roster.playerActions": "Aktionen für {name}",
+  "replays.roster.playedAs": "gespielt als {name}",
   "replays.roster.score": "Punkte",
 
   "replays.live.connecting": "Verbinde mit laufenden Partien",
@@ -1481,6 +1482,10 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.view.installation": "Installation",
   "maps.view.uploadedAfter": "Hochgeladen nach",
   "maps.view.uploadedBefore": "Hochgeladen vor",
+  "maps.view.withdrawn": "Zurückgezogene Versionen",
+  "maps.view.withdrawnTitle": "Karten, deren neueste Version der Autor aus dem Vault zurückgezogen hat. Standardmäßig ausgeblendet.",
+  "maps.view.withdrawnExclude": "Ausgeblendet",
+  "maps.view.withdrawnInclude": "Angezeigt",
   "maps.view.width": "Breite",
   "maps.view.height": "Höhe",
   "maps.view.map": "Karte",
