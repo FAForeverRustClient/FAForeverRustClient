@@ -1699,6 +1699,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.recent.watch": "Смотреть",
   "lobby.matchmaker.recent.notYetAvailable": "Реплей ещё загружается.",
   "lobby.matchmaker.recent.openAria": "Открыть реплей #{id} в хранилище",
+  "lobby.matchmaker.recent.openResults": "Результаты в профиле",
+  "lobby.matchmaker.recent.openResultsHint": "Откроет ваш профиль на вкладке «Результаты» со всей историей игр",
+  "lobby.matchmaker.recent.watchHint": "Смотреть этот реплей",
   "lobby.matchmaker.summary.selected": {
     one: "Выбрана {count} очередь",
     few: "Выбрано {count} очереди",

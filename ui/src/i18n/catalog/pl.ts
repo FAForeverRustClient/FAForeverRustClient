@@ -1666,6 +1666,9 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.recent.watch": "Oglądaj",
   "lobby.matchmaker.recent.notYetAvailable": "Powtórka jest jeszcze przesyłana.",
   "lobby.matchmaker.recent.openAria": "Otwórz powtórkę #{id} w archiwum",
+  "lobby.matchmaker.recent.openResults": "Zobacz wyniki w profilu",
+  "lobby.matchmaker.recent.openResultsHint": "Otwiera twój profil na karcie Wyniki, z pełną historią gier",
+  "lobby.matchmaker.recent.watchHint": "Obejrzyj tę powtórkę",
   "lobby.matchmaker.summary.selected": {
     one: "wybrano {count} kolejkę",
     few: "wybrano {count} kolejki",
