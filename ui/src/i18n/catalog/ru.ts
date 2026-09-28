@@ -2974,6 +2974,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.entrants.none": "Пока никто не записался.",
   "tournaments.entrants.unteamed": "Без команды",
   "tournaments.entrants.rating": "Рейтинг для этого турнира",
+  "tournaments.entrants.openCard": "Открыть карточку игрока {name}",
   "tournaments.entrants.capped": "Настоящий рейтинг, до турнирного ограничения",
   "tournaments.entrants.seed": "Посев {seed}",
   "tournaments.entrants.checkedIn": "Отметился",

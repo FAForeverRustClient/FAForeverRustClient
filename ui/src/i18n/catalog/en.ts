@@ -3162,6 +3162,7 @@ export const en = {
   "tournaments.entrants.none": "Nobody has entered yet.",
   "tournaments.entrants.unteamed": "Without a team",
   "tournaments.entrants.rating": "Rating for this tournament",
+  "tournaments.entrants.openCard": "Open {name}'s player card",
   "tournaments.entrants.capped": "Actual rating, before the tournament cap",
   "tournaments.entrants.seed": "Seed {seed}",
   "tournaments.entrants.checkedIn": "Checked in",

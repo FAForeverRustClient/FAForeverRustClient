@@ -2839,6 +2839,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "tournaments.entrants.none": "Personne ne s'est encore inscrit.",
   "tournaments.entrants.unteamed": "Sans équipe",
   "tournaments.entrants.rating": "Classement pour ce tournoi",
+  "tournaments.entrants.openCard": "Ouvrir la fiche de joueur de {name}",
   "tournaments.entrants.capped": "Classement réel, avant le plafond du tournoi",
   "tournaments.entrants.seed": "Tête de série {seed}",
   "tournaments.entrants.checkedIn": "A pointé",
