@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { VaultMap } from "../ipc/bindings";
 import {
   GENERATED_MAP_PLACEHOLDER_URL,
+  OFFICIAL_BASE_MAPS,
   effectiveReplayMapName,
   extractGeneratedMapSeed,
   isGeneratedMap,
@@ -116,10 +117,28 @@ describe("mapPresentation", () => {
     } as VaultMap;
 
     expect(mapPresentation([colliding], "scmp_040").displayName).toBe("The Ditch");
-    expect(mapSize([colliding], "scmp_040")?.compact).toBe("10 km");
+    expect(mapSize([colliding], "scmp_040")?.compact).toBe("20 km");
     expect(mapThumbnailCandidates([colliding], "scmp_040")[0]).toBe(
       "https://content.faforever.com/maps/previews/small/scmp_040.png",
     );
+  });
+
+  it("carries the sizes the shipped maps actually have", () => {
+    // Read out of each map's `_scenario.lua` in a Forged Alliance install
+    // (issue 360). Thirteen rows had been wrong, and a wrong catalogue is
+    // worse than no catalogue, because it is the source the vault record is
+    // deliberately overruled in favour of.
+    const of = (folder: string) => OFFICIAL_BASE_MAPS.find((map) => map.folderName === folder);
+
+    // The one the bug was reported on: 1024 units square, not 512.
+    expect(of("scmp_040")).toMatchObject({ maxPlayers: 6, width: 1024, height: 1024 });
+    // The Forged Alliance rows had slipped out of step with their maps: the
+    // smallest map in the game carried the largest map's numbers and back.
+    expect(of("x1mp_001")).toMatchObject({ maxPlayers: 2, width: 256, height: 256 });
+    expect(of("x1mp_012")).toMatchObject({ maxPlayers: 8, width: 4096, height: 4096 });
+    expect(mapSize([], "x1mp_012")?.compact).toBe("80 km");
+    // Untouched rows stay as they were.
+    expect(of("scmp_009")).toMatchObject({ maxPlayers: 8, width: 1024, height: 1024 });
   });
 
   it("does not lead a large request with a caller's small thumbnail", () => {

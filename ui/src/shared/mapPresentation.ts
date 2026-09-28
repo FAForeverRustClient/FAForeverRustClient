@@ -21,6 +21,16 @@ export type MapPresentation = {
 // Base-game maps are not vault records, so they never appear in the vault
 // lookup used by the lobby rows. Keep the same built-in catalog used by the
 // reference clients and use the public preview service for their thumbnails.
+//
+// The numbers below are read off the shipped maps themselves: each map's
+// `<folder>_scenario.lua` carries `size = { width, height }` in generator
+// units and one `teams` block whose armies are the player slots. Thirteen
+// rows disagreed with the game files (issue 360): twelve of the fourteen
+// Forged Alliance maps, whose sizes and player counts sat a row or two off
+// from the map they belong to, and The Ditch, which is 1024 units square and
+// was written down as 512. The vault's own record for a base-game map is not
+// a safe substitute either: its row for The Ditch says 1024 by 512, a square
+// map described as a strip.
 export type OfficialMapInfo = {
   folderName: string;
   displayName: string;
@@ -69,21 +79,21 @@ export const OFFICIAL_BASE_MAPS: OfficialMapInfo[] = [
   { folderName: "scmp_037", displayName: "Sludge", maxPlayers: 3, width: 256, height: 256 },
   { folderName: "scmp_038", displayName: "Ambush Pass", maxPlayers: 4, width: 256, height: 256 },
   { folderName: "scmp_039", displayName: "Four-Corners", maxPlayers: 4, width: 256, height: 256 },
-  { folderName: "scmp_040", displayName: "The Ditch", maxPlayers: 6, width: 512, height: 512 },
-  { folderName: "x1mp_001", displayName: "Crag Dunes", maxPlayers: 8, width: 1024, height: 1024 },
-  { folderName: "x1mp_002", displayName: "Williamson's Bridge", maxPlayers: 4, width: 512, height: 512 },
+  { folderName: "scmp_040", displayName: "The Ditch", maxPlayers: 6, width: 1024, height: 1024 },
+  { folderName: "x1mp_001", displayName: "Crag Dunes", maxPlayers: 2, width: 256, height: 256 },
+  { folderName: "x1mp_002", displayName: "Williamson's Bridge", maxPlayers: 2, width: 256, height: 256 },
   { folderName: "x1mp_003", displayName: "Snoey Triangle", maxPlayers: 3, width: 512, height: 512 },
-  { folderName: "x1mp_004", displayName: "Haven Reef", maxPlayers: 8, width: 1024, height: 1024 },
-  { folderName: "x1mp_005", displayName: "The Dark Heart", maxPlayers: 6, width: 1024, height: 1024 },
+  { folderName: "x1mp_004", displayName: "Haven Reef", maxPlayers: 4, width: 512, height: 512 },
+  { folderName: "x1mp_005", displayName: "The Dark Heart", maxPlayers: 6, width: 512, height: 512 },
   { folderName: "x1mp_006", displayName: "Daroza's Sanctuary", maxPlayers: 4, width: 512, height: 512 },
-  { folderName: "x1mp_007", displayName: "Strip Mine", maxPlayers: 4, width: 512, height: 512 },
-  { folderName: "x1mp_008", displayName: "Thawing Glacier", maxPlayers: 4, width: 1024, height: 1024 },
-  { folderName: "x1mp_009", displayName: "Liberiam Battles", maxPlayers: 6, width: 1024, height: 1024 },
-  { folderName: "x1mp_010", displayName: "Shards", maxPlayers: 2, width: 256, height: 256 },
-  { folderName: "x1mp_011", displayName: "Shuriken Island", maxPlayers: 4, width: 512, height: 512 },
-  { folderName: "x1mp_012", displayName: "Debris", maxPlayers: 4, width: 512, height: 512 },
-  { folderName: "x1mp_014", displayName: "Flooded Strip Mine", maxPlayers: 6, width: 1024, height: 1024 },
-  { folderName: "x1mp_017", displayName: "Eye Of The Storm", maxPlayers: 6, width: 1024, height: 1024 },
+  { folderName: "x1mp_007", displayName: "Strip Mine", maxPlayers: 4, width: 1024, height: 1024 },
+  { folderName: "x1mp_008", displayName: "Thawing Glacier", maxPlayers: 6, width: 1024, height: 1024 },
+  { folderName: "x1mp_009", displayName: "Liberiam Battles", maxPlayers: 8, width: 1024, height: 1024 },
+  { folderName: "x1mp_010", displayName: "Shards", maxPlayers: 8, width: 2048, height: 2048 },
+  { folderName: "x1mp_011", displayName: "Shuriken Island", maxPlayers: 8, width: 2048, height: 2048 },
+  { folderName: "x1mp_012", displayName: "Debris", maxPlayers: 8, width: 4096, height: 4096 },
+  { folderName: "x1mp_014", displayName: "Flooded Strip Mine", maxPlayers: 4, width: 1024, height: 1024 },
+  { folderName: "x1mp_017", displayName: "Eye Of The Storm", maxPlayers: 4, width: 512, height: 512 },
 ];
 
 // Base-game maps are not vault records, so they never appear in the vault

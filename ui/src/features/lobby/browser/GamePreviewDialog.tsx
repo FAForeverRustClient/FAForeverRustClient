@@ -7,10 +7,9 @@ import { Icon } from "../../../design-system/Icon";
 import type { Game, VaultMap } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { GameMapImage } from "../GameMapImage";
-import { findVaultMap, isGeneratedMap, mapPresentation } from "../../../shared/mapPresentation";
+import { findVaultMap, isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { findPlayer } from "../../../store/reducer";
 import { useAppStore } from "../../../store/store";
-import { sizeLabel } from "../../../shared/mapPresentation";
 import { ZoomableImage } from "../../../shared/components/MapPreviewZoom";
 import { generatorParameters } from "../../../shared/generatorPresentation";
 import {
@@ -81,6 +80,12 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
     generatedMapDescriptionRows(isGenerated ? installedMap?.description : null, t),
     decoded ? generatorParameters(decoded, t) : [],
   );
+  // Catalogue first, vault second (issue 360). The vault's row for a
+  // base-game map can be wrong about it -- The Ditch is there as 1024 by 512,
+  // which is 20 by 10 km for a map that is square -- and the game files are
+  // what the catalogue above is read from, so they win for a map that has one.
+  const size = mapSize(vault, game.map, decoded?.mapSize);
+
   const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
   const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
     teamPlayers.some((p) => p.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0)
@@ -228,12 +233,12 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           For a generated map the facts are the generator settings, read out of
           the name. Its own size row supersedes the catalogue's, because a
           generated map has no catalogue entry to take one from. */}
-      {(generatorRows.length > 0 || vaultMap) && (
+      {(generatorRows.length > 0 || size) && (
         <dl className="game-preview-dialog-facts">
-          {generatorRows.length === 0 && vaultMap && (
+          {generatorRows.length === 0 && size && (
             <div>
               <dt>{t("lobby.browser.mapSize")}</dt>
-              <dd>{sizeLabel(vaultMap)}</dd>
+              <dd>{size.full}</dd>
             </div>
           )}
           {generatorRows.map((row) => (
