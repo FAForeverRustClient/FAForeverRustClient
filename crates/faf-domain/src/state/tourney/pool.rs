@@ -25,6 +25,29 @@ pub struct TourneyMap {
     /// veto or an assigned round keeps its name, or players would be looking at
     /// a raw id.
     pub published: bool,
+    /// Spawn information an organiser entered on the website, or `None`.
+    ///
+    /// Carried so it survives an edit made here: the service overwrites the
+    /// stored spec with whatever the save names, and a save that named none
+    /// wiped it.
+    pub spec: Option<MapSpec>,
+}
+
+/// Where the teams start on a map, which spawns are closed, and its size.
+///
+/// The website's structured map information (`cleanMapSpec`): spawn numbers
+/// from 1 to 16, each list without repeats, and one of the five FA map sizes
+/// or nothing. `None` on the map when nothing at all was set.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MapSpec {
+    pub team1_spawns: Vec<i32>,
+    pub team2_spawns: Vec<i32>,
+    pub closed_spawns: Vec<i32>,
+    /// Spawns whose mass extractors are closed off, though the spawn itself is open.
+    pub closed_mex_spawns: Vec<i32>,
+    /// `5x5`, `10x10`, `20x20`, `40x40` or `81x81`; empty when not given.
+    pub size: String,
 }
 
 /// Reduce a map name to something two spellings of it can be compared by.
@@ -193,6 +216,11 @@ pub struct MapDraft {
     pub name: String,
     pub description: String,
     pub published: bool,
+    /// The spawn information to store, which for an edit is the map's own:
+    /// the service replaces it with whatever is sent, so leaving it out is
+    /// not "unchanged" but "delete it".
+    #[serde(default)]
+    pub spec: Option<MapSpec>,
 }
 
 impl MapDraft {

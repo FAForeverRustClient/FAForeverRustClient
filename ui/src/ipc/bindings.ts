@@ -3602,6 +3602,12 @@ export type MapDraft = {
 	name: string,
 	description: string,
 	published: boolean,
+	/**
+	 *  The spawn information to store, which for an edit is the map's own:
+	 *  the service replaces it with whatever is sent, so leaving it out is
+	 *  not "unchanged" but "delete it".
+	 */
+	spec?: MapSpec | null,
 };
 
 export type MapGeneratorCommand =
@@ -3821,6 +3827,23 @@ export type MapPool = {
 export type MapSortField =
 /**  Wilson lower bound, not the raw average: see the module note. */
 "rating" | "newest" | "played" | "name" | "size";
+
+/**
+ *  Where the teams start on a map, which spawns are closed, and its size.
+ *
+ *  The website's structured map information (`cleanMapSpec`): spawn numbers
+ *  from 1 to 16, each list without repeats, and one of the five FA map sizes
+ *  or nothing. `None` on the map when nothing at all was set.
+ */
+export type MapSpec = {
+	team1Spawns: number[],
+	team2Spawns: number[],
+	closedSpawns: number[],
+	/**  Spawns whose mass extractors are closed off, though the spawn itself is open. */
+	closedMexSpawns: number[],
+	/**  `5x5`, `10x10`, `20x20`, `40x40` or `81x81`; empty when not given. */
+	size: string,
+};
 
 /**
  *  A page of the map vault.
@@ -4109,13 +4132,14 @@ export type MatchPlan = { type: "single"; payload: {
 } };
 
 /**
- *  A result the organiser sets on a match.
+ *  A result set on a match, by an organiser (`report`) or by a player for the
+ *  other side to confirm (`report_submit`).
  *
- *  The replay id lists stay on the type because `report` accepts them and an
- *  archive is worth keeping, but nothing is required to fill them: they are
- *  mandatory only on `report_submit`, the *player* path, and that path is not
- *  used. `report` guards them with `if (Array.isArray(b.replayIds))`, so an
- *  empty list simply stores none.
+ *  The replay ids are optional on the organiser's path, which guards them with
+ *  `if (Array.isArray(b.replayIds))`, so an empty list simply stores none. The
+ *  player's path insists on exactly one per new game; see
+ *  [`Self::is_player_submittable`]. A player's report never carries a winner or
+ *  a forfeit: `report_submit` reads neither.
  */
 export type MatchReport = {
 	matchId: string,
@@ -5024,6 +5048,8 @@ export type PendingReport = {
 	/**  Who submitted it, for the "waiting on X" line. */
 	byName: string,
 	replayIds: string[],
+	/**  Replays of drawn games the submitter attached, shown to whoever confirms. */
+	drawReplayIds: string[],
 	/**  Unix seconds. */
 	at: number | null,
 };
@@ -7295,6 +7321,26 @@ export type SubmitStatus = { type: "idle" } | { type: "sending" } |
 } };
 
 /**
+ *  A Swiss stage's record cuts (`winCut`, `lossCut`): a team leaves the stage
+ *  on reaching that many wins or that many losses, rather than after a fixed
+ *  number of rounds. Zero is off, which is what every event without them has.
+ */
+export type SwissCuts = {
+	wins: number,
+	losses: number,
+};
+
+/**
+ *  How a Swiss event separates equal records, after wins and fewer losses.
+ *
+ *  The website's per-tournament choice (`tiebreak`): game difference, which is
+ *  what every event created before the choice keeps, or the sum of the scores
+ *  of the opponents beaten followed by a seeded coin flip, the Invitational's
+ *  rule.
+ */
+export type SwissTiebreak = "gameDiff" | "beaten";
+
+/**
  *  A top-level destination. Most are placeholders today; each gets its feature
  *  slice as it lands. The frontend tab registry maps these 1:1 to views.
  */
@@ -7600,6 +7646,29 @@ export type Tourney = {
 	 */
 	feedsInto: FeedsInto | null,
 	championTeamId: string | null,
+	/**
+	 *  The Swiss table in the server's own order (`swissOrder`), or empty
+	 *  where it sends none: before the stage runs, and for free-for-all.
+	 *
+	 *  Read rather than recomputed, because the order is not something the
+	 *  client can reproduce: the `beaten` tiebreak ends in a coin flip seeded
+	 *  from a draw seed the server never sends, and the same order decides
+	 *  the playoff seeds.
+	 */
+	swissOrder: string[],
+	/**  How equal Swiss records are separated (`tiebreak`). */
+	swissTiebreak: SwissTiebreak,
+	/**
+	 *  The Swiss stage's record cuts, as the plan stores them. Set on the
+	 *  website for now; the client reads them so the start dialog does not ask
+	 *  for a round count the server would replace.
+	 */
+	swissCuts: SwissCuts,
+	/**
+	 *  Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
+	 *  that is the tiebreak.
+	 */
+	swissBeaten: { [key in string]: number },
 	/**  What this account may do here, as the server sees it. */
 	viewer: TourneyViewer,
 };
@@ -7641,6 +7710,8 @@ export type TourneyAction = { type: "addingPlayer" } |
 } } | { type: "archiving" } | { type: "signingUp" } | { type: "withdrawing" } | { type: "checkingIn" } | { type: "answeringReport"; payload: {
 	matchId: string,
 } } | { type: "decidingReport"; payload: {
+	matchId: string,
+} } | { type: "submittingReport"; payload: {
 	matchId: string,
 } } | { type: "postingChat"; payload: {
 	roomId: string,
@@ -7711,10 +7782,7 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 /**
  *  Agree with, or refuse, the score the opponent submitted.
  *
- *  The one report-shaped thing a player does here. Raising a result is the
- *  organiser's, but answering one raised elsewhere is not the same act, and
- *  a client that showed a pending report it could not answer would be worse
- *  than one that never showed it.
+ *  An organiser may answer for either side.
  */
 { type: "answerReport"; payload: {
 	tournamentId: string,
@@ -7723,6 +7791,17 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 } } |
 /**  Set a result as an organiser, which needs no confirmation. */
 { type: "decideReport"; payload: {
+	tournamentId: string,
+	report: MatchReport,
+} } |
+/**
+ *  Submit a score as a player, for the other side to confirm.
+ *
+ *  `report_submit`: the score only goes up, and every new game needs its
+ *  replay id. The winner and forfeit of `report` are not sent. Submitting
+ *  again replaces a submission nobody has answered yet.
+ */
+{ type: "submitReport"; payload: {
 	tournamentId: string,
 	report: MatchReport,
 } } |
@@ -8203,6 +8282,15 @@ export type TourneyDraft = {
 	rating: RatingGate,
 	/**  Entrant cap. Zero means no cap, which is the server's own convention. */
 	maxTeams: number,
+	/**
+	 *  Whether a player may submit a score for the other side to confirm.
+	 *
+	 *  On by default, as on the website. Always sent, from the event's own
+	 *  value when editing: the service reads an absent key as on, and a
+	 *  hardcoded value here used to turn it off on every event whose settings
+	 *  were saved from the client.
+	 */
+	playerReporting: boolean,
 };
 
 export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
@@ -8338,6 +8426,14 @@ export type TourneyMap = {
 	 *  a raw id.
 	 */
 	published: boolean,
+	/**
+	 *  Spawn information an organiser entered on the website, or `None`.
+	 *
+	 *  Carried so it survives an edit made here: the service overwrites the
+	 *  stored spec with whatever the save names, and a save that named none
+	 *  wiped it.
+	 */
+	spec: MapSpec | null,
 };
 
 /**  One match. */
@@ -8389,6 +8485,16 @@ export type TourneyMatch = {
 	 *  what makes a bracket auditable after the fact.
 	 */
 	replayIds: string[],
+	/**
+	 *  Replays of games that ended in a draw and were played again. They
+	 *  score nothing, but casters and the archive want the recordings.
+	 */
+	drawReplayIds: string[],
+	/**
+	 *  The team that forfeited, when the series ended that way. A walkover
+	 *  stores that side's score as -1, which is shown as FF, never as a number.
+	 */
+	forfeit: string | null,
 };
 
 /**

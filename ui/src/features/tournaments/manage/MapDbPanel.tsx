@@ -28,7 +28,7 @@ interface MapDbPanelProps {
   onDelete: (mapId: string) => void;
 }
 
-const BLANK: MapDraft = { id: "", name: "", description: "", published: false };
+const BLANK: MapDraft = { id: "", name: "", description: "", published: false, spec: null };
 
 export function MapDbPanel(props: MapDbPanelProps) {
   const { event, vault, busy } = props;
@@ -144,6 +144,9 @@ export function MapDbPanel(props: MapDbPanelProps) {
                       name: held.name,
                       description: held.description,
                       published: held.published,
+                      // Carried unchanged: the service replaces the stored
+                      // spawn information with whatever the save sends.
+                      spec: held.spec,
                     })
                   }
                 >
@@ -175,7 +178,7 @@ export function MapDbPanel(props: MapDbPanelProps) {
             // name and no image is refused only for want of organiser rights,
             // and that refuses all of them, so the last error still stands.
             for (const name of names) {
-              props.onSave({ id: "", name, description: "", published: true });
+              props.onSave({ id: "", name, description: "", published: true, spec: null });
             }
             setPicking(false);
           }}

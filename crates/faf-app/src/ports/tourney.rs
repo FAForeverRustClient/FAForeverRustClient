@@ -274,12 +274,8 @@ pub trait TourneyPort: Send + Sync {
     /// the one running late.
     async fn check_in(&self, tournament_id: &str) -> Result<(), RequestError>;
 
-    /// Answer a result raised against this account's match.
-    ///
-    /// The client never raises one: recording a result is the organiser's, and
-    /// `report_submit` additionally insists on one FAF replay id per game.
-    /// Answering is a different act, and a report raised from the website has
-    /// to be answerable here or the tab shows a decision it cannot make.
+    /// Answer a result raised against this account's match, or, as an
+    /// organiser, against either side's.
     ///
     /// `accept` is the whole point: rejecting is as ordinary an answer as
     /// agreeing, and it clears the pending score so the right one can follow.
@@ -292,6 +288,14 @@ pub trait TourneyPort: Send + Sync {
 
     /// Set a result as an organiser, which needs no confirmation.
     async fn decide_report(
+        &self,
+        tournament_id: &str,
+        report: &MatchReport,
+    ) -> Result<(), RequestError>;
+
+    /// Submit a score as a player, for the other side to confirm
+    /// (`report_submit`). One replay id per new game; no winner, no forfeit.
+    async fn submit_report(
         &self,
         tournament_id: &str,
         report: &MatchReport,

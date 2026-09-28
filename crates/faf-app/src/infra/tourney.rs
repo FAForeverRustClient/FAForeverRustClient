@@ -623,6 +623,19 @@ impl TourneyPort for TourneyClient {
         self.act(tournament_id, "report", body).await
     }
 
+    async fn submit_report(
+        &self,
+        tournament_id: &str,
+        report: &MatchReport,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "report_submit",
+            tourney::submit_report_body(report),
+        )
+        .await
+    }
+
     async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
         let document = self
             .get(&format!("t/{}/chat_rooms", encode(tournament_id)), &[])
@@ -768,6 +781,10 @@ impl TourneyPort for TourneyClient {
             "name": map.name.trim(),
             "description": map.description.trim(),
             "published": map.published,
+            // Always sent. `map_save` assigns the spec without checking whether
+            // one was given, so a save that left it out deleted the spawn
+            // information an organiser had entered on the website.
+            "spec": tourney::map_spec_body(map.spec.as_ref()),
         });
         // An empty id means "add"; sending it anyway would have the service look
         // for a map called "" and refuse.

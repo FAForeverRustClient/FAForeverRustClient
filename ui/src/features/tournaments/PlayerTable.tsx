@@ -7,7 +7,7 @@
 
 import type { PlayerSummary, Tourney, TourneyPlayer, TourneyTeam } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-import { PlayerChip } from "./PlayerChip";
+import { EntrantName } from "./EntrantName";
 import { rankedEntrants } from "./tourneyPresentation";
 import { profileOf } from "../../shared/rules/tourneyRules";
 
@@ -72,11 +72,7 @@ export function PlayerTable({
                 <td className="mono muted">{index + 1}</td>
                 <td>
                   <span className="tournament-entrant-name">
-                    {profile ? (
-                      <PlayerChip player={profile} overrideName={player.name} />
-                    ) : (
-                      player.name
-                    )}
+                    <EntrantName name={player.name} fafId={player.fafId} profile={profile} />
                     {player.note !== "" && <span className="muted"> ({player.note})</span>}
                     {player.pending && (
                       <span className="tournament-badge">{t("tournaments.entrants.pending")}</span>

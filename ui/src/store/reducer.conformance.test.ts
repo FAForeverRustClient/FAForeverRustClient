@@ -46,7 +46,7 @@ import type {
   UploadsState,
   VaultMap,
 } from "../ipc/bindings";
-import type { BracketKind, MatchPlan } from "../ipc/bindings";
+import type { BracketKind, MatchPlan, SwissCuts } from "../ipc/bindings";
 import fixture from "./__fixtures__/reducer-conformance.json";
 import { canLaunch, installTarget, updateAvailable } from "../shared/rules/galacticWarActions";
 import { noteForPlayer } from "../shared/rules/playerNotes";
@@ -66,6 +66,8 @@ import {
   isLegalFrom,
   isStructural,
   isSubmittable,
+  isPlayerSubmittable,
+  swissCutRounds,
   mapKey,
   matchVaultMap,
   mayEditFormat,
@@ -78,6 +80,7 @@ import {
   mayRename,
   mayPick,
   mayReport,
+  maySubmit,
   mayReportFfa,
   maySetVetoSides,
   mayVeto,
@@ -142,6 +145,7 @@ interface HelperFixture {
     mayPublish: boolean;
     mayRename: boolean;
     reportableMatchIds: string[];
+    submittableMatchIds: string[];
     name: string;
     event: Tourney;
     teamId: string | null;
@@ -160,6 +164,10 @@ interface HelperFixture {
   tourneyBusyMatches: Array<{
     pending: TourneyAction | null;
     busyMatchId: string | null;
+  }>;
+  tourneySwissCuts: Array<{
+    cuts: SwissCuts;
+    rounds: number | null;
   }>;
   tourneyOpenEvents: Array<{
     detailId: string | null;
@@ -185,6 +193,7 @@ interface HelperFixture {
     replayIds: string[];
     newGames: number;
     submittable: boolean;
+    playerSubmittable: boolean;
   }>;
   tourneyProfiles: Array<{
     name: string;
@@ -432,6 +441,9 @@ describe("tournament rule twins match Rust", () => {
       reportableMatchIds: event.matches
         .filter((entry) => mayReport(event, entry))
         .map((entry) => entry.id),
+      submittableMatchIds: event.matches
+        .filter((entry) => maySubmit(event, entry))
+        .map((entry) => entry.id),
     }).toEqual({
       teamRating: recorded.teamRating,
       wouldExceedTeamCap: recorded.wouldExceedTeamCap,
@@ -446,6 +458,7 @@ describe("tournament rule twins match Rust", () => {
       mayPublish: recorded.mayPublish,
       mayRename: recorded.mayRename,
       reportableMatchIds: recorded.reportableMatchIds,
+      submittableMatchIds: recorded.submittableMatchIds,
     });
   });
 
@@ -453,6 +466,13 @@ describe("tournament rule twins match Rust", () => {
     "narrows the pending write $pending.type to match $busyMatchId",
     ({ pending, busyMatchId: expected }) => {
       expect(busyMatchId(pending)).toBe(expected);
+    },
+  );
+
+  it.each(helpers.tourneySwissCuts)(
+    "derives $rounds rounds from record cuts $cuts.wins / $cuts.losses",
+    ({ cuts, rounds }) => {
+      expect(swissCutRounds(cuts)).toBe(rounds);
     },
   );
 
@@ -500,6 +520,8 @@ describe("tournament rule twins match Rust", () => {
       loserTo: null,
       pendingReport: null,
       replayIds: [],
+      drawReplayIds: [],
+      forfeit: null,
       veto: null,
       entrants: [],
       winners: [],
@@ -510,7 +532,17 @@ describe("tournament rule twins match Rust", () => {
     expect({
       newGames: newGames(entry, recorded.score1, recorded.score2),
       submittable: isSubmittable(entry, recorded.score1, recorded.score2),
-    }).toEqual({ newGames: recorded.newGames, submittable: recorded.submittable });
+      playerSubmittable: isPlayerSubmittable(
+        entry,
+        recorded.score1,
+        recorded.score2,
+        recorded.replayIds,
+      ),
+    }).toEqual({
+      newGames: recorded.newGames,
+      submittable: recorded.submittable,
+      playerSubmittable: recorded.playerSubmittable,
+    });
   });
 
   it.each(helpers.tourneyProfiles)("resolves $name", (recorded) => {
@@ -670,6 +702,7 @@ describe("tournament rule twins match Rust", () => {
         imageUrl: "",
         description: "",
         published: true,
+        spec: null,
       } satisfies TourneyMap;
       expect({
         key: mapKey(typed),

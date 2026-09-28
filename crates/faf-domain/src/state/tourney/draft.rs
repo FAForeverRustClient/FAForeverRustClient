@@ -168,6 +168,13 @@ pub struct TourneyDraft {
     pub rating: RatingGate,
     /// Entrant cap. Zero means no cap, which is the server's own convention.
     pub max_teams: i32,
+    /// Whether a player may submit a score for the other side to confirm.
+    ///
+    /// On by default, as on the website. Always sent, from the event's own
+    /// value when editing: the service reads an absent key as on, and a
+    /// hardcoded value here used to turn it off on every event whose settings
+    /// were saved from the client.
+    pub player_reporting: bool,
 }
 
 impl TourneyDraft {
@@ -177,6 +184,7 @@ impl TourneyDraft {
         Self {
             team_size: 2,
             plan: Some(MatchPlan::default_for(BracketKind::default())),
+            player_reporting: true,
             ..Self::default()
         }
     }

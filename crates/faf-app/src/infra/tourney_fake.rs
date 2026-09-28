@@ -1147,6 +1147,14 @@ impl TourneyPort for FakeTourney {
         })
     }
 
+    async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+        // Not simulated: the offline fake is no longer extended with new
+        // actions. The body is covered at the codec level instead.
+        Err(RequestError::rejected(
+            "Submitting a score is not available offline",
+        ))
+    }
+
     async fn decide_report(
         &self,
         tournament_id: &str,
@@ -1593,6 +1601,7 @@ impl TourneyPort for FakeTourney {
                 existing.name = name.to_string();
                 existing.description = map.description.trim().to_string();
                 existing.published = map.published;
+                existing.spec = map.spec.clone();
                 return Ok(());
             }
             let id = held.handle("map");
@@ -1602,6 +1611,7 @@ impl TourneyPort for FakeTourney {
                 image_url: String::new(),
                 description: map.description.trim().to_string(),
                 published: map.published,
+                spec: map.spec.clone(),
             });
             Ok(())
         })
@@ -2303,9 +2313,7 @@ fn apply(event: &mut Tourney, draft: &TourneyDraft) {
     event.mods = draft.mods.trim().to_string();
     event.prize = draft.prize;
     event.streams = draft.streams.clone();
-    // Always off, as the real body says: the client has no player reporting
-    // path, and the service would default an absent key to *on*.
-    event.player_reporting = false;
+    event.player_reporting = draft.player_reporting;
     event.event_date = draft.event_date;
     event.signup_opens_at = draft.signup_opens_at;
     event.signup_closes_at = draft.signup_closes_at;
@@ -2484,6 +2492,8 @@ fn entry(id: &str, round: i32, index: i32, teams: (Option<&str>, Option<&str>)) 
         points: Vec::new(),
         is_final: false,
         replay_ids: Vec::new(),
+        draw_replay_ids: Vec::new(),
+        forfeit: None,
     }
 }
 
@@ -2569,6 +2579,7 @@ fn map(id: &str, name: &str) -> TourneyMap {
         image_url: String::new(),
         description: String::new(),
         published: true,
+        spec: None,
     }
 }
 
@@ -2705,6 +2716,7 @@ fn signup_event() -> FakeEvent {
             image_url: String::new(),
             description: String::new(),
             published: true,
+            spec: None,
         },
         TourneyMap {
             id: "map2".into(),
@@ -2712,6 +2724,7 @@ fn signup_event() -> FakeEvent {
             image_url: String::new(),
             description: String::new(),
             published: true,
+            spec: None,
         },
     ];
     event.map_pools = vec![MapPool {
@@ -2769,10 +2782,8 @@ fn running_event() -> FakeEvent {
         slot: 1,
     });
     // A result the opponent raised, waiting on this account's answer. Seeded
-    // rather than submitted, because the client no longer raises one: recording
-    // a result is the organiser's, and `report_submit` additionally insists on a
-    // replay id per game. Answering a report raised on the website is the case
-    // that remains, and it has to be exercisable offline.
+    // rather than submitted: the fake does not simulate `report_submit`, but
+    // answering a submission has to be exercisable offline.
     semi_one.pending_report = Some(PendingReport {
         score1: 2,
         score2: 0,
@@ -2780,6 +2791,7 @@ fn running_event() -> FakeEvent {
         by_name: "Alan".into(),
         replay_ids: vec!["22334455".into(), "22334456".into()],
         at: Some(1_786_215_600),
+        draw_replay_ids: Vec::new(),
     });
     event.veto = faf_domain::state::VetoConfig {
         enabled: true,

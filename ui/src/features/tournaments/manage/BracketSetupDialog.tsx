@@ -16,7 +16,12 @@ import { Modal } from "../../../design-system/Modal";
 import type { BracketConfig, Tourney } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { bracketConfigOf, configIsSubmittable, roundsFor } from "../../../shared/rules/tourneyRules";
+import {
+  bracketConfigOf,
+  configIsSubmittable,
+  roundsFor,
+  swissCutRounds,
+} from "../../../shared/rules/tourneyRules";
 import { NumberInput } from "../../../design-system/NumberInput";
 
 /** The series lengths the service accepts. Anything else it silently makes 3. */
@@ -34,6 +39,7 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
   const [config, setConfig] = useState<BracketConfig>(() => bracketConfigOf(event));
   const teams = event.teams.length;
   const rounds = roundsFor(Math.max(teams, 2));
+  const cutRounds = swissCutRounds(event.swissCuts);
 
   const boSelect = (value: number, onPick: (bo: number) => void, label: string) => (
     <label className="tournament-field tournament-bo">
@@ -139,16 +145,31 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
         return (
           <>
             <p className="muted">{t("tournaments.setup.swiss", { teams: String(teams) })}</p>
-            <label className="tournament-field">
-              <span>{t("tournaments.setup.rounds")}</span>
-              <NumberInput
-                min={1}
-                max={15}
-                value={count}
-                disabled={busy}
-                onChange={(rounds) => set({ rounds })}
-              />
-            </label>
+            {/* With record cuts the server derives the round count and ignores
+                the one sent, so it is shown rather than asked for. */}
+            {cutRounds !== null ? (
+              <label className="tournament-field">
+                <span>{t("tournaments.setup.rounds")}</span>
+                <input type="number" value={cutRounds} disabled readOnly />
+                <small className="muted">
+                  {t("tournaments.setup.roundsFromCuts", {
+                    wins: event.swissCuts.wins,
+                    losses: event.swissCuts.losses,
+                  })}
+                </small>
+              </label>
+            ) : (
+              <label className="tournament-field">
+                <span>{t("tournaments.setup.rounds")}</span>
+                <NumberInput
+                  min={1}
+                  max={15}
+                  value={count}
+                  disabled={busy}
+                  onChange={(rounds) => set({ rounds })}
+                />
+              </label>
+            )}
             <label className="tournament-field">
               <span>{t("tournaments.setup.eachMatch")}</span>
               {/* Swiss takes Bo1 or Bo3 and nothing else. */}

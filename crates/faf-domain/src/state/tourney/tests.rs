@@ -59,6 +59,8 @@ fn playable_match() -> TourneyMatch {
         points: Vec::new(),
         is_final: false,
         replay_ids: Vec::new(),
+        draw_replay_ids: Vec::new(),
+        forfeit: None,
     }
 }
 
@@ -218,6 +220,7 @@ fn only_the_other_side_confirms_a_submitted_score() {
             by_name: "Nuggets".into(),
             replay_ids: vec!["22334455".into()],
             at: None,
+            draw_replay_ids: Vec::new(),
         }),
         ..playable_match()
     };
@@ -266,6 +269,7 @@ fn a_pool_is_found_through_its_round_assignment() {
                 image_url: String::new(),
                 description: String::new(),
                 published: true,
+                spec: None,
             },
             TourneyMap {
                 id: "m2".into(),
@@ -273,6 +277,7 @@ fn a_pool_is_found_through_its_round_assignment() {
                 image_url: String::new(),
                 description: String::new(),
                 published: true,
+                spec: None,
             },
         ],
         map_pools: vec![MapPool {
@@ -329,6 +334,7 @@ fn resolve(name: &str) -> Option<&'static str> {
         image_url: String::new(),
         description: String::new(),
         published: true,
+        spec: None,
     };
     match_vault_map(&map, &VAULT, |v| v.display, |v| v.folder).map(|v| v.display)
 }
@@ -785,6 +791,88 @@ fn a_swiss_table_counts_wins_then_game_difference() {
         vec![Some(1), Some(2), Some(3)],
         "a Swiss table always ranks every row"
     );
+}
+
+/// A decided Swiss match, `winner` over `loser` by `high` games to `low`.
+fn swiss_result(id: &str, winner: &str, loser: &str, high: i32, low: i32) -> TourneyMatch {
+    TourneyMatch {
+        id: id.into(),
+        bracket: BracketSide::Swiss,
+        status: MatchStatus::Done,
+        team1: Some(winner.into()),
+        team2: Some(loser.into()),
+        score1: Some(high),
+        score2: Some(low),
+        winner: Some(winner.into()),
+        loser: Some(loser.into()),
+        ..playable_match()
+    }
+}
+
+/// t1 went 2-0 winning both 1-0 (+2); t2 went 2-1 winning both 2-0 and
+/// losing 0-1 (+3). The server ranks the unbeaten one first.
+fn two_wins_apart_by_a_loss() -> Tourney {
+    let mut event = bracket_event(
+        BracketKind::Swiss,
+        vec![
+            ranked_team("t1", 1, None),
+            ranked_team("t2", 2, None),
+            ranked_team("t3", 3, None),
+            ranked_team("t4", 4, None),
+            ranked_team("t5", 5, None),
+        ],
+    );
+    event.matches = vec![
+        swiss_result("m1", "t1", "t3", 1, 0),
+        swiss_result("m2", "t1", "t4", 1, 0),
+        swiss_result("m3", "t2", "t3", 2, 0),
+        swiss_result("m4", "t2", "t4", 2, 0),
+        swiss_result("m5", "t5", "t2", 1, 0),
+    ];
+    event
+}
+
+#[test]
+fn fewer_losses_rank_above_a_better_game_difference() {
+    let rows = two_wins_apart_by_a_loss().standings();
+    assert_eq!(rows[0].team_id, "t1", "2-0 on +2 is above 2-1 on +3");
+    assert_eq!((rows[0].wins, rows[0].losses, rows[0].game_diff), (2, 0, 2));
+    assert_eq!(rows[1].team_id, "t2");
+    assert_eq!((rows[1].wins, rows[1].losses, rows[1].game_diff), (2, 1, 3));
+    assert!(
+        rows.iter().all(|row| row.beaten.is_none()),
+        "no beaten column by default"
+    );
+}
+
+#[test]
+fn the_servers_own_swiss_order_is_the_order_shown() {
+    // The server's order can differ from anything the client works out: the
+    // beaten tiebreak ends in a coin flip seeded from a value it never sends.
+    let mut event = two_wins_apart_by_a_loss();
+    event.swiss_order = vec![
+        "t2".into(),
+        "t1".into(),
+        "t5".into(),
+        "t3".into(),
+        "t4".into(),
+    ];
+    event.swiss_tiebreak = SwissTiebreak::Beaten;
+    event.swiss_beaten = [("t1".to_string(), 0), ("t2".to_string(), 1)]
+        .into_iter()
+        .collect();
+
+    let rows = event.standings();
+    let order: Vec<&str> = rows.iter().map(|row| row.team_id.as_str()).collect();
+    assert_eq!(order, vec!["t2", "t1", "t5", "t3", "t4"]);
+    assert_eq!(rows[0].beaten, Some(1));
+    assert_eq!(rows[1].beaten, Some(0));
+    assert_eq!(
+        rows[2].beaten,
+        Some(0),
+        "a team that beat nobody sums to nothing"
+    );
+    assert_eq!(rows[0].place, Some(1));
 }
 
 #[test]
