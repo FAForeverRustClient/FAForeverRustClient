@@ -64,6 +64,14 @@ interface Props {
    * point at, and on a full 6v6 below the fold (issue 351).
    */
   action?: ReactNode;
+  /**
+   * Opens the enlarged map for a caller that has to hold it itself. The hover
+   * card does: it closes as soon as the dialog covers it, and a preview kept in
+   * the card's own state went with it, a blink after it opened (issue 359).
+   * Without this the card keeps the preview, which is right where the card
+   * stays on screen.
+   */
+  onOpenMapPreview?: () => void;
 }
 
 /**
@@ -135,6 +143,7 @@ export function GameSummaryCard({
   onOpenConversation,
   onPlayerContextMenu,
   action,
+  onOpenMapPreview,
 }: Props) {
   const countryOf = useCountryLabel();
   const { t } = useTranslation();
@@ -150,13 +159,7 @@ export function GameSummaryCard({
   // and where do the spawns sit. Same dialog as the Maps tab's, so the zoom,
   // the pan and the copy button are the ones already learned elsewhere.
   const [previewOpen, setPreviewOpen] = useState(false);
-  // A generated map carries its size in its name, and the generator slice has
-  // it decoded wherever anything has asked. Nothing here asks, so this is the
-  // answer if one is already there and nothing if not.
-  const decodedSize = useAppStore(
-    (state) => state.state.mapGenerator.decoded?.[presence.game.map]?.mapSize,
-  );
-  const size = mapSize(vault, presence.game.map, decodedSize);
+  const openPreview = onOpenMapPreview ?? (() => setPreviewOpen(true));
   // Named for what it answers rather than for the field it came from: how long
   // somebody has been playing, or how long a lobby has been sitting open.
   const elapsedLabel = presence.status === "hosting" || presence.status === "lobbying"
@@ -171,7 +174,7 @@ export function GameSummaryCard({
             <button
               type="button"
               className="chat-game-card-map-open"
-              onClick={() => setPreviewOpen(true)}
+              onClick={openPreview}
               title={t("maps.preview.enlarge", { name: presentation.displayName })}
               aria-label={t("maps.preview.enlarge", { name: presentation.displayName })}
             >
@@ -297,30 +300,62 @@ export function GameSummaryCard({
         <p className="chat-game-no-teams muted">{t("chat.game.noLineup")}</p>
       ))}
       {previewOpen && (
-        <MapPreviewDialog
-          map={{ folderName: presence.game.map, displayName: presentation.displayName }}
+        <GameMapPreviewDialog
+          presence={presence}
+          vault={vault}
           onClose={() => setPreviewOpen(false)}
-          meta={[
-            size?.full,
-            t("chat.game.players", {
-              count: presence.game.players,
-              max: presence.game.maxPlayers,
-            }),
-          ].filter(Boolean).join(" · ")}
-        >
-          {/* The same art the thumbnail resolved, asked for large: a game's
-              map can be one the generator just made, which the vault has
-              never heard of. */}
-          <MapThumbnail
-            mapName={presence.game.map}
-            vault={vault}
-            className="chat-game-preview-zoom-img"
-            placeholderClassName="chat-game-preview-placeholder"
-            preferCanonicalPreview
-            large
-          />
-        </MapPreviewDialog>
+        />
       )}
     </>
+  );
+}
+
+/**
+ * The enlarged map of the game a card describes (issue 359). Its own component
+ * so a caller can keep it open after the card itself has gone: see
+ * `onOpenMapPreview`.
+ */
+export function GameMapPreviewDialog({
+  presence,
+  vault,
+  onClose,
+}: {
+  presence: GamePresence;
+  vault: VaultMap[];
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const presentation = mapPresentation(vault, presence.game.map);
+  // A generated map carries its size in its name, and the generator slice has
+  // it decoded wherever anything has asked. Nothing here asks, so this is the
+  // answer if one is already there and nothing if not.
+  const decodedSize = useAppStore(
+    (state) => state.state.mapGenerator.decoded?.[presence.game.map]?.mapSize,
+  );
+  const size = mapSize(vault, presence.game.map, decodedSize);
+  return (
+    <MapPreviewDialog
+      map={{ folderName: presence.game.map, displayName: presentation.displayName }}
+      onClose={onClose}
+      meta={[
+        size?.full,
+        t("chat.game.players", {
+          count: presence.game.players,
+          max: presence.game.maxPlayers,
+        }),
+      ].filter(Boolean).join(" · ")}
+    >
+      {/* The same art the thumbnail resolved, asked for large: a game's map
+          can be one the generator just made, which the vault has never heard
+          of. */}
+      <MapThumbnail
+        mapName={presence.game.map}
+        vault={vault}
+        className="chat-game-preview-zoom-img"
+        placeholderClassName="chat-game-preview-placeholder"
+        preferCanonicalPreview
+        large
+      />
+    </MapPreviewDialog>
   );
 }
