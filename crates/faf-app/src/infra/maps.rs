@@ -41,6 +41,7 @@ use crate::infra::jsonapi::{
     rel_targets, resource_index, total_pages, value_bool, value_f64, value_i32, value_string,
     JsonApiDoc, JsonApiResource,
 };
+use crate::infra::review_totals::{self, Subject};
 use crate::infra::vault_install::{
     bounded_body_to_file, install_archive_from_file, validate_url, MAX_DOWNLOAD_BYTES,
 };
@@ -94,6 +95,27 @@ impl MapsClient {
 
     pub fn faf(tokens: crate::infra::session::TokenStore) -> Self {
         Self::new(MapsConfig::faf(), tokens)
+    }
+
+    /// Every version's reviews, not only the latest's: see
+    /// `infra::review_totals`. Best effort: a failure leaves the ratings as
+    /// the listing gave them.
+    async fn raise_ratings(&self, token: &str, maps: &mut [VaultMap]) {
+        let ids: Vec<i32> = maps.iter().map(|map| map.map_id).collect();
+        match review_totals::fetch(&self.http, token, &self.config.api_base, Subject::Map, &ids)
+            .await
+        {
+            Ok(totals) => {
+                for map in maps {
+                    if let Some(total) = totals.get(&map.map_id) {
+                        total.raise(&mut map.rating_tenths, &mut map.reviews);
+                    }
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, "could not add up the maps' ratings over their versions")
+            }
+        }
     }
 }
 
@@ -163,8 +185,10 @@ impl MapsPort for MapsClient {
         }
 
         let doc = fetch_document(&self.http, url, &token).await?;
+        let mut maps = parse_vault_maps(&doc);
+        self.raise_ratings(&token, &mut maps).await;
         Ok(MapSearchPage {
-            maps: parse_vault_maps(&doc),
+            maps,
             total_pages: total_pages(&doc.meta, query.page_size),
             total_records: meta_page_i32(&doc.meta, "totalRecords"),
         })
@@ -186,9 +210,15 @@ impl MapsPort for MapsClient {
         url.query_pairs_mut()
             .append_pair("filter", &filter)
             .append_pair("page[size]", &MAX_FOLDER_LOOKUPS.to_string())
-            .append_pair("include", "latestVersion,author,reviewsSummary");
+            // The same include as the listing, for the same reason (issue 356):
+            // without `latestVersion.reviewsSummary` a map looked up by folder
+            // carries only whichever summary hangs off the map itself, and
+            // reads "N/A" whenever that one is missing.
+            .append_pair("include", MAP_VAULT_INCLUDE);
         let doc = fetch_document(&self.http, url, &token).await?;
-        Ok(parse_vault_maps(&doc))
+        let mut maps = parse_vault_maps(&doc);
+        self.raise_ratings(&token, &mut maps).await;
+        Ok(maps)
     }
 
     async fn list_installed(&self) -> Result<Vec<InstalledMap>, String> {
@@ -1007,9 +1037,12 @@ fn parse_vault_maps(doc: &JsonApiDoc) -> Vec<VaultMap> {
             .flatten()
             .filter_map(|rel| find_rel_resource(doc, &index, Some(rel)))
             .map(parse_reviews_summary)
-            // Ties keep the first, which is the parent's: the order above is
-            // the order to believe them in when they agree on how many.
-            .max_by_key(|(_, reviews)| *reviews);
+            // Ties keep the first, which is the map's own: the order above is
+            // the order to believe them in when they agree on how many, and a
+            // summary hanging off the map counts every version's reviews while
+            // the latest version's counts only its own. `max_by_key` keeps the
+            // *last* of equal elements, which is the other way round.
+            .reduce(|best, next| if next.1 > best.1 { next } else { best });
 
             let (rating_tenths, reviews) =
                 if let Some(summary) = reviews_summary.filter(|(_, reviews)| *reviews > 0) {

@@ -6,7 +6,7 @@ import { ipc } from "../../../ipc/client";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
 import { mapPresentation } from "../../../shared/mapPresentation";
 import { type GamePresence } from "./gameSummary";
-import { GameSummaryCard, STATUS_LABEL } from "./GameSummaryCard";
+import { GameMapPreviewDialog, GameSummaryCard, STATUS_LABEL } from "./GameSummaryCard";
 import { GameStatusSword } from "./GameStatusSword";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { joinGame } from "../../../shared/joinGame";
@@ -26,6 +26,10 @@ interface Props {
 
 export function GameSummaryPopover({ presence, social, vault }: Props) {
   const [open, setOpen] = useState(false);
+  // Held here rather than in the card (issue 359): the dialog covers this
+  // popover, the pointer leaves it, and the popover closes, taking everything
+  // inside it along.
+  const [mapPreviewOpen, setMapPreviewOpen] = useState(false);
   const [position, setPosition] = useState({ top: 8, right: 8 });
   const anchor = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<number | undefined>(undefined);
@@ -184,6 +188,16 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
             vault={vault}
             now={now}
             showMap
+            onOpenMapPreview={() => {
+              // The popover gives way to the dialog on purpose: left open, it
+              // would float over the dialog's backdrop until the pointer
+              // happened to pass over it and out again.
+              window.clearTimeout(openTimer.current);
+              window.clearTimeout(closeTimer.current);
+              noteHoverPanelClosed(tooltipId);
+              setOpen(false);
+              setMapPreviewOpen(true);
+            }}
             action={(
               <button type="button" className="chat-head-action chat-game-popover-action" onClick={act}>
                 <Icon name={watching ? "eye" : "play"} size={14} />
@@ -193,6 +207,13 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
           />
         </aside>,
         document.body,
+      )}
+      {mapPreviewOpen && (
+        <GameMapPreviewDialog
+          presence={presence}
+          vault={vault}
+          onClose={() => setMapPreviewOpen(false)}
+        />
       )}
     </>
   );

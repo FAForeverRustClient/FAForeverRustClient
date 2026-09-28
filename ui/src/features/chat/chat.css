@@ -1219,6 +1219,51 @@ img.chat-game-map {
   aspect-ratio: 1;
 }
 
+/* The thumbnail is the way into the enlarged preview (issue 359), so it is a
+   button; it should still read as a picture, which is why it has no chrome of
+   its own until it is hovered or focused. */
+.chat-game-card-map-open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: zoom-in;
+}
+
+.chat-game-card-map-open:hover .chat-game-card-map,
+.chat-game-card-map-open:focus-visible .chat-game-card-map {
+  outline: 1px solid var(--color-border-strong);
+  outline-offset: -1px;
+}
+
+.chat-game-card-map-open:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* Inside the dialog the picture is as large as the frame allows, the way the
+   host dialog's enlarged map is. */
+.chat-game-preview-zoom-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chat-game-preview-placeholder {
+  display: flex;
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  color: var(--color-subtle);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
 .chat-game-card-map.chat-game-map-placeholder {
   display: flex;
   align-items: center;

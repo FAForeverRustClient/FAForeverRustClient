@@ -8,7 +8,7 @@ import { GameMapImage } from "../GameMapImage";
 import { mapPresentation, mapVersionOf } from "../../../shared/mapPresentation";
 import { t } from "../../../i18n";
 import { PlayerName } from "../../../shared/components/nameColors";
-import { formatAge, playingCount, showsUnrankedTag, simModsKeepGameRanked } from "./gameRules";
+import { formatAge, playingCount, showsUnrankedTag, simModsKeepGameRanked } from "../../../shared/gameRules";
 import { RatingRangeTag } from "./RatingRangeTag";
 import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
 import { hideGlobalLineup, useGameLineupPosition, useGameSocialPosition } from "./hoverPopovers";

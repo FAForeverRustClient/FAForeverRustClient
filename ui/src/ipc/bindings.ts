@@ -3200,6 +3200,19 @@ export type LiveReplayFilters = {
 	maxPlayers: string,
 	hideModded: boolean,
 	hideSinglePlayer: boolean,
+	/**
+	 *  Hides the games the client can tell will rate nobody: an unranked map,
+	 *  a sim mod that is not on the ranked list, or a free-for-all. Lobby
+	 *  settings are not visible to any client, so this is the same question
+	 *  the game browser's own "Hide unranked" asks, and the same answer.
+	 *
+	 *  `default` on this field alone rather than on the struct: a settings
+	 *  file written before this filter existed has every other key and not
+	 *  this one, and without it that whole object fails to parse and takes
+	 *  the reader's other filters with it. On the struct it would instead
+	 *  make every field optional in the generated bindings.
+	 */
+	hideUnranked?: boolean,
 	friendsOnly: boolean,
 };
 

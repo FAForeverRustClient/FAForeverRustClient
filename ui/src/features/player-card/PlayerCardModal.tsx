@@ -20,6 +20,7 @@ import { PlayerMapStatistics } from "./PlayerMapStatistics";
 import { PlayerStatistics } from "./PlayerStatistics";
 import { RatingHistoryChart } from "./RatingHistoryChart";
 import { closePlayerCard, openPlayerCard } from "../../shared/playerCardActions";
+import { takePlayerCardTab } from "../../shared/playerCardTabIntent";
 import { PlayerName } from "../../shared/components/nameColors";
 import "./player-card.css";
 import { formatNumber, type MessageKey } from "../../i18n";
@@ -399,7 +400,8 @@ export function PlayerCardModal() {
 
   useEffect(() => {
     if (!profile) return;
-    setTab("overview");
+    // Overview unless the click that opened the card asked for a tab (#361).
+    setTab(takePlayerCardTab() ?? "overview");
     setRatingId(profile.ratings[0]?.leaderboardId ?? null);
     setAvatarPickerOpen(false);
   }, [profile]);

@@ -1,11 +1,15 @@
 // What a listed game is: ranked or not, co-op or not, how many are playing,
 // how long it has been up. Pure functions over `Game`, shared by the tile,
 // the row, the lineup and the browser.
+//
+// In `shared/` rather than in the game browser it grew up in: the live replay
+// list asks the same question of the same `Game` (issue 357), and a second
+// copy of "is this rated" would be a second answer the moment either moved.
 
-import type { Game, VaultMap, VaultMod } from "../../../ipc/bindings";
-import { findVaultMapByFolder } from "../../../shared/mapPresentation";
-import { formatRelativeDuration } from "../../../shared/format/durations";
-import { t } from "../../../i18n";
+import type { Game, VaultMap, VaultMod } from "../ipc/bindings";
+import { findVaultMapByFolder } from "./mapPresentation";
+import { formatRelativeDuration } from "./format/durations";
+import { t } from "../i18n";
 
 export type GameViewMode = "list" | "tiles";
 

@@ -55,6 +55,7 @@ export const DEFAULT_LIVE_REPLAY_FILTERS: LiveReplayFilters = {
   maxPlayers: "",
   hideModded: false,
   hideSinglePlayer: false,
+  hideUnranked: false,
   friendsOnly: false,
 };
 
@@ -408,6 +409,7 @@ function parseLegacyLiveReplayFilters(
       maxPlayers: stringValue("maxPlayers"),
       hideModded: booleanValue("hideModded"),
       hideSinglePlayer: booleanValue("hideSinglePlayer"),
+      hideUnranked: booleanValue("hideUnranked"),
       friendsOnly: booleanValue("friendsOnly"),
     },
   }).liveReplayFilters;

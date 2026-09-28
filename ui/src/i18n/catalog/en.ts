@@ -706,6 +706,9 @@ export const en = {
   "lobby.matchmaker.recent.watch": "Watch",
   "lobby.matchmaker.recent.notYetAvailable": "The replay is still being uploaded.",
   "lobby.matchmaker.recent.openAria": "Open replay #{id} in the replay vault",
+  "lobby.matchmaker.recent.openResults": "View results on profile",
+  "lobby.matchmaker.recent.openResultsHint": "Open your profile on its Results tab, with your full game history",
+  "lobby.matchmaker.recent.watchHint": "Watch this replay",
   "lobby.matchmaker.summary.selected": { one: "{count} queue selected", other: "{count} queues selected" },
   "lobby.matchmaker.summary.searching": { one: "Searching {count} queue", other: "Searching {count} queues" },
   "lobby.matchmaker.summary.found": "Match found in {queue}",
@@ -1114,6 +1117,8 @@ export const en = {
   "replays.live.anySize": "Any size",
   "replays.live.hideModded": "Hide SIM-modded games",
   "replays.live.hideSinglePlayer": "Hide single-player games",
+  "replays.live.hideUnranked": "Hide unranked",
+  "replays.live.hideUnrankedHint": "Hides games the client can tell will rate nobody: an unranked map, an unranked sim mod, or a free-for-all. Lobby settings are not visible to any client.",
   "replays.live.friendsOnly": "Games with friends",
 
   // Advanced vault filters.

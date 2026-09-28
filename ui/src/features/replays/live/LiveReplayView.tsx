@@ -3,6 +3,7 @@ import { Icon } from "../../../design-system/Icon";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
 import { isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
+import { isCustomGameRanked } from "../../../shared/gameRules";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { LiveReplayControls } from "./LiveReplayControls";
 import { LiveReplayCards } from "./LiveReplayCards";
@@ -32,6 +33,10 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
   const lobbyStatus = useAppStore((s) => s.state.lobby.status);
   const mapVault = useAppStore((s) => s.state.maps.vault);
+  // The mod catalogue, for the ranked filter below: a sim mod that is not
+  // on the ranked list is one of the three things a client can see about
+  // whether a running game will rate anybody.
+  const modVault = useAppStore((s) => s.state.mods.vault);
   // Live co-op games name a mission folder, which only the co-op catalogue can
   // turn into the mission's name and artwork.
   const missions = useAppStore((s) => s.state.coop.missions);
@@ -80,6 +85,9 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
       connectLobby();
     }
     ipc.send({ kind: "Maps", command: { type: "loadVault" } });
+    // Both catalogues, for the same reason the Play tab loads both: "is
+    // this rated" is a question about the map and about the sim mods.
+    ipc.send({ kind: "Mods", command: { type: "loadVault" } });
   }, []);
 
   useEffect(() => {
@@ -131,16 +139,19 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           .join("\u0000")
           .toLocaleLowerCase(),
         simModCount: simMods.length,
+        // Decided once per game rather than once per game per render: both
+        // catalogues are indexed, but this runs over every live game there is.
+        ranked: isCustomGameRanked(game, mapVault, modVault),
       };
     }),
-    [liveGames],
+    [liveGames, mapVault, modVault],
   );
 
   const filteredGames = useMemo(() => {
     const search = filters.search.trim().toLocaleLowerCase();
     const direction = sortDirection === "ascending" ? 1 : -1;
     return indexedGames
-      .filter(({ game, players, searchText, simModCount }) => {
+      .filter(({ game, players, searchText, simModCount, ranked }) => {
         return (
           (!search || searchText.includes(search)) &&
           matchesFilterChoice(filters.gameType, game.gameType) &&
@@ -149,6 +160,7 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           matchesFilterChoice(filters.maxPlayers, game.maxPlayers) &&
           (!filters.hideModded || simModCount === 0) &&
           (!filters.hideSinglePlayer || game.players !== 1) &&
+          (!filters.hideUnranked || ranked) &&
           (!filters.friendsOnly || players.some((name) => friendSet.has(name.toLocaleLowerCase())))
         );
       })
@@ -216,6 +228,7 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     filters.maxPlayers,
     filters.hideModded,
     filters.hideSinglePlayer,
+    filters.hideUnranked,
     filters.friendsOnly,
   ].filter(Boolean).length;
 

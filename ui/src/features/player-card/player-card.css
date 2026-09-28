@@ -1560,6 +1560,14 @@
   margin: 0;
 }
 
+/* The next page sits under the rows (issue 362), so it is still on screen
+   once the reader has scrolled to the end of them. */
+.player-results-more {
+  display: flex;
+  justify-content: center;
+  padding-block: var(--space-2);
+}
+
 .player-results-table th,
 .player-results-table td {
   text-align: left;

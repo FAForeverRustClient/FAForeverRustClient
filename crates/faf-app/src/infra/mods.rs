@@ -57,6 +57,7 @@ use crate::infra::jsonapi::{
     fetch_all_pages, fetch_document, find_rel_resource, meta_page_i32, rel_target, resource_index,
     total_pages, value_bool, value_f64, value_i32, JsonApiDoc, JsonApiResource,
 };
+use crate::infra::review_totals::{self, ReviewTotal, Subject};
 use crate::infra::vault_install::{
     archive_root_name, bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
 };
@@ -305,6 +306,14 @@ impl ModsPort for ModsClient {
         for doc in &docs {
             all_mods.extend(parse_vault_mods(doc));
         }
+        // The installed view filters and sorts on these ratings, so they are
+        // added up here as well, for the whole vault in one pass.
+        match review_totals::fetch_whole_vault(&self.http, &token, &api_base, Subject::Mod).await {
+            Ok(totals) => raise_ratings(&mut all_mods, &totals),
+            Err(error) => {
+                tracing::warn!(%error, "could not add up the mods' ratings over their versions")
+            }
+        }
         Ok(all_mods)
     }
 
@@ -341,8 +350,24 @@ impl ModsPort for ModsClient {
         }
 
         let doc = fetch_document(&self.http, url, &token).await?;
+        let mut mods = parse_vault_mods(&doc);
+        let ids: Vec<i32> = mods.iter().map(|vault_mod| vault_mod.mod_id).collect();
+        match review_totals::fetch(
+            &self.http,
+            &token,
+            &self.config.api_base,
+            Subject::Mod,
+            &ids,
+        )
+        .await
+        {
+            Ok(totals) => raise_ratings(&mut mods, &totals),
+            Err(error) => {
+                tracing::warn!(%error, "could not add up the mods' ratings over their versions")
+            }
+        }
         Ok(ModSearchPage {
-            mods: parse_vault_mods(&doc),
+            mods,
             total_pages: total_pages(&doc.meta, query.page_size),
             total_records: meta_page_i32(&doc.meta, "totalRecords"),
         })
@@ -1098,6 +1123,15 @@ fn parse_reviews_summary(summary: &JsonApiResource) -> (i32, i32) {
     (rating_tenths, reviews)
 }
 
+/// Every version's reviews, not only the latest's: see `infra::review_totals`.
+fn raise_ratings(mods: &mut [VaultMod], totals: &HashMap<i32, ReviewTotal>) {
+    for vault_mod in mods {
+        if let Some(total) = totals.get(&vault_mod.mod_id) {
+            total.raise(&mut vault_mod.rating_tenths, &mut vault_mod.reviews);
+        }
+    }
+}
+
 fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
     let index = resource_index(&doc.included);
     doc.data
@@ -1134,9 +1168,12 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
             .flatten()
             .filter_map(|rel| find_rel_resource(doc, &index, Some(rel)))
             .map(parse_reviews_summary)
-            // Ties keep the first, which is the parent's: the order above is
-            // the order to believe them in when they agree on how many.
-            .max_by_key(|(_, reviews)| *reviews);
+            // Ties keep the first, which is the mod's own: the order above is
+            // the order to believe them in when they agree on how many, and a
+            // summary hanging off the mod counts every version's reviews while
+            // the latest version's counts only its own. `max_by_key` keeps the
+            // *last* of equal elements, which is the other way round.
+            .reduce(|best, next| if next.1 > best.1 { next } else { best });
 
             let (rating_tenths, reviews) =
                 if let Some(summary) = reviews_summary.filter(|(_, reviews)| *reviews > 0) {
