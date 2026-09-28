@@ -24,13 +24,21 @@ export function gameNeedsALaunchWrapper(): boolean {
 
 /**
  * Whether the client is running on Windows.
- *
- * For the settings that only exist there, such as the Steam status, which
- * needs a Windows library. The opposite default from the one above: an
- * unfamiliar user agent hides such a setting, because on any other system
- * switching it on would do nothing at all.
  */
 export function runsOnWindows(): boolean {
   const agent = typeof navigator === "undefined" ? "" : navigator.userAgent;
   return /Windows/i.test(agent);
+}
+
+/**
+ * Whether the Steam status can work here: Windows and Linux, the two systems
+ * the client is released for and ships Valve's library on.
+ *
+ * The opposite default from [`gameNeedsALaunchWrapper`]: an unfamiliar user
+ * agent hides the setting, because on any other system switching it on would
+ * do nothing at all. Android's user agent says Linux too, and is not one.
+ */
+export function steamStatusIsSupported(): boolean {
+  const agent = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  return runsOnWindows() || (/Linux/i.test(agent) && !/Android/i.test(agent));
 }

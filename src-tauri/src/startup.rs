@@ -111,21 +111,22 @@ pub(crate) fn locate_bundled_helpers(app: &tauri::App) {
         }
     }
 
-    // Valve's library, for showing a game on Steam. Windows only, and absent
-    // from a build that does not carry it, in which case the setting that uses
-    // it simply does nothing.
-    #[cfg(windows)]
-    if std::env::var("FAF_STEAM_API_PATH")
-        .unwrap_or_default()
-        .is_empty()
-    {
-        if let Ok(resource_dir) = app.path().resource_dir() {
-            let bundled_library = resource_dir
-                .join("natives")
-                .join("steam")
-                .join("steam_api64.dll");
-            if bundled_library.is_file() {
-                std::env::set_var("FAF_STEAM_API_PATH", bundled_library);
+    // Valve's library, for showing a game on Steam. Windows and Linux only,
+    // and absent from a build that does not carry it, in which case the
+    // setting that uses it simply does nothing.
+    if let Some((library_name, _)) = faf_app::infra::steam_presence::LIBRARY {
+        if std::env::var("FAF_STEAM_API_PATH")
+            .unwrap_or_default()
+            .is_empty()
+        {
+            if let Ok(resource_dir) = app.path().resource_dir() {
+                let bundled_library = resource_dir
+                    .join("natives")
+                    .join("steam")
+                    .join(library_name);
+                if bundled_library.is_file() {
+                    std::env::set_var("FAF_STEAM_API_PATH", bundled_library);
+                }
             }
         }
     }
