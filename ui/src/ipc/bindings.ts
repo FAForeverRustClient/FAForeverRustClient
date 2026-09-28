@@ -1969,6 +1969,53 @@ export type EventsStatus = { type: "idle" } | { type: "loading" } | { type: "rea
 	reason: string,
 } };
 
+export type FactionChoices = {
+	bans: TourneyFaction[],
+	/**  In order of preference: the first the opponent did not ban is played. */
+	picks: TourneyFaction[],
+	done: boolean,
+};
+
+export type FactionResult = {
+	team1: TourneyFaction,
+	team2: TourneyFaction,
+};
+
+/**  The choice that is due: "ban, the 1st of 1", "pick, the 2nd of 3". */
+export type FactionStep = {
+	action: PoolAction,
+	index: number,
+	of: number,
+};
+
+/**
+ *  Whether an event runs faction vetoes, and how many bans and picks each
+ *  player makes per game (`fveto`).
+ *
+ *  A 1v1 feature: the service refuses it for teams and for free-for-all, see
+ *  [`Tourney::faction_veto_on`]. Picks always outnumber bans, so an opponent
+ *  can never ban every faction a player named.
+ */
+export type FactionVetoConfig = {
+	enabled: boolean,
+	bans: number,
+	picks: number,
+};
+
+/**  One game's faction veto. */
+export type FactionVetoGame = {
+	/**  Which game of the series, from 1. */
+	game: number,
+	team1Done: boolean,
+	team2Done: boolean,
+	/**  The factions played, once both sides are done. */
+	result: FactionResult | null,
+	/**  This account's own choices so far. Sent to the two players only. */
+	mine: FactionChoices | null,
+	/**  What this account owes next, or `None` when it owes nothing. */
+	next: FactionStep | null,
+};
+
 /**  The parent this tournament feeds, where it feeds one. */
 export type FeedsInto = {
 	parentId: string,
@@ -4072,6 +4119,21 @@ export type MapsState = {
 	 *  either side infers.
 	 */
 	localPreviewOrder: string[],
+};
+
+/**
+ *  One match's faction veto, as this account may see it.
+ *
+ *  The choices are secret: the service sends a competitor their own bans and
+ *  picks, and everybody else, organisers included, only which side is done,
+ *  until both are and the result exists. Nothing here is worked out
+ *  client-side for the same reason.
+ */
+export type MatchFactionVeto = {
+	bans: number,
+	picks: number,
+	/**  One per game of the series, in game order. */
+	games: FactionVetoGame[],
 };
 
 /**
@@ -7508,6 +7570,11 @@ export type Tourney = {
 	chatLocked: boolean,
 	/**  Whether this event bans and picks its maps, and how. */
 	veto: VetoConfig,
+	/**
+	 *  Whether this event runs faction vetoes, and with how many bans and
+	 *  picks. Only in effect where [`Self::faction_veto_on`] says so.
+	 */
+	factionVeto: FactionVetoConfig,
 	/**  How the free-for-all is run. `None` for a team event. */
 	ffa: FfaConfig | null,
 	/**
@@ -7713,7 +7780,7 @@ export type TourneyAction = { type: "addingPlayer" } |
 	matchId: string,
 } } | { type: "reportingFfa"; payload: {
 	matchId: string,
-} } | { type: "drafting" } | { type: "savingMap" } | { type: "publishingMap"; payload: {
+} } | { type: "drafting" } | { type: "savingFactionVeto" } | { type: "savingMap" } | { type: "publishingMap"; payload: {
 	mapId: string,
 } } | { type: "deletingMap"; payload: {
 	mapId: string,
@@ -8069,6 +8136,26 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 	matchId: string,
 } } |
+/**
+ *  Make the faction ban or pick that is due for one game (`fveto_action`).
+ *
+ *  The two players' own: an organiser cannot act for them, because the
+ *  choices are secret until both sides are done.
+ */
+{ type: "factionVeto"; payload: {
+	tournamentId: string,
+	matchId: string,
+	game: number,
+	faction: TourneyFaction,
+} } |
+/**
+ *  Switch faction vetoes on or off, or change their numbers
+ *  (`fveto_config`). Applied to every match that has no result yet.
+ */
+{ type: "setFactionVeto"; payload: {
+	tournamentId: string,
+	config: FactionVetoConfig,
+} } |
 /**  Add a map to the event's own database, or edit one already in it. */
 { type: "saveMap"; payload: {
 	tournamentId: string,
@@ -8376,6 +8463,9 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	detail: SeriesDetail,
 } } | { type: "seriesClosed" };
 
+/**  One of the four factions a faction veto bans and picks from. */
+export type TourneyFaction = "uef" | "aeon" | "cybran" | "seraphim";
+
 /**
  *  Somebody the organiser asked to enter.
  *
@@ -8397,11 +8487,12 @@ export type TourneyMap = {
 	id: string,
 	name: string,
 	/**
-	 *  Preview image served by the tournament server, when it has one.
+	 *  The organiser's uploaded picture, as the service sends it: a bare file
+	 *  name under `/map-images/` on the tournament server, or empty.
 	 *
-	 *  Usually empty, and that is fine: the client prefers FAF's own vault
-	 *  preview anyway (see [`match_vault_map`]). The tournament server's copy
-	 *  exists for maps that are not in the vault at all.
+	 *  The only picture the website shows. The frontend resolves it against
+	 *  the service's base and falls back to FAF's vault (see
+	 *  [`match_vault_map`]) only where nobody uploaded one.
 	 */
 	imageUrl: string,
 	/**
@@ -8460,6 +8551,11 @@ export type TourneyMatch = {
 	 *  the point of having one.
 	 */
 	veto: MatchVeto | null,
+	/**
+	 *  The faction veto, where the event runs them, in the slice this account
+	 *  may see.
+	 */
+	factionVeto: MatchFactionVeto | null,
 	/**
 	 *  Everyone in this free-for-all lobby. Empty for a two-sided match, which
 	 *  uses `team1`/`team2` instead.

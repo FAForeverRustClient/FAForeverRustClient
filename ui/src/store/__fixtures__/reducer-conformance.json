@@ -7353,6 +7353,11 @@
                       "enabled": false,
                       "mode": "upfront"
                     },
+                    "factionVeto": {
+                      "enabled": false,
+                      "bans": 1,
+                      "picks": 2
+                    },
                     "ffa": null,
                     "draft": null,
                     "pendingCaptains": [],
@@ -7450,6 +7455,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -7647,6 +7657,11 @@
                       "enabled": false,
                       "mode": "upfront"
                     },
+                    "factionVeto": {
+                      "enabled": false,
+                      "bans": 1,
+                      "picks": 2
+                    },
                     "ffa": null,
                     "draft": null,
                     "pendingCaptains": [],
@@ -7740,6 +7755,11 @@
                     "veto": {
                       "enabled": false,
                       "mode": "upfront"
+                    },
+                    "factionVeto": {
+                      "enabled": false,
+                      "bans": 1,
+                      "picks": 2
                     },
                     "ffa": null,
                     "draft": null,
@@ -7838,6 +7858,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -7932,6 +7957,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -8078,6 +8108,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -8172,6 +8207,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -8315,6 +8355,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -8409,6 +8454,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -8552,6 +8602,11 @@
                     "enabled": false,
                     "mode": "upfront"
                   },
+                  "factionVeto": {
+                    "enabled": false,
+                    "bans": 1,
+                    "picks": 2
+                  },
                   "ffa": null,
                   "draft": null,
                   "pendingCaptains": [],
@@ -8641,6 +8696,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -8741,6 +8801,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -8835,6 +8900,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -8976,6 +9046,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -9076,6 +9151,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -9170,6 +9250,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -9323,6 +9408,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -9423,6 +9513,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -9517,6 +9612,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -9653,6 +9753,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -9753,6 +9858,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -9847,6 +9957,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -9988,6 +10103,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -10088,6 +10208,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -10182,6 +10307,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -10326,6 +10456,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -10426,6 +10561,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -10520,6 +10660,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -10668,6 +10813,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -10777,6 +10927,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -10871,6 +11026,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -11012,6 +11172,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -11121,6 +11286,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -11215,6 +11385,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -11366,6 +11541,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -11460,6 +11640,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -11610,6 +11795,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -11704,6 +11894,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -11864,6 +12059,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -11958,6 +12158,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -12101,6 +12306,11 @@
                     "enabled": false,
                     "mode": "upfront"
                   },
+                  "factionVeto": {
+                    "enabled": false,
+                    "bans": 1,
+                    "picks": 2
+                  },
                   "ffa": null,
                   "draft": null,
                   "pendingCaptains": [],
@@ -12204,6 +12414,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -12298,6 +12513,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -12442,6 +12662,11 @@
                       "enabled": false,
                       "mode": "upfront"
                     },
+                    "factionVeto": {
+                      "enabled": false,
+                      "bans": 1,
+                      "picks": 2
+                    },
                     "ffa": null,
                     "draft": null,
                     "pendingCaptains": [],
@@ -12546,6 +12771,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -13852,6 +14082,11 @@
                       "enabled": false,
                       "mode": "upfront"
                     },
+                    "factionVeto": {
+                      "enabled": false,
+                      "bans": 1,
+                      "picks": 2
+                    },
                     "ffa": null,
                     "draft": null,
                     "pendingCaptains": [],
@@ -13945,6 +14180,11 @@
                     "veto": {
                       "enabled": false,
                       "mode": "upfront"
+                    },
+                    "factionVeto": {
+                      "enabled": false,
+                      "bans": 1,
+                      "picks": 2
                     },
                     "ffa": null,
                     "draft": null,
@@ -14043,6 +14283,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -14137,6 +14382,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -14280,6 +14530,11 @@
                     "enabled": false,
                     "mode": "upfront"
                   },
+                  "factionVeto": {
+                    "enabled": false,
+                    "bans": 1,
+                    "picks": 2
+                  },
                   "ffa": null,
                   "draft": null,
                   "pendingCaptains": [],
@@ -14369,6 +14624,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -14469,6 +14729,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -14563,6 +14828,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -14740,6 +15010,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -14840,6 +15115,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -14934,6 +15214,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -15092,6 +15377,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -15192,6 +15482,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -15286,6 +15581,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -15441,6 +15741,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -15541,6 +15846,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -15635,6 +15945,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -15812,6 +16127,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -15912,6 +16232,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -16006,6 +16331,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -16174,6 +16504,11 @@
               "draft": null,
               "draftSnakes": false,
               "eventDate": null,
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
               "feedsInto": null,
               "ffa": null,
               "formation": "solo",
@@ -16274,6 +16609,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -16368,6 +16708,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -16514,6 +16859,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -16608,6 +16958,11 @@
                 "draft": null,
                 "draftSnakes": false,
                 "eventDate": null,
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
                 "feedsInto": null,
                 "ffa": null,
                 "formation": "solo",
@@ -35803,6 +36158,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -35981,6 +36341,8 @@
         "mayPublish": false,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [
           {
             "id": "global",
@@ -36048,6 +36410,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -36228,6 +36595,8 @@
         "mayPublish": false,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -36276,6 +36645,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -36375,6 +36749,8 @@
         "mayPublish": false,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -36423,6 +36799,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -36504,6 +36885,8 @@
         "mayPublish": false,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -36552,6 +36935,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -36617,6 +37005,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -36644,6 +37033,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -36671,6 +37061,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -36733,6 +37124,8 @@
         "mayPublish": false,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -36781,6 +37174,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -36846,6 +37244,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -36873,6 +37272,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -36900,6 +37300,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -36964,6 +37365,8 @@
           "m1"
         ],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37012,6 +37415,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -37077,6 +37485,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -37104,6 +37513,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -37131,6 +37541,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -37193,6 +37604,8 @@
         "mayPublish": false,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37241,6 +37654,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -37306,6 +37724,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -37333,6 +37752,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -37360,6 +37780,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -37422,6 +37843,8 @@
         "mayPublish": true,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37470,6 +37893,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -37535,6 +37963,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -37562,6 +37991,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -37589,6 +38019,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -37651,6 +38082,8 @@
         "mayPublish": false,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37699,6 +38132,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -37813,6 +38251,8 @@
         "mayPublish": false,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37861,6 +38301,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -37975,6 +38420,8 @@
         "mayPublish": false,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37996,7 +38443,7 @@
           "competition": "team",
           "formation": "open",
           "bracketKind": "single",
-          "teamSize": 2,
+          "teamSize": 1,
           "divisions": 0,
           "maxTeams": 0,
           "minTeams": 0,
@@ -38023,6 +38470,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": true,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -38088,6 +38540,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -38115,6 +38568,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -38142,6 +38596,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -38206,6 +38661,8 @@
         "submittableMatchIds": [
           "m1"
         ],
+        "factionVetoOn": true,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -38227,7 +38684,7 @@
           "competition": "team",
           "formation": "open",
           "bracketKind": "single",
-          "teamSize": 2,
+          "teamSize": 1,
           "divisions": 0,
           "maxTeams": 0,
           "minTeams": 0,
@@ -38254,6 +38711,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": true,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -38319,6 +38781,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -38346,6 +38809,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -38373,6 +38837,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -38435,6 +38900,8 @@
         "mayPublish": false,
         "reportableMatchIds": [],
         "submittableMatchIds": [],
+        "factionVetoOn": true,
+        "mayConfigureFactionVeto": false,
         "rooms": [],
         "unreadTotal": 0
       }
@@ -38694,6 +39161,72 @@
           "losses": 3
         },
         "rounds": 3
+      }
+    ],
+    "tourneyFactionConfigs": [
+      {
+        "config": {
+          "enabled": true,
+          "bans": 1,
+          "picks": 2
+        },
+        "submittable": true
+      },
+      {
+        "config": {
+          "enabled": true,
+          "bans": 2,
+          "picks": 3
+        },
+        "submittable": true
+      },
+      {
+        "config": {
+          "enabled": true,
+          "bans": 1,
+          "picks": 1
+        },
+        "submittable": false
+      },
+      {
+        "config": {
+          "enabled": true,
+          "bans": 2,
+          "picks": 2
+        },
+        "submittable": false
+      },
+      {
+        "config": {
+          "enabled": true,
+          "bans": 1,
+          "picks": 4
+        },
+        "submittable": false
+      },
+      {
+        "config": {
+          "enabled": true,
+          "bans": 3,
+          "picks": 3
+        },
+        "submittable": false
+      },
+      {
+        "config": {
+          "enabled": false,
+          "bans": 1,
+          "picks": 1
+        },
+        "submittable": true
+      },
+      {
+        "config": {
+          "enabled": false,
+          "bans": 0,
+          "picks": 2
+        },
+        "submittable": false
       }
     ],
     "tourneyDraftRejections": [
@@ -39608,6 +40141,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -39824,6 +40362,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -40013,6 +40556,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -40091,6 +40639,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40118,6 +40667,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40241,6 +40791,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -40349,6 +40904,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40376,6 +40932,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40403,6 +40960,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40430,6 +40988,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40457,6 +41016,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40598,6 +41158,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -40706,6 +41271,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40733,6 +41299,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40760,6 +41327,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40787,6 +41355,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40814,6 +41383,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -40963,6 +41533,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -41137,6 +41712,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": {
             "perMatch": 3,
             "advance": 1,
@@ -41222,6 +41802,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [
@@ -41357,6 +41938,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -41777,6 +42363,11 @@
             "enabled": true,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -41899,6 +42490,7 @@
                 "done": false,
                 "decider": null
               },
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -41995,6 +42587,11 @@
             "enabled": true,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -42117,6 +42714,7 @@
                 "done": false,
                 "decider": null
               },
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -42213,6 +42811,11 @@
             "enabled": true,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -42335,6 +42938,7 @@
                 "done": false,
                 "decider": null
               },
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -42430,6 +43034,11 @@
           "veto": {
             "enabled": true,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -42553,6 +43162,7 @@
                 "done": false,
                 "decider": null
               },
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -42648,6 +43258,11 @@
           "veto": {
             "enabled": true,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -42771,6 +43386,7 @@
                 "done": false,
                 "decider": null
               },
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -42866,6 +43482,11 @@
           "veto": {
             "enabled": true,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -42989,6 +43610,7 @@
                 "done": true,
                 "decider": null
               },
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -43084,6 +43706,11 @@
           "veto": {
             "enabled": true,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -43207,6 +43834,7 @@
                 "done": false,
                 "decider": null
               },
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -43302,6 +43930,11 @@
           "veto": {
             "enabled": true,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -43425,6 +44058,7 @@
                 "done": false,
                 "decider": null
               },
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -43521,6 +44155,11 @@
             "enabled": true,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -43615,6 +44254,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -43712,6 +44352,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": {
             "perMatch": 3,
@@ -43843,6 +44488,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -43874,6 +44520,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t4",
                 "t5",
@@ -43993,6 +44640,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": {
             "perMatch": 3,
             "advance": 1,
@@ -44123,6 +44775,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -44154,6 +44807,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t4",
                 "t5",
@@ -44269,6 +44923,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": {
             "perMatch": 3,
             "advance": 1,
@@ -44399,6 +45058,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -44430,6 +45090,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t4",
                 "t5",
@@ -44549,6 +45210,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": {
             "perMatch": 3,
             "advance": 1,
@@ -44679,6 +45345,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -44710,6 +45377,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t4",
                 "t5",
@@ -44818,6 +45486,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": {
             "perMatch": 3,
             "advance": 1,
@@ -44948,6 +45621,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -44979,6 +45653,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t4",
                 "t5",
@@ -45088,6 +45763,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": {
             "perMatch": 3,
             "advance": 1,
@@ -45218,6 +45898,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -45249,6 +45930,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t4",
                 "t5",
@@ -45356,6 +46038,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": {
             "perMatch": 3,
@@ -45487,6 +46174,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -45518,6 +46206,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t4",
                 "t5",
@@ -45626,6 +46315,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": {
             "perMatch": 3,
@@ -45757,6 +46451,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -45788,6 +46483,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t4",
                 "t5",
@@ -45896,6 +46592,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": {
             "perMatch": 3,
@@ -46027,6 +46728,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -46135,6 +46837,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": {
             "perMatch": 3,
             "advance": 1,
@@ -46265,6 +46972,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -46373,6 +47081,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": {
             "perMatch": 3,
             "advance": 1,
@@ -46503,6 +47216,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [
                 "t1",
                 "t2",
@@ -46612,6 +47326,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": {
@@ -46825,6 +47544,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": {
             "order": [
@@ -47037,6 +47761,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": {
             "order": [
@@ -47248,6 +47977,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": {
@@ -47465,6 +48199,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": {
             "order": [
@@ -47680,6 +48419,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": {
@@ -47897,6 +48641,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": {
             "order": [
@@ -48113,6 +48862,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": {
             "order": [
@@ -48324,6 +49078,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": {
@@ -48541,6 +49300,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": {
             "order": [
@@ -48755,6 +49519,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -48863,6 +49632,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -48964,6 +49738,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -49073,6 +49852,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -49174,6 +49958,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -49283,6 +50072,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -49384,6 +50178,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -49492,6 +50291,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -49595,6 +50399,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -49703,6 +50512,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -49804,6 +50618,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -49913,6 +50732,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -50014,6 +50838,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -50123,6 +50952,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -50226,6 +51060,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -50353,6 +51192,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -50478,6 +51322,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -50605,6 +51454,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -50730,6 +51584,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -50857,6 +51716,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -50982,6 +51846,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -51109,6 +51978,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -51235,6 +52109,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -51360,6 +52239,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -51488,6 +52372,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -51709,6 +52598,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -51829,6 +52723,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -52082,6 +52981,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -52233,6 +53137,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -52360,6 +53269,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -52476,6 +53390,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -52578,6 +53497,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -52610,6 +53534,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -52637,6 +53562,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -52664,6 +53590,7 @@
               "loserTo": null,
               "pendingReport": null,
               "veto": null,
+              "factionVeto": null,
               "entrants": [],
               "winners": [],
               "points": [],
@@ -52951,6 +53878,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -53180,6 +54112,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -53378,6 +54315,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,
@@ -53616,6 +54558,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -53845,6 +54792,11 @@
             "enabled": false,
             "mode": "upfront"
           },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
           "ffa": null,
           "draft": null,
           "pendingCaptains": [],
@@ -54066,6 +55018,11 @@
           "veto": {
             "enabled": false,
             "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
           },
           "ffa": null,
           "draft": null,

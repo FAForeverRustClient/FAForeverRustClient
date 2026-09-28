@@ -484,21 +484,28 @@ export function TournamentsView() {
               onReportFfa={(report) =>
                 act({ type: "reportFfa", payload: { tournamentId: open.id, report } })
               }
-              onVetoAct={(matchId, mapId) =>
-                act({ type: "vetoAct", payload: { tournamentId: open.id, matchId, mapId } })
-              }
-              onVetoSetSides={(matchId, teamA) =>
-                act({ type: "vetoSetSides", payload: { tournamentId: open.id, matchId, teamA } })
-              }
-              onVetoUndo={(matchId) =>
-                act({ type: "vetoUndo", payload: { tournamentId: open.id, matchId } })
-              }
+              veto={{
+                onAct: (matchId, mapId) =>
+                  act({ type: "vetoAct", payload: { tournamentId: open.id, matchId, mapId } }),
+                onSetSides: (matchId, teamA) =>
+                  act({ type: "vetoSetSides", payload: { tournamentId: open.id, matchId, teamA } }),
+                onUndo: (matchId) =>
+                  act({ type: "vetoUndo", payload: { tournamentId: open.id, matchId } }),
+                onFaction: (matchId, game, faction) =>
+                  act({
+                    type: "factionVeto",
+                    payload: { tournamentId: open.id, matchId, game, faction },
+                  }),
+              }}
               onSaveMap={(map) => act({ type: "saveMap", payload: { tournamentId: open.id, map } })}
               onPublishMap={(mapId, published) =>
                 act({ type: "publishMap", payload: { tournamentId: open.id, mapId, published } })
               }
               onDeleteMap={(mapId) =>
                 act({ type: "deleteMap", payload: { tournamentId: open.id, mapId } })
+              }
+              onSetFactionVeto={(config) =>
+                act({ type: "setFactionVeto", payload: { tournamentId: open.id, config } })
               }
               onSavePool={(pool) =>
                 act({ type: "savePool", payload: { tournamentId: open.id, pool } })

@@ -294,6 +294,9 @@ pub struct TourneyMatch {
     /// The ban/pick run, when the event has vetoes and this match has reached
     /// the point of having one.
     pub veto: Option<MatchVeto>,
+    /// The faction veto, where the event runs them, in the slice this account
+    /// may see.
+    pub faction_veto: Option<MatchFactionVeto>,
     /// Everyone in this free-for-all lobby. Empty for a two-sided match, which
     /// uses `team1`/`team2` instead.
     pub entrants: Vec<String>,

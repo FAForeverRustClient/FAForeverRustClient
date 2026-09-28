@@ -342,6 +342,24 @@ pub enum TourneyCommand {
         tournament_id: String,
         match_id: String,
     },
+    /// Make the faction ban or pick that is due for one game (`fveto_action`).
+    ///
+    /// The two players' own: an organiser cannot act for them, because the
+    /// choices are secret until both sides are done.
+    #[serde(rename_all = "camelCase")]
+    FactionVeto {
+        tournament_id: String,
+        match_id: String,
+        game: i32,
+        faction: TourneyFaction,
+    },
+    /// Switch faction vetoes on or off, or change their numbers
+    /// (`fveto_config`). Applied to every match that has no result yet.
+    #[serde(rename_all = "camelCase")]
+    SetFactionVeto {
+        tournament_id: String,
+        config: FactionVetoConfig,
+    },
     /// Add a map to the event's own database, or edit one already in it.
     #[serde(rename_all = "camelCase")]
     SaveMap {

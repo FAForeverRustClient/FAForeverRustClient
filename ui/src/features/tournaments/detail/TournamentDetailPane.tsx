@@ -16,6 +16,7 @@ import type {
   BracketConfig,
   ChatPost,
   ChatRoom,
+  FactionVetoConfig,
   FfaReport,
   MapDraft,
   MapListStatus,
@@ -45,6 +46,7 @@ import { ManagePanel } from "../manage/ManagePanel";
 import { NewsPanel } from "./NewsPanel";
 import { OverviewPanel } from "./OverviewPanel";
 import { StandingsPanel } from "../bracket/StandingsPanel";
+import type { VetoHandlers } from "../bracket/VetoPanel";
 import { formatMoment, formatOf } from "../tourneyPresentation";
 import { selfOrganised, standingsKind, unreadNews, unreadTotal } from "../../../shared/rules/tourneyRules";
 
@@ -148,6 +150,7 @@ interface TournamentDetailPaneProps {
   onSaveMap: (map: MapDraft) => void;
   onPublishMap: (mapId: string, published: boolean) => void;
   onDeleteMap: (mapId: string) => void;
+  onSetFactionVeto: (config: FactionVetoConfig) => void;
   onSavePool: (pool: PoolDraft) => void;
   onPublishPool: (poolId: string, published: boolean) => void;
   onDeletePool: (poolId: string) => void;
@@ -166,9 +169,7 @@ interface TournamentDetailPaneProps {
   onSaveSeries: (draft: SeriesDraft) => void;
   onAddQualifier: (qualifierId: string, rule: QualifierRule) => void;
   onRemoveQualifier: (linkId: string) => void;
-  onVetoAct: (matchId: string, mapId: string) => void;
-  onVetoSetSides: (matchId: string, teamA: string) => void;
-  onVetoUndo: (matchId: string) => void;
+  veto: VetoHandlers;
   onReportFfa: (report: FfaReport) => void;
   onDraftPick: (playerId: string) => void;
   onDraftUndo: () => void;
@@ -402,9 +403,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onHost={props.onHost}
           vault={props.vault}
           assetBase={props.assetBase}
-          onVetoAct={props.onVetoAct}
-          onVetoSetSides={props.onVetoSetSides}
-          onVetoUndo={props.onVetoUndo}
+          veto={props.veto}
           onReportFfa={props.onReportFfa}
         />
       )}
@@ -469,6 +468,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onSaveMap={props.onSaveMap}
           onPublishMap={props.onPublishMap}
           onDeleteMap={props.onDeleteMap}
+          onSetFactionVeto={props.onSetFactionVeto}
           onSavePool={props.onSavePool}
           onPublishPool={props.onPublishPool}
           onDeletePool={props.onDeletePool}

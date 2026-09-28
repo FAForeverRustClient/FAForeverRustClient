@@ -9,11 +9,12 @@ use super::*;
 pub struct TourneyMap {
     pub id: String,
     pub name: String,
-    /// Preview image served by the tournament server, when it has one.
+    /// The organiser's uploaded picture, as the service sends it: a bare file
+    /// name under `/map-images/` on the tournament server, or empty.
     ///
-    /// Usually empty, and that is fine: the client prefers FAF's own vault
-    /// preview anyway (see [`match_vault_map`]). The tournament server's copy
-    /// exists for maps that are not in the vault at all.
+    /// The only picture the website shows. The frontend resolves it against
+    /// the service's base and falls back to FAF's vault (see
+    /// [`match_vault_map`]) only where nobody uploaded one.
     pub image_url: String,
     /// The organiser's note about it: a spawn count, a mod requirement, why it
     /// is in the pool at all.

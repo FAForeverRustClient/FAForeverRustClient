@@ -2925,3 +2925,330 @@
 .tournament-swiss-round.is-upcoming .tournament-swiss-head h5 {
   color: var(--color-muted);
 }
+
+/* -- The veto panel ---------------------------------------------------------
+   Who is A and who is B, the step that is due, the maps, the games with their
+   factions, and the run in order. Ban reads in the error colour and pick in
+   the ok colour everywhere, so the two are told apart before either is read. */
+
+.tournament-veto-ab {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.tournament-veto-abtag {
+  padding: 1px var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.tournament-veto-abtag.is-a {
+  color: var(--color-friend);
+}
+
+.tournament-veto-abtag.is-b {
+  color: var(--color-warn);
+}
+
+.tournament-veto-turn.is-ban,
+.tournament-veto-turn.is-pick {
+  padding-left: var(--space-2);
+  border-left: 3px solid var(--color-error);
+}
+
+.tournament-veto-turn.is-pick {
+  border-left-color: var(--color-ok);
+}
+
+.tournament-veto-yourturn {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* A remaining map this account may take: a card that arms on the first click
+   and commits on the second. */
+.tournament-veto-pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tournament-veto-pick img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.tournament-veto-pick.is-ban:hover,
+.tournament-veto-pick.is-ban:focus-visible {
+  border-color: var(--color-error);
+}
+
+.tournament-veto-pick.is-pick:hover,
+.tournament-veto-pick.is-pick:focus-visible {
+  border-color: var(--color-ok);
+}
+
+.tournament-veto-pick.is-armed {
+  outline: 2px solid var(--color-warn);
+  outline-offset: 1px;
+}
+
+.tournament-veto-confirm {
+  font-weight: 600;
+  color: var(--color-warn);
+}
+
+.tournament-veto-map img.is-dim,
+.tournament-veto-log img.is-dim {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+
+.tournament-veto-grid.is-gone .tournament-veto-map > span:first-of-type {
+  text-decoration: line-through;
+}
+
+/* The games as they are settled, one row each: game, map, factions. */
+.tournament-veto-games {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tournament-veto-game {
+  display: grid;
+  grid-template-columns: 64px minmax(160px, 1fr) minmax(0, 1.4fr);
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.tournament-veto-game-no {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.tournament-veto-game-map {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tournament-veto-game-map img,
+.tournament-veto-game-map .tournament-pool-map-blank,
+.tournament-veto-log img,
+.tournament-veto-log .tournament-pool-map-blank {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 720px) {
+  .tournament-veto-game {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The run in the order it was walked. */
+.tournament-veto-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.tournament-veto-log-row {
+  display: grid;
+  grid-template-columns: 22px 60px 34px minmax(90px, 160px) 1fr;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tournament-veto-act {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tournament-veto-act.is-ban {
+  color: var(--color-error);
+}
+
+.tournament-veto-act.is-pick {
+  color: var(--color-ok);
+}
+
+.tournament-veto-act.is-decider {
+  color: var(--color-warn);
+}
+
+/* A match whose vetoes wait on this account. */
+.tournament-round-pool-toggle.is-due {
+  border-color: var(--color-warn);
+  color: var(--color-warn);
+}
+
+.tournament-round-pool-toggle .tournament-badge {
+  padding: 0 4px;
+  font-size: 11px;
+}
+
+/* -- Faction vetoes ----------------------------------------------------------
+   No faction logos: they are game assets this client does not ship, as on the
+   website. A letter in the faction's own colour, and its name. */
+
+.tournament-fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px var(--space-2) 1px 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tournament-fchip-glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-bg);
+  background: var(--fchip-colour, var(--color-muted));
+}
+
+.tournament-fchip.is-uef {
+  --fchip-colour: var(--color-faction-uef);
+}
+
+.tournament-fchip.is-aeon {
+  --fchip-colour: var(--color-faction-aeon);
+}
+
+.tournament-fchip.is-cybran {
+  --fchip-colour: var(--color-faction-cybran);
+}
+
+.tournament-fchip.is-seraphim {
+  --fchip-colour: var(--color-faction-seraphim);
+}
+
+.tournament-fchip.is-on {
+  border-color: var(--fchip-colour);
+}
+
+.tournament-fchip.is-dim {
+  opacity: 0.45;
+}
+
+.tournament-fchip-button {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tournament-fchip-button:hover:not(:disabled) .tournament-fchip,
+.tournament-fchip-button:focus-visible .tournament-fchip {
+  border-color: var(--fchip-colour);
+}
+
+.tournament-fchip-button.is-armed .tournament-fchip {
+  outline: 2px solid var(--color-warn);
+  outline-offset: 1px;
+}
+
+.tournament-fchip-button:disabled {
+  cursor: default;
+}
+
+.tournament-fveto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  font-size: 12px;
+}
+
+.tournament-fveto.is-active {
+  padding: var(--space-2);
+  border-left: 3px solid var(--color-warn);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+.tournament-fveto-row,
+.tournament-fveto-mine,
+.tournament-fveto-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tournament-fveto-turn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 700;
+  color: var(--color-warn);
+}
+
+.tournament-turn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-warn);
+  animation: tournament-turn-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes tournament-turn-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tournament-turn-dot {
+    animation: none;
+  }
+}

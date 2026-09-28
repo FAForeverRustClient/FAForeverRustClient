@@ -170,6 +170,9 @@ pub struct Tourney {
     pub chat_locked: bool,
     /// Whether this event bans and picks its maps, and how.
     pub veto: VetoConfig,
+    /// Whether this event runs faction vetoes, and with how many bans and
+    /// picks. Only in effect where [`Self::faction_veto_on`] says so.
+    pub faction_veto: FactionVetoConfig,
     /// How the free-for-all is run. `None` for a team event.
     pub ffa: Option<FfaConfig>,
     /// The captains draft, while one is running. `None` for every other
@@ -952,6 +955,23 @@ impl Tourney {
             return true;
         }
         self.is_captain_of(team) && self.team_size > 1 && !team.captain_renamed
+    }
+
+    /// Whether faction vetoes are in effect: switched on, in a 1v1 event that
+    /// is not a free-for-all. The service's `factionVetoOn`.
+    pub fn faction_veto_on(&self) -> bool {
+        self.faction_veto.enabled
+            && self.team_size == 1
+            && self.competition != Competition::FreeForAll
+    }
+
+    /// Whether this account may switch faction vetoes on or change them: an
+    /// organiser, on an event the service offers them for, before it ends.
+    pub fn may_configure_faction_veto(&self) -> bool {
+        self.viewer.organiser
+            && self.team_size == 1
+            && self.competition != Competition::FreeForAll
+            && self.status != TourneyStatus::Finished
     }
 
     /// Whether this account may submit a score for `entry` for the other side

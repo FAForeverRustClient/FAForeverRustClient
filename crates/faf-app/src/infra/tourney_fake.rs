@@ -29,6 +29,7 @@ use faf_domain::state::{
     BracketConfig, Caster, Currency, FormatDraft, Prize, Qualifier, QualifierRule, SeriesColour,
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries,
 };
+use faf_domain::state::{FactionVetoConfig, TourneyFaction};
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
 
 use crate::ports::{RequestError, TourneyPort};
@@ -1145,6 +1146,25 @@ impl TourneyPort for FakeTourney {
             held.finalise(match_id, pending.score1, pending.score2);
             Ok(())
         })
+    }
+
+    async fn faction_veto(
+        &self,
+        _: &str,
+        _: &str,
+        _: i32,
+        _: TourneyFaction,
+    ) -> Result<(), RequestError> {
+        // Not simulated, like every action added after 2026-09-28.
+        Err(RequestError::rejected(
+            "Faction vetoes are not available offline",
+        ))
+    }
+
+    async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
+        Err(RequestError::rejected(
+            "Faction vetoes are not available offline",
+        ))
     }
 
     async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
@@ -2487,6 +2507,7 @@ fn entry(id: &str, round: i32, index: i32, teams: (Option<&str>, Option<&str>)) 
         loser_to: None,
         pending_report: None,
         veto: None,
+        faction_veto: None,
         entrants: Vec::new(),
         winners: Vec::new(),
         points: Vec::new(),

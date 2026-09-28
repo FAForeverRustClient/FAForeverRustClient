@@ -46,7 +46,7 @@ import type {
   UploadsState,
   VaultMap,
 } from "../ipc/bindings";
-import type { BracketKind, MatchPlan, SwissCuts } from "../ipc/bindings";
+import type { BracketKind, FactionVetoConfig, MatchPlan, SwissCuts } from "../ipc/bindings";
 import fixture from "./__fixtures__/reducer-conformance.json";
 import { canLaunch, installTarget, updateAvailable } from "../shared/rules/galacticWarActions";
 import { noteForPlayer } from "../shared/rules/playerNotes";
@@ -68,6 +68,9 @@ import {
   isSubmittable,
   isPlayerSubmittable,
   swissCutRounds,
+  factionVetoOn,
+  mayConfigureFactionVeto,
+  factionConfigIsSubmittable,
   mapKey,
   matchVaultMap,
   mayEditFormat,
@@ -146,6 +149,8 @@ interface HelperFixture {
     mayRename: boolean;
     reportableMatchIds: string[];
     submittableMatchIds: string[];
+    factionVetoOn: boolean;
+    mayConfigureFactionVeto: boolean;
     name: string;
     event: Tourney;
     teamId: string | null;
@@ -164,6 +169,10 @@ interface HelperFixture {
   tourneyBusyMatches: Array<{
     pending: TourneyAction | null;
     busyMatchId: string | null;
+  }>;
+  tourneyFactionConfigs: Array<{
+    config: FactionVetoConfig;
+    submittable: boolean;
   }>;
   tourneySwissCuts: Array<{
     cuts: SwissCuts;
@@ -444,6 +453,8 @@ describe("tournament rule twins match Rust", () => {
       submittableMatchIds: event.matches
         .filter((entry) => maySubmit(event, entry))
         .map((entry) => entry.id),
+      factionVetoOn: factionVetoOn(event),
+      mayConfigureFactionVeto: mayConfigureFactionVeto(event),
     }).toEqual({
       teamRating: recorded.teamRating,
       wouldExceedTeamCap: recorded.wouldExceedTeamCap,
@@ -459,6 +470,8 @@ describe("tournament rule twins match Rust", () => {
       mayRename: recorded.mayRename,
       reportableMatchIds: recorded.reportableMatchIds,
       submittableMatchIds: recorded.submittableMatchIds,
+      factionVetoOn: recorded.factionVetoOn,
+      mayConfigureFactionVeto: recorded.mayConfigureFactionVeto,
     });
   });
 
@@ -466,6 +479,13 @@ describe("tournament rule twins match Rust", () => {
     "narrows the pending write $pending.type to match $busyMatchId",
     ({ pending, busyMatchId: expected }) => {
       expect(busyMatchId(pending)).toBe(expected);
+    },
+  );
+
+  it.each(helpers.tourneyFactionConfigs)(
+    "judges a faction veto setting $config.bans / $config.picks",
+    ({ config, submittable }) => {
+      expect(factionConfigIsSubmittable(config)).toBe(submittable);
     },
   );
 
@@ -523,6 +543,7 @@ describe("tournament rule twins match Rust", () => {
       drawReplayIds: [],
       forfeit: null,
       veto: null,
+      factionVeto: null,
       entrants: [],
       winners: [],
       points: [],

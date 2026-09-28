@@ -64,6 +64,7 @@ struct HelperFixture {
     tourney_phase_legality: Vec<TourneyPhaseLegalityCase>,
     tourney_busy_matches: Vec<TourneyBusyMatchCase>,
     tourney_swiss_cuts: Vec<TourneySwissCutCase>,
+    tourney_faction_configs: Vec<TourneyFactionConfigCase>,
     tourney_draft_rejections: Vec<TourneyDraftRejectionCase>,
     tourney_reports: Vec<TourneyReportCase>,
     tourney_map_matches: TourneyMapMatchFixture,
@@ -218,6 +219,10 @@ struct TourneyRuleCase {
     reportable_match_ids: Vec<String>,
     /// `Tourney::may_submit` over every match: the players' own path.
     submittable_match_ids: Vec<String>,
+    /// `Tourney::faction_veto_on`: 1v1 only, and never free-for-all.
+    faction_veto_on: bool,
+    /// `Tourney::may_configure_faction_veto`.
+    may_configure_faction_veto: bool,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -243,6 +248,14 @@ struct TourneyOpenEventCase {
 struct TourneyBusyMatchCase {
     pending: Option<TourneyAction>,
     busy_match_id: Option<String>,
+}
+
+/// `FactionVetoConfig::is_submittable`: what `fveto_config` accepts.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyFactionConfigCase {
+    config: FactionVetoConfig,
+    submittable: bool,
 }
 
 /// `SwissCuts::rounds`: the round count the start dialog shows in place of
@@ -657,6 +670,8 @@ fn tourney_rule_case(
             .collect(),
         may_rename: team.as_ref().is_some_and(|team| event.may_rename(team)),
         may_publish: event.may_publish(),
+        faction_veto_on: event.faction_veto_on(),
+        may_configure_faction_veto: event.may_configure_faction_veto(),
         reportable_match_ids: event
             .matches
             .iter()
@@ -700,6 +715,7 @@ fn tourney_match(
         loser_to: None,
         pending_report: None,
         veto: None,
+        faction_veto: None,
         entrants: Vec::new(),
         winners: Vec::new(),
         points: Vec::new(),
@@ -865,6 +881,12 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
     let player_running = Tourney {
         id: "player-running".into(),
         player_reporting: true,
+        team_size: 1,
+        faction_veto: FactionVetoConfig {
+            enabled: true,
+            bans: 1,
+            picks: 2,
+        },
         viewer: TourneyViewer {
             logged_in: true,
             member_team_id: Some("t1".into()),
@@ -2497,6 +2519,7 @@ fn tourney_report_cases() -> Vec<TourneyReportCase> {
             loser_to: None,
             pending_report: None,
             veto: None,
+            faction_veto: None,
             entrants: Vec::new(),
             winners: Vec::new(),
             points: Vec::new(),
@@ -2842,6 +2865,29 @@ fn helper_fixture() -> HelperFixture {
         tourney_open_events: tourney_open_event_cases(),
         tourney_phase_legality: tourney_phase_legality_cases(),
         tourney_busy_matches: tourney_busy_match_cases(),
+        tourney_faction_configs: [
+            (true, 1, 2),
+            (true, 2, 3),
+            (true, 1, 1),
+            (true, 2, 2),
+            (true, 1, 4),
+            (true, 3, 3),
+            (false, 1, 1),
+            (false, 0, 2),
+        ]
+        .into_iter()
+        .map(|(enabled, bans, picks)| {
+            let config = FactionVetoConfig {
+                enabled,
+                bans,
+                picks,
+            };
+            TourneyFactionConfigCase {
+                config,
+                submittable: config.is_submittable(),
+            }
+        })
+        .collect(),
         tourney_swiss_cuts: [(0, 0), (3, 0), (0, 2), (3, 3), (4, 2), (1, 1), (-1, 3)]
             .into_iter()
             .map(|(wins, losses)| {

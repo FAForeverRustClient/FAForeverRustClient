@@ -30,10 +30,11 @@ import type {
 } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { FfaLobby } from "./FfaLobby";
-import { VetoPanel } from "./VetoPanel";
+import { VetoPanel, type VetoHandlers } from "./VetoPanel";
 import { MatchActions, TeamName, teamNameOf } from "./matchParts";
 import { PoolPanel, PoolToggle } from "./RoundPool";
 import { SwissRounds } from "./SwissRounds";
+import { hasVeto } from "./vetoPresentation";
 import { BRACKET_LABELS, myTeamId } from "../tourneyPresentation";
 import { roundKeyOf } from "../../../shared/rules/tourneyRules";
 
@@ -157,9 +158,7 @@ interface BracketViewProps {
   vault: VaultMap[];
   /** Where the service lives, for the organisers' uploaded map pictures. */
   assetBase: string;
-  onVetoAct: (matchId: string, mapId: string) => void;
-  onVetoSetSides: (matchId: string, teamA: string) => void;
-  onVetoUndo: (matchId: string) => void;
+  veto: VetoHandlers;
   onReportFfa: (report: FfaReport) => void;
 }
 
@@ -172,9 +171,7 @@ export function BracketView({
   onHost,
   vault,
   assetBase,
-  onVetoAct,
-  onVetoSetSides,
-  onVetoUndo,
+  veto,
   onReportFfa,
 }: BracketViewProps) {
   const { t } = useTranslation();
@@ -275,7 +272,7 @@ export function BracketView({
               openVeto !== null &&
               (() => {
                 const entry = event.matches.find((held) => held.id === openVeto);
-                if (entry === undefined || entry.veto === null) return null;
+                if (entry === undefined || !hasVeto(event, entry)) return null;
                 return (
                   <div className="tournament-veto-drawer surface">
                     <VetoPanel
@@ -285,9 +282,7 @@ export function BracketView({
                       assetBase={assetBase}
                       profiles={profiles}
                       busy={busyMatchId === entry.id}
-                      onAct={onVetoAct}
-                      onSetSides={onVetoSetSides}
-                      onUndo={onVetoUndo}
+                      handlers={veto}
                     />
                   </div>
                 );
@@ -322,9 +317,7 @@ export function BracketView({
             onHost={onHost}
             vault={vault}
             assetBase={assetBase}
-            onVetoAct={onVetoAct}
-            onVetoSetSides={onVetoSetSides}
-            onVetoUndo={onVetoUndo}
+            veto={veto}
           />
         </>
       )}

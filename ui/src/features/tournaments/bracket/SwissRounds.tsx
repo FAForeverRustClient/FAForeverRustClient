@@ -28,7 +28,8 @@ import {
   swissRecordsBefore,
   swissRoundOrder,
 } from "./swissRecords";
-import { VetoPanel } from "./VetoPanel";
+import { hasVeto } from "./vetoPresentation";
+import { VetoPanel, type VetoHandlers } from "./VetoPanel";
 
 interface SwissRoundsProps {
   event: Tourney;
@@ -41,9 +42,7 @@ interface SwissRoundsProps {
   onHost: (entry: TourneyMatch) => void;
   vault: VaultMap[];
   assetBase: string;
-  onVetoAct: (matchId: string, mapId: string) => void;
-  onVetoSetSides: (matchId: string, teamA: string) => void;
-  onVetoUndo: (matchId: string) => void;
+  veto: VetoHandlers;
 }
 
 export function SwissRounds(props: SwissRoundsProps) {
@@ -273,7 +272,7 @@ function MatchRow({
       </li>
       {/* The run opens under its own row: a list has the room a bracket
           column does not. */}
-      {vetoOpen && entry.veto !== null && (
+      {vetoOpen && hasVeto(event, entry) && (
         <li className="tournament-swiss-veto surface">
           <VetoPanel
             event={event}
@@ -282,9 +281,7 @@ function MatchRow({
             assetBase={props.assetBase}
             profiles={profiles}
             busy={busy}
-            onAct={props.onVetoAct}
-            onSetSides={props.onVetoSetSides}
-            onUndo={props.onVetoUndo}
+            handlers={props.veto}
           />
         </li>
       )}

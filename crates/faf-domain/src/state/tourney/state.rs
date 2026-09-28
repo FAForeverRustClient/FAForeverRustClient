@@ -126,6 +126,7 @@ pub enum TourneyAction {
         match_id: String,
     },
     Drafting,
+    SavingFactionVeto,
     SavingMap,
     #[serde(rename_all = "camelCase")]
     PublishingMap {

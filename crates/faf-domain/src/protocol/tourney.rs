@@ -26,12 +26,13 @@ use serde_json::{json, Value};
 use crate::protocol::markup::to_plain_text;
 use crate::state::{
     Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
-    ChatRoom, Competition, Currency, Formation, HostingStatus, InviteStatus, MapPool, MapSpec,
+    ChatRoom, Competition, Currency, FactionChoices, FactionResult, FactionStep, FactionVetoConfig,
+    FactionVetoGame, Formation, HostingStatus, InviteStatus, MapPool, MapSpec, MatchFactionVeto,
     MatchLink, MatchPlan, MatchReport, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
     PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream,
     SwissCuts, SwissTiebreak, TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft,
-    TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus,
-    TourneyTeam, TourneyViewer,
+    TourneyFaction, TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer,
+    TourneyStatus, TourneyTeam, TourneyViewer,
 };
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
@@ -352,6 +353,15 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             enabled: flag(document.get("veto").unwrap_or(&Value::Null), "enabled"),
             mode: VetoMode::from_wire(&text(document.get("veto").unwrap_or(&Value::Null), "mode")),
         },
+        faction_veto: document
+            .get("fveto")
+            .filter(|held| held.is_object())
+            .map(|held| FactionVetoConfig {
+                enabled: flag(held, "enabled"),
+                bans: int(held, "bans").unwrap_or(1),
+                picks: int(held, "picks").unwrap_or(2),
+            })
+            .unwrap_or_default(),
         published: document
             .get("published")
             .is_none_or(|value| flag(document, "published") || value.is_null()),
@@ -594,6 +604,70 @@ fn parse_requests(value: &Value, name: &str) -> Vec<TeamRequest> {
         .collect()
 }
 
+/// A match's faction veto, as the viewer's slice of it (`factionViewFor`).
+///
+/// `games` is an object keyed by the game number as text, read into a list in
+/// game order. A faction the client does not know is dropped rather than
+/// guessed at.
+fn parse_faction_veto(value: Option<&Value>) -> Option<MatchFactionVeto> {
+    let value = value.filter(|held| held.is_object())?;
+    let factions = |held: &Value, name: &str| -> Vec<TourneyFaction> {
+        string_list(held, name)
+            .iter()
+            .filter_map(|raw| TourneyFaction::from_wire(raw))
+            .collect()
+    };
+    let mut games: Vec<FactionVetoGame> = value
+        .get("games")
+        .and_then(Value::as_object)
+        .map(|games| {
+            games
+                .iter()
+                .filter_map(|(number, game)| {
+                    let game_number: i32 = number.trim().parse().ok()?;
+                    let result =
+                        game.get("result")
+                            .filter(|held| held.is_object())
+                            .and_then(|held| {
+                                Some(FactionResult {
+                                    team1: TourneyFaction::from_wire(&text(held, "t1"))?,
+                                    team2: TourneyFaction::from_wire(&text(held, "t2"))?,
+                                })
+                            });
+                    Some(FactionVetoGame {
+                        game: game_number,
+                        team1_done: flag(game, "t1Done"),
+                        team2_done: flag(game, "t2Done"),
+                        result,
+                        mine: game
+                            .get("mine")
+                            .filter(|held| held.is_object())
+                            .map(|mine| FactionChoices {
+                                bans: factions(mine, "bans"),
+                                picks: factions(mine, "picks"),
+                                done: flag(mine, "done"),
+                            }),
+                        next: game
+                            .get("next")
+                            .filter(|held| held.is_object())
+                            .map(|next| FactionStep {
+                                action: PoolAction::from_wire(&text(next, "action")),
+                                index: int(next, "index").unwrap_or(1),
+                                of: int(next, "of").unwrap_or(1),
+                            }),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    games.sort_by_key(|game| game.game);
+    Some(MatchFactionVeto {
+        bans: int(value, "bans").unwrap_or(1),
+        picks: int(value, "picks").unwrap_or(2),
+        games,
+    })
+}
+
 fn parse_match(value: &Value) -> Option<TourneyMatch> {
     Some(TourneyMatch {
         id: id(value, "id")?,
@@ -614,6 +688,7 @@ fn parse_match(value: &Value) -> Option<TourneyMatch> {
         loser_to: parse_link(value.get("loserTo")),
         pending_report: parse_pending_report(value.get("pendingReport")),
         veto: parse_match_veto(value.get("veto")),
+        faction_veto: parse_faction_veto(value.get("fveto")),
         entrants: string_list(value, "entrants"),
         winners: string_list(value, "winners"),
         // An object keyed by team id, read into an ordered list. `null` until
@@ -1491,6 +1566,23 @@ pub fn qualifier_remove_body(link_id: &str) -> Value {
     json!({ "id": link_id })
 }
 
+/// The body for `POST /api/t/{id}/fveto_action`: one faction ban or pick.
+pub fn faction_veto_body(match_id: &str, game: i32, faction: TourneyFaction) -> Value {
+    json!({ "matchId": match_id, "game": game, "faction": faction.as_wire() })
+}
+
+/// The body for `POST /api/t/{id}/fveto_config`.
+///
+/// `enabled` as 0/1, the service's own convention, though it reads any truthy
+/// value.
+pub fn faction_veto_config_body(config: &FactionVetoConfig) -> Value {
+    json!({
+        "enabled": if config.enabled { 1 } else { 0 },
+        "bans": config.bans,
+        "picks": config.picks,
+    })
+}
+
 /// The body for `POST /api/t/{id}/report_submit`, a player's score for the
 /// other side to confirm.
 ///
@@ -2026,6 +2118,89 @@ See the [rules](https://x.invalid/r)."
         };
         assert_eq!(create_body(&cleared)["ratingDate"], Value::Null);
         assert_eq!(edit_info_body(&cleared)["ratingDate"], Value::Null);
+    }
+
+    #[test]
+    fn a_faction_veto_is_read_as_the_viewers_slice() {
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "teamSize": 1,
+            "fveto": { "enabled": 1, "bans": 1, "picks": 2 },
+            "matches": [{
+                "id": "m1", "team1": "t1", "team2": "t2", "bo": 3,
+                "fveto": { "bans": 1, "picks": 2, "games": {
+                    "2": { "t1Done": true, "t2Done": false, "result": null,
+                           "mine": { "bans": ["cybran"], "picks": [], "done": false },
+                           "next": { "action": "pick", "index": 1, "of": 2 } },
+                    "1": { "t1Done": true, "t2Done": true,
+                           "result": { "t1": "aeon", "t2": "uef" } },
+                    "3": { "t1Done": false, "t2Done": false, "result": null,
+                           "mine": { "bans": ["klingon"], "picks": [], "done": false },
+                           "next": null }
+                } }
+            }],
+        }))
+        .expect("a tournament");
+        assert!(event.faction_veto.enabled);
+        assert!(event.faction_veto_on());
+        let veto = event.matches[0]
+            .faction_veto
+            .as_ref()
+            .expect("a faction veto");
+        assert_eq!(
+            veto.games.iter().map(|game| game.game).collect::<Vec<_>>(),
+            vec![1, 2, 3],
+            "in game order, whatever order the object arrived in"
+        );
+        assert_eq!(
+            veto.games[0].result,
+            Some(FactionResult {
+                team1: TourneyFaction::Aeon,
+                team2: TourneyFaction::Uef
+            })
+        );
+        assert_eq!(
+            veto.games[0].mine, None,
+            "a spectator's slice has no choices"
+        );
+        let second = &veto.games[1];
+        assert_eq!(
+            second.mine.as_ref().unwrap().bans,
+            vec![TourneyFaction::Cybran]
+        );
+        assert_eq!(
+            second.next,
+            Some(FactionStep {
+                action: PoolAction::Pick,
+                index: 1,
+                of: 2
+            })
+        );
+        assert!(
+            veto.games[2].mine.as_ref().unwrap().bans.is_empty(),
+            "unknown faction dropped"
+        );
+        assert_eq!(veto.games_owed(), 1);
+        assert!(!veto.is_settled());
+
+        let off = parse_tourney(&json!({ "id": "e2", "fveto": null })).expect("a tournament");
+        assert_eq!(off.faction_veto, FactionVetoConfig::default());
+        assert!(!off.faction_veto_on());
+    }
+
+    #[test]
+    fn faction_veto_bodies_use_the_services_names() {
+        let body = faction_veto_body("m1", 2, TourneyFaction::Seraphim);
+        assert_eq!(
+            body,
+            json!({ "matchId": "m1", "game": 2, "faction": "seraphim" })
+        );
+        let config = faction_veto_config_body(&FactionVetoConfig {
+            enabled: true,
+            bans: 2,
+            picks: 3,
+        });
+        assert_eq!(config, json!({ "enabled": 1, "bans": 2, "picks": 3 }));
     }
 
     #[test]

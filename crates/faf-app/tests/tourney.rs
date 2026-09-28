@@ -17,6 +17,7 @@ use faf_domain::state::{
     SeriesDraft, Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent,
     TourneyLoadStatus, TourneyPhase, TourneySeries, TourneyStatus,
 };
+use faf_domain::state::{FactionVetoConfig, TourneyFaction};
 use faf_domain::AppEvent;
 
 fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {
@@ -170,6 +171,18 @@ impl TourneyPort for RefusingTourney {
         self.refused()
     }
     async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn faction_veto(
+        &self,
+        _: &str,
+        _: &str,
+        _: i32,
+        _: TourneyFaction,
+    ) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
         self.refused()
     }
     async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
@@ -1701,6 +1714,22 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             unreachable!()
         }
         async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn faction_veto(
+            &self,
+            _: &str,
+            _: &str,
+            _: i32,
+            _: TourneyFaction,
+        ) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn set_faction_veto(
+            &self,
+            _: &str,
+            _: &FactionVetoConfig,
+        ) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn chat_rooms(&self, _: &str) -> Result<Vec<ChatRoom>, RequestError> {

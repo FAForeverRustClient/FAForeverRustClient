@@ -13,6 +13,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { mayReport, maySubmit } from "../../../shared/rules/tourneyRules";
 import { PlayerChip } from "../PlayerChip";
 import { isMyMatch, myTeamId } from "../tourneyPresentation";
+import { hasVeto, myVetoSteps } from "./vetoPresentation";
 
 /**
  * A slot's name as the bracket prints it, or null for a slot nobody holds yet.
@@ -103,6 +104,9 @@ export function MatchActions({
   // plays keeps the organiser's, which needs nobody's confirmation.
   const submittable = !reportable && maySubmit(event, entry);
   const mayAnswer = pending !== null && isMyMatch(event, entry) && pending.byTeam !== mine;
+  // A map step or faction choices this account owes, so the button that opens
+  // the run says so rather than looking like every other match's.
+  const owed = myVetoSteps(event, entry);
 
   if (mayAnswer) {
     return (
@@ -126,17 +130,22 @@ export function MatchActions({
       {/* The run itself opens outside the card. A grid of maps does not fit
           in one, and every card drawing its own was what once made this tab
           unusable. */}
-      {entry.veto !== null && event.veto.enabled && (
+      {hasVeto(event, entry) && (
         <button
           type="button"
-          className={
-            vetoOpen ? "tournament-round-pool-toggle is-open" : "tournament-round-pool-toggle"
-          }
+          className={[
+            "tournament-round-pool-toggle",
+            vetoOpen ? "is-open" : "",
+            owed > 0 ? "is-due" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           aria-expanded={vetoOpen}
           onClick={onToggleVeto}
-          title={t("tournaments.veto.openHint")}
+          title={t(owed > 0 ? "tournaments.veto.dueHint" : "tournaments.veto.openHint")}
         >
           <Icon name="maps" size={12} /> {t("tournaments.veto.open")}
+          {owed > 0 && <span className="tournament-badge">{owed}</span>}
         </button>
       )}
       {reportable && (

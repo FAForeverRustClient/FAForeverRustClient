@@ -31,6 +31,7 @@ import type {
   QualifierRule,
   SeriesDraft,
   SwissCuts,
+  FactionVetoConfig,
   Tourney,
   TourneyAction,
   TourneyDraft,
@@ -145,6 +146,30 @@ export function isPlayerSubmittable(
   const fresh = score1 + score2 - current1 - current2;
   const ids = replayIds.filter((id) => /\d/.test(id)).length;
   return fresh >= 1 && ids === fresh;
+}
+
+/** Twin of `Tourney::faction_veto_on`: switched on, 1v1, and not free-for-all. */
+export function factionVetoOn(event: Tourney): boolean {
+  return event.factionVeto.enabled && event.teamSize === 1 && event.competition !== "freeForAll";
+}
+
+/** Twin of `Tourney::may_configure_faction_veto`. */
+export function mayConfigureFactionVeto(event: Tourney): boolean {
+  return (
+    event.viewer.organiser &&
+    event.teamSize === 1 &&
+    event.competition !== "freeForAll" &&
+    event.status !== "finished"
+  );
+}
+
+/** Twin of `FactionVetoConfig::is_submittable`: what `fveto_config` accepts. */
+export function factionConfigIsSubmittable(config: FactionVetoConfig): boolean {
+  return (
+    config.bans >= 1 &&
+    config.bans <= 2 &&
+    (!config.enabled || (config.picks > config.bans && config.picks <= 3))
+  );
 }
 
 /**

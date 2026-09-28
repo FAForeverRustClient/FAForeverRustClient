@@ -26,6 +26,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
+use faf_domain::state::{FactionVetoConfig, TourneyFaction};
 use serde_json::{json, Value};
 
 use crate::infra::env_or;
@@ -774,6 +775,34 @@ impl TourneyPort for TourneyClient {
     async fn veto_undo(&self, tournament_id: &str, match_id: &str) -> Result<(), RequestError> {
         self.act(tournament_id, "veto_undo", json!({ "matchId": match_id }))
             .await
+    }
+
+    async fn faction_veto(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        game: i32,
+        faction: TourneyFaction,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "fveto_action",
+            tourney::faction_veto_body(match_id, game, faction),
+        )
+        .await
+    }
+
+    async fn set_faction_veto(
+        &self,
+        tournament_id: &str,
+        config: &FactionVetoConfig,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "fveto_config",
+            tourney::faction_veto_config_body(config),
+        )
+        .await
     }
 
     async fn save_map(&self, tournament_id: &str, map: &MapDraft) -> Result<(), RequestError> {

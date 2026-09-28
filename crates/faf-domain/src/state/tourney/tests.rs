@@ -54,6 +54,7 @@ fn playable_match() -> TourneyMatch {
         loser_to: None,
         pending_report: None,
         veto: None,
+        faction_veto: None,
         entrants: Vec::new(),
         winners: Vec::new(),
         points: Vec::new(),

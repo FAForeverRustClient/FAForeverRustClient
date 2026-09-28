@@ -831,6 +831,43 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
+        TourneyCommand::FactionVeto {
+            tournament_id,
+            match_id,
+            game,
+            faction,
+        } => {
+            let action = TourneyAction::Vetoing {
+                match_id: match_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .faction_veto(&tournament_id, &match_id, game, faction)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::SetFactionVeto {
+            tournament_id,
+            config,
+        } => {
+            write(TourneyAction::SavingFactionVeto, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .set_faction_veto(&tournament_id, &config)
+                        .await
+                }
+            })
+            .await;
+        }
+
         TourneyCommand::SaveMap { tournament_id, map } => {
             write(TourneyAction::SavingMap, ctx, out, {
                 let tournament_id = tournament_id.clone();

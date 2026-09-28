@@ -32,6 +32,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
+use faf_domain::state::{FactionVetoConfig, TourneyFaction};
 
 use super::RequestError;
 
@@ -389,6 +390,22 @@ pub trait TourneyPort: Send + Sync {
 
     /// Take back the last step. Organiser only.
     async fn veto_undo(&self, tournament_id: &str, match_id: &str) -> Result<(), RequestError>;
+
+    /// Make the faction ban or pick that is due for one game. The players' own.
+    async fn faction_veto(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        game: i32,
+        faction: TourneyFaction,
+    ) -> Result<(), RequestError>;
+
+    /// Switch faction vetoes on or off, or change their numbers. Organiser only.
+    async fn set_faction_veto(
+        &self,
+        tournament_id: &str,
+        config: &FactionVetoConfig,
+    ) -> Result<(), RequestError>;
 
     /// Add a map to the event's own database, or edit one already there.
     ///

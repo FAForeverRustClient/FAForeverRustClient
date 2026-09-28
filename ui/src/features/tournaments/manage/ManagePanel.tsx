@@ -29,6 +29,7 @@ import { Icon } from "../../../design-system/Icon";
 import type {
   AccountSearch,
   BracketConfig,
+  FactionVetoConfig,
   FormatDraft,
   MapDraft,
   MapListStatus,
@@ -58,10 +59,12 @@ import { SeriesPanel } from "./SeriesPanel";
 import { TeamAdmin } from "./TeamAdmin";
 import {
   isLegalFrom,
+  mayConfigureFactionVeto,
   mayEditFormat,
   mayPublish,
   mayShuffleTeams,
 } from "../../../shared/rules/tourneyRules";
+import { FactionVetoPanel } from "./FactionVetoPanel";
 
 const PHASE_LABELS: Record<TourneyPhase, MessageKey> = {
   formTeams: "tournaments.manage.formTeams",
@@ -129,6 +132,7 @@ interface ManagePanelProps {
   onSaveMap: (map: MapDraft) => void;
   onPublishMap: (mapId: string, published: boolean) => void;
   onDeleteMap: (mapId: string) => void;
+  onSetFactionVeto: (config: FactionVetoConfig) => void;
   onMute: (fafId: number, name: string, muted: boolean) => void;
   onAddOrganiser: (fafId: number, name: string) => void;
   onSetOrganiserVisibility: (fafId: number, hidden: boolean) => void;
@@ -459,6 +463,14 @@ export function ManagePanel({
                   />
                 </li>
               </ol>
+              {/* Beside the maps because the website keeps the two veto
+                  settings together: both decide what a match's run holds. */}
+              {mayConfigureFactionVeto(event) && (
+                <>
+                  <h6>{t("tournaments.faction.adminTitle")}</h6>
+                  <FactionVetoPanel event={event} busy={busy} onSave={rest.onSetFactionVeto} />
+                </>
+              )}
             </section>
           )}
 
