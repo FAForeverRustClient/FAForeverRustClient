@@ -1134,9 +1134,12 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
             .flatten()
             .filter_map(|rel| find_rel_resource(doc, &index, Some(rel)))
             .map(parse_reviews_summary)
-            // Ties keep the first, which is the parent's: the order above is
-            // the order to believe them in when they agree on how many.
-            .max_by_key(|(_, reviews)| *reviews);
+            // Ties keep the first, which is the mod's own: the order above is
+            // the order to believe them in when they agree on how many, and a
+            // summary hanging off the mod counts every version's reviews while
+            // the latest version's counts only its own. `max_by_key` keeps the
+            // *last* of equal elements, which is the other way round.
+            .reduce(|best, next| if next.1 > best.1 { next } else { best });
 
             let (rating_tenths, reviews) =
                 if let Some(summary) = reviews_summary.filter(|(_, reviews)| *reviews > 0) {
