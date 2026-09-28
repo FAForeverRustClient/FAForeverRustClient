@@ -3057,6 +3057,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "tournaments.setup.losers": "Drabinka przegranych",
   "tournaments.setup.handicap": "Finalista drabinki zwycięzców zaczyna wielki finał z jedną wygraną przewagi",
   "tournaments.setup.rounds": "Liczba rund",
+  "tournaments.setup.roundsFromCuts": "Wynika z progów bilansu: drużyna kończy fazę po {wins} wygranych lub {losses} porażkach. Próg 0 oznacza brak.",
   "tournaments.setup.eachMatch": "Każdy mecz to",
   "tournaments.setup.swissFinal": "Finał między dwoma najlepszymi po ostatniej rundzie",
   "tournaments.setup.fast": "Szybkie kojarzenie: kolejne starcie rusza, gdy tylko dwie drużyny są wolne",

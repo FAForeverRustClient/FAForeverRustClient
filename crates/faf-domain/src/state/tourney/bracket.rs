@@ -143,6 +143,32 @@ impl SwissTiebreak {
     }
 }
 
+/// A Swiss stage's record cuts (`winCut`, `lossCut`): a team leaves the stage
+/// on reaching that many wins or that many losses, rather than after a fixed
+/// number of rounds. Zero is off, which is what every event without them has.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SwissCuts {
+    pub wins: i32,
+    pub losses: i32,
+}
+
+impl SwissCuts {
+    /// The round count the cuts imply, or `None` without cuts.
+    ///
+    /// The server's `swissCutRounds`, and the number `start_bracket` uses in
+    /// place of whatever round count the start dialog sends: the longest a team
+    /// can last is one short of each cut, plus the game that decides it.
+    pub fn rounds(&self) -> Option<i32> {
+        match (self.wins.max(0), self.losses.max(0)) {
+            (0, 0) => None,
+            (0, losses) => Some(losses),
+            (wins, 0) => Some(wins),
+            (wins, losses) => Some(wins + losses - 1),
+        }
+    }
+}
+
 /// Why a team sits where it does.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

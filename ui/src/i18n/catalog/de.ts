@@ -3052,6 +3052,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.setup.losers": "Loser-Bracket",
   "tournaments.setup.handicap": "Der Winner-Finalist startet das Grand Final mit einem Spiel Vorsprung",
   "tournaments.setup.rounds": "Anzahl Runden",
+  "tournaments.setup.roundsFromCuts": "Ergibt sich aus den Rekord-Cuts: Ein Team scheidet mit {wins} Siegen oder {losses} Niederlagen aus der Phase aus. Ein Cut von 0 ist aus.",
   "tournaments.setup.eachMatch": "Jedes Match ist",
   "tournaments.setup.swissFinal": "Finale zwischen den besten zwei nach der letzten Runde",
   "tournaments.setup.fast": "Schnelle Paarung: die naechste Begegnung startet, sobald zwei Teams frei sind",

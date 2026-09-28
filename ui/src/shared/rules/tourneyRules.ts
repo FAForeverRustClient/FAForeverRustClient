@@ -30,6 +30,7 @@ import type {
   QualifierKind,
   QualifierRule,
   SeriesDraft,
+  SwissCuts,
   Tourney,
   TourneyAction,
   TourneyDraft,
@@ -144,6 +145,19 @@ export function isPlayerSubmittable(
   const fresh = score1 + score2 - current1 - current2;
   const ids = replayIds.filter((id) => /\d/.test(id)).length;
   return fresh >= 1 && ids === fresh;
+}
+
+/**
+ * Twin of `SwissCuts::rounds`: the round count record cuts imply, which the
+ * server uses in place of the one the start dialog sends. Null without cuts.
+ */
+export function swissCutRounds(cuts: SwissCuts): number | null {
+  const wins = Math.max(0, cuts.wins);
+  const losses = Math.max(0, cuts.losses);
+  if (wins === 0 && losses === 0) return null;
+  if (wins === 0) return losses;
+  if (losses === 0) return wins;
+  return wins + losses - 1;
 }
 
 /** Twin of `faf_domain::state::map_key`: letters and digits, folded. */

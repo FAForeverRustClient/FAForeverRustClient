@@ -272,6 +272,10 @@ pub struct Tourney {
     pub swiss_order: Vec<String>,
     /// How equal Swiss records are separated (`tiebreak`).
     pub swiss_tiebreak: SwissTiebreak,
+    /// The Swiss stage's record cuts, as the plan stores them. Set on the
+    /// website for now; the client reads them so the start dialog does not ask
+    /// for a round count the server would replace.
+    pub swiss_cuts: SwissCuts,
     /// Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
     /// that is the tiebreak.
     pub swiss_beaten: std::collections::BTreeMap<String, i32>,

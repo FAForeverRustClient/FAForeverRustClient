@@ -3162,6 +3162,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.setup.losers": "Нижняя сетка",
   "tournaments.setup.handicap": "Финалист верхней сетки начинает гранд-финал с преимуществом в одну игру",
   "tournaments.setup.rounds": "Число раундов",
+  "tournaments.setup.roundsFromCuts": "Задаётся порогами по результатам: команда покидает этап после {wins} побед или {losses} поражений. Порог 0 означает, что он выключен.",
   "tournaments.setup.eachMatch": "Каждый матч",
   "tournaments.setup.swissFinal": "Финал между двумя лучшими после последнего раунда",
   "tournaments.setup.fast": "Быстрая жеребьёвка: следующая пара начинается, как только освобождаются две команды",

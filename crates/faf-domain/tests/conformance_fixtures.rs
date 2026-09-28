@@ -63,6 +63,7 @@ struct HelperFixture {
     tourney_open_events: Vec<TourneyOpenEventCase>,
     tourney_phase_legality: Vec<TourneyPhaseLegalityCase>,
     tourney_busy_matches: Vec<TourneyBusyMatchCase>,
+    tourney_swiss_cuts: Vec<TourneySwissCutCase>,
     tourney_draft_rejections: Vec<TourneyDraftRejectionCase>,
     tourney_reports: Vec<TourneyReportCase>,
     tourney_map_matches: TourneyMapMatchFixture,
@@ -242,6 +243,15 @@ struct TourneyOpenEventCase {
 struct TourneyBusyMatchCase {
     pending: Option<TourneyAction>,
     busy_match_id: Option<String>,
+}
+
+/// `SwissCuts::rounds`: the round count the start dialog shows in place of
+/// its own field when the plan has record cuts.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneySwissCutCase {
+    cuts: SwissCuts,
+    rounds: Option<i32>,
 }
 
 #[derive(Serialize)]
@@ -2832,6 +2842,16 @@ fn helper_fixture() -> HelperFixture {
         tourney_open_events: tourney_open_event_cases(),
         tourney_phase_legality: tourney_phase_legality_cases(),
         tourney_busy_matches: tourney_busy_match_cases(),
+        tourney_swiss_cuts: [(0, 0), (3, 0), (0, 2), (3, 3), (4, 2), (1, 1), (-1, 3)]
+            .into_iter()
+            .map(|(wins, losses)| {
+                let cuts = SwissCuts { wins, losses };
+                TourneySwissCutCase {
+                    cuts,
+                    rounds: cuts.rounds(),
+                }
+            })
+            .collect(),
         tourney_draft_rejections: tourney_draft_rejection_cases(),
         tourney_reports: tourney_report_cases(),
         tourney_map_matches: tourney_map_match_fixture(),

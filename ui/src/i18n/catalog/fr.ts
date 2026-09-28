@@ -3027,6 +3027,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "tournaments.setup.losers": "Tableau des perdants",
   "tournaments.setup.handicap": "Le finaliste du tableau des gagnants démarre la grande finale avec une partie d'avance",
   "tournaments.setup.rounds": "Nombre de tours",
+  "tournaments.setup.roundsFromCuts": "Fixé par les seuils de bilan : une équipe quitte la phase à {wins} victoires ou {losses} défaites. Un seuil de 0 est désactivé.",
   "tournaments.setup.eachMatch": "Chaque match est en",
   "tournaments.setup.swissFinal": "Finale entre les deux premiers après le dernier tour",
   "tournaments.setup.fast": "Appariement rapide : le match suivant démarre dès que deux équipes sont libres",

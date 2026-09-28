@@ -29,9 +29,9 @@ use crate::state::{
     ChatRoom, Competition, Currency, Formation, HostingStatus, InviteStatus, MapPool, MapSpec,
     MatchLink, MatchPlan, MatchReport, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
     PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream,
-    SwissTiebreak, TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite,
-    TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam,
-    TourneyViewer,
+    SwissCuts, SwissTiebreak, TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft,
+    TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus,
+    TourneyTeam, TourneyViewer,
 };
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
@@ -173,6 +173,27 @@ fn plan(document: &Value, kind: BracketKind, competition: Competition) -> Option
             fast: flag(held, "fast"),
         },
     })
+}
+
+/// The record cuts in the stored plan.
+///
+/// Read from `plan` rather than `cfg`, because the plan is what the next
+/// `start_bracket` uses (`cleanSwissExtras(c, t.plan)`) when the start body
+/// does not name them, and this client's never does. Out of the server's own
+/// 0 to 15 range counts as off, as `cleanSwissExtras` treats it.
+fn swiss_cuts(document: &Value) -> SwissCuts {
+    let Some(held) = document.get("plan").filter(|value| value.is_object()) else {
+        return SwissCuts::default();
+    };
+    let cut = |name: &str| {
+        int(held, name)
+            .filter(|value| (0..=15).contains(value))
+            .unwrap_or(0)
+    };
+    SwissCuts {
+        wins: cut("winCut"),
+        losses: cut("lossCut"),
+    }
 }
 
 /// A JavaScript millisecond timestamp as Unix seconds.
@@ -404,6 +425,7 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         champion_team_id: id(document, "championTeamId"),
         swiss_order: string_list(document, "swissOrder"),
         swiss_tiebreak: SwissTiebreak::from_wire(&text(document, "tiebreak")),
+        swiss_cuts: swiss_cuts(document),
         swiss_beaten: parse_beaten(document.get("swissSB")),
         viewer: parse_viewer(document),
     })
@@ -2484,6 +2506,30 @@ See the [rules](https://x.invalid/r)."
             );
         }
         assert_eq!(map_spec_body(None), Value::Null);
+    }
+
+    #[test]
+    fn the_record_cuts_come_from_the_plan() {
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "bracketType": "swiss",
+            "plan": { "bo": 3, "winCut": 3, "lossCut": "3" },
+        }))
+        .expect("a tournament");
+        assert_eq!(event.swiss_cuts, SwissCuts { wins: 3, losses: 3 });
+        assert_eq!(event.swiss_cuts.rounds(), Some(5), "3-2 is the longest run");
+
+        let wins_only =
+            parse_tourney(&json!({ "id": "e2", "plan": { "winCut": 4 } })).expect("a tournament");
+        assert_eq!(wins_only.swiss_cuts.rounds(), Some(4));
+
+        let out_of_range =
+            parse_tourney(&json!({ "id": "e3", "plan": { "winCut": 99 } })).expect("a tournament");
+        assert_eq!(out_of_range.swiss_cuts, SwissCuts::default());
+        assert_eq!(out_of_range.swiss_cuts.rounds(), None);
+
+        let no_plan = parse_tourney(&json!({ "id": "e4", "plan": null })).expect("a tournament");
+        assert_eq!(no_plan.swiss_cuts.rounds(), None);
     }
 
     /// The Swiss table's order, tiebreak and numbers are the server's to give.

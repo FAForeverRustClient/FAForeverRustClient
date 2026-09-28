@@ -7307,6 +7307,16 @@ export type SubmitStatus = { type: "idle" } | { type: "sending" } |
 } };
 
 /**
+ *  A Swiss stage's record cuts (`winCut`, `lossCut`): a team leaves the stage
+ *  on reaching that many wins or that many losses, rather than after a fixed
+ *  number of rounds. Zero is off, which is what every event without them has.
+ */
+export type SwissCuts = {
+	wins: number,
+	losses: number,
+};
+
+/**
  *  How a Swiss event separates equal records, after wins and fewer losses.
  *
  *  The website's per-tournament choice (`tiebreak`): game difference, which is
@@ -7634,6 +7644,12 @@ export type Tourney = {
 	swissOrder: string[],
 	/**  How equal Swiss records are separated (`tiebreak`). */
 	swissTiebreak: SwissTiebreak,
+	/**
+	 *  The Swiss stage's record cuts, as the plan stores them. Set on the
+	 *  website for now; the client reads them so the start dialog does not ask
+	 *  for a round count the server would replace.
+	 */
+	swissCuts: SwissCuts,
 	/**
 	 *  Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
 	 *  that is the tiebreak.

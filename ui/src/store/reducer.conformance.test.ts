@@ -46,7 +46,7 @@ import type {
   UploadsState,
   VaultMap,
 } from "../ipc/bindings";
-import type { BracketKind, MatchPlan } from "../ipc/bindings";
+import type { BracketKind, MatchPlan, SwissCuts } from "../ipc/bindings";
 import fixture from "./__fixtures__/reducer-conformance.json";
 import { canLaunch, installTarget, updateAvailable } from "../shared/rules/galacticWarActions";
 import { noteForPlayer } from "../shared/rules/playerNotes";
@@ -67,6 +67,7 @@ import {
   isStructural,
   isSubmittable,
   isPlayerSubmittable,
+  swissCutRounds,
   mapKey,
   matchVaultMap,
   mayEditFormat,
@@ -163,6 +164,10 @@ interface HelperFixture {
   tourneyBusyMatches: Array<{
     pending: TourneyAction | null;
     busyMatchId: string | null;
+  }>;
+  tourneySwissCuts: Array<{
+    cuts: SwissCuts;
+    rounds: number | null;
   }>;
   tourneyOpenEvents: Array<{
     detailId: string | null;
@@ -461,6 +466,13 @@ describe("tournament rule twins match Rust", () => {
     "narrows the pending write $pending.type to match $busyMatchId",
     ({ pending, busyMatchId: expected }) => {
       expect(busyMatchId(pending)).toBe(expected);
+    },
+  );
+
+  it.each(helpers.tourneySwissCuts)(
+    "derives $rounds rounds from record cuts $cuts.wins / $cuts.losses",
+    ({ cuts, rounds }) => {
+      expect(swissCutRounds(cuts)).toBe(rounds);
     },
   );
 

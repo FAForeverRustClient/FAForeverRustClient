@@ -3026,6 +3026,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "tournaments.setup.losers": "Cuadro de perdedores",
   "tournaments.setup.handicap": "El finalista del cuadro de ganadores empieza la gran final con una partida de ventaja",
   "tournaments.setup.rounds": "Número de rondas",
+  "tournaments.setup.roundsFromCuts": "Lo fijan los cortes por récord: un equipo sale de la fase con {wins} victorias o {losses} derrotas. Un corte de 0 está desactivado.",
   "tournaments.setup.eachMatch": "Cada partida es",
   "tournaments.setup.swissFinal": "Final entre los dos primeros tras la última ronda",
   "tournaments.setup.fast": "Emparejamiento rápido: el siguiente enfrentamiento empieza en cuanto hay dos equipos libres",

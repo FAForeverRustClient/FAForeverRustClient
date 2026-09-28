@@ -3350,6 +3350,7 @@ export const en = {
   "tournaments.setup.losers": "Losers bracket",
   "tournaments.setup.handicap": "Winners finalist starts the grand final one game up",
   "tournaments.setup.rounds": "Number of rounds",
+  "tournaments.setup.roundsFromCuts": "Set by the record cuts: a team leaves the stage at {wins} wins or {losses} losses. A cut of 0 is off.",
   "tournaments.setup.eachMatch": "Each match is",
   "tournaments.setup.swissFinal": "Final between the top two after the last round",
   "tournaments.setup.fast": "Fast pairing: the next matchup starts as soon as two teams are free",
