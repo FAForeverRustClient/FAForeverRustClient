@@ -1303,6 +1303,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.live.anySize": "Cualquier tamaño",
   "replays.live.hideModded": "Ocultar partidas con mods de simulación",
   "replays.live.hideSinglePlayer": "Ocultar partidas de un jugador",
+  "replays.live.hideUnranked": "Ocultar no clasificatorias",
+  "replays.live.hideUnrankedHint": "Oculta las partidas que el cliente sabe que no puntuarán a nadie: mapa no clasificatorio, mod de simulación no clasificatorio o todos contra todos. Ningún cliente ve los ajustes de la sala.",
   "replays.live.friendsOnly": "Partidas con amigos",
   "replays.live.startUnavailable": "Hora de inicio no disponible",
   "replays.live.notificationSet": "Aviso programado",

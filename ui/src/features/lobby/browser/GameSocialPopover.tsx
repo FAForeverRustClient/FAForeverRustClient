@@ -10,7 +10,7 @@ import { friendsInGame } from "./friendPresence";
 import { t } from "../../../i18n";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { displayedRating, gameLeaderboard } from "../../../shared/playerRatings";
-import { observerTeam } from "./gameRules";
+import { observerTeam } from "../../../shared/gameRules";
 import { cancelSocialHide, hideGlobalSocialSoon, type TooltipPosition } from "./hoverPopovers";
 import { displayTeamName } from "./GameLineup";
 

@@ -1304,6 +1304,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.live.anySize": "Toute taille",
   "replays.live.hideModded": "Masquer les parties avec mods SIM",
   "replays.live.hideSinglePlayer": "Masquer les parties solo",
+  "replays.live.hideUnranked": "Masquer les non classées",
+  "replays.live.hideUnrankedHint": "Masque les parties dont le client sait qu'elles ne classeront personne : carte non classée, mod de simulation non classé, ou chacun pour soi. Aucun client ne voit les réglages du salon.",
   "replays.live.friendsOnly": "Parties avec des amis",
   "replays.live.startUnavailable": "Heure de début indisponible",
   "replays.live.notificationSet": "Notification programmée",

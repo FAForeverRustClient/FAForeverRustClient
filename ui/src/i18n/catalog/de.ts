@@ -974,6 +974,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.live.anySize": "Beliebige Größe",
   "replays.live.hideModded": "SIM-modifizierte Partien ausblenden",
   "replays.live.hideSinglePlayer": "Einzelspielerpartien ausblenden",
+  "replays.live.hideUnranked": "Ungewertete ausblenden",
+  "replays.live.hideUnrankedHint": "Blendet Spiele aus, von denen der Client weiß, dass sie niemanden werten: ungewertete Karte, ungewerteter Sim-Mod oder ein Jeder-gegen-jeden. Die Lobby-Einstellungen sieht kein Client.",
   "replays.live.friendsOnly": "Partien mit Freunden",
 
   "replays.filters.duration": "Dauer",

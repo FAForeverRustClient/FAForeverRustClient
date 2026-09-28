@@ -10,7 +10,7 @@ import { openPlayerCard } from "../../../shared/playerCardActions";
 import { formatNumber, t } from "../../../i18n";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { displayedRating, gameLeaderboard } from "../../../shared/playerRatings";
-import { observerTeam } from "./gameRules";
+import { observerTeam } from "../../../shared/gameRules";
 import { cancelLineupHide, hideGlobalLineupSoon, type TooltipPosition } from "./hoverPopovers";
 
 export function GameLineup({

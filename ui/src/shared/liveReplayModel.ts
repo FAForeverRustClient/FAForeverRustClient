@@ -51,6 +51,8 @@ export type IndexedLiveGame = {
   players: string[];
   searchText: string;
   simModCount: number;
+  /** Whether this game will rate anybody, as far as a client can tell. */
+  ranked: boolean;
 };
 
 export function allGamePlayers(game: Game): string[] {

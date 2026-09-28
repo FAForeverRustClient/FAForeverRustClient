@@ -1117,6 +1117,8 @@ export const en = {
   "replays.live.anySize": "Any size",
   "replays.live.hideModded": "Hide SIM-modded games",
   "replays.live.hideSinglePlayer": "Hide single-player games",
+  "replays.live.hideUnranked": "Hide unranked",
+  "replays.live.hideUnrankedHint": "Hides games the client can tell will rate nobody: an unranked map, an unranked sim mod, or a free-for-all. Lobby settings are not visible to any client.",
   "replays.live.friendsOnly": "Games with friends",
 
   // Advanced vault filters.

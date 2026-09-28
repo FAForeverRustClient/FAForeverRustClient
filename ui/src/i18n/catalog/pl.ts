@@ -1287,6 +1287,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.live.anySize": "Dowolny rozmiar",
   "replays.live.hideModded": "Ukryj gry z modami symulacji",
   "replays.live.hideSinglePlayer": "Ukryj gry jednoosobowe",
+  "replays.live.hideUnranked": "Ukryj bez rankingu",
+  "replays.live.hideUnrankedHint": "Ukrywa gry, o których klient wie, że nikogo nie ocenią: mapa bez rankingu, mod symulacji bez rankingu albo każdy na każdego. Żaden klient nie widzi ustawień lobby.",
   "replays.live.friendsOnly": "Gry ze znajomymi",
   "replays.filters.duration": "Czas trwania",
   "replays.filters.reviewScore": "Ocena",

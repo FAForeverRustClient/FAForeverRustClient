@@ -57,6 +57,18 @@ export function LiveReplayControls(props: Props) {
           />
           {t("replays.live.hideSinglePlayer")}
         </label>
+        {/* The three things a client can see about whether a running game
+            will rate anybody: an unranked map, a sim mod that is not on the
+            ranked list, and a free-for-all. Lobby settings are not one of
+            them and never have been, in any client (issue 357). */}
+        <label className="toolbar-check" title={t("replays.live.hideUnrankedHint")}>
+          <input
+            type="checkbox"
+            checked={filters.hideUnranked ?? false}
+            onChange={(event) => onFilter("hideUnranked", event.target.checked)}
+          />
+          {t("replays.live.hideUnranked")}
+        </label>
         <label className="toolbar-check">
           <input
             type="checkbox"

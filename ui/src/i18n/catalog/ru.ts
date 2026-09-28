@@ -1327,6 +1327,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.live.anySize": "Любой размер",
   "replays.live.hideModded": "Скрыть игры с SIM модами",
   "replays.live.hideSinglePlayer": "Скрыть одиночные игры",
+  "replays.live.hideUnranked": "Скрыть нерейтинговые",
+  "replays.live.hideUnrankedHint": "Скрывает игры, про которые клиент знает, что они никому не изменят рейтинг: нерейтинговая карта, нерейтинговый сим-мод или каждый сам за себя. Настройки лобби не видит ни один клиент.",
   "replays.live.friendsOnly": "Игры с друзьями",
   "replays.live.startUnavailable": "Время начала недоступно",
   "replays.live.notificationSet": "Уведомление назначено",
