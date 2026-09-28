@@ -1542,15 +1542,20 @@
   color: var(--color-muted);
 }
 
-/* Only the podium is tinted, and only on the left edge: a full row highlight
-   on three of four rows in a small bracket reads as noise rather than rank. */
+/* Only the podium is marked, and only on the left edge: a hairline in gold,
+   silver and bronze in front of the row. A full row highlight on three of four
+   rows in a small bracket reads as noise rather than rank. The league tokens,
+   because they are this client's medal colours already. */
 .tournament-standings tr.rank-1 td:first-child {
-  box-shadow: inset 2px 0 0 var(--color-accent);
+  box-shadow: inset 2px 0 0 var(--color-league-gold);
 }
 
-.tournament-standings tr.rank-2 td:first-child,
+.tournament-standings tr.rank-2 td:first-child {
+  box-shadow: inset 2px 0 0 var(--color-league-silver);
+}
+
 .tournament-standings tr.rank-3 td:first-child {
-  box-shadow: inset 2px 0 0 var(--color-border-strong);
+  box-shadow: inset 2px 0 0 var(--color-league-bronze);
 }
 
 /* The per-team division picker sits in the team header, beside the roster
