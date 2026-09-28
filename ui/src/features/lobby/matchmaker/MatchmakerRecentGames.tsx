@@ -22,6 +22,8 @@ import { PlayerName } from "../../../shared/components/nameColors";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { useColumnWidths } from "../../../shared/hooks/useColumnWidths";
 import { mapPresentation } from "../../../shared/mapPresentation";
+import { openPlayerCard } from "../../../shared/playerCardActions";
+import { requestPlayerCardTab } from "../../../shared/playerCardTabIntent";
 import { EMPTY_REPLAY_QUERY } from "../../../shared/replayQuery";
 import { requestReplaySearch } from "../../../shared/replaySearchIntent";
 import { useAppStore } from "../../../store/store";
@@ -81,6 +83,12 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
     ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
   };
 
+  /** The signed-in player's own card, opened straight on its Results tab. */
+  const openOwnResults = () => {
+    requestPlayerCardTab("results");
+    void openPlayerCard(null, playerName);
+  };
+
   const columnLabels = [
     t("lobby.matchmaker.recent.column.preview"),
     t("lobby.matchmaker.recent.column.map"),
@@ -110,6 +118,14 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
           <span className="matchmaker-kicker">{t("lobby.matchmaker.recent.kicker")}</span>
           <h2 id="matchmaker-recent-title">{t("lobby.matchmaker.recent.title")}</h2>
         </div>
+        {/* The short list here is the last few games; the profile's Results
+            tab is the whole history, with the queue and the rating change per
+            game. One click across rather than two (issue 361). */}
+        {playerName && (
+          <Button onClick={openOwnResults} title={t("lobby.matchmaker.recent.openResultsHint")}>
+            {t("lobby.matchmaker.recent.openResults")}
+          </Button>
+        )}
       </div>
 
       {status.type === "failed" ? (
@@ -180,12 +196,18 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
                       <span className="matchmaker-recent-actions">
                         <Button
                           disabled={!game.replayAvailable}
-                          title={game.replayAvailable ? undefined : t("lobby.matchmaker.recent.notYetAvailable")}
+                          title={game.replayAvailable ? t("lobby.matchmaker.recent.watchHint") : t("lobby.matchmaker.recent.notYetAvailable")}
                           onClick={() => ipc.send({ kind: "Replays", command: { type: "watchVault", payload: { uid: game.uid } } })}
                         >
                           <Icon name="play" size={13} /> {t("lobby.matchmaker.recent.watch")}
                         </Button>
-                        <Button onClick={() => openReplay(game.uid)} aria-label={t("lobby.matchmaker.recent.openAria", { id: game.uid })}>
+                        {/* Icon only, so it needs words on hover as well as
+                            for a screen reader (issue 361). */}
+                        <Button
+                          onClick={() => openReplay(game.uid)}
+                          aria-label={t("lobby.matchmaker.recent.openAria", { id: game.uid })}
+                          title={t("lobby.matchmaker.recent.openAria", { id: game.uid })}
+                        >
                           <Icon name="replays" size={13} />
                         </Button>
                       </span>

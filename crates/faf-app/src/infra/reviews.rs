@@ -25,11 +25,19 @@ use serde_json::json;
 
 use crate::infra::env_or;
 use crate::infra::jsonapi::{
-    delete_resource, document_index, fetch_document, patch_resource, post_resource, rel_one,
-    rel_targets, value_i32, value_string, JsonApiResource, ResourceIndex,
+    delete_resource, document_index, fetch_all_pages, patch_resource, post_resource, rel_one,
+    rel_targets, value_i32, value_string, JsonApiDoc, JsonApiResource, ResourceIndex,
 };
 use crate::infra::session::TokenStore;
 use crate::ports::{ReviewPage, ReviewsPort};
+
+/// How many versions one page of the walk asks for. The API clamps a page at a
+/// hundred, so asking for more is not a way to avoid walking.
+const VERSION_PAGE_SIZE: usize = 100;
+
+/// A ceiling on the walk, so a subject with an implausible history cannot turn
+/// opening its reviews into an unbounded number of requests.
+const MAX_VERSION_PAGES: u32 = 200;
 
 #[derive(Debug, Clone)]
 pub struct ReviewsConfig {
@@ -80,45 +88,51 @@ impl ReviewsPort for ReviewsClient {
         if !kind.is_versioned() {
             return self.list_unversioned(kind, subject_id, &token).await;
         }
-        let mut url = self.url(&format!(
-            "{}/{subject_id}/versions",
-            kind.subject_resource()
-        ))?;
-        url.query_pairs_mut()
-            .append_pair("include", "reviews,reviews.player")
-            .append_pair("page[size]", "100");
+        let subject = kind.subject_resource();
+        let api_base = self.config.api_base.clone();
+        // Every page of versions, not the first hundred (issue 356). Java's
+        // `getMapReviews` walks the whole collection with `getAll`, and a map
+        // reworked over years has more versions than one page holds. The
+        // reviews on the rest of them were simply not in the list.
+        let docs = fetch_all_pages(
+            &self.http,
+            &token,
+            MAX_VERSION_PAGES,
+            VERSION_PAGE_SIZE,
+            |page| {
+                let mut url =
+                    url::Url::parse(&format!("{api_base}/data/{subject}/{subject_id}/versions"))
+                        .map_err(|error| format!("invalid API base: {error}"))?;
+                url.query_pairs_mut()
+                    .append_pair("include", "reviews,reviews.player")
+                    .append_pair("page[size]", &VERSION_PAGE_SIZE.to_string())
+                    .append_pair("page[number]", &page.to_string())
+                    .append_key_only("page[totals]");
+                Ok(url)
+            },
+        )
+        .await?;
 
-        let doc = fetch_document(&self.http, url, &token).await?;
-        let index = document_index(&doc);
+        // Each review kept beside the version number it was written against,
+        // so the list can be ordered by it below.
+        let mut numbered: Vec<(i32, Review)> = Vec::new();
+        let mut latest: Option<(i32, i32)> = None;
 
-        let mut reviews = Vec::new();
-        let mut latest_version_id = None;
-        let mut latest_version = i32::MIN;
-
-        for version in &doc.data {
-            let Ok(version_id) = version.id.parse::<i32>() else {
-                continue;
-            };
-            let number = value_i32(&version.attributes, "version").unwrap_or(0);
-            if number > latest_version || latest_version_id.is_none() {
-                latest_version = number;
-                latest_version_id = Some(version_id);
-            }
-
-            let label = number.to_string();
-            for key in rel_targets(&version.relationships, "reviews") {
-                let Some(resource) = index.get(&key).copied() else {
-                    continue;
-                };
-                if let Some(review) = parse_review(resource, &index, &label) {
-                    reviews.push(review);
+        for doc in &docs {
+            let (page, newest) = page_reviews(doc);
+            numbered.extend(page);
+            if let Some(newest) = newest {
+                if latest.is_none_or(|(number, _)| newest.0 > number) {
+                    latest = Some(newest);
                 }
             }
         }
 
+        newest_first(&mut numbered);
+
         Ok(ReviewPage {
-            reviews,
-            latest_version_id,
+            reviews: numbered.into_iter().map(|(_, review)| review).collect(),
+            latest_version_id: latest.map(|(_, id)| id),
         })
     }
 
@@ -191,24 +205,93 @@ impl ReviewsClient {
         subject_id: i32,
         token: &str,
     ) -> Result<ReviewPage, String> {
-        let mut url = self.url(&format!("{}/{subject_id}/reviews", kind.subject_resource()))?;
-        url.query_pairs_mut()
-            .append_pair("include", "player")
-            .append_pair("page[size]", "100");
+        let subject = kind.subject_resource();
+        let api_base = self.config.api_base.clone();
+        let docs = fetch_all_pages(
+            &self.http,
+            token,
+            MAX_VERSION_PAGES,
+            VERSION_PAGE_SIZE,
+            |page| {
+                let mut url =
+                    url::Url::parse(&format!("{api_base}/data/{subject}/{subject_id}/reviews"))
+                        .map_err(|error| format!("invalid API base: {error}"))?;
+                url.query_pairs_mut()
+                    .append_pair("include", "player")
+                    .append_pair("page[size]", &VERSION_PAGE_SIZE.to_string())
+                    .append_pair("page[number]", &page.to_string())
+                    .append_key_only("page[totals]");
+                Ok(url)
+            },
+        )
+        .await?;
 
-        let doc = fetch_document(&self.http, url, token).await?;
-        let index = document_index(&doc);
-        let reviews = doc
-            .data
-            .iter()
-            .filter_map(|resource| parse_review(resource, &index, ""))
-            .collect();
+        let mut reviews = Vec::new();
+        for doc in &docs {
+            let index = document_index(doc);
+            reviews.extend(
+                doc.data
+                    .iter()
+                    .filter_map(|resource| parse_review(resource, &index, "")),
+            );
+        }
+        // Newest first, as above. A game has no versions, so the review id is
+        // the whole of the order.
+        reviews.sort_by(|left, right| right.id.cmp(&left.id));
         Ok(ReviewPage {
             reviews,
             // The game is where a new review goes.
             latest_version_id: Some(subject_id),
         })
     }
+}
+
+/// One page of the versions walk: every review on it beside the version number
+/// it was written against, and the highest version number the page carries
+/// with that version's id.
+fn page_reviews(doc: &JsonApiDoc) -> (Vec<(i32, Review)>, Option<(i32, i32)>) {
+    let index = document_index(doc);
+    let mut reviews = Vec::new();
+    let mut latest: Option<(i32, i32)> = None;
+
+    for version in &doc.data {
+        let Ok(version_id) = version.id.parse::<i32>() else {
+            continue;
+        };
+        let number = value_i32(&version.attributes, "version").unwrap_or(0);
+        if latest.is_none_or(|(highest, _)| number > highest) {
+            latest = Some((number, version_id));
+        }
+
+        let label = number.to_string();
+        for key in rel_targets(&version.relationships, "reviews") {
+            let Some(resource) = index.get(&key).copied() else {
+                continue;
+            };
+            if let Some(review) = parse_review(resource, &index, &label) {
+                reviews.push((number, review));
+            }
+        }
+    }
+
+    (reviews, latest)
+}
+
+/// Newest review first (issue 356).
+///
+/// The API hands the versions over oldest first, so the panel opened on the
+/// oldest reviews a subject ever had and buried the ones written this week at
+/// the bottom: "it does not list our reviews, the latest is from v18", on a
+/// mod that was at v25. A review carries no date in this document, so the
+/// version it was written against is the order, and the review id settles two
+/// reviews of one version, which is the order they were written in.
+fn newest_first(reviews: &mut [(i32, Review)]) {
+    reviews.sort_by(|left, right| {
+        right
+            .0
+            .cmp(&left.0)
+            .then_with(|| right.1.id.cmp(&left.1.id))
+    });
 }
 
 /// The `player` link a new review carries.
@@ -385,6 +468,50 @@ mod tests {
         let parsed = parse_review(resource, &index, "2").unwrap();
         assert_eq!(parsed.text, "Reclaim is <3 mass");
         assert_eq!(parsed.player, "", "no player relationship is not fatal");
+    }
+
+    #[test]
+    fn the_newest_reviews_lead_and_the_latest_version_is_the_highest_number() {
+        // The document hands v3 over before v2 here, and a real one hands them
+        // over oldest first. Neither order may decide what the reader sees.
+        let (mut reviews, latest) = page_reviews(&versions_document());
+        assert_eq!(latest, Some((3, 30)), "the highest version, with its id");
+
+        newest_first(&mut reviews);
+        assert_eq!(
+            reviews
+                .iter()
+                .map(|(_, review)| review.id)
+                .collect::<Vec<_>>(),
+            vec![1, 2],
+            "v3's review before v2's"
+        );
+
+        // Two reviews of one version fall back to the id, which is the order
+        // they were written in.
+        let mut same_version = vec![
+            (4, review_with_id(10)),
+            (4, review_with_id(12)),
+            (4, review_with_id(11)),
+        ];
+        newest_first(&mut same_version);
+        assert_eq!(
+            same_version
+                .iter()
+                .map(|(_, review)| review.id)
+                .collect::<Vec<_>>(),
+            vec![12, 11, 10]
+        );
+    }
+
+    fn review_with_id(id: i32) -> Review {
+        Review {
+            id,
+            score: 5,
+            text: String::new(),
+            player: String::new(),
+            version: "4".into(),
+        }
     }
 
     #[test]

@@ -844,6 +844,7 @@
           "maxPlayers": "",
           "hideModded": false,
           "hideSinglePlayer": false,
+          "hideUnranked": false,
           "friendsOnly": false
         },
         "hostGame": {
@@ -2122,6 +2123,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -31628,6 +31630,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -31889,6 +31892,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -32159,6 +32163,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -32424,6 +32429,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -32689,6 +32695,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -32964,6 +32971,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -33245,6 +33253,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -33566,6 +33575,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -33863,6 +33873,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -34162,6 +34173,7 @@
                 "gameType": "",
                 "hideModded": false,
                 "hideSinglePlayer": false,
+                "hideUnranked": false,
                 "maxPlayers": "",
                 "search": ""
               },
@@ -34438,6 +34450,7 @@
                     "maxPlayers": "999",
                     "hideModded": true,
                     "hideSinglePlayer": false,
+                    "hideUnranked": true,
                     "friendsOnly": true
                   },
                   "hostGame": {
@@ -34578,6 +34591,7 @@
                 "gameType": "matchmaker",
                 "hideModded": true,
                 "hideSinglePlayer": false,
+                "hideUnranked": true,
                 "maxPlayers": "",
                 "search": "tournament"
               },

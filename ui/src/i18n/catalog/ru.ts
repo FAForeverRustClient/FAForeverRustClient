@@ -1327,6 +1327,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.live.anySize": "Любой размер",
   "replays.live.hideModded": "Скрыть игры с SIM модами",
   "replays.live.hideSinglePlayer": "Скрыть одиночные игры",
+  "replays.live.hideUnranked": "Скрыть нерейтинговые",
+  "replays.live.hideUnrankedHint": "Скрывает игры, про которые клиент знает, что они никому не изменят рейтинг: нерейтинговая карта, нерейтинговый сим-мод или каждый сам за себя. Настройки лобби не видит ни один клиент.",
   "replays.live.friendsOnly": "Игры с друзьями",
   "replays.live.startUnavailable": "Время начала недоступно",
   "replays.live.notificationSet": "Уведомление назначено",
@@ -1699,6 +1701,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.matchmaker.recent.watch": "Смотреть",
   "lobby.matchmaker.recent.notYetAvailable": "Реплей ещё загружается.",
   "lobby.matchmaker.recent.openAria": "Открыть реплей #{id} в хранилище",
+  "lobby.matchmaker.recent.openResults": "Результаты в профиле",
+  "lobby.matchmaker.recent.openResultsHint": "Откроет ваш профиль на вкладке «Результаты» со всей историей игр",
+  "lobby.matchmaker.recent.watchHint": "Смотреть этот реплей",
   "lobby.matchmaker.summary.selected": {
     one: "Выбрана {count} очередь",
     few: "Выбрано {count} очереди",

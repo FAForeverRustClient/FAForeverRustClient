@@ -66,14 +66,6 @@ export function PlayerResults({ playerId }: { playerId: number }) {
         <p className="player-maps-note muted">
           {t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}
         </p>
-        {shown < games.length && (
-          <Button onClick={() => setShown((count) => count + PAGE)}>
-            {t("playerCard.results.showMore", {
-              shown: formatNumber(Math.min(shown, games.length)),
-              total: formatNumber(games.length),
-            })}
-          </Button>
-        )}
       </div>
 
       <table className="surface-panel player-maps-table player-results-table">
@@ -114,6 +106,20 @@ export function PlayerResults({ playerId }: { playerId: number }) {
           })}
         </tbody>
       </table>
+
+      {/* Below the table, not above it (issue 362): the reader reaches the end
+          of the rows and the next page is where they already are, instead of
+          having scrolled the button off the top of the tab. */}
+      {shown < games.length && (
+        <div className="player-results-more">
+          <Button onClick={() => setShown((count) => count + PAGE)}>
+            {t("playerCard.results.showMore", {
+              shown: formatNumber(Math.min(shown, games.length)),
+              total: formatNumber(games.length),
+            })}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

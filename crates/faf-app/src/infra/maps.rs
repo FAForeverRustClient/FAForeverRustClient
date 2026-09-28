@@ -186,7 +186,11 @@ impl MapsPort for MapsClient {
         url.query_pairs_mut()
             .append_pair("filter", &filter)
             .append_pair("page[size]", &MAX_FOLDER_LOOKUPS.to_string())
-            .append_pair("include", "latestVersion,author,reviewsSummary");
+            // The same include as the listing, for the same reason (issue 356):
+            // without `latestVersion.reviewsSummary` a map looked up by folder
+            // carries only whichever summary hangs off the map itself, and
+            // reads "N/A" whenever that one is missing.
+            .append_pair("include", MAP_VAULT_INCLUDE);
         let doc = fetch_document(&self.http, url, &token).await?;
         Ok(parse_vault_maps(&doc))
     }
@@ -1007,9 +1011,12 @@ fn parse_vault_maps(doc: &JsonApiDoc) -> Vec<VaultMap> {
             .flatten()
             .filter_map(|rel| find_rel_resource(doc, &index, Some(rel)))
             .map(parse_reviews_summary)
-            // Ties keep the first, which is the parent's: the order above is
-            // the order to believe them in when they agree on how many.
-            .max_by_key(|(_, reviews)| *reviews);
+            // Ties keep the first, which is the map's own: the order above is
+            // the order to believe them in when they agree on how many, and a
+            // summary hanging off the map counts every version's reviews while
+            // the latest version's counts only its own. `max_by_key` keeps the
+            // *last* of equal elements, which is the other way round.
+            .reduce(|best, next| if next.1 > best.1 { next } else { best });
 
             let (rating_tenths, reviews) =
                 if let Some(summary) = reviews_summary.filter(|(_, reviews)| *reviews > 0) {
