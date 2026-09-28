@@ -84,6 +84,23 @@ These come first because each one is a defect in what already ships.
 | 1.6 | **The Swiss start dialog asks for a round count that the server ignores** when record cuts are on (`rounds: cutRounds || c.rounds`). | `BracketSetupDialog.tsx`, `server.js` `start_bracket` | Misleading; the number typed is silently replaced |
 | 1.7 | **"Host game" is offered to everyone on every playable match**, not to the two sides. | `BracketView.tsx` "Hosting is offered to everyone watching" | Issue #367 item 3 |
 | 1.8 | **Events created in the client can never take player-reported scores.** `create_body` sends `playerReporting: false` on purpose, and nothing can turn it back on (`edit_info`'s "Allow players to submit scores" is not offered). The website's default is on. | `tourney-features.md` §3 "report_submit" | A decision of 2026-08-18 that contradicts "replicate the website" |
+| 1.9 | **An organiser's forfeit or declared winner never reached the server.** Found while fixing 1.4: the service's `clean()`, meant to drop blank replay-id rows, also set `winner` and `forfeit` to `None`, and it ran on the organiser's `report` too. | `services/tourney.rs` `clean` | Every walkover and every declared winner entered in the client arrived as a bare match id, and the server refused it or recorded nothing |
+| 1.10 | **Saving an event's settings in the client switched player reporting off.** Found while fixing 1.8: `edit_info_body` sent `playerReporting: false` just like `create_body`, so an event created on the website lost the setting the first time an organiser saved its details here. | `protocol/tourney.rs` `merge_shared` | Players of that event could no longer submit scores, with nothing on screen to say why |
+
+### Status on `tourney/batch-1`
+
+| # | Status |
+|---|---|
+| 1.1 | Fixed: `MapSpec` read and sent back unchanged |
+| 1.2 | Fixed: `swissOrder`, `tiebreak` and `swissSB` read; "Beaten opp." column under that tiebreak |
+| 1.3 | Fixed: #158 |
+| 1.4 | Fixed: replay ids and draw replay ids in the organiser dialog, a pending submission accepted or rejected there, "FF" on the card |
+| 1.5 | **Moved to the Swiss and playoffs batch**, together with the pick phase it needs |
+| 1.6 | Fixed: record cuts read from the plan, the derived round count shown read-only. Editing the cuts belongs to the Swiss batch |
+| 1.7 | Fixed: #367 item 3 |
+| 1.8 | Fixed: the switch in both forms, `report_submit` with one replay id per new game, a "Submit score" dialog for players |
+| 1.9 | Fixed, with a service test |
+| 1.10 | Fixed, together with 1.8 |
 
 ---
 
