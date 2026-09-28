@@ -36,7 +36,7 @@ use crate::state::{
 };
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
-    VetoDecider, VetoMode,
+    VetoDecider, VetoMode, VetoTeamA,
 };
 use crate::state::{EarlyFinish, Rename, RenameCheck, Survivors, TourneyAdmin, TourneyBan};
 use crate::state::{
@@ -354,6 +354,11 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         veto: VetoConfig {
             enabled: flag(document.get("veto").unwrap_or(&Value::Null), "enabled"),
             mode: VetoMode::from_wire(&text(document.get("veto").unwrap_or(&Value::Null), "mode")),
+            team_a: VetoTeamA::from_wire(&text(
+                document.get("veto").unwrap_or(&Value::Null),
+                "abMode",
+            )),
+            reveal_bans: flag(document.get("veto").unwrap_or(&Value::Null), "revealBans"),
         },
         faction_veto: document
             .get("fveto")
@@ -462,6 +467,7 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
                 winners: string_list(held, "wb"),
                 losers: string_list(held, "lb"),
             }),
+        event_days: string_list(document, "eventDays"),
         early_finish: document
             .get("earlyFinish")
             .filter(|held| held.is_object())
@@ -1191,10 +1197,7 @@ pub fn create_body(draft: &TourneyDraft) -> Value {
         "signupMode": draft.signup_mode.as_wire(),
         "maxTeams": draft.max_teams,
         "minTeams": draft.min_teams,
-        "veto": {
-            "enabled": draft.veto.enabled,
-            "mode": draft.veto.mode.as_wire(),
-        },
+        "veto": veto_body(&draft.veto),
     });
     // Only for a captains draft. The service stores `draftOrder` whatever the
     // formation, and sending it from a form that never showed the choice would
@@ -1261,15 +1264,31 @@ fn plan_body(plan: MatchPlan) -> Value {
     }
 }
 
+/// The veto settings, all four keys: `cleanVeto` resets any it is not sent.
+fn veto_body(veto: &VetoConfig) -> Value {
+    json!({
+        "enabled": veto.enabled,
+        "mode": veto.mode.as_wire(),
+        "abMode": veto.team_a.as_wire(),
+        "revealBans": veto.reveal_bans,
+    })
+}
+
 /// The body for `POST /api/t/{id}/edit_info`.
 ///
 /// A narrower set than creation: the format, the team size and the category are
 /// welded to a bracket that may already have been drawn, and the server keeps
 /// separate endpoints for changing those.
+///
+/// The veto is not in it: see [`TourneyAdmin::SetVeto`].
 pub fn edit_info_body(draft: &TourneyDraft) -> Value {
     let mut body = json!({
         "name": draft.name.trim(),
         "signupMode": draft.signup_mode.as_wire(),
+        // Which board counts. The form always showed it and this body never
+        // sent it, so changing it here did nothing at all. The service does
+        // not re-pull anyone on a change; `repull_ratings` does that.
+        "ratingType": draft.rating_kind.as_wire(),
     });
     merge_shared(&mut body, draft);
     body
@@ -1317,6 +1336,15 @@ fn merge_shared(body: &mut Value, draft: &TourneyDraft) {
     // `new Date(x).getTime()`, unlike the three above, which it keeps as text.
     // An ISO instant parses to the right number either way.
     body["ratingDate"] = iso(draft.rating_date);
+    // `null` clears it, which is how an event goes back to no check-in.
+    body["checkInDeadline"] = iso(draft.check_in_deadline);
+    // An empty list clears the schedule back to the event date alone.
+    body["eventDays"] = json!(draft
+        .event_days
+        .iter()
+        .map(|day| day.trim())
+        .filter(|day| !day.is_empty())
+        .collect::<Vec<_>>());
     body["minRating"] = gate(draft.rating.min);
     body["maxRating"] = gate(draft.rating.max);
     body["maxTeamRating"] = gate(draft.rating.max_team);
@@ -1766,6 +1794,7 @@ pub fn admin_request(change: &TourneyAdmin) -> (&'static str, Value) {
         ),
         TourneyAdmin::AddImage { data_url } => ("add_desc_image", json!({ "image": data_url })),
         TourneyAdmin::RemoveImage { file } => ("remove_desc_image", json!({ "file": file })),
+        TourneyAdmin::SetVeto { config } => ("edit_info", json!({ "veto": veto_body(config) })),
         TourneyAdmin::MapSecret { map_id, secret } => {
             let secret = u8::from(*secret);
             (
@@ -2666,6 +2695,64 @@ See the [rules](https://x.invalid/r)."
             }),
             ("map_secret", json!({ "all": 1, "secret": 0 }))
         );
+        // Every key, because `cleanVeto` resets whatever it is not sent.
+        assert_eq!(
+            request(TourneyAdmin::SetVeto {
+                config: VetoConfig {
+                    enabled: true,
+                    mode: VetoMode::Continuous,
+                    team_a: VetoTeamA::Manual,
+                    reveal_bans: true,
+                },
+            }),
+            (
+                "edit_info",
+                json!({ "veto": {
+                    "enabled": true,
+                    "mode": "continuous",
+                    "abMode": "manual",
+                    "revealBans": true,
+                } })
+            )
+        );
+    }
+
+    #[test]
+    fn saving_the_settings_sends_the_board_the_schedule_and_the_check_in() {
+        let draft = TourneyDraft {
+            name: "Cup".into(),
+            rating_kind: RatingKind::Ladder1v1,
+            check_in_deadline: Some(1_790_000_000),
+            event_days: vec!["2026-10-03".into(), " ".into(), "2026-10-04".into()],
+            veto: VetoConfig {
+                enabled: true,
+                ..VetoConfig::default()
+            },
+            ..TourneyDraft::new()
+        };
+        let body = edit_info_body(&draft);
+        assert_eq!(body["ratingType"], "1v1");
+        assert_eq!(body["checkInDeadline"], "2026-09-21T14:13:20Z");
+        assert_eq!(body["eventDays"], json!(["2026-10-03", "2026-10-04"]));
+        // Never the veto: it would rebuild every veto not yet started.
+        assert!(body.get("veto").is_none());
+        // Creation takes all of it, the veto included, with every key.
+        let created = create_body(&draft);
+        assert_eq!(created["veto"]["abMode"], "lowerA");
+        assert_eq!(created["veto"]["revealBans"], false);
+        assert_eq!(created["eventDays"], json!(["2026-10-03", "2026-10-04"]));
+    }
+
+    #[test]
+    fn the_veto_rules_and_the_schedule_are_read_back() {
+        let mut document = document();
+        document["veto"] =
+            json!({ "enabled": 1, "mode": "continuous", "abMode": "random", "revealBans": 1 });
+        document["eventDays"] = json!(["2026-10-03", "2026-10-04"]);
+        let event = parse_tourney(&document).unwrap();
+        assert_eq!(event.veto.team_a, VetoTeamA::Random);
+        assert!(event.veto.reveal_bans);
+        assert_eq!(event.event_days.len(), 2);
     }
 
     #[test]

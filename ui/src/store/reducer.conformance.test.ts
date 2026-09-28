@@ -71,6 +71,7 @@ import {
   factionVetoOn,
   mayAddThirdPlace,
   mayConfigureFactionVeto,
+  mayEditVeto,
   mayEndEarly,
   mayRemoveOrganiser,
   mayRemoveThirdPlace,
@@ -167,6 +168,7 @@ interface HelperFixture {
     mayEndEarly: boolean;
     mayReopenEarly: boolean;
     mayRepullRatings: boolean;
+    mayEditVeto: boolean;
     name: string;
     event: Tourney;
     teamId: string | null;
@@ -483,6 +485,7 @@ describe("tournament rule twins match Rust", () => {
       mayEndEarly: mayEndEarly(event),
       mayReopenEarly: mayReopenEarly(event),
       mayRepullRatings: mayRepullRatings(event),
+      mayEditVeto: mayEditVeto(event),
     }).toEqual({
       teamRating: recorded.teamRating,
       wouldExceedTeamCap: recorded.wouldExceedTeamCap,
@@ -508,6 +511,7 @@ describe("tournament rule twins match Rust", () => {
       mayEndEarly: recorded.mayEndEarly,
       mayReopenEarly: recorded.mayReopenEarly,
       mayRepullRatings: recorded.mayRepullRatings,
+      mayEditVeto: recorded.mayEditVeto,
     });
   });
 

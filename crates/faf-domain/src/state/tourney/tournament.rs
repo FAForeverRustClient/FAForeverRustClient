@@ -303,6 +303,9 @@ pub struct Tourney {
     pub survivors: Option<Survivors>,
     /// How the event was stopped early, where it was (`earlyFinish`).
     pub early_finish: Option<EarlyFinish>,
+    /// The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
+    /// (`eventDays`). Empty for an event on its date alone.
+    pub event_days: Vec<String>,
     /// What this account may do here, as the server sees it.
     pub viewer: TourneyViewer,
 }
@@ -1136,6 +1139,15 @@ impl Tourney {
         self.viewer.organiser
             && self.status == TourneyStatus::Finished
             && self.early_finish.is_some()
+    }
+
+    /// Whether this account may change how map vetoes run (`edit_info` with a
+    /// `veto`). Two-sided events only, and not once the event has finished,
+    /// which the service refuses.
+    pub fn may_edit_veto(&self) -> bool {
+        self.viewer.organiser
+            && self.competition == Competition::Team
+            && self.status != TourneyStatus::Finished
     }
 
     /// Whether this account may fetch every entrant's rating again

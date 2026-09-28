@@ -7866,6 +7866,11 @@ export type Tourney = {
 	survivors: Survivors | null,
 	/**  How the event was stopped early, where it was (`earlyFinish`). */
 	earlyFinish: EarlyFinish | null,
+	/**
+	 *  The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
+	 *  (`eventDays`). Empty for an event on its date alone.
+	 */
+	eventDays: string[],
 	/**  What this account may do here, as the server sees it. */
 	viewer: TourneyViewer,
 };
@@ -8069,6 +8074,17 @@ export type TourneyAdmin =
 /**  Remove an attached image by its file name (`remove_desc_image`). */
 { type: "removeImage"; payload: {
 	file: string,
+} } |
+/**
+ *  Change how map vetoes run (`edit_info` with `veto` alone).
+ *
+ *  Its own change rather than part of saving the settings, because the
+ *  service rebuilds every veto that has not started when it receives
+ *  one, sides chosen by hand included. Sending it unchanged with every
+ *  save would quietly undo them.
+ */
+{ type: "setVeto"; payload: {
+	config: VetoConfig,
 } } |
 /**
  *  Hide a map's identity from players until it is played, or show it
@@ -8675,6 +8691,17 @@ export type TourneyDraft = {
 	 *  were saved from the client.
 	 */
 	playerReporting: boolean,
+	/**
+	 *  Unix seconds by which a full team has to check in, or `None` for no
+	 *  check-in, in which case teams enter in signup order.
+	 */
+	checkInDeadline: number | null,
+	/**
+	 *  The days a multi-day event runs on, as `YYYY-MM-DD`, or empty for an
+	 *  event on its date alone. The service keeps the earliest as the event
+	 *  date's day, with the event date's own time.
+	 */
+	eventDays: string[],
 };
 
 export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
@@ -10132,10 +10159,24 @@ export type VetoChoice = {
 	game: number | null,
 };
 
-/**  Whether an event runs vetoes at all, and how. */
+/**
+ *  Whether an event runs vetoes at all, and how.
+ *
+ *  All four fields travel together: the service rebuilds the whole object
+ *  from what it is sent (`cleanVeto`), so a key left out is not left alone
+ *  but reset to its default.
+ */
 export type VetoConfig = {
 	enabled: boolean,
 	mode: VetoMode,
+	/**  Who acts first in each match (`abMode`). */
+	teamA: VetoTeamA,
+	/**
+	 *  Whether a secret map is revealed when it is banned (`revealBans`).
+	 *  Off by default: banning blind is the point of secret maps. A secret map
+	 *  is always revealed when it is picked or left as the decider.
+	 */
+	revealBans: boolean,
 };
 
 export type VetoDecider = {
@@ -10148,6 +10189,21 @@ export type VetoMode =
 "upfront" |
 /**  One step between games. */
 "continuous";
+
+/**
+ *  How Team A, the side that acts first, is chosen for each match.
+ *
+ *  Rated by the team's combined rating, the same number the Teams tab shows.
+ *  Whatever the rule, an organiser can still set the sides of any match by
+ *  hand before its veto starts.
+ */
+export type VetoTeamA =
+/**  The lower rated side acts first. The service's default. */
+"lowerA" |
+/**  The higher rated side acts first. */
+"lowerB" | "random" |
+/**  Nobody until the organiser says, match by match. */
+"manual";
 
 /**
  *  Which day a calendar week starts on.

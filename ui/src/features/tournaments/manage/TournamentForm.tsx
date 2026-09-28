@@ -27,7 +27,7 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { defaultPlanFor, rejectionOf, type DraftRejection } from "../../../shared/rules/tourneyRules";
 import { PlanFields } from "./PlanFields";
-import { formatPrize } from "../tourneyPresentation";
+import { formatDay, formatPrize } from "../tourneyPresentation";
 
 const REJECTION_LABELS: Record<DraftRejection, MessageKey> = {
   nameRequired: "tournaments.form.nameRequired",
@@ -101,6 +101,78 @@ function localValue(seconds: number | null): string {
   );
 }
 
+/** A moment's day as `YYYY-MM-DD` in UTC, which is how the service keeps event days. */
+function utcDay(seconds: number): string {
+  return new Date(seconds * 1000).toISOString().slice(0, 10);
+}
+
+/** The same UTC time of day on another day. */
+function onDay(seconds: number, day: string): number {
+  const midnight = Date.parse(`${day}T00:00:00Z`);
+  if (Number.isNaN(midnight)) return seconds;
+  return Math.floor(midnight / 1000) + (((seconds % 86_400) + 86_400) % 86_400);
+}
+
+/**
+ * The days a multi-day event runs on.
+ *
+ * The service keeps the earliest as the event date's day, with the event
+ * date's own time, so the two are kept together here the same way: adding a
+ * day before the event date moves the event date, and removing all but one
+ * turns it back into an event on one day.
+ */
+function EventDays({
+  eventDate,
+  days,
+  onChange,
+}: {
+  eventDate: number;
+  days: string[];
+  onChange: (days: string[], eventDate: number) => void;
+}) {
+  const { t } = useTranslation();
+  const shown = days.length > 0 ? days : [utcDay(eventDate)];
+  const commit = (next: string[]) => {
+    const sorted = [...new Set(next)].sort();
+    if (sorted.length === 0) return;
+    onChange(sorted.length > 1 ? sorted : [], onDay(eventDate, sorted[0]));
+  };
+  return (
+    <div className="tournament-field">
+      <span>{t("tournaments.form.eventDays")}</span>
+      <ul className="tournament-day-list">
+        {shown.map((day) => (
+          <li key={day} className="tournament-day">
+            {/* Noon, so the reader's own zone cannot move it to another day. */}
+            <span>{formatDay(Math.floor(Date.parse(`${day}T12:00:00Z`) / 1000), day)}</span>
+            {shown.length > 1 && (
+              <button
+                type="button"
+                className="tournament-day-remove"
+                aria-label={t("tournaments.form.removeDay")}
+                onClick={() => commit(shown.filter((held) => held !== day))}
+              >
+                {"×"}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <label className="tournament-field tournament-inline-field">
+        <span>{t("tournaments.form.addDay")}</span>
+        <input
+          type="date"
+          value=""
+          onChange={(changed) => {
+            if (changed.target.value !== "") commit([...shown, changed.target.value]);
+          }}
+        />
+      </label>
+      <small className="muted">{t("tournaments.form.eventDaysHint")}</small>
+    </div>
+  );
+}
+
 /** The draft an existing event would produce, for the edit case. */
 export function draftOf(event: Tourney): TourneyDraft {
   return {
@@ -142,6 +214,9 @@ export function draftOf(event: Tourney): TourneyDraft {
     // The event's own value: `edit_info` always sends it, and the service
     // reads an absent one as on.
     playerReporting: event.playerReporting,
+    // Both always sent by `edit_info` too, so both are the event's own.
+    checkInDeadline: event.checkInDeadline,
+    eventDays: event.eventDays,
   };
 }
 
@@ -162,7 +237,7 @@ const BLANK: TourneyDraft = {
   streams: [],
   seriesId: null,
   plan: defaultPlanFor("single"),
-  veto: { enabled: false, mode: "upfront" },
+  veto: { enabled: false, mode: "upfront", teamA: "lowerA", revealBans: false },
   minTeams: 0,
   draftSnakes: false,
   ratingKind: "global",
@@ -174,6 +249,8 @@ const BLANK: TourneyDraft = {
   ratingDate: null,
   rating: { min: null, max: null, maxTeam: null, cap: null },
   maxTeams: 0,
+  checkInDeadline: null,
+  eventDays: [],
 };
 
 interface TournamentFormProps {
@@ -538,7 +615,16 @@ export function TournamentForm({
             <input
               type="datetime-local"
               value={localValue(draft.eventDate)}
-              onChange={(changed) => set({ eventDate: secondsOf(changed.target.value) })}
+              onChange={(changed) => {
+                const eventDate = secondsOf(changed.target.value);
+                // A new day starts the schedule again, as on the website; a new
+                // time on the same day keeps it.
+                const sameDay =
+                  eventDate !== null &&
+                  draft.eventDate !== null &&
+                  utcDay(eventDate) === utcDay(draft.eventDate);
+                set({ eventDate, eventDays: sameDay ? draft.eventDays : [] });
+              }}
             />
           </label>
           <label className="tournament-field">
@@ -570,12 +656,29 @@ export function TournamentForm({
         {/* The third date is the one that is not about scheduling, so it says
             what it is for rather than relying on its label. */}
         <p className="tournament-form-hint muted">{t("tournaments.form.ratingDateHint")}</p>
+        {draft.eventDate !== null && (
+          <EventDays
+            eventDate={draft.eventDate}
+            days={draft.eventDays}
+            onChange={(eventDays, eventDate) => set({ eventDays, eventDate })}
+          />
+        )}
+        <label className="tournament-field">
+          <span>{t("tournaments.form.checkInDeadline")}</span>
+          <input
+            type="datetime-local"
+            value={localValue(draft.checkInDeadline)}
+            onChange={(changed) => set({ checkInDeadline: secondsOf(changed.target.value) })}
+          />
+        </label>
+        <p className="tournament-form-hint muted">{t("tournaments.form.checkInHint")}</p>
       </fieldset>
 
       <fieldset className="tournament-field">
         <legend>{t("tournaments.form.ratingLegend")}</legend>
         <label className="tournament-field">
           <span>{t("tournaments.form.ratingKind")}</span>
+          {editing && <small className="muted">{t("tournaments.form.ratingKindEditHint")}</small>}
           <select
             value={draft.ratingKind}
             onChange={(changed) =>
@@ -657,9 +760,9 @@ export function TournamentForm({
         <p className="tournament-form-hint muted">{t("tournaments.form.playerReportingHint")}</p>
       </fieldset>
 
-      {/* The veto, and only whether and when: who is Team A is a per-match
-          decision the client makes from the bracket, and the service's own
-          `abMode` is not modelled here yet. */}
+      {/* The veto at creation. Once the event exists it has a panel of its own
+          under Maps with its own save: sending it with every save of the
+          settings would rebuild each veto not yet started. */}
       {!editing && (
         <fieldset className="tournament-field">
           <legend>{t("tournaments.form.vetoLegend")}</legend>
@@ -673,6 +776,27 @@ export function TournamentForm({
             />
             <span>{t("tournaments.form.vetoEnabled")}</span>
           </label>
+          {draft.veto.enabled && (
+            <label className="tournament-field">
+              <span>{t("tournaments.veto.teamARule")}</span>
+              <select
+                value={draft.veto.teamA}
+                onChange={(changed) =>
+                  set({
+                    veto: {
+                      ...draft.veto,
+                      teamA: changed.target.value as TourneyDraft["veto"]["teamA"],
+                    },
+                  })
+                }
+              >
+                <option value="lowerA">{t("tournaments.veto.teamALowerA")}</option>
+                <option value="lowerB">{t("tournaments.veto.teamALowerB")}</option>
+                <option value="random">{t("tournaments.veto.teamARandom")}</option>
+                <option value="manual">{t("tournaments.veto.teamAManual")}</option>
+              </select>
+            </label>
+          )}
           {draft.veto.enabled && (
             <label className="tournament-field">
               <span>{t("tournaments.form.vetoMode")}</span>

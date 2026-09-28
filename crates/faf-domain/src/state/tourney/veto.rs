@@ -61,11 +61,59 @@ pub struct VetoTurn {
 }
 
 /// Whether an event runs vetoes at all, and how.
+///
+/// All four fields travel together: the service rebuilds the whole object
+/// from what it is sent (`cleanVeto`), so a key left out is not left alone
+/// but reset to its default.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VetoConfig {
     pub enabled: bool,
     pub mode: VetoMode,
+    /// Who acts first in each match (`abMode`).
+    pub team_a: VetoTeamA,
+    /// Whether a secret map is revealed when it is banned (`revealBans`).
+    /// Off by default: banning blind is the point of secret maps. A secret map
+    /// is always revealed when it is picked or left as the decider.
+    pub reveal_bans: bool,
+}
+
+/// How Team A, the side that acts first, is chosen for each match.
+///
+/// Rated by the team's combined rating, the same number the Teams tab shows.
+/// Whatever the rule, an organiser can still set the sides of any match by
+/// hand before its veto starts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum VetoTeamA {
+    /// The lower rated side acts first. The service's default.
+    #[default]
+    LowerA,
+    /// The higher rated side acts first.
+    LowerB,
+    Random,
+    /// Nobody until the organiser says, match by match.
+    Manual,
+}
+
+impl VetoTeamA {
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::LowerA => "lowerA",
+            Self::LowerB => "lowerB",
+            Self::Random => "random",
+            Self::Manual => "manual",
+        }
+    }
+
+    pub fn from_wire(raw: &str) -> Self {
+        match raw.trim() {
+            "lowerB" => Self::LowerB,
+            "random" => Self::Random,
+            "manual" => Self::Manual,
+            _ => Self::LowerA,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]

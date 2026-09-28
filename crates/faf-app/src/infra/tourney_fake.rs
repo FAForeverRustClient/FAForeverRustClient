@@ -2843,6 +2843,7 @@ fn running_event() -> FakeEvent {
     event.veto = faf_domain::state::VetoConfig {
         enabled: true,
         mode: faf_domain::state::VetoMode::Upfront,
+        ..Default::default()
     };
     event.map_db = vec![
         map("map1", "Setons Clutch"),

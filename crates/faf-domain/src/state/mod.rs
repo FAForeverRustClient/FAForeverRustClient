@@ -171,7 +171,7 @@ pub use tourney::{
 };
 pub use tourney::{
     Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
-    VetoDecider, VetoMode, VetoTurn,
+    VetoDecider, VetoMode, VetoTeamA, VetoTurn,
 };
 pub use tourney::{EarlyFinish, Rename, RenameCheck, Survivors, TourneyBan};
 pub use training::{

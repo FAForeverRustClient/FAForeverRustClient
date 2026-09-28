@@ -61,6 +61,7 @@ import { EndEarlyPanel } from "./EndEarlyPanel";
 import { EntrantAdmin } from "./EntrantAdmin";
 import { ImagesPanel } from "./ImagesPanel";
 import { RenamesPanel } from "./RenamesPanel";
+import { VetoSettingsPanel } from "./VetoSettingsPanel";
 import { FormatPanel } from "./FormatPanel";
 import { TournamentForm } from "./TournamentForm";
 import { MapDbPanel } from "./MapDbPanel";
@@ -73,6 +74,7 @@ import {
   isLegalFrom,
   mayConfigureFactionVeto,
   mayEditFormat,
+  mayEditVeto,
   mayEndEarly,
   mayPublish,
   mayReopenEarly,
@@ -568,6 +570,12 @@ export function ManagePanel({
                   />
                 </li>
               </ol>
+              {mayEditVeto(event) && (
+                <>
+                  <h6>{t("tournaments.form.vetoLegend")}</h6>
+                  <VetoSettingsPanel event={event} busy={busy} onAdmin={rest.onAdmin} />
+                </>
+              )}
               {/* Beside the maps because the website keeps the two veto
                   settings together: both decide what a match's run holds. */}
               {mayConfigureFactionVeto(event) && (

@@ -46,7 +46,7 @@ describe("vetoLog", () => {
 describe("myVetoSteps", () => {
   const event = tourney({
     teamSize: 1,
-    veto: { enabled: true, mode: "upfront" },
+    veto: { enabled: true, mode: "upfront", teamA: "lowerA", revealBans: false },
     factionVeto: { enabled: true, bans: 1, picks: 2 },
     teams: [team({ id: "t1", captainId: "p1" }), team({ id: "t2", captainId: "p2" })],
     viewer: { ...tourney().viewer, signedUpPlayerId: "p1", memberTeamId: "t1" },

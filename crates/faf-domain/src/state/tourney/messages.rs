@@ -82,6 +82,14 @@ pub enum TourneyAdmin {
     /// Remove an attached image by its file name (`remove_desc_image`).
     #[serde(rename_all = "camelCase")]
     RemoveImage { file: String },
+    /// Change how map vetoes run (`edit_info` with `veto` alone).
+    ///
+    /// Its own change rather than part of saving the settings, because the
+    /// service rebuilds every veto that has not started when it receives
+    /// one, sides chosen by hand included. Sending it unchanged with every
+    /// save would quietly undo them.
+    #[serde(rename_all = "camelCase")]
+    SetVeto { config: VetoConfig },
     /// Hide a map's identity from players until it is played, or show it
     /// again (`map_secret`). No map id means every map in the database.
     #[serde(rename_all = "camelCase")]

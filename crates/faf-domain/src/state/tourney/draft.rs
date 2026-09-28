@@ -175,6 +175,13 @@ pub struct TourneyDraft {
     /// hardcoded value here used to turn it off on every event whose settings
     /// were saved from the client.
     pub player_reporting: bool,
+    /// Unix seconds by which a full team has to check in, or `None` for no
+    /// check-in, in which case teams enter in signup order.
+    pub check_in_deadline: Option<u32>,
+    /// The days a multi-day event runs on, as `YYYY-MM-DD`, or empty for an
+    /// event on its date alone. The service keeps the earliest as the event
+    /// date's day, with the event date's own time.
+    pub event_days: Vec<String>,
 }
 
 impl TourneyDraft {

@@ -270,6 +270,11 @@ export function mayReopenEarly(event: Tourney): boolean {
   return event.viewer.organiser && event.status === "finished" && event.earlyFinish !== null;
 }
 
+/** Twin of `Tourney::may_edit_veto`: two-sided events, until they finish. */
+export function mayEditVeto(event: Tourney): boolean {
+  return event.viewer.organiser && event.competition === "team" && event.status !== "finished";
+}
+
 /** Twin of `Tourney::may_repull_ratings`: an unrated event has none to fetch. */
 export function mayRepullRatings(event: Tourney): boolean {
   return event.viewer.organiser && event.ratingKind !== "none";

@@ -239,6 +239,8 @@ struct TourneyRuleCase {
     may_reopen_early: bool,
     /// `Tourney::may_repull_ratings`.
     may_repull_ratings: bool,
+    /// `Tourney::may_edit_veto`.
+    may_edit_veto: bool,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -706,6 +708,7 @@ fn tourney_rule_case(
         may_end_early: event.may_end_early(),
         may_reopen_early: event.may_reopen_early(),
         may_repull_ratings: event.may_repull_ratings(),
+        may_edit_veto: event.may_edit_veto(),
         reportable_match_ids: event
             .matches
             .iter()
@@ -2082,6 +2085,7 @@ fn veto_event(
         veto: VetoConfig {
             enabled: true,
             mode: VetoMode::Upfront,
+            ..VetoConfig::default()
         },
         players: vec![
             tourney_player("cap1", Some(1_500), Some("t1"), false),
