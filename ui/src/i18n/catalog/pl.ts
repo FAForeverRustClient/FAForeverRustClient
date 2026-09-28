@@ -1167,6 +1167,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.discord.richPresenceHint": "Pokaż w profilu Discord grę, którą hostujesz lub w którą grasz.",
   "settings.discord.disallowJoinsVia": "Zablokuj dołączanie przez Discord",
   "settings.discord.disallowJoinsViaHint": "Zachowaj widoczny status, ale usuń przycisk dołączania, aby nikt nie wszedł do twojej poczekalni z Discorda.",
+  "settings.steam.presence": "Status Steam",
+  "settings.steam.presenceHint": "Podczas gry Steam pokazuje, że grasz w Forged Alliance, i liczy godziny. Samo otwarcie klienta się nie liczy. Wymaga uruchomionego Steama i Forged Alliance w twojej bibliotece Steam. Korzysta z biblioteki Steamworks firmy Valve, na warunkach Valve.",
   "settings.nameColors.useDefaultText": "Użyj domyślnego koloru tekstu",
   "settings.nameColors.playerName": "Nazwa gracza",
   "settings.nameColors.playerNameCustom": "Nazwa gracza dla własnego koloru czatu",

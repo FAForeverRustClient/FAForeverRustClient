@@ -32,6 +32,21 @@ The experimental `faf-pioneer` executable comes from
 [FAForever/faf-pioneer](https://github.com/FAForever/faf-pioneer). It is
 distributed under the MIT License by its contributors.
 
+## Steamworks API library (Valve)
+
+Windows builds include `steam_api64.dll` from Valve Corporation's Steamworks
+SDK, kept in the repository at `vendor/steamworks/win64/` and installed under
+`natives/steam/`. It is proprietary software of Valve Corporation and is **not**
+licensed under this project's MIT License: it is redistributed, unmodified,
+under section 1.1(b) of the
+[Steamworks SDK Access Agreement](https://partner.steamgames.com/documentation/sdk_access_agreement),
+and all rights not granted there remain with Valve. It is used only by the
+optional Steam status setting, which is off by default. See
+`vendor/steamworks/README.md` for what is called and why.
+
+This project is not affiliated with or endorsed by Valve Corporation. Steam is
+a trademark of Valve Corporation.
+
 ## FAF wiki rating figures
 
 The five diagrams in the leaderboard's "How rating works" tab

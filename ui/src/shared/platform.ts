@@ -19,6 +19,18 @@
  * than a setting somebody needs and cannot reach.
  */
 export function gameNeedsALaunchWrapper(): boolean {
+  return !runsOnWindows();
+}
+
+/**
+ * Whether the client is running on Windows.
+ *
+ * For the settings that only exist there, such as the Steam status, which
+ * needs a Windows library. The opposite default from the one above: an
+ * unfamiliar user agent hides such a setting, because on any other system
+ * switching it on would do nothing at all.
+ */
+export function runsOnWindows(): boolean {
   const agent = typeof navigator === "undefined" ? "" : navigator.userAgent;
-  return !/Windows/i.test(agent);
+  return /Windows/i.test(agent);
 }

@@ -1255,6 +1255,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.discord.richPresenceHint": "Показывать в профиле Discord игру, которую вы создаёте или играете.",
   "settings.discord.disallowJoinsVia": "Запретить вход через Discord",
   "settings.discord.disallowJoinsViaHint": "Оставлять статус видимым, но скрывать кнопку входа, чтобы никто не мог присоединиться к вашему лобби через Discord.",
+  "settings.steam.presence": "Статус в Steam",
+  "settings.steam.presenceHint": "Пока вы в игре, Steam показывает, что вы играете в Forged Alliance, и считает часы. Открытый клиент не учитывается. Нужен запущенный Steam и Forged Alliance в вашей библиотеке Steam. Использует библиотеку Steamworks от Valve на условиях Valve.",
 
   "replays.view.aria": "Вид реплеев",
   "replays.view.tile": "Плитками",
