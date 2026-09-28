@@ -28,6 +28,7 @@ import type {
   SeedOrder,
   SeriesDraft,
   Tourney,
+  TourneyAdmin,
   TourneyLoadStatus,
   TourneyDraft,
   TourneyMatch,
@@ -168,6 +169,8 @@ interface TournamentDetailPaneProps {
   onPublishMap: (mapId: string, published: boolean) => void;
   onDeleteMap: (mapId: string) => void;
   onSetFactionVeto: (config: FactionVetoConfig) => void;
+  /** One of the organiser's single-call changes. */
+  onAdmin: (change: TourneyAdmin) => void;
   onSavePool: (pool: PoolDraft) => void;
   onPublishPool: (poolId: string, published: boolean) => void;
   onDeletePool: (poolId: string) => void;
@@ -457,6 +460,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           assetBase={props.assetBase}
           veto={props.veto}
           onReportFfa={props.onReportFfa}
+          onAdmin={props.onAdmin}
         />
       )}
 
@@ -484,6 +488,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onHost={props.onHost}
           onWatchReplay={props.onWatchReplay}
           veto={props.veto}
+          onAdmin={props.onAdmin}
         />
       )}
 
@@ -556,6 +561,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onPublishMap={props.onPublishMap}
           onDeleteMap={props.onDeleteMap}
           onSetFactionVeto={props.onSetFactionVeto}
+          onAdmin={props.onAdmin}
           onSavePool={props.onSavePool}
           onPublishPool={props.onPublishPool}
           onDeletePool={props.onDeletePool}

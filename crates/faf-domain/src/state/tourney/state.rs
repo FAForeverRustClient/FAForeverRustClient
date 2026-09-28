@@ -127,6 +127,9 @@ pub enum TourneyAction {
     },
     Drafting,
     SavingFactionVeto,
+    /// One of the organiser's single-call changes. It names no target: the
+    /// whole pane waits on it, as it does on most writes.
+    Administering,
     SavingMap,
     #[serde(rename_all = "camelCase")]
     PublishingMap {

@@ -24,6 +24,7 @@
 use serde_json::{json, Value};
 
 use crate::protocol::markup::to_plain_text;
+use crate::state::TourneyAdmin;
 use crate::state::{
     Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
     ChatQuote, ChatRoom, Competition, Currency, FactionChoices, FactionResult, FactionStep,
@@ -155,6 +156,7 @@ fn plan(document: &Value, kind: BracketKind, competition: Competition) -> Option
             early: best_of("early", 3),
             semi: best_of("semi", 3),
             final_bo: best_of("final", 5),
+            third_place: flag(held, "thirdPlace"),
         },
         BracketKind::Double => MatchPlan::Double {
             wb: best_of("wb", 3),
@@ -1161,7 +1163,13 @@ fn plan_body(plan: MatchPlan) -> Value {
             early,
             semi,
             final_bo,
-        } => json!({ "early": early, "semi": semi, "final": final_bo }),
+            third_place,
+        } => json!({
+            "early": early,
+            "semi": semi,
+            "final": final_bo,
+            "thirdPlace": third_place,
+        }),
         MatchPlan::Double {
             wb,
             wb_final,
@@ -1483,7 +1491,10 @@ pub fn phase_body(phase: TourneyPhase, config: Option<&BracketConfig>) -> Value 
     body["config"] = match config {
         // A free-for-all is drawn from `ffaCfg` and takes no config at all.
         BracketConfig::FreeForAll => json!({}),
-        BracketConfig::Single { rounds } => json!({ "rounds": rounds }),
+        BracketConfig::Single {
+            rounds,
+            third_place,
+        } => json!({ "rounds": rounds, "thirdPlace": third_place }),
         BracketConfig::Double {
             wb,
             lb,
@@ -1626,6 +1637,83 @@ pub fn qualifier_remove_body(link_id: &str) -> Value {
 /// The body for `POST /api/t/{id}/fveto_action`: one faction ban or pick.
 pub fn faction_veto_body(match_id: &str, game: i32, faction: TourneyFaction) -> Value {
     json!({ "matchId": match_id, "game": game, "faction": faction.as_wire() })
+}
+
+/// Where an organiser's single-call change goes, and what it sends.
+///
+/// The action is the last segment of `POST /api/t/{id}/{action}`. Two of them
+/// are phase steps and go to `phase` with the step named in the body, as the
+/// website sends them.
+pub fn admin_request(change: &TourneyAdmin) -> (&'static str, Value) {
+    match change {
+        TourneyAdmin::ThirdPlace { on } => ("third_place", json!({ "on": u8::from(*on) })),
+        TourneyAdmin::RoundBestOf {
+            bracket,
+            round,
+            best_of,
+        } => (
+            "set_round_bo",
+            // `division: null` is every division, as the website sends it.
+            json!({
+                "bracket": bracket.as_wire(),
+                "round": round,
+                "bo": best_of,
+                "division": Value::Null,
+            }),
+        ),
+        TourneyAdmin::MatchBestOf { match_id, best_of } => (
+            "set_match_bo",
+            json!({ "matchId": match_id, "bo": best_of }),
+        ),
+        TourneyAdmin::RemoveOrganiser { faf_id } => {
+            ("remove_organizer", json!({ "fafId": faf_id.to_string() }))
+        }
+        TourneyAdmin::Ban {
+            faf_id,
+            name,
+            reason,
+            expires,
+        } => (
+            "ban_set",
+            json!({
+                "fafId": faf_id.to_string(),
+                "name": name.trim(),
+                "reason": reason.trim(),
+                // `parseBanExpiry` takes anything `new Date` reads; empty is
+                // no expiry.
+                "expires": iso(*expires),
+            }),
+        ),
+        TourneyAdmin::Unban { faf_id } => ("ban_remove", json!({ "fafId": faf_id.to_string() })),
+        TourneyAdmin::RepullRatings => ("repull_ratings", json!({})),
+        TourneyAdmin::ApplyRenames { player_ids } => {
+            ("apply_renames", json!({ "playerIds": player_ids }))
+        }
+        TourneyAdmin::QualifierSeed { link_id, seed_from } => (
+            "qualifier_seed",
+            json!({ "id": link_id, "seedFrom": seed_from }),
+        ),
+        TourneyAdmin::StopAt { alive } => {
+            ("set_stop_at", json!({ "stopAtAlive": alive, "confirm": 1 }))
+        }
+        TourneyAdmin::FinishEarly => ("phase", json!({ "action": "finish_early", "force": 1 })),
+        TourneyAdmin::ReopenEarly => (
+            "phase",
+            json!({ "action": "undo_finish_early", "force": 1 }),
+        ),
+        TourneyAdmin::AddImage { data_url } => ("add_desc_image", json!({ "image": data_url })),
+        TourneyAdmin::RemoveImage { file } => ("remove_desc_image", json!({ "file": file })),
+        TourneyAdmin::MapSecret { map_id, secret } => {
+            let secret = u8::from(*secret);
+            (
+                "map_secret",
+                match map_id {
+                    Some(id) => json!({ "id": id, "secret": secret }),
+                    None => json!({ "all": 1, "secret": secret }),
+                },
+            )
+        }
+    }
 }
 
 /// The body for `POST /api/t/{id}/fveto_config`.
@@ -2317,6 +2405,165 @@ See the [rules](https://x.invalid/r)."
     }
 
     #[test]
+    fn a_third_place_match_is_its_own_side_and_not_a_second_final() {
+        // It carries the final's round number and index 0, so read as a
+        // winners match it would sit on top of the final itself.
+        let mut document = document();
+        document["bracketType"] = json!("single");
+        document["plan"] = json!({ "early": 3, "semi": 3, "final": 5, "thirdPlace": 1 });
+        document["matches"] = json!([
+            { "id": "f", "bracket": "wb", "round": 2, "index": 0, "bo": 5, "status": "ready" },
+            { "id": "t", "bracket": "3p", "round": 2, "index": 0, "bo": 3, "status": "ready" },
+        ]);
+        document["teams"][0]["out"] = json!({ "bracket": "3p", "round": 2, "place": 3 });
+        let event = parse_tourney(&document).unwrap();
+        assert_eq!(event.matches[1].bracket, BracketSide::ThirdPlace);
+        assert_eq!(event.matches[0].bracket, BracketSide::Winners);
+        assert_eq!(
+            event.teams[0].out.as_ref().unwrap().bracket,
+            BracketSide::ThirdPlace
+        );
+        assert!(matches!(
+            event.plan,
+            Some(MatchPlan::Single {
+                third_place: true,
+                ..
+            })
+        ));
+        assert_eq!(
+            event.third_place_match().map(|entry| entry.id.as_str()),
+            Some("t")
+        );
+        assert_eq!(BracketSide::ThirdPlace.as_wire(), "3p");
+    }
+
+    #[test]
+    fn each_admin_change_goes_where_the_service_listens() {
+        let request = |change: TourneyAdmin| admin_request(&change);
+        assert_eq!(
+            request(TourneyAdmin::ThirdPlace { on: false }),
+            ("third_place", json!({ "on": 0 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::RoundBestOf {
+                bracket: BracketSide::ThirdPlace,
+                round: 3,
+                best_of: 5,
+            }),
+            (
+                "set_round_bo",
+                json!({ "bracket": "3p", "round": 3, "bo": 5, "division": null })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::MatchBestOf {
+                match_id: "m1".into(),
+                best_of: 7,
+            }),
+            ("set_match_bo", json!({ "matchId": "m1", "bo": 7 }))
+        );
+        // Ids are strings on the service's side: `organizerFafIds` and the
+        // ban store are keyed by `String(fafId)`.
+        assert_eq!(
+            request(TourneyAdmin::RemoveOrganiser { faf_id: 42 }),
+            ("remove_organizer", json!({ "fafId": "42" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::Ban {
+                faf_id: 42,
+                name: " Troll ".into(),
+                reason: "".into(),
+                expires: Some(1_790_000_000),
+            }),
+            (
+                "ban_set",
+                json!({
+                    "fafId": "42",
+                    "name": "Troll",
+                    "reason": "",
+                    "expires": "2026-09-21T14:13:20Z",
+                })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::Ban {
+                faf_id: 42,
+                name: "Troll".into(),
+                reason: "smurf".into(),
+                expires: None,
+            })
+            .1["expires"],
+            Value::Null
+        );
+        assert_eq!(
+            request(TourneyAdmin::Unban { faf_id: 42 }),
+            ("ban_remove", json!({ "fafId": "42" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::RepullRatings),
+            ("repull_ratings", json!({}))
+        );
+        assert_eq!(
+            request(TourneyAdmin::ApplyRenames {
+                player_ids: vec!["p1".into(), "p2".into()],
+            }),
+            ("apply_renames", json!({ "playerIds": ["p1", "p2"] }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::QualifierSeed {
+                link_id: "q1".into(),
+                seed_from: 5,
+            }),
+            ("qualifier_seed", json!({ "id": "q1", "seedFrom": 5 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::StopAt { alive: 4 }),
+            ("set_stop_at", json!({ "stopAtAlive": 4, "confirm": 1 }))
+        );
+        // The two phase steps go to `phase`, named in the body.
+        assert_eq!(
+            request(TourneyAdmin::FinishEarly),
+            ("phase", json!({ "action": "finish_early", "force": 1 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::ReopenEarly),
+            (
+                "phase",
+                json!({ "action": "undo_finish_early", "force": 1 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::AddImage {
+                data_url: "data:image/png;base64,AAAA".into(),
+            }),
+            (
+                "add_desc_image",
+                json!({ "image": "data:image/png;base64,AAAA" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::RemoveImage {
+                file: "desc_ab.png".into(),
+            }),
+            ("remove_desc_image", json!({ "file": "desc_ab.png" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::MapSecret {
+                map_id: Some("map1".into()),
+                secret: true,
+            }),
+            ("map_secret", json!({ "id": "map1", "secret": 1 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::MapSecret {
+                map_id: None,
+                secret: false,
+            }),
+            ("map_secret", json!({ "all": 1, "secret": 0 }))
+        );
+    }
+
+    #[test]
     fn a_players_submission_carries_the_score_and_the_replays_only() {
         let body = submit_report_body(&MatchReport {
             match_id: "m1".into(),
@@ -2502,10 +2749,14 @@ See the [rules](https://x.invalid/r)."
         // got a say. The config is read on `start_bracket` and there only.
         let plan = BracketConfig::Single {
             rounds: vec![3, 3, 5],
+            third_place: true,
         };
         let drawn = phase_body(TourneyPhase::StartBracket, Some(&plan));
         assert_eq!(drawn["action"], "start_bracket");
         assert_eq!(drawn["config"]["rounds"], json!([3, 3, 5]));
+        // Always sent, because the service falls back to the stored plan's
+        // choice when the key is absent, and "no" has to be sayable.
+        assert_eq!(drawn["config"]["thirdPlace"], true);
 
         // Every other step ignores it rather than sending it somewhere it
         // would not be read.

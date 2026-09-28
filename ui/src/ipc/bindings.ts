@@ -285,6 +285,11 @@ export type BracketConfig =
 /**  One best-of per round, deepest last. */
 { type: "single"; payload: {
 	rounds: number[],
+	/**
+	 *  Whether the two beaten semi-finalists play for 3rd. The service
+	 *  skips it below four entrants and with divisions.
+	 */
+	thirdPlace: boolean,
 } } | { type: "double"; payload: {
 	/**  Winners rounds, `ceil(log2(teams))` of them. */
 	wb: number[],
@@ -314,11 +319,18 @@ export type BracketKind = "single" | "double" | "swiss";
  *  Which part of the event a match belongs to.
  *
  *  An explicit field here, where Challonge used the sign of the round number.
- *  The server writes `wb` / `lb` / `gf` / `sw` / `ffa`.
+ *  The server writes `wb` / `lb` / `gf` / `3p` / `sw` / `ffa`.
  */
 export type BracketSide = "winners" | "losers" |
 /**  The bout between the two bracket winners. */
 "grandFinal" |
+/**
+ *  The two beaten semi-finalists of a single elimination, playing for 3rd.
+ *
+ *  Its own side on the wire, so nothing that walks the winners bracket
+ *  takes it for a second final: it carries the final's round number.
+ */
+"thirdPlace" |
 /**  A Swiss round, which has no elimination tree at all. */
 "swiss" |
 /**  A free-for-all round: many entrants, no two sides. */
@@ -4179,6 +4191,11 @@ export type MatchPlan = { type: "single"; payload: {
 	early: number,
 	semi: number,
 	finalBo: number,
+	/**
+	 *  Whether the two beaten semi-finalists play for 3rd. Built at the
+	 *  draw only with four entrants or more and no divisions.
+	 */
+	thirdPlace: boolean,
 } } | { type: "double"; payload: {
 	wb: number,
 	wbFinal: number,
@@ -7816,7 +7833,12 @@ export type TourneyAction = { type: "addingPlayer" } |
 	matchId: string,
 } } | { type: "reportingFfa"; payload: {
 	matchId: string,
-} } | { type: "drafting" } | { type: "savingFactionVeto" } | { type: "savingMap" } | { type: "publishingMap"; payload: {
+} } | { type: "drafting" } | { type: "savingFactionVeto" } |
+/**
+ *  One of the organiser's single-call changes. It names no target: the
+ *  whole pane waits on it, as it does on most writes.
+ */
+{ type: "administering" } | { type: "savingMap" } | { type: "publishingMap"; payload: {
 	mapId: string,
 } } | { type: "deletingMap"; payload: {
 	mapId: string,
@@ -7851,6 +7873,126 @@ export type TourneyActionFailure = {
 	reason: string,
 	kind: RequestFailureKind,
 };
+
+/**
+ *  One organiser change that is a single call and a reload.
+ *
+ *  Grouped, where every earlier write has a command of its own, because each
+ *  of these is exactly that: one `POST` to the event, an answer with nothing
+ *  worth keeping, and the event read again afterwards. A command, a port
+ *  method and a busy marker apiece would say nothing the variant name does not.
+ *  [`TourneyPhase`] is the precedent: one command, the step named inside it.
+ *
+ *  Every one of them is organiser-only on the service. The rules that decide
+ *  whether one is offered live on [`Tourney`], beside the rest.
+ */
+export type TourneyAdmin =
+/**
+ *  Add the 3rd place match to the running bracket, or take it away again
+ *  (`third_place`). Before the draw the plan carries the choice instead.
+ */
+{ type: "thirdPlace"; payload: {
+	on: boolean,
+} } |
+/**
+ *  Change the best-of of every match in one round of the drawn bracket
+ *  that has not begun (`set_round_bo`).
+ */
+{ type: "roundBestOf"; payload: {
+	bracket: BracketSide,
+	round: number,
+	bestOf: number,
+} } |
+/**  Change the best-of of one match that has not begun (`set_match_bo`). */
+{ type: "matchBestOf"; payload: {
+	matchId: string,
+	bestOf: number,
+} } |
+/**
+ *  Strip organiser rights from an account, this one included, which is
+ *  how an organiser leaves (`remove_organizer`). The service refuses to
+ *  remove the last one.
+ */
+{ type: "removeOrganiser"; payload: {
+	fafId: number,
+} } |
+/**
+ *  Keep an account out of this event, or change the terms of a ban already
+ *  there (`ban_set`). A ban without an expiry lasts until it is lifted.
+ */
+{ type: "ban"; payload: {
+	fafId: number,
+	name: string,
+	reason: string,
+	/**  Unix seconds. */
+	expires: number | null,
+} } |
+/**  Lift this event's ban on an account (`ban_remove`). */
+{ type: "unban"; payload: {
+	fafId: number,
+} } |
+/**
+ *  Fetch every entrant's rating again from the board that counts now
+ *  (`repull_ratings`). Changing the board or the date does not rewrite the
+ *  ratings already stored, which is what this is for.
+ */
+{ type: "repullRatings" } |
+/**
+ *  Take the current FAF name of each of these entrants (`apply_renames`).
+ *  The service reads the names from FAF again rather than trusting the
+ *  check the organiser was shown.
+ */
+{ type: "applyRenames"; payload: {
+	playerIds: string[],
+} } |
+/**
+ *  Reserve a block of seeds for the qualifiers one linked event sends,
+ *  from this seed down, or 0 to seed them normally (`qualifier_seed`).
+ */
+{ type: "qualifierSeed"; payload: {
+	linkId: string,
+	seedFrom: number,
+} } |
+/**
+ *  End the event once this many are left, or 0 to play it out
+ *  (`set_stop_at`). Elimination only. Sent confirmed: the tab asks before
+ *  sending a number the field has already reached, which ends the event
+ *  on the spot.
+ */
+{ type: "stopAt"; payload: {
+	alive: number,
+} } |
+/**
+ *  Stop the running event and lock the standings where they are, with no
+ *  champion (`phase` `finish_early`). Sent forced: the tab says how many
+ *  matches are still live before asking.
+ */
+{ type: "finishEarly" } |
+/**
+ *  Take an early finish back (`phase` `undo_finish_early`). Sent forced,
+ *  after the tab has said that invitations a qualifier already sent stay
+ *  sent.
+ */
+{ type: "reopenEarly" } |
+/**
+ *  Attach an image to the event, as a `data:` URL (`add_desc_image`).
+ *  The service takes up to ten, of 5 MB each.
+ */
+{ type: "addImage"; payload: {
+	dataUrl: string,
+} } |
+/**  Remove an attached image by its file name (`remove_desc_image`). */
+{ type: "removeImage"; payload: {
+	file: string,
+} } |
+/**
+ *  Hide a map's identity from players until it is played, or show it
+ *  again (`map_secret`). No map id means every map in the database.
+ */
+{ type: "mapSecret"; payload: {
+	mapId: string | null,
+	secret: boolean,
+} };
 
 /**  Who runs the event, which decides whether FAF's rules articles apply. */
 export type TourneyCategory =
@@ -8196,6 +8338,11 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 { type: "setFactionVeto"; payload: {
 	tournamentId: string,
 	config: FactionVetoConfig,
+} } |
+/**  One of the organiser's single-call changes. See [`TourneyAdmin`]. */
+{ type: "administer"; payload: {
+	tournamentId: string,
+	change: TourneyAdmin,
 } } |
 /**  Add a map to the event's own database, or edit one already in it. */
 { type: "saveMap"; payload: {

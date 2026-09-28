@@ -32,7 +32,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
-use faf_domain::state::{FactionVetoConfig, TourneyFaction};
+use faf_domain::state::{FactionVetoConfig, TourneyAdmin, TourneyFaction};
 
 use super::RequestError;
 
@@ -406,6 +406,13 @@ pub trait TourneyPort: Send + Sync {
         &self,
         tournament_id: &str,
         config: &FactionVetoConfig,
+    ) -> Result<(), RequestError>;
+
+    /// One of the organiser's single-call changes. Organiser only, every one.
+    async fn administer(
+        &self,
+        tournament_id: &str,
+        change: &TourneyAdmin,
     ) -> Result<(), RequestError>;
 
     /// Add a map to the event's own database, or edit one already there.

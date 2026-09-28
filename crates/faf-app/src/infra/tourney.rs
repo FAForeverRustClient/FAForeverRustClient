@@ -26,7 +26,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
-use faf_domain::state::{FactionVetoConfig, TourneyFaction};
+use faf_domain::state::{FactionVetoConfig, TourneyAdmin, TourneyFaction};
 use serde_json::{json, Value};
 
 use crate::infra::env_or;
@@ -804,6 +804,15 @@ impl TourneyPort for TourneyClient {
             tourney::faction_veto_config_body(config),
         )
         .await
+    }
+
+    async fn administer(
+        &self,
+        tournament_id: &str,
+        change: &TourneyAdmin,
+    ) -> Result<(), RequestError> {
+        let (action, body) = tourney::admin_request(change);
+        self.act(tournament_id, action, body).await
     }
 
     async fn save_map(&self, tournament_id: &str, map: &MapDraft) -> Result<(), RequestError> {

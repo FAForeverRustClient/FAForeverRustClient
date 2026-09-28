@@ -510,6 +510,9 @@ export function TournamentsView() {
               onSetFactionVeto={(config) =>
                 act({ type: "setFactionVeto", payload: { tournamentId: open.id, config } })
               }
+              onAdmin={(change) =>
+                act({ type: "administer", payload: { tournamentId: open.id, change } })
+              }
               onSavePool={(pool) =>
                 act({ type: "savePool", payload: { tournamentId: open.id, pool } })
               }

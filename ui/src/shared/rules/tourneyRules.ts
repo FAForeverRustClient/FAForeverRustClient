@@ -163,6 +163,112 @@ export function mayConfigureFactionVeto(event: Tourney): boolean {
   );
 }
 
+/**
+ * Twin of `TourneyMatch::has_games`: a game of the series has been played.
+ *
+ * The service locks a series' length from that point. It asks its own `games`
+ * list, which is not modelled; a live status or a score is how that shows.
+ */
+export function hasGames(entry: TourneyMatch): boolean {
+  return (
+    entry.status === "live" ||
+    (entry.score1 !== null && entry.score1 !== 0) ||
+    (entry.score2 !== null && entry.score2 !== 0)
+  );
+}
+
+/**
+ * Twin of `TourneyMatch::has_started`: anything that taking the match away
+ * would destroy, down to a single map or faction choice.
+ */
+export function hasStarted(entry: TourneyMatch): boolean {
+  if (entry.status === "done" || hasGames(entry) || entry.pendingReport !== null) return true;
+  const veto = entry.veto;
+  const mapChoice =
+    veto !== null && (veto.stepIndex > 0 || veto.banned.length > 0 || veto.picks.length > 0);
+  // Faction choices are secret until both sides are done, so a side that is
+  // done is the only trace a start leaves in this view.
+  const factionChoice =
+    entry.factionVeto !== null &&
+    entry.factionVeto.games.some((game) => game.team1Done || game.team2Done);
+  return mapChoice || factionChoice;
+}
+
+/** Twin of `Tourney::third_place_match`. Divisions never get one. */
+export function thirdPlaceMatch(event: Tourney): TourneyMatch | null {
+  return event.matches.find((entry) => entry.bracket === "thirdPlace") ?? null;
+}
+
+/**
+ * Twin of `Tourney::third_place_on`: the plan's choice before the draw, the
+ * match itself after it.
+ */
+export function thirdPlaceOn(event: Tourney): boolean {
+  if (thirdPlaceMatch(event) !== null) return true;
+  return (
+    event.matches.length === 0 &&
+    event.plan !== null &&
+    event.plan.type === "single" &&
+    event.plan.payload.thirdPlace
+  );
+}
+
+/** A single elimination between teams, without divisions, of four or more. */
+function thirdPlaceEligible(event: Tourney): boolean {
+  return (
+    event.competition !== "freeForAll" &&
+    !event.imported &&
+    event.bracketKind === "single" &&
+    event.divisions <= 1 &&
+    event.teams.length >= 4
+  );
+}
+
+/** Twin of `Tourney::may_add_third_place`. */
+export function mayAddThirdPlace(event: Tourney): boolean {
+  return (
+    event.viewer.organiser &&
+    event.status === "running" &&
+    thirdPlaceEligible(event) &&
+    thirdPlaceMatch(event) === null
+  );
+}
+
+/** Twin of `Tourney::may_remove_third_place`: only until anything happens in it. */
+export function mayRemoveThirdPlace(event: Tourney): boolean {
+  const match = thirdPlaceMatch(event);
+  return (
+    event.viewer.organiser && event.status === "running" && match !== null && !hasStarted(match)
+  );
+}
+
+/** Twin of `Tourney::may_set_match_best_of`. */
+export function maySetMatchBestOf(event: Tourney, entry: TourneyMatch): boolean {
+  return (
+    event.viewer.organiser &&
+    hasBracket(event.status) &&
+    entry.bracket !== "freeForAll" &&
+    entry.status !== "done" &&
+    !hasGames(entry)
+  );
+}
+
+/** Twin of `Tourney::may_set_round_best_of`. */
+export function maySetRoundBestOf(event: Tourney, bracket: BracketSide, round: number): boolean {
+  return (
+    event.viewer.organiser &&
+    event.status === "running" &&
+    bracket !== "freeForAll" &&
+    event.matches.some(
+      (entry) =>
+        entry.bracket === bracket &&
+        entry.round === round &&
+        entry.status !== "done" &&
+        !hasGames(entry),
+    )
+  );
+}
+
 /** Twin of `FactionVetoConfig::is_submittable`: what `fveto_config` accepts. */
 export function factionConfigIsSubmittable(config: FactionVetoConfig): boolean {
   return (
@@ -452,6 +558,8 @@ export type StandingOutcome =
   | "champion"
   | "stillIn"
   | "lostFinal"
+  | "wonThirdPlace"
+  | "lostThirdPlace"
   | "placed"
   | "swiss"
   | { outIn: { bracket: BracketSide; round: number } };
@@ -829,6 +937,7 @@ const BRACKET_WIRE: Record<BracketSide, string> = {
   winners: "wb",
   losers: "lb",
   grandFinal: "gf",
+  thirdPlace: "3p",
   swiss: "sw",
   freeForAll: "ffa",
 };
@@ -895,6 +1004,16 @@ export function roundPlan(event: Tourney): RoundPlan {
     pairs.push(["grandFinal", 1]);
   } else {
     for (let round = 1; round <= rounds; round += 1) pairs.push(["winners", round]);
+    // Played on the semi-finals' pool unless it gets its own, but a round of
+    // its own to bind one to, as the website projects it.
+    if (
+      event.bracketKind === "single" &&
+      thirdPlaceOn(event) &&
+      teams >= 4 &&
+      event.divisions <= 1
+    ) {
+      pairs.push(["thirdPlace", rounds]);
+    }
     if (event.bracketKind === "double") {
       for (let round = 1; round <= Math.max(2 * rounds - 2, 0); round += 1) {
         pairs.push(["losers", round]);
@@ -939,7 +1058,11 @@ export function bracketConfigOf(event: Tourney): BracketConfig {
   }
   return {
     type: "single",
-    payload: { rounds: Array.from({ length: rounds }, (_, index) => (index + 1 === rounds ? 5 : 3)) },
+    payload: {
+      rounds: Array.from({ length: rounds }, (_, index) => (index + 1 === rounds ? 5 : 3)),
+      // What the service falls back to when the start config does not say.
+      thirdPlace: event.plan !== null && event.plan.type === "single" && event.plan.payload.thirdPlace,
+    },
   };
 }
 
@@ -1164,7 +1287,17 @@ function depthOf(event: Tourney, team: TourneyTeam): number {
   if (team.out === null) return 100_000_000;
   if (team.out.bracket === "grandFinal") return 1_000_000;
   if (team.out.bracket === "losers") return 1_000 + team.out.round;
-  return team.out.round;
+  // Winners rounds count in tens so the 3rd place match fits between the
+  // final and the semi-finals it hangs off.
+  if (team.out.bracket === "thirdPlace") {
+    return (team.out.round - 1) * 10 + (wonThirdPlace(event, team.id) ? 6 : 5);
+  }
+  return team.out.round * 10;
+}
+
+/** Twin of `Tourney::won_third_place`. */
+function wonThirdPlace(event: Tourney, teamId: string): boolean {
+  return thirdPlaceMatch(event)?.winner === teamId;
 }
 
 /**
@@ -1195,7 +1328,11 @@ function eliminationStandings(event: Tourney): Standing[] {
         ? "stillIn"
         : team.out.bracket === "grandFinal"
           ? "lostFinal"
-          : { outIn: { bracket: team.out.bracket, round: team.out.round } };
+          : team.out.bracket === "thirdPlace"
+            ? wonThirdPlace(event, team.id)
+              ? "wonThirdPlace"
+              : "lostThirdPlace"
+            : { outIn: { bracket: team.out.bracket, round: team.out.round } };
     rows.push({
       ...blank(team.id, outcome),
       // Still in it means no place yet: calling somebody fourth while they
@@ -1374,5 +1511,5 @@ export function defaultPlanFor(kind: BracketKind): MatchPlan {
       payload: { bestOf: 3, finalMatch: true, finalBestOf: 5, fast: false },
     };
   }
-  return { type: "single", payload: { early: 3, semi: 3, finalBo: 5 } };
+  return { type: "single", payload: { early: 3, semi: 3, finalBo: 5, thirdPlace: false } };
 }

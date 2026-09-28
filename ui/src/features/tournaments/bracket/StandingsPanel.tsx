@@ -17,10 +17,15 @@ import { EntrantName } from "../EntrantName";
 import { BRACKET_LABELS } from "../tourneyPresentation";
 import { profileOf, standings, standingsKind, teamMembers } from "../../../shared/rules/tourneyRules";
 
-const OUTCOME_LABELS: Record<"champion" | "stillIn" | "lostFinal" | "placed", MessageKey> = {
+const OUTCOME_LABELS: Record<
+  "champion" | "stillIn" | "lostFinal" | "wonThirdPlace" | "lostThirdPlace" | "placed",
+  MessageKey
+> = {
   champion: "tournaments.standings.champion",
   stillIn: "tournaments.standings.stillIn",
   lostFinal: "tournaments.standings.lostFinal",
+  wonThirdPlace: "tournaments.standings.wonThirdPlace",
+  lostThirdPlace: "tournaments.standings.lostThirdPlace",
   placed: "tournaments.standings.placed",
 };
 

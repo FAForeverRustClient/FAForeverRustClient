@@ -29,7 +29,7 @@ use faf_domain::state::{
     BracketConfig, Caster, Currency, FormatDraft, Prize, Qualifier, QualifierRule, SeriesColour,
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries,
 };
-use faf_domain::state::{FactionVetoConfig, TourneyFaction};
+use faf_domain::state::{FactionVetoConfig, TourneyAdmin, TourneyFaction};
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
 
 use crate::ports::{RequestError, TourneyPort};
@@ -1164,6 +1164,12 @@ impl TourneyPort for FakeTourney {
     async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
         Err(RequestError::rejected(
             "Faction vetoes are not available offline",
+        ))
+    }
+
+    async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
+        Err(RequestError::rejected(
+            "This organiser change is not available offline",
         ))
     }
 

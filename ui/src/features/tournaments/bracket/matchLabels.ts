@@ -18,6 +18,7 @@ export function matchLabel(event: Tourney, entry: TourneyMatch, t: Translate): s
   if (entry.bracket === "grandFinal") {
     return t(event.bracketKind === "swiss" ? "tournaments.swiss.final" : "tournaments.bracket.grandFinal");
   }
+  if (entry.bracket === "thirdPlace") return t("tournaments.bracket.thirdPlace");
   const number = `R${entry.round} M${entry.index + 1}`;
   const division = entry.division > 0 ? `D${entry.division} ` : "";
   switch (entry.bracket) {
@@ -32,13 +33,14 @@ export function matchLabel(event: Tourney, entry: TourneyMatch, t: Translate): s
 
 /**
  * Where a match sits in play order: by round, winners before losers inside a
- * round, the grand final last. The website's `rank`.
+ * round, the grand final last. The website's `rank`. The 3rd place match
+ * carries the final's round and is listed beside it.
  */
 export function matchRank(entry: TourneyMatch): number {
   return (
     (entry.bracket === "grandFinal" ? 1000 : 0) +
     entry.round * 10 +
-    (entry.bracket === "losers" ? 1 : 0)
+    (entry.bracket === "losers" || entry.bracket === "thirdPlace" ? 1 : 0)
   );
 }
 
@@ -83,6 +85,7 @@ export function roundKeyLabel(
   lastRound: number,
 ): string {
   if (bracket === "grandFinal") return t("tournaments.pools.roundGrandFinal");
+  if (bracket === "thirdPlace") return t("tournaments.bracket.thirdPlace");
   if (bracket === "swiss") return t("tournaments.pools.roundSwiss", { round });
   if (bracket === "losers") {
     return round === lastRound
@@ -99,6 +102,7 @@ const WIRE_BRACKETS: Record<string, BracketSide> = {
   wb: "winners",
   lb: "losers",
   gf: "grandFinal",
+  "3p": "thirdPlace",
   sw: "swiss",
   ffa: "freeForAll",
 };

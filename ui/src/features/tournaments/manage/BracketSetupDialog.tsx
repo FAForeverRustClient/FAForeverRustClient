@@ -82,6 +82,7 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
                   setConfig({
                     type: "single",
                     payload: {
+                      ...config.payload,
                       rounds: config.payload.rounds.map((held, other) =>
                         other === index ? picked : held,
                       ),
@@ -89,6 +90,24 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
                   }),
                 eliminationLabel(index + 1, config.payload.rounds.length),
               ),
+            )}
+            {/* Only where the service would build it: four entrants or more
+                and no divisions. Anywhere else it is skipped in silence. */}
+            {teams >= 4 && event.divisions <= 1 && (
+              <label className="tournament-checkbox">
+                <input
+                  type="checkbox"
+                  checked={config.payload.thirdPlace}
+                  disabled={busy}
+                  onChange={(changed) =>
+                    setConfig({
+                      type: "single",
+                      payload: { ...config.payload, thirdPlace: changed.target.checked },
+                    })
+                  }
+                />
+                <span>{t("tournaments.form.planThirdPlace")}</span>
+              </label>
             )}
           </>
         );

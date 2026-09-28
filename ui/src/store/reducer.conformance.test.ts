@@ -69,7 +69,11 @@ import {
   isPlayerSubmittable,
   swissCutRounds,
   factionVetoOn,
+  mayAddThirdPlace,
   mayConfigureFactionVeto,
+  mayRemoveThirdPlace,
+  maySetMatchBestOf,
+  thirdPlaceOn,
   factionConfigIsSubmittable,
   mapKey,
   matchVaultMap,
@@ -151,6 +155,10 @@ interface HelperFixture {
     submittableMatchIds: string[];
     factionVetoOn: boolean;
     mayConfigureFactionVeto: boolean;
+    thirdPlaceOn: boolean;
+    mayAddThirdPlace: boolean;
+    mayRemoveThirdPlace: boolean;
+    bestOfMatchIds: string[];
     name: string;
     event: Tourney;
     teamId: string | null;
@@ -455,6 +463,12 @@ describe("tournament rule twins match Rust", () => {
         .map((entry) => entry.id),
       factionVetoOn: factionVetoOn(event),
       mayConfigureFactionVeto: mayConfigureFactionVeto(event),
+      thirdPlaceOn: thirdPlaceOn(event),
+      mayAddThirdPlace: mayAddThirdPlace(event),
+      mayRemoveThirdPlace: mayRemoveThirdPlace(event),
+      bestOfMatchIds: event.matches
+        .filter((entry) => maySetMatchBestOf(event, entry))
+        .map((entry) => entry.id),
     }).toEqual({
       teamRating: recorded.teamRating,
       wouldExceedTeamCap: recorded.wouldExceedTeamCap,
@@ -472,6 +486,10 @@ describe("tournament rule twins match Rust", () => {
       submittableMatchIds: recorded.submittableMatchIds,
       factionVetoOn: recorded.factionVetoOn,
       mayConfigureFactionVeto: recorded.mayConfigureFactionVeto,
+      thirdPlaceOn: recorded.thirdPlaceOn,
+      mayAddThirdPlace: recorded.mayAddThirdPlace,
+      mayRemoveThirdPlace: recorded.mayRemoveThirdPlace,
+      bestOfMatchIds: recorded.bestOfMatchIds,
     });
   });
 

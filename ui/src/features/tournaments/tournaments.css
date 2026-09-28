@@ -4068,3 +4068,58 @@
   flex: none;
   height: clamp(240px, 45vh, 420px);
 }
+
+/* -- The 3rd place match ------------------------------------------------------
+   Hung under the final, in the final's own column. It sits after the column's
+   card stack rather than inside it, so the final keeps its place between the
+   semi-finals and the connector arithmetic above never sees it. Joined to
+   nothing: its players come from the semi-finals' losers, and a line from there
+   would cross the final's. */
+.tournament-third-place {
+  border-top: 1px dashed var(--color-border);
+}
+
+/* Indented to the final's own left edge, which is the elbow's width in from
+   the vertical that joins the semi-finals to the final. Flush with the column,
+   the card sat on the end of the lower semi-final's line and read as fed by it. */
+.tournament-round.is-bracket .tournament-third-place,
+.tournament-round.is-straight .tournament-third-place {
+  margin-left: calc(var(--space-3) + var(--elbow));
+}
+
+.tournament-third-place .tournament-round-head {
+  border-bottom: 0;
+  padding-left: 0;
+}
+
+/* Same specificity as the connector rules above, and later, so these win: a
+   card here has no pitch, no elbow and no feed lines. */
+.tournament-round .tournament-third-place .tournament-round-matches {
+  padding: 0 var(--space-3) var(--space-3) 0;
+  gap: 0;
+}
+
+.tournament-round .tournament-third-place .tournament-match::before,
+.tournament-round .tournament-third-place .tournament-match::after {
+  content: none;
+}
+
+/* The organiser's switch for it, above the bracket. */
+.tournament-third-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+/* A round's best-of, in its header, and a match's, in its details. Compact:
+   the header strip stays one line high. */
+.tournament-round-bo {
+  font-size: 11px;
+  padding: 1px var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+}

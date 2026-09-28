@@ -31,6 +31,8 @@ function roundTag(bracket: BracketSide, round: number): string {
       return `LR${round}`;
     case "grandFinal":
       return "GF";
+    case "thirdPlace":
+      return "3rd";
     case "swiss":
       return `SR${round}`;
     default:

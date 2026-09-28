@@ -36493,6 +36493,10 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [
           {
             "id": "global",
@@ -36749,6 +36753,10 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -36905,6 +36913,10 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37043,6 +37055,10 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37284,6 +37300,10 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37527,6 +37547,13 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [
+          "m1",
+          "m2"
+        ],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37768,6 +37795,10 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -38009,6 +38040,10 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -38250,6 +38285,10 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -38421,6 +38460,10 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -38592,6 +38635,10 @@
         "submittableMatchIds": [],
         "factionVetoOn": false,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -38835,6 +38882,10 @@
         ],
         "factionVetoOn": true,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -39076,6 +39127,1146 @@
         "submittableMatchIds": [],
         "factionVetoOn": true,
         "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "a running single elimination of four, without a 3rd place match",
+        "event": {
+          "id": "four-single",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "running",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "single",
+          "teamSize": 1,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": false,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t2",
+              "name": "T2",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t3",
+              "name": "T3",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t4",
+              "name": "T4",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [
+            {
+              "id": "s1",
+              "bracket": "winners",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t4",
+              "score1": 2,
+              "score2": 0,
+              "status": "done",
+              "winner": "t1",
+              "loser": "t4",
+              "winnerTo": {
+                "matchId": "final",
+                "slot": 1
+              },
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "s2",
+              "bracket": "winners",
+              "round": 1,
+              "index": 1,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t2",
+              "team2": "t3",
+              "score1": 1,
+              "score2": 0,
+              "status": "live",
+              "winner": null,
+              "loser": null,
+              "winnerTo": {
+                "matchId": "final",
+                "slot": 2
+              },
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "final",
+              "bracket": "winners",
+              "round": 2,
+              "index": 0,
+              "bestOf": 5,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": null,
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            }
+          ],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "viewer": {
+            "loggedIn": true,
+            "organiser": true,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null,
+            "caster": false,
+            "newsReadAt": null
+          }
+        },
+        "teamId": null,
+        "teamRating": 0,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [],
+        "myInviteTeamIds": [],
+        "mayRename": false,
+        "mayPublish": true,
+        "reportableMatchIds": [
+          "s1",
+          "s2"
+        ],
+        "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": true,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": true,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [
+          "final"
+        ],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "the same bracket with a 3rd place match nobody has touched",
+        "event": {
+          "id": "with-third",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "running",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "single",
+          "teamSize": 1,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": false,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t2",
+              "name": "T2",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t3",
+              "name": "T3",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t4",
+              "name": "T4",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [
+            {
+              "id": "s1",
+              "bracket": "winners",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t4",
+              "score1": 2,
+              "score2": 0,
+              "status": "done",
+              "winner": "t1",
+              "loser": "t4",
+              "winnerTo": {
+                "matchId": "final",
+                "slot": 1
+              },
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "s2",
+              "bracket": "winners",
+              "round": 1,
+              "index": 1,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t2",
+              "team2": "t3",
+              "score1": 1,
+              "score2": 0,
+              "status": "live",
+              "winner": null,
+              "loser": null,
+              "winnerTo": {
+                "matchId": "final",
+                "slot": 2
+              },
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "final",
+              "bracket": "winners",
+              "round": 2,
+              "index": 0,
+              "bestOf": 5,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": null,
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "third",
+              "bracket": "thirdPlace",
+              "round": 2,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t4",
+              "team2": null,
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            }
+          ],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "viewer": {
+            "loggedIn": true,
+            "organiser": true,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null,
+            "caster": false,
+            "newsReadAt": null
+          }
+        },
+        "teamId": null,
+        "teamRating": 0,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [],
+        "myInviteTeamIds": [],
+        "mayRename": false,
+        "mayPublish": true,
+        "reportableMatchIds": [
+          "s1",
+          "s2"
+        ],
+        "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": true,
+        "thirdPlaceOn": true,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": true,
+        "bestOfMatchIds": [
+          "final",
+          "third"
+        ],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "the same, once a map has been banned in it: it stays",
+        "event": {
+          "id": "third-started",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "running",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "single",
+          "teamSize": 1,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": false,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t2",
+              "name": "T2",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t3",
+              "name": "T3",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t4",
+              "name": "T4",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [
+            {
+              "id": "s1",
+              "bracket": "winners",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t4",
+              "score1": 2,
+              "score2": 0,
+              "status": "done",
+              "winner": "t1",
+              "loser": "t4",
+              "winnerTo": {
+                "matchId": "final",
+                "slot": 1
+              },
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "s2",
+              "bracket": "winners",
+              "round": 1,
+              "index": 1,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t2",
+              "team2": "t3",
+              "score1": 1,
+              "score2": 0,
+              "status": "live",
+              "winner": null,
+              "loser": null,
+              "winnerTo": {
+                "matchId": "final",
+                "slot": 2
+              },
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "final",
+              "bracket": "winners",
+              "round": 2,
+              "index": 0,
+              "bestOf": 5,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": null,
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "third",
+              "bracket": "thirdPlace",
+              "round": 2,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t4",
+              "team2": null,
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": {
+                "remaining": [
+                  "map1",
+                  "map2",
+                  "map3",
+                  "map4"
+                ],
+                "banned": [
+                  {
+                    "map": "map1",
+                    "by": "t4",
+                    "game": null
+                  }
+                ],
+                "picks": [],
+                "sequence": [
+                  {
+                    "action": "ban",
+                    "team": "a"
+                  },
+                  {
+                    "action": "pick",
+                    "team": "b"
+                  },
+                  {
+                    "action": "pick",
+                    "team": "a"
+                  }
+                ],
+                "stepIndex": 1,
+                "teamA": "t4",
+                "teamB": "t1",
+                "done": false,
+                "decider": null
+              },
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            }
+          ],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "viewer": {
+            "loggedIn": true,
+            "organiser": true,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null,
+            "caster": false,
+            "newsReadAt": null
+          }
+        },
+        "teamId": null,
+        "teamRating": 0,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [],
+        "myInviteTeamIds": [],
+        "mayRename": false,
+        "mayPublish": true,
+        "reportableMatchIds": [
+          "s1",
+          "s2"
+        ],
+        "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": true,
+        "thirdPlaceOn": true,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [
+          "final",
+          "third"
+        ],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "a single elimination planned with a 3rd place match, before the draw",
+        "event": {
+          "id": "third-planned",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "drafted",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "single",
+          "teamSize": 1,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": {
+            "type": "single",
+            "payload": {
+              "early": 3,
+              "semi": 3,
+              "finalBo": 5,
+              "thirdPlace": true
+            }
+          },
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": false,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t2",
+              "name": "T2",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t3",
+              "name": "T3",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t4",
+              "name": "T4",
+              "seed": 0,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "viewer": {
+            "loggedIn": true,
+            "organiser": true,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null,
+            "caster": false,
+            "newsReadAt": null
+          }
+        },
+        "teamId": null,
+        "teamRating": 0,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": true,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [],
+        "myInviteTeamIds": [],
+        "mayRename": false,
+        "mayPublish": true,
+        "reportableMatchIds": [],
+        "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": true,
+        "thirdPlaceOn": true,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       }
@@ -39421,7 +40612,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -39471,7 +40663,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -39521,7 +40714,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -39571,7 +40765,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -39621,7 +40816,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -39671,7 +40867,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -39721,7 +40918,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -39771,7 +40969,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -39821,7 +41020,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -39871,7 +41071,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -39921,7 +41122,8 @@
             "payload": {
               "early": 3,
               "semi": 3,
-              "finalBo": 5
+              "finalBo": 5,
+              "thirdPlace": false
             }
           },
           "veto": {
@@ -42202,6 +43404,253 @@
         },
         "kind": "none",
         "rows": []
+      },
+      {
+        "name": "a single elimination whose 3rd place match was played",
+        "event": {
+          "id": "third-place",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "finished",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "single",
+          "teamSize": 0,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": false,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [],
+          "teams": [
+            {
+              "id": "t4",
+              "name": "T4",
+              "seed": 4,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": {
+                "bracket": "thirdPlace",
+                "round": 2
+              },
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t3",
+              "name": "T3",
+              "seed": 3,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": {
+                "bracket": "thirdPlace",
+                "round": 2
+              },
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t2",
+              "name": "T2",
+              "seed": 2,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": {
+                "bracket": "winners",
+                "round": 2
+              },
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 1,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [
+            {
+              "id": "third",
+              "bracket": "thirdPlace",
+              "round": 2,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t3",
+              "team2": "t4",
+              "score1": null,
+              "score2": null,
+              "status": "done",
+              "winner": "t4",
+              "loser": "t3",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "factionVeto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            }
+          ],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": "t1",
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "viewer": {
+            "loggedIn": false,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null,
+            "caster": false,
+            "newsReadAt": null
+          }
+        },
+        "kind": "elimination",
+        "rows": [
+          {
+            "teamId": "t1",
+            "place": 1,
+            "outcome": "champion",
+            "wins": 0,
+            "losses": 0,
+            "gameDiff": 0,
+            "beaten": null
+          },
+          {
+            "teamId": "t2",
+            "place": 2,
+            "outcome": {
+              "outIn": {
+                "bracket": "winners",
+                "round": 2
+              }
+            },
+            "wins": 0,
+            "losses": 0,
+            "gameDiff": 0,
+            "beaten": null
+          },
+          {
+            "teamId": "t4",
+            "place": 3,
+            "outcome": "wonThirdPlace",
+            "wins": 0,
+            "losses": 0,
+            "gameDiff": 0,
+            "beaten": null
+          },
+          {
+            "teamId": "t3",
+            "place": 4,
+            "outcome": "lostThirdPlace",
+            "wins": 0,
+            "losses": 0,
+            "gameDiff": 0,
+            "beaten": null
+          }
+        ]
       }
     ],
     "tourneyProfiles": [
@@ -53963,6 +55412,148 @@
           "projected": false,
           "teams": 0
         }
+      },
+      {
+        "name": "a single elimination planned with a 3rd place match",
+        "event": {
+          "id": "e1",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "signup",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "maxTeams": 8,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": {
+            "type": "single",
+            "payload": {
+              "early": 3,
+              "semi": 3,
+              "finalBo": 5,
+              "thirdPlace": true
+            }
+          },
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront"
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": false,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [],
+          "teams": [],
+          "subs": [],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "viewer": {
+            "loggedIn": false,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null,
+            "caster": false,
+            "newsReadAt": null
+          }
+        },
+        "plan": {
+          "keys": [
+            {
+              "key": "wb:1",
+              "bracket": "winners",
+              "round": 1,
+              "lastRound": 3
+            },
+            {
+              "key": "wb:2",
+              "bracket": "winners",
+              "round": 2,
+              "lastRound": 3
+            },
+            {
+              "key": "wb:3",
+              "bracket": "winners",
+              "round": 3,
+              "lastRound": 3
+            },
+            {
+              "key": "3p:3",
+              "bracket": "thirdPlace",
+              "round": 3,
+              "lastRound": 3
+            }
+          ],
+          "projected": true,
+          "teams": 8
+        }
       }
     ],
     "tourneyChatRooms": [
@@ -54377,7 +55968,8 @@
               3,
               3,
               5
-            ]
+            ],
+            "thirdPlace": false
           }
         },
         "submittable": true
@@ -54583,7 +56175,8 @@
               3,
               3,
               5
-            ]
+            ],
+            "thirdPlace": false
           }
         },
         "submittable": true
@@ -55453,7 +57046,8 @@
           "payload": {
             "early": 3,
             "semi": 3,
-            "finalBo": 5
+            "finalBo": 5,
+            "thirdPlace": false
           }
         }
       },

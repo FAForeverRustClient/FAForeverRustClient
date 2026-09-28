@@ -17,7 +17,7 @@ use faf_domain::state::{
     SeriesDraft, Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent,
     TourneyLoadStatus, TourneyPhase, TourneySeries, TourneyStatus,
 };
-use faf_domain::state::{FactionVetoConfig, TourneyFaction};
+use faf_domain::state::{FactionVetoConfig, TourneyAdmin, TourneyFaction};
 use faf_domain::AppEvent;
 
 fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {
@@ -183,6 +183,9 @@ impl TourneyPort for RefusingTourney {
         self.refused()
     }
     async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
         self.refused()
     }
     async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
@@ -1738,6 +1741,9 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             _: &str,
             _: &FactionVetoConfig,
         ) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn chat_rooms(&self, _: &str) -> Result<Vec<ChatRoom>, RequestError> {
@@ -3821,7 +3827,10 @@ async fn a_plan_with_the_wrong_number_of_rounds_is_caught_here() {
     let event = app.snapshot().tourney.detail.expect("a drawn event");
     let teams = event.teams.len() as i32;
 
-    let short = BracketConfig::Single { rounds: vec![3] };
+    let short = BracketConfig::Single {
+        rounds: vec![3],
+        third_place: false,
+    };
     assert!(!short.is_submittable(teams), "one round for four teams");
     assert!(BracketConfig::of(&event).is_submittable(teams));
 }

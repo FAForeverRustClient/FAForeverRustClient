@@ -39,6 +39,7 @@ import type {
   SeedOrder,
   SeriesDraft,
   Tourney,
+  TourneyAdmin,
   TourneyDraft,
   TourneyPhase,
   TourneySeries,
@@ -133,6 +134,8 @@ interface ManagePanelProps {
   onPublishMap: (mapId: string, published: boolean) => void;
   onDeleteMap: (mapId: string) => void;
   onSetFactionVeto: (config: FactionVetoConfig) => void;
+  /** One of the organiser's single-call changes. */
+  onAdmin: (change: TourneyAdmin) => void;
   onMute: (fafId: number, name: string, muted: boolean) => void;
   onAddOrganiser: (fafId: number, name: string) => void;
   onSetOrganiserVisibility: (fafId: number, hidden: boolean) => void;

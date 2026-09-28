@@ -223,6 +223,14 @@ struct TourneyRuleCase {
     faction_veto_on: bool,
     /// `Tourney::may_configure_faction_veto`.
     may_configure_faction_veto: bool,
+    /// `Tourney::third_place_on`: the plan before the draw, the match after.
+    third_place_on: bool,
+    /// `Tourney::may_add_third_place`.
+    may_add_third_place: bool,
+    /// `Tourney::may_remove_third_place`: only until anything happens in it.
+    may_remove_third_place: bool,
+    /// `Tourney::may_set_match_best_of` over every match, in bracket order.
+    best_of_match_ids: Vec<String>,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -672,6 +680,15 @@ fn tourney_rule_case(
         may_publish: event.may_publish(),
         faction_veto_on: event.faction_veto_on(),
         may_configure_faction_veto: event.may_configure_faction_veto(),
+        third_place_on: event.third_place_on(),
+        may_add_third_place: event.may_add_third_place(),
+        may_remove_third_place: event.may_remove_third_place(),
+        best_of_match_ids: event
+            .matches
+            .iter()
+            .filter(|entry| event.may_set_match_best_of(entry))
+            .map(|entry| entry.id.clone())
+            .collect(),
         reportable_match_ids: event
             .matches
             .iter()
@@ -741,6 +758,48 @@ fn tourney_matches() -> Vec<TourneyMatch> {
 }
 
 fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
+    let four_single = four_team_single();
+    let third = TourneyMatch {
+        round: 2,
+        team2: None,
+        ..tourney_match("third", BracketSide::ThirdPlace, Some("t4"), None)
+    };
+    let with_third = Tourney {
+        id: "with-third".into(),
+        matches: [four_single.matches.clone(), vec![third.clone()]].concat(),
+        ..four_single.clone()
+    };
+    let third_started = Tourney {
+        id: "third-started".into(),
+        matches: [
+            four_single.matches.clone(),
+            vec![TourneyMatch {
+                veto: Some(MatchVeto {
+                    banned: vec![VetoChoice {
+                        map: "map1".into(),
+                        by: "t4".into(),
+                        game: None,
+                    }],
+                    ..running_veto(1, Some("t4"), false)
+                }),
+                ..third
+            }],
+        ]
+        .concat(),
+        ..four_single.clone()
+    };
+    let third_planned = Tourney {
+        id: "third-planned".into(),
+        status: TourneyStatus::Drafted,
+        matches: Vec::new(),
+        plan: Some(MatchPlan::Single {
+            early: 3,
+            semi: 3,
+            final_bo: 5,
+            third_place: true,
+        }),
+        ..four_single.clone()
+    };
     // An open 2v2 taking signups, with a combined-rating ceiling that this
     // account would push `t1` over but not `t2`.
     let capped = Tourney {
@@ -984,7 +1043,84 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             Some("t1"),
             vec![],
         ),
+        tourney_rule_case(
+            "a running single elimination of four, without a 3rd place match",
+            four_single.clone(),
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same bracket with a 3rd place match nobody has touched",
+            with_third,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same, once a map has been banned in it: it stays",
+            third_started,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "a single elimination planned with a 3rd place match, before the draw",
+            third_planned,
+            None,
+            vec![],
+        ),
     ]
+}
+
+/// A single elimination of four, running, seen by its organiser: one
+/// semi-final played, the other and the final still to come.
+fn four_team_single() -> Tourney {
+    let semi = |id: &str, index: i32, team1: &str, team2: &str| TourneyMatch {
+        index,
+        winner_to: Some(MatchLink {
+            match_id: "final".into(),
+            slot: index + 1,
+        }),
+        ..tourney_match(id, BracketSide::Winners, Some(team1), Some(team2))
+    };
+    Tourney {
+        id: "four-single".into(),
+        status: TourneyStatus::Running,
+        competition: Competition::Team,
+        bracket_kind: BracketKind::Single,
+        team_size: 1,
+        viewer: TourneyViewer {
+            logged_in: true,
+            organiser: true,
+            ..TourneyViewer::default()
+        },
+        teams: ["t1", "t2", "t3", "t4"]
+            .iter()
+            .map(|id| tourney_team(id, &[]))
+            .collect(),
+        matches: vec![
+            TourneyMatch {
+                status: MatchStatus::Done,
+                score1: Some(2),
+                score2: Some(0),
+                winner: Some("t1".into()),
+                loser: Some("t4".into()),
+                ..semi("s1", 0, "t1", "t4")
+            },
+            // A live score is a game played, so its length is locked.
+            TourneyMatch {
+                status: MatchStatus::Live,
+                score1: Some(1),
+                score2: Some(0),
+                ..semi("s2", 1, "t2", "t3")
+            },
+            TourneyMatch {
+                round: 2,
+                best_of: 5,
+                team2: None,
+                ..tourney_match("final", BracketSide::Winners, Some("t1"), None)
+            },
+        ],
+        ..Tourney::default()
+    }
 }
 
 fn standings_team(id: &str, seed: i32, out: Option<(BracketSide, i32)>) -> TourneyTeam {
@@ -1169,6 +1305,30 @@ fn tourney_standings_cases() -> Vec<TourneyStandingsCase> {
         }],
         ..Tourney::default()
     };
+    // A single elimination of four with a 3rd place match played: 1, 2, 3, 4
+    // rather than a shared 3rd. The final loser is out in the final's round,
+    // the two semi-final losers in the 3rd place match that carries the same
+    // round number.
+    let third_place = Tourney {
+        id: "third-place".into(),
+        status: TourneyStatus::Finished,
+        bracket_kind: BracketKind::Single,
+        champion_team_id: Some("t1".into()),
+        teams: vec![
+            standings_team("t4", 4, Some((BracketSide::ThirdPlace, 2))),
+            standings_team("t3", 3, Some((BracketSide::ThirdPlace, 2))),
+            standings_team("t2", 2, Some((BracketSide::Winners, 2))),
+            standings_team("t1", 1, None),
+        ],
+        matches: vec![TourneyMatch {
+            round: 2,
+            status: MatchStatus::Done,
+            winner: Some("t4".into()),
+            loser: Some("t3".into()),
+            ..tourney_match("third", BracketSide::ThirdPlace, Some("t3"), Some("t4"))
+        }],
+        ..Tourney::default()
+    };
     // Signups: no table at all, and a pane that drew one would be inventing it.
     let early = Tourney {
         id: "early".into(),
@@ -1198,6 +1358,10 @@ fn tourney_standings_cases() -> Vec<TourneyStandingsCase> {
             points,
         ),
         ("signups, where there is no table", early),
+        (
+            "a single elimination whose 3rd place match was played",
+            third_place,
+        ),
     ]
     .into_iter()
     .map(|(name, event)| TourneyStandingsCase {
@@ -1545,6 +1709,21 @@ fn tourney_round_cases() -> Vec<TourneyRoundCase> {
                 max_teams: 64,
                 status: TourneyStatus::Running,
                 matches: tourney_matches(),
+                ..base.clone()
+            },
+        ),
+        (
+            // The website projects a round of its own for it, so a pool can
+            // be bound to it before the draw.
+            "a single elimination planned with a 3rd place match",
+            Tourney {
+                max_teams: 8,
+                plan: Some(MatchPlan::Single {
+                    early: 3,
+                    semi: 3,
+                    final_bo: 5,
+                    third_place: true,
+                }),
                 ..base.clone()
             },
         ),

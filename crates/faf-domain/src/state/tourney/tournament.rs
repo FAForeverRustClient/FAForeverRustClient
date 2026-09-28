@@ -734,6 +734,13 @@ impl Tourney {
                 (false, Some(exit)) if exit.bracket == BracketSide::GrandFinal => {
                     StandingOutcome::LostFinal
                 }
+                (false, Some(exit)) if exit.bracket == BracketSide::ThirdPlace => {
+                    if self.won_third_place(&team.id) {
+                        StandingOutcome::WonThirdPlace
+                    } else {
+                        StandingOutcome::LostThirdPlace
+                    }
+                }
                 (false, Some(exit)) => StandingOutcome::OutIn {
                     bracket: exit.bracket,
                     round: exit.round,
@@ -764,6 +771,12 @@ impl Tourney {
     ///
     /// The bands sit far apart on purpose: losing the grand final beats any
     /// number of lower-bracket rounds, and being alive beats having lost at all.
+    ///
+    /// Winners rounds count in tens so the 3rd place match fits between the
+    /// final and the semi-finals, the way the service ranks it: its winner is
+    /// 3rd and its loser 4th, both behind the beaten finalist and both ahead
+    /// of everyone who went out before the semis. It carries the final's
+    /// round number, so the semi-finals it hangs off are one round shallower.
     fn depth_of(&self, team: &TourneyTeam) -> i64 {
         if Some(team.id.as_str()) == self.champion_team_id.as_deref() {
             return 1_000_000_000;
@@ -774,8 +787,27 @@ impl Tourney {
         match exit.bracket {
             BracketSide::GrandFinal => 1_000_000,
             BracketSide::Losers => 1_000 + i64::from(exit.round),
-            _ => i64::from(exit.round),
+            BracketSide::ThirdPlace => {
+                let semis = i64::from(exit.round - 1) * 10;
+                semis + if self.won_third_place(&team.id) { 6 } else { 5 }
+            }
+            _ => i64::from(exit.round) * 10,
         }
+    }
+
+    /// Whether this team won the 3rd place match.
+    fn won_third_place(&self, team_id: &str) -> bool {
+        self.third_place_match()
+            .is_some_and(|entry| entry.winner.as_deref() == Some(team_id))
+    }
+
+    /// The 3rd place match, where the bracket has one.
+    ///
+    /// Divisions never get one, so there is at most one per event.
+    pub fn third_place_match(&self) -> Option<&TourneyMatch> {
+        self.matches
+            .iter()
+            .find(|entry| entry.bracket == BracketSide::ThirdPlace)
     }
 
     fn seed_of(&self, team_id: &str) -> i32 {
@@ -978,6 +1010,85 @@ impl Tourney {
             && self.team_size == 1
             && self.competition != Competition::FreeForAll
             && self.status != TourneyStatus::Finished
+    }
+
+    /// Whether the bracket has, or will be drawn with, a 3rd place match.
+    ///
+    /// Before the draw the stored plan says; after it, the match itself. The
+    /// service builds it at the draw only with four entrants or more and no
+    /// divisions, so a plan that asked for one can still end up without it.
+    pub fn third_place_on(&self) -> bool {
+        if self.third_place_match().is_some() {
+            return true;
+        }
+        self.matches.is_empty()
+            && matches!(
+                self.plan,
+                Some(MatchPlan::Single {
+                    third_place: true,
+                    ..
+                })
+            )
+    }
+
+    /// Whether this account may add a 3rd place match to the running bracket
+    /// (`third_place` with `on`).
+    ///
+    /// The service's conditions: a single elimination between teams, without
+    /// divisions, with four entrants or more, still running, and none there
+    /// yet. A semi-final already played is fine: its loser is brought back.
+    /// A final already won is not, because it finished the event.
+    pub fn may_add_third_place(&self) -> bool {
+        self.viewer.organiser
+            && self.status == TourneyStatus::Running
+            && self.third_place_eligible()
+            && self.third_place_match().is_none()
+    }
+
+    /// Whether this account may take the 3rd place match away again: only
+    /// until anything has happened in it.
+    pub fn may_remove_third_place(&self) -> bool {
+        self.viewer.organiser
+            && self.status == TourneyStatus::Running
+            && self
+                .third_place_match()
+                .is_some_and(|entry| !entry.has_started())
+    }
+
+    /// A single elimination between teams, without divisions, of four or
+    /// more: the only bracket the service builds a 3rd place match into.
+    fn third_place_eligible(&self) -> bool {
+        self.competition != Competition::FreeForAll
+            && !self.imported
+            && self.bracket_kind == BracketKind::Single
+            && self.divisions <= 1
+            && self.teams.len() >= 4
+    }
+
+    /// Whether this account may change the length of `entry` alone
+    /// (`set_match_bo`): an organiser, on a two-sided match that has not
+    /// begun. A free-for-all lobby has no best-of.
+    pub fn may_set_match_best_of(&self, entry: &TourneyMatch) -> bool {
+        self.viewer.organiser
+            && self.status.has_bracket()
+            && entry.bracket != BracketSide::FreeForAll
+            && entry.status != MatchStatus::Done
+            && !entry.has_games()
+    }
+
+    /// Whether this account may change the length of a whole round of the
+    /// drawn bracket (`set_round_bo`). The service skips every match in it
+    /// that has begun, so a round with none left to change is not offered.
+    pub fn may_set_round_best_of(&self, bracket: BracketSide, round: i32) -> bool {
+        self.viewer.organiser
+            && self.status == TourneyStatus::Running
+            && bracket != BracketSide::FreeForAll
+            && self.matches.iter().any(|entry| {
+                entry.bracket == bracket
+                    && entry.round == round
+                    && entry.status != MatchStatus::Done
+                    && !entry.has_games()
+            })
     }
 
     /// Whether this account may submit a score for `entry` for the other side
@@ -1189,6 +1300,15 @@ impl Tourney {
         } else {
             for round in 1..=rounds {
                 pairs.push((BracketSide::Winners, round));
+            }
+            // Played on the semi-finals' pool unless it gets its own, but a
+            // round of its own to bind one to, as the website projects it.
+            if self.bracket_kind == BracketKind::Single
+                && self.third_place_on()
+                && teams >= 4
+                && self.divisions <= 1
+            {
+                pairs.push((BracketSide::ThirdPlace, rounds));
             }
             if self.bracket_kind == BracketKind::Double {
                 for round in 1..=(2 * rounds - 2).max(0) {

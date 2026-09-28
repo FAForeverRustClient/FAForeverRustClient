@@ -19,12 +19,20 @@
 // the one on the right" is a border on a pseudo-element and survives any amount
 // of scrolling and resizing. An SVG overlay would need measured coordinates and
 // a resize observer to say the same thing.
+//
+// The 3rd place match is the one card outside that grid. It hangs under the
+// final, in the final's own column, the way the website and most printed
+// brackets show it, and it is joined to nothing: its two players come from the
+// semi-finals' losers, and a line from there would cross the final's.
 
 import { useState, type CSSProperties } from "react";
+import { Button } from "../../../design-system/Button";
 import type {
+  BracketSide,
   FfaReport,
   PlayerSummary,
   Tourney,
+  TourneyAdmin,
   TourneyMatch,
   VaultMap,
 } from "../../../ipc/bindings";
@@ -36,7 +44,18 @@ import { PoolPanel, PoolToggle } from "./RoundPool";
 import { SwissRounds } from "./SwissRounds";
 import { hasVeto } from "./vetoPresentation";
 import { BRACKET_LABELS, myTeamId } from "../tourneyPresentation";
-import { roundKeyOf } from "../../../shared/rules/tourneyRules";
+import {
+  hasGames,
+  mayAddThirdPlace,
+  mayRemoveThirdPlace,
+  maySetRoundBestOf,
+  poolForRound,
+  roundKeyOf,
+  thirdPlaceMatch,
+} from "../../../shared/rules/tourneyRules";
+
+/** The series lengths the service accepts. */
+const BEST_OF = [1, 3, 5, 7];
 
 interface Column {
   round: number;
@@ -66,6 +85,8 @@ export function groupIntoSides(matches: TourneyMatch[]): Side[] {
     winners: 0,
     losers: 1,
     grandFinal: 2,
+    // Never a side of its own in practice: the view hangs it under the final.
+    thirdPlace: 3,
     swiss: 0,
     freeForAll: 0,
   };
@@ -160,6 +181,8 @@ interface BracketViewProps {
   assetBase: string;
   veto: VetoHandlers;
   onReportFfa: (report: FfaReport) => void;
+  /** An organiser's single-call change: the 3rd place match, a round's length. */
+  onAdmin: (change: TourneyAdmin) => void;
 }
 
 export function BracketView({
@@ -173,8 +196,10 @@ export function BracketView({
   assetBase,
   veto,
   onReportFfa,
+  onAdmin,
 }: BracketViewProps) {
   const { t } = useTranslation();
+  const third = thirdPlaceMatch(event);
   // A Swiss stage is a list of rounds, not a tree: see `SwissRounds`. What is
   // left for the columns is a playoff bracket, where the stage feeds one.
   const swissStage = event.bracketKind === "swiss" && event.competition !== "freeForAll";
@@ -182,12 +207,66 @@ export function BracketView({
     (entry) => entry.bracket === "winners" || entry.bracket === "losers",
   );
   const sides = groupIntoSides(
-    swissStage
+    (swissStage
       ? playoffs.length > 0
         ? event.matches.filter((entry) => entry.bracket !== "swiss")
         : []
-      : event.matches,
+      : event.matches
+    ).filter((entry) => entry.bracket !== "thirdPlace"),
   );
+  /** Whether a match is drawn on this side, the 3rd place match included. */
+  const onSide = (side: Side, matchId: string) =>
+    side.columns.some((column) => column.matches.some((entry) => entry.id === matchId)) ||
+    (side.bracket === "winners" && third !== null && third.id === matchId);
+  /** The 3rd place match's pool: its own, else the semi-finals' that it plays. */
+  const thirdPoolKey =
+    third === null
+      ? null
+      : poolForRound(event, roundKeyOf("thirdPlace", third.round)) !== null
+        ? roundKeyOf("thirdPlace", third.round)
+        : roundKeyOf("winners", third.round - 1);
+
+  /**
+   * An organiser's best-of for a whole round, in its header.
+   *
+   * Only while a match in it can still change: the service skips every match
+   * that has begun, and a select that changed nothing would read as broken.
+   */
+  const roundBestOf = (bracket: BracketSide, column: Column) => {
+    if (!maySetRoundBestOf(event, bracket, column.round)) return null;
+    const open = column.matches.find((entry) => entry.status !== "done" && !hasGames(entry));
+    const current = (open ?? column.matches[0])?.bestOf ?? 3;
+    return (
+      <select
+        className="tournament-round-bo"
+        value={current}
+        aria-label={t("tournaments.bracket.roundBestOf")}
+        title={t("tournaments.bracket.roundBestOfHint")}
+        onChange={(changed) =>
+          onAdmin({
+            type: "roundBestOf",
+            payload: { bracket, round: column.round, bestOf: Number(changed.target.value) },
+          })
+        }
+      >
+        {BEST_OF.map((bo) => (
+          <option key={bo} value={bo}>
+            {`Bo${bo}`}
+          </option>
+        ))}
+      </select>
+    );
+  };
+  /** Whether a semi-final has been played, which the add hint mentions. */
+  const semiPlayed =
+    third === null &&
+    event.matches.some((entry) => {
+      if (entry.bracket !== "winners" || entry.status !== "done" || entry.winnerTo === null) {
+        return false;
+      }
+      const next = event.matches.find((held) => held.id === entry.winnerTo?.matchId);
+      return next !== undefined && next.winnerTo === null;
+    });
   /**
    * The round whose map pool is open, by its service key, or null.
    *
@@ -207,6 +286,31 @@ export function BracketView({
 
   return (
     <div className="tournament-bracket">
+      {/* The organiser's switch for the 3rd place match, above the bracket, and
+          only while it can still be switched: added any time the event runs,
+          taken away until anything happens in it. */}
+      {mayAddThirdPlace(event) && (
+        <div className="tournament-third-tools">
+          <Button onClick={() => onAdmin({ type: "thirdPlace", payload: { on: true } })}>
+            {t("tournaments.bracket.addThirdPlace")}
+          </Button>
+          <span className="muted">
+            {t(
+              semiPlayed
+                ? "tournaments.bracket.addThirdPlaceHintPlayed"
+                : "tournaments.bracket.addThirdPlaceHint",
+            )}
+          </span>
+        </div>
+      )}
+      {mayRemoveThirdPlace(event) && (
+        <div className="tournament-third-tools">
+          <Button onClick={() => onAdmin({ type: "thirdPlace", payload: { on: false } })}>
+            {t("tournaments.bracket.removeThirdPlace")}
+          </Button>
+          <span className="muted">{t("tournaments.bracket.removeThirdPlaceHint")}</span>
+        </div>
+      )}
       {swissStage && sides.length > 0 && <h4>{t("tournaments.swiss.playoffs")}</h4>}
       {sides.map((side) => {
         const layouts = columnLayouts(side.columns);
@@ -221,6 +325,7 @@ export function BracketView({
                 >
                   <div className="tournament-round-head">
                     <h5>{t("tournaments.bracket.round", { round: column.round })}</h5>
+                    {roundBestOf(side.bracket, column)}
                     {/* Which maps this round is played on, next to the round it
                         belongs to. It was two sections away, in Manage, which
                         only an organiser can open: a player wanting to know
@@ -260,16 +365,48 @@ export function BracketView({
                       />
                     ))}
                   </div>
+                  {third !== null &&
+                    thirdPoolKey !== null &&
+                    side.bracket === "winners" &&
+                    index === side.columns.length - 1 && (
+                      <div className="tournament-third-place">
+                        <div className="tournament-round-head">
+                          <h5>{t("tournaments.bracket.thirdPlace")}</h5>
+                          {roundBestOf("thirdPlace", { round: third.round, matches: [third] })}
+                          <PoolToggle
+                            event={event}
+                            roundKey={thirdPoolKey}
+                            open={openPool === thirdPoolKey}
+                            onToggle={(key) => setOpenPool((held) => (held === key ? null : key))}
+                          />
+                        </div>
+                        <div className="tournament-round-matches">
+                          <MatchCard
+                            event={event}
+                            entry={third}
+                            profiles={profiles}
+                            busy={busyMatchId === third.id}
+                            onReport={() => onReport(third)}
+                            onAnswer={(accept) => onAnswer(third, accept)}
+                            vetoOpen={openVeto === third.id}
+                            onToggleVeto={() =>
+                              setOpenVeto((held) => (held === third.id ? null : third.id))
+                            }
+                            onReportFfa={onReportFfa}
+                            profilesForFfa={profiles}
+                            onHost={() => onHost(third)}
+                          />
+                        </div>
+                      </div>
+                    )}
                 </div>
               ))}
             </div>
             {/* Outside the scrolling box, under the round it belongs to. The
                 run and the pool sit in the same place for the same reason: both
                 are a grid of maps, and neither fits in a bracket column. */}
-            {side.columns.some((column) =>
-              column.matches.some((entry) => entry.id === openVeto),
-            ) &&
-              openVeto !== null &&
+            {openVeto !== null &&
+              onSide(side, openVeto) &&
               (() => {
                 const entry = event.matches.find((held) => held.id === openVeto);
                 if (entry === undefined || !hasVeto(event, entry)) return null;
@@ -289,10 +426,11 @@ export function BracketView({
               })()}
 
             {/* Outside the scrolling box, under the round it belongs to. */}
-            {side.columns.some(
-              (column) => roundKeyOf(side.bracket, column.round) === openPool,
-            ) &&
-              openPool !== null && (
+            {openPool !== null &&
+              (side.columns.some(
+                (column) => roundKeyOf(side.bracket, column.round) === openPool,
+              ) ||
+                (side.bracket === "winners" && openPool === thirdPoolKey)) && (
                 <PoolPanel
                   event={event}
                   vault={vault}

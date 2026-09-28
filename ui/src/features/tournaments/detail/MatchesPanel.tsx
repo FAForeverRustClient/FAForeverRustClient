@@ -11,7 +11,13 @@
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
-import type { PlayerSummary, Tourney, TourneyMatch, VaultMap } from "../../../ipc/bindings";
+import type {
+  PlayerSummary,
+  Tourney,
+  TourneyAdmin,
+  TourneyMatch,
+  VaultMap,
+} from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { byPlayOrder, feedersOf, matchLabel, matchRank, type Feeder } from "../bracket/matchLabels";
@@ -19,6 +25,10 @@ import { MatchActions, TeamName, teamNameOf } from "../bracket/matchParts";
 import { isBye } from "../bracket/swissRecords";
 import { VetoPanel, type VetoHandlers } from "../bracket/VetoPanel";
 import { hasVeto, myVetoSteps, vetoSettled } from "../bracket/vetoPresentation";
+import { maySetMatchBestOf } from "../../../shared/rules/tourneyRules";
+
+/** The series lengths the service accepts. */
+const BEST_OF = [1, 3, 5, 7];
 
 interface MatchesPanelProps {
   event: Tourney;
@@ -31,6 +41,8 @@ interface MatchesPanelProps {
   onHost: (entry: TourneyMatch) => void;
   onWatchReplay: (uid: number) => void;
   veto: VetoHandlers;
+  /** An organiser's single-call change: here, one match's length. */
+  onAdmin: (change: TourneyAdmin) => void;
 }
 
 type MatchState = "notPlayed" | "waiting" | "done" | "vetoes" | "live" | "ready";
@@ -264,7 +276,31 @@ function MatchDetails({
     <Modal onClose={onClose} className="tournament-md" ariaLabel={matchLabel(event, entry, t)}>
       <header className="tournament-md-head">
         <h3>{matchLabel(event, entry, t)}</h3>
-        <span className="muted mono">{t("tournaments.matches.bestOf", { count: entry.bestOf })}</span>
+        {/* The escape hatch for one series on the day: an organiser may
+            lengthen or shorten it until its first game is played. The round's
+            own select in the bracket is the bulk tool. */}
+        {maySetMatchBestOf(event, entry) ? (
+          <select
+            className="tournament-round-bo"
+            value={entry.bestOf}
+            aria-label={t("tournaments.matches.setBestOf")}
+            title={t("tournaments.matches.setBestOfHint")}
+            onChange={(changed) =>
+              props.onAdmin({
+                type: "matchBestOf",
+                payload: { matchId: entry.id, bestOf: Number(changed.target.value) },
+              })
+            }
+          >
+            {BEST_OF.map((bo) => (
+              <option key={bo} value={bo}>
+                {t("tournaments.matches.bestOf", { count: bo })}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="muted mono">{t("tournaments.matches.bestOf", { count: entry.bestOf })}</span>
+        )}
         <span className={`tournament-mt-state is-${state}`}>{t(STATE_LABELS[state])}</span>
       </header>
       <div className="tournament-md-grid">

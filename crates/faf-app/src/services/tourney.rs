@@ -869,6 +869,17 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
+        TourneyCommand::Administer {
+            tournament_id,
+            change,
+        } => {
+            write(TourneyAction::Administering, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.administer(&tournament_id, &change).await }
+            })
+            .await;
+        }
+
         TourneyCommand::SaveMap { tournament_id, map } => {
             write(TourneyAction::SavingMap, ctx, out, {
                 let tournament_id = tournament_id.clone();
