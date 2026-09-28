@@ -573,7 +573,12 @@ export function ManagePanel({
               {mayEditVeto(event) && (
                 <>
                   <h6>{t("tournaments.form.vetoLegend")}</h6>
-                  <VetoSettingsPanel event={event} busy={busy} onAdmin={rest.onAdmin} />
+                  <VetoSettingsPanel
+                    key={JSON.stringify(event.veto)}
+                    event={event}
+                    busy={busy}
+                    onAdmin={rest.onAdmin}
+                  />
                 </>
               )}
               {/* Beside the maps because the website keeps the two veto

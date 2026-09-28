@@ -8,7 +8,7 @@
 // Which pools a veto walks, and in what order, is the pools' business under
 // Maps; this is only whether, who acts first, and when.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import type { Tourney, TourneyAdmin, VetoConfig } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
@@ -29,9 +29,10 @@ interface VetoSettingsPanelProps {
 
 export function VetoSettingsPanel({ event, busy, onAdmin }: VetoSettingsPanelProps) {
   const { t } = useTranslation();
+  // Starts from the stored settings. The caller keys this panel by them, so
+  // the service's answer after a save replaces the fields, and a reload for
+  // some other write, which brings the same settings back, does not.
   const [config, setConfig] = useState<VetoConfig>(event.veto);
-  // A reload after the save lands the service's own answer here.
-  useEffect(() => setConfig(event.veto), [event.veto]);
   const set = (patch: Partial<VetoConfig>) => setConfig((held) => ({ ...held, ...patch }));
   const changed = JSON.stringify(config) !== JSON.stringify(event.veto);
   const anySecret = event.mapDb.some((map) => map.secret);
