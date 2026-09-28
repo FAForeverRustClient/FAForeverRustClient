@@ -271,6 +271,8 @@ fn a_pool_is_found_through_its_round_assignment() {
                 description: String::new(),
                 published: true,
                 spec: None,
+                secret: false,
+                masked: false,
             },
             TourneyMap {
                 id: "m2".into(),
@@ -279,6 +281,8 @@ fn a_pool_is_found_through_its_round_assignment() {
                 description: String::new(),
                 published: true,
                 spec: None,
+                secret: false,
+                masked: false,
             },
         ],
         map_pools: vec![MapPool {
@@ -336,6 +340,8 @@ fn resolve(name: &str) -> Option<&'static str> {
         description: String::new(),
         published: true,
         spec: None,
+        secret: false,
+        masked: false,
     };
     match_vault_map(&map, &VAULT, |v| v.display, |v| v.folder).map(|v| v.display)
 }

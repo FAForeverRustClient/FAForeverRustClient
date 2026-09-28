@@ -68,6 +68,8 @@ interface MatchActionsProps {
   /** Whether this match's ban and pick run is the one on screen. */
   vetoOpen: boolean;
   onToggleVeto: () => void;
+  /** Offer the button that opens the vetoes. Off where they are already on screen. */
+  withVeto?: boolean;
 }
 
 /**
@@ -86,6 +88,7 @@ export function MatchActions({
   onHost,
   vetoOpen,
   onToggleVeto,
+  withVeto = true,
 }: MatchActionsProps) {
   const { t } = useTranslation();
   const mine = myTeamId(event);
@@ -130,7 +133,7 @@ export function MatchActions({
       {/* The run itself opens outside the card. A grid of maps does not fit
           in one, and every card drawing its own was what once made this tab
           unusable. */}
-      {hasVeto(event, entry) && (
+      {withVeto && hasVeto(event, entry) && (
         <button
           type="button"
           className={[

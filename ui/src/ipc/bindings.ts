@@ -6906,6 +6906,16 @@ export type ReviewsStatus = { type: "idle" } | { type: "loading" } | { type: "re
 	reason: string,
 } };
 
+/**
+ *  Maps an organiser pinned to a round directly, without a veto (`maps`):
+ *  `{"sw:1": [mapId, ...]}`, flattened.
+ */
+export type RoundMaps = {
+	/**  The server's own key for the round, `{bracket}:{round}`. */
+	round: string,
+	mapIds: string[],
+};
+
 export type SeasonLeaderboard = {
 	entries: LeaderboardEntry[],
 	tiers: LeaderboardTier[],
@@ -7639,6 +7649,8 @@ export type Tourney = {
 	mapPools: MapPool[],
 	/**  Which pool is played in which round, keyed by the server's round label. */
 	poolAssign: PoolAssignment[],
+	/**  Maps pinned to a round directly, for events without vetoes. */
+	roundMaps: RoundMaps[],
 	organisers: string[],
 	/**  The organiser's announcements, newest first. */
 	news: NewsPost[],
@@ -8517,6 +8529,16 @@ export type TourneyMap = {
 	 *  wiped it.
 	 */
 	spec: MapSpec | null,
+	/**
+	 *  A secret map: one players see only as "Hidden Map N" until it is
+	 *  played (`secret`). Organisers and casters get its real name.
+	 */
+	secret: boolean,
+	/**
+	 *  Whether this copy is the masked one (`masked`): the service sent the
+	 *  placeholder name and no picture, because the viewer may not see it yet.
+	 */
+	masked: boolean,
 };
 
 /**  One match. */

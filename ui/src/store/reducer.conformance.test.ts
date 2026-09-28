@@ -724,6 +724,8 @@ describe("tournament rule twins match Rust", () => {
         description: "",
         published: true,
         spec: null,
+        secret: false,
+        masked: false,
       } satisfies TourneyMap;
       expect({
         key: mapKey(typed),

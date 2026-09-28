@@ -32,6 +32,12 @@ pub struct TourneyMap {
     /// stored spec with whatever the save names, and a save that named none
     /// wiped it.
     pub spec: Option<MapSpec>,
+    /// A secret map: one players see only as "Hidden Map N" until it is
+    /// played (`secret`). Organisers and casters get its real name.
+    pub secret: bool,
+    /// Whether this copy is the masked one (`masked`): the service sent the
+    /// placeholder name and no picture, because the viewer may not see it yet.
+    pub masked: bool,
 }
 
 /// Where the teams start on a map, which spawns are closed, and its size.
@@ -123,6 +129,16 @@ pub struct MapPool {
     /// A scheduled reveal, in Unix seconds. Cleared once it fires, and ignored
     /// outright for a pool that is already out.
     pub publish_at: Option<u32>,
+}
+
+/// Maps an organiser pinned to a round directly, without a veto (`maps`):
+/// `{"sw:1": [mapId, ...]}`, flattened.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RoundMaps {
+    /// The server's own key for the round, `{bracket}:{round}`.
+    pub round: String,
+    pub map_ids: Vec<String>,
 }
 
 /// One step of a pool's ban/pick order.

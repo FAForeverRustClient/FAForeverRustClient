@@ -2696,6 +2696,8 @@ fn tourney_map_match_fixture() -> TourneyMapMatchFixture {
                 description: String::new(),
                 published: true,
                 spec: None,
+                secret: false,
+                masked: false,
             };
             TourneyMapMatchCase {
                 typed: name.into(),

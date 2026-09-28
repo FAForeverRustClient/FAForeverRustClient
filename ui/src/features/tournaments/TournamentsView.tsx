@@ -504,6 +504,9 @@ export function TournamentsView() {
               onDeleteMap={(mapId) =>
                 act({ type: "deleteMap", payload: { tournamentId: open.id, mapId } })
               }
+              onWatchReplay={(uid) =>
+                ipc.send({ kind: "Replays", command: { type: "watchVault", payload: { uid } } })
+              }
               onSetFactionVeto={(config) =>
                 act({ type: "setFactionVeto", payload: { tournamentId: open.id, config } })
               }

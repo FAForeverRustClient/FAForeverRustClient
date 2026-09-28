@@ -171,7 +171,7 @@ pub use tourney::{
 };
 pub use tourney::{
     FactionChoices, FactionResult, FactionStep, FactionVetoConfig, FactionVetoGame, MapSpec,
-    MatchFactionVeto, SwissCuts, SwissTiebreak, TourneyFaction,
+    MatchFactionVeto, RoundMaps, SwissCuts, SwissTiebreak, TourneyFaction,
 };
 pub use training::{
     compose_contribution, compose_review_request, compose_url, contribution_problem, derive_level,

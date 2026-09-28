@@ -67,6 +67,7 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     mapDb: [],
     mapPools: [],
     poolAssign: [],
+    roundMaps: [],
     organisers: [],
     news: [],
     invites: [],

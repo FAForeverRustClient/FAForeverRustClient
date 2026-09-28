@@ -47,6 +47,10 @@ import { NewsPanel } from "./NewsPanel";
 import { OverviewPanel } from "./OverviewPanel";
 import { StandingsPanel } from "../bracket/StandingsPanel";
 import type { VetoHandlers } from "../bracket/VetoPanel";
+import { myVetoSteps, vetoSettled } from "../bracket/vetoPresentation";
+import { MapsPanel } from "./MapsPanel";
+import { listedMatches, MatchesPanel } from "./MatchesPanel";
+import { vetoMatches, VetoesPanel } from "./VetoesPanel";
 import { formatMoment, formatOf } from "../tourneyPresentation";
 import { selfOrganised, standingsKind, unreadNews, unreadTotal } from "../../../shared/rules/tourneyRules";
 
@@ -57,6 +61,9 @@ type Section =
   | "teams"
   | "draft"
   | "bracket"
+  | "matches"
+  | "vetoes"
+  | "maps"
   | "standings"
   | "chat"
   | "manage"
@@ -69,6 +76,9 @@ const SECTION_LABELS: Record<Section, MessageKey> = {
   teams: "tournaments.section.teams",
   draft: "tournaments.section.draft",
   bracket: "tournaments.section.bracket",
+  matches: "tournaments.section.matches",
+  vetoes: "tournaments.section.vetoes",
+  maps: "tournaments.section.maps",
   standings: "tournaments.section.standings",
   chat: "tournaments.section.chat",
   manage: "tournaments.section.manage",
@@ -128,6 +138,8 @@ interface TournamentDetailPaneProps {
   onPost: (body: string) => void;
   onAssignPool: (roundKey: string, poolId: string) => void;
   onOpenUrl: (url: string) => void;
+  /** Play a FAF replay by its vault id, in the client. */
+  onWatchReplay: (uid: number) => void;
   /** Save the settings, from the form Manage now shows inline. */
   onEditInfo: (draft: TourneyDraft) => void;
   onPublish: () => void;
@@ -207,6 +219,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     !event.teams.some((team) => team.id === event.viewer.memberTeamId && team.checkedIn);
 
   const unread = unreadTotal(props.chatRooms);
+  const openVetoes = vetoMatches(event).filter((entry) => !vetoSettled(event, entry)).length;
+  const owedVetoes = event.matches.reduce((total, entry) => total + myVetoSteps(event, entry), 0);
 
   /*
    * FAF's whole map catalogue, asked for by the sections that draw a preview
@@ -308,6 +322,16 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           // that the tab would open on "nothing yet", which is a worse answer
           // than not offering it.
           .filter((candidate) => candidate !== "standings" || standingsKind(event) !== "none")
+          // Matches once there is a head-to-head match to list, and Vetoes
+          // while the bracket runs and some match has a run to show: the
+          // website's conditions. Maps is always there, as it is on the website.
+          .filter((candidate) => candidate !== "matches" || listedMatches(event).length > 0)
+          .filter(
+            (candidate) =>
+              candidate !== "vetoes" ||
+              ((event.status === "running" || event.status === "finished") &&
+                vetoMatches(event).length > 0),
+          )
           // News is a section only when there is news, or somebody who can
           // write it. An empty tab that nobody can fill is a dead end.
           .filter(
@@ -333,6 +357,12 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
               )}
               {candidate === "chat" && unread > 0 && (
                 <span className="tournament-badge">{unread}</span>
+              )}
+              {candidate === "vetoes" && openVetoes > 0 && ` (${openVetoes})`}
+              {/* The steps this account owes, across every match: the count
+                  above is everyone's work, this one is yours. */}
+              {candidate === "vetoes" && owedVetoes > 0 && (
+                <span className="tournament-badge">{owedVetoes}</span>
               )}
             </button>
           ))}
@@ -417,6 +447,41 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onUndo={props.onDraftUndo}
           onSetCaptains={props.onSetCaptains}
           onStart={() => props.onAdvance("startDraft")}
+        />
+      )}
+
+      {section === "matches" && (
+        <MatchesPanel
+          event={event}
+          profiles={props.profiles}
+          vault={props.vault}
+          assetBase={props.assetBase}
+          busyMatchId={props.busyMatchId}
+          onReport={props.onReport}
+          onAnswer={props.onAnswer}
+          onHost={props.onHost}
+          onWatchReplay={props.onWatchReplay}
+          veto={props.veto}
+        />
+      )}
+
+      {section === "vetoes" && (
+        <VetoesPanel
+          event={event}
+          profiles={props.profiles}
+          vault={props.vault}
+          assetBase={props.assetBase}
+          busyMatchId={props.busyMatchId}
+          veto={props.veto}
+        />
+      )}
+
+      {section === "maps" && (
+        <MapsPanel
+          event={event}
+          vault={props.vault}
+          assetBase={props.assetBase}
+          onManage={() => openSection("manage")}
         />
       )}
 

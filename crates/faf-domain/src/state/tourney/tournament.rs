@@ -221,6 +221,8 @@ pub struct Tourney {
     pub map_pools: Vec<MapPool>,
     /// Which pool is played in which round, keyed by the server's round label.
     pub pool_assign: Vec<PoolAssignment>,
+    /// Maps pinned to a round directly, for events without vetoes.
+    pub round_maps: Vec<RoundMaps>,
     pub organisers: Vec<String>,
     /// The organiser's announcements, newest first.
     pub news: Vec<NewsPost>,

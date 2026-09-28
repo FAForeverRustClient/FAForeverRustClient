@@ -29,10 +29,10 @@ use crate::state::{
     ChatRoom, Competition, Currency, FactionChoices, FactionResult, FactionStep, FactionVetoConfig,
     FactionVetoGame, Formation, HostingStatus, InviteStatus, MapPool, MapSpec, MatchFactionVeto,
     MatchLink, MatchPlan, MatchReport, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
-    PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream,
-    SwissCuts, SwissTiebreak, TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft,
-    TourneyFaction, TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer,
-    TourneyStatus, TourneyTeam, TourneyViewer,
+    PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind, RoundMaps, Seeding,
+    SignupMode, Stream, SwissCuts, SwissTiebreak, TeamExit, TeamRequest, Tourney, TourneyCategory,
+    TourneyDraft, TourneyFaction, TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase,
+    TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
@@ -390,6 +390,7 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .filter_map(parse_pool)
             .collect(),
         pool_assign: parse_pool_assign(document.get("poolAssign")),
+        round_maps: parse_round_maps(document.get("maps")),
         organisers: array(document, "organizersPublic")
             .iter()
             .map(|entry| text(entry, "name"))
@@ -781,6 +782,8 @@ fn parse_map(value: &Value) -> Option<TourneyMap> {
             .get("published")
             .is_none_or(|_| flag(value, "published")),
         spec: parse_map_spec(value.get("spec")),
+        secret: flag(value, "secret"),
+        masked: flag(value, "masked"),
     })
 }
 
@@ -919,6 +922,32 @@ fn parse_pool_assign(value: Option<&Value>) -> Vec<PoolAssignment> {
             Some(PoolAssignment {
                 round: round.clone(),
                 pool_id,
+            })
+        })
+        .collect()
+}
+
+/// `maps`, the rounds an organiser pinned maps to directly: an object keyed by
+/// round, each a list of map ids. Flattened like `poolAssign`.
+fn parse_round_maps(value: Option<&Value>) -> Vec<RoundMaps> {
+    let Some(Value::Object(entries)) = value else {
+        return Vec::new();
+    };
+    entries
+        .iter()
+        .filter_map(|(round, maps)| {
+            let map_ids: Vec<String> = maps
+                .as_array()?
+                .iter()
+                .filter_map(|held| match held {
+                    Value::String(text) if !text.trim().is_empty() => Some(text.trim().to_string()),
+                    Value::Number(number) => Some(number.to_string()),
+                    _ => None,
+                })
+                .collect();
+            (!map_ids.is_empty()).then(|| RoundMaps {
+                round: round.clone(),
+                map_ids,
             })
         })
         .collect()
@@ -2118,6 +2147,30 @@ See the [rules](https://x.invalid/r)."
         };
         assert_eq!(create_body(&cleared)["ratingDate"], Value::Null);
         assert_eq!(edit_info_body(&cleared)["ratingDate"], Value::Null);
+    }
+
+    #[test]
+    fn pinned_round_maps_and_secret_maps_are_read() {
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "maps": { "sw:1": ["map1", "map2"], "sw:2": [] },
+            "mapDb": [
+                { "id": "map1", "name": "Setons", "secret": 1 },
+                { "id": "map2", "name": "Hidden Map 1", "secret": 1, "masked": 1, "image": null },
+            ],
+        }))
+        .expect("a tournament");
+        assert_eq!(
+            event.round_maps,
+            vec![RoundMaps {
+                round: "sw:1".into(),
+                map_ids: vec!["map1".into(), "map2".into()],
+            }],
+            "an empty round is dropped"
+        );
+        assert!(event.map_db[0].secret && !event.map_db[0].masked);
+        assert!(event.map_db[1].masked);
+        assert_eq!(event.map_db[1].image_url, "");
     }
 
     #[test]

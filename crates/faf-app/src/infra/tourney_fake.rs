@@ -1632,6 +1632,8 @@ impl TourneyPort for FakeTourney {
                 description: map.description.trim().to_string(),
                 published: map.published,
                 spec: map.spec.clone(),
+                secret: false,
+                masked: false,
             });
             Ok(())
         })
@@ -2601,6 +2603,8 @@ fn map(id: &str, name: &str) -> TourneyMap {
         description: String::new(),
         published: true,
         spec: None,
+        secret: false,
+        masked: false,
     }
 }
 
@@ -2738,6 +2742,8 @@ fn signup_event() -> FakeEvent {
             description: String::new(),
             published: true,
             spec: None,
+            secret: false,
+            masked: false,
         },
         TourneyMap {
             id: "map2".into(),
@@ -2746,6 +2752,8 @@ fn signup_event() -> FakeEvent {
             description: String::new(),
             published: true,
             spec: None,
+            secret: false,
+            masked: false,
         },
     ];
     event.map_pools = vec![MapPool {
