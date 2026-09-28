@@ -476,13 +476,14 @@ impl MatchPlan {
     }
 }
 
-/// A result the organiser sets on a match.
+/// A result set on a match, by an organiser (`report`) or by a player for the
+/// other side to confirm (`report_submit`).
 ///
-/// The replay id lists stay on the type because `report` accepts them and an
-/// archive is worth keeping, but nothing is required to fill them: they are
-/// mandatory only on `report_submit`, the *player* path, and that path is not
-/// used. `report` guards them with `if (Array.isArray(b.replayIds))`, so an
-/// empty list simply stores none.
+/// The replay ids are optional on the organiser's path, which guards them with
+/// `if (Array.isArray(b.replayIds))`, so an empty list simply stores none. The
+/// player's path insists on exactly one per new game; see
+/// [`Self::is_player_submittable`]. A player's report never carries a winner or
+/// a forfeit: `report_submit` reads neither.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchReport {
@@ -527,8 +528,8 @@ impl MatchReport {
     /// grand final starts the upper-bracket side at 1-0, so its first score
     /// cannot be zero.
     ///
-    /// Two conditions were removed here on purpose, because they belonged to the
-    /// player path this client no longer uses:
+    /// Two conditions belong to the player path alone, and are checked by
+    /// [`Self::is_player_submittable`] instead:
     ///
     /// - **One replay id per new game.** Only `report_submit` insists on that.
     ///   Requiring it stopped an organiser entering a score they already knew.
@@ -558,6 +559,40 @@ impl MatchReport {
             }
         };
         scores_fit && winner_fits
+    }
+
+    /// Whether `report_submit`, the players' path, will take this.
+    ///
+    /// The server's own checks, in its order: both scores between zero and the
+    /// wins the series needs, a handicapped final not below 1-0, not both sides
+    /// reaching it, no score lower than the confirmed one, at least one new game,
+    /// and exactly one replay id per new game. A lower score is the organiser's
+    /// to fix, through `report`.
+    ///
+    /// An id counts when it holds a digit: the server strips everything else
+    /// and drops what is left empty.
+    pub fn is_player_submittable(&self, entry: &TourneyMatch) -> bool {
+        let needed = (entry.best_of + 1) / 2;
+        let current1 = entry
+            .score1
+            .unwrap_or(if entry.handicap > 0 { 1 } else { 0 });
+        let current2 = entry.score2.unwrap_or(0);
+        let scores_fit = self.score1 >= 0
+            && self.score2 >= 0
+            && self.score1 <= needed
+            && self.score2 <= needed
+            && !(entry.handicap > 0 && self.score1 < 1)
+            && !(self.score1 == needed && self.score2 == needed);
+        if !scores_fit || self.score1 < current1 || self.score2 < current2 {
+            return false;
+        }
+        let new_games = self.score1 + self.score2 - current1 - current2;
+        let ids = self
+            .replay_ids
+            .iter()
+            .filter(|id| id.chars().any(|c| c.is_ascii_digit()))
+            .count();
+        new_games >= 1 && ids == new_games as usize
     }
 
     /// Whether this is the forfeit shorthand: a forfeiting team and nothing else.

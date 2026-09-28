@@ -106,6 +106,10 @@ pub enum TourneyAction {
         match_id: String,
     },
     #[serde(rename_all = "camelCase")]
+    SubmittingReport {
+        match_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
     PostingChat {
         room_id: String,
     },
@@ -328,7 +332,7 @@ impl TourneyState {
     /// The one match a write is in flight against, if the pending write names
     /// one at all.
     ///
-    /// Only the two reporting actions do; every other write is event-wide.
+    /// Only the reporting and veto actions do; every other write is event-wide.
     /// Answered as the single id rather than tested per match because that is
     /// what a bracket needs: it reads this once and compares, instead of asking
     /// the same question of every match it draws.
@@ -337,6 +341,7 @@ impl TourneyState {
             Some(
                 TourneyAction::AnsweringReport { match_id }
                 | TourneyAction::DecidingReport { match_id }
+                | TourneyAction::SubmittingReport { match_id }
                 | TourneyAction::Vetoing { match_id }
                 | TourneyAction::ReportingFfa { match_id },
             ) => Some(match_id),

@@ -1147,6 +1147,14 @@ impl TourneyPort for FakeTourney {
         })
     }
 
+    async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+        // Not simulated: the offline fake is no longer extended with new
+        // actions. The body is covered at the codec level instead.
+        Err(RequestError::rejected(
+            "Submitting a score is not available offline",
+        ))
+    }
+
     async fn decide_report(
         &self,
         tournament_id: &str,
@@ -2305,9 +2313,7 @@ fn apply(event: &mut Tourney, draft: &TourneyDraft) {
     event.mods = draft.mods.trim().to_string();
     event.prize = draft.prize;
     event.streams = draft.streams.clone();
-    // Always off, as the real body says: the client has no player reporting
-    // path, and the service would default an absent key to *on*.
-    event.player_reporting = false;
+    event.player_reporting = draft.player_reporting;
     event.event_date = draft.event_date;
     event.signup_opens_at = draft.signup_opens_at;
     event.signup_closes_at = draft.signup_closes_at;
@@ -2776,10 +2782,8 @@ fn running_event() -> FakeEvent {
         slot: 1,
     });
     // A result the opponent raised, waiting on this account's answer. Seeded
-    // rather than submitted, because the client no longer raises one: recording
-    // a result is the organiser's, and `report_submit` additionally insists on a
-    // replay id per game. Answering a report raised on the website is the case
-    // that remains, and it has to be exercisable offline.
+    // rather than submitted: the fake does not simulate `report_submit`, but
+    // answering a submission has to be exercisable offline.
     semi_one.pending_report = Some(PendingReport {
         score1: 2,
         score2: 0,

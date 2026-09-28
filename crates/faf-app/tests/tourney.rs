@@ -169,6 +169,9 @@ impl TourneyPort for RefusingTourney {
     async fn decide_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
         self.refused()
     }
+    async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+        self.refused()
+    }
     async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
         self.inner.chat_rooms(tournament_id).await
     }
@@ -509,10 +512,8 @@ async fn withdrawing_without_an_entry_is_refused_before_a_request_is_made() {
 
 #[tokio::test]
 async fn a_score_raised_elsewhere_is_answerable_here() {
-    // The client never raises a result as a player: recording one is the
-    // organiser's, and `report_submit` insists on a replay id per game besides.
-    // A report raised on the website still has to be answerable, or the tab
-    // shows a decision it cannot make.
+    // A report the other side raised, here or on the website, has to be
+    // answerable, or the tab shows a decision it cannot make.
     let app = app().await;
     open(&app, "e9z9z").await;
     let before = app.snapshot().tourney.detail.expect("the bracket");
@@ -1697,6 +1698,9 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             unreachable!()
         }
         async fn decide_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn chat_rooms(&self, _: &str) -> Result<Vec<ChatRoom>, RequestError> {

@@ -623,6 +623,19 @@ impl TourneyPort for TourneyClient {
         self.act(tournament_id, "report", body).await
     }
 
+    async fn submit_report(
+        &self,
+        tournament_id: &str,
+        report: &MatchReport,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "report_submit",
+            tourney::submit_report_body(report),
+        )
+        .await
+    }
+
     async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
         let document = self
             .get(&format!("t/{}/chat_rooms", encode(tournament_id)), &[])

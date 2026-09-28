@@ -28,10 +28,7 @@ pub enum TourneyCommand {
     },
     /// Agree with, or refuse, the score the opponent submitted.
     ///
-    /// The one report-shaped thing a player does here. Raising a result is the
-    /// organiser's, but answering one raised elsewhere is not the same act, and
-    /// a client that showed a pending report it could not answer would be worse
-    /// than one that never showed it.
+    /// An organiser may answer for either side.
     #[serde(rename_all = "camelCase")]
     AnswerReport {
         tournament_id: String,
@@ -41,6 +38,16 @@ pub enum TourneyCommand {
     /// Set a result as an organiser, which needs no confirmation.
     #[serde(rename_all = "camelCase")]
     DecideReport {
+        tournament_id: String,
+        report: MatchReport,
+    },
+    /// Submit a score as a player, for the other side to confirm.
+    ///
+    /// `report_submit`: the score only goes up, and every new game needs its
+    /// replay id. The winner and forfeit of `report` are not sent. Submitting
+    /// again replaces a submission nobody has answered yet.
+    #[serde(rename_all = "camelCase")]
+    SubmitReport {
         tournament_id: String,
         report: MatchReport,
     },

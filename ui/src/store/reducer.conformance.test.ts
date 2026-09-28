@@ -66,6 +66,7 @@ import {
   isLegalFrom,
   isStructural,
   isSubmittable,
+  isPlayerSubmittable,
   mapKey,
   matchVaultMap,
   mayEditFormat,
@@ -78,6 +79,7 @@ import {
   mayRename,
   mayPick,
   mayReport,
+  maySubmit,
   mayReportFfa,
   maySetVetoSides,
   mayVeto,
@@ -142,6 +144,7 @@ interface HelperFixture {
     mayPublish: boolean;
     mayRename: boolean;
     reportableMatchIds: string[];
+    submittableMatchIds: string[];
     name: string;
     event: Tourney;
     teamId: string | null;
@@ -185,6 +188,7 @@ interface HelperFixture {
     replayIds: string[];
     newGames: number;
     submittable: boolean;
+    playerSubmittable: boolean;
   }>;
   tourneyProfiles: Array<{
     name: string;
@@ -432,6 +436,9 @@ describe("tournament rule twins match Rust", () => {
       reportableMatchIds: event.matches
         .filter((entry) => mayReport(event, entry))
         .map((entry) => entry.id),
+      submittableMatchIds: event.matches
+        .filter((entry) => maySubmit(event, entry))
+        .map((entry) => entry.id),
     }).toEqual({
       teamRating: recorded.teamRating,
       wouldExceedTeamCap: recorded.wouldExceedTeamCap,
@@ -446,6 +453,7 @@ describe("tournament rule twins match Rust", () => {
       mayPublish: recorded.mayPublish,
       mayRename: recorded.mayRename,
       reportableMatchIds: recorded.reportableMatchIds,
+      submittableMatchIds: recorded.submittableMatchIds,
     });
   });
 
@@ -512,7 +520,17 @@ describe("tournament rule twins match Rust", () => {
     expect({
       newGames: newGames(entry, recorded.score1, recorded.score2),
       submittable: isSubmittable(entry, recorded.score1, recorded.score2),
-    }).toEqual({ newGames: recorded.newGames, submittable: recorded.submittable });
+      playerSubmittable: isPlayerSubmittable(
+        entry,
+        recorded.score1,
+        recorded.score2,
+        recorded.replayIds,
+      ),
+    }).toEqual({
+      newGames: recorded.newGames,
+      submittable: recorded.submittable,
+      playerSubmittable: recorded.playerSubmittable,
+    });
   });
 
   it.each(helpers.tourneyProfiles)("resolves $name", (recorded) => {

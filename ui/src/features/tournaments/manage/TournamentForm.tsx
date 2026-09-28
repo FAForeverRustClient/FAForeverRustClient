@@ -139,6 +139,9 @@ export function draftOf(event: Tourney): TourneyDraft {
     ratingDate: event.ratingDate,
     rating: event.rating,
     maxTeams: 0,
+    // The event's own value: `edit_info` always sends it, and the service
+    // reads an absent one as on.
+    playerReporting: event.playerReporting,
   };
 }
 
@@ -164,6 +167,7 @@ const BLANK: TourneyDraft = {
   draftSnakes: false,
   ratingKind: "global",
   signupMode: "open",
+  playerReporting: true,
   eventDate: null,
   signupOpensAt: null,
   signupClosesAt: null,
@@ -642,6 +646,15 @@ export function TournamentForm({
           </label>
         </div>
         <p className="tournament-form-hint muted">{t("tournaments.form.ratingGateHint")}</p>
+        <label className="tournament-check">
+          <input
+            type="checkbox"
+            checked={draft.playerReporting}
+            onChange={(changed) => set({ playerReporting: changed.target.checked })}
+          />
+          <span>{t("tournaments.form.playerReporting")}</span>
+        </label>
+        <p className="tournament-form-hint muted">{t("tournaments.form.playerReportingHint")}</p>
       </fieldset>
 
       {/* The veto, and only whether and when: who is Team A is a per-match

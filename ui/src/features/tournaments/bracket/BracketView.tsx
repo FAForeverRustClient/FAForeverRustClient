@@ -39,6 +39,7 @@ import { BRACKET_LABELS, isMyMatch, myTeamId } from "../tourneyPresentation";
 import {
   matchVaultMap,
   mayReport,
+  maySubmit,
   poolForRound,
   roundKeyOf,
 } from "../../../shared/rules/tourneyRules";
@@ -465,6 +466,9 @@ function MatchCard({
   // so a spectator saw a Host game button on somebody else's match (issue 367).
   const mayHost = playable && (isMyMatch(event, entry) || event.viewer.organiser);
   const reportable = mayReport(event, entry);
+  // A player's own path, for the other side to confirm. An organiser who also
+  // plays keeps the organiser's, which needs nobody's confirmation.
+  const submittable = !reportable && maySubmit(event, entry);
   const mayAnswer = pending !== null && isMyMatch(event, entry) && pending.byTeam !== mine;
 
   const teamName = (teamId: string | null): string => {
@@ -602,6 +606,11 @@ function MatchCard({
                       ? "tournaments.match.correct"
                       : "tournaments.match.report",
                 )}
+              </Button>
+            )}
+            {submittable && (
+              <Button variant="primary" onClick={onReport} disabled={busy}>
+                {t(busy ? "tournaments.match.reporting" : "tournaments.match.submitScore")}
               </Button>
             )}
           </>

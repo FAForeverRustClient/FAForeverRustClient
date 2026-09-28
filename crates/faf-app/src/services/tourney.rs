@@ -105,6 +105,32 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
+        TourneyCommand::SubmitReport {
+            tournament_id,
+            report,
+        } => {
+            let action = TourneyAction::SubmittingReport {
+                match_id: report.match_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                // The player path takes no winner and no forfeit; clearing them
+                // here keeps a stray one from ever reaching the body.
+                let report = MatchReport {
+                    winner: None,
+                    forfeit: None,
+                    ..clean(report)
+                };
+                async move {
+                    ctx.ports
+                        .tourney
+                        .submit_report(&tournament_id, &report)
+                        .await
+                }
+            })
+            .await;
+        }
+
         TourneyCommand::LoadChat { tournament_id } => load_rooms(&tournament_id, ctx, out).await,
 
         TourneyCommand::OpenRoom {

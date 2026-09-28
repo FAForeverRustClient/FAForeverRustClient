@@ -215,6 +215,8 @@ struct TourneyRuleCase {
     /// Recorded as ids rather than a single bool so the `has_bracket` half of
     /// the rule is exercised: that half is the one the frontend twin had lost.
     reportable_match_ids: Vec<String>,
+    /// `Tourney::may_submit` over every match: the players' own path.
+    submittable_match_ids: Vec<String>,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -283,6 +285,10 @@ struct TourneyReportCase {
     replay_ids: Vec<String>,
     new_games: i32,
     submittable: bool,
+    /// `MatchReport::is_player_submittable`: the same score through
+    /// `report_submit`, which wants one replay id per new game and a score
+    /// that only goes up.
+    player_submittable: bool,
 }
 
 #[derive(Serialize)]
@@ -647,6 +653,12 @@ fn tourney_rule_case(
             .filter(|entry| event.may_report(entry))
             .map(|entry| entry.id.clone())
             .collect(),
+        submittable_match_ids: event
+            .matches
+            .iter()
+            .filter(|entry| event.may_submit(entry))
+            .map(|entry| entry.id.clone())
+            .collect(),
         unread_total: state.unread_total(),
         rooms,
         event: Box::new(event),
@@ -838,6 +850,24 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         },
         ..Tourney::default()
     };
+    // A player in a running event: a score of their own match can be
+    // submitted, not one of a half-drawn slot or a free-for-all lobby.
+    let player_running = Tourney {
+        id: "player-running".into(),
+        player_reporting: true,
+        viewer: TourneyViewer {
+            logged_in: true,
+            member_team_id: Some("t1".into()),
+            ..TourneyViewer::default()
+        },
+        ..organised_running.clone()
+    };
+    // The same player where the organiser keeps every result to themselves.
+    let organiser_reports = Tourney {
+        id: "organiser-reports".into(),
+        player_reporting: false,
+        ..player_running.clone()
+    };
     let renamed_once = Tourney {
         id: "renamed-once".into(),
         teams: vec![TourneyTeam {
@@ -907,6 +937,18 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         tourney_rule_case(
             "the same captain, once the service has counted the rename",
             renamed_once,
+            Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "a player in a running event that takes players' scores",
+            player_running,
+            Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same player where only the organiser reports",
+            organiser_reports,
             Some("t1"),
             vec![],
         ),
@@ -2251,6 +2293,10 @@ fn tourney_busy_match_cases() -> Vec<TourneyBusyMatchCase> {
         Some(TourneyAction::AnsweringReport {
             match_id: "m2".into(),
         }),
+        // A player's own submission narrows to its match as well.
+        Some(TourneyAction::SubmittingReport {
+            match_id: "m6".into(),
+        }),
         // Both narrow to one match too: a captain taking a veto step, or an
         // organiser scoring a lobby, must not freeze the rest of the draw.
         Some(TourneyAction::Vetoing {
@@ -2529,6 +2575,22 @@ fn tourney_report_cases() -> Vec<TourneyReportCase> {
             0,
             ids(1),
         ),
+        (
+            // An organiser's correction, and a player's refusal: the player
+            // path only counts up.
+            "a Bo3 at 1-1 set back to 1-0",
+            entry(3, 0, Some(1), Some(1)),
+            1,
+            0,
+            Vec::new(),
+        ),
+        (
+            "an id with no digit in it, which the server drops",
+            entry(3, 0, None, None),
+            1,
+            0,
+            vec!["abc".into()],
+        ),
     ];
 
     cases
@@ -2553,6 +2615,7 @@ fn tourney_report_cases() -> Vec<TourneyReportCase> {
                 },
                 new_games: report.new_games(&held),
                 submittable: report.is_submittable(&held),
+                player_submittable: report.is_player_submittable(&held),
                 score1,
                 score2,
                 replay_ids,

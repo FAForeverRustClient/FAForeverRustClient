@@ -441,17 +441,14 @@ impl Tourney {
             .collect()
     }
 
-    /// Whether this account may record the result of `entry`.
-    ///
-    /// The organiser, and nobody else. That is a decision about this client, not
-    /// a limit of the service: `report_submit` lets the two players agree a score
-    /// between them, but it insists on one FAF replay id per game, and this client
-    /// keeps result-entry with the person running the event.
+    /// Whether this account may record the result of `entry` as an organiser,
+    /// which needs nobody's confirmation.
     ///
     /// The server's own conditions for `report`, in its order: the bracket has to
     /// be running or finished, the caller has to be an organiser, and the match
     /// has to have two sides. A finished match stays reportable, because `report` is also
-    /// the correction path, and it undoes the old result first.
+    /// the correction path, and it undoes the old result first. Players submit
+    /// through [`Self::may_submit`] instead.
     pub fn may_report(&self, entry: &TourneyMatch) -> bool {
         self.viewer.organiser
             && self.status.has_bracket()
@@ -947,6 +944,25 @@ impl Tourney {
             return true;
         }
         self.is_captain_of(team) && self.team_size > 1 && !team.captain_renamed
+    }
+
+    /// Whether this account may submit a score for `entry` for the other side
+    /// to confirm (`report_submit`).
+    ///
+    /// The server's conditions, in its order: player reporting is on, the
+    /// bracket is running or finished, the match has two sides and is not a
+    /// free-for-all lobby, the caller's team is one of them, and the series is
+    /// still being played. Any member of the team may submit, not only its
+    /// captain.
+    pub fn may_submit(&self, entry: &TourneyMatch) -> bool {
+        let Some(mine) = self.viewer.member_team_id.as_deref() else {
+            return false;
+        };
+        self.player_reporting
+            && self.status.has_bracket()
+            && entry.bracket != BracketSide::FreeForAll
+            && entry.opponent_of(mine).is_some()
+            && matches!(entry.status, MatchStatus::Ready | MatchStatus::Live)
     }
 
     /// Whether this account is the side that has to agree to a pending result.

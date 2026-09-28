@@ -27,7 +27,7 @@ use crate::protocol::markup::to_plain_text;
 use crate::state::{
     Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
     ChatRoom, Competition, Currency, Formation, HostingStatus, InviteStatus, MapPool, MapSpec,
-    MatchLink, MatchPlan, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
+    MatchLink, MatchPlan, MatchReport, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
     PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream,
     SwissTiebreak, TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite,
     TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam,
@@ -1074,12 +1074,11 @@ fn merge_shared(body: &mut Value, draft: &TourneyDraft) {
         .filter(|stream| !stream.url.trim().is_empty())
         .map(|stream| json!({ "url": stream.url.trim(), "info": stream.info.trim() }))
         .collect::<Vec<_>>());
-    // Always off, and always sent. The client has no player reporting path at
-    // all: `report_submit` was removed, and the organiser records every result.
-    // The key has to be present to say so, because the service reads an absent
-    // one as *on* (`playerReporting === undefined ? true`), which would leave
-    // every event created here accepting scores the client cannot show.
-    body["playerReporting"] = json!(false);
+    // Always sent, and always the draft's own value, which for an edit is the
+    // event's. The service reads an absent key as on. This used to send `false`
+    // from both paths, so saving the settings of an event created on the
+    // website took player reporting away from it without a word.
+    body["playerReporting"] = json!(draft.player_reporting);
     // `null` is meaningful rather than omitted: the server tells a cleared date
     // from an untouched one by whether the key is there at all.
     body["eventDate"] = iso(draft.event_date);
@@ -1463,6 +1462,26 @@ pub fn qualifier_add_body(tournament_id: &str, rule: QualifierRule) -> Value {
 /// removing one is not an undo.
 pub fn qualifier_remove_body(link_id: &str) -> Value {
     json!({ "id": link_id })
+}
+
+/// The body for `POST /api/t/{id}/report_submit`, a player's score for the
+/// other side to confirm.
+///
+/// Only what the handler reads: the running score, one replay id per new game
+/// and the replays of drawn games. No winner and no forfeit, which are the
+/// organiser's through `report`. `replayIds` is always sent, because the
+/// handler counts it against the new games and an absent key counts as none.
+pub fn submit_report_body(report: &MatchReport) -> Value {
+    let mut body = json!({
+        "matchId": report.match_id,
+        "score1": report.score1,
+        "score2": report.score2,
+        "replayIds": report.replay_ids,
+    });
+    if !report.draw_replay_ids.is_empty() {
+        body["drawReplayIds"] = json!(report.draw_replay_ids);
+    }
+    body
 }
 
 #[cfg(test)]
@@ -1950,9 +1969,9 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(body["formation"], "draft");
         assert_eq!(body["bracketType"], "double");
         assert_eq!(body["teamSize"], 2);
-        // Always sent, always off. An absent key would be read as *on*, and the
-        // client has no player reporting path to show for it.
-        assert_eq!(body["playerReporting"], false);
+        // Always sent. An absent key would be read as *on* whatever the draft
+        // says; this one says on, as a new draft does.
+        assert_eq!(body["playerReporting"], true);
         // Dates go as ISO text: `cleanDate` accepts only strings, and a number
         // would be read as no date at all.
         assert_eq!(body["eventDate"], "2026-08-22T18:00:00Z");
@@ -1983,16 +2002,56 @@ See the [rules](https://x.invalid/r)."
     }
 
     #[test]
-    fn neither_path_ever_turns_player_reporting_on() {
-        // The service reads an absent key as on, so both bodies have to say no
-        // rather than stay quiet. Nothing in the client can show a player's
-        // report, and `report_submit` is gone.
+    fn a_players_submission_carries_the_score_and_the_replays_only() {
+        let body = submit_report_body(&MatchReport {
+            match_id: "m1".into(),
+            score1: 2,
+            score2: 1,
+            replay_ids: vec!["21534001".into()],
+            draw_replay_ids: Vec::new(),
+            winner: Some("t1".into()),
+            forfeit: Some("t2".into()),
+        });
+        assert_eq!(body["matchId"], "m1");
+        assert_eq!(body["score1"], 2);
+        assert_eq!(body["score2"], 1);
+        assert_eq!(body["replayIds"], json!(["21534001"]));
+        // `report_submit` reads neither, and sending them would suggest a
+        // player could decide a series.
+        assert!(body.get("winner").is_none());
+        assert!(body.get("forfeit").is_none());
+        assert!(body.get("drawReplayIds").is_none(), "nothing to keep");
+
+        let drawn = submit_report_body(&MatchReport {
+            match_id: "m1".into(),
+            score1: 1,
+            score2: 0,
+            replay_ids: vec!["21534001".into()],
+            draw_replay_ids: vec!["21534010".into()],
+            ..MatchReport::default()
+        });
+        assert_eq!(drawn["drawReplayIds"], json!(["21534010"]));
+    }
+
+    #[test]
+    fn both_paths_send_the_drafts_own_player_reporting() {
+        // Always present, because the service reads an absent key as on, and
+        // always the draft's: a fixed value turned it off on every event whose
+        // settings were saved here.
         let draft = TourneyDraft {
             name: "Weekend Cup".into(),
             ..TourneyDraft::new()
         };
-        assert_eq!(create_body(&draft)["playerReporting"], false);
-        assert_eq!(edit_info_body(&draft)["playerReporting"], false);
+        assert!(draft.player_reporting, "on by default, as on the website");
+        assert_eq!(create_body(&draft)["playerReporting"], true);
+        assert_eq!(edit_info_body(&draft)["playerReporting"], true);
+
+        let organiser_only = TourneyDraft {
+            player_reporting: false,
+            ..draft
+        };
+        assert_eq!(create_body(&organiser_only)["playerReporting"], false);
+        assert_eq!(edit_info_body(&organiser_only)["playerReporting"], false);
     }
 
     #[test]

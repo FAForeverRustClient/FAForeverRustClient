@@ -93,12 +93,12 @@ export function newGames(entry: TourneyMatch, score1: number, score2: number): n
 }
 
 /**
- * Twin of `MatchReport::is_submittable`: what `report` will accept.
+ * Twin of `MatchReport::is_submittable`: what `report`, the organiser's path,
+ * will accept.
  *
- * No replay-id rule and no "the score must go up" rule. Both belonged to the
- * player path, which this client does not use: only the organiser records a
- * result, and `report` is also the correction path, so a lower score is a fix
- * rather than an error.
+ * No replay-id rule and no "the score must go up" rule. Both belong to the
+ * player path, `isPlayerSubmittable`: `report` is also the correction path, so
+ * a lower score is a fix rather than an error.
  */
 export function isSubmittable(
   entry: TourneyMatch,
@@ -117,6 +117,33 @@ export function isSubmittable(
   // A named winner has to be one of the two sides, or the server refuses it.
   const winnerFits = winner === null || winner === entry.team1 || winner === entry.team2;
   return scoresFit && winnerFits;
+}
+
+/**
+ * Twin of `MatchReport::is_player_submittable`: what `report_submit`, the
+ * players' path, will accept. The score only goes up, and every new game needs
+ * exactly one replay id; an id counts when it holds a digit.
+ */
+export function isPlayerSubmittable(
+  entry: TourneyMatch,
+  score1: number,
+  score2: number,
+  replayIds: string[],
+): boolean {
+  const needed = Math.ceil(entry.bestOf / 2);
+  const current1 = entry.score1 ?? (entry.handicap > 0 ? 1 : 0);
+  const current2 = entry.score2 ?? 0;
+  const scoresFit =
+    score1 >= 0 &&
+    score2 >= 0 &&
+    score1 <= needed &&
+    score2 <= needed &&
+    !(entry.handicap > 0 && score1 < 1) &&
+    !(score1 === needed && score2 === needed);
+  if (!scoresFit || score1 < current1 || score2 < current2) return false;
+  const fresh = score1 + score2 - current1 - current2;
+  const ids = replayIds.filter((id) => /\d/.test(id)).length;
+  return fresh >= 1 && ids === fresh;
 }
 
 /** Twin of `faf_domain::state::map_key`: letters and digits, folded. */
@@ -264,6 +291,24 @@ export function mayReport(event: Tourney, entry: TourneyMatch): boolean {
     entry.bracket !== "freeForAll" &&
     entry.team1 !== null &&
     entry.team2 !== null
+  );
+}
+
+/**
+ * Twin of `Tourney::may_submit`: whether this account may submit a score for
+ * the other side to confirm (`report_submit`). Any member of either team, while
+ * the series is being played, where the organiser allows players' scores.
+ */
+export function maySubmit(event: Tourney, entry: TourneyMatch): boolean {
+  const mine = event.viewer.memberTeamId;
+  if (mine === null) return false;
+  const opponent = entry.team1 === mine ? entry.team2 : entry.team2 === mine ? entry.team1 : null;
+  return (
+    event.playerReporting &&
+    hasBracket(event.status) &&
+    entry.bracket !== "freeForAll" &&
+    opponent !== null &&
+    (entry.status === "ready" || entry.status === "live")
   );
 }
 
@@ -1123,6 +1168,7 @@ export function busyMatchId(pending: TourneyAction | null): string | null {
   switch (pending.type) {
     case "answeringReport":
     case "decidingReport":
+    case "submittingReport":
     case "vetoing":
     case "reportingFfa":
       return pending.payload.matchId;

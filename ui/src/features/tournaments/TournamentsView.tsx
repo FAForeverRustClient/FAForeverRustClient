@@ -32,6 +32,7 @@ import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
 import { matchTitle } from "./matchTitle";
 import { MatchReportDialog } from "./bracket/MatchReportDialog";
+import { ScoreSubmitDialog } from "./bracket/ScoreSubmitDialog";
 import { TournamentDetailPane } from "./detail/TournamentDetailPane";
 import { TournamentForm } from "./manage/TournamentForm";
 import { SignUpDialog } from "./SignUpDialog";
@@ -43,7 +44,7 @@ import {
   groupedEvents,
   type ListGroup,
 } from "./tourneyPresentation";
-import { busyMatchId, openEvent } from "../../shared/rules/tourneyRules";
+import { busyMatchId, mayReport, openEvent } from "../../shared/rules/tourneyRules";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -636,7 +637,22 @@ export function TournamentsView() {
         />
       )}
 
-      {reporting !== null && open !== null && (
+      {reporting !== null && open !== null && !mayReport(open, reporting) && (
+        <ScoreSubmitDialog
+          event={open}
+          entry={reporting}
+          busy={busy}
+          onSubmit={(report: MatchReport) => {
+            // `report_submit`, the player path: it counts once the other side
+            // or an organiser confirms it.
+            act({ type: "submitReport", payload: { tournamentId: open.id, report } });
+            setReporting(null);
+          }}
+          onClose={() => setReporting(null)}
+        />
+      )}
+
+      {reporting !== null && open !== null && mayReport(open, reporting) && (
         <MatchReportDialog
           event={open}
           entry={reporting}
