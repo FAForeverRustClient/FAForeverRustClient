@@ -101,6 +101,44 @@ impl BracketSide {
     }
 }
 
+/// Who is still standing in a running elimination (`survivors`).
+///
+/// Split the way the service splits it: the winners side, and in a double
+/// elimination the losers side too. Each in seed order, by team id.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Survivors {
+    pub winners: Vec<String>,
+    pub losers: Vec<String>,
+}
+
+impl Survivors {
+    /// How many are still standing, on both sides.
+    pub fn alive(&self) -> i32 {
+        i32::try_from(self.winners.len() + self.losers.len()).unwrap_or(i32::MAX)
+    }
+}
+
+/// How an event was stopped before its final, where it was (`earlyFinish`).
+///
+/// No champion is recorded: the standings are locked where they stood, which
+/// is what a qualifier that only has to find its top four wants.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EarlyFinish {
+    /// Unix seconds.
+    pub at: Option<u32>,
+    /// The organiser who stopped it, or the service's own name for itself.
+    pub by: String,
+    /// Whether the survivor count stopped it rather than an organiser.
+    pub automatic: bool,
+    /// The count it was set to stop at, where it stopped by itself.
+    pub target: i32,
+    /// How many were still standing, and who, by name.
+    pub alive: i32,
+    pub names: Vec<String>,
+}
+
 /// One row of the standings table.
 ///
 /// Deliberately one shape for every format rather than three: the pane draws a

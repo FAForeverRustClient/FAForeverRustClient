@@ -29,7 +29,7 @@ use faf_domain::state::{
     BracketConfig, Caster, Currency, FormatDraft, Prize, Qualifier, QualifierRule, SeriesColour,
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries,
 };
-use faf_domain::state::{FactionVetoConfig, TourneyAdmin, TourneyFaction};
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
 
 use crate::ports::{RequestError, TourneyPort};
@@ -1167,6 +1167,12 @@ impl TourneyPort for FakeTourney {
         ))
     }
 
+    async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
+        Err(RequestError::rejected(
+            "Checking names against FAF is not available offline",
+        ))
+    }
+
     async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
         Err(RequestError::rejected(
             "This organiser change is not available offline",
@@ -1951,6 +1957,7 @@ impl TourneyPort for FakeTourney {
             applied: settled.is_some().then_some(1_786_300_000),
             qualified,
             unreachable,
+            seed_from: 0,
         });
         Ok(())
     }

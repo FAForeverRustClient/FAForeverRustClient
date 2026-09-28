@@ -1808,6 +1808,26 @@ export type DraftPick = {
 	atIndex: number,
 };
 
+/**
+ *  How an event was stopped before its final, where it was (`earlyFinish`).
+ *
+ *  No champion is recorded: the standings are locked where they stood, which
+ *  is what a qualifier that only has to find its top four wants.
+ */
+export type EarlyFinish = {
+	/**  Unix seconds. */
+	at: number | null,
+	/**  The organiser who stopped it, or the service's own name for itself. */
+	by: string,
+	/**  Whether the survivor count stopped it rather than an organiser. */
+	automatic: boolean,
+	/**  The count it was set to stop at, where it stopped by itself. */
+	target: number,
+	/**  How many were still standing, and who, by name. */
+	alive: number,
+	names: string[],
+};
+
 /**  The catalogue document, as the port hands it over. */
 export type EventCatalogue = {
 	events: CalendarEvent[],
@@ -5768,6 +5788,11 @@ export type Qualifier = {
 	 *  is the organiser who then has to add them by hand.
 	 */
 	unreachable: string[],
+	/**
+	 *  The first of a block of seeds kept for this link's arrivals, in the
+	 *  order they qualified, or 0 to seed them with everyone else.
+	 */
+	seedFrom: number,
 };
 
 /**  Which measure a qualifier link ranks by. */
@@ -5928,6 +5953,38 @@ export type RejectReason = "duplicate" | "incorrectInformation" | "poorQuality" 
  *  exclusive on the server, and the reducer keeps them that way locally too.
  */
 export type Relation = "friend" | "foe";
+
+/**  One entrant whose FAF name has changed since they entered. */
+export type Rename = {
+	playerId: string,
+	from: string,
+	to: string,
+	/**
+	 *  The entry named after them, which is renamed with them: an organiser
+	 *  who cannot see that beforehand finds out from a bracket that changed.
+	 */
+	team: string | null,
+};
+
+/**
+ *  The organiser's check of entrant names against FAF (`check_renames`).
+ *
+ *  A name is stamped on an entrant at signup and FAF tells nobody when it
+ *  changes, so a renamed player keeps their old one here until somebody asks.
+ *  The check writes nothing: the old name is sometimes the wanted one, a
+ *  caster's on-stream name or a bracket already screenshotted, so the
+ *  organiser picks which to take.
+ */
+export type RenameCheck = {
+	/**  How many entrants with a FAF account were asked about. */
+	checked: number,
+	/**  Those whose FAF name is no longer the one on the entry. */
+	changed: Rename[],
+	/**  How many FAF did not answer for. */
+	failed: number,
+	/**  How many were added by hand and have no FAF account to ask about. */
+	manual: number,
+};
 
 /**  When one client was giving orders. */
 export type ReplayActivity = {
@@ -7414,6 +7471,17 @@ export type SubmitStatus = { type: "idle" } | { type: "sending" } |
 } };
 
 /**
+ *  Who is still standing in a running elimination (`survivors`).
+ *
+ *  Split the way the service splits it: the winners side, and in a double
+ *  elimination the losers side too. Each in seed order, by team id.
+ */
+export type Survivors = {
+	winners: string[],
+	losers: string[],
+};
+
+/**
  *  A Swiss stage's record cuts (`winCut`, `lossCut`): a team leaves the stage
  *  on reaching that many wins or that many losses, rather than after a fixed
  *  number of rounds. Zero is off, which is what every event without them has.
@@ -7781,6 +7849,23 @@ export type Tourney = {
 	 *  that is the tiebreak.
 	 */
 	swissBeaten: { [key in string]: number },
+	/**
+	 *  Who this event's organisers keep out of it (`bans`). Sent to its
+	 *  organisers only, and absent for everyone else, which reads as empty.
+	 */
+	bans: TourneyBan[],
+	/**
+	 *  End the event once this many are left, or 0 to play it out
+	 *  (`stopAtAlive`). Elimination only.
+	 */
+	stopAtAlive: number,
+	/**
+	 *  Who is still standing (`survivors`), in a running or finished
+	 *  elimination; `None` for Swiss and free-for-all.
+	 */
+	survivors: Survivors | null,
+	/**  How the event was stopped early, where it was (`earlyFinish`). */
+	earlyFinish: EarlyFinish | null,
 	/**  What this account may do here, as the server sees it. */
 	viewer: TourneyViewer,
 };
@@ -7993,6 +8078,31 @@ export type TourneyAdmin =
 	mapId: string | null,
 	secret: boolean,
 } };
+
+/**
+ *  One account this event's organisers keep out of it (`ban_set`).
+ *
+ *  A ban stops a signup, an organiser's add and an invite alike: removing
+ *  somebody was already possible, and nothing stopped them entering again.
+ *  It lives on this event alone; a series ban or a site ban is somebody
+ *  else's and is not in this list.
+ */
+export type TourneyBan = {
+	fafId: number,
+	name: string,
+	reason: string,
+	/**  Unix seconds, or `None` for a ban that lasts until it is lifted. */
+	expires: number | null,
+	/**  When it was set, in Unix seconds. */
+	at: number | null,
+	/**  Who set it. */
+	by: string,
+	/**
+	 *  Whether it has run out. An expired ban stays listed until it is
+	 *  lifted, and keeps nobody out.
+	 */
+	expired: boolean,
+};
 
 /**  Who runs the event, which decides whether FAF's rules articles apply. */
 export type TourneyCategory =
@@ -8339,6 +8449,13 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 	config: FactionVetoConfig,
 } } |
+/**
+ *  Ask FAF for the current name of every entrant (`check_renames`). Reads
+ *  only; taking a new name is [`TourneyAdmin::ApplyRenames`].
+ */
+{ type: "checkRenames"; payload: {
+	tournamentId: string,
+} } |
 /**  One of the organiser's single-call changes. See [`TourneyAdmin`]. */
 { type: "administer"; payload: {
 	tournamentId: string,
@@ -8636,7 +8753,12 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	kind: RequestFailureKind,
 } } |
 /**  The organiser picked somebody, or left the field: drop the list. */
-{ type: "accountSearchCleared" } | { type: "seriesLoading" } | { type: "seriesLoaded"; payload: {
+{ type: "accountSearchCleared" } | { type: "renamesChecking" } | { type: "renamesChecked"; payload: {
+	check: RenameCheck,
+} } | { type: "renamesCheckFailed"; payload: {
+	reason: string,
+	kind: RequestFailureKind,
+} } | { type: "seriesLoading" } | { type: "seriesLoaded"; payload: {
 	series: TourneySeries[],
 } } | { type: "seriesFailed"; payload: {
 	reason: string,
@@ -8960,6 +9082,13 @@ export type TourneyState = {
 	 *  image on the way through the codec.
 	 */
 	assetBase: string,
+	/**
+	 *  The open event's last name check against FAF, until the next write:
+	 *  any write re-reads the event, and a list of renames that may already
+	 *  have been taken is worse than an empty panel with a button.
+	 */
+	renames: RenameCheck | null,
+	renamesStatus: TourneyLoadStatus,
 };
 
 /**

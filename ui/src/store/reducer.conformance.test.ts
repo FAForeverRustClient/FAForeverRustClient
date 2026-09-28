@@ -71,7 +71,11 @@ import {
   factionVetoOn,
   mayAddThirdPlace,
   mayConfigureFactionVeto,
+  mayEndEarly,
+  mayRemoveOrganiser,
   mayRemoveThirdPlace,
+  mayReopenEarly,
+  mayRepullRatings,
   maySetMatchBestOf,
   thirdPlaceOn,
   factionConfigIsSubmittable,
@@ -159,6 +163,10 @@ interface HelperFixture {
     mayAddThirdPlace: boolean;
     mayRemoveThirdPlace: boolean;
     bestOfMatchIds: string[];
+    removableOrganiserIds: number[];
+    mayEndEarly: boolean;
+    mayReopenEarly: boolean;
+    mayRepullRatings: boolean;
     name: string;
     event: Tourney;
     teamId: string | null;
@@ -469,6 +477,12 @@ describe("tournament rule twins match Rust", () => {
       bestOfMatchIds: event.matches
         .filter((entry) => maySetMatchBestOf(event, entry))
         .map((entry) => entry.id),
+      removableOrganiserIds: event.organiserAccounts
+        .filter((organiser) => mayRemoveOrganiser(event, organiser.fafId))
+        .map((organiser) => organiser.fafId),
+      mayEndEarly: mayEndEarly(event),
+      mayReopenEarly: mayReopenEarly(event),
+      mayRepullRatings: mayRepullRatings(event),
     }).toEqual({
       teamRating: recorded.teamRating,
       wouldExceedTeamCap: recorded.wouldExceedTeamCap,
@@ -490,6 +504,10 @@ describe("tournament rule twins match Rust", () => {
       mayAddThirdPlace: recorded.mayAddThirdPlace,
       mayRemoveThirdPlace: recorded.mayRemoveThirdPlace,
       bestOfMatchIds: recorded.bestOfMatchIds,
+      removableOrganiserIds: recorded.removableOrganiserIds,
+      mayEndEarly: recorded.mayEndEarly,
+      mayReopenEarly: recorded.mayReopenEarly,
+      mayRepullRatings: recorded.mayRepullRatings,
     });
   });
 

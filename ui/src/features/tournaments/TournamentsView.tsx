@@ -383,6 +383,9 @@ export function TournamentsView() {
               busyMatchId={busyMatch}
               accountSearch={state.accountSearch}
               onSearchAccounts={(query) => act({ type: "searchAccounts", payload: { query } })}
+              renames={state.renames}
+              renamesStatus={state.renamesStatus}
+              onCheckRenames={() => act({ type: "checkRenames", payload: { tournamentId: open.id } })}
               onSignUp={() => setEntering(open.id)}
               onWithdraw={() => act({ type: "withdraw", payload: { tournamentId: open.id } })}
               onCheckIn={() => act({ type: "checkIn", payload: { tournamentId: open.id } })}

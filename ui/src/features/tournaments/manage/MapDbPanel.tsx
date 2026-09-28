@@ -13,7 +13,13 @@
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
-import type { MapDraft, MapListStatus, Tourney, VaultMap } from "../../../ipc/bindings";
+import type {
+  MapDraft,
+  MapListStatus,
+  Tourney,
+  TourneyAdmin,
+  VaultMap,
+} from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import {
   mapIsSubmittable,
@@ -32,6 +38,8 @@ interface MapDbPanelProps {
   onSave: (map: MapDraft) => void;
   onPublish: (mapId: string, published: boolean) => void;
   onDelete: (mapId: string) => void;
+  /** Secret maps: one at a time, or the whole database at once. */
+  onAdmin: (change: TourneyAdmin) => void;
 }
 
 const BLANK: MapDraft = { id: "", name: "", description: "", published: false, spec: null };
@@ -108,6 +116,28 @@ export function MapDbPanel(props: MapDbPanelProps) {
 
       {event.mapDb.length === 0 && <p className="muted">{t("tournaments.maps.none")}</p>}
 
+      {/* Secret is not hidden. A hidden map is one players cannot see at all;
+          a secret one they can see exists, as "Hidden Map 3" with a blank tile,
+          and the service withholds its name until it is going to be played.
+          The veto grid still works on it, because every id is intact. */}
+      {event.mapDb.length > 0 && (
+        <div className="tournament-detail-actions">
+          <span className="muted">{t("tournaments.maps.secretHint")}</span>
+          <Button
+            disabled={busy}
+            onClick={() => props.onAdmin({ type: "mapSecret", payload: { mapId: null, secret: true } })}
+          >
+            {t("tournaments.maps.secretAll")}
+          </Button>
+          <Button
+            disabled={busy}
+            onClick={() => props.onAdmin({ type: "mapSecret", payload: { mapId: null, secret: false } })}
+          >
+            {t("tournaments.maps.revealAll")}
+          </Button>
+        </div>
+      )}
+
       <ul className="tournament-map-list">
         {event.mapDb.map((held) => {
           const vaultMap = matchVaultMap(held, vault);
@@ -135,7 +165,23 @@ export function MapDbPanel(props: MapDbPanelProps) {
                   {t("tournaments.maps.hidden")}
                 </span>
               )}
+              {held.secret && (
+                <span className="tournament-hidden-mark" title={t("tournaments.maps.secretHint")}>
+                  {t("tournaments.maps.secret")}
+                </span>
+              )}
               <div className="tournament-detail-actions">
+                <Button
+                  disabled={busy}
+                  onClick={() =>
+                    props.onAdmin({
+                      type: "mapSecret",
+                      payload: { mapId: held.id, secret: !held.secret },
+                    })
+                  }
+                >
+                  {t(held.secret ? "tournaments.maps.reveal" : "tournaments.maps.makeSecret")}
+                </Button>
                 <Button
                   disabled={busy}
                   onClick={() => props.onPublish(held.id, !held.published)}

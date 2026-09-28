@@ -17,7 +17,7 @@ use faf_domain::state::{
     SeriesDraft, Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent,
     TourneyLoadStatus, TourneyPhase, TourneySeries, TourneyStatus,
 };
-use faf_domain::state::{FactionVetoConfig, TourneyAdmin, TourneyFaction};
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::AppEvent;
 
 fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {
@@ -183,6 +183,9 @@ impl TourneyPort for RefusingTourney {
         self.refused()
     }
     async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
         self.refused()
     }
     async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
@@ -1741,6 +1744,9 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             _: &str,
             _: &FactionVetoConfig,
         ) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
             unreachable!()
         }
         async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {

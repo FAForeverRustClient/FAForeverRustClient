@@ -292,6 +292,17 @@ pub struct Tourney {
     /// Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
     /// that is the tiebreak.
     pub swiss_beaten: std::collections::BTreeMap<String, i32>,
+    /// Who this event's organisers keep out of it (`bans`). Sent to its
+    /// organisers only, and absent for everyone else, which reads as empty.
+    pub bans: Vec<TourneyBan>,
+    /// End the event once this many are left, or 0 to play it out
+    /// (`stopAtAlive`). Elimination only.
+    pub stop_at_alive: i32,
+    /// Who is still standing (`survivors`), in a running or finished
+    /// elimination; `None` for Swiss and free-for-all.
+    pub survivors: Option<Survivors>,
+    /// How the event was stopped early, where it was (`earlyFinish`).
+    pub early_finish: Option<EarlyFinish>,
     /// What this account may do here, as the server sees it.
     pub viewer: TourneyViewer,
 }
@@ -1089,6 +1100,48 @@ impl Tourney {
                     && entry.status != MatchStatus::Done
                     && !entry.has_games()
             })
+    }
+
+    /// Whether this account may strip organiser rights from `faf_id`, itself
+    /// included (`remove_organizer`).
+    ///
+    /// Any organiser may remove any other, or leave: the people who can add a
+    /// co-organiser are the people who can remove one. Never the last one,
+    /// which the service refuses for everybody but a site admin, and this
+    /// client does not know whether it is talking to one.
+    pub fn may_remove_organiser(&self, faf_id: i32) -> bool {
+        self.viewer.organiser
+            && self.organiser_accounts.len() > 1
+            && self
+                .organiser_accounts
+                .iter()
+                .any(|organiser| organiser.faf_id == faf_id)
+    }
+
+    /// Whether this account may end the event early: stop it by hand, or set
+    /// the survivor count it stops at by itself.
+    ///
+    /// A running elimination only. Swiss and free-for-all have no survivors
+    /// to count, and the service sends none for them.
+    pub fn may_end_early(&self) -> bool {
+        self.viewer.organiser
+            && self.status == TourneyStatus::Running
+            && self.competition != Competition::FreeForAll
+            && self.bracket_kind != BracketKind::Swiss
+            && self.early_finish.is_none()
+    }
+
+    /// Whether this account may take an early finish back.
+    pub fn may_reopen_early(&self) -> bool {
+        self.viewer.organiser
+            && self.status == TourneyStatus::Finished
+            && self.early_finish.is_some()
+    }
+
+    /// Whether this account may fetch every entrant's rating again
+    /// (`repull_ratings`). An unrated event has none to fetch.
+    pub fn may_repull_ratings(&self) -> bool {
+        self.viewer.organiser && self.rating_kind != RatingKind::None
     }
 
     /// Whether this account may submit a score for `entry` for the other side

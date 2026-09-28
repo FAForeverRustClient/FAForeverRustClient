@@ -231,6 +231,14 @@ struct TourneyRuleCase {
     may_remove_third_place: bool,
     /// `Tourney::may_set_match_best_of` over every match, in bracket order.
     best_of_match_ids: Vec<String>,
+    /// `Tourney::may_remove_organiser` over every organiser account.
+    removable_organiser_ids: Vec<i32>,
+    /// `Tourney::may_end_early`.
+    may_end_early: bool,
+    /// `Tourney::may_reopen_early`.
+    may_reopen_early: bool,
+    /// `Tourney::may_repull_ratings`.
+    may_repull_ratings: bool,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -689,6 +697,15 @@ fn tourney_rule_case(
             .filter(|entry| event.may_set_match_best_of(entry))
             .map(|entry| entry.id.clone())
             .collect(),
+        removable_organiser_ids: event
+            .organiser_accounts
+            .iter()
+            .filter(|organiser| event.may_remove_organiser(organiser.faf_id))
+            .map(|organiser| organiser.faf_id)
+            .collect(),
+        may_end_early: event.may_end_early(),
+        may_reopen_early: event.may_reopen_early(),
+        may_repull_ratings: event.may_repull_ratings(),
         reportable_match_ids: event
             .matches
             .iter()
@@ -786,6 +803,35 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             }],
         ]
         .concat(),
+        ..four_single.clone()
+    };
+    let organiser = |faf_id: i32, name: &str| Organiser {
+        faf_id,
+        name: name.into(),
+        hidden: false,
+    };
+    let two_organisers = Tourney {
+        id: "two-organisers".into(),
+        organiser_accounts: vec![organiser(1, "Nuggets"), organiser(2, "Seraphim")],
+        ..four_single.clone()
+    };
+    let last_organiser = Tourney {
+        id: "last-organiser".into(),
+        organiser_accounts: vec![organiser(1, "Nuggets")],
+        rating_kind: RatingKind::None,
+        ..four_single.clone()
+    };
+    let stopped_early = Tourney {
+        id: "stopped-early".into(),
+        status: TourneyStatus::Finished,
+        early_finish: Some(EarlyFinish {
+            at: Some(1_790_000_000),
+            by: "Nuggets".into(),
+            automatic: false,
+            target: 0,
+            alive: 2,
+            names: vec!["T1".into(), "T2".into()],
+        }),
         ..four_single.clone()
     };
     let third_planned = Tourney {
@@ -1064,6 +1110,24 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         tourney_rule_case(
             "a single elimination planned with a 3rd place match, before the draw",
             third_planned,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "two organisers, either of whom may remove the other or leave",
+            two_organisers,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "the last organiser, who may not leave the event with nobody",
+            last_organiser,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "an elimination stopped early, which its organiser may reopen",
+            stopped_early,
             None,
             vec![],
         ),
@@ -4442,6 +4506,44 @@ fn cases() -> Vec<Case> {
                 .into(),
                 // Picking somebody, or leaving the field, drops the list.
                 TourneyEvent::AccountSearchCleared.into(),
+            ],
+        ),
+        case(
+            "an organiser checks names against FAF, fails once, then writes",
+            vec![
+                TourneyEvent::RenamesChecking.into(),
+                // A refusal keeps its sentence: it is the one that says to sign
+                // in again.
+                TourneyEvent::RenamesCheckFailed {
+                    reason: "Checking names needs your FAF login.".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+                TourneyEvent::RenamesChecking.into(),
+                TourneyEvent::RenamesChecked {
+                    check: RenameCheck {
+                        checked: 3,
+                        changed: vec![Rename {
+                            player_id: "p1".into(),
+                            from: "Old".into(),
+                            to: "New".into(),
+                            team: Some("Team Old".into()),
+                        }],
+                        failed: 0,
+                        manual: 1,
+                    },
+                }
+                .into(),
+                // Any write re-reads the event, so the list goes with it.
+                TourneyEvent::ActionStarted {
+                    action: TourneyAction::Administering,
+                }
+                .into(),
+                TourneyEvent::ActionSucceeded {
+                    action: TourneyAction::Administering,
+                    select: None,
+                }
+                .into(),
             ],
         ),
         case(

@@ -242,6 +242,39 @@ export function mayRemoveThirdPlace(event: Tourney): boolean {
   );
 }
 
+/**
+ * Twin of `Tourney::may_remove_organiser`: any organiser may remove any other,
+ * or leave, but never the last one.
+ */
+export function mayRemoveOrganiser(event: Tourney, fafId: number): boolean {
+  return (
+    event.viewer.organiser &&
+    event.organiserAccounts.length > 1 &&
+    event.organiserAccounts.some((organiser) => organiser.fafId === fafId)
+  );
+}
+
+/** Twin of `Tourney::may_end_early`: a running elimination, not yet stopped. */
+export function mayEndEarly(event: Tourney): boolean {
+  return (
+    event.viewer.organiser &&
+    event.status === "running" &&
+    event.competition !== "freeForAll" &&
+    event.bracketKind !== "swiss" &&
+    event.earlyFinish === null
+  );
+}
+
+/** Twin of `Tourney::may_reopen_early`. */
+export function mayReopenEarly(event: Tourney): boolean {
+  return event.viewer.organiser && event.status === "finished" && event.earlyFinish !== null;
+}
+
+/** Twin of `Tourney::may_repull_ratings`: an unrated event has none to fetch. */
+export function mayRepullRatings(event: Tourney): boolean {
+  return event.viewer.organiser && event.ratingKind !== "none";
+}
+
 /** Twin of `Tourney::may_set_match_best_of`. */
 export function maySetMatchBestOf(event: Tourney, entry: TourneyMatch): boolean {
   return (

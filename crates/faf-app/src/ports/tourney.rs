@@ -32,7 +32,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
-use faf_domain::state::{FactionVetoConfig, TourneyAdmin, TourneyFaction};
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 
 use super::RequestError;
 
@@ -407,6 +407,10 @@ pub trait TourneyPort: Send + Sync {
         tournament_id: &str,
         config: &FactionVetoConfig,
     ) -> Result<(), RequestError>;
+
+    /// Ask FAF for every entrant's current name. Writes nothing. Organiser
+    /// only, and it needs the organiser's own FAF login on the service.
+    async fn check_renames(&self, tournament_id: &str) -> Result<RenameCheck, RequestError>;
 
     /// One of the organiser's single-call changes. Organiser only, every one.
     async fn administer(

@@ -869,6 +869,19 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
+        TourneyCommand::CheckRenames { tournament_id } => {
+            out.emit(TourneyEvent::RenamesChecking);
+            match ctx.ports.tourney.check_renames(&tournament_id).await {
+                Ok(check) => out.emit(TourneyEvent::RenamesChecked { check }),
+                // Shown where the button is: the service's own sentence says
+                // when the organiser has to sign in again.
+                Err(error) => out.emit(TourneyEvent::RenamesCheckFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
         TourneyCommand::Administer {
             tournament_id,
             change,

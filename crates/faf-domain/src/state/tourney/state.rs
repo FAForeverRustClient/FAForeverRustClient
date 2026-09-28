@@ -261,6 +261,11 @@ pub struct TourneyState {
     /// one event, so it is carried once here rather than pasted onto every
     /// image on the way through the codec.
     pub asset_base: String,
+    /// The open event's last name check against FAF, until the next write:
+    /// any write re-reads the event, and a list of renames that may already
+    /// have been taken is worse than an empty panel with a button.
+    pub renames: Option<RenameCheck>,
+    pub renames_status: TourneyLoadStatus,
 }
 
 /// A name-to-account search, as the organiser types.

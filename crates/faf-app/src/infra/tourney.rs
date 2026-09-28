@@ -26,7 +26,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
-use faf_domain::state::{FactionVetoConfig, TourneyAdmin, TourneyFaction};
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use serde_json::{json, Value};
 
 use crate::infra::env_or;
@@ -804,6 +804,20 @@ impl TourneyPort for TourneyClient {
             tourney::faction_veto_config_body(config),
         )
         .await
+    }
+
+    async fn check_renames(&self, tournament_id: &str) -> Result<RenameCheck, RequestError> {
+        // A `POST` that writes nothing: the service reads FAF on the
+        // organiser's token, and keeps it off `GET` for that reason.
+        let document = self
+            .send(
+                reqwest::Method::POST,
+                &format!("t/{}/check_renames", encode(tournament_id)),
+                &[],
+                Some(json!({})),
+            )
+            .await?;
+        Ok(tourney::parse_rename_check(&document))
     }
 
     async fn administer(

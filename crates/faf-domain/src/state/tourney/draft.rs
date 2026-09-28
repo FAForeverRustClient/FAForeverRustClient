@@ -332,6 +332,9 @@ pub struct Qualifier {
     /// addressed to an account. Worth showing rather than swallowing, since it
     /// is the organiser who then has to add them by hand.
     pub unreachable: Vec<String>,
+    /// The first of a block of seeds kept for this link's arrivals, in the
+    /// order they qualified, or 0 to seed them with everyone else.
+    pub seed_from: i32,
 }
 
 /// How many of a child's entrants go through, and by what measure.

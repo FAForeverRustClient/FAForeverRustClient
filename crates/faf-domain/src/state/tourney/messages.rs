@@ -453,6 +453,12 @@ pub enum TourneyCommand {
         tournament_id: String,
         config: FactionVetoConfig,
     },
+    /// Ask FAF for the current name of every entrant (`check_renames`). Reads
+    /// only; taking a new name is [`TourneyAdmin::ApplyRenames`].
+    #[serde(rename_all = "camelCase")]
+    CheckRenames {
+        tournament_id: String,
+    },
     /// One of the organiser's single-call changes. See [`TourneyAdmin`].
     #[serde(rename_all = "camelCase")]
     Administer {
@@ -705,6 +711,14 @@ pub enum TourneyEvent {
     },
     /// The organiser picked somebody, or left the field: drop the list.
     AccountSearchCleared,
+    RenamesChecking,
+    RenamesChecked {
+        check: RenameCheck,
+    },
+    RenamesCheckFailed {
+        reason: String,
+        kind: RequestFailureKind,
+    },
     SeriesLoading,
     SeriesLoaded {
         series: Vec<TourneySeries>,

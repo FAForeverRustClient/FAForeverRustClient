@@ -25,6 +25,7 @@ import type {
   PlayerSummary,
   FormatDraft,
   QualifierRule,
+  RenameCheck,
   SeedOrder,
   SeriesDraft,
   Tourney,
@@ -133,6 +134,10 @@ interface TournamentDetailPaneProps {
   /** The organiser's name-search state, forwarded to the entrant pickers. */
   accountSearch: AccountSearch;
   onSearchAccounts: (query: string) => void;
+  /** The organiser's last check of entrant names against FAF. */
+  renames: RenameCheck | null;
+  renamesStatus: TourneyLoadStatus;
+  onCheckRenames: () => void;
   onSignUp: () => void;
   onWithdraw: () => void;
   onCheckIn: () => void;
@@ -544,6 +549,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           events={props.events}
           profiles={props.profiles}
           accountSearch={props.accountSearch}
+          renames={props.renames}
+          renamesStatus={props.renamesStatus}
+          onCheckRenames={props.onCheckRenames}
           onSearchAccounts={props.onSearchAccounts}
           busy={busy}
           onEditInfo={props.onEditInfo}

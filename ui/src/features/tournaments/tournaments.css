@@ -4123,3 +4123,114 @@
   background: var(--color-bg);
   color: var(--color-text);
 }
+
+/* -- Manage: bans, names, images, ending early -------------------------------- */
+
+/* A label and a small field on one line: "Stop when [4]", "Seed block [5]". */
+.tournament-inline-field {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tournament-inline-field input {
+  width: 80px;
+}
+
+.tournament-bans,
+.tournament-renames,
+.tournament-images {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.tournament-bans > ul,
+.tournament-rename-list {
+  align-self: stretch;
+}
+
+.tournament-ban-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tournament-ban-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-self: stretch;
+  max-width: 420px;
+}
+
+.tournament-rename-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Under the checkbox's text, not under the box. */
+.tournament-rename-team {
+  display: block;
+  margin-left: 26px;
+}
+
+.tournament-image-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tournament-image {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.tournament-image img {
+  display: block;
+  width: 160px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+/* A map's row carries four buttons since secret maps. Below a comfortable
+   width they wrap under the name rather than squeezing it to a word a line. */
+.tournament-map-row {
+  flex-wrap: wrap;
+}
+
+.tournament-map-row .tournament-map-names {
+  min-width: 160px;
+}
+
+/* The organiser notes: folded away, because they are read once. */
+.tournament-notes {
+  margin-top: var(--space-3);
+}
+
+.tournament-notes summary {
+  cursor: pointer;
+  color: var(--color-muted);
+}
+
+.tournament-notes ul {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}

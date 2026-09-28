@@ -24,7 +24,6 @@
 use serde_json::{json, Value};
 
 use crate::protocol::markup::to_plain_text;
-use crate::state::TourneyAdmin;
 use crate::state::{
     Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
     ChatQuote, ChatRoom, Competition, Currency, FactionChoices, FactionResult, FactionStep,
@@ -39,6 +38,7 @@ use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
     VetoDecider, VetoMode,
 };
+use crate::state::{EarlyFinish, Rename, RenameCheck, Survivors, TourneyAdmin, TourneyBan};
 use crate::state::{
     FeedsInto, FormatDraft, Qualifier, QualifierKind, QualifierRule, SeriesColour, SeriesDetail,
     SeriesDraft, SeriesEdition, TourneySeries,
@@ -450,7 +450,69 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .find_map(|held| int(held, "rounds").filter(|rounds| *rounds > 0))
             .unwrap_or(0),
         swiss_beaten: parse_beaten(document.get("swissSB")),
+        bans: array(document, "bans")
+            .iter()
+            .filter_map(parse_ban)
+            .collect(),
+        stop_at_alive: int(document, "stopAtAlive").unwrap_or(0),
+        survivors: document
+            .get("survivors")
+            .filter(|held| held.is_object())
+            .map(|held| Survivors {
+                winners: string_list(held, "wb"),
+                losers: string_list(held, "lb"),
+            }),
+        early_finish: document
+            .get("earlyFinish")
+            .filter(|held| held.is_object())
+            .map(|held| EarlyFinish {
+                at: moment(held, "at"),
+                by: text(held, "by"),
+                automatic: flag(held, "auto"),
+                target: int(held, "target").unwrap_or(0),
+                alive: int(held, "alive").unwrap_or(0),
+                names: string_list(held, "names"),
+            }),
         viewer: parse_viewer(document),
+    })
+}
+
+/// The answer to `POST /api/t/{id}/check_renames`.
+pub fn parse_rename_check(document: &Value) -> RenameCheck {
+    RenameCheck {
+        checked: int(document, "checked").unwrap_or(0),
+        changed: array(document, "changed")
+            .iter()
+            .filter_map(|held| {
+                Some(Rename {
+                    player_id: id(held, "playerId")?,
+                    from: text(held, "from"),
+                    to: text(held, "to"),
+                    team: held
+                        .get("team")
+                        .and_then(Value::as_str)
+                        .filter(|name| !name.trim().is_empty())
+                        .map(str::to_string),
+                })
+            })
+            .collect(),
+        failed: int(document, "failed").unwrap_or(0),
+        manual: int(document, "manual").unwrap_or(0),
+    }
+}
+
+/// One of the event's own bans. The id arrives as a string key, as every FAF
+/// id does in the service's stores.
+fn parse_ban(value: &Value) -> Option<TourneyBan> {
+    Some(TourneyBan {
+        faf_id: int(value, "fafId")?,
+        name: text(value, "name"),
+        reason: text(value, "reason"),
+        // An ISO instant, unlike `at`, which is milliseconds.
+        expires: calendar_moment(value, "expires"),
+        at: moment(value, "at"),
+        by: text(value, "by"),
+        expired: flag(value, "expired"),
     })
 }
 
@@ -1404,6 +1466,7 @@ fn parse_qualifier(value: &Value) -> Option<Qualifier> {
         applied: moment(value, "applied"),
         qualified: string_list(value, "qualified"),
         unreachable: string_list(value, "unreachable"),
+        seed_from: int(value, "seedFrom").unwrap_or(0),
     })
 }
 
@@ -2435,6 +2498,48 @@ See the [rules](https://x.invalid/r)."
             Some("t")
         );
         assert_eq!(BracketSide::ThirdPlace.as_wire(), "3p");
+    }
+
+    #[test]
+    fn a_rename_check_names_who_changed_and_what_it_could_not_ask() {
+        let check = parse_rename_check(&json!({
+            "ok": true, "checked": 3, "failed": 1, "manual": 2,
+            "changed": [
+                { "playerId": "p1", "fafId": "11", "from": "Old", "to": "New", "team": "Team Old" },
+                { "playerId": "p2", "fafId": "12", "from": "A", "to": "B", "team": null },
+                { "from": "no id", "to": "dropped" },
+            ],
+        }));
+        assert_eq!(check.checked, 3);
+        assert_eq!(check.failed, 1);
+        assert_eq!(check.manual, 2);
+        assert_eq!(check.changed.len(), 2);
+        assert_eq!(check.changed[0].team.as_deref(), Some("Team Old"));
+        assert_eq!(check.changed[1].team, None);
+    }
+
+    #[test]
+    fn the_organiser_view_carries_bans_and_how_far_the_event_got() {
+        let mut document = document();
+        document["bans"] = json!([
+            { "fafId": "77", "name": "Troll", "reason": "smurf", "expires": "2026-12-01T00:00:00.000Z",
+              "at": 1_790_000_000_000_i64, "by": "Nuggets", "expired": 0 },
+        ]);
+        document["stopAtAlive"] = json!(4);
+        document["survivors"] = json!({ "wb": ["t1", "t2"], "lb": ["t3"] });
+        document["earlyFinish"] = json!({ "at": 1_790_000_000_000_i64, "by": "Automatic", "auto": 1,
+            "target": 4, "alive": 3, "names": ["A", "B", "C"], "wb": [], "lb": [], "unplayed": [] });
+        document["qualifiers"] = json!([{ "id": "q1", "tournamentId": "c1", "seedFrom": 5 }]);
+        let event = parse_tourney(&document).unwrap();
+        assert_eq!(event.bans[0].faf_id, 77);
+        assert_eq!(event.bans[0].expires, Some(1_796_083_200));
+        assert!(!event.bans[0].expired);
+        assert_eq!(event.stop_at_alive, 4);
+        assert_eq!(event.survivors.as_ref().map(Survivors::alive), Some(3));
+        let finish = event.early_finish.unwrap();
+        assert!(finish.automatic);
+        assert_eq!(finish.names.len(), 3);
+        assert_eq!(event.qualifiers[0].seed_from, 5);
     }
 
     #[test]

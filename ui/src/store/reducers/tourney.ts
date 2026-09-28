@@ -16,6 +16,8 @@ function clearOpenEvent(state: TourneyState): TourneyState {
     chatPosts: [],
     openRoomId: null,
     chatStatus: { type: "idle" },
+    renames: null,
+    renamesStatus: { type: "idle" },
   };
 }
 
@@ -91,11 +93,14 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
       return { ...state, pending: event.payload.action, actionError: null };
     case "actionSucceeded": {
       const { select } = event.payload;
-      if (select === null) return { ...state, pending: null, actionError: null };
+      // Any write re-reads the event, so a name check from before it may list
+      // renames that have already been taken.
+      const settled = { pending: null, actionError: null, renames: null, renamesStatus: { type: "idle" } as const };
+      if (select === null) return { ...state, ...settled };
       // A newly created event. Its detail has not been fetched yet, so the
       // previous one goes with the selection or it would sit under the new
       // name until the reload lands.
-      return { ...clearOpenEvent(state), pending: null, actionError: null, selectedId: select };
+      return { ...clearOpenEvent(state), ...settled, selectedId: select };
     }
     case "actionFailed":
       return { ...state, pending: null, actionError: event.payload.failure };
@@ -186,6 +191,19 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
         : state;
     case "accountSearchCleared":
       return { ...state, accountSearch: { query: "", matches: [], status: { type: "idle" } } };
+
+    case "renamesChecking":
+      return { ...state, renames: null, renamesStatus: { type: "loading" } };
+    case "renamesChecked":
+      return { ...state, renames: event.payload.check, renamesStatus: { type: "ready" } };
+    case "renamesCheckFailed":
+      return {
+        ...state,
+        renamesStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
 
     case "seriesLoading":
       return { ...state, seriesStatus: { type: "loading" } };
