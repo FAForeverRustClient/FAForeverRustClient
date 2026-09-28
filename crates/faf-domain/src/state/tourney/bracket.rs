@@ -281,6 +281,12 @@ pub struct TourneyMatch {
     /// confirmed. The server insists on one per newly reported game, which is
     /// what makes a bracket auditable after the fact.
     pub replay_ids: Vec<String>,
+    /// Replays of games that ended in a draw and were played again. They
+    /// score nothing, but casters and the archive want the recordings.
+    pub draw_replay_ids: Vec<String>,
+    /// The team that forfeited, when the series ended that way. A walkover
+    /// stores that side's score as -1, which is shown as FF, never as a number.
+    pub forfeit: Option<String>,
 }
 
 impl TourneyMatch {
@@ -329,6 +335,8 @@ pub struct PendingReport {
     /// Who submitted it, for the "waiting on X" line.
     pub by_name: String,
     pub replay_ids: Vec<String>,
+    /// Replays of drawn games the submitter attached, shown to whoever confirms.
+    pub draw_replay_ids: Vec<String>,
     /// Unix seconds.
     pub at: Option<u32>,
 }

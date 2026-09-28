@@ -5033,6 +5033,8 @@ export type PendingReport = {
 	/**  Who submitted it, for the "waiting on X" line. */
 	byName: string,
 	replayIds: string[],
+	/**  Replays of drawn games the submitter attached, shown to whoever confirms. */
+	drawReplayIds: string[],
 	/**  Unix seconds. */
 	at: number | null,
 };
@@ -8433,6 +8435,16 @@ export type TourneyMatch = {
 	 *  what makes a bracket auditable after the fact.
 	 */
 	replayIds: string[],
+	/**
+	 *  Replays of games that ended in a draw and were played again. They
+	 *  score nothing, but casters and the archive want the recordings.
+	 */
+	drawReplayIds: string[],
+	/**
+	 *  The team that forfeited, when the series ended that way. A walkover
+	 *  stores that side's score as -1, which is shown as FF, never as a number.
+	 */
+	forfeit: string | null,
 };
 
 /**

@@ -158,6 +158,8 @@ export function match(over: Partial<TourneyMatch> = {}): TourneyMatch {
     points: [],
     isFinal: false,
     replayIds: [],
+    drawReplayIds: [],
+    forfeit: null,
     ...over,
   };
 }

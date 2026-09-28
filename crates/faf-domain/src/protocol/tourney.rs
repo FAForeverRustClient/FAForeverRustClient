@@ -608,6 +608,8 @@ fn parse_match(value: &Value) -> Option<TourneyMatch> {
             .unwrap_or_default(),
         is_final: flag(value, "isFinal"),
         replay_ids: string_list(value, "replayIds"),
+        draw_replay_ids: string_list(value, "drawReplayIds"),
+        forfeit: id(value, "forfeit"),
     })
 }
 
@@ -623,6 +625,7 @@ fn parse_pending_report(value: Option<&Value>) -> Option<PendingReport> {
         by_team: id(pending, "byTeam")?,
         by_name: text(pending, "byName"),
         replay_ids: string_list(pending, "replayIds"),
+        draw_replay_ids: string_list(pending, "drawReplayIds"),
         at: moment(pending, "at"),
     })
 }
@@ -2445,5 +2448,32 @@ See the [rules](https://x.invalid/r)."
         assert!(plain.swiss_order.is_empty());
         assert_eq!(plain.swiss_tiebreak, SwissTiebreak::GameDiff);
         assert!(plain.swiss_beaten.is_empty());
+    }
+
+    /// A walkover names who forfeited, and drawn games keep their replays.
+    #[test]
+    fn a_match_carries_its_forfeit_and_its_drawn_replays() {
+        let entry = parse_match(&json!({
+            "id": "m1",
+            "bracket": "wb",
+            "round": 1,
+            "team1": "t1",
+            "team2": "t2",
+            "score1": -1,
+            "score2": 0,
+            "status": "done",
+            "forfeit": "t1",
+            "replayIds": ["21534001"],
+            "drawReplayIds": ["21534010"],
+            "pendingReport": {
+                "score1": 1, "score2": 0, "byTeam": "t2", "byName": "Ada",
+                "replayIds": ["1"], "drawReplayIds": ["2"],
+            },
+        }))
+        .expect("a match");
+        assert_eq!(entry.forfeit.as_deref(), Some("t1"));
+        assert_eq!(entry.draw_replay_ids, vec!["21534010"]);
+        let pending = entry.pending_report.expect("a pending report");
+        assert_eq!(pending.draw_replay_ids, vec!["2"]);
     }
 }

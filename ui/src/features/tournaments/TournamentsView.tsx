@@ -643,9 +643,15 @@ export function TournamentsView() {
           busy={busy}
           onSubmit={(report: MatchReport) => {
             // `report`, the organiser path: it takes a forfeit and an explicit
-            // winner and does not demand a replay id per game. `report_submit` is
-            // the players' own path and is not used here.
+            // winner, and replay ids without demanding one per game.
             act({ type: "decideReport", payload: { tournamentId: open.id, report } });
+            setReporting(null);
+          }}
+          onAnswer={(accept) => {
+            act({
+              type: "answerReport",
+              payload: { tournamentId: open.id, matchId: reporting.id, accept },
+            });
             setReporting(null);
           }}
           onClose={() => setReporting(null)}

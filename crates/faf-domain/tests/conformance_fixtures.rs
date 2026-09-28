@@ -683,6 +683,8 @@ fn tourney_match(
         points: Vec::new(),
         is_final: false,
         replay_ids: Vec::new(),
+        draw_replay_ids: Vec::new(),
+        forfeit: None,
     }
 }
 
@@ -2444,6 +2446,8 @@ fn tourney_report_cases() -> Vec<TourneyReportCase> {
             points: Vec::new(),
             is_final: false,
             replay_ids: Vec::new(),
+            draw_replay_ids: Vec::new(),
+            forfeit: None,
         };
     let ids = |count: usize| -> Vec<String> {
         (0..count).map(|index| format!("replay-{index}")).collect()

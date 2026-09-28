@@ -268,6 +268,25 @@ export function mayReport(event: Tourney, entry: TourneyMatch): boolean {
 }
 
 /**
+ * What a replay-id field keeps while it is typed in: digits, commas and spaces.
+ *
+ * The website's own rule. Replay ids are FAF game numbers, so a pasted
+ * `https://replay.faforever.com/21534001` or a messy list loses its junk as it
+ * arrives rather than silently on save, and the commas come out evenly spaced.
+ */
+export function cleanReplayField(text: string): string {
+  return text.replace(/[^0-9,\s]/g, "").replace(/\s*,\s*/g, ", ");
+}
+
+/** The ids in a replay-id field, in the order they were written. */
+export function replayIdsOf(text: string): string[] {
+  return text
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+}
+
+/**
  * One row of the standings table.
  *
  * Spelled out rather than imported, like `DraftRejection` above: `Standing` is

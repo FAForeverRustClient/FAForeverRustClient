@@ -517,7 +517,14 @@ function MatchCard({
             teamName(teamId)
           )}
         </span>
-        <span className="tournament-match-score mono">{score ?? ""}</span>
+        {/* A walkover stores the absent side at -1. It is not a score. */}
+        {teamId !== null && entry.forfeit === teamId && score !== null && score < 0 ? (
+          <span className="tournament-match-score mono" title={t("tournaments.match.forfeited")}>
+            {t("tournaments.match.forfeitShort")}
+          </span>
+        ) : (
+          <span className="tournament-match-score mono">{score ?? ""}</span>
+        )}
       </span>
     );
   };

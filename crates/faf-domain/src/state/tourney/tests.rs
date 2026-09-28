@@ -59,6 +59,8 @@ fn playable_match() -> TourneyMatch {
         points: Vec::new(),
         is_final: false,
         replay_ids: Vec::new(),
+        draw_replay_ids: Vec::new(),
+        forfeit: None,
     }
 }
 
@@ -218,6 +220,7 @@ fn only_the_other_side_confirms_a_submitted_score() {
             by_name: "Nuggets".into(),
             replay_ids: vec!["22334455".into()],
             at: None,
+            draw_replay_ids: Vec::new(),
         }),
         ..playable_match()
     };

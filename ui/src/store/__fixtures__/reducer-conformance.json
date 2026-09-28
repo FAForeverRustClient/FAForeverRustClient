@@ -36242,7 +36242,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -36267,7 +36269,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -36292,7 +36296,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -36459,7 +36465,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -36484,7 +36492,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -36509,7 +36519,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -36678,7 +36690,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -36703,7 +36717,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -36728,7 +36744,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -36895,7 +36913,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -36920,7 +36940,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -36945,7 +36967,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -37112,7 +37136,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -37137,7 +37163,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -37162,7 +37190,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -39059,7 +39089,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -39084,7 +39116,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -39308,7 +39342,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -39333,7 +39369,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m3",
@@ -39358,7 +39396,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m4",
@@ -39383,7 +39423,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m5",
@@ -39408,7 +39450,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -39650,7 +39694,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -39675,7 +39721,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m3",
@@ -39700,7 +39748,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m4",
@@ -39725,7 +39775,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m5",
@@ -39750,7 +39802,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -40159,7 +40213,9 @@
                 }
               ],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -40811,7 +40867,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -41022,7 +41080,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -41233,7 +41293,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -41444,7 +41506,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -41655,7 +41719,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -41866,7 +41932,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -42077,7 +42145,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -42288,7 +42358,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -42471,7 +42543,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -42696,7 +42770,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -42725,7 +42801,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -42967,7 +43045,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -42996,7 +43076,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -43234,7 +43316,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -43263,7 +43347,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -43505,7 +43591,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -43534,7 +43622,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -43765,7 +43855,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -43794,7 +43886,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -44026,7 +44120,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -44055,7 +44151,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -44286,7 +44384,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -44315,7 +44415,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -44547,7 +44649,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -44576,7 +44680,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -44808,7 +44914,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -45039,7 +45147,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -45270,7 +45380,9 @@
               "winners": [],
               "points": [],
               "isFinal": true,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -51161,7 +51273,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -51186,7 +51300,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -51211,7 +51327,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],

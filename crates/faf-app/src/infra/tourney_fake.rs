@@ -2486,6 +2486,8 @@ fn entry(id: &str, round: i32, index: i32, teams: (Option<&str>, Option<&str>)) 
         points: Vec::new(),
         is_final: false,
         replay_ids: Vec::new(),
+        draw_replay_ids: Vec::new(),
+        forfeit: None,
     }
 }
 
@@ -2785,6 +2787,7 @@ fn running_event() -> FakeEvent {
         by_name: "Alan".into(),
         replay_ids: vec!["22334455".into(), "22334456".into()],
         at: Some(1_786_215_600),
+        draw_replay_ids: Vec::new(),
     });
     event.veto = faf_domain::state::VetoConfig {
         enabled: true,

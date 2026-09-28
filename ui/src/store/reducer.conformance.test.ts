@@ -500,6 +500,8 @@ describe("tournament rule twins match Rust", () => {
       loserTo: null,
       pendingReport: null,
       replayIds: [],
+      drawReplayIds: [],
+      forfeit: null,
       veto: null,
       entrants: [],
       winners: [],
