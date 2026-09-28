@@ -7,20 +7,38 @@
   min-width: 0;
 }
 
-/* Keep the desktop vault toolbar on one line. The generic SearchPanel is
-   intentionally allowed to wrap, but the replay vault has already assigned
-   compact widths to every non-text field and should only reflow on genuinely
-   narrow windows. */
-@media (min-width: 1200px) {
-  .online-vault-search .vault-search-primary,
-  .local-vault-search .vault-search-primary {
-    flex-wrap: nowrap;
-  }
-}
+/* The vault toolbar wraps, and is allowed to (issue 358).
 
-/* The two fields worth giving the leftover width to. */
+   It used to be pinned to one line from 1200px up, on the reasoning that
+   every non-text field had a compact width of its own and the row would
+   therefore fit. Add up those widths and it does not: the row needs a little
+   over 1500px of panel before the two text fields reach even their 180px
+   basis. Between 1200px and that, `nowrap` had nowhere to take the deficit
+   from except the fields with `min-width: 0`, so on a 1600px screen the sort
+   picker read "Dat" with the arrow on top of it and the player and map boxes
+   were a couple of characters wide. It looked like a broken layout because it
+   was one.
+
+   Wrapping is the honest answer at that width, and the one the thread asked
+   for: a second row. Above roughly 1500px the bases still fit on one line and
+   nothing wraps, so the wide-screen layout is unchanged. Every field below
+   also carries a floor, so nothing shrinks to illegible on the way there. */
+
+/* The two fields worth giving the leftover width to. The floor is about
+   fifteen characters, which is a player name or a map title with enough of it
+   visible to recognise. */
 .vault-field-grow {
   flex: 1 1 180px;
+  min-width: 150px;
+}
+
+/* The sort picker had no width of its own at all, so it was the first thing
+   `nowrap` took width from. The same column as the game mode picker next to
+   it, and the same floor. */
+.vault-search-sort {
+  flex: 0 1 164px;
+  width: 164px;
+  min-width: 148px;
 }
 
 /* Keep the selector columns stable when a technical name such as
