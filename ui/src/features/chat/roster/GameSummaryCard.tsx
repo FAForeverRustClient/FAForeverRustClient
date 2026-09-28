@@ -5,11 +5,12 @@
 // Two copies would have drifted the moment either grew a field, and the second
 // place exists precisely because the first one is not always enough.
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import type { SocialState, VaultMap } from "../../../ipc/bindings";
 import { Icon } from "../../../design-system/Icon";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
+import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { openPlayerCard } from "../../../shared/playerCardActions";
 import { GLOBAL_LEADERBOARD, gameLeaderboard, leaderboardLabel } from "../../../shared/playerRatings";
 import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
@@ -18,8 +19,9 @@ import { usePlayerRatingCard } from "./PlayerRatingCard";
 import { flagSrc } from "../../../shared/countryFlags";
 import { useCountryLabel } from "../../../shared/hooks/useCountryLabel";
 import { formatGameTime } from "../../../shared/format/durations";
-import { mapPresentation } from "../../../shared/mapPresentation";
+import { mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
+import { useAppStore } from "../../../store/store";
 import {
   gameElapsedSeconds,
   gameTeamSummaries,
@@ -142,6 +144,19 @@ export function GameSummaryCard({
   const leaderboard = gameLeaderboard(presence.game.ratingType);
   const mapGen = useNamedMapGeneration(presence.game.map);
   const elapsed = gameElapsedSeconds(presence, now);
+  // The picture beside the title is 64px of map (issue 359). The Play tab has
+  // had the enlarged, zoomable one for a while, and the reader looking at a
+  // conversation is asking the same question about the same game: which map,
+  // and where do the spawns sit. Same dialog as the Maps tab's, so the zoom,
+  // the pan and the copy button are the ones already learned elsewhere.
+  const [previewOpen, setPreviewOpen] = useState(false);
+  // A generated map carries its size in its name, and the generator slice has
+  // it decoded wherever anything has asked. Nothing here asks, so this is the
+  // answer if one is already there and nothing if not.
+  const decodedSize = useAppStore(
+    (state) => state.state.mapGenerator.decoded?.[presence.game.map]?.mapSize,
+  );
+  const size = mapSize(vault, presence.game.map, decodedSize);
   // Named for what it answers rather than for the field it came from: how long
   // somebody has been playing, or how long a lobby has been sitting open.
   const elapsedLabel = presence.status === "hosting" || presence.status === "lobbying"
@@ -153,13 +168,21 @@ export function GameSummaryCard({
       <header className="chat-game-popover-head">
         {showMap && (
           <div className="chat-game-card-map-wrap">
-            <MapThumbnail
-              mapName={presence.game.map}
-              vault={vault}
-              className="chat-game-card-map"
-              placeholderClassName="chat-game-card-map chat-game-map-placeholder"
-              preferCanonicalPreview
-            />
+            <button
+              type="button"
+              className="chat-game-card-map-open"
+              onClick={() => setPreviewOpen(true)}
+              title={t("maps.preview.enlarge", { name: presentation.displayName })}
+              aria-label={t("maps.preview.enlarge", { name: presentation.displayName })}
+            >
+              <MapThumbnail
+                mapName={presence.game.map}
+                vault={vault}
+                className="chat-game-card-map"
+                placeholderClassName="chat-game-card-map chat-game-map-placeholder"
+                preferCanonicalPreview
+              />
+            </button>
             {(mapGen.canGenerate || mapGen.isGenerating) && (
               <button
                 type="button"
@@ -273,6 +296,31 @@ export function GameSummaryCard({
       ) : (
         <p className="chat-game-no-teams muted">{t("chat.game.noLineup")}</p>
       ))}
+      {previewOpen && (
+        <MapPreviewDialog
+          map={{ folderName: presence.game.map, displayName: presentation.displayName }}
+          onClose={() => setPreviewOpen(false)}
+          meta={[
+            size?.full,
+            t("chat.game.players", {
+              count: presence.game.players,
+              max: presence.game.maxPlayers,
+            }),
+          ].filter(Boolean).join(" · ")}
+        >
+          {/* The same art the thumbnail resolved, asked for large: a game's
+              map can be one the generator just made, which the vault has
+              never heard of. */}
+          <MapThumbnail
+            mapName={presence.game.map}
+            vault={vault}
+            className="chat-game-preview-zoom-img"
+            placeholderClassName="chat-game-preview-placeholder"
+            preferCanonicalPreview
+            large
+          />
+        </MapPreviewDialog>
+      )}
     </>
   );
 }
