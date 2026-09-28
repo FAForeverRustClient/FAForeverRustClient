@@ -2543,6 +2543,7 @@ fn tourney_map_match_fixture() -> TourneyMapMatchFixture {
                 image_url: String::new(),
                 description: String::new(),
                 published: true,
+                spec: None,
             };
             TourneyMapMatchCase {
                 typed: name.into(),

@@ -578,6 +578,7 @@ async fn the_map_database_takes_maps_and_hides_them_until_published() {
                 name: "  Twin Rivers  ".into(),
                 description: "8 spawns".into(),
                 published: false,
+                spec: None,
             },
         }
         .into(),
@@ -652,6 +653,7 @@ async fn publishing_a_pool_publishes_the_maps_in_it() {
                 name: "Open Palms".into(),
                 description: String::new(),
                 published: false,
+                spec: None,
             },
         }
         .into(),

@@ -1593,6 +1593,7 @@ impl TourneyPort for FakeTourney {
                 existing.name = name.to_string();
                 existing.description = map.description.trim().to_string();
                 existing.published = map.published;
+                existing.spec = map.spec.clone();
                 return Ok(());
             }
             let id = held.handle("map");
@@ -1602,6 +1603,7 @@ impl TourneyPort for FakeTourney {
                 image_url: String::new(),
                 description: map.description.trim().to_string(),
                 published: map.published,
+                spec: map.spec.clone(),
             });
             Ok(())
         })
@@ -2569,6 +2571,7 @@ fn map(id: &str, name: &str) -> TourneyMap {
         image_url: String::new(),
         description: String::new(),
         published: true,
+        spec: None,
     }
 }
 
@@ -2705,6 +2708,7 @@ fn signup_event() -> FakeEvent {
             image_url: String::new(),
             description: String::new(),
             published: true,
+            spec: None,
         },
         TourneyMap {
             id: "map2".into(),
@@ -2712,6 +2716,7 @@ fn signup_event() -> FakeEvent {
             image_url: String::new(),
             description: String::new(),
             published: true,
+            spec: None,
         },
     ];
     event.map_pools = vec![MapPool {

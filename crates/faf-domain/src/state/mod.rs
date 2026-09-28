@@ -150,6 +150,7 @@ pub use social::{
 pub use streams::{
     LiveStream, StreamPlatform, StreamsCommand, StreamsEvent, StreamsState, StreamsStatus,
 };
+pub use tourney::MapSpec;
 pub use tourney::{
     map_key, match_vault_map, Article, AuditEntry, BracketKind, BracketSide, ChatMute, ChatPost,
     ChatRoom, Competition, DraftRejection, Formation, HostingStatus, InviteStatus, MapDraft,

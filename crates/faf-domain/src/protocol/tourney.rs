@@ -26,11 +26,11 @@ use serde_json::{json, Value};
 use crate::protocol::markup::to_plain_text;
 use crate::state::{
     Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
-    ChatRoom, Competition, Currency, Formation, HostingStatus, InviteStatus, MapPool, MatchLink,
-    MatchPlan, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction, PoolAssignment,
-    PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream, TeamExit,
-    TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite, TourneyMap, TourneyMatch,
-    TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
+    ChatRoom, Competition, Currency, Formation, HostingStatus, InviteStatus, MapPool, MapSpec,
+    MatchLink, MatchPlan, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
+    PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream,
+    TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite, TourneyMap,
+    TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
@@ -655,6 +655,48 @@ fn parse_map(value: &Value) -> Option<TourneyMap> {
         published: value
             .get("published")
             .is_none_or(|_| flag(value, "published")),
+        spec: parse_map_spec(value.get("spec")),
+    })
+}
+
+/// A map's spawn information, `None` when the service sent none.
+///
+/// The wire names are the website's (`t1`, `t2`, `closed`, `closedMex`). A
+/// spec with nothing in it is `None` too, which is how the service stores it.
+fn parse_map_spec(value: Option<&Value>) -> Option<MapSpec> {
+    let value = value.filter(|held| held.is_object())?;
+    let spawns = |name: &str| -> Vec<i32> {
+        array(value, name)
+            .iter()
+            .filter_map(|entry| match entry {
+                Value::Number(number) => number.as_i64().and_then(|n| i32::try_from(n).ok()),
+                Value::String(text) => text.trim().parse().ok(),
+                _ => None,
+            })
+            .collect()
+    };
+    let spec = MapSpec {
+        team1_spawns: spawns("t1"),
+        team2_spawns: spawns("t2"),
+        closed_spawns: spawns("closed"),
+        closed_mex_spawns: spawns("closedMex"),
+        size: text(value, "size"),
+    };
+    (spec != MapSpec::default()).then_some(spec)
+}
+
+/// A map's spawn information as `map_save` takes it: the same shape it came
+/// in, or `null` for none, which the service stores as none.
+pub fn map_spec_body(spec: Option<&MapSpec>) -> Value {
+    let Some(spec) = spec else {
+        return Value::Null;
+    };
+    json!({
+        "t1": spec.team1_spawns,
+        "t2": spec.team2_spawns,
+        "closed": spec.closed_spawns,
+        "closedMex": spec.closed_mex_spawns,
+        "size": spec.size,
     })
 }
 
@@ -2319,5 +2361,46 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(body["n"], 1, "the service clamps to 1 and so does this");
         // Removal is addressed by the link, not by the child it points at.
         assert_eq!(qualifier_remove_body("q1")["id"], "q1");
+    }
+
+    /// Spawn information survives a round trip, because `map_save` overwrites
+    /// whatever is stored with whatever is sent: a save that dropped it
+    /// deleted it.
+    #[test]
+    fn a_maps_spawn_information_goes_back_the_way_it_came() {
+        let map = parse_map(&json!({
+            "id": "map1",
+            "name": "Setons",
+            "spec": { "t1": [1, 3], "t2": ["2", 4], "closed": [], "closedMex": [7], "size": "10x10" },
+        }))
+        .expect("a map");
+        let spec = map.spec.expect("the spec is read");
+        assert_eq!(spec.team1_spawns, vec![1, 3]);
+        assert_eq!(
+            spec.team2_spawns,
+            vec![2, 4],
+            "a spawn number may arrive as a string"
+        );
+        assert_eq!(spec.closed_mex_spawns, vec![7]);
+        assert_eq!(spec.size, "10x10");
+
+        let body = map_spec_body(Some(&spec));
+        assert_eq!(body["t1"], json!([1, 3]));
+        assert_eq!(body["t2"], json!([2, 4]));
+        assert_eq!(body["closed"], json!([]));
+        assert_eq!(body["closedMex"], json!([7]));
+        assert_eq!(body["size"], "10x10");
+    }
+
+    #[test]
+    fn a_map_without_spawn_information_has_none_and_sends_none() {
+        for spec in [json!(null), json!({}), json!({ "t1": [], "size": "" })] {
+            let map = parse_map(&json!({ "id": "m", "name": "x", "spec": spec })).expect("a map");
+            assert_eq!(
+                map.spec, None,
+                "an empty spec is no spec, as the service stores it"
+            );
+        }
+        assert_eq!(map_spec_body(None), Value::Null);
     }
 }

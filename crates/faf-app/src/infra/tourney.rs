@@ -768,6 +768,10 @@ impl TourneyPort for TourneyClient {
             "name": map.name.trim(),
             "description": map.description.trim(),
             "published": map.published,
+            // Always sent. `map_save` assigns the spec without checking whether
+            // one was given, so a save that left it out deleted the spawn
+            // information an organiser had entered on the website.
+            "spec": tourney::map_spec_body(map.spec.as_ref()),
         });
         // An empty id means "add"; sending it anyway would have the service look
         // for a map called "" and refuse.
