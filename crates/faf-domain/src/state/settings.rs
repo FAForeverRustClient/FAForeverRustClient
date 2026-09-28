@@ -1637,7 +1637,7 @@ pub struct GamePreferences {
     /// Off by default, and a switch rather than a given: it tells Steam, and
     /// through it your friends list, when you play. It also needs Valve's own
     /// library, Steam running, and Forged Alliance in the signed-in account's
-    /// library; without any of those it does nothing. Windows only.
+    /// library; without any of those it does nothing. Windows and Linux.
     #[serde(default)]
     pub steam_presence: bool,
 }
