@@ -148,14 +148,16 @@ pub struct Activity {
 
 impl Activity {
     pub fn to_json(&self) -> Value {
+        // No `large_text` or `small_text`. The Java client passes `""` for
+        // both, but its C library drops empty strings before they reach the
+        // wire; sent literally, Discord rejects the whole activity with 4000
+        // ("large_text" is not allowed to be empty) and the status never shows.
         let mut activity = json!({
             "state": self.state,
             "details": self.details,
             "assets": {
                 "large_image": LARGE_IMAGE_KEY,
-                "large_text": "",
                 "small_image": SMALL_IMAGE_KEY,
-                "small_text": "",
             },
         });
 
@@ -619,6 +621,18 @@ mod tests {
         assert!(json.get("secrets").is_none());
         assert!(json.get("party").is_none());
         assert!(json.get("timestamps").is_none());
+    }
+
+    #[test]
+    fn no_asset_text_is_sent_empty() {
+        // Discord refuses an empty `large_text` and drops the whole activity
+        // with it, so a status that should say "Hosting" says nothing at all.
+        let json = Activity::default().to_json();
+        let assets = json["assets"].as_object().unwrap();
+        assert_eq!(assets["large_image"], LARGE_IMAGE_KEY);
+        for (key, value) in assets {
+            assert_ne!(value, "", "{key} must be omitted rather than sent empty");
+        }
     }
 
     #[test]
