@@ -73,6 +73,24 @@ const SECTION_LABELS: Record<Section, MessageKey> = {
   log: "tournaments.section.log",
 };
 
+/**
+ * A section's name for this event.
+ *
+ * Swiss and free-for-all events have rounds, not a bracket: nothing is knocked
+ * out along a tree, everyone plays the next round against a new opponent. The
+ * website calls the section Rounds for both, and so does the stage stepper
+ * there (issue 367).
+ */
+function sectionLabel(section: Section, event: Tourney): MessageKey {
+  if (
+    section === "bracket" &&
+    (event.bracketKind === "swiss" || event.competition === "freeForAll")
+  ) {
+    return "tournaments.section.rounds";
+  }
+  return SECTION_LABELS[section];
+}
+
 interface TournamentDetailPaneProps {
   event: Tourney;
   detailLoading: boolean;
@@ -299,7 +317,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
               aria-current={candidate === section}
               onClick={() => openSection(candidate)}
             >
-              {t(SECTION_LABELS[candidate])}
+              {t(sectionLabel(candidate, event))}
               {candidate === "players" && ` (${event.playerCount})`}
               {candidate === "news" && event.news.length > 0 && ` (${event.news.length})`}
               {/* Two different counts on purpose: the news tab says how many

@@ -2870,6 +2870,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.section.overview": "Обзор",
   "tournaments.section.players": "Игроки",
   "tournaments.section.bracket": "Сетка",
+  "tournaments.section.rounds": "Раунды",
   "tournaments.section.standings": "Таблица",
   "tournaments.standings.none": "Таблица появится, когда начнутся матчи.",
   "tournaments.standings.place": "Место",

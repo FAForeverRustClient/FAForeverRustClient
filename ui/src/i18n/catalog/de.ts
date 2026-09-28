@@ -2760,6 +2760,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.section.overview": "Übersicht",
   "tournaments.section.players": "Spieler",
   "tournaments.section.bracket": "Turnierbaum",
+  "tournaments.section.rounds": "Runden",
   "tournaments.section.standings": "Tabelle",
   "tournaments.standings.none": "Die Tabelle erscheint, sobald gespielt wird.",
   "tournaments.standings.place": "Platz",

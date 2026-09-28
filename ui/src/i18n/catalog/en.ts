@@ -3058,6 +3058,7 @@ export const en = {
   "tournaments.section.overview": "Overview",
   "tournaments.section.players": "Players",
   "tournaments.section.bracket": "Bracket",
+  "tournaments.section.rounds": "Rounds",
   "tournaments.section.standings": "Standings",
   "tournaments.standings.none": "Standings appear once matches begin.",
   "tournaments.standings.place": "Place",

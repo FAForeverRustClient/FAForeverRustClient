@@ -2735,6 +2735,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "tournaments.section.overview": "Aperçu",
   "tournaments.section.players": "Joueurs",
   "tournaments.section.bracket": "Tableau",
+  "tournaments.section.rounds": "Rondes",
   "tournaments.section.standings": "Classement",
   "tournaments.standings.none": "Le classement apparaît dès que les matchs commencent.",
   "tournaments.standings.place": "Place",
