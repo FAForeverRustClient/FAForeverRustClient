@@ -557,6 +557,55 @@ async fn a_confirmed_score_advances_the_winner_and_the_state_follows() {
 }
 
 #[tokio::test]
+async fn an_organisers_forfeit_reaches_the_server() {
+    // The service used to blank the winner and the forfeit on the organiser's
+    // path as well as the player's, so a walkover entered here arrived as a
+    // bare match id and changed nothing.
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    let entry = app
+        .snapshot()
+        .tourney
+        .detail
+        .expect("the event")
+        .matches
+        .into_iter()
+        .find(|entry| {
+            entry.status == MatchStatus::Ready
+                && entry.pending_report.is_none()
+                && entry.team1.is_some()
+                && entry.team2.is_some()
+        })
+        .expect("a match ready to play");
+    let absent = entry.team1.clone().expect("a side");
+    let present = entry.team2.clone().expect("a side");
+
+    app.dispatch(
+        TourneyCommand::DecideReport {
+            tournament_id: "e9z9z".into(),
+            report: MatchReport {
+                match_id: entry.id.clone(),
+                forfeit: Some(absent),
+                ..MatchReport::default()
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let after = app.snapshot().tourney.detail.expect("still open");
+    let decided = after
+        .matches
+        .iter()
+        .find(|candidate| candidate.id == entry.id)
+        .expect("the match");
+    assert_eq!(decided.status, MatchStatus::Done);
+    assert_eq!(decided.winner.as_deref(), Some(present.as_str()));
+}
+
+#[tokio::test]
 async fn the_map_database_takes_maps_and_hides_them_until_published() {
     // The step that is easy to skip: the service hides an unpublished map from
     // players, so a pool built from unpublished maps is a round nobody can read.

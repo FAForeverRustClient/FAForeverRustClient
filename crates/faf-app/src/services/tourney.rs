@@ -1190,12 +1190,14 @@ fn trimmed_series(draft: SeriesDraft) -> SeriesDraft {
 /// The server counts them and refuses a report whose count does not match the
 /// number of new games, so an empty row the player tabbed past would cost them
 /// the submission for a reason they cannot see.
+///
+/// The winner and the forfeit are kept. They are the organiser's to send, and
+/// this used to blank them as well, so every walkover and every declared
+/// winner entered in the client reached the server as a bare match id.
 fn clean(report: MatchReport) -> MatchReport {
     MatchReport {
         replay_ids: usable(report.replay_ids),
         draw_replay_ids: usable(report.draw_replay_ids),
-        winner: None,
-        forfeit: None,
         ..report
     }
 }
