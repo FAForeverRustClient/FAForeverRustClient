@@ -41,6 +41,7 @@ import {
 import { RichLine } from "../RichLine";
 import { swissMatchRecord, swissRecordsBefore } from "../bracket/swissRecords";
 import { teamNameOf } from "../bracket/matchParts";
+import { OFFICIAL_ARTICLES, type SitePage } from "../site/sitePages";
 
 interface OverviewPanelProps {
   event: Tourney;
@@ -55,6 +56,8 @@ interface OverviewPanelProps {
    */
   onOpenSection: (section: "news" | "players" | "teams" | "matches", focus?: string) => void;
   onOpenUrl: (url: string) => void;
+  /** Open one of the site's pages: the FAQ / Rules, a series. */
+  onOpenPage?: (page: SitePage) => void;
 }
 
 /** A titled panel. Every block on this page is one, as on the website. */
@@ -99,6 +102,7 @@ export function OverviewPanel({
   assetBase,
   onOpenSection,
   onOpenUrl,
+  onOpenPage,
 }: OverviewPanelProps) {
   const { t } = useTranslation();
   const [showRules, setShowRules] = useState(false);
@@ -350,32 +354,71 @@ export function OverviewPanel({
 
       {event.seriesName !== "" && (
         <Panel title={t("tournaments.overview.series")}>
-          <p>{t("tournaments.overview.partOfSeries", { name: event.seriesName })}</p>
+          <p>
+            {t("tournaments.overview.partOfSeriesBefore")}{" "}
+            <strong className={`tournament-series-name is-${event.seriesColour}`}>{event.seriesName}</strong>{" "}
+            {t("tournaments.overview.partOfSeriesAfter")}
+          </p>
+          {onOpenPage !== undefined && event.seriesId !== null && (
+            <button
+              type="button"
+              className="tournament-link-button"
+              onClick={() => onOpenPage({ kind: "series", seriesId: event.seriesId })}
+            >
+              {t("tournaments.overview.allEditions")} {"→"}
+            </button>
+          )}
         </Panel>
       )}
 
-      {/* The rules that used to be a tab. Folded rather than deleted: they are
-          long, they are the same three articles for every official event, and
-          nobody reads them twice. */}
-      {event.category === "official" && articles.length > 0 && (
-        <Panel>
-          <button
-            type="button"
-            className="tournament-disclosure"
-            aria-expanded={showRules}
-            onClick={() => setShowRules((open) => !open)}
-          >
-            <Icon name={showRules ? "chevronDown" : "chevronRight"} size={14} />
-            {t("tournaments.overview.rules")}
-          </button>
-          {showRules &&
-            articles.map((article) => (
-              <section key={article.id} className="tournament-article">
-                <h5>{article.title}</h5>
-                <RichText source={article.body} assetBase={assetBase} />
-              </section>
-            ))}
+      {/* The website's Links panel: FAQ / Rules always, and for an official
+          event the three articles every official event is played under. They
+          open as pages of the client. Where the pages cannot be opened (no
+          way back to the list), the articles are shown folded here. */}
+      {onOpenPage !== undefined ? (
+        <Panel title={t("tournaments.links.title")}>
+          <ul className="tournament-links">
+            <li>
+              <button type="button" className="tournament-link-button" onClick={() => onOpenPage({ kind: "faq", articleId: null })}>
+                {t("tournaments.site.faq")}
+              </button>
+            </li>
+            {event.category === "official" &&
+              OFFICIAL_ARTICLES.map((link) => (
+                <li key={link.id}>
+                  <button
+                    type="button"
+                    className="tournament-link-button"
+                    onClick={() => onOpenPage({ kind: "faq", articleId: link.id })}
+                  >
+                    {t(link.label)}
+                  </button>
+                </li>
+              ))}
+          </ul>
         </Panel>
+      ) : (
+        event.category === "official" &&
+        articles.length > 0 && (
+          <Panel>
+            <button
+              type="button"
+              className="tournament-disclosure"
+              aria-expanded={showRules}
+              onClick={() => setShowRules((open) => !open)}
+            >
+              <Icon name={showRules ? "chevronDown" : "chevronRight"} size={14} />
+              {t("tournaments.overview.rules")}
+            </button>
+            {showRules &&
+              articles.map((article) => (
+                <section key={article.id} className="tournament-article">
+                  <h5>{article.title}</h5>
+                  <RichText source={article.body} assetBase={assetBase} />
+                </section>
+              ))}
+          </Panel>
+        )
       )}
 
       {statusLine(event, t) !== "" && (

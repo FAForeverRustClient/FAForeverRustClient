@@ -254,6 +254,47 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
       };
     case "presetsLoaded":
       return { ...state, presets: event.payload.presets };
+    case "siteLoading": {
+      const read = event.payload.read;
+      if (read === "hallOfFame") return { ...state, site: { ...state.site, hallStatus: { type: "loading" } } };
+      if (read === "console") return { ...state, site: { ...state.site, consoleStatus: { type: "loading" } } };
+      return state;
+    }
+    case "siteLoaded": {
+      const document = event.payload.document;
+      switch (document.type) {
+        case "account":
+          // The handle comes with the account; the signup dialog reads it.
+          return { ...state, discord: document.payload.discord, site: { ...state.site, account: document.payload } };
+        case "pending":
+          return { ...state, site: { ...state.site, pending: document.payload } };
+        case "hallOfFame":
+          return { ...state, site: { ...state.site, hall: document.payload, hallStatus: { type: "ready" } } };
+        case "console":
+          return { ...state, site: { ...state.site, console: document.payload, consoleStatus: { type: "ready" } } };
+        case "access": {
+          const { kind, status } = document.payload;
+          if (kind === "editor") return { ...state, site: { ...state.site, editorAccess: status } };
+          if (kind === "importer") return { ...state, site: { ...state.site, importerAccess: status } };
+          return {
+            ...state,
+            hosting: { loggedIn: status.loggedIn, allowed: status.allowed, pending: status.pending },
+          };
+        }
+      }
+      return state;
+    }
+    case "siteLoadFailed": {
+      const failed = {
+        type: "failed" as const,
+        payload: { reason: event.payload.reason, kind: event.payload.kind },
+      };
+      if (event.payload.read === "hallOfFame") return { ...state, site: { ...state.site, hallStatus: failed } };
+      if (event.payload.read === "console") return { ...state, site: { ...state.site, consoleStatus: failed } };
+      return state;
+    }
+    case "articleImageUploaded":
+      return { ...state, site: { ...state.site, articleImage: event.payload.url } };
     case "templateLoading":
       return { ...state, template: null, templateStatus: { type: "loading" } };
     case "templateLoaded":

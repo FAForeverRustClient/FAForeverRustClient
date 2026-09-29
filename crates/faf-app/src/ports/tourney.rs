@@ -21,10 +21,11 @@
 //!   the vetoes, the draft, the series it belongs to and the qualifiers that
 //!   feed it
 //!
-//! What stays on the website is site administration: the article pages, the
-//! hosting approvals, the category tags. Those are the site team's, not an
-//! organiser's, and a second surface for them would be a worse copy of a
-//! maintained one. The client links there instead.
+//! The site around the events is here too, since the client replaces the
+//! website: this account's roles, the pending bar, the Hall of Fame, access
+//! requests and the site administration and director console, through
+//! [`TourneyPort::site_read`] and [`TourneyPort::site_write`]. Nothing here
+//! decides who may do what: every role is the server's answer.
 
 use async_trait::async_trait;
 use faf_domain::state::{
@@ -34,6 +35,7 @@ use faf_domain::state::{
 };
 use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
+use faf_domain::state::{SiteDocument, SiteRead, SiteWrite};
 
 use super::RequestError;
 
@@ -136,6 +138,17 @@ pub trait TourneyPort: Send + Sync {
 
     /// The named formats, and whether this account may host each.
     async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError>;
+
+    /// One of the site's documents: this account, the pending bar, the Hall
+    /// of Fame, the administration console, an access status.
+    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError>;
+
+    /// One write to the site. Answers the tournament an import created and
+    /// the path of an uploaded article picture, where the write made one.
+    async fn site_write(
+        &self,
+        write: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError>;
 
     /// Withdraw from the tournament.
     ///

@@ -8,8 +8,8 @@
 //! response. Any local simulation of it would drift within one round.
 
 use faf_domain::state::{
-    CopySourceMaps, MatchReport, PoolDraft, SeedOrder, SeriesDraft, TourneyAction,
-    TourneyActionFailure, TourneyAdmin, TourneyCommand, TourneyDraft, TourneyEvent,
+    AccessKind, CopySourceMaps, MatchReport, PoolDraft, SeedOrder, SeriesDraft, SiteRead,
+    TourneyAction, TourneyActionFailure, TourneyAdmin, TourneyCommand, TourneyDraft, TourneyEvent,
 };
 
 use crate::ports::RequestError;
@@ -99,6 +99,31 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                     reason: error.to_string(),
                     kind: error.kind(),
                 }),
+            }
+        }
+
+        TourneyCommand::LoadSite { read } => load_site(read, ctx, out).await,
+
+        TourneyCommand::SiteWrite { write } => {
+            // An import names the tournament it made, which then opens; a
+            // picture upload names its path, which the editor inserts.
+            let answer = std::sync::Arc::new(std::sync::Mutex::new(None::<String>));
+            let held = answer.clone();
+            let sent = write.clone();
+            write_selecting(TourneyAction::SiteWriting, ctx, out, async move {
+                let (opened, image) = ctx.ports.tourney.site_write(&sent).await?;
+                if let Ok(mut slot) = held.lock() {
+                    *slot = image;
+                }
+                Ok(opened)
+            })
+            .await;
+            let image = answer.lock().ok().and_then(|mut slot| slot.take());
+            if let Some(url) = image {
+                out.emit(TourneyEvent::ArticleImageUploaded { url });
+            }
+            if write.touches_console() {
+                reload_site(ctx, out).await;
             }
         }
 
@@ -374,13 +399,18 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             Err(error) => tracing::warn!(%error, "could not read the hosting status"),
         },
 
-        TourneyCommand::LoadProfile => match ctx.ports.tourney.profile().await {
-            Ok(discord) => out.emit(TourneyEvent::DiscordLoaded { discord }),
-            // Silent, like the hosting status: not knowing the handle only means
-            // the signup dialog opens on an empty field, and saying so would be
-            // an error banner about something nobody asked for.
-            Err(error) => tracing::warn!(%error, "could not read the tournament profile"),
-        },
+        TourneyCommand::LoadProfile => {
+            // The whole account now, not the handle alone: its roles decide
+            // which of the site's pages and consoles are offered.
+            load_site(SiteRead::Account, ctx, out).await;
+            match ctx.ports.tourney.profile().await {
+                Ok(discord) => out.emit(TourneyEvent::DiscordLoaded { discord }),
+                // Silent, like the hosting status: not knowing the handle only means
+                // the signup dialog opens on an empty field, and saying so would be
+                // an error banner about something nobody asked for.
+                Err(error) => tracing::warn!(%error, "could not read the tournament profile"),
+            }
+        }
 
         TourneyCommand::SetDiscord { handle } => {
             match ctx.ports.tourney.set_discord(&handle).await {
@@ -1855,6 +1885,54 @@ async fn write_series(
             }
         }
         Err(error) => out.emit(failed(action, &error)),
+    }
+}
+
+/// Read one of the site's documents. The account and the pending bar load
+/// silently, like the hosting status; the pages say when they could not.
+async fn load_site(read: SiteRead, ctx: &ServiceCtx, out: &EventSink) {
+    out.emit(TourneyEvent::SiteLoading { read });
+    match ctx.ports.tourney.site_read(read).await {
+        Ok(document) => out.emit(TourneyEvent::SiteLoaded { document }),
+        Err(error) => {
+            tracing::warn!(%error, ?read, "could not read the tournament site");
+            out.emit(TourneyEvent::SiteLoadFailed {
+                read,
+                reason: error.to_string(),
+                kind: error.kind(),
+            });
+        }
+    }
+}
+
+/// After a site write: the account and the pending bar always, the hosting
+/// status, and the console and the open series where they are on screen.
+async fn reload_site(ctx: &ServiceCtx, out: &EventSink) {
+    load_site(SiteRead::Account, ctx, out).await;
+    load_site(SiteRead::Pending, ctx, out).await;
+    load_site(
+        SiteRead::Access {
+            kind: AccessKind::Host,
+        },
+        ctx,
+        out,
+    )
+    .await;
+    let (console, series) = out.with_state(|state| {
+        (
+            state.tourney.site.console.is_some(),
+            state
+                .tourney
+                .open_series
+                .as_ref()
+                .map(|series| series.id.clone()),
+        )
+    });
+    if console {
+        load_site(SiteRead::Console, ctx, out).await;
+    }
+    if let Some(series) = series {
+        open_series(&series, ctx, out).await;
     }
 }
 

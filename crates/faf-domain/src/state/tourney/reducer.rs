@@ -226,6 +226,50 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
             }
         }
         TourneyEvent::PresetsLoaded { presets } => state.presets = presets.clone(),
+        TourneyEvent::SiteLoading { read } => match read {
+            SiteRead::HallOfFame => state.site.hall_status = TourneyLoadStatus::Loading,
+            SiteRead::Console => state.site.console_status = TourneyLoadStatus::Loading,
+            _ => {}
+        },
+        TourneyEvent::SiteLoaded { document } => match document {
+            SiteDocument::Account(account) => {
+                state.site.account = account.clone();
+                // The handle comes with the account; the signup dialog reads it.
+                state.discord = account.discord.clone();
+            }
+            SiteDocument::Pending(pending) => state.site.pending = pending.clone(),
+            SiteDocument::HallOfFame(hall) => {
+                state.site.hall = Some(hall.clone());
+                state.site.hall_status = TourneyLoadStatus::Ready;
+            }
+            SiteDocument::Console(console) => {
+                state.site.console = Some(console.clone());
+                state.site.console_status = TourneyLoadStatus::Ready;
+            }
+            SiteDocument::Access { kind, status } => match kind {
+                AccessKind::Editor => state.site.editor_access = status.clone(),
+                AccessKind::Importer => state.site.importer_access = status.clone(),
+                AccessKind::Host => {
+                    state.hosting = HostingStatus {
+                        logged_in: status.logged_in,
+                        allowed: status.allowed,
+                        pending: status.pending,
+                    }
+                }
+            },
+        },
+        TourneyEvent::SiteLoadFailed { read, reason, kind } => {
+            let failed = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            };
+            match read {
+                SiteRead::HallOfFame => state.site.hall_status = failed,
+                SiteRead::Console => state.site.console_status = failed,
+                _ => {}
+            }
+        }
+        TourneyEvent::ArticleImageUploaded { url } => state.site.article_image = Some(url.clone()),
         TourneyEvent::TemplateLoading => {
             state.template = None;
             state.template_status = TourneyLoadStatus::Loading;

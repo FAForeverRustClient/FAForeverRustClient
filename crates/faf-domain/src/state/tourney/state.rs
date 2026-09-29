@@ -49,6 +49,9 @@ pub enum TourneyAction {
     AddingPlayer,
     /// Saving this account's own Discord handle.
     SavingProfile,
+    /// A write to the site around the tournaments: a request, a decision in
+    /// the console, an article, an import.
+    SiteWriting,
     #[serde(rename_all = "camelCase")]
     AnsweringSignup {
         player_id: String,
@@ -291,6 +294,9 @@ pub struct TourneyState {
     /// The named formats, for the create form. Empty until asked, and where
     /// the service offers none.
     pub presets: Vec<TourneyPreset>,
+    /// The site around the tournaments: this account's roles, the pending
+    /// bar, the Hall of Fame and the console.
+    pub site: TourneySite,
     /// The event the create form is being filled from, once read.
     pub template: Option<Box<Tourney>>,
     pub template_status: TourneyLoadStatus,

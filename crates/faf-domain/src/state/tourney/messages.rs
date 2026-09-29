@@ -208,6 +208,10 @@ pub enum TourneyAdmin {
     /// save would quietly undo them.
     #[serde(rename_all = "camelCase")]
     SetVeto { config: VetoConfig },
+    /// Tag the event official or community (`set_category`). Site admins
+    /// only; organisers choose it once, at creation.
+    #[serde(rename_all = "camelCase")]
+    SetCategory { category: TourneyCategory },
     /// Hide a map's identity from players until it is played, or show it
     /// again (`map_secret`). No map id means every map in the database.
     #[serde(rename_all = "camelCase")]
@@ -266,6 +270,17 @@ pub enum TourneyCommand {
     LoadCopySources,
     /// The named formats a director may host (`presets`).
     LoadPresets,
+    /// Read one of the site's documents: the account, the pending bar, the
+    /// Hall of Fame, the console, or an access status.
+    #[serde(rename_all = "camelCase")]
+    LoadSite {
+        read: SiteRead,
+    },
+    /// One write to the site, then a reload of what it touched.
+    #[serde(rename_all = "camelCase")]
+    SiteWrite {
+        write: SiteWrite,
+    },
     /// Another event's whole document, to fill the create form from
     /// ("Fill from this"), read without opening it.
     #[serde(rename_all = "camelCase")]
@@ -942,6 +957,21 @@ pub enum TourneyEvent {
     },
     PresetsLoaded {
         presets: Vec<TourneyPreset>,
+    },
+    SiteLoading {
+        read: SiteRead,
+    },
+    SiteLoaded {
+        document: SiteDocument,
+    },
+    SiteLoadFailed {
+        read: SiteRead,
+        reason: String,
+        kind: RequestFailureKind,
+    },
+    /// An article picture was stored; its path, for the editor to insert.
+    ArticleImageUploaded {
+        url: String,
     },
     TemplateLoading,
     TemplateLoaded {

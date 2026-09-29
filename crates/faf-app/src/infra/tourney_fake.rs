@@ -32,6 +32,7 @@ use faf_domain::state::{
 use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
+use faf_domain::state::{PendingSummary, SiteDocument, SiteRead, SiteWrite, TourneyAccount};
 
 use crate::ports::{RequestError, TourneyPort};
 
@@ -1194,6 +1195,33 @@ impl TourneyPort for FakeTourney {
         ))
     }
 
+    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError> {
+        // The account is the one the fixture events belong to, with no role
+        // on the site; nothing else about the site is simulated offline.
+        match read {
+            SiteRead::Account => Ok(SiteDocument::Account(TourneyAccount {
+                logged_in: true,
+                faf_id: Some(1),
+                faf_name: "OfflinePlayer".into(),
+                allowed: true,
+                ..TourneyAccount::default()
+            })),
+            SiteRead::Pending => Ok(SiteDocument::Pending(PendingSummary::default())),
+            _ => Err(RequestError::rejected(
+                "The tournament site is not available offline",
+            )),
+        }
+    }
+
+    async fn site_write(
+        &self,
+        _: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError> {
+        Err(RequestError::rejected(
+            "The tournament site is not available offline",
+        ))
+    }
+
     async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
         // None offline: the create form then simply offers no preset.
         Ok(Vec::new())
@@ -1842,6 +1870,7 @@ impl TourneyPort for FakeTourney {
             // The offline account organises every fixture event, so it manages
             // every series they could reach.
             can_edit: true,
+            bans: Vec::new(),
         })
     }
 
@@ -2301,6 +2330,9 @@ fn edition_of(event: &Tourney) -> SeriesEdition {
             .as_deref()
             .map(|id| team_name(event, id))
             .unwrap_or_default(),
+        can_manage: true,
+        signup_opens_at: event.signup_opens_at,
+        event_days: event.event_days.clone(),
     }
 }
 

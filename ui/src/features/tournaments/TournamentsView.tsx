@@ -17,6 +17,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type {
   AppCommand,
+  SiteWrite,
   BracketConfig,
   MatchReport,
   SeedOrder,
@@ -36,6 +37,11 @@ import { ScoreSubmitDialog } from "./bracket/ScoreSubmitDialog";
 import { TournamentDetailPane } from "./detail/TournamentDetailPane";
 import { TournamentForm } from "./manage/TournamentForm";
 import { SignUpDialog } from "./SignUpDialog";
+import { HostRequest, PendingBar, SiteNav } from "./site/SiteChrome";
+import { AccessPage, FaqPage, HallOfFamePage } from "./site/SitePageViews";
+import { SeriesIndex, SeriesPage } from "./site/SeriesPages";
+import { ConsolePage } from "./site/ConsolePage";
+import type { SitePage } from "./site/sitePages";
 import {
   countdownTo,
   formatDay,
@@ -107,6 +113,10 @@ export function TournamentsView() {
   /** The event whose signup dialog is open, if any. */
   const [entering, setEntering] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
+  /** Which of the site's pages is showing; the list and the detail by default. */
+  const [page, setPage] = useState<SitePage>({ kind: "events" });
+  /** A section the pending bar asked the detail to open. */
+  const [jump, setJump] = useState<{ section: string; nonce: number } | null>(null);
   /** How many of each archive year are drawn, keyed by year (0 for undated). */
   const [pastShown, setPastShown] = useState<Record<number, number>>({});
   // A countdown drawn once is wrong within the minute, and this tab is one
@@ -132,6 +142,36 @@ export function TournamentsView() {
       send({ type: "loadProfile" });
     }
   }, []);
+
+  useEffect(() => {
+    const poll = () => send({ type: "loadSite", payload: { read: "pending" } });
+    poll();
+    const timer = window.setInterval(poll, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const site = state.site;
+  const siteWrite = (write: SiteWrite) => send({ type: "siteWrite", payload: { write } });
+  /** Open a page, reading what it shows as it opens. */
+  const openPage = (next: SitePage) => {
+    setPage(next);
+    if (next.kind === "hall") send({ type: "loadSite", payload: { read: "hallOfFame" } });
+    if (next.kind === "console") send({ type: "loadSite", payload: { read: "console" } });
+    if (next.kind === "faq") send({ type: "loadArticles" });
+    if (next.kind === "access") {
+      send({ type: "loadSite", payload: { read: { access: { kind: next.access } } } });
+    }
+    if (next.kind === "series") {
+      send({ type: "loadSeries" });
+      if (next.seriesId !== null) send({ type: "openSeries", payload: { seriesId: next.seriesId } });
+      else send({ type: "closeSeries" });
+    }
+  };
+  const openEventPage = (tournamentId: string, section?: string) => {
+    setPage({ kind: "events" });
+    send({ type: "select", payload: { tournamentId } });
+    if (section !== undefined) setJump({ section, nonce: Date.now() });
+  };
 
   /**
    * Ask for FAF's map catalogue, once, and only when something needs it.
@@ -334,6 +374,7 @@ export function TournamentsView() {
               )}
             </span>
           )}
+          <HostRequest hosting={state.hosting} busy={busy} onWrite={siteWrite} />
           {/* The same deployment the tab reads from, opened in the browser.
               The tournament site is not going away: it works on a phone, which
               is where a good share of sign-ups happen, and it is where events
@@ -352,6 +393,16 @@ export function TournamentsView() {
           </Button>
         </div>
       </header>
+
+      <SiteNav page={page} account={site.account} busy={busy} onPage={openPage} onWrite={siteWrite} />
+      <PendingBar
+        pending={site.pending}
+        openId={page.kind === "events" ? state.selectedId : null}
+        inConsole={page.kind === "console"}
+        onGo={(tournamentId, section) => openEventPage(tournamentId, section)}
+        onReview={() => openPage({ kind: "console" })}
+        onDismiss={() => siteWrite({ type: "dismissRequests" })}
+      />
 
       {state.status.type === "failed" && (
         <div className="surface-error tournaments-error">
@@ -375,15 +426,85 @@ export function TournamentsView() {
         </div>
       )}
 
-      {loading && state.events.length === 0 && (
+      {page.kind === "events" && loading && state.events.length === 0 && (
         <div className="surface tournaments-state muted">{t("tournaments.loading")}</div>
       )}
 
-      {state.status.type === "ready" && state.events.length === 0 && (
+      {page.kind === "events" && state.status.type === "ready" && state.events.length === 0 && (
         <div className="surface tournaments-state muted">{t("tournaments.none")}</div>
       )}
 
-      {state.events.length > 0 && (
+      {page.kind === "hall" && <HallOfFamePage hall={site.hall} status={site.hallStatus} />}
+      {page.kind === "faq" && (
+        <FaqPage
+          articles={state.articles}
+          articleId={page.articleId}
+          assetBase={state.assetBase}
+          siteAdmin={site.account.siteAdmin}
+          onOpen={(articleId) => setPage({ kind: "faq", articleId })}
+        />
+      )}
+      {page.kind === "access" && (
+        <AccessPage
+          access={page.access}
+          status={page.access === "editor" ? site.editorAccess : site.importerAccess}
+          name={site.account.fafName}
+          busy={busy}
+          onWrite={siteWrite}
+          onImport={() => setPage({ kind: "events" })}
+        />
+      )}
+      {page.kind === "console" && (
+        <ConsolePage
+          console={site.console}
+          status={site.consoleStatus}
+          account={site.account}
+          assetBase={state.assetBase}
+          articleImage={site.articleImage}
+          accountSearch={state.accountSearch}
+          busy={busy}
+          onSearchAccounts={(query) => act({ type: "searchAccounts", payload: { query } })}
+          onWrite={siteWrite}
+        />
+      )}
+      {page.kind === "series" &&
+        (page.seriesId !== null && state.openSeries !== null && state.openSeries.id === page.seriesId ? (
+          <SeriesPage
+            key={state.openSeries.id}
+            series={state.openSeries}
+            assetBase={state.assetBase}
+            busy={busy}
+            accountSearch={state.accountSearch}
+            onSearchAccounts={(query) => act({ type: "searchAccounts", payload: { query } })}
+            onBack={() => openPage({ kind: "series", seriesId: null })}
+            onOpenEvent={(tournamentId) => openEventPage(tournamentId)}
+            onWrite={siteWrite}
+            onSave={(draft) =>
+              act({ type: "saveSeries", payload: { draft: { id: page.seriesId ?? "", ...draft } } })
+            }
+            onDelete={() => {
+              act({ type: "deleteSeries", payload: { seriesId: page.seriesId ?? "" } });
+              openPage({ kind: "series", seriesId: null });
+            }}
+          />
+        ) : page.seriesId !== null ? (
+          <p className="muted">{t("tournaments.loading")}</p>
+        ) : (
+          <SeriesIndex
+            series={state.series}
+            mayCreate={site.account.allowed || site.account.siteAdmin || site.account.director}
+            busy={busy}
+            onOpen={(seriesId) => openPage({ kind: "series", seriesId })}
+            onCreate={(name) =>
+              act({
+                type: "saveSeries",
+                payload: { draft: { id: "", name, description: "", colour: "plain", category: null } },
+              })
+            }
+          />
+        ))}
+
+      {page.kind === "events" && state.events.length > 0 && (
         <div className="tournaments-body">
           <div className="tournaments-list">
             {LIVE_GROUPS.map(([group, heading]) =>
@@ -449,6 +570,9 @@ export function TournamentsView() {
           {open !== null ? (
             <TournamentDetailPane
               event={open}
+              onOpenPage={openPage}
+              jump={jump}
+              siteAdmin={site.account.siteAdmin}
               detailLoading={state.detailStatus.type === "loading"}
               series={state.series}
               events={state.events}

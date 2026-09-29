@@ -595,6 +595,48 @@
         "type": "idle"
       },
       "presets": [],
+      "site": {
+        "account": {
+          "loggedIn": false,
+          "oauth": false,
+          "fafId": null,
+          "fafName": "",
+          "discord": "",
+          "editor": false,
+          "importer": false,
+          "director": false,
+          "siteAdmin": false,
+          "siteAdminAccount": false,
+          "adminStandDown": false,
+          "allowed": false
+        },
+        "pending": {
+          "items": [],
+          "requests": null,
+          "newRequests": null
+        },
+        "hall": null,
+        "hallStatus": {
+          "type": "idle"
+        },
+        "console": null,
+        "consoleStatus": {
+          "type": "idle"
+        },
+        "editorAccess": {
+          "oauth": false,
+          "loggedIn": false,
+          "allowed": false,
+          "pending": false
+        },
+        "importerAccess": {
+          "oauth": false,
+          "loggedIn": false,
+          "allowed": false,
+          "pending": false
+        },
+        "articleImage": null
+      },
       "template": null,
       "templateStatus": {
         "type": "idle"
@@ -7135,6 +7177,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -7217,6 +7301,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -7296,6 +7422,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -7377,6 +7545,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "loading"
             },
@@ -7454,6 +7664,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "loading"
@@ -7809,6 +8061,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -7888,6 +8182,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "loading"
@@ -8517,6 +8853,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -8870,6 +9248,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -9219,6 +9639,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"
@@ -9845,6 +10307,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -10337,6 +10841,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"
@@ -10839,6 +11385,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -11324,6 +11912,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"
@@ -11818,6 +12448,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -12309,6 +12981,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"
@@ -12817,6 +13531,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -13319,6 +14075,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -13674,6 +14472,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"
@@ -14031,6 +14871,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"
@@ -14398,6 +15280,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"
@@ -14895,6 +15819,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -15256,6 +16222,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -15338,6 +16346,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -15452,6 +16502,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -15529,6 +16621,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -15617,6 +16751,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -15715,6 +16891,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -15792,6 +17010,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -15877,6 +17137,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -15951,6 +17253,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -16031,6 +17375,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -16115,6 +17501,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -16189,6 +17617,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -16294,6 +17764,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -16381,6 +17893,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -16503,6 +18057,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -16590,6 +18186,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -16686,6 +18324,1560 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the site: the account, the pending bar, the Hall of Fame and the console",
+      "steps": [
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "siteLoaded",
+              "payload": {
+                "document": {
+                  "type": "account",
+                  "payload": {
+                    "loggedIn": true,
+                    "oauth": true,
+                    "fafId": 7,
+                    "fafName": "Nuggets",
+                    "discord": "n#1",
+                    "editor": false,
+                    "importer": false,
+                    "director": true,
+                    "siteAdmin": false,
+                    "siteAdminAccount": false,
+                    "adminStandDown": false,
+                    "allowed": true
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "siteLoaded",
+              "payload": {
+                "document": {
+                  "type": "pending",
+                  "payload": {
+                    "items": [
+                      {
+                        "tournamentId": "e1",
+                        "tournamentName": "Cup",
+                        "kind": "requests",
+                        "tab": "players",
+                        "text": "3 signup requests await your review",
+                        "count": 3
+                      }
+                    ],
+                    "requests": 2,
+                    "newRequests": null
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "siteLoading",
+              "payload": {
+                "read": "hallOfFame"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "loading"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "siteLoaded",
+              "payload": {
+                "document": {
+                  "type": "hallOfFame",
+                  "payload": {
+                    "players": [
+                      {
+                        "fafId": 5,
+                        "name": "Ada",
+                        "wins": 2,
+                        "entered": 4
+                      }
+                    ],
+                    "teams": []
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": {
+                "players": [
+                  {
+                    "entered": 4,
+                    "fafId": 5,
+                    "name": "Ada",
+                    "wins": 2
+                  }
+                ],
+                "teams": []
+              },
+              "hallStatus": {
+                "type": "ready"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "siteLoading",
+              "payload": {
+                "read": "console"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "loading"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": {
+                "players": [
+                  {
+                    "entered": 4,
+                    "fafId": 5,
+                    "name": "Ada",
+                    "wins": 2
+                  }
+                ],
+                "teams": []
+              },
+              "hallStatus": {
+                "type": "ready"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "siteLoadFailed",
+              "payload": {
+                "read": "console",
+                "reason": "Site admin, director, or approved editor only",
+                "kind": "rejected"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "payload": {
+                  "kind": "rejected",
+                  "reason": "Site admin, director, or approved editor only"
+                },
+                "type": "failed"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": {
+                "players": [
+                  {
+                    "entered": 4,
+                    "fafId": 5,
+                    "name": "Ada",
+                    "wins": 2
+                  }
+                ],
+                "teams": []
+              },
+              "hallStatus": {
+                "type": "ready"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "siteLoaded",
+              "payload": {
+                "document": {
+                  "type": "console",
+                  "payload": {
+                    "role": "editor",
+                    "oauth": false,
+                    "logs": [],
+                    "hostRequests": [],
+                    "hostAllowed": [],
+                    "editorRequests": [],
+                    "editorAllowed": [],
+                    "importerRequests": [],
+                    "importerAllowed": [],
+                    "archived": [],
+                    "articles": [],
+                    "directors": [],
+                    "siteAdmins": [],
+                    "me": null,
+                    "bans": []
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": {
+                "archived": [],
+                "articles": [],
+                "bans": [],
+                "directors": [],
+                "editorAllowed": [],
+                "editorRequests": [],
+                "hostAllowed": [],
+                "hostRequests": [],
+                "importerAllowed": [],
+                "importerRequests": [],
+                "logs": [],
+                "me": null,
+                "oauth": false,
+                "role": "editor",
+                "siteAdmins": []
+              },
+              "consoleStatus": {
+                "type": "ready"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": {
+                "players": [
+                  {
+                    "entered": 4,
+                    "fafId": 5,
+                    "name": "Ada",
+                    "wins": 2
+                  }
+                ],
+                "teams": []
+              },
+              "hallStatus": {
+                "type": "ready"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "siteLoaded",
+              "payload": {
+                "document": {
+                  "type": "access",
+                  "payload": {
+                    "kind": "editor",
+                    "status": {
+                      "oauth": true,
+                      "loggedIn": true,
+                      "allowed": false,
+                      "pending": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": {
+                "archived": [],
+                "articles": [],
+                "bans": [],
+                "directors": [],
+                "editorAllowed": [],
+                "editorRequests": [],
+                "hostAllowed": [],
+                "hostRequests": [],
+                "importerAllowed": [],
+                "importerRequests": [],
+                "logs": [],
+                "me": null,
+                "oauth": false,
+                "role": "editor",
+                "siteAdmins": []
+              },
+              "consoleStatus": {
+                "type": "ready"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": true,
+                "oauth": true,
+                "pending": true
+              },
+              "hall": {
+                "players": [
+                  {
+                    "entered": 4,
+                    "fafId": 5,
+                    "name": "Ada",
+                    "wins": 2
+                  }
+                ],
+                "teams": []
+              },
+              "hallStatus": {
+                "type": "ready"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "siteLoaded",
+              "payload": {
+                "document": {
+                  "type": "access",
+                  "payload": {
+                    "kind": "host",
+                    "status": {
+                      "oauth": true,
+                      "loggedIn": true,
+                      "allowed": true,
+                      "pending": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": true,
+              "loggedIn": true,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": {
+                "archived": [],
+                "articles": [],
+                "bans": [],
+                "directors": [],
+                "editorAllowed": [],
+                "editorRequests": [],
+                "hostAllowed": [],
+                "hostRequests": [],
+                "importerAllowed": [],
+                "importerRequests": [],
+                "logs": [],
+                "me": null,
+                "oauth": false,
+                "role": "editor",
+                "siteAdmins": []
+              },
+              "consoleStatus": {
+                "type": "ready"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": true,
+                "oauth": true,
+                "pending": true
+              },
+              "hall": {
+                "players": [
+                  {
+                    "entered": 4,
+                    "fafId": 5,
+                    "name": "Ada",
+                    "wins": 2
+                  }
+                ],
+                "teams": []
+              },
+              "hallStatus": {
+                "type": "ready"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "articleImageUploaded",
+              "payload": {
+                "url": "/article-images/a.png"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": true,
+              "loggedIn": true,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": "/article-images/a.png",
+              "console": {
+                "archived": [],
+                "articles": [],
+                "bans": [],
+                "directors": [],
+                "editorAllowed": [],
+                "editorRequests": [],
+                "hostAllowed": [],
+                "hostRequests": [],
+                "importerAllowed": [],
+                "importerRequests": [],
+                "logs": [],
+                "me": null,
+                "oauth": false,
+                "role": "editor",
+                "siteAdmins": []
+              },
+              "consoleStatus": {
+                "type": "ready"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": true,
+                "oauth": true,
+                "pending": true
+              },
+              "hall": {
+                "players": [
+                  {
+                    "entered": 4,
+                    "fafId": 5,
+                    "name": "Ada",
+                    "wins": 2
+                  }
+                ],
+                "teams": []
+              },
+              "hallStatus": {
+                "type": "ready"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
             },
             "status": {
               "type": "idle"
@@ -17064,6 +20256,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -17285,6 +20519,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -17647,6 +20923,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -18005,6 +21323,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -18231,6 +21591,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -18315,6 +21717,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -18398,6 +21842,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -18472,6 +21958,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -18567,6 +22095,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -18649,6 +22219,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -18744,6 +22356,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -18826,6 +22480,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -18918,6 +22614,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -18997,6 +22735,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -19081,6 +22861,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -19155,6 +22977,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -19258,6 +23122,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -19352,6 +23258,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -19433,6 +23381,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -19512,6 +23502,48 @@
             "series": [],
             "seriesStatus": {
               "type": "loading"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -19619,6 +23651,48 @@
             "seriesStatus": {
               "type": "ready"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -19655,10 +23729,14 @@
                       "eventDate": 1786212000,
                       "abandoned": false,
                       "championTeamId": "t1",
-                      "champion": "Ada"
+                      "champion": "Ada",
+                      "canManage": true,
+                      "signupOpensAt": null,
+                      "eventDays": []
                     }
                   ],
-                  "canEdit": true
+                  "canEdit": true,
+                  "bans": []
                 }
               }
             }
@@ -19701,6 +23779,7 @@
             },
             "openRoomId": null,
             "openSeries": {
+              "bans": [],
               "canEdit": true,
               "category": "official",
               "colour": "blue",
@@ -19709,15 +23788,18 @@
                 {
                   "abandoned": false,
                   "bracketKind": "single",
+                  "canManage": true,
                   "category": "official",
                   "champion": "Ada",
                   "championTeamId": "t1",
                   "competition": "team",
                   "eventDate": 1786212000,
+                  "eventDays": [],
                   "id": "e1",
                   "name": "Spring Cup",
                   "playerCount": 4,
                   "published": true,
+                  "signupOpensAt": null,
                   "status": "finished",
                   "teamCount": 4,
                   "teamSize": 1
@@ -19760,6 +23842,48 @@
             ],
             "seriesStatus": {
               "type": "ready"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -19867,6 +23991,48 @@
             "seriesStatus": {
               "type": "ready"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "idle"
             },
@@ -19903,10 +24069,14 @@
                       "eventDate": 1786212000,
                       "abandoned": false,
                       "championTeamId": "t1",
-                      "champion": "Ada"
+                      "champion": "Ada",
+                      "canManage": true,
+                      "signupOpensAt": null,
+                      "eventDays": []
                     }
                   ],
-                  "canEdit": true
+                  "canEdit": true,
+                  "bans": []
                 }
               }
             }
@@ -19949,6 +24119,7 @@
             },
             "openRoomId": null,
             "openSeries": {
+              "bans": [],
               "canEdit": true,
               "category": "official",
               "colour": "blue",
@@ -19957,15 +24128,18 @@
                 {
                   "abandoned": false,
                   "bracketKind": "single",
+                  "canManage": true,
                   "category": "official",
                   "champion": "Ada",
                   "championTeamId": "t1",
                   "competition": "team",
                   "eventDate": 1786212000,
+                  "eventDays": [],
                   "id": "e1",
                   "name": "Spring Cup",
                   "playerCount": 4,
                   "published": true,
+                  "signupOpensAt": null,
                   "status": "finished",
                   "teamCount": 4,
                   "teamSize": 1
@@ -20008,6 +24182,48 @@
             ],
             "seriesStatus": {
               "type": "ready"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -20080,6 +24296,7 @@
             },
             "openRoomId": null,
             "openSeries": {
+              "bans": [],
               "canEdit": true,
               "category": "official",
               "colour": "blue",
@@ -20088,15 +24305,18 @@
                 {
                   "abandoned": false,
                   "bracketKind": "single",
+                  "canManage": true,
                   "category": "official",
                   "champion": "Ada",
                   "championTeamId": "t1",
                   "competition": "team",
                   "eventDate": 1786212000,
+                  "eventDays": [],
                   "id": "e1",
                   "name": "Spring Cup",
                   "playerCount": 4,
                   "published": true,
+                  "signupOpensAt": null,
                   "status": "finished",
                   "teamCount": 4,
                   "teamSize": 1
@@ -20139,6 +24359,48 @@
             ],
             "seriesStatus": {
               "type": "ready"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -20228,6 +24490,48 @@
             ],
             "seriesStatus": {
               "type": "ready"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -20325,6 +24629,48 @@
                 "reason": "no route to host"
               },
               "type": "failed"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "idle"
@@ -20959,6 +25305,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -21584,6 +25972,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -22111,6 +26541,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -22619,6 +27091,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -23123,6 +27637,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"
@@ -23655,6 +28211,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -24175,6 +28773,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -24693,6 +29333,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"
@@ -25236,6 +29918,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -25756,6 +30480,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -26265,6 +31031,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"
@@ -26776,6 +31584,48 @@
             "seriesStatus": {
               "type": "idle"
             },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
             "status": {
               "type": "ready"
             },
@@ -27128,6 +31978,48 @@
             "series": [],
             "seriesStatus": {
               "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
             },
             "status": {
               "type": "ready"

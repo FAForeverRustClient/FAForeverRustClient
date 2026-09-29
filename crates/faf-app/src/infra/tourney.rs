@@ -28,6 +28,7 @@ use faf_domain::state::{
 };
 use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
+use faf_domain::state::{SiteDocument, SiteRead, SiteWrite};
 use serde_json::{json, Value};
 
 use crate::infra::env_or;
@@ -358,6 +359,25 @@ impl TourneyPort for TourneyClient {
     async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
         let document = self.get("my_tournaments", &[]).await?;
         Ok(tourney::parse_copy_sources(&document))
+    }
+
+    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError> {
+        let (path, post) = tourney::site_read_path(read);
+        let document = if post {
+            self.post(path, json!({})).await?
+        } else {
+            self.get(path, &[]).await?
+        };
+        Ok(tourney::parse_site_document(read, &document))
+    }
+
+    async fn site_write(
+        &self,
+        write: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError> {
+        let (path, body) = tourney::site_request(write);
+        let document = self.post(&path, body).await?;
+        Ok(tourney::parse_site_answer(write, &document))
     }
 
     async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {

@@ -43,6 +43,7 @@ import type {
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { AuditLogPanel } from "./AuditLogPanel";
+import type { SitePage } from "../site/sitePages";
 import { PublishBanner } from "./PublishBanner";
 import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
 import { PinButton, PinnedChat } from "./PinnedChat";
@@ -144,6 +145,15 @@ function sectionLabel(section: Section, event: Tourney): MessageKey {
 
 interface TournamentDetailPaneProps {
   event: Tourney;
+  /** This account is a site admin with its powers on. */
+  siteAdmin?: boolean;
+  /** Open one of the site's pages, from the Overview's links. */
+  onOpenPage?: (page: SitePage) => void;
+  /**
+   * A section to open, from outside: the pending bar's "Go". The nonce makes
+   * a second request for the same section open it again.
+   */
+  jump?: { section: string; nonce: number } | null;
   detailLoading: boolean;
   /** Every series, for the organiser's picker. Loaded when Manage is opened. */
   series: TourneySeries[];
@@ -390,6 +400,14 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     // would ask again on every keystroke anywhere in the pane.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsVault, event.id]);
+
+  useEffect(() => {
+    if (props.jump == null) return;
+    const wanted = props.jump.section as Section;
+    if (wanted in SECTION_LABELS) openSection(wanted);
+    // Only a new jump opens a section; everything else the reader chose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.jump?.nonce]);
 
   const openSection = (next: Section) => {
     setSection(next);
@@ -694,6 +712,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           assetBase={props.assetBase}
           onOpenSection={openAndFocus}
           onOpenUrl={props.onOpenUrl}
+          onOpenPage={props.onOpenPage}
         />
       )}
 
@@ -855,6 +874,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
 
       {section === "manage" && (
         <ManagePanel
+          siteAdmin={props.siteAdmin}
           event={event}
           vault={props.vault}
           vaultStatus={props.vaultStatus}

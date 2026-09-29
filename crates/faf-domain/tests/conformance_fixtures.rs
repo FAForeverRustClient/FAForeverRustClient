@@ -2133,8 +2133,12 @@ fn tourney_series_detail(id: &str, name: &str) -> SeriesDetail {
             abandoned: false,
             champion_team_id: Some("t1".into()),
             champion: "Ada".into(),
+            can_manage: true,
+            signup_opens_at: None,
+            event_days: Vec::new(),
         }],
         can_edit: true,
+        bans: Vec::new(),
     }
 }
 
@@ -4710,6 +4714,100 @@ fn cases() -> Vec<Case> {
                 TourneyEvent::PlayerRatingsFailed {
                     reason: "FAF could not be reached just now.".into(),
                     kind: RequestFailureKind::Offline,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "the site: the account, the pending bar, the Hall of Fame and the console",
+            vec![
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::Account(TourneyAccount {
+                        logged_in: true,
+                        oauth: true,
+                        faf_id: Some(7),
+                        faf_name: "Nuggets".into(),
+                        discord: "n#1".into(),
+                        director: true,
+                        allowed: true,
+                        ..TourneyAccount::default()
+                    }),
+                }
+                .into(),
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::Pending(PendingSummary {
+                        items: vec![PendingItem {
+                            tournament_id: "e1".into(),
+                            tournament_name: "Cup".into(),
+                            kind: "requests".into(),
+                            tab: "players".into(),
+                            text: "3 signup requests await your review".into(),
+                            count: Some(3),
+                        }],
+                        requests: Some(2),
+                        new_requests: None,
+                    }),
+                }
+                .into(),
+                TourneyEvent::SiteLoading {
+                    read: SiteRead::HallOfFame,
+                }
+                .into(),
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::HallOfFame(HallOfFame {
+                        players: vec![HallPlayer {
+                            faf_id: 5,
+                            name: "Ada".into(),
+                            wins: 2,
+                            entered: 4,
+                        }],
+                        teams: Vec::new(),
+                    }),
+                }
+                .into(),
+                TourneyEvent::SiteLoading {
+                    read: SiteRead::Console,
+                }
+                .into(),
+                TourneyEvent::SiteLoadFailed {
+                    read: SiteRead::Console,
+                    reason: "Site admin, director, or approved editor only".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::Console(Box::new(SiteAdminData {
+                        role: ConsoleRole::Editor,
+                        ..SiteAdminData::default()
+                    })),
+                }
+                .into(),
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::Access {
+                        kind: AccessKind::Editor,
+                        status: AccessStatus {
+                            oauth: true,
+                            logged_in: true,
+                            allowed: false,
+                            pending: true,
+                        },
+                    },
+                }
+                .into(),
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::Access {
+                        kind: AccessKind::Host,
+                        status: AccessStatus {
+                            oauth: true,
+                            logged_in: true,
+                            allowed: true,
+                            pending: false,
+                        },
+                    },
+                }
+                .into(),
+                TourneyEvent::ArticleImageUploaded {
+                    url: "/article-images/a.png".into(),
                 }
                 .into(),
             ],

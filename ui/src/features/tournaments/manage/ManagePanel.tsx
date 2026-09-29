@@ -171,6 +171,8 @@ interface ManagePanelProps {
   onPublish: () => void;
   onAdvance: (phase: TourneyPhase, config?: BracketConfig) => void;
   onArchive: () => void;
+  /** A site admin, for whom archiving is deleting and the category is open. */
+  siteAdmin?: boolean;
   onAssignPool: (roundKey: string, poolId: string) => void;
   onOpenUrl: (url: string) => void;
   onAddPlayer: (name: string, rating: number | null) => void;
@@ -398,18 +400,45 @@ export function ManagePanel({
                     : t("tournaments.manage.abandon")}
                 </Button>
               </div>
+              {/* The website's category switch: organisers choose once, at
+                  creation, and only a site admin changes it afterwards. */}
+              {rest.siteAdmin === true && !event.imported && (
+                <div className="tournament-step">
+                  <h6>{t("tournaments.manage.categoryTitle")}</h6>
+                  <p className="tournament-step-hint muted">{t("tournaments.manage.categoryHint")}</p>
+                  <Button
+                    disabled={busy}
+                    onClick={() => {
+                      const category = event.category === "official" ? "community" : "official";
+                      if (window.confirm(t(category === "official" ? "tournaments.manage.toOfficialConfirm" : "tournaments.manage.toCommunityConfirm"))) {
+                        rest.onAdmin({ type: "setCategory", payload: { category } });
+                      }
+                    }}
+                  >
+                    {t(event.category === "official" ? "tournaments.manage.toCommunity" : "tournaments.manage.toOfficial")}
+                  </Button>
+                </div>
+              )}
+              {/* The service's `delete` archives for an organiser and deletes
+                  outright for a site admin. The website's button says
+                  "archive" either way; here a site admin is told the truth. */}
               <div className="tournament-step">
-                <h6>{t("tournaments.manage.archive")}</h6>
-                <p className="tournament-step-hint muted">{t("tournaments.manage.archiveHint")}</p>
+                <h6>{t(rest.siteAdmin === true ? "tournaments.manage.deleteForever" : "tournaments.manage.archive")}</h6>
+                <p className="tournament-step-hint muted">
+                  {t(rest.siteAdmin === true ? "tournaments.manage.deleteForeverHint" : "tournaments.manage.archiveHint")}
+                </p>
                 <Button
+                  variant={rest.siteAdmin === true ? "danger" : undefined}
                   disabled={busy}
                   onClick={() => {
-                    if (window.confirm(t("tournaments.manage.archiveConfirm", { name: event.name }))) {
-                      onArchive();
-                    }
+                    const confirm =
+                      rest.siteAdmin === true
+                        ? t("tournaments.manage.deleteForeverConfirm", { name: event.name })
+                        : t("tournaments.manage.archiveConfirm", { name: event.name });
+                    if (window.confirm(confirm)) onArchive();
                   }}
                 >
-                  {t("tournaments.manage.archive")}
+                  {t(rest.siteAdmin === true ? "tournaments.manage.deleteForever" : "tournaments.manage.archive")}
                 </Button>
               </div>
             </section>

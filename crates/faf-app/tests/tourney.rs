@@ -19,6 +19,7 @@ use faf_domain::state::{
 };
 use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
+use faf_domain::state::{SiteDocument, SiteRead, SiteWrite};
 use faf_domain::AppEvent;
 
 fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {
@@ -204,6 +205,15 @@ impl TourneyPort for RefusingTourney {
         self.refused()
     }
     async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
+        self.refused()
+    }
+    async fn site_read(&self, _: SiteRead) -> Result<SiteDocument, RequestError> {
+        self.refused()
+    }
+    async fn site_write(
+        &self,
+        _: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError> {
         self.refused()
     }
     async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
@@ -1792,6 +1802,15 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             unreachable!()
         }
         async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
+            unreachable!()
+        }
+        async fn site_read(&self, _: SiteRead) -> Result<SiteDocument, RequestError> {
+            unreachable!()
+        }
+        async fn site_write(
+            &self,
+            _: &SiteWrite,
+        ) -> Result<(Option<String>, Option<String>), RequestError> {
             unreachable!()
         }
         async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {

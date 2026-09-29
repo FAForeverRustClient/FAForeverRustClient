@@ -160,6 +160,11 @@ pub use tourney::{
     TourneyDraft, TourneyEvent, TourneyInvite, TourneyLoadStatus, TourneyMap, TourneyMatch,
     TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus, TourneyTeam, TourneyViewer,
 };
+pub use tourney::{
+    AccessKind, AccessRequest, AccessStatus, AdminArticle, ArchivedTourney, ConsoleRole,
+    HallOfFame, HallPlayer, HallTeam, ListedAccount, PendingItem, PendingSummary, SiteAdminData,
+    SiteDocument, SiteLogEntry, SiteRead, SiteWrite, TourneyAccount, TourneySite,
+};
 pub use tourney::{BanScope, EntrantBoardRating, EntrantRatings, OwnBan, RatingCheck};
 pub use tourney::{
     BracketConfig, Caster, Currency, FeedsInto, FormatDraft, MatchPlan, Prize, Qualifier,

@@ -25,6 +25,11 @@ use serde_json::{json, Value};
 
 use crate::protocol::markup::to_plain_text;
 use crate::state::{
+    AccessKind, AccessRequest, AccessStatus, AdminArticle, ArchivedTourney, ConsoleRole,
+    HallOfFame, HallPlayer, HallTeam, ListedAccount, PendingItem, PendingSummary, SiteAdminData,
+    SiteDocument, SiteLogEntry, SiteRead, SiteWrite, TourneyAccount,
+};
+use crate::state::{
     Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
     ChatQuote, ChatRoom, Competition, Currency, FactionChoices, FactionResult, FactionStep,
     FactionVetoConfig, FactionVetoGame, Formation, HostingStatus, InviteStatus, MapPool, MapSpec,
@@ -1904,6 +1909,12 @@ pub fn parse_series_detail(document: &Value) -> Option<SeriesDetail> {
             .filter_map(parse_series_edition)
             .collect(),
         can_edit: flag(document, "canEdit"),
+        // Only to those who may edit it: the service leaves the key out for
+        // everyone else.
+        bans: array(document, "bans")
+            .iter()
+            .filter_map(parse_ban)
+            .collect(),
     })
 }
 
@@ -1936,6 +1947,9 @@ fn parse_series_edition(value: &Value) -> Option<SeriesEdition> {
         abandoned: flag(value, "abandoned"),
         champion_team_id: id(value, "championTeamId"),
         champion: text(value, "champion"),
+        can_manage: flag_or_true(value, "canManage"),
+        signup_opens_at: calendar_moment(value, "signupOpensAt"),
+        event_days: string_list(value, "eventDays"),
     })
 }
 
@@ -2424,6 +2438,13 @@ pub fn admin_request(change: &TourneyAdmin) -> (&'static str, Value) {
             }
             ("phase", body)
         }
+        TourneyAdmin::SetCategory { category } => (
+            "set_category",
+            json!({ "category": match category {
+                TourneyCategory::Official => "official",
+                TourneyCategory::Community => "community",
+            } }),
+        ),
         TourneyAdmin::MapSecret { map_id, secret } => {
             let secret = u8::from(*secret);
             (
@@ -2467,6 +2488,396 @@ pub fn submit_report_body(report: &MatchReport) -> Value {
         body["drawReplayIds"] = json!(report.draw_replay_ids);
     }
     body
+}
+
+// ---------------------------------------------------------------------------
+// The site around the tournaments: the account, the pending bar, the Hall of
+// Fame, and the site administration and director console.
+// ---------------------------------------------------------------------------
+
+/// Where a site read goes, and whether it is a `POST` (the console's `data`
+/// is one, with an empty body).
+pub fn site_read_path(read: SiteRead) -> (&'static str, bool) {
+    match read {
+        SiteRead::Account => ("/auth/faf/me", false),
+        SiteRead::Pending => ("my/pending", false),
+        SiteRead::HallOfFame => ("halloffame", false),
+        SiteRead::Console => ("siteadmin/data", true),
+        SiteRead::Access {
+            kind: AccessKind::Host,
+        } => ("host_status", false),
+        SiteRead::Access {
+            kind: AccessKind::Editor,
+        } => ("editor_status", false),
+        SiteRead::Access {
+            kind: AccessKind::Importer,
+        } => ("importer_status", false),
+    }
+}
+
+/// A site read's answer, parsed.
+pub fn parse_site_document(read: SiteRead, document: &Value) -> SiteDocument {
+    match read {
+        SiteRead::Account => SiteDocument::Account(parse_account(document)),
+        SiteRead::Pending => SiteDocument::Pending(parse_pending(document)),
+        SiteRead::HallOfFame => SiteDocument::HallOfFame(parse_hall_of_fame(document)),
+        SiteRead::Console => SiteDocument::Console(Box::new(parse_console(document))),
+        SiteRead::Access { kind } => SiteDocument::Access {
+            kind,
+            status: AccessStatus {
+                oauth: flag_or_true(document, "oauth"),
+                logged_in: flag(document, "loggedIn"),
+                allowed: flag(document, "allowed"),
+                pending: flag(document, "pending"),
+            },
+        },
+    }
+}
+
+/// This account's roles, from `GET /auth/faf/me`. `user` is `null` for a
+/// caller the service holds no session for, and then every role is off.
+pub fn parse_account(document: &Value) -> TourneyAccount {
+    let Some(user) = document.get("user").filter(|held| held.is_object()) else {
+        return TourneyAccount {
+            oauth: flag(document, "enabled"),
+            ..TourneyAccount::default()
+        };
+    };
+    TourneyAccount {
+        logged_in: true,
+        oauth: flag(document, "enabled"),
+        faf_id: int(user, "fafId"),
+        faf_name: text(user, "fafName"),
+        discord: text(user, "discord"),
+        editor: flag(user, "editor"),
+        importer: flag(user, "importer"),
+        director: flag(user, "director"),
+        site_admin: flag(user, "siteAdmin"),
+        site_admin_account: flag(user, "siteAdminAccount"),
+        admin_stand_down: flag(user, "adminStandDown"),
+        allowed: flag(user, "allowed"),
+    }
+}
+
+/// The first whole number in a sentence, where there is one.
+fn first_number(text: &str) -> Option<i32> {
+    let digits: String = text
+        .chars()
+        .skip_while(|held| !held.is_ascii_digit())
+        .take_while(char::is_ascii_digit)
+        .collect();
+    digits.parse().ok()
+}
+
+/// `GET /api/my/pending`: what waits on this account, and the admin alert.
+pub fn parse_pending(document: &Value) -> PendingSummary {
+    let items = array(document, "pending")
+        .iter()
+        .filter_map(|item| {
+            let sentence = text(item, "text");
+            Some(PendingItem {
+                tournament_id: id(item, "tId")?,
+                tournament_name: text(item, "tName"),
+                kind: text(item, "type"),
+                tab: text(item, "tab"),
+                count: first_number(&sentence),
+                text: sentence,
+            })
+        })
+        .collect();
+    let alert = document.get("alert").filter(|held| held.is_object());
+    let (requests, new_requests) = match alert {
+        Some(held) => {
+            let sentence = text(held, "text");
+            // "N access request(s) waiting for review (M new)".
+            let new = sentence
+                .rfind('(')
+                .map(|at| &sentence[at..])
+                .filter(|tail| tail.contains("new"))
+                .and_then(first_number);
+            (first_number(&sentence).or(Some(1)), new)
+        }
+        None => (None, None),
+    };
+    PendingSummary {
+        items,
+        requests,
+        new_requests,
+    }
+}
+
+/// `GET /api/halloffame`.
+pub fn parse_hall_of_fame(document: &Value) -> HallOfFame {
+    HallOfFame {
+        players: array(document, "players")
+            .iter()
+            .filter_map(|held| {
+                Some(HallPlayer {
+                    faf_id: int(held, "fafId")?,
+                    name: text(held, "name"),
+                    wins: int(held, "wins").unwrap_or(0),
+                    entered: int(held, "entered").unwrap_or(0),
+                })
+            })
+            .collect(),
+        teams: array(document, "teams")
+            .iter()
+            .map(|held| HallTeam {
+                name: text(held, "name"),
+                wins: int(held, "wins").unwrap_or(0),
+            })
+            .collect(),
+    }
+}
+
+fn parse_access_request(value: &Value) -> Option<AccessRequest> {
+    Some(AccessRequest {
+        id: id(value, "id")?,
+        faf_id: int(value, "fafId").unwrap_or(0),
+        faf_name: text(value, "fafName"),
+        message: text(value, "message"),
+        at: moment(value, "at"),
+        status: text(value, "status"),
+        decided_at: moment(value, "decidedAt"),
+        decided_by: text(value, "decidedBy"),
+    })
+}
+
+fn parse_listed(value: &Value) -> Option<ListedAccount> {
+    Some(ListedAccount {
+        faf_id: int(value, "fafId")?,
+        name: text(value, "name"),
+        at: moment(value, "at"),
+        by: text(value, "by"),
+        stand_down: flag(value, "standDown"),
+    })
+}
+
+/// The console's `data` document.
+pub fn parse_console(document: &Value) -> SiteAdminData {
+    let list = |name: &str| -> Vec<ListedAccount> {
+        array(document, name)
+            .iter()
+            .filter_map(parse_listed)
+            .collect()
+    };
+    let requests = |name: &str| -> Vec<AccessRequest> {
+        array(document, name)
+            .iter()
+            .filter_map(parse_access_request)
+            .collect()
+    };
+    SiteAdminData {
+        role: match text(document, "role").as_str() {
+            "editor" => ConsoleRole::Editor,
+            "director" => ConsoleRole::Director,
+            _ => ConsoleRole::Admin,
+        },
+        oauth: flag_or_true(document, "oauth"),
+        logs: array(document, "logs")
+            .iter()
+            .map(|held| SiteLogEntry {
+                id: text(held, "id"),
+                at: moment(held, "at"),
+                action: text(held, "action"),
+                actor_kind: text(held, "actorKind"),
+                actor_faf_id: int(held, "actorFafId"),
+                actor_name: text(held, "actorName"),
+                ip: text(held, "ip"),
+                tournament_id: text(held, "tournamentId"),
+                tournament_name: text(held, "tournamentName"),
+                detail: text(held, "detail"),
+            })
+            .collect(),
+        host_requests: requests("requests"),
+        host_allowed: list("allowed"),
+        editor_requests: requests("editorRequests"),
+        editor_allowed: list("editorAllowed"),
+        importer_requests: requests("importerRequests"),
+        importer_allowed: list("importerAllowed"),
+        archived: array(document, "archived")
+            .iter()
+            .filter_map(|held| {
+                Some(ArchivedTourney {
+                    id: id(held, "id")?,
+                    name: text(held, "name"),
+                    status: TourneyStatus::from_wire(&text(held, "status")),
+                    at: moment(held, "at"),
+                    players: count(held, "players"),
+                })
+            })
+            .collect(),
+        articles: array(document, "articles")
+            .iter()
+            .filter_map(|held| {
+                Some(AdminArticle {
+                    id: id(held, "id")?,
+                    title: text(held, "title"),
+                    // The source itself, markdown and all: this is what the
+                    // editor edits, not a page to be read.
+                    body: text(held, "body"),
+                    parent_id: id(held, "parentId"),
+                    archived: flag(held, "archived"),
+                    updated_at: moment(held, "updatedAt"),
+                })
+            })
+            .collect(),
+        directors: list("directors"),
+        site_admins: list("siteAdmins"),
+        me: int(document, "me"),
+        bans: array(document, "bans")
+            .iter()
+            .filter_map(parse_ban)
+            .collect(),
+    }
+}
+
+/// Where a site write goes, and its body. Ids are strings on the service's
+/// side, as for every other FAF id it stores.
+pub fn site_request(write: &SiteWrite) -> (String, Value) {
+    let path = |act: &str| format!("siteadmin/{act}");
+    let access = |kind: AccessKind, host: &str, editor: &str, importer: &str| -> String {
+        path(match kind {
+            AccessKind::Host => host,
+            AccessKind::Editor => editor,
+            AccessKind::Importer => importer,
+        })
+    };
+    match write {
+        SiteWrite::StandDown { on } => (
+            "/auth/faf/stand_down".into(),
+            json!({ "on": u8::from(*on) }),
+        ),
+        SiteWrite::DismissRequests => ("my/dismiss_requests".into(), json!({})),
+        SiteWrite::RequestAccess { kind, message } => (
+            match kind {
+                AccessKind::Host => "host_request",
+                AccessKind::Editor => "editor_request",
+                AccessKind::Importer => "importer_request",
+            }
+            .into(),
+            json!({ "message": message.trim() }),
+        ),
+        SiteWrite::LinkSiteAdmin { password } => {
+            ("siteadmin".into(), json!({ "password": password }))
+        }
+        SiteWrite::Decide { kind, id, approve } => (
+            access(*kind, "decide", "editor_decide", "importer_decide"),
+            json!({ "id": id, "approve": u8::from(*approve) }),
+        ),
+        SiteWrite::Revoke { kind, faf_id } => (
+            access(*kind, "revoke", "editor_revoke", "importer_revoke"),
+            json!({ "fafId": faf_id.to_string() }),
+        ),
+        SiteWrite::Grant { kind, faf_id, name } => (
+            access(*kind, "grant", "editor_grant", "importer_grant"),
+            json!({ "fafId": faf_id.to_string(), "name": name.trim() }),
+        ),
+        SiteWrite::SiteAdminGrant { faf_id, name } => (
+            path("siteadmin_grant"),
+            json!({ "fafId": faf_id.to_string(), "name": name.trim() }),
+        ),
+        SiteWrite::SiteAdminRevoke { faf_id } => (
+            path("siteadmin_revoke"),
+            json!({ "fafId": faf_id.to_string() }),
+        ),
+        SiteWrite::DirectorGrant { faf_id, name } => (
+            path("director_grant"),
+            json!({ "fafId": faf_id.to_string(), "name": name.trim() }),
+        ),
+        SiteWrite::DirectorRevoke { faf_id } => (
+            path("director_revoke"),
+            json!({ "fafId": faf_id.to_string() }),
+        ),
+        SiteWrite::GlobalBan {
+            faf_id,
+            name,
+            reason,
+            expires,
+        } => (
+            path("ban_set"),
+            json!({
+                "fafId": faf_id.to_string(),
+                "name": name.trim(),
+                "reason": reason.trim(),
+                "expires": iso(*expires),
+            }),
+        ),
+        SiteWrite::GlobalUnban { faf_id } => {
+            (path("ban_remove"), json!({ "fafId": faf_id.to_string() }))
+        }
+        SiteWrite::SeriesBan {
+            series_id,
+            faf_id,
+            name,
+            reason,
+            expires,
+        } => (
+            "series".into(),
+            json!({
+                "action": "ban_set",
+                "id": series_id,
+                "fafId": faf_id.to_string(),
+                "name": name.trim(),
+                "reason": reason.trim(),
+                "expires": iso(*expires),
+            }),
+        ),
+        SiteWrite::SeriesUnban { series_id, faf_id } => (
+            "series".into(),
+            json!({ "action": "ban_remove", "id": series_id, "fafId": faf_id.to_string() }),
+        ),
+        SiteWrite::ArticleSave {
+            id,
+            title,
+            body,
+            parent_id,
+        } => {
+            let mut sent = json!({
+                "title": title.trim(),
+                "body": body,
+                "parentId": parent_id,
+            });
+            if let Some(id) = id.as_ref().filter(|held| !held.is_empty()) {
+                sent["id"] = json!(id);
+            }
+            (path("article_save"), sent)
+        }
+        SiteWrite::ArticleArchive { id, restore } => {
+            let mut sent = json!({ "id": id });
+            if *restore {
+                sent["restore"] = json!(1);
+            }
+            (path("article_delete"), sent)
+        }
+        SiteWrite::ArticleImage { data_url } => {
+            (path("article_image"), json!({ "image": data_url }))
+        }
+        SiteWrite::Restore { tournament_id } => (format!("t/{tournament_id}/restore"), json!({})),
+        SiteWrite::DeleteTournament { tournament_id } => {
+            (format!("t/{tournament_id}/delete"), json!({}))
+        }
+        SiteWrite::ImportChallonge {
+            tournament,
+            api_key,
+        } => (
+            "import_challonge".into(),
+            json!({ "tournament": tournament.trim(), "apiKey": api_key.trim() }),
+        ),
+    }
+}
+
+/// What a site write answered that the client keeps: the tournament an import
+/// created, or the path of an uploaded article picture.
+pub fn parse_site_answer(write: &SiteWrite, document: &Value) -> (Option<String>, Option<String>) {
+    match write {
+        SiteWrite::ImportChallonge { .. } => (id(document, "id"), None),
+        SiteWrite::ArticleImage { .. } => (
+            None,
+            Some(text(document, "url")).filter(|url| !url.is_empty()),
+        ),
+        _ => (None, None),
+    }
 }
 
 #[cfg(test)]
@@ -3342,6 +3753,183 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(event.publish_at, Some(1_790_812_800));
         let event = parse_tourney(&json!({ "id": "e1", "publishAt": null })).unwrap();
         assert_eq!(event.publish_at, None);
+    }
+
+    #[test]
+    fn the_account_carries_every_role_and_none_without_a_session() {
+        let account = parse_account(&json!({ "enabled": true, "user": {
+            "fafId": 7, "fafName": "Nuggets", "discord": "n#1", "editor": 0, "importer": 1,
+            "director": 1, "siteAdmin": 0, "siteAdminAccount": 1, "adminStandDown": 1, "allowed": 1 } }));
+        assert!(account.logged_in && account.oauth && account.director && account.importer);
+        assert!(!account.site_admin && account.site_admin_account && account.admin_stand_down);
+        assert_eq!((account.faf_id, account.discord.as_str()), (Some(7), "n#1"));
+        let anonymous = parse_account(&json!({ "enabled": true, "user": null }));
+        assert!(!anonymous.logged_in && !anonymous.allowed);
+    }
+
+    #[test]
+    fn the_pending_bar_keeps_the_numbers_out_of_the_sentences() {
+        let pending = parse_pending(&json!({
+            "pending": [
+                { "tId": "e1", "tName": "Cup", "type": "requests", "tab": "players",
+                  "text": "3 signup requests await your review" },
+                { "tId": "e2", "tName": "Open", "type": "draft", "tab": "teams",
+                  "text": "It's your pick in the captains draft" },
+            ],
+            "alert": { "type": "access", "dismissible": 1, "text": "5 access requests waiting for review (2 new)" },
+        }));
+        assert_eq!(pending.items[0].count, Some(3));
+        assert_eq!(pending.items[1].count, None);
+        assert_eq!((pending.requests, pending.new_requests), (Some(5), Some(2)));
+        let quiet = parse_pending(&json!({ "pending": [], "alert": null }));
+        assert_eq!(quiet.requests, None);
+    }
+
+    #[test]
+    fn the_console_reads_each_list_and_the_role() {
+        let console = parse_console(&json!({
+            "role": "director", "oauth": 1,
+            "requests": [{ "id": "r1", "fafId": 5, "fafName": "Asker", "message": "hi",
+                           "at": 1_790_000_000_000_i64, "status": "pending" }],
+            "allowed": [{ "fafId": 6, "name": "Host", "at": 1_790_000_000_000_i64, "by": "Admin" }],
+            "directors": [{ "fafId": 7, "name": "Dir" }],
+            "archived": [{ "id": "e9", "name": "Old", "status": "finished", "at": 1, "players": 12 }],
+            "articles": [{ "id": "a1", "title": "Rules", "body": "# Head", "parentId": null, "archived": 1 }],
+            "bans": [{ "fafId": "42", "name": "Troll", "reason": "", "expires": null, "at": 1, "by": "x" }],
+            "me": 7,
+        }));
+        assert_eq!(console.role, ConsoleRole::Director);
+        assert_eq!(console.host_requests[0].faf_name, "Asker");
+        assert_eq!(console.host_allowed[0].faf_id, 6);
+        assert_eq!(console.archived[0].players, 12);
+        assert_eq!(console.articles[0].body, "# Head");
+        assert!(console.articles[0].archived);
+        assert_eq!(console.bans[0].faf_id, 42);
+        assert_eq!(console.me, Some(7));
+    }
+
+    #[test]
+    fn each_site_write_goes_where_the_service_listens() {
+        let request = |write: SiteWrite| site_request(&write);
+        assert_eq!(
+            request(SiteWrite::StandDown { on: true }),
+            ("/auth/faf/stand_down".to_string(), json!({ "on": 1 }))
+        );
+        assert_eq!(
+            request(SiteWrite::RequestAccess {
+                kind: AccessKind::Host,
+                message: " weekly cup ".into(),
+            }),
+            (
+                "host_request".to_string(),
+                json!({ "message": "weekly cup" })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::Decide {
+                kind: AccessKind::Editor,
+                id: "r1".into(),
+                approve: true,
+            }),
+            (
+                "siteadmin/editor_decide".to_string(),
+                json!({ "id": "r1", "approve": 1 })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::Revoke {
+                kind: AccessKind::Host,
+                faf_id: 5,
+            }),
+            ("siteadmin/revoke".to_string(), json!({ "fafId": "5" }))
+        );
+        assert_eq!(
+            request(SiteWrite::Grant {
+                kind: AccessKind::Importer,
+                faf_id: 5,
+                name: "Imp".into(),
+            }),
+            (
+                "siteadmin/importer_grant".to_string(),
+                json!({ "fafId": "5", "name": "Imp" })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::GlobalBan {
+                faf_id: 9,
+                name: "T".into(),
+                reason: "smurf".into(),
+                expires: None,
+            }),
+            (
+                "siteadmin/ban_set".to_string(),
+                json!({ "fafId": "9", "name": "T", "reason": "smurf", "expires": null })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::SeriesUnban {
+                series_id: "s1".into(),
+                faf_id: 9,
+            }),
+            (
+                "series".to_string(),
+                json!({ "action": "ban_remove", "id": "s1", "fafId": "9" })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::ArticleSave {
+                id: None,
+                title: " Rules ".into(),
+                body: "text".into(),
+                parent_id: Some("a1".into()),
+            }),
+            (
+                "siteadmin/article_save".to_string(),
+                json!({ "title": "Rules", "body": "text", "parentId": "a1" })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::ArticleArchive {
+                id: "a2".into(),
+                restore: true,
+            }),
+            (
+                "siteadmin/article_delete".to_string(),
+                json!({ "id": "a2", "restore": 1 })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::Restore {
+                tournament_id: "e9".into(),
+            }),
+            ("t/e9/restore".to_string(), json!({}))
+        );
+        assert_eq!(
+            request(SiteWrite::ImportChallonge {
+                tournament: " challonge.com/abc ".into(),
+                api_key: " key ".into(),
+            }),
+            (
+                "import_challonge".to_string(),
+                json!({ "tournament": "challonge.com/abc", "apiKey": "key" })
+            )
+        );
+        assert_eq!(
+            parse_site_answer(
+                &SiteWrite::ImportChallonge {
+                    tournament: String::new(),
+                    api_key: String::new(),
+                },
+                &json!({ "ok": true, "id": "e77", "name": "Imported" }),
+            ),
+            (Some("e77".to_string()), None)
+        );
+        assert_eq!(
+            admin_request(&TourneyAdmin::SetCategory {
+                category: TourneyCategory::Official,
+            }),
+            ("set_category", json!({ "category": "official" }))
+        );
     }
 
     #[test]

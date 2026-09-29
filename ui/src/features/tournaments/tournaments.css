@@ -5317,3 +5317,164 @@
 .tournament-team-link {
   color: inherit;
 }
+
+/* -- The site around the tournaments ------------------------------------
+   The website's top bar as a row of buttons, the pending bar under it, and
+   the pages beside the list: Hall of Fame, series, FAQ / Rules, the console. */
+
+.tournament-site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tournament-standdown.is-off {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+}
+
+.tournament-pending {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.tournament-pending-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-warn);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.tournament-pending-bar.is-admin {
+  border-color: var(--color-faction-uef);
+}
+
+.tournament-site-page {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 1100px;
+}
+
+.tournament-site-page > h2 {
+  margin: 0;
+}
+
+.tournament-site-panel {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.tournament-site-panel h3,
+.tournament-site-panel h4,
+.tournament-site-panel p {
+  margin: 0;
+}
+
+.tournament-site-panel.is-editor {
+  border-left: 3px solid var(--color-faction-uef);
+}
+
+.tournament-site-panel.is-importer {
+  border-left: 3px solid var(--color-warn);
+}
+
+.tournament-faq-sub,
+.tournament-links {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.tournament-series-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tournament-series-row {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+}
+
+.tournament-series-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-series-name {
+  font-weight: 600;
+}
+
+.tournament-series-name.is-amber {
+  color: var(--color-warn);
+}
+
+.tournament-series-name.is-blue {
+  color: var(--color-faction-uef);
+}
+
+.tournament-series-name.is-green {
+  color: var(--color-ok);
+}
+
+.tournament-series-name.is-red {
+  color: var(--color-error);
+}
+
+.tournament-series-name.is-purple {
+  color: var(--color-league-diamond);
+}
+
+.tournament-colour-swatch {
+  min-width: 36px;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tournament-colour-swatch.is-on {
+  border-color: var(--color-accent);
+}
+
+.tournament-colour-swatch.is-amber {
+  color: var(--color-warn);
+}
+
+.tournament-colour-swatch.is-blue {
+  color: var(--color-faction-uef);
+}
+
+.tournament-colour-swatch.is-green {
+  color: var(--color-ok);
+}
+
+.tournament-colour-swatch.is-red {
+  color: var(--color-error);
+}
+
+.tournament-colour-swatch.is-purple {
+  color: var(--color-league-diamond);
+}
+
+.tournament-article-preview {
+  padding: var(--space-3);
+  max-height: 420px;
+  overflow: auto;
+}
