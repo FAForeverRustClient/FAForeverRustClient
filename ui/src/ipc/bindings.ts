@@ -3087,6 +3087,35 @@ export type IceAdapter =
  */
 "go";
 
+/**
+ *  One group table of an imported event (`importedGroups`), as its source
+ *  ranked it: wins, then game difference, then name.
+ */
+export type ImportedGroup = {
+	name: string,
+	/**  Matches played in the group. */
+	played: number,
+	rows: ImportedRow[],
+};
+
+/**
+ *  One final placing of an imported event (`importedStandings`). Ties are the
+ *  source's own and are kept.
+ */
+export type ImportedPlacing = {
+	rank: number,
+	name: string,
+};
+
+/**  One entrant's line in an imported group table. */
+export type ImportedRow = {
+	name: string,
+	wins: number,
+	losses: number,
+	gamesWon: number,
+	gamesLost: number,
+};
+
 export type InstallEvent =
 /**
  *  The configured paths were stat'd. Emitted at startup and after every
@@ -8083,6 +8112,13 @@ export type Tourney = {
 	importedType: string,
 	/**  Whether only the final table came over, no matches (`standingsOnly`). */
 	standingsOnly: boolean,
+	/**  An import's group tables (`importedGroups`). */
+	importedGroups: ImportedGroup[],
+	/**
+	 *  An import's final placings as its source recorded them
+	 *  (`importedStandings`).
+	 */
+	importedStandings: ImportedPlacing[],
 	/**
 	 *  The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
 	 *  (`eventDays`). Empty for an event on its date alone.

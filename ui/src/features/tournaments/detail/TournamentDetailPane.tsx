@@ -44,6 +44,8 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { AuditLogPanel } from "./AuditLogPanel";
 import { PublishBanner } from "./PublishBanner";
+import { StatsPanel } from "./StatsPanel";
+import { RichLine } from "../RichLine";
 import type { MapImport } from "../manage/MapImportDialog";
 import { eventDaysLabel, stages, statusPill, turnInfo } from "../orientation";
 import { EntryNotices } from "./EntryNotices";
@@ -72,7 +74,6 @@ import {
   maySignUp,
   mayUndoCheckIn,
   selfOrganised,
-  standingsKind,
   unreadNews,
   unreadTotal,
 } from "../../../shared/rules/tourneyRules";
@@ -85,6 +86,7 @@ type Section =
   | "draft"
   | "bracket"
   | "matches"
+  | "stats"
   | "vetoes"
   | "maps"
   | "standings"
@@ -100,6 +102,7 @@ const SECTION_LABELS: Record<Section, MessageKey> = {
   draft: "tournaments.section.draft",
   bracket: "tournaments.section.bracket",
   matches: "tournaments.section.matches",
+  stats: "tournaments.section.stats",
   vetoes: "tournaments.section.vetoes",
   maps: "tournaments.section.maps",
   standings: "tournaments.section.standings",
@@ -434,7 +437,10 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           // bracket, or an import that arrived with its own final table. Before
           // that the tab would open on "nothing yet", which is a worse answer
           // than not offering it.
-          .filter((candidate) => candidate !== "standings" || standingsKind(event) !== "none")
+          // Standings are always there, as on the website: before anything is
+          // played they say when they will appear. Stats once the event is
+          // over, for everyone.
+          .filter((candidate) => candidate !== "stats" || event.status === "finished")
           // Matches once there is a head-to-head match to list, and Vetoes
           // while the bracket runs and some match has a run to show: the
           // website's conditions. Maps is always there, as it is on the website.
@@ -584,7 +590,22 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         />
       )}
 
-      {section === "bracket" && (
+      {/* An import of a format with no bracket (round robin, Swiss, groups)
+          brought only its tables; saying so beats an empty diagram. */}
+      {section === "bracket" && event.imported && event.standingsOnly && (
+        <p className="muted">
+          <RichLine
+            text={t("tournaments.bracket.importedNoBracket", {
+              type: event.importedType.trim() !== "" ? event.importedType.trim() : t("tournaments.bracket.nonBracketFormat"),
+            })}
+            onLink={() => openSection("standings")}
+          />
+        </p>
+      )}
+
+      {section === "stats" && <StatsPanel event={event} />}
+
+      {section === "bracket" && !(event.imported && event.standingsOnly) && (
         <BracketView
           event={event}
           profiles={props.profiles}

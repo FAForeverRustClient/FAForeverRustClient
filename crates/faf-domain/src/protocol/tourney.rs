@@ -36,7 +36,7 @@ use crate::state::{
 };
 use crate::state::{BanScope, EntrantBoardRating, EntrantRatings, OwnBan, RatingCheck};
 use crate::state::{CaptainMode, Replacement};
-use crate::state::{CopySource, PickMode};
+use crate::state::{CopySource, ImportedGroup, ImportedPlacing, ImportedRow, PickMode};
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
     VetoDecider, VetoMode, VetoTeamA,
@@ -502,6 +502,32 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         source_url: text(document, "sourceUrl"),
         imported_type: text(document, "importedType"),
         standings_only: flag(document, "standingsOnly"),
+        imported_groups: array(document, "importedGroups")
+            .iter()
+            .map(|group| ImportedGroup {
+                name: text(group, "name"),
+                played: int(group, "played").unwrap_or(0),
+                rows: array(group, "rows")
+                    .iter()
+                    .map(|row| ImportedRow {
+                        name: text(row, "name"),
+                        wins: int(row, "w").unwrap_or(0),
+                        losses: int(row, "l").unwrap_or(0),
+                        games_won: int(row, "gw").unwrap_or(0),
+                        games_lost: int(row, "gl").unwrap_or(0),
+                    })
+                    .collect(),
+            })
+            .collect(),
+        imported_standings: array(document, "importedStandings")
+            .iter()
+            .filter_map(|row| {
+                Some(ImportedPlacing {
+                    rank: int(row, "rank")?,
+                    name: text(row, "name"),
+                })
+            })
+            .collect(),
         my_ban: document
             .get("myBan")
             .filter(|held| held.is_object())
@@ -3005,6 +3031,33 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(event.publish_at, Some(1_790_812_800));
         let event = parse_tourney(&json!({ "id": "e1", "publishAt": null })).unwrap();
         assert_eq!(event.publish_at, None);
+    }
+
+    #[test]
+    fn an_import_brings_its_group_tables_and_placings() {
+        let event = parse_tourney(&json!({
+            "id": "e1", "imported": true, "standingsOnly": 1,
+            "importedGroups": [{ "name": "Group A", "played": 3, "rows": [
+                { "name": "Ada", "w": 2, "l": 1, "gw": 5, "gl": 3 },
+            ] }],
+            "importedStandings": [{ "rank": 1, "name": "Ada" }, { "rank": 1, "name": "Bo" }, { "name": "no rank" }],
+        }))
+        .unwrap();
+        assert_eq!(event.imported_groups[0].name, "Group A");
+        assert_eq!(event.imported_groups[0].played, 3);
+        assert_eq!(
+            event.imported_groups[0].rows[0],
+            ImportedRow {
+                name: "Ada".into(),
+                wins: 2,
+                losses: 1,
+                games_won: 5,
+                games_lost: 3,
+            }
+        );
+        // A tie stays a tie; a line without a rank is not a placing.
+        assert_eq!(event.imported_standings.len(), 2);
+        assert_eq!(event.imported_standings[1].rank, 1);
     }
 
     #[test]

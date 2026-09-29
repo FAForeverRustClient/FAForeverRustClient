@@ -328,6 +328,11 @@ pub struct Tourney {
     pub imported_type: String,
     /// Whether only the final table came over, no matches (`standingsOnly`).
     pub standings_only: bool,
+    /// An import's group tables (`importedGroups`).
+    pub imported_groups: Vec<ImportedGroup>,
+    /// An import's final placings as its source recorded them
+    /// (`importedStandings`).
+    pub imported_standings: Vec<ImportedPlacing>,
     /// The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
     /// (`eventDays`). Empty for an event on its date alone.
     pub event_days: Vec<String>,

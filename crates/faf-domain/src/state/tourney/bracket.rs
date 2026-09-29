@@ -259,6 +259,37 @@ impl PlanList {
     }
 }
 
+/// One group table of an imported event (`importedGroups`), as its source
+/// ranked it: wins, then game difference, then name.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportedGroup {
+    pub name: String,
+    /// Matches played in the group.
+    pub played: i32,
+    pub rows: Vec<ImportedRow>,
+}
+
+/// One entrant's line in an imported group table.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportedRow {
+    pub name: String,
+    pub wins: i32,
+    pub losses: i32,
+    pub games_won: i32,
+    pub games_lost: i32,
+}
+
+/// One final placing of an imported event (`importedStandings`). Ties are the
+/// source's own and are kept.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportedPlacing {
+    pub rank: i32,
+    pub name: String,
+}
+
 /// What an organiser takes from another event's map database (`copy_maps`).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

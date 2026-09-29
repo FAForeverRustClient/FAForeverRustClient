@@ -102,6 +102,8 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     sourceUrl: "",
     importedType: "",
     standingsOnly: false,
+    importedGroups: [],
+    importedStandings: [],
     // The service sets this on the detail response, after `publicView` builds the
     // document. Spelled out here because a component fixture has no response.
     viewer: {

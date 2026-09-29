@@ -34,10 +34,77 @@ interface StandingsPanelProps {
   profiles: PlayerSummary[];
 }
 
+/**
+ * An import's own tables: one per group, then its final placings. Shown instead
+ * of anything worked out here, as the website does, because they are the
+ * source's record and the matches behind them never came over.
+ */
+function ImportedTables({ event }: { event: Tourney }) {
+  const { t } = useTranslation();
+  return (
+    <div className="tournament-standings">
+      {event.importedGroups.map((group) => (
+        <section className="tournament-panel" key={group.name}>
+          <h4>{group.name}</h4>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">{t("tournaments.standings.player")}</th>
+                <th scope="col">{t("tournaments.standings.winLoss")}</th>
+                <th scope="col">{t("tournaments.standings.games")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {group.rows.map((row, index) => (
+                <tr key={`${row.name}-${index}`}>
+                  <td className="mono muted">{index + 1}</td>
+                  <td>{row.name}</td>
+                  <td className="mono">
+                    {row.wins}
+                    {"–"}
+                    {row.losses}
+                  </td>
+                  <td className="mono">
+                    {row.gamesWon}
+                    {"–"}
+                    {row.gamesLost}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ))}
+      {event.importedStandings.length > 0 && (
+        <section className="tournament-panel">
+          <h4>{t("tournaments.standings.finalPlacings")}</h4>
+          <ol className="tournament-placings">
+            {event.importedStandings.map((placing, index) => (
+              <li
+                key={`${placing.name}-${index}`}
+                className={placing.rank <= 3 ? `rank-${placing.rank}` : undefined}
+              >
+                <span className="mono">{placing.rank}</span>
+                <span>{placing.name}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="muted">{t("tournaments.standings.placingsNote")}</p>
+        </section>
+      )}
+    </div>
+  );
+}
+
 export function StandingsPanel({ event, profiles }: StandingsPanelProps) {
   const { t } = useTranslation();
   const kind = standingsKind(event);
   const rows = standings(event);
+
+  if (event.imported && (event.importedGroups.length > 0 || event.importedStandings.length > 0)) {
+    return <ImportedTables event={event} />;
+  }
 
   if (kind === "none" || rows.length === 0) {
     return <p className="muted">{t("tournaments.standings.none")}</p>;

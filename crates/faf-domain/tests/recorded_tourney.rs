@@ -299,8 +299,6 @@ fn every_field_the_service_sends_is_either_read_or_knowingly_ignored() {
         "chatLockAt",
         "createdByName",
         "hasOrganizer",
-        "importedGroups",
-        "importedStandings",
         "perRoundBo",
         "rounds",
         "source",

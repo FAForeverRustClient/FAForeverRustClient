@@ -157,9 +157,9 @@ login), instant team join (`join_team`, removed), organiser links
   pill, category and type line, stage stepper, turn banner and scheduled
   publishing are done on `tourney/batch-3`; a scheduled publish never showed
   before, because `publishAt` is an ISO date and was read as milliseconds.
-- Overview: the Schedule and "Ends early" cells, "Don't know your rating?",
-  recent results, the turn / mention / ping / own-ban banners, the series in
-  its colour with a link, the Links panel, the Challonge source line.
+- Overview: the series in its colour with a link to its page, and the Links
+  panel (FAQ and the three official articles); both wait on the site-wide
+  pages. The rest is done on `tourney/batch-3`.
 - Players: done on `tourney/batch-3`. A name is FAF's and never edited; the
   team name in the edit dialog belongs to the premade formation, which the
   service now keeps for free-for-all teams only (see Creation).
@@ -178,7 +178,8 @@ login), instant team join (`join_team`, removed), organiser links
   a pool for one match (in the match details) and resetting one side's
   faction choices (`fveto_reset`). `copy_maps` copies no spawn information,
   a website fault the client does not work around.
-- Standings and stats: imported group tables; the Stats tab.
+- Standings and stats: done on `tourney/batch-3`, and the Standings tab is
+  always there, as on the website.
 - Creation: presets, "fill from this", record cuts, stage two, ends early and
   opponent picking at creation, the FFA block (with premade team names:
   `set_team_name` and the grouped preview), images pasted into the text.

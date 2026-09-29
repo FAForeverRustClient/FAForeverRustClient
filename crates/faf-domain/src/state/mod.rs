@@ -177,6 +177,7 @@ pub use tourney::{
     VetoDecider, VetoMode, VetoTeamA, VetoTurn,
 };
 pub use tourney::{EarlyFinish, Rename, RenameCheck, Survivors, TourneyBan};
+pub use tourney::{ImportedGroup, ImportedPlacing, ImportedRow};
 pub use training::{
     compose_contribution, compose_review_request, compose_url, contribution_problem, derive_level,
     derive_topics, filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label,
