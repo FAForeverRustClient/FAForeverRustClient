@@ -174,6 +174,9 @@ does differently from the website, on purpose:
   website forgets them).
 - `copy_maps` copies no spawn information: a website fault the client does
   not work around.
+- Linking an account as site admin with the master password stays on the
+  website (the maintainer's call, 2026-09-29); site admins are added in the
+  console.
 
 **Fields still not read**: `archived`, `cfg`, `challongeDate`, `chatLockAt`,
 `createdByName`, `hasOrganizer`, `rounds`, `source`, `unreadByRoom` (the
