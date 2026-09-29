@@ -10,8 +10,10 @@ use super::*;
 /// method and a busy marker apiece would say nothing the variant name does not.
 /// [`TourneyPhase`] is the precedent: one command, the step named inside it.
 ///
-/// Every one of them is organiser-only on the service. The rules that decide
-/// whether one is offered live on [`Tourney`], beside the rest.
+/// Nearly all are organiser-only on the service; the one exception, a
+/// captain withdrawing their own team's invitation, is said on the variant.
+/// The rules that decide whether one is offered live on [`Tourney`], beside
+/// the rest.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum TourneyAdmin {
@@ -82,6 +84,35 @@ pub enum TourneyAdmin {
     /// Remove an attached image by its file name (`remove_desc_image`).
     #[serde(rename_all = "camelCase")]
     RemoveImage { file: String },
+    /// Check a team in, or take its check-in back (`checkin_team`). An
+    /// organiser may do either for any full team.
+    #[serde(rename_all = "camelCase")]
+    TeamCheckIn { team_id: String, checked_in: bool },
+    /// Put a waiting team in the place of one that is entering
+    /// (`swap_team`). The two exchange entry places, so swapping them back
+    /// undoes it.
+    #[serde(rename_all = "camelCase")]
+    SwapTeam { in_id: String, out_id: String },
+    /// Start a team around an entrant who has none (`org_create_team`); they
+    /// become its captain. An empty name is the service's "Name's team".
+    #[serde(rename_all = "camelCase")]
+    CreateTeamFor { player_id: String, name: String },
+    /// Put somebody else in an entrant's place (`replace_player`): the team,
+    /// the seed and every result so far stay with the place.
+    #[serde(rename_all = "camelCase")]
+    ReplacePlayer {
+        player_id: String,
+        with: Replacement,
+    },
+    /// Withdraw an invitation a team sent (`cancel_invite`). The team's
+    /// captain may, as well as an organiser.
+    #[serde(rename_all = "camelCase")]
+    CancelTeamInvite { team_id: String, player_id: String },
+    /// How a draft's captains are chosen, and how many when by rating
+    /// (`phase` `set_captain_mode`). Before the draft starts only. A count
+    /// outside 2 to 64 is not sent, and the stored one stays.
+    #[serde(rename_all = "camelCase")]
+    SetCaptainMode { mode: CaptainMode, count: i32 },
     /// Change how map vetoes run (`edit_info` with `veto` alone).
     ///
     /// Its own change rather than part of saving the settings, because the
@@ -160,9 +191,11 @@ pub enum TourneyCommand {
     Withdraw {
         tournament_id: String,
     },
+    /// Check this account's team in, or take it back.
     #[serde(rename_all = "camelCase")]
     CheckIn {
         tournament_id: String,
+        checked_in: bool,
     },
     /// Agree with, or refuse, the score the opponent submitted.
     ///

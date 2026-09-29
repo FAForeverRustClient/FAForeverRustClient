@@ -609,11 +609,15 @@ impl TourneyPort for TourneyClient {
             .await
     }
 
-    async fn check_in(&self, tournament_id: &str) -> Result<(), RequestError> {
+    async fn check_in(&self, tournament_id: &str, checked_in: bool) -> Result<(), RequestError> {
         // The team is resolved from the session server-side; any member may
         // check the team in, which is the point of not naming one here.
-        self.act(tournament_id, "checkin_team", json!({ "value": true }))
-            .await
+        self.act(
+            tournament_id,
+            "checkin_team",
+            json!({ "value": checked_in }),
+        )
+        .await
     }
 
     async fn confirm_report(

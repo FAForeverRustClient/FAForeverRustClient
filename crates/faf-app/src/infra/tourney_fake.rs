@@ -1121,7 +1121,7 @@ impl TourneyPort for FakeTourney {
         })
     }
 
-    async fn check_in(&self, tournament_id: &str) -> Result<(), RequestError> {
+    async fn check_in(&self, tournament_id: &str, checked_in: bool) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
             let Some(team_id) = held.event.viewer.member_team_id.clone() else {
                 return Err(RequestError::rejected("Join a team first"));
@@ -1132,7 +1132,7 @@ impl TourneyPort for FakeTourney {
                 .iter_mut()
                 .find(|team| team.id == team_id)
                 .ok_or_else(|| RequestError::rejected("Team not found"))?;
-            team.checked_in = true;
+            team.checked_in = checked_in;
             Ok(())
         })
     }
@@ -3387,7 +3387,7 @@ mod tests {
     #[tokio::test]
     async fn checking_in_marks_the_whole_team() {
         let fake = FakeTourney::new();
-        fake.check_in("e9z9z").await.unwrap();
+        fake.check_in("e9z9z", true).await.unwrap();
         let event = fake.detail("e9z9z").await.unwrap();
         assert!(event.team("t1").unwrap().checked_in);
     }

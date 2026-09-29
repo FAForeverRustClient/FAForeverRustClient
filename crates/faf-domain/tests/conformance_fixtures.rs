@@ -249,6 +249,15 @@ struct TourneyRuleCase {
     may_check_rating: bool,
     /// `Tourney::signup_needs_rating`.
     signup_needs_rating: bool,
+    /// The moment the check-in rules below were asked at, so that the twin
+    /// asks at the same one rather than at the clock.
+    check_in_now: u32,
+    /// `Tourney::may_check_in` at `check_in_now`.
+    may_check_in: bool,
+    /// `Tourney::may_undo_check_in`.
+    may_undo_check_in: bool,
+    /// `Tourney::team_lineup`: who is in, who waits, who is still forming.
+    team_lineup: TeamLineup,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -655,6 +664,9 @@ fn tourney_team(id: &str, players: &[&str]) -> TourneyTeam {
     }
 }
 
+/// The clock every check-in rule case is read at.
+const CHECK_IN_NOW: u32 = 1_790_000_000;
+
 /// One rule case, with every rule read off the same event.
 fn tourney_rule_case(
     name: &str,
@@ -722,6 +734,10 @@ fn tourney_rule_case(
         may_decline_invite: event.may_decline_invite(),
         may_check_rating: event.may_check_rating(),
         signup_needs_rating: event.signup_needs_rating(),
+        check_in_now: CHECK_IN_NOW,
+        may_check_in: event.may_check_in(CHECK_IN_NOW),
+        may_undo_check_in: event.may_undo_check_in(),
+        team_lineup: event.team_lineup(),
         reportable_match_ids: event
             .matches
             .iter()
@@ -1033,6 +1049,74 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         player_reporting: false,
         ..player_running.clone()
     };
+    // An open 2v2 with room for two teams and three that filled up, `td`
+    // first: places go by when a team filled, so `tc` waits although it is
+    // the strongest, and `tb` is still one short. Check-in opens in an hour.
+    let open_lineup = Tourney {
+        id: "open-lineup".into(),
+        published: true,
+        status: TourneyStatus::Signup,
+        formation: Formation::Open,
+        team_size: 2,
+        max_teams: 2,
+        check_in_opens_at: Some(CHECK_IN_NOW + 3_600),
+        players: vec![
+            tourney_player("p1", Some(1_200), Some("ta"), false),
+            tourney_player("p2", Some(1_100), Some("ta"), false),
+            tourney_player("p3", Some(1_900), Some("tb"), false),
+            tourney_player("p4", Some(1_800), Some("tc"), false),
+            tourney_player("p5", Some(1_700), Some("tc"), false),
+            tourney_player("p6", Some(1_000), Some("td"), false),
+            tourney_player("p7", None, Some("td"), false),
+        ],
+        teams: vec![
+            tourney_team("ta", &["p1", "p2"]),
+            tourney_team("tb", &["p3"]),
+            tourney_team("tc", &["p4", "p5"]),
+            tourney_team("td", &["p6", "p7"]),
+        ],
+        entry_order: vec!["td".into(), "ta".into(), "tc".into()],
+        viewer: TourneyViewer {
+            logged_in: true,
+            signed_up_player_id: Some("p1".into()),
+            member_team_id: Some("ta".into()),
+            ..TourneyViewer::default()
+        },
+        ..Tourney::default()
+    };
+    // The same field once check-in has opened.
+    let lineup_check_in = Tourney {
+        id: "lineup-check-in".into(),
+        check_in_opens_at: Some(CHECK_IN_NOW - 60),
+        ..open_lineup.clone()
+    };
+    // The same field once the organiser has locked it: the service refuses
+    // every team action from here on, check-in included.
+    let lineup_locked = Tourney {
+        id: "lineup-locked".into(),
+        status: TourneyStatus::Drafted,
+        ..lineup_check_in.clone()
+    };
+    // The organiser has seeded two teams and this one has checked in: seeds
+    // decide the order then, the unseeded team goes last, and a check-in can
+    // be taken back.
+    let lineup_seeded = Tourney {
+        id: "lineup-seeded".into(),
+        teams: vec![
+            TourneyTeam {
+                seed: 2,
+                checked_in: true,
+                ..tourney_team("ta", &["p1", "p2"])
+            },
+            tourney_team("tb", &["p3"]),
+            TourneyTeam {
+                seed: 1,
+                ..tourney_team("tc", &["p4", "p5"])
+            },
+            tourney_team("td", &["p6", "p7"]),
+        ],
+        ..lineup_check_in.clone()
+    };
     let renamed_once = Tourney {
         id: "renamed-once".into(),
         teams: vec![TourneyTeam {
@@ -1103,6 +1187,30 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             "the same captain, once the service has counted the rename",
             renamed_once,
             Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "an open 2v2 with more full teams than places, before check-in opens",
+            open_lineup,
+            Some("ta"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same field once check-in has opened",
+            lineup_check_in,
+            Some("ta"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same field once it is locked: no check-in any more",
+            lineup_locked,
+            Some("ta"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same field seeded by the organiser, this team checked in",
+            lineup_seeded,
+            Some("ta"),
             vec![],
         ),
         tourney_rule_case(

@@ -40,6 +40,75 @@ pub struct TourneyBan {
     pub expired: bool,
 }
 
+/// How a draft's captains are chosen (`captainMode`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum CaptainMode {
+    /// The organiser marks them by hand.
+    #[default]
+    Manual,
+    /// The top N entrants by rating, worked out when the draft starts, so a
+    /// late signup or a corrected rating still counts.
+    Rating,
+}
+
+impl CaptainMode {
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::Manual => "manual",
+            Self::Rating => "rating",
+        }
+    }
+
+    pub fn from_wire(raw: &str) -> Self {
+        match raw.trim() {
+            "rating" => Self::Rating,
+            _ => Self::Manual,
+        }
+    }
+}
+
+/// Who comes into a replaced entrant's place.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+pub enum Replacement {
+    /// Somebody already signed up without a team.
+    #[serde(rename_all = "camelCase")]
+    Standby { player_id: String },
+    /// Anyone on FAF, by account. A rating is needed where FAF has none on
+    /// the board that counts, or the event is unrated.
+    #[serde(rename_all = "camelCase")]
+    Account { faf_id: i32, rating: Option<i32> },
+}
+
+/// The teams of a self-organised field, as they stand before it is locked.
+///
+/// Places are first come, first served, by when a team filled up: rating
+/// decides the seed, never who makes the cut. Check-in does not reorder the
+/// list either; it only decides who is dropped when the field is locked.
+/// Derived, like the standings, and never sent.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamLineup {
+    /// Full teams inside the entrant cap, in entry order.
+    pub participants: Vec<String>,
+    /// Full teams beyond the cap, next in line first.
+    pub waiting: Vec<String>,
+    /// Teams still short of players, strongest first.
+    pub forming: Vec<String>,
+    /// Each participant's seed: the organiser's where one is set, otherwise
+    /// where its combined rating would put it.
+    pub seeds: Vec<TeamSeed>,
+}
+
+/// One entry of [`TeamLineup::seeds`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamSeed {
+    pub team_id: String,
+    pub seed: i32,
+}
+
 /// Why this account may not enter, where a ban stops it (`myBan`).
 ///
 /// Sent to the banned person only, so they are told before they press

@@ -7478,6 +7478,9 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "myBan": null,
+                    "entryOrder": [],
+                    "captainMode": "manual",
+                    "captainCount": 0,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -7523,6 +7526,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -7539,6 +7544,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -7828,6 +7834,9 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "myBan": null,
+                    "entryOrder": [],
+                    "captainMode": "manual",
+                    "captainCount": 0,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -7938,6 +7947,9 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "myBan": null,
+                    "entryOrder": [],
+                    "captainMode": "manual",
+                    "captainCount": 0,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -7983,6 +7995,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -7999,6 +8013,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -8093,6 +8108,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -8109,6 +8126,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -8267,6 +8285,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -8283,6 +8303,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -8377,6 +8398,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -8393,6 +8416,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -8548,6 +8572,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -8564,6 +8590,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -8658,6 +8685,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -8674,6 +8703,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -8897,6 +8927,9 @@
                   "survivors": null,
                   "earlyFinish": null,
                   "myBan": null,
+                  "entryOrder": [],
+                  "captainMode": "manual",
+                  "captainCount": 0,
                   "eventDays": [],
                   "viewer": {
                     "loggedIn": false,
@@ -8934,6 +8967,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -8950,6 +8985,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -9050,6 +9086,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -9066,6 +9104,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -9160,6 +9199,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -9176,6 +9217,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -9329,6 +9371,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -9345,6 +9389,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -9445,6 +9490,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -9461,6 +9508,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -9555,6 +9603,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -9571,6 +9621,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -9736,6 +9787,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -9752,6 +9805,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -9852,6 +9906,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -9868,6 +9924,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -9962,6 +10019,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -9978,6 +10037,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -10126,6 +10186,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -10142,6 +10204,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -10242,6 +10305,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -10258,6 +10323,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -10352,6 +10418,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -10368,6 +10436,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -10521,6 +10590,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -10537,6 +10608,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -10637,6 +10709,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -10653,6 +10727,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -10747,6 +10822,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -10763,6 +10840,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -10919,6 +10997,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -10935,6 +11015,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -11035,6 +11116,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -11051,6 +11134,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -11145,6 +11229,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -11161,6 +11247,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -11321,6 +11408,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -11337,6 +11426,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -11446,6 +11536,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -11462,6 +11554,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -11556,6 +11649,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -11572,6 +11667,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -11725,6 +11821,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -11741,6 +11839,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -11850,6 +11949,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -11866,6 +11967,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -11960,6 +12062,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -11976,6 +12080,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -12139,6 +12244,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -12155,6 +12262,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -12249,6 +12357,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -12265,6 +12375,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -12427,6 +12538,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -12443,6 +12556,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -12537,6 +12651,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -12553,6 +12669,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -12725,6 +12842,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -12741,6 +12860,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -12835,6 +12955,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -12851,6 +12973,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -13074,6 +13197,9 @@
                   "survivors": null,
                   "earlyFinish": null,
                   "myBan": null,
+                  "entryOrder": [],
+                  "captainMode": "manual",
+                  "captainCount": 0,
                   "eventDays": [],
                   "viewer": {
                     "loggedIn": false,
@@ -13125,6 +13251,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -13141,6 +13269,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -13235,6 +13364,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -13251,6 +13382,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -13475,6 +13607,9 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "myBan": null,
+                    "entryOrder": [],
+                    "captainMode": "manual",
+                    "captainCount": 0,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -13527,6 +13662,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -13543,6 +13680,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -16161,6 +16299,9 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "myBan": null,
+                    "entryOrder": [],
+                    "captainMode": "manual",
+                    "captainCount": 0,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -16271,6 +16412,9 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "myBan": null,
+                    "entryOrder": [],
+                    "captainMode": "manual",
+                    "captainCount": 0,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -16316,6 +16460,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -16332,6 +16478,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -16426,6 +16573,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -16442,6 +16591,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -16665,6 +16815,9 @@
                   "survivors": null,
                   "earlyFinish": null,
                   "myBan": null,
+                  "entryOrder": [],
+                  "captainMode": "manual",
+                  "captainCount": 0,
                   "eventDays": [],
                   "viewer": {
                     "loggedIn": false,
@@ -16702,6 +16855,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -16718,6 +16873,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -16818,6 +16974,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -16834,6 +16992,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -16928,6 +17087,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -16944,6 +17105,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -17133,6 +17295,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -17149,6 +17313,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -17249,6 +17414,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -17265,6 +17432,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -17359,6 +17527,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -17375,6 +17545,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -17545,6 +17716,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -17561,6 +17734,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -17661,6 +17835,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -17677,6 +17853,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -17771,6 +17948,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -17787,6 +17966,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -17954,6 +18134,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -17970,6 +18152,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -18070,6 +18253,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -18086,6 +18271,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -18180,6 +18366,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -18196,6 +18384,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -18389,6 +18578,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -18405,6 +18596,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -18505,6 +18697,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -18521,6 +18715,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -18615,6 +18810,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -18631,6 +18828,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -18813,6 +19011,8 @@
               "auditLog": [],
               "bans": [],
               "bracketKind": "single",
+              "captainCount": 0,
+              "captainMode": "manual",
               "casters": [],
               "category": "community",
               "championTeamId": null,
@@ -18829,6 +19029,7 @@
               "draft": null,
               "draftSnakes": false,
               "earlyFinish": null,
+              "entryOrder": [],
               "eventDate": null,
               "eventDays": [],
               "factionVeto": {
@@ -18929,6 +19130,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -18945,6 +19148,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -19039,6 +19243,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -19055,6 +19261,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -19213,6 +19420,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -19229,6 +19438,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -19323,6 +19533,8 @@
                 "auditLog": [],
                 "bans": [],
                 "bracketKind": "single",
+                "captainCount": 0,
+                "captainMode": "manual",
                 "casters": [],
                 "category": "community",
                 "championTeamId": null,
@@ -19339,6 +19551,7 @@
                 "draft": null,
                 "draftSnakes": false,
                 "earlyFinish": null,
+                "entryOrder": [],
                 "eventDate": null,
                 "eventDays": [],
                 "factionVeto": {
@@ -38727,6 +38940,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -38775,6 +38991,24 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [
+            "t2"
+          ],
+          "waiting": [],
+          "forming": [
+            "t1"
+          ],
+          "seeds": [
+            {
+              "teamId": "t2",
+              "seed": 1
+            }
+          ]
+        },
         "rooms": [
           {
             "id": "global",
@@ -39009,6 +39243,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -39058,6 +39295,24 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [
+            "t2"
+          ],
+          "waiting": [],
+          "forming": [
+            "t1"
+          ],
+          "seeds": [
+            {
+              "teamId": "t2",
+              "seed": 1
+            }
+          ]
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -39193,6 +39448,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -39237,6 +39495,17 @@
         "mayDeclineInvite": false,
         "mayCheckRating": false,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -39354,6 +39623,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -39398,6 +39670,15 @@
         "mayDeclineInvite": false,
         "mayCheckRating": false,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -39618,6 +39899,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -39662,6 +39946,17 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -39882,6 +40177,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -39931,6 +40229,17 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -40151,6 +40460,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -40195,6 +40507,17 @@
         "mayDeclineInvite": false,
         "mayCheckRating": false,
         "signupNeedsRating": true,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -40415,6 +40738,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -40459,6 +40785,17 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -40679,6 +41016,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -40723,6 +41063,17 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -40873,6 +41224,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -40918,6 +41272,22 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [
+            "t1"
+          ],
+          "waiting": [],
+          "forming": [],
+          "seeds": [
+            {
+              "teamId": "t1",
+              "seed": 1
+            }
+          ]
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -41068,6 +41438,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -41113,6 +41486,1426 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [
+            "t1"
+          ],
+          "waiting": [],
+          "forming": [],
+          "seeds": [
+            {
+              "teamId": "t1",
+              "seed": 1
+            }
+          ]
+        },
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "an open 2v2 with more full teams than places, before check-in opens",
+        "event": {
+          "id": "open-lineup",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "signup",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "maxTeams": 2,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": 1790003600,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront",
+            "teamA": "lowerA",
+            "revealBans": false
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": true,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1200,
+              "ratingActual": 1200,
+              "teamId": "ta",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p2",
+              "name": "P2",
+              "fafId": null,
+              "rating": 1100,
+              "ratingActual": 1100,
+              "teamId": "ta",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p3",
+              "name": "P3",
+              "fafId": null,
+              "rating": 1900,
+              "ratingActual": 1900,
+              "teamId": "tb",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p4",
+              "name": "P4",
+              "fafId": null,
+              "rating": 1800,
+              "ratingActual": 1800,
+              "teamId": "tc",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p5",
+              "name": "P5",
+              "fafId": null,
+              "rating": 1700,
+              "ratingActual": 1700,
+              "teamId": "tc",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p6",
+              "name": "P6",
+              "fafId": null,
+              "rating": 1000,
+              "ratingActual": 1000,
+              "teamId": "td",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p7",
+              "name": "P7",
+              "fafId": null,
+              "rating": null,
+              "ratingActual": null,
+              "teamId": "td",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            }
+          ],
+          "teams": [
+            {
+              "id": "ta",
+              "name": "TA",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1",
+                "p2"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "tb",
+              "name": "TB",
+              "seed": 0,
+              "captainId": "p3",
+              "playerIds": [
+                "p3"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "tc",
+              "name": "TC",
+              "seed": 0,
+              "captainId": "p4",
+              "playerIds": [
+                "p4",
+                "p5"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "td",
+              "name": "TD",
+              "seed": 0,
+              "captainId": "p6",
+              "playerIds": [
+                "p6",
+                "p7"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "bans": [],
+          "stopAtAlive": 0,
+          "survivors": null,
+          "earlyFinish": null,
+          "myBan": null,
+          "entryOrder": [
+            "td",
+            "ta",
+            "tc"
+          ],
+          "captainMode": "manual",
+          "captainCount": 0,
+          "eventDays": [],
+          "viewer": {
+            "loggedIn": true,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": "p1",
+            "memberTeamId": "ta",
+            "caster": false,
+            "newsReadAt": null,
+            "invited": false
+          }
+        },
+        "teamId": "ta",
+        "teamRating": 2300,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": true,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [
+          "p1",
+          "p2"
+        ],
+        "myInviteTeamIds": [],
+        "mayRename": true,
+        "mayPublish": false,
+        "reportableMatchIds": [],
+        "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
+        "removableOrganiserIds": [],
+        "mayEndEarly": false,
+        "mayReopenEarly": false,
+        "mayRepullRatings": false,
+        "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [
+            "td",
+            "ta"
+          ],
+          "waiting": [
+            "tc"
+          ],
+          "forming": [
+            "tb"
+          ],
+          "seeds": [
+            {
+              "teamId": "ta",
+              "seed": 1
+            },
+            {
+              "teamId": "td",
+              "seed": 2
+            }
+          ]
+        },
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "the same field once check-in has opened",
+        "event": {
+          "id": "lineup-check-in",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "signup",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "maxTeams": 2,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": 1789999940,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront",
+            "teamA": "lowerA",
+            "revealBans": false
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": true,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1200,
+              "ratingActual": 1200,
+              "teamId": "ta",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p2",
+              "name": "P2",
+              "fafId": null,
+              "rating": 1100,
+              "ratingActual": 1100,
+              "teamId": "ta",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p3",
+              "name": "P3",
+              "fafId": null,
+              "rating": 1900,
+              "ratingActual": 1900,
+              "teamId": "tb",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p4",
+              "name": "P4",
+              "fafId": null,
+              "rating": 1800,
+              "ratingActual": 1800,
+              "teamId": "tc",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p5",
+              "name": "P5",
+              "fafId": null,
+              "rating": 1700,
+              "ratingActual": 1700,
+              "teamId": "tc",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p6",
+              "name": "P6",
+              "fafId": null,
+              "rating": 1000,
+              "ratingActual": 1000,
+              "teamId": "td",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p7",
+              "name": "P7",
+              "fafId": null,
+              "rating": null,
+              "ratingActual": null,
+              "teamId": "td",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            }
+          ],
+          "teams": [
+            {
+              "id": "ta",
+              "name": "TA",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1",
+                "p2"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "tb",
+              "name": "TB",
+              "seed": 0,
+              "captainId": "p3",
+              "playerIds": [
+                "p3"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "tc",
+              "name": "TC",
+              "seed": 0,
+              "captainId": "p4",
+              "playerIds": [
+                "p4",
+                "p5"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "td",
+              "name": "TD",
+              "seed": 0,
+              "captainId": "p6",
+              "playerIds": [
+                "p6",
+                "p7"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "bans": [],
+          "stopAtAlive": 0,
+          "survivors": null,
+          "earlyFinish": null,
+          "myBan": null,
+          "entryOrder": [
+            "td",
+            "ta",
+            "tc"
+          ],
+          "captainMode": "manual",
+          "captainCount": 0,
+          "eventDays": [],
+          "viewer": {
+            "loggedIn": true,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": "p1",
+            "memberTeamId": "ta",
+            "caster": false,
+            "newsReadAt": null,
+            "invited": false
+          }
+        },
+        "teamId": "ta",
+        "teamRating": 2300,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": true,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [
+          "p1",
+          "p2"
+        ],
+        "myInviteTeamIds": [],
+        "mayRename": true,
+        "mayPublish": false,
+        "reportableMatchIds": [],
+        "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
+        "removableOrganiserIds": [],
+        "mayEndEarly": false,
+        "mayReopenEarly": false,
+        "mayRepullRatings": false,
+        "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": true,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [
+            "td",
+            "ta"
+          ],
+          "waiting": [
+            "tc"
+          ],
+          "forming": [
+            "tb"
+          ],
+          "seeds": [
+            {
+              "teamId": "ta",
+              "seed": 1
+            },
+            {
+              "teamId": "td",
+              "seed": 2
+            }
+          ]
+        },
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "the same field once it is locked: no check-in any more",
+        "event": {
+          "id": "lineup-locked",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "drafted",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "maxTeams": 2,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": 1789999940,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront",
+            "teamA": "lowerA",
+            "revealBans": false
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": true,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1200,
+              "ratingActual": 1200,
+              "teamId": "ta",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p2",
+              "name": "P2",
+              "fafId": null,
+              "rating": 1100,
+              "ratingActual": 1100,
+              "teamId": "ta",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p3",
+              "name": "P3",
+              "fafId": null,
+              "rating": 1900,
+              "ratingActual": 1900,
+              "teamId": "tb",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p4",
+              "name": "P4",
+              "fafId": null,
+              "rating": 1800,
+              "ratingActual": 1800,
+              "teamId": "tc",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p5",
+              "name": "P5",
+              "fafId": null,
+              "rating": 1700,
+              "ratingActual": 1700,
+              "teamId": "tc",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p6",
+              "name": "P6",
+              "fafId": null,
+              "rating": 1000,
+              "ratingActual": 1000,
+              "teamId": "td",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p7",
+              "name": "P7",
+              "fafId": null,
+              "rating": null,
+              "ratingActual": null,
+              "teamId": "td",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            }
+          ],
+          "teams": [
+            {
+              "id": "ta",
+              "name": "TA",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1",
+                "p2"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "tb",
+              "name": "TB",
+              "seed": 0,
+              "captainId": "p3",
+              "playerIds": [
+                "p3"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "tc",
+              "name": "TC",
+              "seed": 0,
+              "captainId": "p4",
+              "playerIds": [
+                "p4",
+                "p5"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "td",
+              "name": "TD",
+              "seed": 0,
+              "captainId": "p6",
+              "playerIds": [
+                "p6",
+                "p7"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "bans": [],
+          "stopAtAlive": 0,
+          "survivors": null,
+          "earlyFinish": null,
+          "myBan": null,
+          "entryOrder": [
+            "td",
+            "ta",
+            "tc"
+          ],
+          "captainMode": "manual",
+          "captainCount": 0,
+          "eventDays": [],
+          "viewer": {
+            "loggedIn": true,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": "p1",
+            "memberTeamId": "ta",
+            "caster": false,
+            "newsReadAt": null,
+            "invited": false
+          }
+        },
+        "teamId": "ta",
+        "teamRating": 2300,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": true,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [
+          "p1",
+          "p2"
+        ],
+        "myInviteTeamIds": [],
+        "mayRename": true,
+        "mayPublish": false,
+        "reportableMatchIds": [],
+        "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
+        "removableOrganiserIds": [],
+        "mayEndEarly": false,
+        "mayReopenEarly": false,
+        "mayRepullRatings": false,
+        "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [
+            "td",
+            "ta"
+          ],
+          "waiting": [
+            "tc"
+          ],
+          "forming": [
+            "tb"
+          ],
+          "seeds": [
+            {
+              "teamId": "ta",
+              "seed": 1
+            },
+            {
+              "teamId": "td",
+              "seed": 2
+            }
+          ]
+        },
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "the same field seeded by the organiser, this team checked in",
+        "event": {
+          "id": "lineup-seeded",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "signup",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "maxTeams": 2,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": 1789999940,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront",
+            "teamA": "lowerA",
+            "revealBans": false
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": true,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1200,
+              "ratingActual": 1200,
+              "teamId": "ta",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p2",
+              "name": "P2",
+              "fafId": null,
+              "rating": 1100,
+              "ratingActual": 1100,
+              "teamId": "ta",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p3",
+              "name": "P3",
+              "fafId": null,
+              "rating": 1900,
+              "ratingActual": 1900,
+              "teamId": "tb",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p4",
+              "name": "P4",
+              "fafId": null,
+              "rating": 1800,
+              "ratingActual": 1800,
+              "teamId": "tc",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p5",
+              "name": "P5",
+              "fafId": null,
+              "rating": 1700,
+              "ratingActual": 1700,
+              "teamId": "tc",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p6",
+              "name": "P6",
+              "fafId": null,
+              "rating": 1000,
+              "ratingActual": 1000,
+              "teamId": "td",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            },
+            {
+              "id": "p7",
+              "name": "P7",
+              "fafId": null,
+              "rating": null,
+              "ratingActual": null,
+              "teamId": "td",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null,
+              "discord": ""
+            }
+          ],
+          "teams": [
+            {
+              "id": "ta",
+              "name": "TA",
+              "seed": 2,
+              "captainId": "p1",
+              "playerIds": [
+                "p1",
+                "p2"
+              ],
+              "division": 0,
+              "checkedIn": true,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "tb",
+              "name": "TB",
+              "seed": 0,
+              "captainId": "p3",
+              "playerIds": [
+                "p3"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "tc",
+              "name": "TC",
+              "seed": 1,
+              "captainId": "p4",
+              "playerIds": [
+                "p4",
+                "p5"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "td",
+              "name": "TD",
+              "seed": 0,
+              "captainId": "p6",
+              "playerIds": [
+                "p6",
+                "p7"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "bans": [],
+          "stopAtAlive": 0,
+          "survivors": null,
+          "earlyFinish": null,
+          "myBan": null,
+          "entryOrder": [
+            "td",
+            "ta",
+            "tc"
+          ],
+          "captainMode": "manual",
+          "captainCount": 0,
+          "eventDays": [],
+          "viewer": {
+            "loggedIn": true,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": "p1",
+            "memberTeamId": "ta",
+            "caster": false,
+            "newsReadAt": null,
+            "invited": false
+          }
+        },
+        "teamId": "ta",
+        "teamRating": 2300,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": true,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [
+          "p1",
+          "p2"
+        ],
+        "myInviteTeamIds": [],
+        "mayRename": true,
+        "mayPublish": false,
+        "reportableMatchIds": [],
+        "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
+        "removableOrganiserIds": [],
+        "mayEndEarly": false,
+        "mayReopenEarly": false,
+        "mayRepullRatings": false,
+        "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": true,
+        "teamLineup": {
+          "participants": [
+            "tc",
+            "ta"
+          ],
+          "waiting": [
+            "td"
+          ],
+          "forming": [
+            "tb"
+          ],
+          "seeds": [
+            {
+              "teamId": "tc",
+              "seed": 1
+            },
+            {
+              "teamId": "ta",
+              "seed": 2
+            },
+            {
+              "teamId": "td",
+              "seed": 0
+            }
+          ]
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -41333,6 +43126,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -41379,6 +43175,22 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [
+            "t1"
+          ],
+          "waiting": [],
+          "forming": [],
+          "seeds": [
+            {
+              "teamId": "t1",
+              "seed": 1
+            }
+          ]
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -41599,6 +43411,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -41643,6 +43458,22 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [
+            "t1"
+          ],
+          "waiting": [],
+          "forming": [],
+          "seeds": [
+            {
+              "teamId": "t1",
+              "seed": 1
+            }
+          ]
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -41897,6 +43728,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -41944,6 +43778,20 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1",
+            "t2",
+            "t3",
+            "t4"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -42226,6 +44074,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -42274,6 +44125,20 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1",
+            "t2",
+            "t3",
+            "t4"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -42590,6 +44455,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -42638,6 +44506,20 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1",
+            "t2",
+            "t3",
+            "t4"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -42809,6 +44691,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -42851,6 +44736,20 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1",
+            "t2",
+            "t3",
+            "t4"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -43116,6 +45015,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -43166,6 +45068,20 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1",
+            "t2",
+            "t3",
+            "t4"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -43426,6 +45342,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -43473,6 +45392,20 @@
         "mayDeclineInvite": false,
         "mayCheckRating": false,
         "signupNeedsRating": true,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1",
+            "t2",
+            "t3",
+            "t4"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -43737,6 +45670,9 @@
             ]
           },
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -43784,6 +45720,20 @@
         "mayDeclineInvite": false,
         "mayCheckRating": true,
         "signupNeedsRating": false,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [
+            "t1",
+            "t2",
+            "t3",
+            "t4"
+          ],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -43886,6 +45836,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -43928,6 +45881,15 @@
         "mayDeclineInvite": true,
         "mayCheckRating": false,
         "signupNeedsRating": true,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       },
@@ -44034,6 +45996,9 @@
             "reason": "No show",
             "expires": null
           },
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -44076,6 +46041,15 @@
         "mayDeclineInvite": true,
         "mayCheckRating": false,
         "signupNeedsRating": true,
+        "checkInNow": 1790000000,
+        "mayCheckIn": false,
+        "mayUndoCheckIn": false,
+        "teamLineup": {
+          "participants": [],
+          "waiting": [],
+          "forming": [],
+          "seeds": []
+        },
         "rooms": [],
         "unreadTotal": 0
       }
@@ -45493,6 +47467,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -45707,6 +47684,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -45963,6 +47943,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -46323,6 +48306,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -46710,6 +48696,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -46917,6 +48906,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -47155,6 +49147,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -47314,6 +49309,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -47528,6 +49526,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -48113,6 +50114,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -48350,6 +50354,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -48587,6 +50594,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -48824,6 +50834,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -49061,6 +51074,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -49298,6 +51314,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -49535,6 +51554,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -49772,6 +51794,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -49981,6 +52006,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -50262,6 +52290,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -50560,6 +52591,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -50854,6 +52888,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -51152,6 +53189,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -51439,6 +53479,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -51727,6 +53770,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -52014,6 +54060,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -52302,6 +54351,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -52558,6 +54610,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -52813,6 +54868,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -53068,6 +55126,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -53307,6 +55368,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -53540,6 +55604,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -53773,6 +55840,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -54010,6 +56080,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -54247,6 +56320,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -54484,6 +56560,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -54721,6 +56800,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -54954,6 +57036,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -55191,6 +57276,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -55424,6 +57512,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -55561,6 +57652,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -55671,6 +57765,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -55804,6 +57901,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -55914,6 +58014,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -56047,6 +58150,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -56157,6 +58263,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -56290,6 +58399,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -56400,6 +58512,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -56533,6 +58648,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -56643,6 +58761,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -56776,6 +58897,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -56886,6 +59010,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -57019,6 +59146,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -57129,6 +59259,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -57266,6 +59399,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -57408,6 +59544,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -57550,6 +59689,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -57692,6 +59834,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -57834,6 +59979,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -57976,6 +60124,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -58118,6 +60269,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -58260,6 +60414,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -58402,6 +60559,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -58544,6 +60704,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -58784,6 +60947,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -58915,6 +61081,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -59193,6 +61362,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -59330,6 +61502,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -59497,6 +61672,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -59655,6 +61833,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -59773,6 +61954,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -59976,6 +62160,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -60109,6 +62296,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -60555,6 +62745,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -60771,6 +62964,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -61017,6 +63213,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -61270,6 +63469,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -61515,6 +63717,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -61663,6 +63868,9 @@
           "survivors": null,
           "earlyFinish": null,
           "myBan": null,
+          "entryOrder": [],
+          "captainMode": "manual",
+          "captainCount": 0,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,

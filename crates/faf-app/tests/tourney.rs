@@ -162,7 +162,7 @@ impl TourneyPort for RefusingTourney {
     async fn rename_team(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
-    async fn check_in(&self, _: &str) -> Result<(), RequestError> {
+    async fn check_in(&self, _: &str, _: bool) -> Result<(), RequestError> {
         self.refused()
     }
     async fn confirm_report(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
@@ -1736,7 +1736,7 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         async fn rename_team(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
             unreachable!()
         }
-        async fn check_in(&self, _: &str) -> Result<(), RequestError> {
+        async fn check_in(&self, _: &str, _: bool) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn confirm_report(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {

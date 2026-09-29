@@ -35,6 +35,7 @@ use crate::state::{
     TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 use crate::state::{BanScope, EntrantBoardRating, EntrantRatings, OwnBan, RatingCheck};
+use crate::state::{CaptainMode, Replacement};
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
     VetoDecider, VetoMode, VetoTeamA,
@@ -480,6 +481,9 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
                 alive: int(held, "alive").unwrap_or(0),
                 names: string_list(held, "names"),
             }),
+        entry_order: entry_order(document),
+        captain_mode: CaptainMode::from_wire(&text(document, "captainMode")),
+        captain_count: int(document, "captainCount").unwrap_or(0),
         my_ban: document
             .get("myBan")
             .filter(|held| held.is_object())
@@ -490,6 +494,29 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             }),
         viewer: parse_viewer(document),
     })
+}
+
+/// Team ids in the order they entered, from each team's `entryKey`.
+///
+/// The key is a millisecond timestamp, or the one an organiser's swap handed
+/// over, and it can tie: the service then keeps the list's own order, and so
+/// does this. Read as an order rather than as numbers, because the numbers
+/// mean nothing on their own.
+fn entry_order(document: &Value) -> Vec<String> {
+    let mut keyed: Vec<(f64, usize, String)> = array(document, "teams")
+        .iter()
+        .enumerate()
+        .filter_map(|(index, team)| {
+            let key = team
+                .get("entryKey")
+                .or_else(|| team.get("createdAt"))
+                .and_then(Value::as_f64)
+                .unwrap_or(f64::MAX);
+            Some((key, index, id(team, "id")?))
+        })
+        .collect();
+    keyed.sort_by(|left, right| left.0.total_cmp(&right.0).then(left.1.cmp(&right.1)));
+    keyed.into_iter().map(|(_, _, team_id)| team_id).collect()
 }
 
 /// The answer to `POST /api/t/{id}/check_rating`.
@@ -1874,6 +1901,50 @@ pub fn admin_request(change: &TourneyAdmin) -> (&'static str, Value) {
         TourneyAdmin::AddImage { data_url } => ("add_desc_image", json!({ "image": data_url })),
         TourneyAdmin::RemoveImage { file } => ("remove_desc_image", json!({ "file": file })),
         TourneyAdmin::SetVeto { config } => ("edit_info", json!({ "veto": veto_body(config) })),
+        TourneyAdmin::TeamCheckIn {
+            team_id,
+            checked_in,
+        } => (
+            "checkin_team",
+            json!({ "teamId": team_id, "value": u8::from(*checked_in) }),
+        ),
+        TourneyAdmin::SwapTeam { in_id, out_id } => {
+            ("swap_team", json!({ "inId": in_id, "outId": out_id }))
+        }
+        TourneyAdmin::CreateTeamFor { player_id, name } => (
+            "org_create_team",
+            json!({ "playerId": player_id, "name": name.trim() }),
+        ),
+        TourneyAdmin::ReplacePlayer { player_id, with } => (
+            "replace_player",
+            match with {
+                Replacement::Standby { player_id: standby } => {
+                    json!({ "playerId": player_id, "replacementId": standby })
+                }
+                // `lookup` takes a FAF name or id and is resolved against FAF
+                // by the service; the id is what the picker chose.
+                Replacement::Account { faf_id, rating } => {
+                    let mut body = json!({ "playerId": player_id, "lookup": faf_id.to_string() });
+                    if let Some(rating) = rating {
+                        body["rating"] = json!(rating);
+                    }
+                    body
+                }
+            },
+        ),
+        TourneyAdmin::CancelTeamInvite { team_id, player_id } => (
+            "cancel_invite",
+            json!({ "teamId": team_id, "playerId": player_id }),
+        ),
+        // A count outside 2..=64 is refused outright, and the mode with it, so
+        // one the organiser has not typed yet is left out rather than sent.
+        TourneyAdmin::SetCaptainMode { mode, count } => {
+            let mut body = json!({ "action": "set_captain_mode", "mode": mode.as_wire() });
+            if (2..=64).contains(count) {
+                body["count"] = json!(count);
+            }
+            ("phase", body)
+        }
         TourneyAdmin::MapSecret { map_id, secret } => {
             let secret = u8::from(*secret);
             (
@@ -2659,6 +2730,104 @@ See the [rules](https://x.invalid/r)."
         }));
         assert!(manual.boards.is_empty());
         assert!(!manual.reason.is_empty());
+    }
+
+    #[test]
+    fn the_teams_are_ordered_by_when_they_entered_not_as_listed() {
+        let mut document = document();
+        document["teams"] = json!([
+            { "id": "late", "name": "Late", "entryKey": 3_000 },
+            { "id": "first", "name": "First", "entryKey": 1_000 },
+            { "id": "swapped", "name": "Swapped", "entryKey": 2_000 },
+            { "id": "tied", "name": "Tied", "entryKey": 2_000 },
+        ]);
+        document["captainMode"] = json!("rating");
+        document["captainCount"] = json!(4);
+        let event = parse_tourney(&document).unwrap();
+        assert_eq!(event.entry_order, vec!["first", "swapped", "tied", "late"]);
+        assert_eq!(event.captain_mode, CaptainMode::Rating);
+        assert_eq!(event.captain_count, 4);
+    }
+
+    #[test]
+    fn the_team_changes_go_where_the_service_listens() {
+        let request = |change: TourneyAdmin| admin_request(&change);
+        assert_eq!(
+            request(TourneyAdmin::TeamCheckIn {
+                team_id: "t1".into(),
+                checked_in: false,
+            }),
+            ("checkin_team", json!({ "teamId": "t1", "value": 0 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::SwapTeam {
+                in_id: "t9".into(),
+                out_id: "t2".into(),
+            }),
+            ("swap_team", json!({ "inId": "t9", "outId": "t2" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::CreateTeamFor {
+                player_id: "p4".into(),
+                name: " Blue ".into(),
+            }),
+            (
+                "org_create_team",
+                json!({ "playerId": "p4", "name": "Blue" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::ReplacePlayer {
+                player_id: "p1".into(),
+                with: Replacement::Standby {
+                    player_id: "p7".into(),
+                },
+            }),
+            (
+                "replace_player",
+                json!({ "playerId": "p1", "replacementId": "p7" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::ReplacePlayer {
+                player_id: "p1".into(),
+                with: Replacement::Account {
+                    faf_id: 4711,
+                    rating: Some(1500),
+                },
+            }),
+            (
+                "replace_player",
+                json!({ "playerId": "p1", "lookup": "4711", "rating": 1500 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::CancelTeamInvite {
+                team_id: "t1".into(),
+                player_id: "p5".into(),
+            }),
+            ("cancel_invite", json!({ "teamId": "t1", "playerId": "p5" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::SetCaptainMode {
+                mode: CaptainMode::Rating,
+                count: 6,
+            }),
+            (
+                "phase",
+                json!({ "action": "set_captain_mode", "mode": "rating", "count": 6 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::SetCaptainMode {
+                mode: CaptainMode::Manual,
+                count: 0,
+            }),
+            (
+                "phase",
+                json!({ "action": "set_captain_mode", "mode": "manual" })
+            )
+        );
     }
 
     #[test]

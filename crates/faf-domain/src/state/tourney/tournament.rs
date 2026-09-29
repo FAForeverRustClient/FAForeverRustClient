@@ -305,6 +305,12 @@ pub struct Tourney {
     pub early_finish: Option<EarlyFinish>,
     /// The ban that stops this account entering, where one does (`myBan`).
     pub my_ban: Option<OwnBan>,
+    /// Team ids in the order they entered (`entryKey`, which an organiser's
+    /// swap exchanges): when each filled up.
+    pub entry_order: Vec<String>,
+    /// How a draft's captains are chosen, and how many when by rating.
+    pub captain_mode: CaptainMode,
+    pub captain_count: i32,
     /// The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
     /// (`eventDays`). Empty for an event on its date alone.
     pub event_days: Vec<String>,
@@ -1204,6 +1210,95 @@ impl Tourney {
             && !self.viewer.is_signed_up()
             && self.status == TourneyStatus::Signup
             && self.my_ban.is_none()
+    }
+
+    /// Whether the service still takes team actions at all: forming, joining,
+    /// inviting, captaincy and check-in. Self-made teams during signups only;
+    /// every one of those calls is refused with "Teams are locked" afterwards.
+    pub fn teams_are_open(&self) -> bool {
+        self.formation == Formation::Open && self.status == TourneyStatus::Signup
+    }
+
+    /// Whether this account may check its team in (`checkin_team`): a member
+    /// of a full team not checked in yet, on or after the day check-in opens.
+    ///
+    /// During signups, never after: the check-in decides who is dropped when
+    /// the field is locked, and the service refuses it once it is. This used
+    /// to be offered only after the lock, which is exactly when it cannot work.
+    pub fn may_check_in(&self, now: u32) -> bool {
+        self.teams_are_open()
+            && self.my_team().is_some_and(|team| {
+                self.team_is_full(team)
+                    && !team.checked_in
+                    && self.check_in_opens_at.is_none_or(|opens| opens <= now)
+            })
+    }
+
+    /// Whether this account may take its team's check-in back.
+    pub fn may_undo_check_in(&self) -> bool {
+        self.teams_are_open() && self.my_team().is_some_and(|team| team.checked_in)
+    }
+
+    /// Where every team of a self-organised field stands before it is locked.
+    /// See [`TeamLineup`]; the website's `drawOpenTeams`, and the service's
+    /// `finalizeOpenTeams` it mirrors.
+    pub fn team_lineup(&self) -> TeamLineup {
+        let full: Vec<&TourneyTeam> = self
+            .teams
+            .iter()
+            .filter(|team| self.team_is_full(team))
+            .collect();
+        let seeded = full.iter().any(|team| team.seed > 0);
+        let entered = |team: &TourneyTeam| {
+            self.entry_order
+                .iter()
+                .position(|id| *id == team.id)
+                .unwrap_or(usize::MAX)
+        };
+        let mut ordered = full.clone();
+        if seeded {
+            ordered.sort_by_key(|team| if team.seed > 0 { team.seed } else { i32::MAX });
+        } else {
+            ordered.sort_by_key(|team| entered(team));
+        }
+        let cap = usize::try_from(self.max_teams).unwrap_or(0);
+        let (participants, waiting) = if cap > 0 && ordered.len() > cap {
+            ordered.split_at(cap)
+        } else {
+            (ordered.as_slice(), &[][..])
+        };
+        let seeds = if seeded {
+            ordered
+                .iter()
+                .map(|team| TeamSeed {
+                    team_id: team.id.clone(),
+                    seed: team.seed,
+                })
+                .collect()
+        } else {
+            let mut by_rating = participants.to_vec();
+            by_rating.sort_by_key(|team| std::cmp::Reverse(self.team_rating(team)));
+            by_rating
+                .iter()
+                .enumerate()
+                .map(|(index, team)| TeamSeed {
+                    team_id: team.id.clone(),
+                    seed: index as i32 + 1,
+                })
+                .collect()
+        };
+        let mut forming: Vec<&TourneyTeam> = self
+            .teams
+            .iter()
+            .filter(|team| !self.team_is_full(team))
+            .collect();
+        forming.sort_by_key(|team| std::cmp::Reverse(self.team_rating(team)));
+        TeamLineup {
+            participants: participants.iter().map(|team| team.id.clone()).collect(),
+            waiting: waiting.iter().map(|team| team.id.clone()).collect(),
+            forming: forming.iter().map(|team| team.id.clone()).collect(),
+            seeds,
+        }
     }
 
     /// Whether this account may decline an invitation (`decline_invite`): it

@@ -289,7 +289,7 @@ pub trait TourneyPort: Send + Sync {
     ///
     /// Checks in the whole team: any member may do it, since the captain may be
     /// the one running late.
-    async fn check_in(&self, tournament_id: &str) -> Result<(), RequestError>;
+    async fn check_in(&self, tournament_id: &str, checked_in: bool) -> Result<(), RequestError>;
 
     /// Answer a result raised against this account's match, or, as an
     /// organiser, against either side's.

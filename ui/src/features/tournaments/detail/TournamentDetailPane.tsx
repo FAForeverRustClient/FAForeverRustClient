@@ -64,7 +64,9 @@ import { matchLabel } from "../bracket/matchLabels";
 import { teamNameOf } from "../bracket/matchParts";
 import { formatMoment, formatOf } from "../tourneyPresentation";
 import {
+  mayCheckIn,
   maySignUp,
+  mayUndoCheckIn,
   selfOrganised,
   standingsKind,
   unreadNews,
@@ -160,7 +162,8 @@ interface TournamentDetailPaneProps {
   onBanPlayer: (player: TourneyPlayer, reason: string, expires: number | null, remove: boolean) => void;
   onSignUp: () => void;
   onWithdraw: () => void;
-  onCheckIn: () => void;
+  /** Check this account's team in, or take the check-in back. */
+  onCheckIn: (checkedIn: boolean) => void;
   onReport: (entry: TourneyMatch) => void;
   onAnswer: (entry: TourneyMatch, accept: boolean) => void;
   onHost: (entry: TourneyMatch) => void;
@@ -238,16 +241,12 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   // the conformance harness pins it.
   const mayEnter = maySignUp(event);
   const mayWithdraw = event.viewer.signedUpPlayerId !== null && event.status === "signup";
-  // Check-in opens on the day of the event and needs a team, which only exists
-  // once the organiser has formed them. Offering it earlier produces a refusal
-  // that reads as a broken button rather than as "not yet".
-  const checkInOpen =
-    event.checkInOpensAt === null || event.checkInOpensAt * 1000 <= Date.now();
-  const mayCheckIn =
-    event.viewer.memberTeamId !== null &&
-    event.status === "drafted" &&
-    checkInOpen &&
-    !event.teams.some((team) => team.id === event.viewer.memberTeamId && team.checkedIn);
+  // Check-in is for a full team of self-made teams, during signups and on or
+  // after the day it opens: it decides who is dropped when the field is
+  // locked. It used to be offered only after the lock, which is exactly when
+  // the service refuses it.
+  const offerCheckIn = mayCheckIn(event, Math.floor(Date.now() / 1000));
+  const offerUndoCheckIn = mayUndoCheckIn(event);
 
   const unread = unreadTotal(props.chatRooms);
   const openVetoes = vetoMatches(event).filter((entry) => !vetoSettled(event, entry)).length;
@@ -321,9 +320,14 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
               <Icon name="plus" size={16} /> {t("tournaments.action.enter")}
             </Button>
           )}
-          {mayCheckIn && (
-            <Button variant="primary" onClick={props.onCheckIn} disabled={busy}>
+          {offerCheckIn && (
+            <Button variant="primary" onClick={() => props.onCheckIn(true)} disabled={busy}>
               {t("tournaments.action.checkIn")}
+            </Button>
+          )}
+          {offerUndoCheckIn && (
+            <Button onClick={() => props.onCheckIn(false)} disabled={busy}>
+              {t("tournaments.teams.undoCheckIn")}
             </Button>
           )}
           {mayWithdraw && (
@@ -479,6 +483,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onLeave={props.onLeaveTeam}
           onDisband={props.onDisbandTeam}
           onRename={props.onRenameTeam}
+          onCheckIn={props.onCheckIn}
+          onSetCaptain={props.onSetCaptain}
+          onAdmin={props.onAdmin}
         />
       )}
 
@@ -507,6 +514,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onUndo={props.onDraftUndo}
           onSetCaptains={props.onSetCaptains}
           onStart={() => props.onAdvance("startDraft")}
+          onAdmin={props.onAdmin}
         />
       )}
 

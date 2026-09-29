@@ -452,6 +452,111 @@ export function tourneyMapImage(
   return vault.length === 0 ? "" : (matchVaultMap(tourneyMap, vault)?.thumbnailUrl ?? "");
 }
 
+/** Twin of `Tourney::team_is_full`. */
+export function teamIsFull(event: Tourney, team: TourneyTeam): boolean {
+  return team.playerIds.length >= event.teamSize;
+}
+
+/** The team this account plays for, if any. Twin of `Tourney::my_team`. */
+export function myTeam(event: Tourney): TourneyTeam | null {
+  return event.teams.find((team) => team.id === event.viewer.memberTeamId) ?? null;
+}
+
+/**
+ * Twin of `Tourney::teams_are_open`: whether the service still takes team
+ * actions (forming, joining, inviting, captaincy, check-in). Self-made teams
+ * during signups only; afterwards every one of them is refused.
+ */
+export function teamsAreOpen(event: Tourney): boolean {
+  return event.formation === "open" && event.status === "signup";
+}
+
+/**
+ * Twin of `Tourney::may_check_in`, asked at `now` in seconds.
+ *
+ * During signups, never after: the check-in decides who is dropped when the
+ * field is locked, and the service refuses it once it is. It used to be
+ * offered only after the lock, which is exactly when it cannot work.
+ */
+export function mayCheckIn(event: Tourney, now: number): boolean {
+  const team = myTeam(event);
+  return (
+    teamsAreOpen(event) &&
+    team !== null &&
+    teamIsFull(event, team) &&
+    !team.checkedIn &&
+    (event.checkInOpensAt === null || event.checkInOpensAt <= now)
+  );
+}
+
+/** Twin of `Tourney::may_undo_check_in`. */
+export function mayUndoCheckIn(event: Tourney): boolean {
+  const team = myTeam(event);
+  return teamsAreOpen(event) && team !== null && team.checkedIn;
+}
+
+/** One entry of {@link TeamLineup.seeds}. Twin of `TeamSeed`. */
+export interface TeamSeed {
+  teamId: string;
+  seed: number;
+}
+
+/**
+ * Twin of `TeamLineup`, spelled out because it is derived and never crosses
+ * IPC, so no binding is generated for it.
+ */
+export interface TeamLineup {
+  /** Full teams inside the entrant cap, in entry order. */
+  participants: string[];
+  /** Full teams beyond the cap, next in line first. */
+  waiting: string[];
+  /** Teams still short of players, strongest first. */
+  forming: string[];
+  /** Each participant's seed: the organiser's, or where its rating puts it. */
+  seeds: TeamSeed[];
+}
+
+/**
+ * Twin of `Tourney::team_lineup`: where every team of a self-organised field
+ * stands before it is locked. Places are first come, first served, by when a
+ * team filled up; rating decides the seed, never who makes the cut.
+ *
+ * Every sort here is stable on both sides, which is what keeps ties in the
+ * order the service listed the teams.
+ */
+export function teamLineup(event: Tourney): TeamLineup {
+  const full = event.teams.filter((team) => teamIsFull(event, team));
+  const seeded = full.some((team) => team.seed > 0);
+  const entered = (team: TourneyTeam) => {
+    const at = event.entryOrder.indexOf(team.id);
+    return at === -1 ? Number.MAX_SAFE_INTEGER : at;
+  };
+  const ordered = [...full].sort((left, right) =>
+    seeded
+      ? (left.seed > 0 ? left.seed : Number.MAX_SAFE_INTEGER) -
+        (right.seed > 0 ? right.seed : Number.MAX_SAFE_INTEGER)
+      : entered(left) - entered(right),
+  );
+  const cap = Math.max(0, event.maxTeams);
+  const cut = cap > 0 && ordered.length > cap ? cap : ordered.length;
+  const participants = ordered.slice(0, cut);
+  const waiting = ordered.slice(cut);
+  const seeds = seeded
+    ? ordered.map((team) => ({ teamId: team.id, seed: team.seed }))
+    : [...participants]
+        .sort((left, right) => teamRating(event, right) - teamRating(event, left))
+        .map((team, index) => ({ teamId: team.id, seed: index + 1 }));
+  const forming = event.teams
+    .filter((team) => !teamIsFull(event, team))
+    .sort((left, right) => teamRating(event, right) - teamRating(event, left));
+  return {
+    participants: participants.map((team) => team.id),
+    waiting: waiting.map((team) => team.id),
+    forming: forming.map((team) => team.id),
+    seeds,
+  };
+}
+
 /** Twin of `Tourney::team_rating`: what `maxTeamRating` is measured against. */
 export function teamRating(event: Tourney, team: TourneyTeam): number {
   return team.playerIds

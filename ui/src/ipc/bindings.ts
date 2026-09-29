@@ -523,6 +523,16 @@ export type CalendarView =
  */
 "upcoming";
 
+/**  How a draft's captains are chosen (`captainMode`). */
+export type CaptainMode =
+/**  The organiser marks them by hand. */
+"manual" |
+/**
+ *  The top N entrants by rating, worked out when the draft starts, so a
+ *  late signup or a corrected rating still counts.
+ */
+"rating";
+
 /**
  *  Somebody allowed to watch the whole event in order to cast it.
  *
@@ -6077,6 +6087,21 @@ export type RenameCheck = {
 	manual: number,
 };
 
+/**  Who comes into a replaced entrant's place. */
+export type Replacement =
+/**  Somebody already signed up without a team. */
+{ type: "standby"; payload: {
+	playerId: string,
+} } |
+/**
+ *  Anyone on FAF, by account. A rating is needed where FAF has none on
+ *  the board that counts, or the event is unrated.
+ */
+{ type: "account"; payload: {
+	fafId: number,
+	rating: number | null,
+} };
+
 /**  When one client was giving orders. */
 export type ReplayActivity = {
 	source: number,
@@ -7965,6 +7990,14 @@ export type Tourney = {
 	/**  The ban that stops this account entering, where one does (`myBan`). */
 	myBan: OwnBan | null,
 	/**
+	 *  Team ids in the order they entered (`entryKey`, which an organiser's
+	 *  swap exchanges): when each filled up.
+	 */
+	entryOrder: string[],
+	/**  How a draft's captains are chosen, and how many when by rating. */
+	captainMode: CaptainMode,
+	captainCount: number,
+	/**
 	 *  The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
 	 *  (`eventDays`). Empty for an event on its date alone.
 	 */
@@ -8073,8 +8106,10 @@ export type TourneyActionFailure = {
  *  method and a busy marker apiece would say nothing the variant name does not.
  *  [`TourneyPhase`] is the precedent: one command, the step named inside it.
  *
- *  Every one of them is organiser-only on the service. The rules that decide
- *  whether one is offered live on [`Tourney`], beside the rest.
+ *  Nearly all are organiser-only on the service; the one exception, a
+ *  captain withdrawing their own team's invitation, is said on the variant.
+ *  The rules that decide whether one is offered live on [`Tourney`], beside
+ *  the rest.
  */
 export type TourneyAdmin =
 /**
@@ -8174,6 +8209,56 @@ export type TourneyAdmin =
 /**  Remove an attached image by its file name (`remove_desc_image`). */
 { type: "removeImage"; payload: {
 	file: string,
+} } |
+/**
+ *  Check a team in, or take its check-in back (`checkin_team`). An
+ *  organiser may do either for any full team.
+ */
+{ type: "teamCheckIn"; payload: {
+	teamId: string,
+	checkedIn: boolean,
+} } |
+/**
+ *  Put a waiting team in the place of one that is entering
+ *  (`swap_team`). The two exchange entry places, so swapping them back
+ *  undoes it.
+ */
+{ type: "swapTeam"; payload: {
+	inId: string,
+	outId: string,
+} } |
+/**
+ *  Start a team around an entrant who has none (`org_create_team`); they
+ *  become its captain. An empty name is the service's "Name's team".
+ */
+{ type: "createTeamFor"; payload: {
+	playerId: string,
+	name: string,
+} } |
+/**
+ *  Put somebody else in an entrant's place (`replace_player`): the team,
+ *  the seed and every result so far stay with the place.
+ */
+{ type: "replacePlayer"; payload: {
+	playerId: string,
+	with: Replacement,
+} } |
+/**
+ *  Withdraw an invitation a team sent (`cancel_invite`). The team's
+ *  captain may, as well as an organiser.
+ */
+{ type: "cancelTeamInvite"; payload: {
+	teamId: string,
+	playerId: string,
+} } |
+/**
+ *  How a draft's captains are chosen, and how many when by rating
+ *  (`phase` `set_captain_mode`). Before the draft starts only. A count
+ *  outside 2 to 64 is not sent, and the stored one stays.
+ */
+{ type: "setCaptainMode"; payload: {
+	mode: CaptainMode,
+	count: number,
 } } |
 /**
  *  Change how map vetoes run (`edit_info` with `veto` alone).
@@ -8284,8 +8369,11 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
  */
 { type: "withdraw"; payload: {
 	tournamentId: string,
-} } | { type: "checkIn"; payload: {
+} } |
+/**  Check this account's team in, or take it back. */
+{ type: "checkIn"; payload: {
 	tournamentId: string,
+	checkedIn: boolean,
 } } |
 /**
  *  Agree with, or refuse, the score the opponent submitted.

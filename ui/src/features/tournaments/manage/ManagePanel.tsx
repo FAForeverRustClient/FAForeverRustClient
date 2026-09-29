@@ -488,6 +488,9 @@ export function ManagePanel({
               playerRatingsStatus={rest.playerRatingsStatus}
               onLoadRatings={rest.onLoadPlayerRatings}
               onBanPlayer={rest.onBanPlayer}
+              onReplace={(playerId, replacement) =>
+                rest.onAdmin({ type: "replacePlayer", payload: { playerId, with: replacement } })
+              }
             />
             <div className="tournament-step">
               <h6>{t("tournaments.renames.title")}</h6>

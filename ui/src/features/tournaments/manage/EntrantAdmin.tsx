@@ -19,6 +19,7 @@ import type {
   AccountSearch,
   EntrantRatings,
   PlayerSummary,
+  Replacement,
   SeedOrder,
   Tourney,
   TourneyLoadStatus,
@@ -28,6 +29,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { AccountPicker } from "./AccountPicker";
 import { BanPlayerDialog } from "./BanPlayerDialog";
 import { PlayerRatingsDialog } from "./PlayerRatingsDialog";
+import { ReplacePlayerDialog } from "./ReplacePlayerDialog";
 import { PlayerChip } from "../PlayerChip";
 import { teamNameOf } from "../bracket/matchParts";
 import { INVITE_STATUS_LABELS } from "../tourneyPresentation";
@@ -66,6 +68,8 @@ interface EntrantAdminProps {
   playerRatingsStatus: TourneyLoadStatus;
   onLoadRatings: (playerId: string, refresh: boolean) => void;
   onBanPlayer: (player: TourneyPlayer, reason: string, expires: number | null, remove: boolean) => void;
+  /** Put somebody else in an entrant's place, keeping the place's results. */
+  onReplace: (playerId: string, replacement: Replacement) => void;
 }
 
 export function EntrantAdmin(props: EntrantAdminProps) {
@@ -78,6 +82,8 @@ export function EntrantAdmin(props: EntrantAdminProps) {
   const [ratingsOf, setRatingsOf] = useState<TourneyPlayer | null>(null);
   /** The entrant about to be banned, or null. */
   const [banning, setBanning] = useState<TourneyPlayer | null>(null);
+  /** The entrant whose place is being handed to somebody else, or null. */
+  const [replacing, setReplacing] = useState<TourneyPlayer | null>(null);
   const acceptedInvites = event.invites.filter((invite) => invite.status === "accepted").length;
   // The organiser's own order, by hand, until it is saved. Starts from the
   // seeds the service holds and follows them when a save or a reshuffle lands.
@@ -118,6 +124,20 @@ export function EntrantAdmin(props: EntrantAdminProps) {
             setBanning(null);
           }}
           onClose={() => setBanning(null)}
+        />
+      )}
+      {replacing !== null && (
+        <ReplacePlayerDialog
+          event={event}
+          player={replacing}
+          accountSearch={props.accountSearch}
+          busy={busy}
+          onSearchAccounts={props.onSearchAccounts}
+          onReplace={(replacement) => {
+            props.onReplace(replacing.id, replacement);
+            setReplacing(null);
+          }}
+          onClose={() => setReplacing(null)}
         />
       )}
       {pending.length > 0 && (
@@ -258,6 +278,13 @@ export function EntrantAdmin(props: EntrantAdminProps) {
                         }}
                       >
                         {t("tournaments.admin.ratings")}
+                      </Button>
+                    )}
+                    {/* For somebody in a team: the mid-event drop-out, whose
+                        place and results should outlive them. */}
+                    {player.teamId !== null && (
+                      <Button disabled={busy} onClick={() => setReplacing(player)}>
+                        {t("tournaments.replace.replace")}
                       </Button>
                     )}
                     {player.fafId !== null && (

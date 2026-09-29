@@ -133,10 +133,13 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::CheckIn { tournament_id } => {
+        TourneyCommand::CheckIn {
+            tournament_id,
+            checked_in,
+        } => {
             write(TourneyAction::CheckingIn, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.check_in(&tournament_id).await }
+                async move { ctx.ports.tourney.check_in(&tournament_id, checked_in).await }
             })
             .await;
         }

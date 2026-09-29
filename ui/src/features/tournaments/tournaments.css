@@ -4410,3 +4410,91 @@
   gap: var(--space-2);
   width: min(560px, 92vw);
 }
+
+.tournament-replace-dialog,
+.tournament-choice-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(480px, 92vw);
+}
+
+.tournament-replace-dialog h6 {
+  margin: var(--space-2) 0 0;
+}
+
+.tournament-team-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-team-section.surface {
+  padding: var(--space-3);
+}
+
+.tournament-team-section.is-mine {
+  border-left: 3px solid var(--color-accent);
+}
+
+.tournament-team-section h5 {
+  margin: 0;
+}
+
+.tournament-warning {
+  color: var(--color-warn);
+}
+
+.tournament-team-seed {
+  color: var(--color-rating);
+  margin-right: var(--space-1);
+}
+
+.tournament-team-count.is-ok {
+  color: var(--color-ok);
+}
+
+.tournament-team-count.is-over {
+  color: var(--color-error);
+}
+
+.tournament-free-agents-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tournament-free-agents-head h5 {
+  margin: 0;
+}
+
+.tournament-sort-toggle {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.tournament-free-agent-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-2);
+}
+
+.tournament-free-agent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  min-width: 0;
+}
+
+.tournament-free-agent-top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}

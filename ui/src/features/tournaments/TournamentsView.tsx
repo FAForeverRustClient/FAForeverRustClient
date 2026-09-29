@@ -412,7 +412,9 @@ export function TournamentsView() {
               }
               onSignUp={() => setEntering(open.id)}
               onWithdraw={() => act({ type: "withdraw", payload: { tournamentId: open.id } })}
-              onCheckIn={() => act({ type: "checkIn", payload: { tournamentId: open.id } })}
+              onCheckIn={(checkedIn) =>
+                act({ type: "checkIn", payload: { tournamentId: open.id, checkedIn } })
+              }
               onReport={setReporting}
               onAnswer={(entry, accept) =>
                 act({
