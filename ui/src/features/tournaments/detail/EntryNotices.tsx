@@ -12,6 +12,7 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { mayCheckRating, mayDeclineInvite } from "../../../shared/rules/tourneyRules";
 import { formatDay, RATING_KIND_LABELS } from "../tourneyPresentation";
+import { RATING_CHECK_ID } from "../overviewPresentation";
 
 const BAN_SCOPES: Record<NonNullable<Tourney["myBan"]>["scope"], MessageKey> = {
   official: "tournaments.entry.banOfficial",
@@ -65,7 +66,7 @@ export function EntryNotices({ event, check, checkStatus, busy, onDecline, onChe
       )}
 
       {offerCheck && (
-        <section className="surface tournament-entry-notice">
+        <section className="surface tournament-entry-notice" id={RATING_CHECK_ID}>
           <div className="tournament-detail-actions">
             <Button disabled={busy || checking} onClick={onCheckRating}>
               {t(checking ? "tournaments.entry.checking" : "tournaments.entry.checkRating")}

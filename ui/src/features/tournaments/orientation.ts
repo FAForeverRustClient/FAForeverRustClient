@@ -323,10 +323,14 @@ export function turnInfo(event: Tourney, t: Translate): TurnInfo | null {
       const games = owed.reduce((total, entry) => total + myFactionGamesOwed(event, entry), 0);
       const first = owed[0];
       const opponent = opponentName([first.team1, first.team2]);
+      // The website names the step: a ban or a pick, as the service sends it.
+      const step = first.factionVeto?.games.find((game) => game.next !== null)?.next ?? null;
       return {
         text:
           games === 1
-            ? t("tournaments.turn.factionOne", { team: opponent })
+            ? t(step?.action === "ban" ? "tournaments.turn.factionBan" : "tournaments.turn.factionPick", {
+                team: opponent,
+              })
             : owed.length === 1
               ? t("tournaments.turn.factionGamesVs", { count: games, team: opponent })
               : t("tournaments.turn.factionGames", { count: games }),

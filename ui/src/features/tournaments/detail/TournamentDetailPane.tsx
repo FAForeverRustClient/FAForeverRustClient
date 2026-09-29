@@ -301,6 +301,23 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     if (next === "news" && unreadNews(event) > 0) props.onMarkNewsRead();
   };
 
+  // A link that names what it points at: open the section, then, once it has
+  // drawn, bring that element into view and flash it for two seconds. The
+  // website's `data-focus`, with its 60 ms wait for the new tab to render. A
+  // target the section does not draw (the rating check outside signups) just
+  // leaves the reader on the section.
+  const openAndFocus = (next: Section, focus?: string) => {
+    openSection(next);
+    if (focus === undefined) return;
+    window.setTimeout(() => {
+      const node = document.getElementById(focus);
+      if (node === null) return;
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+      node.classList.add("is-focus-flash");
+      window.setTimeout(() => node.classList.remove("is-focus-flash"), 2000);
+    }, 60);
+  };
+
   // The match whose chat is open in the popup, if any. The room itself is the
   // tab's one open room, so the popup and the Chat tab never disagree about it.
   const [matchChat, setMatchChat] = useState<TourneyMatch | null>(null);
@@ -518,7 +535,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           event={event}
           articles={props.articles}
           assetBase={props.assetBase}
-          onOpenSection={openSection}
+          onOpenSection={openAndFocus}
           onOpenUrl={props.onOpenUrl}
         />
       )}
