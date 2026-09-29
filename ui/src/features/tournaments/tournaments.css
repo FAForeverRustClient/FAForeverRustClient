@@ -4498,3 +4498,151 @@
   gap: var(--space-2);
   min-width: 0;
 }
+
+.tournament-type-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.tournament-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tournament-pill.is-signup {
+  color: var(--color-ok);
+  border-color: var(--color-ok);
+}
+
+.tournament-pill.is-running,
+.tournament-pill.is-draft,
+.tournament-pill.is-drafted {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+}
+
+.tournament-pill.is-abandoned {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.tournament-pill.is-finished,
+.tournament-pill.is-presignup {
+  color: var(--color-muted);
+}
+
+.tournament-stepper {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 12px;
+}
+
+.tournament-stepper li {
+  color: var(--color-subtle);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.tournament-stepper li + li::before {
+  content: "\25B8";
+  margin-right: var(--space-2);
+  color: var(--color-subtle);
+}
+
+.tournament-stepper li.is-done {
+  color: var(--color-muted);
+}
+
+.tournament-stepper li.is-now {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.tournament-turn-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-warn);
+  border-radius: var(--radius-md, 6px);
+  background: var(--color-surface-raised);
+}
+
+.tournament-turn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-warn);
+  flex: none;
+}
+
+.tournament-turn-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.tournament-publish-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-warn);
+}
+
+.tournament-publish-banner p {
+  margin: 0;
+}
+
+.tournament-share-link {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The list row's countdowns: a quiet chip, amber when signups are closing. */
+.tournament-countdown {
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tournament-countdown.is-close {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+}
+
+.tournament-row-prize {
+  color: var(--color-ok);
+  font-weight: 600;
+}
+
+.tournaments-archive-year {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tournaments-archive-year h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tournament-days {
+  white-space: nowrap;
+}

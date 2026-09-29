@@ -7998,6 +7998,27 @@ export type Tourney = {
 	captainMode: CaptainMode,
 	captainCount: number,
 	/**
+	 *  Whether this account may run the event (`canManage`, on list rows).
+	 *  A tournament director sees other organisers' unpublished drafts with
+	 *  no right to them, and the list says so. Absent elsewhere, and then true.
+	 */
+	canManage: boolean,
+	/**  Chats with an unread mention of this account (`myMentionCount`). */
+	myMentionCount: number,
+	/**  Chats asking for an organiser (`chatPingCount`); organisers only. */
+	chatPingCount: number,
+	/**
+	 *  Unread messages across this account's chats (`myUnreadCount`). Sent
+	 *  with the detail, so the Chat tab can say so before its rooms load.
+	 */
+	myUnreadCount: number,
+	/**  Where an imported event came from (`sourceUrl`). */
+	sourceUrl: string,
+	/**  What the source called its format (`importedType`). */
+	importedType: string,
+	/**  Whether only the final table came over, no matches (`standingsOnly`). */
+	standingsOnly: boolean,
+	/**
 	 *  The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
 	 *  (`eventDays`). Empty for an event on its date alone.
 	 */
@@ -8209,6 +8230,14 @@ export type TourneyAdmin =
 /**  Remove an attached image by its file name (`remove_desc_image`). */
 { type: "removeImage"; payload: {
 	file: string,
+} } |
+/**
+ *  Publish at a set moment rather than now (`publish` with `publishAt`),
+ *  or with `None` call off the one that was set. A moment already past
+ *  publishes on the spot.
+ */
+{ type: "schedulePublish"; payload: {
+	at: number | null,
 } } |
 /**
  *  Check a team in, or take its check-in back (`checkin_team`). An

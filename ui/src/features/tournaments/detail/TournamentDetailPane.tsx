@@ -43,6 +43,8 @@ import type {
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { AuditLogPanel } from "./AuditLogPanel";
+import { PublishBanner } from "./PublishBanner";
+import { eventDaysLabel, stages, statusPill, turnInfo } from "../orientation";
 import { EntryNotices } from "./EntryNotices";
 import { BracketView } from "../bracket/BracketView";
 import { ChatPanel } from "./ChatPanel";
@@ -62,9 +64,10 @@ import { ChatRoomView } from "./ChatRoomView";
 import { MatchChatContext, matchRoomId, type MatchChatApi } from "../bracket/matchChat";
 import { matchLabel } from "../bracket/matchLabels";
 import { teamNameOf } from "../bracket/matchParts";
-import { formatMoment, formatOf } from "../tourneyPresentation";
+import { formatMoment, typeLine } from "../tourneyPresentation";
 import {
   mayCheckIn,
+  mayPublish,
   maySignUp,
   mayUndoCheckIn,
   selfOrganised,
@@ -248,7 +251,13 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   const offerCheckIn = mayCheckIn(event, Math.floor(Date.now() / 1000));
   const offerUndoCheckIn = mayUndoCheckIn(event);
 
-  const unread = unreadTotal(props.chatRooms);
+  // The rooms carry the exact counts once loaded; until then the detail's own
+  // total says whether there is anything to read at all.
+  const unread = props.chatRooms.length > 0 ? unreadTotal(props.chatRooms) : event.myUnreadCount;
+  const now = Math.floor(Date.now() / 1000);
+  const pill = statusPill(event, now);
+  const days = eventDaysLabel(event.eventDays);
+  const turn = turnInfo(event, t);
   const openVetoes = vetoMatches(event).filter((entry) => !vetoSettled(event, entry)).length;
   const owedVetoes = event.matches.reduce((total, entry) => total + myVetoSteps(event, entry), 0);
 
@@ -309,12 +318,34 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       <header className="tournament-detail-header">
         <div>
           <h3>{event.name || t("tournaments.untitled")}</h3>
-          <p className="muted">
-            {formatOf(event)} · {t(`tournaments.bracketKind.${event.bracketKind}` as MessageKey)}
-            {event.eventDate !== null && ` · ${formatMoment(event.eventDate, "")}`}
+          {/* The website's line under the name: official or community, then
+              what kind of event, then the days a multi-day event runs on. */}
+          <p className="muted tournament-type-line">
+            <span className={`tournament-tag is-${event.category}`}>
+              {t(event.category === "official" ? "tournaments.list.official" : "tournaments.list.community")}
+            </span>{" "}
+            {typeLine(event, t)}
+            {days !== "" && (
+              <>
+                {" · "}
+                <span className="tournament-days" title={t("tournaments.header.daysTitle")}>
+                  {days}
+                </span>
+              </>
+            )}
           </p>
         </div>
         <div className="tournament-detail-actions">
+          <span
+            className={`tournament-pill is-${pill.tone}`}
+            title={
+              pill.tone === "presignup"
+                ? t("tournaments.header.opensAt", { when: formatMoment(event.signupOpensAt, "") })
+                : undefined
+            }
+          >
+            {t(pill.label)}
+          </span>
           {mayEnter && (
             <Button variant="primary" onClick={props.onSignUp} disabled={busy}>
               <Icon name="plus" size={16} /> {t("tournaments.action.enter")}
@@ -340,6 +371,18 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           )}
         </div>
       </header>
+
+      <ol className="tournament-stepper" aria-label={t("tournaments.stage.label")}>
+        {stages(event).map((stage) => (
+          <li
+            key={stage.label}
+            className={`is-${stage.state}`}
+            aria-current={stage.state === "now" ? "step" : undefined}
+          >
+            {t(stage.label)}
+          </li>
+        ))}
+      </ol>
 
       <nav className="tournament-sections" aria-label={t("tournaments.section.label")}>
         {(Object.keys(SECTION_LABELS) as Section[])
@@ -405,9 +448,19 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
               {candidate === "news" && unreadNews(event) > 0 && (
                 <span className="tournament-badge">{unreadNews(event)}</span>
               )}
-              {candidate === "chat" && unread > 0 && (
-                <span className="tournament-badge">{unread}</span>
-              )}
+              {/* Strongest first, as on the website: an organiser being asked
+                  for, then a mention of this account, then anything unread. */}
+              {candidate === "chat" &&
+                (event.viewer.organiser && event.chatPingCount > 0 ? (
+                  <span className="tournament-badge is-mention" title={t("tournaments.chat.pingsTitle")}>
+                    {"\u{1F514}"}
+                    {event.chatPingCount}
+                  </span>
+                ) : event.myMentionCount > 0 ? (
+                  <span className="tournament-badge is-mention">{event.myMentionCount}</span>
+                ) : (
+                  unread > 0 && <span className="tournament-badge">{unread > 9 ? "9+" : unread}</span>
+                ))}
               {candidate === "vetoes" && openVetoes > 0 && ` (${openVetoes})`}
               {/* The steps this account owes, across every match: the count
                   above is everyone's work, this one is yours. */}
@@ -417,6 +470,28 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
             </button>
           ))}
       </nav>
+
+      {mayPublish(event) && (
+        <PublishBanner
+          event={event}
+          assetBase={props.assetBase}
+          busy={busy}
+          onPublish={props.onPublish}
+          onAdmin={props.onAdmin}
+        />
+      )}
+
+      {/* The one thing waiting on this account, above whichever section is
+          open: the section it points at is usually not that one. */}
+      {turn !== null && (
+        <div className="tournament-turn-banner" role="status">
+          <span className="tournament-turn-dot" aria-hidden="true" />
+          <span className="tournament-turn-text">{turn.text}</span>
+          <Button variant="primary" onClick={() => openSection(turn.section)}>
+            {t(turn.cta)}
+          </Button>
+        </div>
+      )}
 
       {props.detailLoading && <p className="muted">{t("tournaments.detailLoading")}</p>}
 

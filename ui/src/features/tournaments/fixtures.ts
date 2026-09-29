@@ -95,6 +95,13 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     entryOrder: [],
     captainMode: "manual",
     captainCount: 0,
+    canManage: true,
+    myMentionCount: 0,
+    chatPingCount: 0,
+    myUnreadCount: 0,
+    sourceUrl: "",
+    importedType: "",
+    standingsOnly: false,
     // The service sets this on the detail response, after `publicView` builds the
     // document. Spelled out here because a component fixture has no response.
     viewer: {

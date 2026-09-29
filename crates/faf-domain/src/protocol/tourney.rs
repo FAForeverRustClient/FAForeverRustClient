@@ -232,6 +232,16 @@ fn calendar_moment(value: &Value, name: &str) -> Option<u32> {
     u32::try_from(seconds).ok().filter(|secs| *secs > 0)
 }
 
+/// A scheduled publish time (`publishAt`), as Unix seconds.
+///
+/// The service stores it through `cleanDate`, so it arrives as an ISO instant
+/// or a bare date, never as the milliseconds the other moments are; read as
+/// milliseconds, every schedule parsed as none. Both are accepted, so an older
+/// document that did carry a number still reads.
+fn publish_moment(value: &Value, name: &str) -> Option<u32> {
+    moment(value, name).or_else(|| calendar_moment(value, name))
+}
+
 /// A count that is sometimes a collection.
 ///
 /// `GET /api/tournaments` sends `players` and `teams` as numbers, while
@@ -374,7 +384,7 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         published: document
             .get("published")
             .is_none_or(|value| flag(document, "published") || value.is_null()),
-        publish_at: moment(document, "publishAt"),
+        publish_at: publish_moment(document, "publishAt"),
         player_count: count(document, "players"),
         team_count: count(document, "teams"),
         players: array(document, "players")
@@ -484,6 +494,13 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         entry_order: entry_order(document),
         captain_mode: CaptainMode::from_wire(&text(document, "captainMode")),
         captain_count: int(document, "captainCount").unwrap_or(0),
+        can_manage: flag_or_true(document, "canManage"),
+        my_mention_count: int(document, "myMentionCount").unwrap_or(0).max(0),
+        chat_ping_count: int(document, "chatPingCount").unwrap_or(0).max(0),
+        my_unread_count: int(document, "myUnreadCount").unwrap_or(0).max(0),
+        source_url: text(document, "sourceUrl"),
+        imported_type: text(document, "importedType"),
+        standings_only: flag(document, "standingsOnly"),
         my_ban: document
             .get("myBan")
             .filter(|held| held.is_object())
@@ -1082,7 +1099,7 @@ fn parse_pool(value: &Value) -> Option<MapPool> {
             .collect(),
         best_of: int(value, "bo"),
         published: flag(value, "published"),
-        publish_at: moment(value, "publishAt"),
+        publish_at: publish_moment(value, "publishAt"),
     })
 }
 
@@ -1900,6 +1917,13 @@ pub fn admin_request(change: &TourneyAdmin) -> (&'static str, Value) {
         ),
         TourneyAdmin::AddImage { data_url } => ("add_desc_image", json!({ "image": data_url })),
         TourneyAdmin::RemoveImage { file } => ("remove_desc_image", json!({ "file": file })),
+        TourneyAdmin::SchedulePublish { at } => (
+            "publish",
+            match at {
+                Some(_) => json!({ "publishAt": iso(*at) }),
+                None => json!({ "cancelSchedule": 1 }),
+            },
+        ),
         TourneyAdmin::SetVeto { config } => ("edit_info", json!({ "veto": veto_body(config) })),
         TourneyAdmin::TeamCheckIn {
             team_id,
@@ -2853,6 +2877,44 @@ See the [rules](https://x.invalid/r)."
     }
 
     #[test]
+    fn a_scheduled_publish_reads_as_the_date_the_service_stores() {
+        // `cleanDate` output: an ISO instant, or a bare date meaning midnight UTC.
+        let event =
+            parse_tourney(&json!({ "id": "e1", "publishAt": "2026-10-01T18:00:00.000Z" })).unwrap();
+        assert_eq!(event.publish_at, Some(1_790_877_600));
+        let event = parse_tourney(&json!({ "id": "e1", "publishAt": "2026-10-01" })).unwrap();
+        assert_eq!(event.publish_at, Some(1_790_812_800));
+        let event = parse_tourney(&json!({ "id": "e1", "publishAt": null })).unwrap();
+        assert_eq!(event.publish_at, None);
+    }
+
+    #[test]
+    fn a_detail_carries_the_chat_counts_and_where_an_import_came_from() {
+        let event = parse_tourney(&json!({
+            "id": "e1", "myMentionCount": 2, "chatPingCount": 1, "myUnreadCount": 7,
+            "imported": true, "importedType": "double elimination", "standingsOnly": 1,
+            "sourceUrl": "https://challonge.com/abc",
+        }))
+        .unwrap();
+        assert_eq!(
+            (
+                event.my_mention_count,
+                event.chat_ping_count,
+                event.my_unread_count
+            ),
+            (2, 1, 7)
+        );
+        assert_eq!(event.imported_type, "double elimination");
+        assert!(event.standings_only);
+        assert_eq!(event.source_url, "https://challonge.com/abc");
+        // Only list rows carry `canManage`; everything else is manageable as far
+        // as the list is concerned, and the viewer block decides the rest.
+        assert!(event.can_manage);
+        let row = parse_tourney(&json!({ "id": "e2", "published": 0, "canManage": 0 })).unwrap();
+        assert!(!row.can_manage);
+    }
+
+    #[test]
     fn a_rename_check_names_who_changed_and_what_it_could_not_ask() {
         let check = parse_rename_check(&json!({
             "ok": true, "checked": 3, "failed": 1, "manual": 2,
@@ -3003,6 +3065,16 @@ See the [rules](https://x.invalid/r)."
                 file: "desc_ab.png".into(),
             }),
             ("remove_desc_image", json!({ "file": "desc_ab.png" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::SchedulePublish {
+                at: Some(1_790_000_000),
+            }),
+            ("publish", json!({ "publishAt": "2026-09-21T14:13:20Z" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::SchedulePublish { at: None }),
+            ("publish", json!({ "cancelSchedule": 1 }))
         );
         assert_eq!(
             request(TourneyAdmin::MapSecret {

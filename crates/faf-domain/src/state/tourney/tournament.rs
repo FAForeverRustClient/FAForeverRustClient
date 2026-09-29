@@ -311,6 +311,23 @@ pub struct Tourney {
     /// How a draft's captains are chosen, and how many when by rating.
     pub captain_mode: CaptainMode,
     pub captain_count: i32,
+    /// Whether this account may run the event (`canManage`, on list rows).
+    /// A tournament director sees other organisers' unpublished drafts with
+    /// no right to them, and the list says so. Absent elsewhere, and then true.
+    pub can_manage: bool,
+    /// Chats with an unread mention of this account (`myMentionCount`).
+    pub my_mention_count: i32,
+    /// Chats asking for an organiser (`chatPingCount`); organisers only.
+    pub chat_ping_count: i32,
+    /// Unread messages across this account's chats (`myUnreadCount`). Sent
+    /// with the detail, so the Chat tab can say so before its rooms load.
+    pub my_unread_count: i32,
+    /// Where an imported event came from (`sourceUrl`).
+    pub source_url: String,
+    /// What the source called its format (`importedType`).
+    pub imported_type: String,
+    /// Whether only the final table came over, no matches (`standingsOnly`).
+    pub standings_only: bool,
     /// The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
     /// (`eventDays`). Empty for an event on its date alone.
     pub event_days: Vec<String>,

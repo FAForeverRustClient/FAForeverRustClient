@@ -225,7 +225,14 @@ export function typeLine(
   event: Tourney,
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
 ): string {
-  if (event.imported) return t("tournaments.overview.imported");
+  if (event.imported) {
+    // What the source called its format, and whether only its table came over:
+    // the two facts an import does carry.
+    const parts = [t("tournaments.overview.imported")];
+    if (event.importedType.trim() !== "") parts.push(event.importedType.trim());
+    if (event.standingsOnly) parts.push(t("tournaments.overview.resultsOnly"));
+    return parts.join(" · ");
+  }
 
   const cap =
     event.maxTeams > 0

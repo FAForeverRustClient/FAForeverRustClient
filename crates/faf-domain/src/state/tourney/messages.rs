@@ -84,6 +84,11 @@ pub enum TourneyAdmin {
     /// Remove an attached image by its file name (`remove_desc_image`).
     #[serde(rename_all = "camelCase")]
     RemoveImage { file: String },
+    /// Publish at a set moment rather than now (`publish` with `publishAt`),
+    /// or with `None` call off the one that was set. A moment already past
+    /// publishes on the spot.
+    #[serde(rename_all = "camelCase")]
+    SchedulePublish { at: Option<u32> },
     /// Check a team in, or take its check-in back (`checkin_team`). An
     /// organiser may do either for any full team.
     #[serde(rename_all = "camelCase")]

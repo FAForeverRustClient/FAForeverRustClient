@@ -37,13 +37,23 @@ import { TournamentDetailPane } from "./detail/TournamentDetailPane";
 import { TournamentForm } from "./manage/TournamentForm";
 import { SignUpDialog } from "./SignUpDialog";
 import {
-  STATUS_LABELS,
   countdownTo,
   formatDay,
+  formatPrize,
   groupOf,
   groupedEvents,
   type ListGroup,
 } from "./tourneyPresentation";
+import {
+  archiveByYear,
+  eventDayCount,
+  eventDaysLabel,
+  listCountdowns,
+  listKind,
+  listRatingLine,
+  listTeamsLine,
+  statusPill,
+} from "./orientation";
 import { busyMatchId, mayReport, openEvent, signupNeedsRating } from "../../shared/rules/tourneyRules";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -81,6 +91,9 @@ const LIVE_GROUPS: [Exclude<ListGroup, "past">, MessageKey][] = [
   ["upcoming", "tournaments.list.upcoming"],
 ];
 
+/** How many finished events a year of the archive draws before "show more". */
+const ARCHIVE_PAGE = 50;
+
 /** How often the countdowns are recomputed. Minute resolution, minute ticks. */
 const TICK_MS = 60_000;
 
@@ -94,6 +107,8 @@ export function TournamentsView() {
   /** The event whose signup dialog is open, if any. */
   const [entering, setEntering] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
+  /** How many of each archive year are drawn, keyed by year (0 for undated). */
+  const [pastShown, setPastShown] = useState<Record<number, number>>({});
   // A countdown drawn once is wrong within the minute, and this tab is one
   // people leave open waiting for exactly the thing it counts down to.
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
@@ -174,10 +189,24 @@ export function TournamentsView() {
    * `signup` or `running` too, and is neither.
    */
   const row = (event: Tourney) => {
-    const untilSignups =
-      event.status === "signup" && !event.abandoned
-        ? countdownTo(event.signupOpensAt, now)
-        : null;
+    // The website's three countdowns, in its precedence: signups opening, else
+    // the event starting; signups closing rides beside the status rather than
+    // replacing it, because "Signups open" is still the news.
+    const countdowns = listCountdowns(event, now);
+    const untilSignups = countdownTo(countdowns.signupsOpen, now);
+    const untilStart = countdownTo(countdowns.eventStarts, now);
+    const untilClose = countdownTo(countdowns.signupsClose, now);
+    const pill = statusPill(event, now);
+    const days = eventDayCount(event.eventDays);
+    const ratingLine = listRatingLine(event, t);
+    const teamsLine = listTeamsLine(event, t);
+    const prize = formatPrize(event.prize);
+    const facts = [
+      listKind(event),
+      ...(event.imported ? [] : [t("tournaments.list.signedUp", { count: event.playerCount })]),
+      ...(ratingLine === "" ? [] : [ratingLine]),
+      ...(teamsLine === "" ? [] : [teamsLine]),
+    ];
     return (
       <li key={event.id}>
         <button
@@ -212,23 +241,47 @@ export function TournamentsView() {
                   : "tournaments.list.community",
               )}
             </span>
-            {event.abandoned ? (
-              <span className="tournament-badge">{t("tournaments.list.abandoned")}</span>
-            ) : untilSignups !== null ? (
-              <span className="tournament-badge">
-                {t("tournaments.list.signupsIn", { time: untilSignups })}
+            {/* A draft says so, and a director looking at somebody else's
+                says that too: they can open it, not run it. */}
+            {!event.published && (
+              <span
+                className="tournament-badge"
+                title={t(event.canManage ? "tournaments.list.draftTitle" : "tournaments.list.viewOnlyTitle")}
+              >
+                {t(event.canManage ? "tournaments.list.draftBadge" : "tournaments.list.viewOnly")}
               </span>
+            )}
+            {untilClose !== null && (
+              <span className="tournament-countdown is-close">
+                {t("tournaments.list.closesIn", { time: untilClose })}
+              </span>
+            )}
+            {untilClose === null && untilSignups !== null ? (
+              <span className="tournament-countdown">{t("tournaments.list.signupsIn", { time: untilSignups })}</span>
+            ) : untilClose === null && untilStart !== null ? (
+              <span className="tournament-countdown">{t("tournaments.list.startsIn", { time: untilStart })}</span>
             ) : (
-              <span className={`tournament-badge is-${event.status}`}>
-                {t(STATUS_LABELS[event.status])}
-              </span>
+              <span className={`tournament-badge is-${pill.tone}`}>{t(pill.label)}</span>
             )}
           </span>
           <span className="tournament-row-when muted">
             {formatDay(event.eventDate, t("tournaments.noDate"))}
-            {event.playerCount > 0 &&
-              ` · ${t("tournaments.list.entrants", { count: event.playerCount })}`}
+            {days > 0 && (
+              <>
+                {" · "}
+                <span className="tournament-days" title={eventDaysLabel(event.eventDays)}>
+                  {t("tournaments.list.dayCount", { count: days })}
+                </span>
+              </>
+            )}
+            {prize !== "" && (
+              <>
+                {" · "}
+                <span className="tournament-row-prize">{prize}</span>
+              </>
+            )}
           </span>
+          <span className="tournament-row-when muted">{facts.join(" · ")}</span>
         </button>
       </li>
     );
@@ -358,7 +411,33 @@ export function TournamentsView() {
                   <span>{t("tournaments.list.past")}</span>
                   <span className="muted">({groups.past.length})</span>
                 </button>
-                {showPast && <ul>{groups.past.map(row)}</ul>}
+                {/* By the year it was played, newest first, and fifty at a
+                    time within a year: years of imported events are thousands
+                    of rows, and nobody scrolls through those. */}
+                {showPast &&
+                  archiveByYear(groups.past).map(({ year, events }) => {
+                    const key = year ?? 0;
+                    const shown = pastShown[key] ?? ARCHIVE_PAGE;
+                    const left = events.length - shown;
+                    return (
+                      <div className="tournaments-archive-year" key={key}>
+                        <h4>
+                          {year ?? t("tournaments.list.noYear")} <span className="muted">({events.length})</span>
+                        </h4>
+                        <ul>{events.slice(0, shown).map(row)}</ul>
+                        {left > 0 && (
+                          <Button
+                            onClick={() => setPastShown((held) => ({ ...held, [key]: shown + ARCHIVE_PAGE }))}
+                          >
+                            {t("tournaments.list.showMore", {
+                              count: Math.min(left, ARCHIVE_PAGE),
+                              total: events.length,
+                            })}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
               </section>
             )}
           </div>
