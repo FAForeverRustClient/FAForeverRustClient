@@ -303,6 +303,10 @@ pub struct Tourney {
     pub survivors: Option<Survivors>,
     /// How the event was stopped early, where it was (`earlyFinish`).
     pub early_finish: Option<EarlyFinish>,
+    /// Whether each round has its own best-of (`perRoundBo`), set on the
+    /// Format panel; the lists are then what the preview and the draw use.
+    pub per_round_bo: bool,
+    pub plan_lists: PlanLists,
     /// The ban that stops this account entering, where one does (`myBan`).
     pub my_ban: Option<OwnBan>,
     /// Team ids in the order they entered (`entryKey`, which an organiser's

@@ -137,6 +137,22 @@ pub struct EarlyFinish {
     /// How many were still standing, and who, by name.
     pub alive: i32,
     pub names: Vec<String>,
+    /// The matches that were never played (`unplayed`). `None` for a record
+    /// from before the service kept the list, where every match that had not
+    /// finished counts, as the website reads it.
+    #[serde(default)]
+    pub unplayed: Option<Vec<String>>,
+}
+
+/// The per-round best-of lists an organiser can set before the draw
+/// (`plan.roundsList`, `wbList`, `lbList`), one entry per round from round 1.
+/// A round nobody set is `None`: the list may have gaps.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanLists {
+    pub rounds: Vec<Option<i32>>,
+    pub winners: Vec<Option<i32>>,
+    pub losers: Vec<Option<i32>>,
 }
 
 /// One row of the standings table.

@@ -25,8 +25,9 @@ import { MatchActions, TeamName, teamNameOf } from "../bracket/matchParts";
 import { isBye } from "../bracket/swissRecords";
 import { VetoPanel, type VetoHandlers } from "../bracket/VetoPanel";
 import { hasVeto, myVetoSteps, vetoSettled } from "../bracket/vetoPresentation";
-import { maySetMatchBestOf } from "../../../shared/rules/tourneyRules";
+import { hasGames, maySetMatchBestOf } from "../../../shared/rules/tourneyRules";
 import { matchPoolKey, poolForMatch } from "../bracket/poolPresentation";
+import { BYE, neverPlayed } from "../bracket/bracketPresentation";
 import { playersLabel, useTourneyDisplay } from "../display";
 
 /** The series lengths the service accepts. */
@@ -62,6 +63,9 @@ const STATE_LABELS: Record<MatchState, MessageKey> = {
 
 /** Where a match stands, in the website's order of checks. */
 export function matchState(event: Tourney, entry: TourneyMatch): MatchState {
+  // First, as on the website: an early finish decides these whatever else
+  // the match says.
+  if (neverPlayed(event, entry)) return "notPlayed";
   if (entry.team1 === null || entry.team2 === null) {
     return event.status === "finished" ? "notPlayed" : "waiting";
   }
@@ -342,6 +346,7 @@ function MatchDetails({
       {props.onAssignPool !== undefined && (
         <MatchPoolPicker event={event} entry={entry} onAssign={props.onAssignPool} />
       )}
+      <MatchSlotEditor event={event} entry={entry} onAdmin={props.onAdmin} />
       {!masked && replays(entry.replayIds, "tournaments.matches.replays")}
       {!masked && replays(entry.drawReplayIds, "tournaments.matches.drawReplays")}
       {masked && hasVeto(event, entry) && <p className="muted">{t("tournaments.display.vetoHidden")}</p>}
@@ -431,5 +436,63 @@ function MatchPoolPicker({
       )}
       {started && <small className="muted">{t("tournaments.matches.poolVetoStarted")}</small>}
     </div>
+  );
+}
+
+/**
+ * An organiser putting a team, a bye or nobody in a side of a match that has
+ * not begun (`set_match_team`).
+ *
+ * The service has it and the website offers no control for it; it is how a
+ * slot is repaired by hand. Held back to what cannot go wrong quietly: only
+ * before the first game, only teams of the match's own division, and a bye
+ * named for what it does, since it sends the other side straight through.
+ */
+function MatchSlotEditor({
+  event,
+  entry,
+  onAdmin,
+}: {
+  event: Tourney;
+  entry: TourneyMatch;
+  onAdmin: (change: TourneyAdmin) => void;
+}) {
+  const { t } = useTranslation();
+  if (!event.viewer.organiser || entry.bracket === "freeForAll") return null;
+  if (!(entry.status === "waiting" || entry.status === "ready") || hasGames(entry)) return null;
+  const teams = event.teams.filter((team) => entry.division === 0 || team.division === entry.division);
+  const slot = (number: 1 | 2, current: string | null) => (
+    <label className="tournament-field">
+      <span>{t("tournaments.matches.slotLabel", { number })}</span>
+      <select
+        value={current ?? ""}
+        onChange={(changed) => {
+          const value = changed.target.value;
+          if (value === BYE && !window.confirm(t("tournaments.matches.slotByeConfirm"))) return;
+          onAdmin({
+            type: "setMatchTeam",
+            payload: { matchId: entry.id, slot: number, teamId: value === "" ? null : value },
+          });
+        }}
+      >
+        <option value="">{t("tournaments.matches.slotEmpty")}</option>
+        <option value={BYE}>{t("tournaments.matches.slotBye")}</option>
+        {teams.map((team) => (
+          <option key={team.id} value={team.id}>
+            {teamNameOf(event, team.id) ?? team.id}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  return (
+    <details className="tournament-md-slots">
+      <summary>{t("tournaments.matches.slotsSummary")}</summary>
+      <p className="muted">{t("tournaments.matches.slotsHint")}</p>
+      <div className="tournament-form-row">
+        {slot(1, entry.team1)}
+        {slot(2, entry.team2)}
+      </div>
+    </details>
   );
 }

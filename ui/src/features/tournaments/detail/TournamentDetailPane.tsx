@@ -771,6 +771,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           veto={props.veto}
           onReportFfa={props.onReportFfa}
           onAdmin={props.onAdmin}
+          onAssignPool={props.onAssignPool}
+          onWatchReplay={props.onWatchReplay}
         />
       )}
 

@@ -47,7 +47,7 @@ use crate::state::{
     SeriesDraft, SeriesEdition, TourneySeries,
 };
 use crate::state::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
-use crate::state::{PickSettings, SwissExtras, TourneyPreset};
+use crate::state::{PickSettings, PlanLists, SwissExtras, TourneyPreset};
 
 /// A string field, empty when absent or not a string.
 fn text(value: &Value, name: &str) -> String {
@@ -219,6 +219,29 @@ fn stage_two_plan(document: &Value) -> Option<StageTwoPlan> {
         handicap: flag(held, "s2Hcap"),
         third_place: flag(held, "s2Third"),
     })
+}
+
+/// The per-round best-of lists in the plan. `set_plan_round_bo` writes one
+/// index at a time, so a list can have holes, which arrive as `null`.
+fn plan_lists(document: &Value) -> PlanLists {
+    let Some(held) = document.get("plan").filter(|value| value.is_object()) else {
+        return PlanLists::default();
+    };
+    let list = |name: &str| -> Vec<Option<i32>> {
+        array(held, name)
+            .iter()
+            .map(|item| {
+                item.as_i64()
+                    .and_then(|bo| i32::try_from(bo).ok())
+                    .filter(|bo| [1, 3, 5, 7].contains(bo))
+            })
+            .collect()
+    };
+    PlanLists {
+        rounds: list("roundsList"),
+        winners: list("wbList"),
+        losers: list("lbList"),
+    }
 }
 
 /// A Swiss stage's deciding match length (`plan.decidingBo`); 0 is the
@@ -614,7 +637,19 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
                 target: int(held, "target").unwrap_or(0),
                 alive: int(held, "alive").unwrap_or(0),
                 names: string_list(held, "names"),
+                unplayed: held.get("unplayed").and_then(Value::as_array).map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| match item {
+                            Value::String(text) => Some(text.clone()),
+                            Value::Number(number) => Some(number.to_string()),
+                            _ => None,
+                        })
+                        .collect()
+                }),
             }),
+        per_round_bo: flag(document, "perRoundBo"),
+        plan_lists: plan_lists(document),
         entry_order: entry_order(document),
         captain_mode: CaptainMode::from_wire(&text(document, "captainMode")),
         captain_count: int(document, "captainCount").unwrap_or(0),

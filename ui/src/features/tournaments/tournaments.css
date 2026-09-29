@@ -5167,3 +5167,153 @@
 .tournament-format-box p {
   margin: 0;
 }
+
+/* -- Byes, missing arms, unplayed matches --------------------------------
+   A bye is not a game and is not drawn, but it keeps its slot, because the
+   connectors are derived from the card pitch: an empty slot of the same
+   height, with no border and no lines. A card whose feeder is such a slot
+   drops the arm that would lead to it. */
+
+.tournament-match.is-phantom {
+  visibility: hidden;
+}
+
+.tournament-round.is-bracket .tournament-match.is-no-top::after {
+  border-top: 0;
+  top: 50%;
+  height: calc(var(--pitch, 1) * var(--slot) / 4);
+}
+
+.tournament-round.is-bracket .tournament-match.is-no-bottom::after {
+  border-bottom: 0;
+  height: calc(var(--pitch, 1) * var(--slot) / 4);
+}
+
+.tournament-round.is-bracket .tournament-match.is-no-top.is-no-bottom::after {
+  display: none;
+}
+
+.tournament-round.is-straight .tournament-match.is-no-stub::before {
+  border-top: 0;
+}
+
+.tournament-match.is-not-played {
+  opacity: 0.4;
+}
+
+.tournament-not-played {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tournament-match.is-preview {
+  border-style: dashed;
+  opacity: 0.82;
+}
+
+.tournament-match-replays {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  font-size: 11px;
+}
+
+.tournament-division {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.tournament-division > h3 {
+  margin: var(--space-3) 0 0;
+}
+
+.tournament-stop-notice {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-warn);
+}
+
+.tournament-stop-notice.is-done {
+  border-left-color: var(--color-border-strong);
+}
+
+.tournament-stop-notice p {
+  margin: 0;
+}
+
+.tournament-stop-head {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.tournament-preview-head {
+  padding: var(--space-3);
+}
+
+.tournament-preview-head h4,
+.tournament-preview-head p {
+  margin: 0 0 var(--space-1);
+}
+
+.tournament-mapblock {
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+  min-width: 0;
+}
+
+.tournament-mapblock-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  color: var(--color-muted);
+}
+
+.tournament-pick-rows {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.tournament-pick-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tournament-pick-row.is-on {
+  border-color: var(--color-accent);
+  background: var(--color-surface-raised);
+}
+
+.tournament-veto-plan-steps {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.tournament-veto-act {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tournament-veto-act.is-ban {
+  color: var(--color-error);
+}
+
+.tournament-veto-act.is-pick {
+  color: var(--color-ok);
+}
+
+.tournament-team-link {
+  color: inherit;
+}

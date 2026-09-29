@@ -90,6 +90,8 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     stopAtAlive: 0,
     survivors: null,
     earlyFinish: null,
+    perRoundBo: false,
+    planLists: { rounds: [], winners: [], losers: [] },
     eventDays: [],
     myBan: null,
     entryOrder: [],

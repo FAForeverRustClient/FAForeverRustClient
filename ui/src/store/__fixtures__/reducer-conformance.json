@@ -7567,6 +7567,12 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "perRoundBo": false,
+                    "planLists": {
+                      "rounds": [],
+                      "winners": [],
+                      "losers": []
+                    },
                     "myBan": null,
                     "entryOrder": [],
                     "captainMode": "manual",
@@ -7696,11 +7702,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -7989,6 +8001,12 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "perRoundBo": false,
+                    "planLists": {
+                      "rounds": [],
+                      "winners": [],
+                      "losers": []
+                    },
                     "myBan": null,
                     "entryOrder": [],
                     "captainMode": "manual",
@@ -8120,6 +8138,12 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "perRoundBo": false,
+                    "planLists": {
+                      "rounds": [],
+                      "winners": [],
+                      "losers": []
+                    },
                     "myBan": null,
                     "entryOrder": [],
                     "captainMode": "manual",
@@ -8249,11 +8273,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -8380,11 +8410,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -8590,11 +8626,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -8721,11 +8763,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -8928,11 +8976,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -9059,11 +9113,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -9271,6 +9331,12 @@
                   "stopAtAlive": 0,
                   "survivors": null,
                   "earlyFinish": null,
+                  "perRoundBo": false,
+                  "planLists": {
+                    "rounds": [],
+                    "winners": [],
+                    "losers": []
+                  },
                   "myBan": null,
                   "entryOrder": [],
                   "captainMode": "manual",
@@ -9392,11 +9458,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -9529,11 +9601,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -9660,11 +9738,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -9865,11 +9949,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -10002,11 +10092,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -10133,11 +10229,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -10350,11 +10452,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -10487,11 +10595,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -10618,11 +10732,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -10818,11 +10938,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -10955,11 +11081,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -11086,11 +11218,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -11291,11 +11429,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -11428,11 +11572,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -11559,11 +11709,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -11767,11 +11923,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -11904,11 +12066,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -12035,11 +12203,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -12247,11 +12421,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -12393,11 +12573,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -12524,11 +12710,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -12729,11 +12921,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -12875,11 +13073,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -13006,11 +13210,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -13221,11 +13431,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -13352,11 +13568,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -13566,11 +13788,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -13697,11 +13925,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -13921,11 +14155,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -14052,11 +14292,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -14264,6 +14510,12 @@
                   "stopAtAlive": 0,
                   "survivors": null,
                   "earlyFinish": null,
+                  "perRoundBo": false,
+                  "planLists": {
+                    "rounds": [],
+                    "winners": [],
+                    "losers": []
+                  },
                   "myBan": null,
                   "entryOrder": [],
                   "captainMode": "manual",
@@ -14399,11 +14651,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -14530,11 +14788,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -14743,6 +15007,12 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "perRoundBo": false,
+                    "planLists": {
+                      "rounds": [],
+                      "winners": [],
+                      "losers": []
+                    },
                     "myBan": null,
                     "entryOrder": [],
                     "captainMode": "manual",
@@ -14879,11 +15149,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -16536,6 +16812,12 @@
                       "stopAtAlive": 0,
                       "survivors": null,
                       "earlyFinish": null,
+                      "perRoundBo": false,
+                      "planLists": {
+                        "rounds": [],
+                        "winners": [],
+                        "losers": []
+                      },
                       "myBan": null,
                       "entryOrder": [],
                       "captainMode": "manual",
@@ -16683,11 +16965,17 @@
                   "organiserDiscords": [],
                   "organisers": [],
                   "pendingCaptains": [],
+                  "perRoundBo": false,
                   "pickMinutes": 0,
                   "pickMode": "half",
                   "pickOpponents": false,
                   "picks": null,
                   "plan": null,
+                  "planLists": {
+                    "losers": [],
+                    "rounds": [],
+                    "winners": []
+                  },
                   "plannedRoundOne": [],
                   "playerCount": 8,
                   "playerReporting": false,
@@ -16899,11 +17187,17 @@
                   "organiserDiscords": [],
                   "organisers": [],
                   "pendingCaptains": [],
+                  "perRoundBo": false,
                   "pickMinutes": 0,
                   "pickMode": "half",
                   "pickOpponents": false,
                   "picks": null,
                   "plan": null,
+                  "planLists": {
+                    "losers": [],
+                    "rounds": [],
+                    "winners": []
+                  },
                   "plannedRoundOne": [],
                   "playerCount": 8,
                   "playerReporting": false,
@@ -17103,6 +17397,12 @@
                   "stopAtAlive": 0,
                   "survivors": null,
                   "earlyFinish": null,
+                  "perRoundBo": false,
+                  "planLists": {
+                    "rounds": [],
+                    "winners": [],
+                    "losers": []
+                  },
                   "myBan": null,
                   "entryOrder": [],
                   "captainMode": "manual",
@@ -17248,11 +17548,17 @@
                   "organiserDiscords": [],
                   "organisers": [],
                   "pendingCaptains": [],
+                  "perRoundBo": false,
                   "pickMinutes": 0,
                   "pickMode": "half",
                   "pickOpponents": false,
                   "picks": null,
                   "plan": null,
+                  "planLists": {
+                    "losers": [],
+                    "rounds": [],
+                    "winners": []
+                  },
                   "plannedRoundOne": [],
                   "playerCount": 8,
                   "playerReporting": false,
@@ -17403,11 +17709,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -17594,11 +17906,17 @@
                   "organiserDiscords": [],
                   "organisers": [],
                   "pendingCaptains": [],
+                  "perRoundBo": false,
                   "pickMinutes": 0,
                   "pickMode": "half",
                   "pickOpponents": false,
                   "picks": null,
                   "plan": null,
+                  "planLists": {
+                    "losers": [],
+                    "rounds": [],
+                    "winners": []
+                  },
                   "plannedRoundOne": [],
                   "playerCount": 8,
                   "playerReporting": false,
@@ -17814,11 +18132,17 @@
                   "organiserDiscords": [],
                   "organisers": [],
                   "pendingCaptains": [],
+                  "perRoundBo": false,
                   "pickMinutes": 0,
                   "pickMode": "half",
                   "pickOpponents": false,
                   "picks": null,
                   "plan": null,
+                  "planLists": {
+                    "losers": [],
+                    "rounds": [],
+                    "winners": []
+                  },
                   "plannedRoundOne": [],
                   "playerCount": 8,
                   "playerReporting": false,
@@ -20119,6 +20443,12 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "perRoundBo": false,
+                    "planLists": {
+                      "rounds": [],
+                      "winners": [],
+                      "losers": []
+                    },
                     "myBan": null,
                     "entryOrder": [],
                     "captainMode": "manual",
@@ -20250,6 +20580,12 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "perRoundBo": false,
+                    "planLists": {
+                      "rounds": [],
+                      "winners": [],
+                      "losers": []
+                    },
                     "myBan": null,
                     "entryOrder": [],
                     "captainMode": "manual",
@@ -20379,11 +20715,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -20510,11 +20852,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -20722,6 +21070,12 @@
                   "stopAtAlive": 0,
                   "survivors": null,
                   "earlyFinish": null,
+                  "perRoundBo": false,
+                  "planLists": {
+                    "rounds": [],
+                    "winners": [],
+                    "losers": []
+                  },
                   "myBan": null,
                   "entryOrder": [],
                   "captainMode": "manual",
@@ -20843,11 +21197,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -20980,11 +21340,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -21111,11 +21477,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -21352,11 +21724,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -21489,11 +21867,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -21620,11 +22004,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -21842,11 +22232,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -21979,11 +22375,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -22110,11 +22512,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -22329,11 +22737,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -22466,11 +22880,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -22597,11 +23017,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -22842,11 +23268,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -22979,11 +23411,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -23110,11 +23548,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -23344,11 +23788,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -23481,11 +23931,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -23612,11 +24068,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -23845,11 +24307,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -23982,11 +24450,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -24113,11 +24587,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -24358,11 +24838,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -24495,11 +24981,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -24626,11 +25118,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -24871,11 +25369,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -25008,11 +25512,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -25139,11 +25649,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -25363,11 +25879,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -25500,11 +26022,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -25631,11 +26159,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -25855,11 +26389,17 @@
               "organiserDiscords": [],
               "organisers": [],
               "pendingCaptains": [],
+              "perRoundBo": false,
               "pickMinutes": 0,
               "pickMode": "half",
               "pickOpponents": false,
               "picks": null,
               "plan": null,
+              "planLists": {
+                "losers": [],
+                "rounds": [],
+                "winners": []
+              },
               "plannedRoundOne": [],
               "playerCount": 8,
               "playerReporting": false,
@@ -25992,11 +26532,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -26123,11 +26669,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -26333,11 +26885,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -26464,11 +27022,17 @@
                 "organiserDiscords": [],
                 "organisers": [],
                 "pendingCaptains": [],
+                "perRoundBo": false,
                 "pickMinutes": 0,
                 "pickMode": "half",
                 "pickOpponents": false,
                 "picks": null,
                 "plan": null,
+                "planLists": {
+                  "losers": [],
+                  "rounds": [],
+                  "winners": []
+                },
                 "plannedRoundOne": [],
                 "playerCount": 8,
                 "playerReporting": false,
@@ -45841,6 +46405,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -46162,6 +46732,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -46385,6 +46961,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -46578,6 +47160,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -46872,6 +47460,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -47168,6 +47762,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -47469,6 +48069,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -47765,6 +48371,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -48061,6 +48673,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -48287,6 +48905,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -48519,6 +49143,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -48874,6 +49504,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [
             "td",
@@ -49242,6 +49878,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [
             "td",
@@ -49610,6 +50252,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [
             "td",
@@ -49978,6 +50626,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [
             "td",
@@ -50297,6 +50951,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -50600,6 +51260,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -50935,6 +51601,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -51299,6 +51971,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -51698,6 +52376,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -51952,6 +52636,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -52294,6 +52984,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -52639,6 +53335,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -52983,7 +53685,14 @@
             "names": [
               "T1",
               "T2"
-            ]
+            ],
+            "unplayed": []
+          },
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
           },
           "myBan": null,
           "entryOrder": [],
@@ -53169,6 +53878,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -53343,6 +54058,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": {
             "scope": "series",
             "reason": "No show",
@@ -55023,6 +55744,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -55258,6 +55985,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -55535,6 +56268,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -55916,6 +56655,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -56324,6 +57069,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -56552,6 +57303,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -56811,6 +57568,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -56991,6 +57754,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -57226,6 +57995,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -57839,6 +58614,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -58097,6 +58878,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -58355,6 +59142,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -58613,6 +59406,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -58871,6 +59670,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -59129,6 +59934,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -59387,6 +60198,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -59645,6 +60462,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -59875,6 +60698,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -60177,6 +61006,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -60496,6 +61331,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -60811,6 +61652,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -61130,6 +61977,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -61438,6 +62291,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -61747,6 +62606,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -62055,6 +62920,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -62364,6 +63235,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -62641,6 +63518,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -62917,6 +63800,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -63193,6 +64082,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -63453,6 +64348,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -63707,6 +64608,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -63961,6 +64868,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -64219,6 +65132,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -64477,6 +65396,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -64735,6 +65660,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -64993,6 +65924,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -65247,6 +66184,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -65505,6 +66448,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -65759,6 +66708,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -65917,6 +66872,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -66048,6 +67009,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -66202,6 +67169,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -66333,6 +67306,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -66487,6 +67466,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -66618,6 +67603,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -66772,6 +67763,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -66903,6 +67900,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -67057,6 +68060,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -67188,6 +68197,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -67342,6 +68357,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -67473,6 +68494,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -67627,6 +68654,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -67758,6 +68791,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -67916,6 +68955,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -68094,6 +69139,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -68272,6 +69323,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -68450,6 +69507,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -68628,6 +69691,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -68806,6 +69875,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -68984,6 +70059,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -69162,6 +70243,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -69340,6 +70427,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -69518,6 +70611,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -69794,6 +70893,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -69946,6 +71051,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -70245,6 +71356,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -70403,6 +71520,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -70591,6 +71714,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -70770,6 +71899,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -70909,6 +72044,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -71133,6 +72274,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -71287,6 +72434,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -71754,6 +72907,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -71991,6 +73150,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -72258,6 +73423,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -72532,6 +73703,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -72798,6 +73975,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",
@@ -72967,6 +74150,12 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "perRoundBo": false,
+          "planLists": {
+            "rounds": [],
+            "winners": [],
+            "losers": []
+          },
           "myBan": null,
           "entryOrder": [],
           "captainMode": "manual",

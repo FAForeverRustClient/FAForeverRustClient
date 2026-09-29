@@ -863,6 +863,7 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             target: 0,
             alive: 2,
             names: vec!["T1".into(), "T2".into()],
+            unplayed: Some(Vec::new()),
         }),
         ..four_single.clone()
     };

@@ -1868,6 +1868,12 @@ export type EarlyFinish = {
 	/**  How many were still standing, and who, by name. */
 	alive: number,
 	names: string[],
+	/**
+	 *  The matches that were never played (`unplayed`). `None` for a record
+	 *  from before the service kept the list, where every match that had not
+	 *  finished counts, as the website reads it.
+	 */
+	unplayed?: string[] | null,
 };
 
 /**  One leaderboard of [`EntrantRatings`]. */
@@ -5386,6 +5392,17 @@ export type PickSettings = {
 export type PlanList = "rounds" | "winners" | "losers" | "grandFinal";
 
 /**
+ *  The per-round best-of lists an organiser can set before the draw
+ *  (`plan.roundsList`, `wbList`, `lbList`), one entry per round from round 1.
+ *  A round nobody set is `None`: the list may have gaps.
+ */
+export type PlanLists = {
+	rounds: (number | null)[],
+	winners: (number | null)[],
+	losers: (number | null)[],
+};
+
+/**
  *  The active surface inside Play. It lives in the domain state so the UI never
  *  creates a second, local navigation source of truth.
  */
@@ -8215,6 +8232,12 @@ export type Tourney = {
 	survivors: Survivors | null,
 	/**  How the event was stopped early, where it was (`earlyFinish`). */
 	earlyFinish: EarlyFinish | null,
+	/**
+	 *  Whether each round has its own best-of (`perRoundBo`), set on the
+	 *  Format panel; the lists are then what the preview and the draw use.
+	 */
+	perRoundBo: boolean,
+	planLists: PlanLists,
 	/**  The ban that stops this account entering, where one does (`myBan`). */
 	myBan: OwnBan | null,
 	/**
