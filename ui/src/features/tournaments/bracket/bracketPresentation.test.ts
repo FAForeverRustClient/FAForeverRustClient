@@ -80,7 +80,8 @@ describe("previewTeamCount", () => {
 
 describe("bracketPreview", () => {
   it("uses the standard seed layout", () => {
-    expect(seedOrder(8)).toEqual([1, 8, 5, 4, 3, 6, 7, 2]);
+    // The service's `seedOrder`, which the website's preview copies.
+    expect(seedOrder(8)).toEqual([1, 8, 4, 5, 2, 7, 3, 6]);
   });
 
   it("leaves byes out of six teams and names who they pass through", () => {

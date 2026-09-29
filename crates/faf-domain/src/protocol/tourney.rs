@@ -2683,27 +2683,24 @@ fn parse_listed(value: &Value) -> Option<ListedAccount> {
 }
 
 /// The console's `data` document.
-pub fn parse_console(document: &Value) -> SiteAdminData {
+pub fn parse_console(data: &Value) -> SiteAdminData {
     let list = |name: &str| -> Vec<ListedAccount> {
-        array(document, name)
-            .iter()
-            .filter_map(parse_listed)
-            .collect()
+        array(data, name).iter().filter_map(parse_listed).collect()
     };
     let requests = |name: &str| -> Vec<AccessRequest> {
-        array(document, name)
+        array(data, name)
             .iter()
             .filter_map(parse_access_request)
             .collect()
     };
     SiteAdminData {
-        role: match text(document, "role").as_str() {
+        role: match text(data, "role").as_str() {
             "editor" => ConsoleRole::Editor,
             "director" => ConsoleRole::Director,
             _ => ConsoleRole::Admin,
         },
-        oauth: flag_or_true(document, "oauth"),
-        logs: array(document, "logs")
+        oauth: flag_or_true(data, "oauth"),
+        logs: array(data, "logs")
             .iter()
             .map(|held| SiteLogEntry {
                 id: text(held, "id"),
@@ -2724,7 +2721,7 @@ pub fn parse_console(document: &Value) -> SiteAdminData {
         editor_allowed: list("editorAllowed"),
         importer_requests: requests("importerRequests"),
         importer_allowed: list("importerAllowed"),
-        archived: array(document, "archived")
+        archived: array(data, "archived")
             .iter()
             .filter_map(|held| {
                 Some(ArchivedTourney {
@@ -2736,7 +2733,7 @@ pub fn parse_console(document: &Value) -> SiteAdminData {
                 })
             })
             .collect(),
-        articles: array(document, "articles")
+        articles: array(data, "articles")
             .iter()
             .filter_map(|held| {
                 Some(AdminArticle {
@@ -2753,11 +2750,8 @@ pub fn parse_console(document: &Value) -> SiteAdminData {
             .collect(),
         directors: list("directors"),
         site_admins: list("siteAdmins"),
-        me: int(document, "me"),
-        bans: array(document, "bans")
-            .iter()
-            .filter_map(parse_ban)
-            .collect(),
+        me: int(data, "me"),
+        bans: array(data, "bans").iter().filter_map(parse_ban).collect(),
     }
 }
 

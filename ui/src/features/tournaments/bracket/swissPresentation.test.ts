@@ -67,7 +67,7 @@ describe("round 1 by hand", () => {
   });
 
   it("names who appears twice and who is left out", () => {
-    expect(pairingProblems(event, [["a", "a"]])).toEqual({ twice: ["a"], missing: [] });
+    expect(pairingProblems(event, [["a", "b"], ["a", "c"]])).toEqual({ twice: ["a"], missing: [] });
     const even = { ...event, teams: [...event.teams, team({ id: "d", seed: 4 })] };
     expect(pairingProblems(even, [["a", "b"]]).missing).toEqual(["c", "d"]);
   });
