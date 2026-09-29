@@ -1,5 +1,9 @@
 # The tournament tab: every feature, and where it stands
 
+> **Superseded on 2026-09-28 by `tourney-inventory.md`.** The website has changed a
+> great deal since this was written, and several statuses below are now wrong;
+> section 9 of the inventory lists which.
+
 Written 2026-08-19 by reading `server.js` (109 per-tournament actions, 16 top-level routes)
 and the website's own `public/app*.js` (~8,500 lines). The point of the list is
 that "build the rest of the website" is otherwise unanswerable: there is no

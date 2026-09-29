@@ -71,6 +71,10 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     news: [],
     invites: [],
     championTeamId: null,
+    swissOrder: [],
+    swissTiebreak: "gameDiff",
+    swissCuts: { wins: 0, losses: 0 },
+    swissBeaten: {},
     abandoned: false,
     chatMutedMe: false,
     seriesId: null,
@@ -155,6 +159,8 @@ export function match(over: Partial<TourneyMatch> = {}): TourneyMatch {
     points: [],
     isFinal: false,
     replayIds: [],
+    drawReplayIds: [],
+    forfeit: null,
     ...over,
   };
 }

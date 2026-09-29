@@ -7384,6 +7384,13 @@
                     "qualifiers": [],
                     "feedsInto": null,
                     "championTeamId": null,
+                    "swissOrder": [],
+                    "swissTiebreak": "gameDiff",
+                    "swissCuts": {
+                      "wins": 0,
+                      "losses": 0
+                    },
+                    "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
                       "organiser": false,
@@ -7489,6 +7496,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -7662,6 +7676,13 @@
                     "qualifiers": [],
                     "feedsInto": null,
                     "championTeamId": null,
+                    "swissOrder": [],
+                    "swissTiebreak": "gameDiff",
+                    "swissCuts": {
+                      "wins": 0,
+                      "losses": 0
+                    },
+                    "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
                       "organiser": false,
@@ -7748,6 +7769,13 @@
                     "qualifiers": [],
                     "feedsInto": null,
                     "championTeamId": null,
+                    "swissOrder": [],
+                    "swissTiebreak": "gameDiff",
+                    "swissCuts": {
+                      "wins": 0,
+                      "losses": 0
+                    },
+                    "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
                       "organiser": false,
@@ -7853,6 +7881,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -7939,6 +7974,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -8077,6 +8119,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -8163,6 +8212,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -8298,6 +8354,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -8384,6 +8447,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -8503,6 +8573,13 @@
                   "qualifiers": [],
                   "feedsInto": null,
                   "championTeamId": null,
+                  "swissOrder": [],
+                  "swissTiebreak": "gameDiff",
+                  "swissCuts": {
+                    "wins": 0,
+                    "losses": 0
+                  },
+                  "swissBeaten": {},
                   "viewer": {
                     "loggedIn": false,
                     "organiser": false,
@@ -8600,6 +8677,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -8692,6 +8776,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -8778,6 +8869,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -8911,6 +9009,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -9003,6 +9108,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -9089,6 +9201,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -9234,6 +9353,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -9326,6 +9452,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -9412,6 +9545,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -9540,6 +9680,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -9632,6 +9779,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -9718,6 +9872,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -9851,6 +10012,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -9943,6 +10111,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -10029,6 +10204,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -10165,6 +10347,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -10257,6 +10446,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -10343,6 +10539,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -10483,6 +10686,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -10584,6 +10794,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -10670,6 +10887,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -10803,6 +11027,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -10904,6 +11135,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -10990,6 +11228,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -11133,6 +11378,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -11219,6 +11471,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -11361,6 +11620,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -11447,6 +11713,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -11599,6 +11872,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -11685,6 +11965,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -11804,6 +12091,13 @@
                   "qualifiers": [],
                   "feedsInto": null,
                   "championTeamId": null,
+                  "swissOrder": [],
+                  "swissTiebreak": "gameDiff",
+                  "swissCuts": {
+                    "wins": 0,
+                    "losses": 0
+                  },
+                  "swissBeaten": {},
                   "viewer": {
                     "loggedIn": false,
                     "organiser": false,
@@ -11915,6 +12209,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -12001,6 +12302,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -12121,6 +12429,13 @@
                     "qualifiers": [],
                     "feedsInto": null,
                     "championTeamId": null,
+                    "swissOrder": [],
+                    "swissTiebreak": "gameDiff",
+                    "swissCuts": {
+                      "wins": 0,
+                      "losses": 0
+                    },
+                    "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
                       "organiser": false,
@@ -12233,6 +12548,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -13515,6 +13837,13 @@
                     "qualifiers": [],
                     "feedsInto": null,
                     "championTeamId": null,
+                    "swissOrder": [],
+                    "swissTiebreak": "gameDiff",
+                    "swissCuts": {
+                      "wins": 0,
+                      "losses": 0
+                    },
+                    "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
                       "organiser": false,
@@ -13601,6 +13930,13 @@
                     "qualifiers": [],
                     "feedsInto": null,
                     "championTeamId": null,
+                    "swissOrder": [],
+                    "swissTiebreak": "gameDiff",
+                    "swissCuts": {
+                      "wins": 0,
+                      "losses": 0
+                    },
+                    "swissBeaten": {},
                     "viewer": {
                       "loggedIn": false,
                       "organiser": false,
@@ -13706,6 +14042,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -13792,6 +14135,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -13911,6 +14261,13 @@
                   "qualifiers": [],
                   "feedsInto": null,
                   "championTeamId": null,
+                  "swissOrder": [],
+                  "swissTiebreak": "gameDiff",
+                  "swissCuts": {
+                    "wins": 0,
+                    "losses": 0
+                  },
+                  "swissBeaten": {},
                   "viewer": {
                     "loggedIn": false,
                     "organiser": false,
@@ -14008,6 +14365,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -14100,6 +14464,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -14186,6 +14557,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -14355,6 +14733,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -14447,6 +14832,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -14533,6 +14925,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -14683,6 +15082,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -14775,6 +15181,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -14861,6 +15274,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -15008,6 +15428,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -15100,6 +15527,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -15186,6 +15620,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -15355,6 +15796,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -15447,6 +15895,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -15533,6 +15988,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -15693,6 +16155,13 @@
               "status": "signup",
               "streams": [],
               "subs": [],
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissTiebreak": "gameDiff",
               "teamCount": 8,
               "teamSize": 0,
               "teams": [],
@@ -15785,6 +16254,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -15871,6 +16347,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -16009,6 +16492,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -16095,6 +16585,13 @@
                 "status": "signup",
                 "streams": [],
                 "subs": [],
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissTiebreak": "gameDiff",
                 "teamCount": 8,
                 "teamSize": 0,
                 "teams": [],
@@ -35374,6 +35871,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -35404,6 +35908,7 @@
         "mayRename": false,
         "mayPublish": false,
         "reportableMatchIds": [],
+        "submittableMatchIds": [],
         "rooms": [
           {
             "id": "global",
@@ -35611,6 +36116,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -35642,6 +36154,7 @@
         "mayRename": false,
         "mayPublish": false,
         "reportableMatchIds": [],
+        "submittableMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -35754,6 +36267,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -35780,6 +36300,7 @@
         "mayRename": false,
         "mayPublish": false,
         "reportableMatchIds": [],
+        "submittableMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -35874,6 +36395,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -35900,6 +36428,7 @@
         "mayRename": false,
         "mayPublish": false,
         "reportableMatchIds": [],
+        "submittableMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -36017,7 +36546,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -36042,7 +36573,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -36067,7 +36600,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -36088,6 +36623,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -36114,6 +36656,7 @@
         "mayRename": true,
         "mayPublish": false,
         "reportableMatchIds": [],
+        "submittableMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -36231,7 +36774,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -36256,7 +36801,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -36281,7 +36828,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -36302,6 +36851,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -36330,6 +36886,7 @@
         "reportableMatchIds": [
           "m1"
         ],
+        "submittableMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -36447,7 +37004,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -36472,7 +37031,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -36497,7 +37058,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -36518,6 +37081,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -36544,6 +37114,7 @@
         "mayRename": true,
         "mayPublish": false,
         "reportableMatchIds": [],
+        "submittableMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -36661,7 +37232,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -36686,7 +37259,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -36711,7 +37286,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -36732,6 +37309,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -36758,6 +37342,7 @@
         "mayRename": true,
         "mayPublish": true,
         "reportableMatchIds": [],
+        "submittableMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -36875,7 +37460,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -36900,7 +37487,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -36925,7 +37514,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -36946,6 +37537,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -36972,6 +37570,7 @@
         "mayRename": false,
         "mayPublish": false,
         "reportableMatchIds": [],
+        "submittableMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37098,6 +37697,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -37125,6 +37731,7 @@
         "mayRename": true,
         "mayPublish": false,
         "reportableMatchIds": [],
+        "submittableMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37251,6 +37858,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -37278,6 +37892,465 @@
         "mayRename": false,
         "mayPublish": false,
         "reportableMatchIds": [],
+        "submittableMatchIds": [],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "a player in a running event that takes players' scores",
+        "event": {
+          "id": "player-running",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "running",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": true,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront"
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": true,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1500,
+              "ratingActual": 1500,
+              "teamId": "t1",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            }
+          ],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [
+            {
+              "id": "m1",
+              "bracket": "winners",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t2",
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "m2",
+              "bracket": "winners",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": null,
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "ffa1",
+              "bracket": "freeForAll",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t2",
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            }
+          ],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
+          "viewer": {
+            "loggedIn": true,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": "t1",
+            "caster": false,
+            "newsReadAt": null
+          }
+        },
+        "teamId": "t1",
+        "teamRating": 1500,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [
+          "p1"
+        ],
+        "myInviteTeamIds": [],
+        "mayRename": false,
+        "mayPublish": false,
+        "reportableMatchIds": [],
+        "submittableMatchIds": [
+          "m1"
+        ],
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "the same player where only the organiser reports",
+        "event": {
+          "id": "organiser-reports",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "running",
+          "category": "community",
+          "competition": "team",
+          "formation": "open",
+          "bracketKind": "single",
+          "teamSize": 2,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront"
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": true,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [
+            {
+              "id": "p1",
+              "name": "P1",
+              "fafId": null,
+              "rating": 1500,
+              "ratingActual": 1500,
+              "teamId": "t1",
+              "manual": false,
+              "late": false,
+              "pending": false,
+              "note": "",
+              "signedAt": null
+            }
+          ],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 0,
+              "captainId": "p1",
+              "playerIds": [
+                "p1"
+              ],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [
+            {
+              "id": "m1",
+              "bracket": "winners",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t2",
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "m2",
+              "bracket": "winners",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": null,
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "ffa1",
+              "bracket": "freeForAll",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t2",
+              "score1": null,
+              "score2": null,
+              "status": "ready",
+              "winner": null,
+              "loser": null,
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            }
+          ],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
+          "viewer": {
+            "loggedIn": true,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": "t1",
+            "caster": false,
+            "newsReadAt": null
+          }
+        },
+        "teamId": "t1",
+        "teamRating": 1500,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [
+          "p1"
+        ],
+        "myInviteTeamIds": [],
+        "mayRename": false,
+        "mayPublish": false,
+        "reportableMatchIds": [],
+        "submittableMatchIds": [],
         "rooms": [],
         "unreadTotal": 0
       }
@@ -37417,6 +38490,15 @@
       },
       {
         "pending": {
+          "type": "submittingReport",
+          "payload": {
+            "matchId": "m6"
+          }
+        },
+        "busyMatchId": "m6"
+      },
+      {
+        "pending": {
           "type": "vetoing",
           "payload": {
             "matchId": "m4"
@@ -37479,6 +38561,57 @@
         "busyMatchId": null
       }
     ],
+    "tourneySwissCuts": [
+      {
+        "cuts": {
+          "wins": 0,
+          "losses": 0
+        },
+        "rounds": null
+      },
+      {
+        "cuts": {
+          "wins": 3,
+          "losses": 0
+        },
+        "rounds": 3
+      },
+      {
+        "cuts": {
+          "wins": 0,
+          "losses": 2
+        },
+        "rounds": 2
+      },
+      {
+        "cuts": {
+          "wins": 3,
+          "losses": 3
+        },
+        "rounds": 5
+      },
+      {
+        "cuts": {
+          "wins": 4,
+          "losses": 2
+        },
+        "rounds": 5
+      },
+      {
+        "cuts": {
+          "wins": 1,
+          "losses": 1
+        },
+        "rounds": 1
+      },
+      {
+        "cuts": {
+          "wins": -1,
+          "losses": 3
+        },
+        "rounds": 3
+      }
+    ],
     "tourneyDraftRejections": [
       {
         "name": "a plain valid draft",
@@ -37524,7 +38657,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": null,
         "submittable": true
@@ -37573,7 +38707,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": "nameRequired",
         "submittable": false
@@ -37622,7 +38757,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": "nameRequired",
         "submittable": false
@@ -37671,7 +38807,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": "teamSizeOutOfRange",
         "submittable": false
@@ -37720,7 +38857,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": "teamSizeOutOfRange",
         "submittable": false
@@ -37769,7 +38907,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": "ratingRangeInverted",
         "submittable": false
@@ -37818,7 +38957,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": "ratingGateWithoutRating",
         "submittable": false
@@ -37867,7 +39007,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": null,
         "submittable": true
@@ -37916,7 +39057,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": "signupWindowInverted",
         "submittable": false
@@ -37965,7 +39107,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": "signupWindowInverted",
         "submittable": false
@@ -38014,7 +39157,8 @@
             "maxTeam": null,
             "cap": null
           },
-          "maxTeams": 0
+          "maxTeams": 0,
+          "playerReporting": true
         },
         "rejection": "nameRequired",
         "submittable": false
@@ -38036,7 +39180,8 @@
           "replay-1"
         ],
         "newGames": 2,
-        "submittable": true
+        "submittable": true,
+        "playerSubmittable": true
       },
       {
         "name": "the same, one replay id short",
@@ -38052,7 +39197,8 @@
           "replay-0"
         ],
         "newGames": 2,
-        "submittable": true
+        "submittable": true,
+        "playerSubmittable": false
       },
       {
         "name": "one id too many",
@@ -38070,7 +39216,8 @@
           "replay-2"
         ],
         "newGames": 2,
-        "submittable": true
+        "submittable": true,
+        "playerSubmittable": false
       },
       {
         "name": "two boxes filled, one of them blank",
@@ -38087,7 +39234,8 @@
           "   "
         ],
         "newGames": 2,
-        "submittable": true
+        "submittable": true,
+        "playerSubmittable": false
       },
       {
         "name": "a Bo3 at 1-1 reported as 2-1: one new game",
@@ -38103,7 +39251,8 @@
           "replay-0"
         ],
         "newGames": 1,
-        "submittable": true
+        "submittable": true,
+        "playerSubmittable": true
       },
       {
         "name": "re-reporting a score already confirmed adds nothing",
@@ -38117,7 +39266,8 @@
         "score2": 0,
         "replayIds": [],
         "newGames": 0,
-        "submittable": true
+        "submittable": true,
+        "playerSubmittable": false
       },
       {
         "name": "scoring past the series length",
@@ -38135,7 +39285,8 @@
           "replay-2"
         ],
         "newGames": 3,
-        "submittable": false
+        "submittable": false,
+        "playerSubmittable": false
       },
       {
         "name": "both sides winning it",
@@ -38154,7 +39305,8 @@
           "replay-3"
         ],
         "newGames": 4,
-        "submittable": false
+        "submittable": false,
+        "playerSubmittable": false
       },
       {
         "name": "a negative score",
@@ -38170,7 +39322,8 @@
           "replay-0"
         ],
         "newGames": 1,
-        "submittable": false
+        "submittable": false,
+        "playerSubmittable": false
       },
       {
         "name": "a handicapped grand final starting the favourite at 1-0",
@@ -38188,7 +39341,8 @@
           "replay-2"
         ],
         "newGames": 3,
-        "submittable": true
+        "submittable": true,
+        "playerSubmittable": true
       },
       {
         "name": "the same handicapped final, counted as if from 0-0",
@@ -38207,7 +39361,8 @@
           "replay-3"
         ],
         "newGames": 3,
-        "submittable": true
+        "submittable": true,
+        "playerSubmittable": false
       },
       {
         "name": "an even Bo2, where one win is not yet enough",
@@ -38223,7 +39378,40 @@
           "replay-0"
         ],
         "newGames": 1,
-        "submittable": true
+        "submittable": true,
+        "playerSubmittable": true
+      },
+      {
+        "name": "a Bo3 at 1-1 set back to 1-0",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": 1,
+          "score2": 1
+        },
+        "score1": 1,
+        "score2": 0,
+        "replayIds": [],
+        "newGames": 0,
+        "submittable": true,
+        "playerSubmittable": false
+      },
+      {
+        "name": "an id with no digit in it, which the server drops",
+        "entry": {
+          "bestOf": 3,
+          "handicap": 0,
+          "score1": null,
+          "score2": null
+        },
+        "score1": 1,
+        "score2": 0,
+        "replayIds": [
+          "abc"
+        ],
+        "newGames": 1,
+        "submittable": true,
+        "playerSubmittable": false
       }
     ],
     "tourneyMapMatches": {
@@ -38437,6 +39625,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": "t1",
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -38456,7 +39651,8 @@
             "outcome": "champion",
             "wins": 0,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           },
           {
             "teamId": "t2",
@@ -38464,7 +39660,8 @@
             "outcome": "lostFinal",
             "wins": 0,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           },
           {
             "teamId": "t3",
@@ -38477,7 +39674,8 @@
             },
             "wins": 0,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           },
           {
             "teamId": "t4",
@@ -38490,7 +39688,8 @@
             },
             "wins": 0,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           }
         ]
       },
@@ -38623,6 +39822,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -38642,7 +39848,8 @@
             "outcome": "stillIn",
             "wins": 0,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           },
           {
             "teamId": "t3",
@@ -38655,7 +39862,8 @@
             },
             "wins": 0,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           },
           {
             "teamId": "t2",
@@ -38668,7 +39876,8 @@
             },
             "wins": 0,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           }
         ]
       },
@@ -38800,7 +40009,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -38825,7 +40036,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -38846,6 +40059,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -38865,7 +40085,8 @@
             "outcome": "swiss",
             "wins": 1,
             "losses": 0,
-            "gameDiff": 2
+            "gameDiff": 2,
+            "beaten": null
           },
           {
             "teamId": "t3",
@@ -38873,7 +40094,8 @@
             "outcome": "swiss",
             "wins": 1,
             "losses": 0,
-            "gameDiff": 1
+            "gameDiff": 1,
+            "beaten": null
           },
           {
             "teamId": "t2",
@@ -38881,7 +40103,729 @@
             "outcome": "swiss",
             "wins": 0,
             "losses": 1,
-            "gameDiff": -2
+            "gameDiff": -2,
+            "beaten": null
+          }
+        ]
+      },
+      {
+        "name": "a Swiss table, where fewer losses outrank game difference",
+        "event": {
+          "id": "fewer-losses",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "running",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "swiss",
+          "teamSize": 0,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront"
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": false,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 1,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t2",
+              "name": "T2",
+              "seed": 2,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t3",
+              "name": "T3",
+              "seed": 3,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t4",
+              "name": "T4",
+              "seed": 4,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t5",
+              "name": "T5",
+              "seed": 5,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [
+            {
+              "id": "m1",
+              "bracket": "swiss",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t3",
+              "score1": 1,
+              "score2": 0,
+              "status": "done",
+              "winner": "t1",
+              "loser": "t3",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "m2",
+              "bracket": "swiss",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t4",
+              "score1": 1,
+              "score2": 0,
+              "status": "done",
+              "winner": "t1",
+              "loser": "t4",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "m3",
+              "bracket": "swiss",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t2",
+              "team2": "t3",
+              "score1": 2,
+              "score2": 0,
+              "status": "done",
+              "winner": "t2",
+              "loser": "t3",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "m4",
+              "bracket": "swiss",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t2",
+              "team2": "t4",
+              "score1": 2,
+              "score2": 0,
+              "status": "done",
+              "winner": "t2",
+              "loser": "t4",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "m5",
+              "bracket": "swiss",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t5",
+              "team2": "t2",
+              "score1": 1,
+              "score2": 0,
+              "status": "done",
+              "winner": "t5",
+              "loser": "t2",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            }
+          ],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
+          "viewer": {
+            "loggedIn": false,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null,
+            "caster": false,
+            "newsReadAt": null
+          }
+        },
+        "kind": "swiss",
+        "rows": [
+          {
+            "teamId": "t1",
+            "place": 1,
+            "outcome": "swiss",
+            "wins": 2,
+            "losses": 0,
+            "gameDiff": 2,
+            "beaten": null
+          },
+          {
+            "teamId": "t2",
+            "place": 2,
+            "outcome": "swiss",
+            "wins": 2,
+            "losses": 1,
+            "gameDiff": 3,
+            "beaten": null
+          },
+          {
+            "teamId": "t5",
+            "place": 3,
+            "outcome": "swiss",
+            "wins": 1,
+            "losses": 0,
+            "gameDiff": 1,
+            "beaten": null
+          },
+          {
+            "teamId": "t3",
+            "place": 4,
+            "outcome": "swiss",
+            "wins": 0,
+            "losses": 2,
+            "gameDiff": -3,
+            "beaten": null
+          },
+          {
+            "teamId": "t4",
+            "place": 5,
+            "outcome": "swiss",
+            "wins": 0,
+            "losses": 2,
+            "gameDiff": -3,
+            "beaten": null
+          }
+        ]
+      },
+      {
+        "name": "a Swiss table in the server's own order, beaten tiebreak",
+        "event": {
+          "id": "server-order",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "running",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "swiss",
+          "teamSize": 0,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "global",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront"
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": false,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [],
+          "teams": [
+            {
+              "id": "t1",
+              "name": "T1",
+              "seed": 1,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t2",
+              "name": "T2",
+              "seed": 2,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t3",
+              "name": "T3",
+              "seed": 3,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t4",
+              "name": "T4",
+              "seed": 4,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            },
+            {
+              "id": "t5",
+              "name": "T5",
+              "seed": 5,
+              "captainId": null,
+              "playerIds": [],
+              "division": 0,
+              "checkedIn": false,
+              "eliminated": false,
+              "out": null,
+              "finalRank": null,
+              "captainRenamed": false,
+              "joinRequests": [],
+              "invites": []
+            }
+          ],
+          "subs": [],
+          "matches": [
+            {
+              "id": "m1",
+              "bracket": "swiss",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t3",
+              "score1": 1,
+              "score2": 0,
+              "status": "done",
+              "winner": "t1",
+              "loser": "t3",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "m2",
+              "bracket": "swiss",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t1",
+              "team2": "t4",
+              "score1": 1,
+              "score2": 0,
+              "status": "done",
+              "winner": "t1",
+              "loser": "t4",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "m3",
+              "bracket": "swiss",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t2",
+              "team2": "t3",
+              "score1": 2,
+              "score2": 0,
+              "status": "done",
+              "winner": "t2",
+              "loser": "t3",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "m4",
+              "bracket": "swiss",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t2",
+              "team2": "t4",
+              "score1": 2,
+              "score2": 0,
+              "status": "done",
+              "winner": "t2",
+              "loser": "t4",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            },
+            {
+              "id": "m5",
+              "bracket": "swiss",
+              "round": 1,
+              "index": 0,
+              "bestOf": 3,
+              "handicap": 0,
+              "division": 0,
+              "team1": "t5",
+              "team2": "t2",
+              "score1": 1,
+              "score2": 0,
+              "status": "done",
+              "winner": "t5",
+              "loser": "t2",
+              "winnerTo": null,
+              "loserTo": null,
+              "pendingReport": null,
+              "veto": null,
+              "entrants": [],
+              "winners": [],
+              "points": [],
+              "isFinal": false,
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
+            }
+          ],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "organisers": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [
+            "t2",
+            "t1",
+            "t5",
+            "t3",
+            "t4"
+          ],
+          "swissTiebreak": "beaten",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {
+            "t1": 0,
+            "t2": 1
+          },
+          "viewer": {
+            "loggedIn": false,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null,
+            "caster": false,
+            "newsReadAt": null
+          }
+        },
+        "kind": "swiss",
+        "rows": [
+          {
+            "teamId": "t2",
+            "place": 1,
+            "outcome": "swiss",
+            "wins": 2,
+            "losses": 1,
+            "gameDiff": 3,
+            "beaten": 1
+          },
+          {
+            "teamId": "t1",
+            "place": 2,
+            "outcome": "swiss",
+            "wins": 2,
+            "losses": 0,
+            "gameDiff": 2,
+            "beaten": 0
+          },
+          {
+            "teamId": "t5",
+            "place": 3,
+            "outcome": "swiss",
+            "wins": 1,
+            "losses": 0,
+            "gameDiff": 1,
+            "beaten": 0
+          },
+          {
+            "teamId": "t3",
+            "place": 4,
+            "outcome": "swiss",
+            "wins": 0,
+            "losses": 2,
+            "gameDiff": -3,
+            "beaten": 0
+          },
+          {
+            "teamId": "t4",
+            "place": 5,
+            "outcome": "swiss",
+            "wins": 0,
+            "losses": 2,
+            "gameDiff": -3,
+            "beaten": 0
           }
         ]
       },
@@ -39008,6 +40952,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": "t1",
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -39027,7 +40978,8 @@
             "outcome": "champion",
             "wins": 0,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           },
           {
             "teamId": "t2",
@@ -39035,7 +40987,8 @@
             "outcome": "placed",
             "wins": 0,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           },
           {
             "teamId": "t9",
@@ -39043,7 +40996,8 @@
             "outcome": "placed",
             "wins": 0,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           }
         ]
       },
@@ -39195,7 +41149,9 @@
                 }
               ],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -39216,6 +41172,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -39235,7 +41198,8 @@
             "outcome": "stillIn",
             "wins": 7,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           },
           {
             "teamId": "t3",
@@ -39243,7 +41207,8 @@
             "outcome": "stillIn",
             "wins": 7,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           },
           {
             "teamId": "t1",
@@ -39251,7 +41216,8 @@
             "outcome": "stillIn",
             "wins": 3,
             "losses": 0,
-            "gameDiff": 0
+            "gameDiff": 0,
+            "beaten": null
           }
         ]
       },
@@ -39348,6 +41314,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -39838,7 +41811,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -39859,6 +41834,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -40046,7 +42028,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -40067,6 +42051,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -40254,7 +42245,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -40275,6 +42268,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -40462,7 +42462,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -40483,6 +42485,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -40670,7 +42679,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -40691,6 +42702,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -40878,7 +42896,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -40899,6 +42919,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -41086,7 +43113,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -41107,6 +43136,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -41294,7 +43330,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -41315,6 +43353,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -41474,7 +43519,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -41495,6 +43542,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -41696,7 +43750,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -41725,7 +43781,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -41746,6 +43804,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -41964,7 +44029,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -41993,7 +44060,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -42014,6 +44083,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -42228,7 +44304,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -42257,7 +44335,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -42278,6 +44358,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -42496,7 +44583,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -42525,7 +44614,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -42546,6 +44637,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -42753,7 +44851,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -42782,7 +44882,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -42803,6 +44905,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -43011,7 +45120,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -43040,7 +45151,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -43061,6 +45174,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -43268,7 +45388,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -43297,7 +45419,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -43318,6 +45442,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -43526,7 +45657,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "f2",
@@ -43555,7 +45688,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -43576,6 +45711,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -43784,7 +45926,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -43805,6 +45949,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -44012,7 +46163,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -44033,6 +46186,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -44240,7 +46400,9 @@
               "winners": [],
               "points": [],
               "isFinal": true,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -44261,6 +46423,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -44471,6 +46640,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -44675,6 +46851,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -44879,6 +47062,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -45087,6 +47277,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -45295,6 +47492,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -45503,6 +47707,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -45711,6 +47922,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -45915,6 +48133,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -46123,6 +48348,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -46327,6 +48559,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -46439,6 +48678,13 @@
           ],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -46525,6 +48771,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -46633,6 +48886,13 @@
           ],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -46719,6 +48979,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -46827,6 +49094,13 @@
           ],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -46913,6 +49187,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -47021,6 +49302,13 @@
           ],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -47107,6 +49395,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -47215,6 +49510,13 @@
           ],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -47301,6 +49603,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -47409,6 +49718,13 @@
           ],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -47495,6 +49811,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -47603,6 +49926,13 @@
           ],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -47689,6 +50019,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -47802,6 +50139,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -47920,6 +50264,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -48038,6 +50389,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -48156,6 +50514,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -48274,6 +50639,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -48392,6 +50764,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": false,
@@ -48510,6 +50889,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -48628,6 +51014,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -48746,6 +51139,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": true,
             "organiser": true,
@@ -48864,6 +51264,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -49072,6 +51479,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -49179,6 +51593,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -49423,6 +51844,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -49536,6 +51964,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -49679,6 +52114,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -49812,6 +52254,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -49906,6 +52355,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -50005,7 +52461,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "m2",
@@ -50030,7 +52488,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             },
             {
               "id": "ffa1",
@@ -50055,7 +52515,9 @@
               "winners": [],
               "points": [],
               "isFinal": false,
-              "replayIds": []
+              "replayIds": [],
+              "drawReplayIds": [],
+              "forfeit": null
             }
           ],
           "mapDb": [],
@@ -50076,6 +52538,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -50480,6 +52949,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -50671,6 +53147,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -50892,6 +53375,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -51121,6 +53611,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -51342,6 +53839,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,
@@ -51466,6 +53970,13 @@
           "qualifiers": [],
           "feedsInto": null,
           "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissBeaten": {},
           "viewer": {
             "loggedIn": false,
             "organiser": false,

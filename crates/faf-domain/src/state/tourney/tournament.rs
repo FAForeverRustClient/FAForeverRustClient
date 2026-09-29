@@ -262,6 +262,23 @@ pub struct Tourney {
     /// from every other tournament's links, never stored on this side.
     pub feeds_into: Option<FeedsInto>,
     pub champion_team_id: Option<String>,
+    /// The Swiss table in the server's own order (`swissOrder`), or empty
+    /// where it sends none: before the stage runs, and for free-for-all.
+    ///
+    /// Read rather than recomputed, because the order is not something the
+    /// client can reproduce: the `beaten` tiebreak ends in a coin flip seeded
+    /// from a draw seed the server never sends, and the same order decides
+    /// the playoff seeds.
+    pub swiss_order: Vec<String>,
+    /// How equal Swiss records are separated (`tiebreak`).
+    pub swiss_tiebreak: SwissTiebreak,
+    /// The Swiss stage's record cuts, as the plan stores them. Set on the
+    /// website for now; the client reads them so the start dialog does not ask
+    /// for a round count the server would replace.
+    pub swiss_cuts: SwissCuts,
+    /// Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
+    /// that is the tiebreak.
+    pub swiss_beaten: std::collections::BTreeMap<String, i32>,
     /// What this account may do here, as the server sees it.
     pub viewer: TourneyViewer,
 }
@@ -428,17 +445,14 @@ impl Tourney {
             .collect()
     }
 
-    /// Whether this account may record the result of `entry`.
-    ///
-    /// The organiser, and nobody else. That is a decision about this client, not
-    /// a limit of the service: `report_submit` lets the two players agree a score
-    /// between them, but it insists on one FAF replay id per game, and this client
-    /// keeps result-entry with the person running the event.
+    /// Whether this account may record the result of `entry` as an organiser,
+    /// which needs nobody's confirmation.
     ///
     /// The server's own conditions for `report`, in its order: the bracket has to
     /// be running or finished, the caller has to be an organiser, and the match
     /// has to have two sides. A finished match stays reportable, because `report` is also
-    /// the correction path, and it undoes the old result first.
+    /// the correction path, and it undoes the old result first. Players submit
+    /// through [`Self::may_submit`] instead.
     pub fn may_report(&self, entry: &TourneyMatch) -> bool {
         self.viewer.organiser
             && self.status.has_bracket()
@@ -491,7 +505,8 @@ impl Tourney {
         }
     }
 
-    /// Wins, losses and game difference over the Swiss rounds.
+    /// Wins, losses and game difference over the Swiss rounds, in the order
+    /// the server ranks them.
     ///
     /// A bye counts as a win worth one game, as the service's own table does: a
     /// team that drew the odd number should not sit behind one that played.
@@ -506,6 +521,7 @@ impl Tourney {
                 wins: 0,
                 losses: 0,
                 game_diff: 0,
+                beaten: None,
             })
             .collect();
 
@@ -551,11 +567,36 @@ impl Tourney {
             }
         }
 
+        let beaten_counts = self.swiss_tiebreak == SwissTiebreak::Beaten;
+        if beaten_counts {
+            for row in &mut rows {
+                row.beaten = Some(self.swiss_beaten.get(&row.team_id).copied().unwrap_or(0));
+            }
+        }
+
+        // The server's order wherever it sent one. Without it, its rule as far
+        // as the client can follow it: wins, then fewer losses (a 3-0 above a
+        // 3-2 whatever the game difference), then the event's tiebreak, then
+        // seed. The `beaten` tiebreak's coin flip cannot be reproduced here,
+        // which is why the order is read in the first place.
+        let position = |team_id: &str| self.swiss_order.iter().position(|held| held == team_id);
         rows.sort_by(|left, right| {
+            match (position(&left.team_id), position(&right.team_id)) {
+                (Some(first), Some(second)) => return first.cmp(&second),
+                (Some(_), None) => return std::cmp::Ordering::Less,
+                (None, Some(_)) => return std::cmp::Ordering::Greater,
+                (None, None) => {}
+            }
+            let tiebreak = if beaten_counts {
+                right.beaten.cmp(&left.beaten)
+            } else {
+                right.game_diff.cmp(&left.game_diff)
+            };
             right
                 .wins
                 .cmp(&left.wins)
-                .then(right.game_diff.cmp(&left.game_diff))
+                .then(left.losses.cmp(&right.losses))
+                .then(tiebreak)
                 .then(
                     self.seed_of(&left.team_id)
                         .cmp(&self.seed_of(&right.team_id)),
@@ -594,6 +635,7 @@ impl Tourney {
                 wins: 0,
                 losses: 0,
                 game_diff: 0,
+                beaten: None,
             })
             .collect();
 
@@ -645,6 +687,7 @@ impl Tourney {
                 wins: 0,
                 losses: 0,
                 game_diff: 0,
+                beaten: None,
             })
             .collect()
     }
@@ -698,6 +741,7 @@ impl Tourney {
                 wins: 0,
                 losses: 0,
                 game_diff: 0,
+                beaten: None,
             });
         }
         rows
@@ -904,6 +948,25 @@ impl Tourney {
             return true;
         }
         self.is_captain_of(team) && self.team_size > 1 && !team.captain_renamed
+    }
+
+    /// Whether this account may submit a score for `entry` for the other side
+    /// to confirm (`report_submit`).
+    ///
+    /// The server's conditions, in its order: player reporting is on, the
+    /// bracket is running or finished, the match has two sides and is not a
+    /// free-for-all lobby, the caller's team is one of them, and the series is
+    /// still being played. Any member of the team may submit, not only its
+    /// captain.
+    pub fn may_submit(&self, entry: &TourneyMatch) -> bool {
+        let Some(mine) = self.viewer.member_team_id.as_deref() else {
+            return false;
+        };
+        self.player_reporting
+            && self.status.has_bracket()
+            && entry.bracket != BracketSide::FreeForAll
+            && entry.opponent_of(mine).is_some()
+            && matches!(entry.status, MatchStatus::Ready | MatchStatus::Live)
     }
 
     /// Whether this account is the side that has to agree to a pending result.

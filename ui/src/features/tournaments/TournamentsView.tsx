@@ -32,6 +32,7 @@ import { openHttpsUrl } from "../../shared/externalLinks";
 import { useAppStore } from "../../store/store";
 import { matchTitle } from "./matchTitle";
 import { MatchReportDialog } from "./bracket/MatchReportDialog";
+import { ScoreSubmitDialog } from "./bracket/ScoreSubmitDialog";
 import { TournamentDetailPane } from "./detail/TournamentDetailPane";
 import { TournamentForm } from "./manage/TournamentForm";
 import { SignUpDialog } from "./SignUpDialog";
@@ -43,7 +44,7 @@ import {
   groupedEvents,
   type ListGroup,
 } from "./tourneyPresentation";
-import { busyMatchId, openEvent } from "../../shared/rules/tourneyRules";
+import { busyMatchId, mayReport, openEvent } from "../../shared/rules/tourneyRules";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -67,13 +68,17 @@ const load = () => {
 /**
  * The three groups that are always open, in the order they are read.
  *
+ * The website's order: your drafts, then what is being played right now, then
+ * what is coming. Ongoing sat below Upcoming until issue 367, which put the
+ * event people are following under a list of events that have not started.
+ *
  * The fourth, the finished and abandoned, folds away behind a disclosure and is
  * rendered on its own below.
  */
 const LIVE_GROUPS: [Exclude<ListGroup, "past">, MessageKey][] = [
   ["drafts", "tournaments.list.drafts"],
-  ["upcoming", "tournaments.list.upcoming"],
   ["ongoing", "tournaments.list.ongoing"],
+  ["upcoming", "tournaments.list.upcoming"],
 ];
 
 /** How often the countdowns are recomputed. Minute resolution, minute ticks. */
@@ -632,16 +637,37 @@ export function TournamentsView() {
         />
       )}
 
-      {reporting !== null && open !== null && (
+      {reporting !== null && open !== null && !mayReport(open, reporting) && (
+        <ScoreSubmitDialog
+          event={open}
+          entry={reporting}
+          busy={busy}
+          onSubmit={(report: MatchReport) => {
+            // `report_submit`, the player path: it counts once the other side
+            // or an organiser confirms it.
+            act({ type: "submitReport", payload: { tournamentId: open.id, report } });
+            setReporting(null);
+          }}
+          onClose={() => setReporting(null)}
+        />
+      )}
+
+      {reporting !== null && open !== null && mayReport(open, reporting) && (
         <MatchReportDialog
           event={open}
           entry={reporting}
           busy={busy}
           onSubmit={(report: MatchReport) => {
             // `report`, the organiser path: it takes a forfeit and an explicit
-            // winner and does not demand a replay id per game. `report_submit` is
-            // the players' own path and is not used here.
+            // winner, and replay ids without demanding one per game.
             act({ type: "decideReport", payload: { tournamentId: open.id, report } });
+            setReporting(null);
+          }}
+          onAnswer={(accept) => {
+            act({
+              type: "answerReport",
+              payload: { tournamentId: open.id, matchId: reporting.id, accept },
+            });
             setReporting(null);
           }}
           onClose={() => setReporting(null)}

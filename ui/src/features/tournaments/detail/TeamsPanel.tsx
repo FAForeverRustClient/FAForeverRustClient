@@ -16,7 +16,7 @@ import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { PlayerSummary, Tourney, TourneyTeam } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { PlayerChip } from "../PlayerChip";
+import { EntrantName } from "../EntrantName";
 import { PlayerTable } from "../PlayerTable";
 import { mayRename, myInvites, profileOf, selfOrganised, teamMembers, teamRating, wouldExceedCap } from "../../../shared/rules/tourneyRules";
 
@@ -184,11 +184,7 @@ export function TeamsPanel(props: TeamsPanelProps) {
                   return (
                     <li className="tournament-entrant" key={member.id}>
                       <span className="tournament-entrant-name">
-                        {profile ? (
-                          <PlayerChip player={profile} overrideName={member.name} />
-                        ) : (
-                          member.name
-                        )}
+                        <EntrantName name={member.name} fafId={member.fafId} profile={profile} />
                       </span>
                       {team.captainId === member.id && (
                         <span className="muted">{t("tournaments.teams.captain")}</span>
@@ -203,24 +199,33 @@ export function TeamsPanel(props: TeamsPanelProps) {
                 <div className="tournament-team-requests">
                   <h6>{t("tournaments.teams.requests")}</h6>
                   <ul className="tournament-entrant-list">
-                    {team.joinRequests.map((ask) => (
-                      <li className="tournament-entrant" key={ask.playerId}>
-                        <span className="tournament-entrant-name">{ask.name}</span>
-                        <Button
-                          variant="primary"
-                          disabled={busy || isFull(team)}
-                          onClick={() => props.onRespondJoin(team.id, ask.playerId, true)}
-                        >
-                          {t("tournaments.teams.accept")}
-                        </Button>
-                        <Button
-                          disabled={busy}
-                          onClick={() => props.onRespondJoin(team.id, ask.playerId, false)}
-                        >
-                          {t("tournaments.teams.decline")}
-                        </Button>
-                      </li>
-                    ))}
+                    {team.joinRequests.map((ask) => {
+                      const asker = event.players.find((player) => player.id === ask.playerId);
+                      return (
+                        <li className="tournament-entrant" key={ask.playerId}>
+                          <span className="tournament-entrant-name">
+                            <EntrantName
+                              name={ask.name}
+                              fafId={asker?.fafId ?? null}
+                              profile={asker ? profileOf(props.profiles, asker) : null}
+                            />
+                          </span>
+                          <Button
+                            variant="primary"
+                            disabled={busy || isFull(team)}
+                            onClick={() => props.onRespondJoin(team.id, ask.playerId, true)}
+                          >
+                            {t("tournaments.teams.accept")}
+                          </Button>
+                          <Button
+                            disabled={busy}
+                            onClick={() => props.onRespondJoin(team.id, ask.playerId, false)}
+                          >
+                            {t("tournaments.teams.decline")}
+                          </Button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -231,7 +236,13 @@ export function TeamsPanel(props: TeamsPanelProps) {
                   <ul className="tournament-entrant-list">
                     {unteamed.map((player) => (
                       <li className="tournament-entrant" key={player.id}>
-                        <span className="tournament-entrant-name">{player.name}</span>
+                        <span className="tournament-entrant-name">
+                          <EntrantName
+                            name={player.name}
+                            fafId={player.fafId}
+                            profile={profileOf(props.profiles, player)}
+                          />
+                        </span>
                         {player.rating !== null && <span className="muted">{player.rating}</span>}
                         <Button
                           disabled={

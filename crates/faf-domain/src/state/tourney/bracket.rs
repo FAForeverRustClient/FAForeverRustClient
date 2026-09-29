@@ -113,6 +113,60 @@ pub struct Standing {
     pub wins: i32,
     pub losses: i32,
     pub game_diff: i32,
+    /// The Swiss tiebreak "sum of the Swiss wins of every opponent this team
+    /// beat", when the event breaks ties that way; `None` everywhere else.
+    pub beaten: Option<i32>,
+}
+
+/// How a Swiss event separates equal records, after wins and fewer losses.
+///
+/// The website's per-tournament choice (`tiebreak`): game difference, which is
+/// what every event created before the choice keeps, or the sum of the scores
+/// of the opponents beaten followed by a seeded coin flip, the Invitational's
+/// rule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum SwissTiebreak {
+    #[default]
+    GameDiff,
+    Beaten,
+}
+
+impl SwissTiebreak {
+    /// Anything but `beaten` is game difference, as the service reads it.
+    pub fn from_wire(value: &str) -> Self {
+        if value == "beaten" {
+            Self::Beaten
+        } else {
+            Self::GameDiff
+        }
+    }
+}
+
+/// A Swiss stage's record cuts (`winCut`, `lossCut`): a team leaves the stage
+/// on reaching that many wins or that many losses, rather than after a fixed
+/// number of rounds. Zero is off, which is what every event without them has.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SwissCuts {
+    pub wins: i32,
+    pub losses: i32,
+}
+
+impl SwissCuts {
+    /// The round count the cuts imply, or `None` without cuts.
+    ///
+    /// The server's `swissCutRounds`, and the number `start_bracket` uses in
+    /// place of whatever round count the start dialog sends: the longest a team
+    /// can last is one short of each cut, plus the game that decides it.
+    pub fn rounds(&self) -> Option<i32> {
+        match (self.wins.max(0), self.losses.max(0)) {
+            (0, 0) => None,
+            (0, losses) => Some(losses),
+            (wins, 0) => Some(wins),
+            (wins, losses) => Some(wins + losses - 1),
+        }
+    }
 }
 
 /// Why a team sits where it does.
@@ -253,6 +307,12 @@ pub struct TourneyMatch {
     /// confirmed. The server insists on one per newly reported game, which is
     /// what makes a bracket auditable after the fact.
     pub replay_ids: Vec<String>,
+    /// Replays of games that ended in a draw and were played again. They
+    /// score nothing, but casters and the archive want the recordings.
+    pub draw_replay_ids: Vec<String>,
+    /// The team that forfeited, when the series ended that way. A walkover
+    /// stores that side's score as -1, which is shown as FF, never as a number.
+    pub forfeit: Option<String>,
 }
 
 impl TourneyMatch {
@@ -301,6 +361,8 @@ pub struct PendingReport {
     /// Who submitted it, for the "waiting on X" line.
     pub by_name: String,
     pub replay_ids: Vec<String>,
+    /// Replays of drawn games the submitter attached, shown to whoever confirms.
+    pub draw_replay_ids: Vec<String>,
     /// Unix seconds.
     pub at: Option<u32>,
 }
@@ -440,13 +502,14 @@ impl MatchPlan {
     }
 }
 
-/// A result the organiser sets on a match.
+/// A result set on a match, by an organiser (`report`) or by a player for the
+/// other side to confirm (`report_submit`).
 ///
-/// The replay id lists stay on the type because `report` accepts them and an
-/// archive is worth keeping, but nothing is required to fill them: they are
-/// mandatory only on `report_submit`, the *player* path, and that path is not
-/// used. `report` guards them with `if (Array.isArray(b.replayIds))`, so an
-/// empty list simply stores none.
+/// The replay ids are optional on the organiser's path, which guards them with
+/// `if (Array.isArray(b.replayIds))`, so an empty list simply stores none. The
+/// player's path insists on exactly one per new game; see
+/// [`Self::is_player_submittable`]. A player's report never carries a winner or
+/// a forfeit: `report_submit` reads neither.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchReport {
@@ -491,8 +554,8 @@ impl MatchReport {
     /// grand final starts the upper-bracket side at 1-0, so its first score
     /// cannot be zero.
     ///
-    /// Two conditions were removed here on purpose, because they belonged to the
-    /// player path this client no longer uses:
+    /// Two conditions belong to the player path alone, and are checked by
+    /// [`Self::is_player_submittable`] instead:
     ///
     /// - **One replay id per new game.** Only `report_submit` insists on that.
     ///   Requiring it stopped an organiser entering a score they already knew.
@@ -522,6 +585,40 @@ impl MatchReport {
             }
         };
         scores_fit && winner_fits
+    }
+
+    /// Whether `report_submit`, the players' path, will take this.
+    ///
+    /// The server's own checks, in its order: both scores between zero and the
+    /// wins the series needs, a handicapped final not below 1-0, not both sides
+    /// reaching it, no score lower than the confirmed one, at least one new game,
+    /// and exactly one replay id per new game. A lower score is the organiser's
+    /// to fix, through `report`.
+    ///
+    /// An id counts when it holds a digit: the server strips everything else
+    /// and drops what is left empty.
+    pub fn is_player_submittable(&self, entry: &TourneyMatch) -> bool {
+        let needed = (entry.best_of + 1) / 2;
+        let current1 = entry
+            .score1
+            .unwrap_or(if entry.handicap > 0 { 1 } else { 0 });
+        let current2 = entry.score2.unwrap_or(0);
+        let scores_fit = self.score1 >= 0
+            && self.score2 >= 0
+            && self.score1 <= needed
+            && self.score2 <= needed
+            && !(entry.handicap > 0 && self.score1 < 1)
+            && !(self.score1 == needed && self.score2 == needed);
+        if !scores_fit || self.score1 < current1 || self.score2 < current2 {
+            return false;
+        }
+        let new_games = self.score1 + self.score2 - current1 - current2;
+        let ids = self
+            .replay_ids
+            .iter()
+            .filter(|id| id.chars().any(|c| c.is_ascii_digit()))
+            .count();
+        new_games >= 1 && ids == new_games as usize
     }
 
     /// Whether this is the forfeit shorthand: a forfeiting team and nothing else.

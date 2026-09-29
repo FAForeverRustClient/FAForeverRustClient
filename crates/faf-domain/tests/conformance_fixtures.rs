@@ -63,6 +63,7 @@ struct HelperFixture {
     tourney_open_events: Vec<TourneyOpenEventCase>,
     tourney_phase_legality: Vec<TourneyPhaseLegalityCase>,
     tourney_busy_matches: Vec<TourneyBusyMatchCase>,
+    tourney_swiss_cuts: Vec<TourneySwissCutCase>,
     tourney_draft_rejections: Vec<TourneyDraftRejectionCase>,
     tourney_reports: Vec<TourneyReportCase>,
     tourney_map_matches: TourneyMapMatchFixture,
@@ -215,6 +216,8 @@ struct TourneyRuleCase {
     /// Recorded as ids rather than a single bool so the `has_bracket` half of
     /// the rule is exercised: that half is the one the frontend twin had lost.
     reportable_match_ids: Vec<String>,
+    /// `Tourney::may_submit` over every match: the players' own path.
+    submittable_match_ids: Vec<String>,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -240,6 +243,15 @@ struct TourneyOpenEventCase {
 struct TourneyBusyMatchCase {
     pending: Option<TourneyAction>,
     busy_match_id: Option<String>,
+}
+
+/// `SwissCuts::rounds`: the round count the start dialog shows in place of
+/// its own field when the plan has record cuts.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneySwissCutCase {
+    cuts: SwissCuts,
+    rounds: Option<i32>,
 }
 
 #[derive(Serialize)]
@@ -283,6 +295,10 @@ struct TourneyReportCase {
     replay_ids: Vec<String>,
     new_games: i32,
     submittable: bool,
+    /// `MatchReport::is_player_submittable`: the same score through
+    /// `report_submit`, which wants one replay id per new game and a score
+    /// that only goes up.
+    player_submittable: bool,
 }
 
 #[derive(Serialize)]
@@ -647,6 +663,12 @@ fn tourney_rule_case(
             .filter(|entry| event.may_report(entry))
             .map(|entry| entry.id.clone())
             .collect(),
+        submittable_match_ids: event
+            .matches
+            .iter()
+            .filter(|entry| event.may_submit(entry))
+            .map(|entry| entry.id.clone())
+            .collect(),
         unread_total: state.unread_total(),
         rooms,
         event: Box::new(event),
@@ -683,6 +705,8 @@ fn tourney_match(
         points: Vec::new(),
         is_final: false,
         replay_ids: Vec::new(),
+        draw_replay_ids: Vec::new(),
+        forfeit: None,
     }
 }
 
@@ -836,6 +860,24 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         },
         ..Tourney::default()
     };
+    // A player in a running event: a score of their own match can be
+    // submitted, not one of a half-drawn slot or a free-for-all lobby.
+    let player_running = Tourney {
+        id: "player-running".into(),
+        player_reporting: true,
+        viewer: TourneyViewer {
+            logged_in: true,
+            member_team_id: Some("t1".into()),
+            ..TourneyViewer::default()
+        },
+        ..organised_running.clone()
+    };
+    // The same player where the organiser keeps every result to themselves.
+    let organiser_reports = Tourney {
+        id: "organiser-reports".into(),
+        player_reporting: false,
+        ..player_running.clone()
+    };
     let renamed_once = Tourney {
         id: "renamed-once".into(),
         teams: vec![TourneyTeam {
@@ -905,6 +947,18 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         tourney_rule_case(
             "the same captain, once the service has counted the rename",
             renamed_once,
+            Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "a player in a running event that takes players' scores",
+            player_running,
+            Some("t1"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same player where only the organiser reports",
+            organiser_reports,
             Some("t1"),
             vec![],
         ),
@@ -993,6 +1047,50 @@ fn tourney_standings_cases() -> Vec<TourneyStandingsCase> {
         ],
         ..Tourney::default()
     };
+    // 2-0 on +2 against 2-1 on +3: the server ranks the unbeaten one first.
+    let result = |id: &str, winner: &str, loser: &str, high: i32, low: i32| {
+        standings_match(
+            id,
+            MatchStatus::Done,
+            (Some(winner), Some(loser)),
+            (Some(high), Some(low)),
+            (Some(winner), Some(loser)),
+        )
+    };
+    let fewer_losses = Tourney {
+        id: "fewer-losses".into(),
+        status: TourneyStatus::Running,
+        bracket_kind: BracketKind::Swiss,
+        teams: ["t1", "t2", "t3", "t4", "t5"]
+            .iter()
+            .enumerate()
+            .map(|(index, id)| standings_team(id, index as i32 + 1, None))
+            .collect(),
+        matches: vec![
+            result("m1", "t1", "t3", 1, 0),
+            result("m2", "t1", "t4", 1, 0),
+            result("m3", "t2", "t3", 2, 0),
+            result("m4", "t2", "t4", 2, 0),
+            result("m5", "t5", "t2", 1, 0),
+        ],
+        ..Tourney::default()
+    };
+    // The same table as the server ordered it, under the beaten tiebreak.
+    let server_order = Tourney {
+        id: "server-order".into(),
+        swiss_order: vec![
+            "t2".into(),
+            "t1".into(),
+            "t5".into(),
+            "t3".into(),
+            "t4".into(),
+        ],
+        swiss_tiebreak: SwissTiebreak::Beaten,
+        swiss_beaten: [("t1".to_string(), 0), ("t2".to_string(), 1)]
+            .into_iter()
+            .collect(),
+        ..fewer_losses.clone()
+    };
     // An import, which often carries a final table and nothing else.
     let imported = Tourney {
         id: "imported".into(),
@@ -1064,6 +1162,14 @@ fn tourney_standings_cases() -> Vec<TourneyStandingsCase> {
         ),
         ("mid-event, where nobody has a place yet", running),
         ("a Swiss table, including a bye", swiss),
+        (
+            "a Swiss table, where fewer losses outrank game difference",
+            fewer_losses,
+        ),
+        (
+            "a Swiss table in the server's own order, beaten tiebreak",
+            server_order,
+        ),
         ("an import, which carries only its own placings", imported),
         (
             "a scored free-for-all, where seed breaks a points tie",
@@ -2197,6 +2303,10 @@ fn tourney_busy_match_cases() -> Vec<TourneyBusyMatchCase> {
         Some(TourneyAction::AnsweringReport {
             match_id: "m2".into(),
         }),
+        // A player's own submission narrows to its match as well.
+        Some(TourneyAction::SubmittingReport {
+            match_id: "m6".into(),
+        }),
         // Both narrow to one match too: a captain taking a veto step, or an
         // organiser scoring a lobby, must not freeze the rest of the draw.
         Some(TourneyAction::Vetoing {
@@ -2392,6 +2502,8 @@ fn tourney_report_cases() -> Vec<TourneyReportCase> {
             points: Vec::new(),
             is_final: false,
             replay_ids: Vec::new(),
+            draw_replay_ids: Vec::new(),
+            forfeit: None,
         };
     let ids = |count: usize| -> Vec<String> {
         (0..count).map(|index| format!("replay-{index}")).collect()
@@ -2473,6 +2585,22 @@ fn tourney_report_cases() -> Vec<TourneyReportCase> {
             0,
             ids(1),
         ),
+        (
+            // An organiser's correction, and a player's refusal: the player
+            // path only counts up.
+            "a Bo3 at 1-1 set back to 1-0",
+            entry(3, 0, Some(1), Some(1)),
+            1,
+            0,
+            Vec::new(),
+        ),
+        (
+            "an id with no digit in it, which the server drops",
+            entry(3, 0, None, None),
+            1,
+            0,
+            vec!["abc".into()],
+        ),
     ];
 
     cases
@@ -2497,6 +2625,7 @@ fn tourney_report_cases() -> Vec<TourneyReportCase> {
                 },
                 new_games: report.new_games(&held),
                 submittable: report.is_submittable(&held),
+                player_submittable: report.is_player_submittable(&held),
                 score1,
                 score2,
                 replay_ids,
@@ -2543,6 +2672,7 @@ fn tourney_map_match_fixture() -> TourneyMapMatchFixture {
                 image_url: String::new(),
                 description: String::new(),
                 published: true,
+                spec: None,
             };
             TourneyMapMatchCase {
                 typed: name.into(),
@@ -2712,6 +2842,16 @@ fn helper_fixture() -> HelperFixture {
         tourney_open_events: tourney_open_event_cases(),
         tourney_phase_legality: tourney_phase_legality_cases(),
         tourney_busy_matches: tourney_busy_match_cases(),
+        tourney_swiss_cuts: [(0, 0), (3, 0), (0, 2), (3, 3), (4, 2), (1, 1), (-1, 3)]
+            .into_iter()
+            .map(|(wins, losses)| {
+                let cuts = SwissCuts { wins, losses };
+                TourneySwissCutCase {
+                    cuts,
+                    rounds: cuts.rounds(),
+                }
+            })
+            .collect(),
         tourney_draft_rejections: tourney_draft_rejection_cases(),
         tourney_reports: tourney_report_cases(),
         tourney_map_matches: tourney_map_match_fixture(),

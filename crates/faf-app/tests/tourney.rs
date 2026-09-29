@@ -169,6 +169,9 @@ impl TourneyPort for RefusingTourney {
     async fn decide_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
         self.refused()
     }
+    async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+        self.refused()
+    }
     async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
         self.inner.chat_rooms(tournament_id).await
     }
@@ -509,10 +512,8 @@ async fn withdrawing_without_an_entry_is_refused_before_a_request_is_made() {
 
 #[tokio::test]
 async fn a_score_raised_elsewhere_is_answerable_here() {
-    // The client never raises a result as a player: recording one is the
-    // organiser's, and `report_submit` insists on a replay id per game besides.
-    // A report raised on the website still has to be answerable, or the tab
-    // shows a decision it cannot make.
+    // A report the other side raised, here or on the website, has to be
+    // answerable, or the tab shows a decision it cannot make.
     let app = app().await;
     open(&app, "e9z9z").await;
     let before = app.snapshot().tourney.detail.expect("the bracket");
@@ -557,6 +558,55 @@ async fn a_confirmed_score_advances_the_winner_and_the_state_follows() {
 }
 
 #[tokio::test]
+async fn an_organisers_forfeit_reaches_the_server() {
+    // The service used to blank the winner and the forfeit on the organiser's
+    // path as well as the player's, so a walkover entered here arrived as a
+    // bare match id and changed nothing.
+    let app = app().await;
+    open(&app, "e9z9z").await;
+    let entry = app
+        .snapshot()
+        .tourney
+        .detail
+        .expect("the event")
+        .matches
+        .into_iter()
+        .find(|entry| {
+            entry.status == MatchStatus::Ready
+                && entry.pending_report.is_none()
+                && entry.team1.is_some()
+                && entry.team2.is_some()
+        })
+        .expect("a match ready to play");
+    let absent = entry.team1.clone().expect("a side");
+    let present = entry.team2.clone().expect("a side");
+
+    app.dispatch(
+        TourneyCommand::DecideReport {
+            tournament_id: "e9z9z".into(),
+            report: MatchReport {
+                match_id: entry.id.clone(),
+                forfeit: Some(absent),
+                ..MatchReport::default()
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    settle(&app).await;
+
+    let after = app.snapshot().tourney.detail.expect("still open");
+    let decided = after
+        .matches
+        .iter()
+        .find(|candidate| candidate.id == entry.id)
+        .expect("the match");
+    assert_eq!(decided.status, MatchStatus::Done);
+    assert_eq!(decided.winner.as_deref(), Some(present.as_str()));
+}
+
+#[tokio::test]
 async fn the_map_database_takes_maps_and_hides_them_until_published() {
     // The step that is easy to skip: the service hides an unpublished map from
     // players, so a pool built from unpublished maps is a round nobody can read.
@@ -578,6 +628,7 @@ async fn the_map_database_takes_maps_and_hides_them_until_published() {
                 name: "  Twin Rivers  ".into(),
                 description: "8 spawns".into(),
                 published: false,
+                spec: None,
             },
         }
         .into(),
@@ -652,6 +703,7 @@ async fn publishing_a_pool_publishes_the_maps_in_it() {
                 name: "Open Palms".into(),
                 description: String::new(),
                 published: false,
+                spec: None,
             },
         }
         .into(),
@@ -1646,6 +1698,9 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             unreachable!()
         }
         async fn decide_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn chat_rooms(&self, _: &str) -> Result<Vec<ChatRoom>, RequestError> {

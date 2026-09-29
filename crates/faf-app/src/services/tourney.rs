@@ -105,6 +105,32 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
+        TourneyCommand::SubmitReport {
+            tournament_id,
+            report,
+        } => {
+            let action = TourneyAction::SubmittingReport {
+                match_id: report.match_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                // The player path takes no winner and no forfeit; clearing them
+                // here keeps a stray one from ever reaching the body.
+                let report = MatchReport {
+                    winner: None,
+                    forfeit: None,
+                    ..clean(report)
+                };
+                async move {
+                    ctx.ports
+                        .tourney
+                        .submit_report(&tournament_id, &report)
+                        .await
+                }
+            })
+            .await;
+        }
+
         TourneyCommand::LoadChat { tournament_id } => load_rooms(&tournament_id, ctx, out).await,
 
         TourneyCommand::OpenRoom {
@@ -1190,12 +1216,14 @@ fn trimmed_series(draft: SeriesDraft) -> SeriesDraft {
 /// The server counts them and refuses a report whose count does not match the
 /// number of new games, so an empty row the player tabbed past would cost them
 /// the submission for a reason they cannot see.
+///
+/// The winner and the forfeit are kept. They are the organiser's to send, and
+/// this used to blank them as well, so every walkover and every declared
+/// winner entered in the client reached the server as a bare match id.
 fn clean(report: MatchReport) -> MatchReport {
     MatchReport {
         replay_ids: usable(report.replay_ids),
         draw_replay_ids: usable(report.draw_replay_ids),
-        winner: None,
-        forfeit: None,
         ..report
     }
 }

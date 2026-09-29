@@ -30,6 +30,7 @@ import type {
   QualifierKind,
   QualifierRule,
   SeriesDraft,
+  SwissCuts,
   Tourney,
   TourneyAction,
   TourneyDraft,
@@ -93,12 +94,12 @@ export function newGames(entry: TourneyMatch, score1: number, score2: number): n
 }
 
 /**
- * Twin of `MatchReport::is_submittable`: what `report` will accept.
+ * Twin of `MatchReport::is_submittable`: what `report`, the organiser's path,
+ * will accept.
  *
- * No replay-id rule and no "the score must go up" rule. Both belonged to the
- * player path, which this client does not use: only the organiser records a
- * result, and `report` is also the correction path, so a lower score is a fix
- * rather than an error.
+ * No replay-id rule and no "the score must go up" rule. Both belong to the
+ * player path, `isPlayerSubmittable`: `report` is also the correction path, so
+ * a lower score is a fix rather than an error.
  */
 export function isSubmittable(
   entry: TourneyMatch,
@@ -117,6 +118,46 @@ export function isSubmittable(
   // A named winner has to be one of the two sides, or the server refuses it.
   const winnerFits = winner === null || winner === entry.team1 || winner === entry.team2;
   return scoresFit && winnerFits;
+}
+
+/**
+ * Twin of `MatchReport::is_player_submittable`: what `report_submit`, the
+ * players' path, will accept. The score only goes up, and every new game needs
+ * exactly one replay id; an id counts when it holds a digit.
+ */
+export function isPlayerSubmittable(
+  entry: TourneyMatch,
+  score1: number,
+  score2: number,
+  replayIds: string[],
+): boolean {
+  const needed = Math.ceil(entry.bestOf / 2);
+  const current1 = entry.score1 ?? (entry.handicap > 0 ? 1 : 0);
+  const current2 = entry.score2 ?? 0;
+  const scoresFit =
+    score1 >= 0 &&
+    score2 >= 0 &&
+    score1 <= needed &&
+    score2 <= needed &&
+    !(entry.handicap > 0 && score1 < 1) &&
+    !(score1 === needed && score2 === needed);
+  if (!scoresFit || score1 < current1 || score2 < current2) return false;
+  const fresh = score1 + score2 - current1 - current2;
+  const ids = replayIds.filter((id) => /\d/.test(id)).length;
+  return fresh >= 1 && ids === fresh;
+}
+
+/**
+ * Twin of `SwissCuts::rounds`: the round count record cuts imply, which the
+ * server uses in place of the one the start dialog sends. Null without cuts.
+ */
+export function swissCutRounds(cuts: SwissCuts): number | null {
+  const wins = Math.max(0, cuts.wins);
+  const losses = Math.max(0, cuts.losses);
+  if (wins === 0 && losses === 0) return null;
+  if (wins === 0) return losses;
+  if (losses === 0) return wins;
+  return wins + losses - 1;
 }
 
 /** Twin of `faf_domain::state::map_key`: letters and digits, folded. */
@@ -268,6 +309,43 @@ export function mayReport(event: Tourney, entry: TourneyMatch): boolean {
 }
 
 /**
+ * Twin of `Tourney::may_submit`: whether this account may submit a score for
+ * the other side to confirm (`report_submit`). Any member of either team, while
+ * the series is being played, where the organiser allows players' scores.
+ */
+export function maySubmit(event: Tourney, entry: TourneyMatch): boolean {
+  const mine = event.viewer.memberTeamId;
+  if (mine === null) return false;
+  const opponent = entry.team1 === mine ? entry.team2 : entry.team2 === mine ? entry.team1 : null;
+  return (
+    event.playerReporting &&
+    hasBracket(event.status) &&
+    entry.bracket !== "freeForAll" &&
+    opponent !== null &&
+    (entry.status === "ready" || entry.status === "live")
+  );
+}
+
+/**
+ * What a replay-id field keeps while it is typed in: digits, commas and spaces.
+ *
+ * The website's own rule. Replay ids are FAF game numbers, so a pasted
+ * `https://replay.faforever.com/21534001` or a messy list loses its junk as it
+ * arrives rather than silently on save, and the commas come out evenly spaced.
+ */
+export function cleanReplayField(text: string): string {
+  return text.replace(/[^0-9,\s]/g, "").replace(/\s*,\s*/g, ", ");
+}
+
+/** The ids in a replay-id field, in the order they were written. */
+export function replayIdsOf(text: string): string[] {
+  return text
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+}
+
+/**
  * One row of the standings table.
  *
  * Spelled out rather than imported, like `DraftRejection` above: `Standing` is
@@ -283,6 +361,8 @@ export interface Standing {
   wins: number;
   losses: number;
   gameDiff: number;
+  /** The Swiss `beaten` tiebreak's number, where that is the tiebreak. */
+  beaten: number | null;
 }
 
 /** Why a team sits where it does. */
@@ -867,9 +947,13 @@ const blank = (teamId: string, outcome: Standing["outcome"]): Standing => ({
   wins: 0,
   losses: 0,
   gameDiff: 0,
+  beaten: null,
 });
 
-/** A bye counts as a win worth one game, as the service's own table does. */
+/**
+ * A bye counts as a win worth one game, as the service's own table does.
+ * Twin of `Tourney::swiss_standings`, including reading `swissOrder`.
+ */
 function swissStandings(event: Tourney): Standing[] {
   const rows = event.teams.map((team) => blank(team.id, "swiss"));
   const at = (id: string | null) =>
@@ -904,14 +988,32 @@ function swissStandings(event: Tourney): Standing[] {
     }
   }
 
+  const beatenCounts = event.swissTiebreak === "beaten";
+  if (beatenCounts) {
+    for (const row of rows) row.beaten = event.swissBeaten[row.teamId] ?? 0;
+  }
+
+  // The server's order wherever it sent one; without it, its rule as far as
+  // it can be followed here: wins, fewer losses, the event's tiebreak, seed.
   const seedOf = (teamId: string) =>
     event.teams.find((team) => team.id === teamId)?.seed ?? Number.MAX_SAFE_INTEGER;
-  rows.sort(
-    (left, right) =>
+  const positionOf = (teamId: string) => event.swissOrder.indexOf(teamId);
+  rows.sort((left, right) => {
+    const first = positionOf(left.teamId);
+    const second = positionOf(right.teamId);
+    if (first >= 0 && second >= 0) return first - second;
+    if (first >= 0) return -1;
+    if (second >= 0) return 1;
+    const tiebreak = beatenCounts
+      ? (right.beaten ?? 0) - (left.beaten ?? 0)
+      : right.gameDiff - left.gameDiff;
+    return (
       right.wins - left.wins ||
-      right.gameDiff - left.gameDiff ||
-      seedOf(left.teamId) - seedOf(right.teamId),
-  );
+      left.losses - right.losses ||
+      tiebreak ||
+      seedOf(left.teamId) - seedOf(right.teamId)
+    );
+  });
   return rows.map((row, index) => ({
     ...row,
     place: index + 1,
@@ -1080,6 +1182,7 @@ export function busyMatchId(pending: TourneyAction | null): string | null {
   switch (pending.type) {
     case "answeringReport":
     case "decidingReport":
+    case "submittingReport":
     case "vetoing":
     case "reportingFfa":
       return pending.payload.matchId;

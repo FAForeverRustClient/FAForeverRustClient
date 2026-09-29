@@ -26,11 +26,12 @@ use serde_json::{json, Value};
 use crate::protocol::markup::to_plain_text;
 use crate::state::{
     Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
-    ChatRoom, Competition, Currency, Formation, HostingStatus, InviteStatus, MapPool, MatchLink,
-    MatchPlan, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction, PoolAssignment,
-    PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream, TeamExit,
-    TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite, TourneyMap, TourneyMatch,
-    TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
+    ChatRoom, Competition, Currency, Formation, HostingStatus, InviteStatus, MapPool, MapSpec,
+    MatchLink, MatchPlan, MatchReport, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction,
+    PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream,
+    SwissCuts, SwissTiebreak, TeamExit, TeamRequest, Tourney, TourneyCategory, TourneyDraft,
+    TourneyInvite, TourneyMap, TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus,
+    TourneyTeam, TourneyViewer,
 };
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
@@ -172,6 +173,27 @@ fn plan(document: &Value, kind: BracketKind, competition: Competition) -> Option
             fast: flag(held, "fast"),
         },
     })
+}
+
+/// The record cuts in the stored plan.
+///
+/// Read from `plan` rather than `cfg`, because the plan is what the next
+/// `start_bracket` uses (`cleanSwissExtras(c, t.plan)`) when the start body
+/// does not name them, and this client's never does. Out of the server's own
+/// 0 to 15 range counts as off, as `cleanSwissExtras` treats it.
+fn swiss_cuts(document: &Value) -> SwissCuts {
+    let Some(held) = document.get("plan").filter(|value| value.is_object()) else {
+        return SwissCuts::default();
+    };
+    let cut = |name: &str| {
+        int(held, name)
+            .filter(|value| (0..=15).contains(value))
+            .unwrap_or(0)
+    };
+    SwissCuts {
+        wins: cut("winCut"),
+        losses: cut("lossCut"),
+    }
 }
 
 /// A JavaScript millisecond timestamp as Unix seconds.
@@ -401,8 +423,28 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .collect(),
         feeds_into: parse_feeds_into(document.get("feedsInto")),
         champion_team_id: id(document, "championTeamId"),
+        swiss_order: string_list(document, "swissOrder"),
+        swiss_tiebreak: SwissTiebreak::from_wire(&text(document, "tiebreak")),
+        swiss_cuts: swiss_cuts(document),
+        swiss_beaten: parse_beaten(document.get("swissSB")),
         viewer: parse_viewer(document),
     })
+}
+
+/// The `beaten` tiebreak's number per team, from `swissSB`: an object keyed by
+/// team id, or `null` when the event breaks ties by game difference.
+fn parse_beaten(value: Option<&Value>) -> std::collections::BTreeMap<String, i32> {
+    value
+        .and_then(Value::as_object)
+        .map(|held| {
+            held.iter()
+                .filter_map(|(team_id, sum)| {
+                    let sum = sum.as_i64().and_then(|n| i32::try_from(n).ok())?;
+                    Some((team_id.clone(), sum))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Who the service says is asking, and what they are in this tournament.
@@ -588,6 +630,8 @@ fn parse_match(value: &Value) -> Option<TourneyMatch> {
             .unwrap_or_default(),
         is_final: flag(value, "isFinal"),
         replay_ids: string_list(value, "replayIds"),
+        draw_replay_ids: string_list(value, "drawReplayIds"),
+        forfeit: id(value, "forfeit"),
     })
 }
 
@@ -603,6 +647,7 @@ fn parse_pending_report(value: Option<&Value>) -> Option<PendingReport> {
         by_team: id(pending, "byTeam")?,
         by_name: text(pending, "byName"),
         replay_ids: string_list(pending, "replayIds"),
+        draw_replay_ids: string_list(pending, "drawReplayIds"),
         at: moment(pending, "at"),
     })
 }
@@ -655,6 +700,48 @@ fn parse_map(value: &Value) -> Option<TourneyMap> {
         published: value
             .get("published")
             .is_none_or(|_| flag(value, "published")),
+        spec: parse_map_spec(value.get("spec")),
+    })
+}
+
+/// A map's spawn information, `None` when the service sent none.
+///
+/// The wire names are the website's (`t1`, `t2`, `closed`, `closedMex`). A
+/// spec with nothing in it is `None` too, which is how the service stores it.
+fn parse_map_spec(value: Option<&Value>) -> Option<MapSpec> {
+    let value = value.filter(|held| held.is_object())?;
+    let spawns = |name: &str| -> Vec<i32> {
+        array(value, name)
+            .iter()
+            .filter_map(|entry| match entry {
+                Value::Number(number) => number.as_i64().and_then(|n| i32::try_from(n).ok()),
+                Value::String(text) => text.trim().parse().ok(),
+                _ => None,
+            })
+            .collect()
+    };
+    let spec = MapSpec {
+        team1_spawns: spawns("t1"),
+        team2_spawns: spawns("t2"),
+        closed_spawns: spawns("closed"),
+        closed_mex_spawns: spawns("closedMex"),
+        size: text(value, "size"),
+    };
+    (spec != MapSpec::default()).then_some(spec)
+}
+
+/// A map's spawn information as `map_save` takes it: the same shape it came
+/// in, or `null` for none, which the service stores as none.
+pub fn map_spec_body(spec: Option<&MapSpec>) -> Value {
+    let Some(spec) = spec else {
+        return Value::Null;
+    };
+    json!({
+        "t1": spec.team1_spawns,
+        "t2": spec.team2_spawns,
+        "closed": spec.closed_spawns,
+        "closedMex": spec.closed_mex_spawns,
+        "size": spec.size,
     })
 }
 
@@ -1009,12 +1096,11 @@ fn merge_shared(body: &mut Value, draft: &TourneyDraft) {
         .filter(|stream| !stream.url.trim().is_empty())
         .map(|stream| json!({ "url": stream.url.trim(), "info": stream.info.trim() }))
         .collect::<Vec<_>>());
-    // Always off, and always sent. The client has no player reporting path at
-    // all: `report_submit` was removed, and the organiser records every result.
-    // The key has to be present to say so, because the service reads an absent
-    // one as *on* (`playerReporting === undefined ? true`), which would leave
-    // every event created here accepting scores the client cannot show.
-    body["playerReporting"] = json!(false);
+    // Always sent, and always the draft's own value, which for an edit is the
+    // event's. The service reads an absent key as on. This used to send `false`
+    // from both paths, so saving the settings of an event created on the
+    // website took player reporting away from it without a word.
+    body["playerReporting"] = json!(draft.player_reporting);
     // `null` is meaningful rather than omitted: the server tells a cleared date
     // from an untouched one by whether the key is there at all.
     body["eventDate"] = iso(draft.event_date);
@@ -1398,6 +1484,26 @@ pub fn qualifier_add_body(tournament_id: &str, rule: QualifierRule) -> Value {
 /// removing one is not an undo.
 pub fn qualifier_remove_body(link_id: &str) -> Value {
     json!({ "id": link_id })
+}
+
+/// The body for `POST /api/t/{id}/report_submit`, a player's score for the
+/// other side to confirm.
+///
+/// Only what the handler reads: the running score, one replay id per new game
+/// and the replays of drawn games. No winner and no forfeit, which are the
+/// organiser's through `report`. `replayIds` is always sent, because the
+/// handler counts it against the new games and an absent key counts as none.
+pub fn submit_report_body(report: &MatchReport) -> Value {
+    let mut body = json!({
+        "matchId": report.match_id,
+        "score1": report.score1,
+        "score2": report.score2,
+        "replayIds": report.replay_ids,
+    });
+    if !report.draw_replay_ids.is_empty() {
+        body["drawReplayIds"] = json!(report.draw_replay_ids);
+    }
+    body
 }
 
 #[cfg(test)]
@@ -1885,9 +1991,9 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(body["formation"], "draft");
         assert_eq!(body["bracketType"], "double");
         assert_eq!(body["teamSize"], 2);
-        // Always sent, always off. An absent key would be read as *on*, and the
-        // client has no player reporting path to show for it.
-        assert_eq!(body["playerReporting"], false);
+        // Always sent. An absent key would be read as *on* whatever the draft
+        // says; this one says on, as a new draft does.
+        assert_eq!(body["playerReporting"], true);
         // Dates go as ISO text: `cleanDate` accepts only strings, and a number
         // would be read as no date at all.
         assert_eq!(body["eventDate"], "2026-08-22T18:00:00Z");
@@ -1918,16 +2024,56 @@ See the [rules](https://x.invalid/r)."
     }
 
     #[test]
-    fn neither_path_ever_turns_player_reporting_on() {
-        // The service reads an absent key as on, so both bodies have to say no
-        // rather than stay quiet. Nothing in the client can show a player's
-        // report, and `report_submit` is gone.
+    fn a_players_submission_carries_the_score_and_the_replays_only() {
+        let body = submit_report_body(&MatchReport {
+            match_id: "m1".into(),
+            score1: 2,
+            score2: 1,
+            replay_ids: vec!["21534001".into()],
+            draw_replay_ids: Vec::new(),
+            winner: Some("t1".into()),
+            forfeit: Some("t2".into()),
+        });
+        assert_eq!(body["matchId"], "m1");
+        assert_eq!(body["score1"], 2);
+        assert_eq!(body["score2"], 1);
+        assert_eq!(body["replayIds"], json!(["21534001"]));
+        // `report_submit` reads neither, and sending them would suggest a
+        // player could decide a series.
+        assert!(body.get("winner").is_none());
+        assert!(body.get("forfeit").is_none());
+        assert!(body.get("drawReplayIds").is_none(), "nothing to keep");
+
+        let drawn = submit_report_body(&MatchReport {
+            match_id: "m1".into(),
+            score1: 1,
+            score2: 0,
+            replay_ids: vec!["21534001".into()],
+            draw_replay_ids: vec!["21534010".into()],
+            ..MatchReport::default()
+        });
+        assert_eq!(drawn["drawReplayIds"], json!(["21534010"]));
+    }
+
+    #[test]
+    fn both_paths_send_the_drafts_own_player_reporting() {
+        // Always present, because the service reads an absent key as on, and
+        // always the draft's: a fixed value turned it off on every event whose
+        // settings were saved here.
         let draft = TourneyDraft {
             name: "Weekend Cup".into(),
             ..TourneyDraft::new()
         };
-        assert_eq!(create_body(&draft)["playerReporting"], false);
-        assert_eq!(edit_info_body(&draft)["playerReporting"], false);
+        assert!(draft.player_reporting, "on by default, as on the website");
+        assert_eq!(create_body(&draft)["playerReporting"], true);
+        assert_eq!(edit_info_body(&draft)["playerReporting"], true);
+
+        let organiser_only = TourneyDraft {
+            player_reporting: false,
+            ..draft
+        };
+        assert_eq!(create_body(&organiser_only)["playerReporting"], false);
+        assert_eq!(edit_info_body(&organiser_only)["playerReporting"], false);
     }
 
     #[test]
@@ -2319,5 +2465,120 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(body["n"], 1, "the service clamps to 1 and so does this");
         // Removal is addressed by the link, not by the child it points at.
         assert_eq!(qualifier_remove_body("q1")["id"], "q1");
+    }
+
+    /// Spawn information survives a round trip, because `map_save` overwrites
+    /// whatever is stored with whatever is sent: a save that dropped it
+    /// deleted it.
+    #[test]
+    fn a_maps_spawn_information_goes_back_the_way_it_came() {
+        let map = parse_map(&json!({
+            "id": "map1",
+            "name": "Setons",
+            "spec": { "t1": [1, 3], "t2": ["2", 4], "closed": [], "closedMex": [7], "size": "10x10" },
+        }))
+        .expect("a map");
+        let spec = map.spec.expect("the spec is read");
+        assert_eq!(spec.team1_spawns, vec![1, 3]);
+        assert_eq!(
+            spec.team2_spawns,
+            vec![2, 4],
+            "a spawn number may arrive as a string"
+        );
+        assert_eq!(spec.closed_mex_spawns, vec![7]);
+        assert_eq!(spec.size, "10x10");
+
+        let body = map_spec_body(Some(&spec));
+        assert_eq!(body["t1"], json!([1, 3]));
+        assert_eq!(body["t2"], json!([2, 4]));
+        assert_eq!(body["closed"], json!([]));
+        assert_eq!(body["closedMex"], json!([7]));
+        assert_eq!(body["size"], "10x10");
+    }
+
+    #[test]
+    fn a_map_without_spawn_information_has_none_and_sends_none() {
+        for spec in [json!(null), json!({}), json!({ "t1": [], "size": "" })] {
+            let map = parse_map(&json!({ "id": "m", "name": "x", "spec": spec })).expect("a map");
+            assert_eq!(
+                map.spec, None,
+                "an empty spec is no spec, as the service stores it"
+            );
+        }
+        assert_eq!(map_spec_body(None), Value::Null);
+    }
+
+    #[test]
+    fn the_record_cuts_come_from_the_plan() {
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "bracketType": "swiss",
+            "plan": { "bo": 3, "winCut": 3, "lossCut": "3" },
+        }))
+        .expect("a tournament");
+        assert_eq!(event.swiss_cuts, SwissCuts { wins: 3, losses: 3 });
+        assert_eq!(event.swiss_cuts.rounds(), Some(5), "3-2 is the longest run");
+
+        let wins_only =
+            parse_tourney(&json!({ "id": "e2", "plan": { "winCut": 4 } })).expect("a tournament");
+        assert_eq!(wins_only.swiss_cuts.rounds(), Some(4));
+
+        let out_of_range =
+            parse_tourney(&json!({ "id": "e3", "plan": { "winCut": 99 } })).expect("a tournament");
+        assert_eq!(out_of_range.swiss_cuts, SwissCuts::default());
+        assert_eq!(out_of_range.swiss_cuts.rounds(), None);
+
+        let no_plan = parse_tourney(&json!({ "id": "e4", "plan": null })).expect("a tournament");
+        assert_eq!(no_plan.swiss_cuts.rounds(), None);
+    }
+
+    /// The Swiss table's order, tiebreak and numbers are the server's to give.
+    #[test]
+    fn the_swiss_order_and_its_tiebreak_are_read() {
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "swissOrder": ["t2", "t1"],
+            "tiebreak": "beaten",
+            "swissSB": { "t1": 0, "t2": 3 },
+        }))
+        .expect("a tournament");
+        assert_eq!(event.swiss_order, vec!["t2", "t1"]);
+        assert_eq!(event.swiss_tiebreak, SwissTiebreak::Beaten);
+        assert_eq!(event.swiss_beaten.get("t2"), Some(&3));
+
+        let plain = parse_tourney(
+            &json!({ "id": "e2", "swissOrder": null, "tiebreak": "gd", "swissSB": null }),
+        )
+        .expect("a tournament");
+        assert!(plain.swiss_order.is_empty());
+        assert_eq!(plain.swiss_tiebreak, SwissTiebreak::GameDiff);
+        assert!(plain.swiss_beaten.is_empty());
+    }
+
+    /// A walkover names who forfeited, and drawn games keep their replays.
+    #[test]
+    fn a_match_carries_its_forfeit_and_its_drawn_replays() {
+        let entry = parse_match(&json!({
+            "id": "m1",
+            "bracket": "wb",
+            "round": 1,
+            "team1": "t1",
+            "team2": "t2",
+            "score1": -1,
+            "score2": 0,
+            "status": "done",
+            "forfeit": "t1",
+            "replayIds": ["21534001"],
+            "drawReplayIds": ["21534010"],
+            "pendingReport": {
+                "score1": 1, "score2": 0, "byTeam": "t2", "byName": "Ada",
+                "replayIds": ["1"], "drawReplayIds": ["2"],
+            },
+        }))
+        .expect("a match");
+        assert_eq!(entry.forfeit.as_deref(), Some("t1"));
+        assert_eq!(entry.draw_replay_ids, vec!["21534010"]);
+        let pending = entry.pending_report.expect("a pending report");
+        assert_eq!(pending.draw_replay_ids, vec!["2"]);
     }
 }
