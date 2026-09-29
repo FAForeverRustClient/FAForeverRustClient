@@ -99,6 +99,22 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
                 state.open_room_id = None;
                 state.chat_posts.clear();
             }
+            // The same for the pinned room: gone from the list means this
+            // account can no longer read it.
+            if !state
+                .pinned_room_id
+                .as_deref()
+                .is_some_and(|pinned| rooms.iter().any(|room| room.id == pinned))
+            {
+                state.pinned_room_id = None;
+                state.pinned_posts.clear();
+            }
+        }
+        TourneyEvent::RoomPinned { room_id } => {
+            if state.pinned_room_id != *room_id {
+                state.pinned_posts.clear();
+            }
+            state.pinned_room_id = room_id.clone();
         }
         TourneyEvent::RoomOpened { room_id } => {
             if state.open_room_id.as_deref() != Some(room_id.as_str()) {
@@ -108,6 +124,9 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
         }
         TourneyEvent::ChatLoading => state.chat_status = TourneyLoadStatus::Loading,
         TourneyEvent::ChatLoaded { room_id, posts } => {
+            if state.pinned_room_id.as_deref() == Some(room_id.as_str()) {
+                state.pinned_posts = posts.clone();
+            }
             if state.open_room_id.as_deref() == Some(room_id.as_str()) {
                 state.chat_posts = posts.clone();
                 state.chat_status = TourneyLoadStatus::Ready;
@@ -273,6 +292,8 @@ fn clear_open_event(state: &mut TourneyState) {
     state.chat_rooms.clear();
     state.chat_posts.clear();
     state.open_room_id = None;
+    state.pinned_room_id = None;
+    state.pinned_posts.clear();
     state.chat_status = TourneyLoadStatus::Idle;
     state.renames = None;
     state.renames_status = TourneyLoadStatus::Idle;

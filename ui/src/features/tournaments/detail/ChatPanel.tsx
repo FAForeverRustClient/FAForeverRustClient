@@ -13,6 +13,7 @@ import type { ChatPost, ChatRoom, Tourney, TourneyLoadStatus } from "../../../ip
 import { useTranslation } from "../../../i18n/useTranslation";
 import { chatGroups, completedWantsAttention, roomBadge } from "../../../shared/rules/tourneyRules";
 import { ChatRoomView } from "./ChatRoomView";
+import { PinButton } from "./PinnedChat";
 
 interface ChatPanelProps {
   event: Tourney;
@@ -26,6 +27,9 @@ interface ChatPanelProps {
   onDeletePost: (roomId: string, postId: string) => void;
   onMute: (fafId: number, name: string, muted: boolean) => void;
   onRefresh: (roomId: string) => void;
+  /** The room kept open beside the sections, and pinning or letting it go. */
+  pinnedRoomId: string | null;
+  onPin: (roomId: string | null) => void;
 }
 
 export function ChatPanel({
@@ -40,6 +44,8 @@ export function ChatPanel({
   onDeletePost,
   onMute,
   onRefresh,
+  pinnedRoomId,
+  onPin,
 }: ChatPanelProps) {
   const { t } = useTranslation();
   /** Finished matches start folded away, which is the whole point of the group. */
@@ -105,7 +111,10 @@ export function ChatPanel({
         <div className="tournament-chat-side">
           <ul className="tournament-chat-rooms">
             {active.map((room) => (
-              <li key={room.id}>{roomButton(room)}</li>
+              <li key={room.id} className="tournament-chat-room-row">
+                {roomButton(room)}
+                <PinButton roomId={room.id} pinnedRoomId={pinnedRoomId} onPin={onPin} />
+              </li>
             ))}
 
             {/* Finished matches, folded. A bracket produces a room per match and
@@ -138,6 +147,7 @@ export function ChatPanel({
               </li>
             )}
           </ul>
+          <small className="muted">{t("tournaments.chat.pinListHint")}</small>
 
           {organisers.length > 0 && (
             <div className="tournament-chat-organisers">
@@ -155,6 +165,12 @@ export function ChatPanel({
         {openRoomId === null ? (
           <p className="muted">{t("tournaments.chat.pickRoom")}</p>
         ) : (
+          <div className="tournament-chat-open">
+          {rooms.some((room) => room.id === openRoomId && !room.done) && (
+            <div className="tournament-chat-open-head">
+              <PinButton roomId={openRoomId} pinnedRoomId={pinnedRoomId} onPin={onPin} full />
+            </div>
+          )}
           <ChatRoomView
             event={event}
             roomId={openRoomId}
@@ -166,6 +182,7 @@ export function ChatPanel({
             onMute={onMute}
             onRefresh={onRefresh}
           />
+          </div>
         )}
       </div>
     </>

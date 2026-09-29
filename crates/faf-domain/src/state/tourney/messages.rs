@@ -351,6 +351,14 @@ pub enum TourneyCommand {
         tournament_id: String,
         room_id: String,
     },
+    /// Keep one room open beside whatever section is showing, or let it go
+    /// with `None`. Read at once, silently; it is kept fresh the way the open
+    /// room is, with `RefreshChat`.
+    #[serde(rename_all = "camelCase")]
+    PinRoom {
+        tournament_id: String,
+        room_id: Option<String>,
+    },
     /// Start a team and captain it.
     #[serde(rename_all = "camelCase")]
     CreateTeam {
@@ -847,6 +855,11 @@ pub enum TourneyEvent {
     #[serde(rename_all = "camelCase")]
     RoomOpened {
         room_id: String,
+    },
+    /// The room kept open beside the sections changed, or was let go.
+    #[serde(rename_all = "camelCase")]
+    RoomPinned {
+        room_id: Option<String>,
     },
     ChatLoading,
     #[serde(rename_all = "camelCase")]

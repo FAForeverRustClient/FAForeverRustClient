@@ -304,6 +304,8 @@ const INITIAL: AppState = {
     ratingCheckStatus: { type: "idle" },
     playerRatings: null,
     playerRatingsStatus: { type: "idle" },
+    pinnedRoomId: null,
+    pinnedPosts: [],
     copySources: [],
     copySourcesStatus: { type: "idle" },
     copySource: null,

@@ -45,6 +45,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { AuditLogPanel } from "./AuditLogPanel";
 import { PublishBanner } from "./PublishBanner";
 import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
+import { PinButton, PinnedChat } from "./PinnedChat";
 import {
   hotkeyAction,
   isMasked,
@@ -224,6 +225,12 @@ interface TournamentDetailPaneProps {
   onDeletePool: (poolId: string) => void;
   onDeleteChatPost: (roomId: string, postId: string) => void;
   onRefreshChat: (roomId: string) => void;
+  /** The room pinned beside the sections, its posts, and pinning one. */
+  pinnedRoomId: string | null;
+  pinnedPosts: ChatPost[];
+  onPin: (roomId: string | null) => void;
+  /** Post to a named room: the pinned one is not always the open one. */
+  onPostTo: (roomId: string, body: string, replyTo: string | null) => void;
   onMute: (fafId: number, name: string, muted: boolean) => void;
   onAddOrganiser: (fafId: number, name: string) => void;
   onSetOrganiserVisibility: (fafId: number, hidden: boolean) => void;
@@ -282,6 +289,19 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     toggleReveal,
   };
   const root = useRef<HTMLDivElement>(null);
+
+  // The pinned room lets go of itself once its match is over, and says so:
+  // a finished match's chat is read in the Chat tab, not kept beside it.
+  const pinnedRoom = props.chatRooms.find((room) => room.id === props.pinnedRoomId);
+  const [pinNotice, setPinNotice] = useState(false);
+  const pinnedDone = pinnedRoom?.done === true;
+  useEffect(() => {
+    if (!pinnedDone) return;
+    props.onPin(null);
+    setPinNotice(true);
+    // The callback is stable per render of the view above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinnedDone]);
 
   // A caster opening a running event gets streamer mode once, so the first
   // look on stream does not give the results away. Once per tournament; the
@@ -645,6 +665,15 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           monitor put a label on the far left and its own control a thousand
           pixels away. The bracket is the exception because it is a *diagram*:
           it has to be able to use every pixel and scroll sideways past them. */}
+      {pinNotice && (
+        <p className="muted tournament-pin-notice">
+          {t("tournaments.chat.pinClosedDone")}{" "}
+          <button type="button" className="tournament-link-button" onClick={() => setPinNotice(false)}>
+            {t("common.close")}
+          </button>
+        </p>
+      )}
+      <div className={props.pinnedRoomId !== null ? "tournament-body-row has-pin" : "tournament-body-row"}>
       <div
         className={
           section === "bracket"
@@ -807,6 +836,11 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onDeletePost={props.onDeleteChatPost}
           onMute={props.onMute}
           onRefresh={props.onRefreshChat}
+          pinnedRoomId={props.pinnedRoomId}
+          onPin={(roomId) => {
+            setPinNotice(false);
+            props.onPin(roomId);
+          }}
         />
       )}
 
@@ -870,6 +904,28 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         />
       )}
       </div>
+      {props.pinnedRoomId !== null && (
+        <PinnedChat
+          event={event}
+          roomId={props.pinnedRoomId}
+          room={pinnedRoom}
+          posts={props.pinnedPosts}
+          busy={busy}
+          onPost={(body, replyTo) => {
+            if (props.pinnedRoomId !== null) props.onPostTo(props.pinnedRoomId, body, replyTo);
+          }}
+          onDeletePost={props.onDeleteChatPost}
+          onMute={props.onMute}
+          onRefresh={props.onRefreshChat}
+          onOpenInTab={() => {
+            if (props.pinnedRoomId === null) return;
+            openSection("chat");
+            props.onOpenRoom(props.pinnedRoomId);
+          }}
+          onUnpin={() => props.onPin(null)}
+        />
+      )}
+      </div>
     </div>
     {matchChat !== null && props.openRoomId === matchRoomId(matchChat) && (
       <Modal
@@ -882,6 +938,19 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           {matchLabel(event, matchChat, t)}: {teamNameOf(event, matchChat.team1) ?? ""}{" "}
           {t("tournaments.swiss.vs")} {teamNameOf(event, matchChat.team2) ?? ""}
         </p>
+        {/* Pinning from here closes the popup: the room goes on beside the
+            bracket instead, which is what pinning is for. */}
+        {matchChat.status !== "done" && (
+          <PinButton
+            roomId={matchRoomId(matchChat)}
+            pinnedRoomId={props.pinnedRoomId}
+            full
+            onPin={(roomId) => {
+              props.onPin(roomId);
+              if (roomId !== null) setMatchChat(null);
+            }}
+          />
+        )}
         <ChatRoomView
           event={event}
           roomId={matchRoomId(matchChat)}

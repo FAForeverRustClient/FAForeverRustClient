@@ -4981,3 +4981,94 @@
   border-color: var(--color-warn);
   color: var(--color-warn);
 }
+
+/* A chat pinned beside the sections. */
+.tournament-body-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.tournament-body-row > .tournament-section-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.tournament-pinned-chat {
+  position: sticky;
+  top: 0;
+  flex: none;
+  width: clamp(300px, 25vw, 370px);
+  max-height: calc(100vh - 160px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  overflow: hidden;
+}
+
+.tournament-pinned-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tournament-pinned-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-chat-room-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.tournament-chat-room-row > .tournament-chat-room {
+  flex: 1;
+  min-width: 0;
+}
+
+.tournament-pin {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 2px var(--space-1);
+  font-size: 12px;
+}
+
+.tournament-pin.is-on {
+  border-color: var(--color-warn);
+  color: var(--color-warn);
+}
+
+.tournament-chat-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.tournament-chat-open-head {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 980px) {
+  .tournament-body-row.has-pin {
+    flex-direction: column;
+  }
+
+  .tournament-pinned-chat {
+    position: static;
+    width: 100%;
+    max-height: min(58vh, 440px);
+  }
+}

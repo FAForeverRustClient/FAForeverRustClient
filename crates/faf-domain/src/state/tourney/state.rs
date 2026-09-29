@@ -277,6 +277,11 @@ pub struct TourneyState {
     /// One entrant's every rating, while the organiser has them open.
     pub player_ratings: Option<EntrantRatings>,
     pub player_ratings_status: TourneyLoadStatus,
+    /// The room pinned beside the sections, and its posts. A second slot
+    /// beside the open room, so the Chat tab and the pinned room can be two
+    /// different rooms, as on the website.
+    pub pinned_room_id: Option<String>,
+    pub pinned_posts: Vec<ChatPost>,
     /// The events maps can be imported from, while the organiser is choosing.
     pub copy_sources: Vec<CopySource>,
     pub copy_sources_status: TourneyLoadStatus,

@@ -584,6 +584,8 @@
       "playerRatingsStatus": {
         "type": "idle"
       },
+      "pinnedRoomId": null,
+      "pinnedPosts": [],
       "copySources": [],
       "copySourcesStatus": {
         "type": "idle"
@@ -7108,6 +7110,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -7183,6 +7187,8 @@
             "pending": {
               "type": "savingProfile"
             },
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -7256,6 +7262,8 @@
             "pending": {
               "type": "savingProfile"
             },
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -7329,6 +7337,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -7400,6 +7410,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -7717,6 +7729,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -7790,6 +7804,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -8351,6 +8367,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -8667,6 +8685,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -8980,6 +9000,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -9538,6 +9560,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -9979,6 +10003,8 @@
             "pending": {
               "type": "signingUp"
             },
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -10428,6 +10454,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -10862,6 +10890,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -11303,6 +11333,8 @@
             "pending": {
               "type": "signingUp"
             },
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -11743,6 +11775,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -12198,6 +12232,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -12648,6 +12684,8 @@
             "pending": {
               "type": "creating"
             },
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -12967,6 +13005,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -13287,6 +13327,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -13617,6 +13659,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -14061,6 +14105,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -14385,6 +14431,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -14461,6 +14509,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -14567,6 +14617,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -14638,6 +14690,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -14719,6 +14773,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -14809,6 +14865,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -14880,6 +14938,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -14957,6 +15017,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -15025,6 +15087,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -15098,6 +15162,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -15170,6 +15236,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -15242,6 +15310,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -15326,6 +15396,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -15407,6 +15479,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "loading"
@@ -15506,6 +15580,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": {
               "boards": [
                 {
@@ -15602,6 +15678,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "loading"
@@ -15687,6 +15765,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "payload": {
@@ -15777,6 +15857,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -15853,6 +15935,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -15921,6 +16005,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16008,6 +16094,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16084,6 +16172,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16171,6 +16261,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16247,6 +16339,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16331,6 +16425,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16404,6 +16500,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16476,6 +16574,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16548,6 +16648,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16631,6 +16733,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16718,6 +16822,8 @@
             "pending": {
               "type": "administering"
             },
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16804,6 +16910,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16877,6 +16985,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -16962,6 +17072,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -17097,6 +17209,8 @@
               "name": "Weekend Ladder"
             },
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -17196,6 +17310,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -17331,6 +17447,8 @@
               "name": "Midweek Blitz"
             },
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -17455,6 +17573,8 @@
               "name": "Midweek Blitz"
             },
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -17537,6 +17657,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -17623,6 +17745,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -18207,6 +18331,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -18765,6 +18891,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -19240,6 +19368,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -19696,6 +19826,8 @@
             "openRoomId": "global",
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -20149,6 +20281,8 @@
             "openRoomId": "global",
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -20628,6 +20762,8 @@
             "openRoomId": "global",
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -21096,6 +21232,2359 @@
             "openRoomId": "global",
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "e1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "roomPinned",
+              "payload": {
+                "roomId": "m1"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [
+              {
+                "at": 1700000100,
+                "author": "Ada",
+                "body": "gl hf",
+                "everyone": false,
+                "fafId": 102,
+                "id": "c1",
+                "replyTo": null,
+                "system": false
+              }
+            ],
+            "chatRooms": [
+              {
+                "count": 0,
+                "done": false,
+                "id": "global",
+                "mentioned": false,
+                "name": "Room global",
+                "needsOrganiser": false,
+                "unread": 0
+              },
+              {
+                "count": 0,
+                "done": false,
+                "id": "m1",
+                "mentioned": false,
+                "name": "Room m1",
+                "needsOrganiser": false,
+                "unread": 1
+              }
+            ],
+            "chatStatus": {
+              "type": "ready"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "abandoned": false,
+              "auditLog": [],
+              "bans": [],
+              "bracketKind": "single",
+              "canManage": false,
+              "captainCount": 0,
+              "captainMode": "manual",
+              "casters": [],
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "chatMutedMe": false,
+              "chatMutes": [],
+              "chatPingCount": 0,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "descImages": [],
+              "description": "",
+              "divisions": 0,
+              "draft": null,
+              "draftSnakes": false,
+              "earlyFinish": null,
+              "entryOrder": [],
+              "eventDate": null,
+              "eventDays": [],
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
+              "feedsInto": null,
+              "ffa": null,
+              "formation": "solo",
+              "id": "e1",
+              "imported": false,
+              "importedGroups": [],
+              "importedStandings": [],
+              "importedType": "",
+              "invites": [],
+              "lobbyOptions": "",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "maxTeams": 0,
+              "minTeams": 0,
+              "mods": "",
+              "myBan": null,
+              "myMentionCount": 0,
+              "myUnreadCount": 0,
+              "name": "Event e1",
+              "news": [],
+              "organiserAccounts": [],
+              "organiserDiscords": [],
+              "organisers": [],
+              "pendingCaptains": [],
+              "plan": null,
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "prize": null,
+              "publishAt": null,
+              "published": false,
+              "qualifiers": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "ratingDate": null,
+              "ratingKind": "global",
+              "rewards": "",
+              "roundMaps": [],
+              "seeding": "rating",
+              "seriesColour": "plain",
+              "seriesId": null,
+              "seriesName": "",
+              "signupClosesAt": null,
+              "signupMode": "open",
+              "signupOpensAt": null,
+              "sourceUrl": "",
+              "sponsors": "",
+              "standingsOnly": false,
+              "status": "signup",
+              "stopAtAlive": 0,
+              "streams": [],
+              "subs": [],
+              "survivors": null,
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissRounds": 0,
+              "swissTiebreak": "gameDiff",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "veto": {
+                "enabled": false,
+                "mode": "upfront",
+                "revealBans": false,
+                "teamA": "lowerA"
+              },
+              "vetoEnabled": false,
+              "viewer": {
+                "caster": false,
+                "fafId": null,
+                "fafName": "",
+                "invited": false,
+                "loggedIn": false,
+                "memberTeamId": null,
+                "newsReadAt": null,
+                "organiser": false,
+                "signedUpPlayerId": null
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [
+              {
+                "abandoned": false,
+                "auditLog": [],
+                "bans": [],
+                "bracketKind": "single",
+                "canManage": false,
+                "captainCount": 0,
+                "captainMode": "manual",
+                "casters": [],
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "chatMutedMe": false,
+                "chatMutes": [],
+                "chatPingCount": 0,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "descImages": [],
+                "description": "",
+                "divisions": 0,
+                "draft": null,
+                "draftSnakes": false,
+                "earlyFinish": null,
+                "entryOrder": [],
+                "eventDate": null,
+                "eventDays": [],
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
+                "feedsInto": null,
+                "ffa": null,
+                "formation": "solo",
+                "id": "e1",
+                "imported": false,
+                "importedGroups": [],
+                "importedStandings": [],
+                "importedType": "",
+                "invites": [],
+                "lobbyOptions": "",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "maxTeams": 0,
+                "minTeams": 0,
+                "mods": "",
+                "myBan": null,
+                "myMentionCount": 0,
+                "myUnreadCount": 0,
+                "name": "Event e1",
+                "news": [],
+                "organiserAccounts": [],
+                "organiserDiscords": [],
+                "organisers": [],
+                "pendingCaptains": [],
+                "plan": null,
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "prize": null,
+                "publishAt": null,
+                "published": false,
+                "qualifiers": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "ratingDate": null,
+                "ratingKind": "global",
+                "rewards": "",
+                "roundMaps": [],
+                "seeding": "rating",
+                "seriesColour": "plain",
+                "seriesId": null,
+                "seriesName": "",
+                "signupClosesAt": null,
+                "signupMode": "open",
+                "signupOpensAt": null,
+                "sourceUrl": "",
+                "sponsors": "",
+                "standingsOnly": false,
+                "status": "signup",
+                "stopAtAlive": 0,
+                "streams": [],
+                "subs": [],
+                "survivors": null,
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissRounds": 0,
+                "swissTiebreak": "gameDiff",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "veto": {
+                  "enabled": false,
+                  "mode": "upfront",
+                  "revealBans": false,
+                  "teamA": "lowerA"
+                },
+                "vetoEnabled": false,
+                "viewer": {
+                  "caster": false,
+                  "fafId": null,
+                  "fafName": "",
+                  "invited": false,
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "newsReadAt": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null
+                }
+              },
+              {
+                "abandoned": false,
+                "auditLog": [],
+                "bans": [],
+                "bracketKind": "single",
+                "canManage": false,
+                "captainCount": 0,
+                "captainMode": "manual",
+                "casters": [],
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "chatMutedMe": false,
+                "chatMutes": [],
+                "chatPingCount": 0,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "descImages": [],
+                "description": "",
+                "divisions": 0,
+                "draft": null,
+                "draftSnakes": false,
+                "earlyFinish": null,
+                "entryOrder": [],
+                "eventDate": null,
+                "eventDays": [],
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
+                "feedsInto": null,
+                "ffa": null,
+                "formation": "solo",
+                "id": "e2",
+                "imported": false,
+                "importedGroups": [],
+                "importedStandings": [],
+                "importedType": "",
+                "invites": [],
+                "lobbyOptions": "",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "maxTeams": 0,
+                "minTeams": 0,
+                "mods": "",
+                "myBan": null,
+                "myMentionCount": 0,
+                "myUnreadCount": 0,
+                "name": "Event e2",
+                "news": [],
+                "organiserAccounts": [],
+                "organiserDiscords": [],
+                "organisers": [],
+                "pendingCaptains": [],
+                "plan": null,
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "prize": null,
+                "publishAt": null,
+                "published": false,
+                "qualifiers": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "ratingDate": null,
+                "ratingKind": "global",
+                "rewards": "",
+                "roundMaps": [],
+                "seeding": "rating",
+                "seriesColour": "plain",
+                "seriesId": null,
+                "seriesName": "",
+                "signupClosesAt": null,
+                "signupMode": "open",
+                "signupOpensAt": null,
+                "sourceUrl": "",
+                "sponsors": "",
+                "standingsOnly": false,
+                "status": "signup",
+                "stopAtAlive": 0,
+                "streams": [],
+                "subs": [],
+                "survivors": null,
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissRounds": 0,
+                "swissTiebreak": "gameDiff",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "veto": {
+                  "enabled": false,
+                  "mode": "upfront",
+                  "revealBans": false,
+                  "teamA": "lowerA"
+                },
+                "vetoEnabled": false,
+                "viewer": {
+                  "caster": false,
+                  "fafId": null,
+                  "fafName": "",
+                  "invited": false,
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "newsReadAt": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": "global",
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": "m1",
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "e1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "chatLoaded",
+              "payload": {
+                "roomId": "m1",
+                "posts": [
+                  {
+                    "id": "c2",
+                    "author": "Bo",
+                    "fafId": 103,
+                    "body": "ready?",
+                    "at": 1700000200,
+                    "system": false,
+                    "replyTo": null,
+                    "everyone": false
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [
+              {
+                "at": 1700000100,
+                "author": "Ada",
+                "body": "gl hf",
+                "everyone": false,
+                "fafId": 102,
+                "id": "c1",
+                "replyTo": null,
+                "system": false
+              }
+            ],
+            "chatRooms": [
+              {
+                "count": 0,
+                "done": false,
+                "id": "global",
+                "mentioned": false,
+                "name": "Room global",
+                "needsOrganiser": false,
+                "unread": 0
+              },
+              {
+                "count": 0,
+                "done": false,
+                "id": "m1",
+                "mentioned": false,
+                "name": "Room m1",
+                "needsOrganiser": false,
+                "unread": 1
+              }
+            ],
+            "chatStatus": {
+              "type": "ready"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "abandoned": false,
+              "auditLog": [],
+              "bans": [],
+              "bracketKind": "single",
+              "canManage": false,
+              "captainCount": 0,
+              "captainMode": "manual",
+              "casters": [],
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "chatMutedMe": false,
+              "chatMutes": [],
+              "chatPingCount": 0,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "descImages": [],
+              "description": "",
+              "divisions": 0,
+              "draft": null,
+              "draftSnakes": false,
+              "earlyFinish": null,
+              "entryOrder": [],
+              "eventDate": null,
+              "eventDays": [],
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
+              "feedsInto": null,
+              "ffa": null,
+              "formation": "solo",
+              "id": "e1",
+              "imported": false,
+              "importedGroups": [],
+              "importedStandings": [],
+              "importedType": "",
+              "invites": [],
+              "lobbyOptions": "",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "maxTeams": 0,
+              "minTeams": 0,
+              "mods": "",
+              "myBan": null,
+              "myMentionCount": 0,
+              "myUnreadCount": 0,
+              "name": "Event e1",
+              "news": [],
+              "organiserAccounts": [],
+              "organiserDiscords": [],
+              "organisers": [],
+              "pendingCaptains": [],
+              "plan": null,
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "prize": null,
+              "publishAt": null,
+              "published": false,
+              "qualifiers": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "ratingDate": null,
+              "ratingKind": "global",
+              "rewards": "",
+              "roundMaps": [],
+              "seeding": "rating",
+              "seriesColour": "plain",
+              "seriesId": null,
+              "seriesName": "",
+              "signupClosesAt": null,
+              "signupMode": "open",
+              "signupOpensAt": null,
+              "sourceUrl": "",
+              "sponsors": "",
+              "standingsOnly": false,
+              "status": "signup",
+              "stopAtAlive": 0,
+              "streams": [],
+              "subs": [],
+              "survivors": null,
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissRounds": 0,
+              "swissTiebreak": "gameDiff",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "veto": {
+                "enabled": false,
+                "mode": "upfront",
+                "revealBans": false,
+                "teamA": "lowerA"
+              },
+              "vetoEnabled": false,
+              "viewer": {
+                "caster": false,
+                "fafId": null,
+                "fafName": "",
+                "invited": false,
+                "loggedIn": false,
+                "memberTeamId": null,
+                "newsReadAt": null,
+                "organiser": false,
+                "signedUpPlayerId": null
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [
+              {
+                "abandoned": false,
+                "auditLog": [],
+                "bans": [],
+                "bracketKind": "single",
+                "canManage": false,
+                "captainCount": 0,
+                "captainMode": "manual",
+                "casters": [],
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "chatMutedMe": false,
+                "chatMutes": [],
+                "chatPingCount": 0,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "descImages": [],
+                "description": "",
+                "divisions": 0,
+                "draft": null,
+                "draftSnakes": false,
+                "earlyFinish": null,
+                "entryOrder": [],
+                "eventDate": null,
+                "eventDays": [],
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
+                "feedsInto": null,
+                "ffa": null,
+                "formation": "solo",
+                "id": "e1",
+                "imported": false,
+                "importedGroups": [],
+                "importedStandings": [],
+                "importedType": "",
+                "invites": [],
+                "lobbyOptions": "",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "maxTeams": 0,
+                "minTeams": 0,
+                "mods": "",
+                "myBan": null,
+                "myMentionCount": 0,
+                "myUnreadCount": 0,
+                "name": "Event e1",
+                "news": [],
+                "organiserAccounts": [],
+                "organiserDiscords": [],
+                "organisers": [],
+                "pendingCaptains": [],
+                "plan": null,
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "prize": null,
+                "publishAt": null,
+                "published": false,
+                "qualifiers": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "ratingDate": null,
+                "ratingKind": "global",
+                "rewards": "",
+                "roundMaps": [],
+                "seeding": "rating",
+                "seriesColour": "plain",
+                "seriesId": null,
+                "seriesName": "",
+                "signupClosesAt": null,
+                "signupMode": "open",
+                "signupOpensAt": null,
+                "sourceUrl": "",
+                "sponsors": "",
+                "standingsOnly": false,
+                "status": "signup",
+                "stopAtAlive": 0,
+                "streams": [],
+                "subs": [],
+                "survivors": null,
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissRounds": 0,
+                "swissTiebreak": "gameDiff",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "veto": {
+                  "enabled": false,
+                  "mode": "upfront",
+                  "revealBans": false,
+                  "teamA": "lowerA"
+                },
+                "vetoEnabled": false,
+                "viewer": {
+                  "caster": false,
+                  "fafId": null,
+                  "fafName": "",
+                  "invited": false,
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "newsReadAt": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null
+                }
+              },
+              {
+                "abandoned": false,
+                "auditLog": [],
+                "bans": [],
+                "bracketKind": "single",
+                "canManage": false,
+                "captainCount": 0,
+                "captainMode": "manual",
+                "casters": [],
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "chatMutedMe": false,
+                "chatMutes": [],
+                "chatPingCount": 0,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "descImages": [],
+                "description": "",
+                "divisions": 0,
+                "draft": null,
+                "draftSnakes": false,
+                "earlyFinish": null,
+                "entryOrder": [],
+                "eventDate": null,
+                "eventDays": [],
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
+                "feedsInto": null,
+                "ffa": null,
+                "formation": "solo",
+                "id": "e2",
+                "imported": false,
+                "importedGroups": [],
+                "importedStandings": [],
+                "importedType": "",
+                "invites": [],
+                "lobbyOptions": "",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "maxTeams": 0,
+                "minTeams": 0,
+                "mods": "",
+                "myBan": null,
+                "myMentionCount": 0,
+                "myUnreadCount": 0,
+                "name": "Event e2",
+                "news": [],
+                "organiserAccounts": [],
+                "organiserDiscords": [],
+                "organisers": [],
+                "pendingCaptains": [],
+                "plan": null,
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "prize": null,
+                "publishAt": null,
+                "published": false,
+                "qualifiers": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "ratingDate": null,
+                "ratingKind": "global",
+                "rewards": "",
+                "roundMaps": [],
+                "seeding": "rating",
+                "seriesColour": "plain",
+                "seriesId": null,
+                "seriesName": "",
+                "signupClosesAt": null,
+                "signupMode": "open",
+                "signupOpensAt": null,
+                "sourceUrl": "",
+                "sponsors": "",
+                "standingsOnly": false,
+                "status": "signup",
+                "stopAtAlive": 0,
+                "streams": [],
+                "subs": [],
+                "survivors": null,
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissRounds": 0,
+                "swissTiebreak": "gameDiff",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "veto": {
+                  "enabled": false,
+                  "mode": "upfront",
+                  "revealBans": false,
+                  "teamA": "lowerA"
+                },
+                "vetoEnabled": false,
+                "viewer": {
+                  "caster": false,
+                  "fafId": null,
+                  "fafName": "",
+                  "invited": false,
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "newsReadAt": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": "global",
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [
+              {
+                "at": 1700000200,
+                "author": "Bo",
+                "body": "ready?",
+                "everyone": false,
+                "fafId": 103,
+                "id": "c2",
+                "replyTo": null,
+                "system": false
+              }
+            ],
+            "pinnedRoomId": "m1",
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "e1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "chatRoomsLoaded",
+              "payload": {
+                "rooms": [
+                  {
+                    "id": "global",
+                    "name": "Room global",
+                    "unread": 0,
+                    "done": false,
+                    "mentioned": false,
+                    "needsOrganiser": false,
+                    "count": 0
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [
+              {
+                "at": 1700000100,
+                "author": "Ada",
+                "body": "gl hf",
+                "everyone": false,
+                "fafId": 102,
+                "id": "c1",
+                "replyTo": null,
+                "system": false
+              }
+            ],
+            "chatRooms": [
+              {
+                "count": 0,
+                "done": false,
+                "id": "global",
+                "mentioned": false,
+                "name": "Room global",
+                "needsOrganiser": false,
+                "unread": 0
+              }
+            ],
+            "chatStatus": {
+              "type": "ready"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "abandoned": false,
+              "auditLog": [],
+              "bans": [],
+              "bracketKind": "single",
+              "canManage": false,
+              "captainCount": 0,
+              "captainMode": "manual",
+              "casters": [],
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "chatMutedMe": false,
+              "chatMutes": [],
+              "chatPingCount": 0,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "descImages": [],
+              "description": "",
+              "divisions": 0,
+              "draft": null,
+              "draftSnakes": false,
+              "earlyFinish": null,
+              "entryOrder": [],
+              "eventDate": null,
+              "eventDays": [],
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
+              "feedsInto": null,
+              "ffa": null,
+              "formation": "solo",
+              "id": "e1",
+              "imported": false,
+              "importedGroups": [],
+              "importedStandings": [],
+              "importedType": "",
+              "invites": [],
+              "lobbyOptions": "",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "maxTeams": 0,
+              "minTeams": 0,
+              "mods": "",
+              "myBan": null,
+              "myMentionCount": 0,
+              "myUnreadCount": 0,
+              "name": "Event e1",
+              "news": [],
+              "organiserAccounts": [],
+              "organiserDiscords": [],
+              "organisers": [],
+              "pendingCaptains": [],
+              "plan": null,
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "prize": null,
+              "publishAt": null,
+              "published": false,
+              "qualifiers": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "ratingDate": null,
+              "ratingKind": "global",
+              "rewards": "",
+              "roundMaps": [],
+              "seeding": "rating",
+              "seriesColour": "plain",
+              "seriesId": null,
+              "seriesName": "",
+              "signupClosesAt": null,
+              "signupMode": "open",
+              "signupOpensAt": null,
+              "sourceUrl": "",
+              "sponsors": "",
+              "standingsOnly": false,
+              "status": "signup",
+              "stopAtAlive": 0,
+              "streams": [],
+              "subs": [],
+              "survivors": null,
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissRounds": 0,
+              "swissTiebreak": "gameDiff",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "veto": {
+                "enabled": false,
+                "mode": "upfront",
+                "revealBans": false,
+                "teamA": "lowerA"
+              },
+              "vetoEnabled": false,
+              "viewer": {
+                "caster": false,
+                "fafId": null,
+                "fafName": "",
+                "invited": false,
+                "loggedIn": false,
+                "memberTeamId": null,
+                "newsReadAt": null,
+                "organiser": false,
+                "signedUpPlayerId": null
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [
+              {
+                "abandoned": false,
+                "auditLog": [],
+                "bans": [],
+                "bracketKind": "single",
+                "canManage": false,
+                "captainCount": 0,
+                "captainMode": "manual",
+                "casters": [],
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "chatMutedMe": false,
+                "chatMutes": [],
+                "chatPingCount": 0,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "descImages": [],
+                "description": "",
+                "divisions": 0,
+                "draft": null,
+                "draftSnakes": false,
+                "earlyFinish": null,
+                "entryOrder": [],
+                "eventDate": null,
+                "eventDays": [],
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
+                "feedsInto": null,
+                "ffa": null,
+                "formation": "solo",
+                "id": "e1",
+                "imported": false,
+                "importedGroups": [],
+                "importedStandings": [],
+                "importedType": "",
+                "invites": [],
+                "lobbyOptions": "",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "maxTeams": 0,
+                "minTeams": 0,
+                "mods": "",
+                "myBan": null,
+                "myMentionCount": 0,
+                "myUnreadCount": 0,
+                "name": "Event e1",
+                "news": [],
+                "organiserAccounts": [],
+                "organiserDiscords": [],
+                "organisers": [],
+                "pendingCaptains": [],
+                "plan": null,
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "prize": null,
+                "publishAt": null,
+                "published": false,
+                "qualifiers": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "ratingDate": null,
+                "ratingKind": "global",
+                "rewards": "",
+                "roundMaps": [],
+                "seeding": "rating",
+                "seriesColour": "plain",
+                "seriesId": null,
+                "seriesName": "",
+                "signupClosesAt": null,
+                "signupMode": "open",
+                "signupOpensAt": null,
+                "sourceUrl": "",
+                "sponsors": "",
+                "standingsOnly": false,
+                "status": "signup",
+                "stopAtAlive": 0,
+                "streams": [],
+                "subs": [],
+                "survivors": null,
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissRounds": 0,
+                "swissTiebreak": "gameDiff",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "veto": {
+                  "enabled": false,
+                  "mode": "upfront",
+                  "revealBans": false,
+                  "teamA": "lowerA"
+                },
+                "vetoEnabled": false,
+                "viewer": {
+                  "caster": false,
+                  "fafId": null,
+                  "fafName": "",
+                  "invited": false,
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "newsReadAt": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null
+                }
+              },
+              {
+                "abandoned": false,
+                "auditLog": [],
+                "bans": [],
+                "bracketKind": "single",
+                "canManage": false,
+                "captainCount": 0,
+                "captainMode": "manual",
+                "casters": [],
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "chatMutedMe": false,
+                "chatMutes": [],
+                "chatPingCount": 0,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "descImages": [],
+                "description": "",
+                "divisions": 0,
+                "draft": null,
+                "draftSnakes": false,
+                "earlyFinish": null,
+                "entryOrder": [],
+                "eventDate": null,
+                "eventDays": [],
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
+                "feedsInto": null,
+                "ffa": null,
+                "formation": "solo",
+                "id": "e2",
+                "imported": false,
+                "importedGroups": [],
+                "importedStandings": [],
+                "importedType": "",
+                "invites": [],
+                "lobbyOptions": "",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "maxTeams": 0,
+                "minTeams": 0,
+                "mods": "",
+                "myBan": null,
+                "myMentionCount": 0,
+                "myUnreadCount": 0,
+                "name": "Event e2",
+                "news": [],
+                "organiserAccounts": [],
+                "organiserDiscords": [],
+                "organisers": [],
+                "pendingCaptains": [],
+                "plan": null,
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "prize": null,
+                "publishAt": null,
+                "published": false,
+                "qualifiers": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "ratingDate": null,
+                "ratingKind": "global",
+                "rewards": "",
+                "roundMaps": [],
+                "seeding": "rating",
+                "seriesColour": "plain",
+                "seriesId": null,
+                "seriesName": "",
+                "signupClosesAt": null,
+                "signupMode": "open",
+                "signupOpensAt": null,
+                "sourceUrl": "",
+                "sponsors": "",
+                "standingsOnly": false,
+                "status": "signup",
+                "stopAtAlive": 0,
+                "streams": [],
+                "subs": [],
+                "survivors": null,
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissRounds": 0,
+                "swissTiebreak": "gameDiff",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "veto": {
+                  "enabled": false,
+                  "mode": "upfront",
+                  "revealBans": false,
+                  "teamA": "lowerA"
+                },
+                "vetoEnabled": false,
+                "viewer": {
+                  "caster": false,
+                  "fafId": null,
+                  "fafName": "",
+                  "invited": false,
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "newsReadAt": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": "global",
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "e1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "roomPinned",
+              "payload": {
+                "roomId": "global"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [
+              {
+                "at": 1700000100,
+                "author": "Ada",
+                "body": "gl hf",
+                "everyone": false,
+                "fafId": 102,
+                "id": "c1",
+                "replyTo": null,
+                "system": false
+              }
+            ],
+            "chatRooms": [
+              {
+                "count": 0,
+                "done": false,
+                "id": "global",
+                "mentioned": false,
+                "name": "Room global",
+                "needsOrganiser": false,
+                "unread": 0
+              }
+            ],
+            "chatStatus": {
+              "type": "ready"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "abandoned": false,
+              "auditLog": [],
+              "bans": [],
+              "bracketKind": "single",
+              "canManage": false,
+              "captainCount": 0,
+              "captainMode": "manual",
+              "casters": [],
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "chatMutedMe": false,
+              "chatMutes": [],
+              "chatPingCount": 0,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "descImages": [],
+              "description": "",
+              "divisions": 0,
+              "draft": null,
+              "draftSnakes": false,
+              "earlyFinish": null,
+              "entryOrder": [],
+              "eventDate": null,
+              "eventDays": [],
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
+              "feedsInto": null,
+              "ffa": null,
+              "formation": "solo",
+              "id": "e1",
+              "imported": false,
+              "importedGroups": [],
+              "importedStandings": [],
+              "importedType": "",
+              "invites": [],
+              "lobbyOptions": "",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "maxTeams": 0,
+              "minTeams": 0,
+              "mods": "",
+              "myBan": null,
+              "myMentionCount": 0,
+              "myUnreadCount": 0,
+              "name": "Event e1",
+              "news": [],
+              "organiserAccounts": [],
+              "organiserDiscords": [],
+              "organisers": [],
+              "pendingCaptains": [],
+              "plan": null,
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "prize": null,
+              "publishAt": null,
+              "published": false,
+              "qualifiers": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "ratingDate": null,
+              "ratingKind": "global",
+              "rewards": "",
+              "roundMaps": [],
+              "seeding": "rating",
+              "seriesColour": "plain",
+              "seriesId": null,
+              "seriesName": "",
+              "signupClosesAt": null,
+              "signupMode": "open",
+              "signupOpensAt": null,
+              "sourceUrl": "",
+              "sponsors": "",
+              "standingsOnly": false,
+              "status": "signup",
+              "stopAtAlive": 0,
+              "streams": [],
+              "subs": [],
+              "survivors": null,
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissRounds": 0,
+              "swissTiebreak": "gameDiff",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "veto": {
+                "enabled": false,
+                "mode": "upfront",
+                "revealBans": false,
+                "teamA": "lowerA"
+              },
+              "vetoEnabled": false,
+              "viewer": {
+                "caster": false,
+                "fafId": null,
+                "fafName": "",
+                "invited": false,
+                "loggedIn": false,
+                "memberTeamId": null,
+                "newsReadAt": null,
+                "organiser": false,
+                "signedUpPlayerId": null
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [
+              {
+                "abandoned": false,
+                "auditLog": [],
+                "bans": [],
+                "bracketKind": "single",
+                "canManage": false,
+                "captainCount": 0,
+                "captainMode": "manual",
+                "casters": [],
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "chatMutedMe": false,
+                "chatMutes": [],
+                "chatPingCount": 0,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "descImages": [],
+                "description": "",
+                "divisions": 0,
+                "draft": null,
+                "draftSnakes": false,
+                "earlyFinish": null,
+                "entryOrder": [],
+                "eventDate": null,
+                "eventDays": [],
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
+                "feedsInto": null,
+                "ffa": null,
+                "formation": "solo",
+                "id": "e1",
+                "imported": false,
+                "importedGroups": [],
+                "importedStandings": [],
+                "importedType": "",
+                "invites": [],
+                "lobbyOptions": "",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "maxTeams": 0,
+                "minTeams": 0,
+                "mods": "",
+                "myBan": null,
+                "myMentionCount": 0,
+                "myUnreadCount": 0,
+                "name": "Event e1",
+                "news": [],
+                "organiserAccounts": [],
+                "organiserDiscords": [],
+                "organisers": [],
+                "pendingCaptains": [],
+                "plan": null,
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "prize": null,
+                "publishAt": null,
+                "published": false,
+                "qualifiers": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "ratingDate": null,
+                "ratingKind": "global",
+                "rewards": "",
+                "roundMaps": [],
+                "seeding": "rating",
+                "seriesColour": "plain",
+                "seriesId": null,
+                "seriesName": "",
+                "signupClosesAt": null,
+                "signupMode": "open",
+                "signupOpensAt": null,
+                "sourceUrl": "",
+                "sponsors": "",
+                "standingsOnly": false,
+                "status": "signup",
+                "stopAtAlive": 0,
+                "streams": [],
+                "subs": [],
+                "survivors": null,
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissRounds": 0,
+                "swissTiebreak": "gameDiff",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "veto": {
+                  "enabled": false,
+                  "mode": "upfront",
+                  "revealBans": false,
+                  "teamA": "lowerA"
+                },
+                "vetoEnabled": false,
+                "viewer": {
+                  "caster": false,
+                  "fafId": null,
+                  "fafName": "",
+                  "invited": false,
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "newsReadAt": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null
+                }
+              },
+              {
+                "abandoned": false,
+                "auditLog": [],
+                "bans": [],
+                "bracketKind": "single",
+                "canManage": false,
+                "captainCount": 0,
+                "captainMode": "manual",
+                "casters": [],
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "chatMutedMe": false,
+                "chatMutes": [],
+                "chatPingCount": 0,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "descImages": [],
+                "description": "",
+                "divisions": 0,
+                "draft": null,
+                "draftSnakes": false,
+                "earlyFinish": null,
+                "entryOrder": [],
+                "eventDate": null,
+                "eventDays": [],
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
+                "feedsInto": null,
+                "ffa": null,
+                "formation": "solo",
+                "id": "e2",
+                "imported": false,
+                "importedGroups": [],
+                "importedStandings": [],
+                "importedType": "",
+                "invites": [],
+                "lobbyOptions": "",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "maxTeams": 0,
+                "minTeams": 0,
+                "mods": "",
+                "myBan": null,
+                "myMentionCount": 0,
+                "myUnreadCount": 0,
+                "name": "Event e2",
+                "news": [],
+                "organiserAccounts": [],
+                "organiserDiscords": [],
+                "organisers": [],
+                "pendingCaptains": [],
+                "plan": null,
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "prize": null,
+                "publishAt": null,
+                "published": false,
+                "qualifiers": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "ratingDate": null,
+                "ratingKind": "global",
+                "rewards": "",
+                "roundMaps": [],
+                "seeding": "rating",
+                "seriesColour": "plain",
+                "seriesId": null,
+                "seriesName": "",
+                "signupClosesAt": null,
+                "signupMode": "open",
+                "signupOpensAt": null,
+                "sourceUrl": "",
+                "sponsors": "",
+                "standingsOnly": false,
+                "status": "signup",
+                "stopAtAlive": 0,
+                "streams": [],
+                "subs": [],
+                "survivors": null,
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissRounds": 0,
+                "swissTiebreak": "gameDiff",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "veto": {
+                  "enabled": false,
+                  "mode": "upfront",
+                  "revealBans": false,
+                  "teamA": "lowerA"
+                },
+                "vetoEnabled": false,
+                "viewer": {
+                  "caster": false,
+                  "fafId": null,
+                  "fafName": "",
+                  "invited": false,
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "newsReadAt": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": "global",
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": "global",
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "e1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "roomPinned",
+              "payload": {
+                "roomId": null
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [
+              {
+                "at": 1700000100,
+                "author": "Ada",
+                "body": "gl hf",
+                "everyone": false,
+                "fafId": 102,
+                "id": "c1",
+                "replyTo": null,
+                "system": false
+              }
+            ],
+            "chatRooms": [
+              {
+                "count": 0,
+                "done": false,
+                "id": "global",
+                "mentioned": false,
+                "name": "Room global",
+                "needsOrganiser": false,
+                "unread": 0
+              }
+            ],
+            "chatStatus": {
+              "type": "ready"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": {
+              "abandoned": false,
+              "auditLog": [],
+              "bans": [],
+              "bracketKind": "single",
+              "canManage": false,
+              "captainCount": 0,
+              "captainMode": "manual",
+              "casters": [],
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "chatMutedMe": false,
+              "chatMutes": [],
+              "chatPingCount": 0,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "descImages": [],
+              "description": "",
+              "divisions": 0,
+              "draft": null,
+              "draftSnakes": false,
+              "earlyFinish": null,
+              "entryOrder": [],
+              "eventDate": null,
+              "eventDays": [],
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
+              "feedsInto": null,
+              "ffa": null,
+              "formation": "solo",
+              "id": "e1",
+              "imported": false,
+              "importedGroups": [],
+              "importedStandings": [],
+              "importedType": "",
+              "invites": [],
+              "lobbyOptions": "",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "maxTeams": 0,
+              "minTeams": 0,
+              "mods": "",
+              "myBan": null,
+              "myMentionCount": 0,
+              "myUnreadCount": 0,
+              "name": "Event e1",
+              "news": [],
+              "organiserAccounts": [],
+              "organiserDiscords": [],
+              "organisers": [],
+              "pendingCaptains": [],
+              "plan": null,
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "poolAssign": [],
+              "prize": null,
+              "publishAt": null,
+              "published": false,
+              "qualifiers": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "ratingDate": null,
+              "ratingKind": "global",
+              "rewards": "",
+              "roundMaps": [],
+              "seeding": "rating",
+              "seriesColour": "plain",
+              "seriesId": null,
+              "seriesName": "",
+              "signupClosesAt": null,
+              "signupMode": "open",
+              "signupOpensAt": null,
+              "sourceUrl": "",
+              "sponsors": "",
+              "standingsOnly": false,
+              "status": "signup",
+              "stopAtAlive": 0,
+              "streams": [],
+              "subs": [],
+              "survivors": null,
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissRounds": 0,
+              "swissTiebreak": "gameDiff",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "veto": {
+                "enabled": false,
+                "mode": "upfront",
+                "revealBans": false,
+                "teamA": "lowerA"
+              },
+              "vetoEnabled": false,
+              "viewer": {
+                "caster": false,
+                "fafId": null,
+                "fafName": "",
+                "invited": false,
+                "loggedIn": false,
+                "memberTeamId": null,
+                "newsReadAt": null,
+                "organiser": false,
+                "signedUpPlayerId": null
+              }
+            },
+            "detailStatus": {
+              "type": "ready"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [
+              {
+                "abandoned": false,
+                "auditLog": [],
+                "bans": [],
+                "bracketKind": "single",
+                "canManage": false,
+                "captainCount": 0,
+                "captainMode": "manual",
+                "casters": [],
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "chatMutedMe": false,
+                "chatMutes": [],
+                "chatPingCount": 0,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "descImages": [],
+                "description": "",
+                "divisions": 0,
+                "draft": null,
+                "draftSnakes": false,
+                "earlyFinish": null,
+                "entryOrder": [],
+                "eventDate": null,
+                "eventDays": [],
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
+                "feedsInto": null,
+                "ffa": null,
+                "formation": "solo",
+                "id": "e1",
+                "imported": false,
+                "importedGroups": [],
+                "importedStandings": [],
+                "importedType": "",
+                "invites": [],
+                "lobbyOptions": "",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "maxTeams": 0,
+                "minTeams": 0,
+                "mods": "",
+                "myBan": null,
+                "myMentionCount": 0,
+                "myUnreadCount": 0,
+                "name": "Event e1",
+                "news": [],
+                "organiserAccounts": [],
+                "organiserDiscords": [],
+                "organisers": [],
+                "pendingCaptains": [],
+                "plan": null,
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "prize": null,
+                "publishAt": null,
+                "published": false,
+                "qualifiers": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "ratingDate": null,
+                "ratingKind": "global",
+                "rewards": "",
+                "roundMaps": [],
+                "seeding": "rating",
+                "seriesColour": "plain",
+                "seriesId": null,
+                "seriesName": "",
+                "signupClosesAt": null,
+                "signupMode": "open",
+                "signupOpensAt": null,
+                "sourceUrl": "",
+                "sponsors": "",
+                "standingsOnly": false,
+                "status": "signup",
+                "stopAtAlive": 0,
+                "streams": [],
+                "subs": [],
+                "survivors": null,
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissRounds": 0,
+                "swissTiebreak": "gameDiff",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "veto": {
+                  "enabled": false,
+                  "mode": "upfront",
+                  "revealBans": false,
+                  "teamA": "lowerA"
+                },
+                "vetoEnabled": false,
+                "viewer": {
+                  "caster": false,
+                  "fafId": null,
+                  "fafName": "",
+                  "invited": false,
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "newsReadAt": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null
+                }
+              },
+              {
+                "abandoned": false,
+                "auditLog": [],
+                "bans": [],
+                "bracketKind": "single",
+                "canManage": false,
+                "captainCount": 0,
+                "captainMode": "manual",
+                "casters": [],
+                "category": "community",
+                "championTeamId": null,
+                "chatLocked": false,
+                "chatMutedMe": false,
+                "chatMutes": [],
+                "chatPingCount": 0,
+                "checkInDeadline": null,
+                "checkInOpensAt": null,
+                "competition": "team",
+                "createdAt": 1700000000,
+                "descImages": [],
+                "description": "",
+                "divisions": 0,
+                "draft": null,
+                "draftSnakes": false,
+                "earlyFinish": null,
+                "entryOrder": [],
+                "eventDate": null,
+                "eventDays": [],
+                "factionVeto": {
+                  "bans": 1,
+                  "enabled": false,
+                  "picks": 2
+                },
+                "feedsInto": null,
+                "ffa": null,
+                "formation": "solo",
+                "id": "e2",
+                "imported": false,
+                "importedGroups": [],
+                "importedStandings": [],
+                "importedType": "",
+                "invites": [],
+                "lobbyOptions": "",
+                "mapDb": [],
+                "mapPools": [],
+                "matches": [],
+                "maxTeams": 0,
+                "minTeams": 0,
+                "mods": "",
+                "myBan": null,
+                "myMentionCount": 0,
+                "myUnreadCount": 0,
+                "name": "Event e2",
+                "news": [],
+                "organiserAccounts": [],
+                "organiserDiscords": [],
+                "organisers": [],
+                "pendingCaptains": [],
+                "plan": null,
+                "playerCount": 8,
+                "playerReporting": false,
+                "players": [],
+                "poolAssign": [],
+                "prize": null,
+                "publishAt": null,
+                "published": false,
+                "qualifiers": [],
+                "rating": {
+                  "cap": null,
+                  "max": null,
+                  "maxTeam": null,
+                  "min": null
+                },
+                "ratingDate": null,
+                "ratingKind": "global",
+                "rewards": "",
+                "roundMaps": [],
+                "seeding": "rating",
+                "seriesColour": "plain",
+                "seriesId": null,
+                "seriesName": "",
+                "signupClosesAt": null,
+                "signupMode": "open",
+                "signupOpensAt": null,
+                "sourceUrl": "",
+                "sponsors": "",
+                "standingsOnly": false,
+                "status": "signup",
+                "stopAtAlive": 0,
+                "streams": [],
+                "subs": [],
+                "survivors": null,
+                "swissBeaten": {},
+                "swissCuts": {
+                  "losses": 0,
+                  "wins": 0
+                },
+                "swissOrder": [],
+                "swissRounds": 0,
+                "swissTiebreak": "gameDiff",
+                "teamCount": 8,
+                "teamSize": 0,
+                "teams": [],
+                "veto": {
+                  "enabled": false,
+                  "mode": "upfront",
+                  "revealBans": false,
+                  "teamA": "lowerA"
+                },
+                "vetoEnabled": false,
+                "viewer": {
+                  "caster": false,
+                  "fafId": null,
+                  "fafName": "",
+                  "invited": false,
+                  "loggedIn": false,
+                  "memberTeamId": null,
+                  "newsReadAt": null,
+                  "organiser": false,
+                  "signedUpPlayerId": null
+                }
+              }
+            ],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": "global",
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"
@@ -21412,6 +23901,8 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
             "playerRatings": null,
             "playerRatingsStatus": {
               "type": "idle"

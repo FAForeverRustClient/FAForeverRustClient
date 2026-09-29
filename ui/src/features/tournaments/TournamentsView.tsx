@@ -646,6 +646,12 @@ export function TournamentsView() {
               onRefreshChat={(roomId) =>
                 act({ type: "refreshChat", payload: { tournamentId: open.id, roomId } })
               }
+              pinnedRoomId={state.pinnedRoomId}
+              pinnedPosts={state.pinnedPosts}
+              onPin={(roomId) => act({ type: "pinRoom", payload: { tournamentId: open.id, roomId } })}
+              onPostTo={(roomId, body, replyTo) =>
+                act({ type: "postChat", payload: { tournamentId: open.id, roomId, body, replyTo } })
+              }
               onDeleteChatPost={(roomId, postId) =>
                 act({
                   type: "deleteChatPost",

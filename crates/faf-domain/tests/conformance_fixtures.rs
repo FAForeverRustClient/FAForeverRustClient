@@ -4868,6 +4868,36 @@ fn cases() -> Vec<Case> {
                     posts: vec![],
                 }
                 .into(),
+                // A pinned room is a second slot: its answer lands there, and
+                // the open room keeps its own posts.
+                TourneyEvent::RoomPinned {
+                    room_id: Some("m1".into()),
+                }
+                .into(),
+                TourneyEvent::ChatLoaded {
+                    room_id: "m1".into(),
+                    posts: vec![ChatPost {
+                        faf_id: Some(103),
+                        id: "c2".into(),
+                        author: "Bo".into(),
+                        body: "ready?".into(),
+                        at: Some(1_700_000_200),
+                        system: false,
+                        reply_to: None,
+                        everyone: false,
+                    }],
+                }
+                .into(),
+                // A room list without it lets the pin go.
+                TourneyEvent::ChatRoomsLoaded {
+                    rooms: vec![tourney_room("global", 0)],
+                }
+                .into(),
+                TourneyEvent::RoomPinned {
+                    room_id: Some("global".into()),
+                }
+                .into(),
+                TourneyEvent::RoomPinned { room_id: None }.into(),
                 // Switching events takes the whole conversation with it.
                 TourneyEvent::Selected {
                     tournament_id: "e2".into(),

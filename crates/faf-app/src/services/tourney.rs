@@ -252,6 +252,25 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             read_room(&tournament_id, &room_id, ctx, out).await;
         }
 
+        TourneyCommand::PinRoom {
+            tournament_id,
+            room_id,
+        } => {
+            out.emit(TourneyEvent::RoomPinned {
+                room_id: room_id.clone(),
+            });
+            // Read straight away and silently: the open room's loading state
+            // is not this room's to change.
+            if let Some(room_id) = room_id {
+                match ctx.ports.tourney.chat_read(&tournament_id, &room_id).await {
+                    Ok(posts) => out.emit(TourneyEvent::ChatLoaded { room_id, posts }),
+                    Err(error) => {
+                        tracing::debug!(%error, "a pinned tournament chat could not be read");
+                    }
+                }
+            }
+        }
+
         TourneyCommand::RefreshChat {
             tournament_id,
             room_id,

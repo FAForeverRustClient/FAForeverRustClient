@@ -24,6 +24,8 @@ function clearOpenEvent(state: TourneyState): TourneyState {
     playerRatingsStatus: { type: "idle" },
     copySource: null,
     copySourceStatus: { type: "idle" },
+    pinnedRoomId: null,
+    pinnedPosts: [],
   };
 }
 
@@ -119,8 +121,20 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
       // An open room that no longer exists would leave posts on screen with
       // nothing to reload them from.
       const stillOpen = rooms.some((room) => room.id === state.openRoomId);
-      if (stillOpen) return { ...state, chatRooms: rooms };
-      return { ...state, chatRooms: rooms, openRoomId: null, chatPosts: [] };
+      // The pinned room likewise: gone from the list means it can no longer
+      // be read.
+      const stillPinned = rooms.some((room) => room.id === state.pinnedRoomId);
+      return {
+        ...state,
+        chatRooms: rooms,
+        ...(stillOpen ? {} : { openRoomId: null, chatPosts: [] }),
+        ...(stillPinned ? {} : { pinnedRoomId: null, pinnedPosts: [] }),
+      };
+    }
+    case "roomPinned": {
+      const { roomId } = event.payload;
+      if (state.pinnedRoomId === roomId) return { ...state, pinnedRoomId: roomId };
+      return { ...state, pinnedRoomId: roomId, pinnedPosts: [] };
     }
     case "roomOpened": {
       const { roomId } = event.payload;
@@ -131,9 +145,11 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
       return { ...state, chatStatus: { type: "loading" } };
     case "chatLoaded": {
       const { roomId, posts } = event.payload;
-      if (state.openRoomId !== roomId) return state;
+      const pinned = state.pinnedRoomId === roomId ? { pinnedPosts: posts } : {};
+      if (state.openRoomId !== roomId) return { ...state, ...pinned };
       return {
         ...state,
+        ...pinned,
         chatPosts: posts,
         chatStatus: { type: "ready" },
         // Reading a room is what clears its unread marker server-side, so the

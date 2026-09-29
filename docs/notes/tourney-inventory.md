@@ -184,7 +184,7 @@ login), instant team join (`join_team`, removed), organiser links
 - Creation: presets, "fill from this", record cuts, stage two, ends early and
   opponent picking at creation, the FFA block (with premade team names:
   `set_team_name` and the grouped preview), images pasted into the text.
-- Chat: pinning a chat to the right.
+- Chat: done on `tourney/batch-3`.
 
 **Fields still not read** (24 of 114): `pickOpponents`, `pickMinutes`,
 `pickMode`, `playoffs`, `stage2`, `plannedR1`, `swissR1Open` (Swiss and

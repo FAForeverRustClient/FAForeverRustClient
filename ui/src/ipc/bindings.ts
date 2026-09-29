@@ -8664,6 +8664,15 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 	roomId: string,
 } } |
+/**
+ *  Keep one room open beside whatever section is showing, or let it go
+ *  with `None`. Read at once, silently; it is kept fresh the way the open
+ *  room is, with `RefreshChat`.
+ */
+{ type: "pinRoom"; payload: {
+	tournamentId: string,
+	roomId: string | null,
+} } |
 /**  Start a team and captain it. */
 { type: "createTeam"; payload: {
 	tournamentId: string,
@@ -9210,6 +9219,10 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	rooms: ChatRoom[],
 } } | { type: "roomOpened"; payload: {
 	roomId: string,
+} } |
+/**  The room kept open beside the sections changed, or was let go. */
+{ type: "roomPinned"; payload: {
+	roomId: string | null,
 } } | { type: "chatLoading" } | { type: "chatLoaded"; payload: {
 	roomId: string,
 	posts: ChatPost[],
@@ -9610,6 +9623,13 @@ export type TourneyState = {
 	/**  One entrant's every rating, while the organiser has them open. */
 	playerRatings: EntrantRatings | null,
 	playerRatingsStatus: TourneyLoadStatus,
+	/**
+	 *  The room pinned beside the sections, and its posts. A second slot
+	 *  beside the open room, so the Chat tab and the pinned room can be two
+	 *  different rooms, as on the website.
+	 */
+	pinnedRoomId: string | null,
+	pinnedPosts: ChatPost[],
 	/**  The events maps can be imported from, while the organiser is choosing. */
 	copySources: CopySource[],
 	copySourcesStatus: TourneyLoadStatus,
