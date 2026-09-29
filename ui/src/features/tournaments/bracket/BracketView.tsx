@@ -44,6 +44,9 @@ import { feedersOf, matchLabel } from "./matchLabels";
 import { useTourneyDisplay } from "../display";
 import { PoolPanel, PoolToggle } from "./RoundPool";
 import { SwissRounds } from "./SwissRounds";
+import { PickPhasePanel } from "./PickPhasePanel";
+import { RoundOneEditor } from "./RoundOneEditor";
+import { playoffOrigin } from "./swissPresentation";
 import { hasVeto } from "./vetoPresentation";
 import { BRACKET_LABELS, myTeamId } from "../tourneyPresentation";
 import {
@@ -185,6 +188,10 @@ interface BracketViewProps {
   onReportFfa: (report: FfaReport) => void;
   /** An organiser's single-call change: the 3rd place match, a round's length. */
   onAdmin: (change: TourneyAdmin) => void;
+  /** Whether any write is in flight, for the pick phase and round 1 editor. */
+  busy?: boolean;
+  /** Read the event again silently, while seeds are picking. */
+  onRefresh?: () => void;
 }
 
 export function BracketView({
@@ -199,6 +206,8 @@ export function BracketView({
   veto,
   onReportFfa,
   onAdmin,
+  busy = false,
+  onRefresh = () => undefined,
 }: BracketViewProps) {
   const { t } = useTranslation();
   const third = thirdPlaceMatch(event);
@@ -282,9 +291,30 @@ export function BracketView({
   /** The match whose ban and pick run is open, by id, or null. */
   const [openVeto, setOpenVeto] = useState<string | null>(null);
 
-  if (event.matches.length === 0) {
-    return <p className="muted">{t("tournaments.bracket.notDrawn")}</p>;
+  // The main bracket's pick phase comes before any draw: until the last pick
+  // it is the whole section.
+  if (event.picks !== null && event.picks.open && !event.picks.stageTwo) {
+    return <PickPhasePanel event={event} picks={event.picks} busy={busy} onAdmin={onAdmin} onRefresh={onRefresh} />;
   }
+
+  // Swiss round 1 by hand, for the organiser: before the start it pins a
+  // plan, and once running it holds until anything in round 1 begins.
+  const roundOneEditor =
+    swissStage && event.viewer.organiser && (event.status === "drafted" || event.roundOneOpen) ? (
+      <RoundOneEditor key={`${event.status}-${event.matches.length}`} event={event} busy={busy} onAdmin={onAdmin} />
+    ) : null;
+
+  if (event.matches.length === 0) {
+    return (
+      <>
+        {roundOneEditor}
+        <p className="muted">{t("tournaments.bracket.notDrawn")}</p>
+      </>
+    );
+  }
+
+  const stagePicks = event.picks !== null && event.picks.stageTwo && event.picks.open ? event.picks : null;
+  const builtPlayoffs = swissStage && event.playoffs !== null && event.playoffs.built ? event.playoffs : null;
 
   return (
     <div className="tournament-bracket">
@@ -313,7 +343,21 @@ export function BracketView({
           <span className="muted">{t("tournaments.bracket.removeThirdPlaceHint")}</span>
         </div>
       )}
-      {swissStage && sides.length > 0 && <h4>{t("tournaments.swiss.playoffs")}</h4>}
+      {stagePicks !== null && (
+        <PickPhasePanel event={event} picks={stagePicks} busy={busy} onAdmin={onAdmin} onRefresh={onRefresh} />
+      )}
+      {swissStage && sides.length > 0 && (
+        <header className="tournament-playoffs-head">
+          <h4>
+            {builtPlayoffs !== null
+              ? t(builtPlayoffs.double ? "tournaments.playoffs.headDouble" : "tournaments.playoffs.headSingle", {
+                  count: builtPlayoffs.cutTo,
+                })
+              : t("tournaments.swiss.playoffs")}
+          </h4>
+          {builtPlayoffs !== null && <p className="muted">{playoffOrigin(event, t)}</p>}
+        </header>
+      )}
       {sides.map((side) => {
         const layouts = columnLayouts(side.columns);
         return (
@@ -447,11 +491,13 @@ export function BracketView({
       {swissStage && (
         <>
           {sides.length > 0 && <h4>{t("tournaments.swiss.stage")}</h4>}
+          {roundOneEditor}
           <SwissRounds
             event={event}
             profiles={profiles}
             busyMatchId={busyMatchId}
             withFinal={playoffs.length === 0}
+            hideUpcoming={builtPlayoffs !== null}
             onReport={onReport}
             onAnswer={onAnswer}
             onHost={onHost}

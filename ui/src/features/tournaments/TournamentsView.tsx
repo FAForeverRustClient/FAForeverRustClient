@@ -646,6 +646,7 @@ export function TournamentsView() {
               onRefreshChat={(roomId) =>
                 act({ type: "refreshChat", payload: { tournamentId: open.id, roomId } })
               }
+              onRefreshDetail={() => act({ type: "refreshDetail", payload: { tournamentId: open.id } })}
               pinnedRoomId={state.pinnedRoomId}
               pinnedPosts={state.pinnedPosts}
               onPin={(roomId) => act({ type: "pinRoom", payload: { tournamentId: open.id, roomId } })}

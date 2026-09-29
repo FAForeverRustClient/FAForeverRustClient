@@ -28,6 +28,19 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             load_detail(&tournament_id, ctx, out).await;
         }
 
+        TourneyCommand::RefreshDetail { tournament_id } => {
+            let generation = ctx.tourney_detail_generation.begin();
+            match ctx.ports.tourney.detail(&tournament_id).await {
+                Ok(event) if ctx.tourney_detail_generation.is_current(generation) => {
+                    out.emit(TourneyEvent::DetailLoaded {
+                        event: Box::new(event),
+                    });
+                }
+                Ok(_) => {}
+                Err(error) => tracing::debug!(%error, "a silent tournament refresh failed"),
+            }
+        }
+
         TourneyCommand::SignUp {
             tournament_id,
             rating,

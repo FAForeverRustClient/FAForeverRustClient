@@ -328,6 +328,24 @@ pub struct Tourney {
     pub imported_type: String,
     /// Whether only the final table came over, no matches (`standingsOnly`).
     pub standings_only: bool,
+    /// Whether seeds choose their opponent (`pickOpponents`), the clock per
+    /// pick in minutes (0 for none), and who picks in a Swiss stage's playoffs.
+    pub pick_opponents: bool,
+    pub pick_minutes: i32,
+    pub pick_mode: PickMode,
+    /// A Swiss stage's deciding matches (`plan.decidingBo`): the length of a
+    /// match that qualifies or eliminates someone, 0 for the normal length.
+    pub deciding_best_of: i32,
+    /// A Swiss stage's playoff bracket as planned, where it has one.
+    pub stage_two_plan: Option<StageTwoPlan>,
+    /// A running Swiss stage's playoffs.
+    pub playoffs: Option<Playoffs>,
+    /// Seeds choosing their opponent, while that runs and once it has.
+    pub picks: Option<PickPhase>,
+    /// Swiss round 1 as the organiser pinned it before the start (`plannedR1`).
+    pub planned_round_one: Vec<(String, String)>,
+    /// Whether Swiss round 1 can still be set by hand (`swissR1Open`).
+    pub round_one_open: bool,
     /// An import's group tables (`importedGroups`).
     pub imported_groups: Vec<ImportedGroup>,
     /// An import's final placings as its source recorded them

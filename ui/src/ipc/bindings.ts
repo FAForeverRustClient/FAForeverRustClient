@@ -5291,6 +5291,22 @@ export type PendingReport = {
 	at: number | null,
 };
 
+/**  One line of a pick phase's log. */
+export type PickLogEntry = {
+	by: string,
+	byName: string,
+	target: string,
+	at: number | null,
+	/**  Made by the clock running out, with the standard matchup. */
+	auto: boolean,
+};
+
+/**  One pick made in a pick phase: `picker` chose `target`. */
+export type PickMade = {
+	picker: string,
+	target: string,
+};
+
 /**
  *  Who chooses their opponent when opponents are picked (`pickMode`).
  *
@@ -5304,6 +5320,44 @@ export type PendingReport = {
  *    tiebreak.
  */
 export type PickMode = "half" | "unbeaten" | "bottom";
+
+/**
+ *  Seeds choosing their opponent (`picks`), for the main bracket or a Swiss
+ *  stage's playoffs. Sent to everyone; only `my_turn` is this account's own.
+ */
+export type PickPhase = {
+	/**  Still choosing; `false` once every pick is made. */
+	open: boolean,
+	half: number,
+	/**  The whole field, in seed order. */
+	field: string[],
+	/**  Who picks, in order. */
+	order: string[],
+	picks: PickMade[],
+	/**  Who can still be picked. */
+	available: string[],
+	/**  Whose pick it is. */
+	turn: string | null,
+	/**  Whether it is this account's team's pick. */
+	myTurn: boolean,
+	/**  Seconds left on the clock when the event was read; `None` for no clock. */
+	secondsLeft: number | null,
+	secondsPerPick: number | null,
+	log: PickLogEntry[],
+	/**  For a Swiss stage's playoffs rather than the main bracket. */
+	stageTwo: boolean,
+	/**  Only the unbeaten pick (`mode: unbeaten`, which `bottom` is too). */
+	unbeaten: boolean,
+	/**  The rest are paired by seed rather than drawn (`rest: seed`). */
+	restSeeded: boolean,
+	/**  Who the unbeaten pick from. */
+	pool: string[],
+	/**  The pool is the lowest record through (`poolRule: bottom`). */
+	poolBottom: boolean,
+	records: TeamRecord[],
+	/**  The pairs drawn for everyone else, once built. */
+	drawn: ([string, string])[],
+};
 
 /**
  *  One list of the per-round best-of plan an organiser edits before the draw
@@ -5811,6 +5865,28 @@ export type PlayerVeto = {
 	matchmakerQueueMapPoolId: number,
 	mapPoolMapVersionId: number,
 	vetoTokensApplied: number,
+};
+
+/**
+ *  A running Swiss stage's playoffs (`playoffs`, with `stage2`): who picks,
+ *  and how far the setup has come.
+ */
+export type Playoffs = {
+	/**  Who picks their opponent, or `None` for nobody: seeded as they stand. */
+	pick: PickMode | null,
+	/**  The playoffs exist in some form: picking, or built. */
+	made: boolean,
+	/**  The playoff bracket is drawn. */
+	built: boolean,
+	/**  A playoff match has begun, so nothing can be undone or redone. */
+	locked: boolean,
+	swissDone: boolean,
+	redraws: number,
+	double: boolean,
+	cutTo: number,
+	/**  The playoff field in seed order, once built. */
+	field: string[],
+	thirdPlace: boolean,
 };
 
 export type PoolAction = "ban" | "pick";
@@ -7592,6 +7668,27 @@ export type SocialState = {
 };
 
 /**
+ *  A Swiss stage's playoff bracket as planned (`plan.stage2` and the `s2*`
+ *  keys): how many go through, into what, and how long the matches are.
+ */
+export type StageTwoPlan = {
+	/**  Double elimination rather than single. */
+	double: boolean,
+	/**  How many go through (`s2CutTo`). */
+	cutTo: number,
+	/**  Every playoff match but the final (`s2Bo`). */
+	bestOf: number,
+	/**  The playoff final (`s2Final`). */
+	finalBestOf: number,
+	/**  A double bracket's grand final (`s2Gf`). */
+	grandFinal: number,
+	/**  Whether the winners finalist starts the grand final a game up. */
+	handicap: boolean,
+	/**  Whether the beaten semi-finalists play for 3rd (single only). */
+	thirdPlace: boolean,
+};
+
+/**
  *  Where the season statistics stand.
  *
  *  A separate status from [`GalacticWarStatus`] on purpose. The statistics are
@@ -7753,6 +7850,12 @@ export type TeamExit = {
 export type TeamPoints = {
 	teamId: string,
 	points: number,
+};
+
+/**  A team's Swiss record as a pick phase shows it (`records`), `W-L`. */
+export type TeamRecord = {
+	teamId: string,
+	record: string,
 };
 
 /**  One side asking the other about a team place. */
@@ -8112,6 +8215,28 @@ export type Tourney = {
 	importedType: string,
 	/**  Whether only the final table came over, no matches (`standingsOnly`). */
 	standingsOnly: boolean,
+	/**
+	 *  Whether seeds choose their opponent (`pickOpponents`), the clock per
+	 *  pick in minutes (0 for none), and who picks in a Swiss stage's playoffs.
+	 */
+	pickOpponents: boolean,
+	pickMinutes: number,
+	pickMode: PickMode,
+	/**
+	 *  A Swiss stage's deciding matches (`plan.decidingBo`): the length of a
+	 *  match that qualifies or eliminates someone, 0 for the normal length.
+	 */
+	decidingBestOf: number,
+	/**  A Swiss stage's playoff bracket as planned, where it has one. */
+	stageTwoPlan: StageTwoPlan | null,
+	/**  A running Swiss stage's playoffs. */
+	playoffs: Playoffs | null,
+	/**  Seeds choosing their opponent, while that runs and once it has. */
+	picks: PickPhase | null,
+	/**  Swiss round 1 as the organiser pinned it before the start (`plannedR1`). */
+	plannedRoundOne: ([string, string])[],
+	/**  Whether Swiss round 1 can still be set by hand (`swissR1Open`). */
+	roundOneOpen: boolean,
 	/**  An import's group tables (`importedGroups`). */
 	importedGroups: ImportedGroup[],
 	/**
@@ -8543,8 +8668,13 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
  *  The rating is the player's own, and only an unrated event takes one:
  *  there the service refuses a signup without it. Everywhere else it is
  *  fetched from FAF and this is `None`.
+ *  Read the open event again without saying so: a pick phase changes
+ *  under the reader, and announcing a load every few seconds would blink
+ *  the pane. The website polls the same way.
  */
-{ type: "signUp"; payload: {
+{ type: "refreshDetail"; payload: {
+	tournamentId: string,
+} } | { type: "signUp"; payload: {
 	tournamentId: string,
 	rating: number | null,
 } } |

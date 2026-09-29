@@ -85,6 +85,7 @@ import {
 } from "../../../shared/rules/tourneyRules";
 import { FactionVetoPanel } from "./FactionVetoPanel";
 import type { MapImport } from "./MapImportDialog";
+import { PlayoffsPanel } from "./PlayoffsPanel";
 
 const PHASE_LABELS: Record<TourneyPhase, MessageKey> = {
   formTeams: "tournaments.manage.formTeams",
@@ -352,6 +353,15 @@ export function ManagePanel({
               <h5>{t("tournaments.manage.website")}</h5>
               <ManageLink event={event} onOpen={onOpenUrl} />
             </section>
+
+            {/* A running Swiss stage's playoffs: who picks, the clock, how
+                equal records are ordered, and undoing or redoing them. */}
+            {event.status === "running" && event.playoffs !== null && (
+              <section className="tournament-tile is-wide">
+                <h5>{t("tournaments.playoffs.title")}</h5>
+                <PlayoffsPanel event={event} busy={busy} onAdmin={rest.onAdmin} />
+              </section>
+            )}
 
             {(mayEndEarly(event) || mayReopenEarly(event)) && (
               <section className="tournament-tile is-wide">

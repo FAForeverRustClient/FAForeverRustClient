@@ -230,6 +230,13 @@ pub enum TourneyCommand {
     /// The rating is the player's own, and only an unrated event takes one:
     /// there the service refuses a signup without it. Everywhere else it is
     /// fetched from FAF and this is `None`.
+    /// Read the open event again without saying so: a pick phase changes
+    /// under the reader, and announcing a load every few seconds would blink
+    /// the pane. The website polls the same way.
+    #[serde(rename_all = "camelCase")]
+    RefreshDetail {
+        tournament_id: String,
+    },
     #[serde(rename_all = "camelCase")]
     SignUp {
         tournament_id: String,

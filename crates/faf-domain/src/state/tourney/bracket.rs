@@ -259,6 +259,115 @@ impl PlanList {
     }
 }
 
+/// A Swiss stage's playoff bracket as planned (`plan.stage2` and the `s2*`
+/// keys): how many go through, into what, and how long the matches are.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct StageTwoPlan {
+    /// Double elimination rather than single.
+    pub double: bool,
+    /// How many go through (`s2CutTo`).
+    pub cut_to: i32,
+    /// Every playoff match but the final (`s2Bo`).
+    pub best_of: i32,
+    /// The playoff final (`s2Final`).
+    pub final_best_of: i32,
+    /// A double bracket's grand final (`s2Gf`).
+    pub grand_final: i32,
+    /// Whether the winners finalist starts the grand final a game up.
+    pub handicap: bool,
+    /// Whether the beaten semi-finalists play for 3rd (single only).
+    pub third_place: bool,
+}
+
+/// A running Swiss stage's playoffs (`playoffs`, with `stage2`): who picks,
+/// and how far the setup has come.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Playoffs {
+    /// Who picks their opponent, or `None` for nobody: seeded as they stand.
+    pub pick: Option<PickMode>,
+    /// The playoffs exist in some form: picking, or built.
+    pub made: bool,
+    /// The playoff bracket is drawn.
+    pub built: bool,
+    /// A playoff match has begun, so nothing can be undone or redone.
+    pub locked: bool,
+    pub swiss_done: bool,
+    pub redraws: i32,
+    pub double: bool,
+    pub cut_to: i32,
+    /// The playoff field in seed order, once built.
+    pub field: Vec<String>,
+    pub third_place: bool,
+}
+
+/// One pick made in a pick phase: `picker` chose `target`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PickMade {
+    pub picker: String,
+    pub target: String,
+}
+
+/// One line of a pick phase's log.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PickLogEntry {
+    pub by: String,
+    pub by_name: String,
+    pub target: String,
+    pub at: Option<u32>,
+    /// Made by the clock running out, with the standard matchup.
+    pub auto: bool,
+}
+
+/// A team's Swiss record as a pick phase shows it (`records`), `W-L`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamRecord {
+    pub team_id: String,
+    pub record: String,
+}
+
+/// Seeds choosing their opponent (`picks`), for the main bracket or a Swiss
+/// stage's playoffs. Sent to everyone; only `my_turn` is this account's own.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PickPhase {
+    /// Still choosing; `false` once every pick is made.
+    pub open: bool,
+    pub half: i32,
+    /// The whole field, in seed order.
+    pub field: Vec<String>,
+    /// Who picks, in order.
+    pub order: Vec<String>,
+    pub picks: Vec<PickMade>,
+    /// Who can still be picked.
+    pub available: Vec<String>,
+    /// Whose pick it is.
+    pub turn: Option<String>,
+    /// Whether it is this account's team's pick.
+    pub my_turn: bool,
+    /// Seconds left on the clock when the event was read; `None` for no clock.
+    pub seconds_left: Option<i32>,
+    pub seconds_per_pick: Option<i32>,
+    pub log: Vec<PickLogEntry>,
+    /// For a Swiss stage's playoffs rather than the main bracket.
+    pub stage_two: bool,
+    /// Only the unbeaten pick (`mode: unbeaten`, which `bottom` is too).
+    pub unbeaten: bool,
+    /// The rest are paired by seed rather than drawn (`rest: seed`).
+    pub rest_seeded: bool,
+    /// Who the unbeaten pick from.
+    pub pool: Vec<String>,
+    /// The pool is the lowest record through (`poolRule: bottom`).
+    pub pool_bottom: bool,
+    pub records: Vec<TeamRecord>,
+    /// The pairs drawn for everyone else, once built.
+    pub drawn: Vec<(String, String)>,
+}
+
 /// One group table of an imported event (`importedGroups`), as its source
 /// ranked it: wins, then game difference, then name.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]

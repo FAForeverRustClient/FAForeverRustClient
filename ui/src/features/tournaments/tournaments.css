@@ -4736,6 +4736,8 @@
 
 .tournament-import-body h6 {
   margin: var(--space-2) 0 0;
+}
+
 /* -- Overview: imports, schedule, rating source, recent results -------------- */
 
 /* An archived import, marked the way the website marks it: a coloured edge and
@@ -5071,4 +5073,76 @@
     width: 100%;
     max-height: min(58vh, 440px);
   }
+}
+
+/* Swiss playoffs: the pick phase, the round 1 editor and the setup. */
+.tournament-picks,
+.tournament-round-one {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.tournament-picks h4,
+.tournament-round-one h4 {
+  margin: 0;
+}
+
+.tournament-picks-callout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-warn);
+  border-radius: var(--radius-md);
+}
+
+.tournament-picks-callout.is-urgent strong {
+  color: var(--color-error);
+}
+
+.tournament-picks-rows,
+.tournament-round-one-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tournament-picks-rows li {
+  display: grid;
+  grid-template-columns: 2em minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.tournament-picks-rows li.is-turn {
+  font-weight: 600;
+}
+
+.tournament-round-one-rows li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.tournament-playoffs-setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-playoffs-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tournament-playoffs-head h4,
+.tournament-playoffs-head p {
+  margin: 0;
 }

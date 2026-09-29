@@ -46,6 +46,7 @@ import { AuditLogPanel } from "./AuditLogPanel";
 import { PublishBanner } from "./PublishBanner";
 import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
 import { PinButton, PinnedChat } from "./PinnedChat";
+import { swissShowsBracket } from "../bracket/swissPresentation";
 import {
   hotkeyAction,
   isMasked,
@@ -134,7 +135,7 @@ const SECTION_LABELS: Record<Section, MessageKey> = {
 function sectionLabel(section: Section, event: Tourney): MessageKey {
   if (
     section === "bracket" &&
-    (event.bracketKind === "swiss" || event.competition === "freeForAll")
+    (event.competition === "freeForAll" || (event.bracketKind === "swiss" && !swissShowsBracket(event)))
   ) {
     return "tournaments.section.rounds";
   }
@@ -225,6 +226,8 @@ interface TournamentDetailPaneProps {
   onDeletePool: (poolId: string) => void;
   onDeleteChatPost: (roomId: string, postId: string) => void;
   onRefreshChat: (roomId: string) => void;
+  /** Read the open event again without a loading state: the pick phase's poll. */
+  onRefreshDetail: () => void;
   /** The room pinned beside the sections, its posts, and pinning one. */
   pinnedRoomId: string | null;
   pinnedPosts: ChatPost[];
@@ -755,6 +758,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
 
       {section === "bracket" && !(event.imported && event.standingsOnly) && (
         <BracketView
+          busy={busy}
+          onRefresh={props.onRefreshDetail}
           event={event}
           profiles={props.profiles}
           busyMatchId={props.busyMatchId}

@@ -11,6 +11,7 @@ import { STATUS_LABELS } from "./tourneyPresentation";
 import { mayPick, pendingSignups } from "../../shared/rules/tourneyRules";
 import { myFactionGamesOwed, myMapVetoTurn } from "./bracket/vetoPresentation";
 import { teamNameOf } from "./bracket/matchParts";
+import { swissShowsBracket } from "./bracket/swissPresentation";
 
 type Translate = (key: MessageKey, values?: Record<string, string | number>) => string;
 
@@ -68,8 +69,10 @@ export function stages(event: Tourney): Stage[] {
     event.competition !== "freeForAll" && event.formation === "draft"
       ? "tournaments.stage.draft"
       : "tournaments.stage.teams";
+  // A Swiss is its rounds until its playoffs exist; then, like the tab, the
+  // step is the bracket.
   const play: MessageKey =
-    event.bracketKind === "swiss" || event.competition === "freeForAll"
+    event.competition === "freeForAll" || (event.bracketKind === "swiss" && !swissShowsBracket(event))
       ? "tournaments.section.rounds"
       : "tournaments.section.bracket";
   const labels: MessageKey[] = ["tournaments.stage.signups", middle, play, "tournaments.stage.results"];
@@ -266,6 +269,29 @@ export function turnInfo(event: Tourney, t: Translate): TurnInfo | null {
       cta: "tournaments.turn.reviewRequests",
       section: "teams",
     };
+  }
+
+  // An opponent pick outranks almost everything: the whole bracket waits on it.
+  const picks = event.picks;
+  if (picks !== null && picks.open && picks.turn !== null) {
+    if (picks.myTurn) {
+      const minutes = picks.secondsLeft === null ? null : Math.max(1, Math.round(picks.secondsLeft / 60));
+      return {
+        text:
+          minutes === null
+            ? t("tournaments.turn.pickOpponent")
+            : `${t("tournaments.turn.pickOpponent")} ${t("tournaments.turn.pickMinutesLeft", { count: minutes })}`,
+        cta: "tournaments.turn.pickOpponentCta",
+        section: "bracket",
+      };
+    }
+    if (viewer.organiser) {
+      return {
+        text: t("tournaments.turn.waitingOnPick", { team: teamNameOf(event, picks.turn) ?? "" }),
+        cta: "tournaments.turn.viewPicks",
+        section: "bracket",
+      };
+    }
   }
 
   if (event.status === "draft" && event.draft !== null && mayPick(event) && !viewer.organiser) {

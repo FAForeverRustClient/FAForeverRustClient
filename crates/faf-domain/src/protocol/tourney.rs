@@ -46,6 +46,7 @@ use crate::state::{
     FeedsInto, FormatDraft, Qualifier, QualifierKind, QualifierRule, SeriesColour, SeriesDetail,
     SeriesDraft, SeriesEdition, TourneySeries,
 };
+use crate::state::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
 
 /// A string field, empty when absent or not a string.
 fn text(value: &Value, name: &str) -> String {
@@ -199,6 +200,127 @@ fn swiss_cuts(document: &Value) -> SwissCuts {
     SwissCuts {
         wins: cut("winCut"),
         losses: cut("lossCut"),
+    }
+}
+
+/// A Swiss stage's planned playoffs (`plan.stage2` and `s2*`), where on.
+fn stage_two_plan(document: &Value) -> Option<StageTwoPlan> {
+    let held = document.get("plan").filter(|value| value.is_object())?;
+    if !flag(held, "stage2") {
+        return None;
+    }
+    Some(StageTwoPlan {
+        double: text(held, "s2Type") == "double",
+        cut_to: int(held, "s2CutTo").unwrap_or(8),
+        best_of: int(held, "s2Bo").unwrap_or(3),
+        final_best_of: int(held, "s2Final").unwrap_or(5),
+        grand_final: int(held, "s2Gf").unwrap_or(5),
+        handicap: flag(held, "s2Hcap"),
+        third_place: flag(held, "s2Third"),
+    })
+}
+
+/// A Swiss stage's deciding match length (`plan.decidingBo`); 0 is the
+/// normal length, and anything the service would not keep counts as that.
+fn deciding_best_of(document: &Value) -> i32 {
+    document
+        .get("plan")
+        .and_then(|held| int(held, "decidingBo"))
+        .filter(|bo| [1, 3, 5, 7].contains(bo))
+        .unwrap_or(0)
+}
+
+/// Two team ids, from a `[a, b]` pair.
+fn id_pair(value: &Value) -> Option<(String, String)> {
+    let pair = value.as_array()?;
+    let side = |at: usize| match pair.get(at)? {
+        Value::String(text) => Some(text.clone()),
+        Value::Number(number) => Some(number.to_string()),
+        _ => None,
+    };
+    Some((side(0)?, side(1)?))
+}
+
+/// A running Swiss stage's playoffs (`playoffs`, with `stage2`).
+fn parse_playoffs(held: &Value, stage: Option<&Value>) -> Playoffs {
+    let pick = text(held, "pick");
+    Playoffs {
+        pick: match pick.as_str() {
+            "" | "off" => None,
+            other => Some(PickMode::from_wire(other)),
+        },
+        made: flag(held, "made"),
+        built: flag(held, "built"),
+        locked: flag(held, "locked"),
+        swiss_done: flag(held, "swissDone"),
+        redraws: int(held, "redraws").unwrap_or(0),
+        double: stage.is_some_and(|stage| text(stage, "type") == "double"),
+        cut_to: stage.and_then(|stage| int(stage, "cutTo")).unwrap_or(0),
+        field: stage.map_or_else(Vec::new, |stage| string_list(stage, "field")),
+        third_place: stage.is_some_and(|stage| flag(stage, "thirdPlace")),
+    }
+}
+
+/// A pick phase (`picks`), for the main bracket or the playoffs.
+fn parse_picks(held: &Value) -> PickPhase {
+    let seconds = |name: &str| {
+        held.get(name)
+            .and_then(Value::as_i64)
+            .map(|millis| i32::try_from((millis.max(0) + 999) / 1000).unwrap_or(i32::MAX))
+    };
+    PickPhase {
+        open: text(held, "status") == "open",
+        half: int(held, "half").unwrap_or(0),
+        field: string_list(held, "field"),
+        order: string_list(held, "order"),
+        picks: held
+            .get("picks")
+            .and_then(Value::as_object)
+            .map(|made| {
+                made.iter()
+                    .filter_map(|(picker, target)| {
+                        Some(PickMade {
+                            picker: picker.clone(),
+                            target: target.as_str()?.to_string(),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        available: string_list(held, "available"),
+        turn: id(held, "turn"),
+        my_turn: flag(held, "myTurn"),
+        seconds_left: seconds("msLeft"),
+        seconds_per_pick: seconds("perPickMs"),
+        log: array(held, "log")
+            .iter()
+            .map(|entry| PickLogEntry {
+                by: text(entry, "by"),
+                by_name: text(entry, "byName"),
+                target: text(entry, "target"),
+                at: moment(entry, "at"),
+                auto: flag(entry, "auto"),
+            })
+            .collect(),
+        stage_two: text(held, "forWhat") == "stage2",
+        unbeaten: text(held, "mode") == "unbeaten",
+        rest_seeded: text(held, "rest") == "seed",
+        pool: string_list(held, "pool"),
+        pool_bottom: text(held, "poolRule") == "bottom",
+        records: held
+            .get("records")
+            .and_then(Value::as_object)
+            .map(|records| {
+                records
+                    .iter()
+                    .map(|(team_id, record)| TeamRecord {
+                        team_id: team_id.clone(),
+                        record: record.as_str().unwrap_or_default().to_string(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        drawn: array(held, "drawn").iter().filter_map(id_pair).collect(),
     }
 }
 
@@ -502,6 +624,29 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         source_url: text(document, "sourceUrl"),
         imported_type: text(document, "importedType"),
         standings_only: flag(document, "standingsOnly"),
+        pick_opponents: flag(document, "pickOpponents"),
+        pick_minutes: int(document, "pickMinutes").unwrap_or(0).clamp(0, 1440),
+        pick_mode: PickMode::from_wire(&text(document, "pickMode")),
+        deciding_best_of: deciding_best_of(document),
+        stage_two_plan: stage_two_plan(document),
+        playoffs: document
+            .get("playoffs")
+            .filter(|held| held.is_object())
+            .map(|held| {
+                parse_playoffs(
+                    held,
+                    document.get("stage2").filter(|stage| stage.is_object()),
+                )
+            }),
+        picks: document
+            .get("picks")
+            .filter(|held| held.is_object())
+            .map(parse_picks),
+        planned_round_one: array(document, "plannedR1")
+            .iter()
+            .filter_map(id_pair)
+            .collect(),
+        round_one_open: flag(document, "swissR1Open"),
         imported_groups: array(document, "importedGroups")
             .iter()
             .map(|group| ImportedGroup {
@@ -3031,6 +3176,58 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(event.publish_at, Some(1_790_812_800));
         let event = parse_tourney(&json!({ "id": "e1", "publishAt": null })).unwrap();
         assert_eq!(event.publish_at, None);
+    }
+
+    #[test]
+    fn a_swiss_with_playoffs_reads_its_plan_its_playoffs_and_the_picks() {
+        let event = parse_tourney(&json!({
+            "id": "e1", "bracketType": "swiss", "competition": "team",
+            "plan": { "bo": 1, "winCut": 3, "lossCut": 3, "decidingBo": 3, "stage2": 1,
+                      "s2Type": "single", "s2CutTo": 8, "s2Bo": 3, "s2Final": 5, "s2Third": 1 },
+            "pickOpponents": 1, "pickMinutes": 5, "pickMode": "bottom",
+            "stage2": { "type": "single", "cutTo": 8, "built": 1790000000000_i64, "field": ["t1", "t2"], "thirdPlace": 1 },
+            "playoffs": { "pick": "bottom", "made": 1, "built": 0, "locked": 0, "swissDone": 1, "redraws": 2 },
+            "picks": {
+                "status": "open", "half": 4, "field": ["t1", "t2", "t3"], "order": ["t1"],
+                "picks": { "t1": "t8" }, "available": ["t6", "t7"], "turn": "t2", "myTurn": true,
+                "msLeft": 90500, "perPickMs": 300000,
+                "log": [{ "by": "t1", "byName": "Ada", "target": "t8", "at": 1790000000000_i64, "auto": 0 }],
+                "forWhat": "stage2", "mode": "unbeaten", "rest": "seed", "pool": ["t6", "t7"],
+                "poolRule": "bottom", "records": { "t1": "3-0" }, "drawn": [["t3", "t4"]],
+            },
+            "plannedR1": [["t1", "t2"], ["bad"]],
+            "swissR1Open": 1,
+        }))
+        .unwrap();
+        assert_eq!(event.deciding_best_of, 3);
+        let plan = event.stage_two_plan.unwrap();
+        assert!(!plan.double && plan.third_place);
+        assert_eq!((plan.cut_to, plan.best_of, plan.final_best_of), (8, 3, 5));
+        assert!(event.pick_opponents);
+        assert_eq!((event.pick_minutes, event.pick_mode), (5, PickMode::Bottom));
+        let playoffs = event.playoffs.unwrap();
+        assert_eq!(playoffs.pick, Some(PickMode::Bottom));
+        assert!(playoffs.made && !playoffs.built && playoffs.swiss_done);
+        assert_eq!((playoffs.cut_to, playoffs.redraws), (8, 2));
+        assert_eq!(playoffs.field, vec!["t1".to_string(), "t2".to_string()]);
+        let picks = event.picks.unwrap();
+        assert!(picks.open && picks.my_turn && picks.stage_two && picks.unbeaten);
+        assert!(picks.rest_seeded && picks.pool_bottom);
+        // Rounded up: 90.5 seconds is still 91 seconds to go.
+        assert_eq!(
+            (picks.seconds_left, picks.seconds_per_pick),
+            (Some(91), Some(300))
+        );
+        assert_eq!(picks.picks[0].target, "t8");
+        assert_eq!(picks.turn.as_deref(), Some("t2"));
+        assert_eq!(picks.records[0].record, "3-0");
+        assert_eq!(picks.drawn, vec![("t3".to_string(), "t4".to_string())]);
+        assert_eq!(picks.log[0].by_name, "Ada");
+        assert_eq!(
+            event.planned_round_one,
+            vec![("t1".to_string(), "t2".to_string())]
+        );
+        assert!(event.round_one_open);
     }
 
     #[test]
