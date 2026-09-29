@@ -19,14 +19,24 @@
 // and per-round best-of overrides, which cannot be asked about before the rounds
 // exist. Both stay on the website, and the map database is its own section.
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
-import type { Prize, Tourney, TourneyDraft, TourneySeries } from "../../../ipc/bindings";
+import type {
+  CopySource,
+  Prize,
+  Tourney,
+  TourneyDraft,
+  TourneyLoadStatus,
+  TourneyPreset,
+  TourneySeries,
+} from "../../../ipc/bindings";
+import { CreateStarters } from "./CreateStarters";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { defaultPlanFor, rejectionOf, type DraftRejection } from "../../../shared/rules/tourneyRules";
 import { PlanFields } from "./PlanFields";
+import { defaultFfa, FfaFields, PickFields, StopAtField, SwissExtrasFields } from "./FormatExtras";
 import { formatDay, formatPrize } from "../tourneyPresentation";
 
 const REJECTION_LABELS: Record<DraftRejection, MessageKey> = {
@@ -217,6 +227,14 @@ export function draftOf(event: Tourney): TourneyDraft {
     // Both always sent by `edit_info` too, so both are the event's own.
     checkInDeadline: event.checkInDeadline,
     eventDays: event.eventDays,
+    // The format is the Format panel's to change once the event exists; these
+    // are carried so the draft is whole, and `edit_info` does not send them.
+    presetId: null,
+    swiss: { cuts: event.swissCuts, decidingBestOf: event.decidingBestOf, stageTwo: event.stageTwoPlan },
+    picks: { on: event.pickOpponents, minutes: event.pickMinutes, mode: event.pickMode },
+    tiebreak: event.swissTiebreak,
+    stopAtAlive: event.stopAtAlive,
+    ffa: event.ffa,
   };
 }
 
@@ -251,6 +269,12 @@ const BLANK: TourneyDraft = {
   maxTeams: 0,
   checkInDeadline: null,
   eventDays: [],
+  presetId: null,
+  swiss: { cuts: { wins: 0, losses: 0 }, decidingBestOf: 0, stageTwo: null },
+  picks: { on: false, minutes: 0, mode: "half" },
+  tiebreak: "gameDiff",
+  stopAtAlive: 0,
+  ffa: null,
 };
 
 interface TournamentFormProps {
@@ -270,7 +294,19 @@ interface TournamentFormProps {
   inline?: boolean;
   onSubmit: (draft: TourneyDraft) => void;
   onClose: () => void;
+  /** The create form's starting points: named formats and earlier events. */
+  presets?: TourneyPreset[];
+  sources?: CopySource[];
+  template?: Tourney | null;
+  templateStatus?: TourneyLoadStatus;
+  onLoadTemplate?: (tournamentId: string) => void;
+  /** Store a picture pasted into an existing event's text. */
+  onUploadImage?: (dataUrl: string) => void;
+  /** The last stored picture's path, to insert where it was pasted. */
+  pastedImage?: string | null;
 }
+
+type TextField = "description" | "lobbyOptions" | "rewards" | "sponsors";
 
 export function TournamentForm({
   event,
@@ -279,12 +315,65 @@ export function TournamentForm({
   inline = false,
   onSubmit,
   onClose,
+  presets = [],
+  sources = [],
+  template = null,
+  templateStatus = { type: "idle" },
+  onLoadTemplate,
+  onUploadImage,
+  pastedImage = null,
 }: TournamentFormProps) {
   const { t } = useTranslation();
   const editing = event !== null;
   const [draft, setDraft] = useState<TourneyDraft>(() => (event ? draftOf(event) : BLANK));
 
   const set = (patch: Partial<TourneyDraft>) => setDraft((held) => ({ ...held, ...patch }));
+
+  // Pictures pasted into the text, as on the website: uploaded at once to an
+  // event that exists, and held behind a token until one that is being
+  // created does (the service uploads them and swaps the tokens after).
+  const waiting = useRef<{ field: TextField; at: number } | null>(null);
+  const lastImage = useRef(pastedImage);
+  useEffect(() => {
+    if (pastedImage === null || pastedImage === lastImage.current) return;
+    lastImage.current = pastedImage;
+    const target = waiting.current;
+    if (target === null) return;
+    waiting.current = null;
+    const url = pastedImage;
+    setDraft((held) => {
+      const text = held[target.field];
+      return { ...held, [target.field]: `${text.slice(0, target.at)}\n![image](${url})\n${text.slice(target.at)}` };
+    });
+  }, [pastedImage]);
+  const pasteInto = (field: TextField) => (pasted: ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = [...pasted.clipboardData.files].find((held) => held.type.startsWith("image/"));
+    if (file === undefined) return;
+    pasted.preventDefault();
+    const at = pasted.currentTarget.selectionStart;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      const dataUrl = reader.result;
+      if (editing) {
+        if (onUploadImage === undefined) return;
+        waiting.current = { field, at };
+        onUploadImage(dataUrl);
+        return;
+      }
+      setDraft((held) => {
+        const pending = held.pendingImages ?? [];
+        const token = `pending-image-${pending.length}`;
+        const text = held[field];
+        return {
+          ...held,
+          pendingImages: [...pending, { token, dataUrl }],
+          [field]: `${text.slice(0, at)}\n![image](${token})\n${text.slice(at)}`,
+        };
+      });
+    };
+    reader.readAsDataURL(file);
+  };
   const setGate = (patch: Partial<TourneyDraft["rating"]>) =>
     setDraft((held) => ({ ...held, rating: { ...held.rating, ...patch } }));
 
@@ -310,6 +399,19 @@ export function TournamentForm({
     <Frame>
       {!inline && <h3>{title}</h3>}
 
+      {!editing && onLoadTemplate !== undefined && (
+        <CreateStarters
+          draft={draft}
+          presets={presets}
+          sources={sources}
+          template={template}
+          templateStatus={templateStatus}
+          busy={busy}
+          onLoadTemplate={onLoadTemplate}
+          onChange={setDraft}
+        />
+      )}
+
       <label className="tournament-field">
         <span>{t("tournaments.form.name")}</span>
         <input
@@ -324,6 +426,7 @@ export function TournamentForm({
         <span>{t("tournaments.form.description")}</span>
         <textarea
           value={draft.description}
+          onPaste={pasteInto("description")}
           onChange={(changed) => set({ description: changed.target.value })}
           rows={6}
           maxLength={20_000}
@@ -333,12 +436,15 @@ export function TournamentForm({
           rendered as formatted text on the overview, and an organiser who does
           not know that writes plain prose and loses nothing, while one who does
           gets headings and lists. */}
-      <p className="tournament-form-hint muted">{t("tournaments.form.markdownHint")}</p>
+      <p className="tournament-form-hint muted">
+        {t("tournaments.form.markdownHint")} {t("tournaments.form.pasteHint")}
+      </p>
 
       <label className="tournament-field">
         <span>{t("tournaments.form.lobbyOptions")}</span>
         <textarea
           value={draft.lobbyOptions}
+          onPaste={pasteInto("lobbyOptions")}
           onChange={(changed) => set({ lobbyOptions: changed.target.value })}
           rows={4}
           maxLength={20_000}
@@ -395,6 +501,7 @@ export function TournamentForm({
           <span>{t("tournaments.form.rewards")}</span>
           <textarea
             value={draft.rewards}
+            onPaste={pasteInto("rewards")}
             onChange={(changed) => set({ rewards: changed.target.value })}
             rows={3}
             maxLength={2_000}
@@ -406,6 +513,7 @@ export function TournamentForm({
           <span>{t("tournaments.form.sponsors")}</span>
           <textarea
             value={draft.sponsors}
+            onPaste={pasteInto("sponsors")}
             onChange={(changed) => set({ sponsors: changed.target.value })}
             rows={3}
             maxLength={2_000}
@@ -459,6 +567,36 @@ export function TournamentForm({
         ) : (
           <div className="tournament-form-row">
             <label className="tournament-field">
+              <span>{t("tournaments.form.competition")}</span>
+              <select
+                value={draft.competition}
+                onChange={(changed) => {
+                  const competition = changed.target.value as TourneyDraft["competition"];
+                  // A free-for-all is solo or teams of up to three, with its
+                  // own lobby settings; a team event gets its plan back.
+                  set(
+                    competition === "freeForAll"
+                      ? {
+                          competition,
+                          teamSize: Math.min(draft.teamSize, 3),
+                          formation: "solo",
+                          ffa: draft.ffa ?? defaultFfa(Math.min(draft.teamSize, 3)),
+                          plan: null,
+                        }
+                      : {
+                          competition,
+                          formation: draft.teamSize > 1 ? "open" : "solo",
+                          ffa: null,
+                          plan: defaultPlanFor(draft.bracketKind),
+                        },
+                  );
+                }}
+              >
+                <option value="team">{t("tournaments.form.competitionTeam")}</option>
+                <option value="freeForAll">{t("tournaments.form.competitionFfa")}</option>
+              </select>
+            </label>
+            <label className="tournament-field">
               <span>{t("tournaments.form.category")}</span>
               <select
                 value={draft.category}
@@ -476,13 +614,14 @@ export function TournamentForm({
                 value={draft.teamSize}
                 onChange={(changed) => set({ teamSize: Number(changed.target.value) })}
               >
-                {[1, 2, 3, 4, 5, 6].map((size) => (
+                {(draft.competition === "freeForAll" ? [1, 2, 3] : [1, 2, 3, 4, 5, 6]).map((size) => (
                   <option value={size} key={size}>
                     {size}v{size}
                   </option>
                 ))}
               </select>
             </label>
+            {draft.competition === "team" && (
             <label className="tournament-field">
               <span>{t("tournaments.form.bracket")}</span>
               <select
@@ -496,6 +635,7 @@ export function TournamentForm({
                 <option value="swiss">{t("tournaments.bracketKind.swiss")}</option>
               </select>
             </label>
+            )}
             {picksFormation && (
               <label className="tournament-field">
                 <span>{t("tournaments.form.formation")}</span>
@@ -544,6 +684,34 @@ export function TournamentForm({
                 : defaultPlanFor(draft.bracketKind)
             }
             onChange={(plan) => set({ plan })}
+          />
+          {draft.bracketKind === "swiss" && (
+            <SwissExtrasFields value={draft.swiss} busy={busy} onChange={(swiss) => set({ swiss })} />
+          )}
+          <PickFields
+            picks={draft.picks}
+            tiebreak={draft.tiebreak}
+            swiss={draft.bracketKind === "swiss"}
+            stageTwo={draft.swiss.stageTwo !== null}
+            cuts={draft.swiss.cuts}
+            busy={busy}
+            onChange={(picks, tiebreak) => set({ picks, tiebreak })}
+          />
+          {/* Elimination only: the service ignores it for a Swiss. */}
+          {draft.bracketKind !== "swiss" && (
+            <StopAtField value={draft.stopAtAlive} busy={busy} onChange={(stopAtAlive) => set({ stopAtAlive })} />
+          )}
+        </fieldset>
+      )}
+
+      {!editing && draft.competition === "freeForAll" && (
+        <fieldset className="tournament-field">
+          <legend>{t("tournaments.form.ffaLegend")}</legend>
+          <FfaFields
+            value={draft.ffa ?? defaultFfa(draft.teamSize)}
+            teamSize={draft.teamSize}
+            busy={busy}
+            onChange={(ffa) => set({ ffa })}
           />
         </fieldset>
       )}

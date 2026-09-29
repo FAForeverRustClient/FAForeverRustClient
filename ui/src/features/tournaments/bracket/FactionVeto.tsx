@@ -59,9 +59,61 @@ interface FactionGameProps {
   game: FactionVetoGame;
   busy: boolean;
   onChoose: (matchId: string, game: number, faction: TourneyFaction) => void;
+  /** An organiser clearing a side's choices; absent for everyone else. */
+  onReset?: (matchId: string, game: number, slot: 1 | 2 | null) => void;
 }
 
-export function FactionGame({ event, entry, game, busy, onChoose }: FactionGameProps) {
+/**
+ * An organiser's way to let a side choose again (`fveto_reset`).
+ *
+ * The website's service has it and its pages never offer it. An organiser
+ * sees only which side is done, never what they chose, so the control names
+ * the side and not the choices; it asks first, because the choices are gone
+ * once cleared and only the player can make them again.
+ */
+function ResetControls({
+  event,
+  entry,
+  game,
+  busy,
+  onReset,
+}: {
+  event: Tourney;
+  entry: TourneyMatch;
+  game: FactionVetoGame;
+  busy: boolean;
+  onReset: (matchId: string, game: number, slot: 1 | 2 | null) => void;
+}) {
+  const { t } = useTranslation();
+  const name = (teamId: string | null) => teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd");
+  const reset = (slot: 1 | 2 | null) => {
+    const who = slot === null ? t("tournaments.faction.bothSides") : name(slot === 1 ? entry.team1 : entry.team2);
+    if (window.confirm(t("tournaments.faction.resetConfirm", { team: who, game: game.game }))) {
+      onReset(entry.id, game.game, slot);
+    }
+  };
+  return (
+    <span className="tournament-fveto-reset">
+      {game.team1Done && (
+        <button type="button" className="tournament-link-button" disabled={busy} onClick={() => reset(1)}>
+          {t("tournaments.faction.reset", { team: name(entry.team1) })}
+        </button>
+      )}
+      {game.team2Done && (
+        <button type="button" className="tournament-link-button" disabled={busy} onClick={() => reset(2)}>
+          {t("tournaments.faction.reset", { team: name(entry.team2) })}
+        </button>
+      )}
+      {(game.team1Done || game.team2Done) && (
+        <button type="button" className="tournament-link-button" disabled={busy} onClick={() => reset(null)}>
+          {t("tournaments.faction.resetBoth")}
+        </button>
+      )}
+    </span>
+  );
+}
+
+export function FactionGame({ event, entry, game, busy, onChoose, onReset }: FactionGameProps) {
   const { t } = useTranslation();
   const [armed, setArmed] = useState<TourneyFaction | null>(null);
   const step = game.next;
@@ -70,6 +122,11 @@ export function FactionGame({ event, entry, game, busy, onChoose }: FactionGameP
   useEffect(() => setArmed(null), [step?.action, step?.index, game.mine?.done]);
 
   const name = (teamId: string | null) => teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd");
+
+  // Offered until the match is over: afterwards a new choice changes nothing.
+  const resets = onReset !== undefined && entry.status !== "done" && (
+    <ResetControls event={event} entry={entry} game={game} busy={busy} onReset={onReset} />
+  );
 
   if (game.result !== null) {
     return (
@@ -82,6 +139,7 @@ export function FactionGame({ event, entry, game, busy, onChoose }: FactionGameP
           <span className="muted">{name(entry.team2)}</span>
           <FactionChip faction={game.result.team2} on />
         </span>
+        {resets}
       </div>
     );
   }
@@ -114,6 +172,7 @@ export function FactionGame({ event, entry, game, busy, onChoose }: FactionGameP
         {waiting.length === 0
           ? t("tournaments.faction.resolving")
           : t("tournaments.faction.waitingOn", { teams: waiting.join(", ") })}
+        {resets}
       </div>
     );
   }

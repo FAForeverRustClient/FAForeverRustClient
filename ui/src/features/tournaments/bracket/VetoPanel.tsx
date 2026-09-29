@@ -42,6 +42,11 @@ export interface VetoHandlers {
   onSetSides: (matchId: string, teamA: string) => void;
   onUndo: (matchId: string) => void;
   onFaction: (matchId: string, game: number, faction: TourneyFaction) => void;
+  /**
+   * Clear one game's faction choices for one side (1 or 2), or both (`null`).
+   * Organisers only; absent where the surface has no organiser tools.
+   */
+  onFactionReset?: (matchId: string, game: number, slot: 1 | 2 | null) => void;
 }
 
 interface VetoPanelProps {
@@ -96,6 +101,7 @@ export function VetoPanel(props: VetoPanelProps) {
         game={slot}
         busy={busy}
         onChoose={handlers.onFaction}
+        onReset={event.viewer.organiser ? handlers.onFactionReset : undefined}
       />
     );
   };

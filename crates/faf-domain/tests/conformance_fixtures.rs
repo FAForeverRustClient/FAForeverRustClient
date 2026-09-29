@@ -241,6 +241,23 @@ struct TourneyRuleCase {
     may_repull_ratings: bool,
     /// `Tourney::may_edit_veto`.
     may_edit_veto: bool,
+    /// `Tourney::may_sign_up`: a ban withdraws the offer.
+    may_sign_up: bool,
+    /// `Tourney::may_decline_invite`.
+    may_decline_invite: bool,
+    /// `Tourney::may_check_rating`.
+    may_check_rating: bool,
+    /// `Tourney::signup_needs_rating`.
+    signup_needs_rating: bool,
+    /// The moment the check-in rules below were asked at, so that the twin
+    /// asks at the same one rather than at the clock.
+    check_in_now: u32,
+    /// `Tourney::may_check_in` at `check_in_now`.
+    may_check_in: bool,
+    /// `Tourney::may_undo_check_in`.
+    may_undo_check_in: bool,
+    /// `Tourney::team_lineup`: who is in, who waits, who is still forming.
+    team_lineup: TeamLineup,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -625,6 +642,8 @@ fn tourney_player(
         pending,
         note: String::new(),
         signed_at: None,
+        discord: String::new(),
+        team_name: String::new(),
     }
 }
 
@@ -645,6 +664,9 @@ fn tourney_team(id: &str, players: &[&str]) -> TourneyTeam {
         invites: Vec::new(),
     }
 }
+
+/// The clock every check-in rule case is read at.
+const CHECK_IN_NOW: u32 = 1_790_000_000;
 
 /// One rule case, with every rule read off the same event.
 fn tourney_rule_case(
@@ -709,6 +731,14 @@ fn tourney_rule_case(
         may_reopen_early: event.may_reopen_early(),
         may_repull_ratings: event.may_repull_ratings(),
         may_edit_veto: event.may_edit_veto(),
+        may_sign_up: event.may_sign_up(),
+        may_decline_invite: event.may_decline_invite(),
+        may_check_rating: event.may_check_rating(),
+        signup_needs_rating: event.signup_needs_rating(),
+        check_in_now: CHECK_IN_NOW,
+        may_check_in: event.may_check_in(CHECK_IN_NOW),
+        may_undo_check_in: event.may_undo_check_in(),
+        team_lineup: event.team_lineup(),
         reportable_match_ids: event
             .matches
             .iter()
@@ -834,8 +864,21 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             target: 0,
             alive: 2,
             names: vec!["T1".into(), "T2".into()],
+            unplayed: Some(Vec::new()),
         }),
         ..four_single.clone()
+    };
+    // Signups open on an unrated event, seen by a player with an invitation.
+    let invited_player = Tourney {
+        id: "invited-player".into(),
+        status: TourneyStatus::Signup,
+        rating_kind: RatingKind::None,
+        viewer: TourneyViewer {
+            logged_in: true,
+            invited: true,
+            ..TourneyViewer::default()
+        },
+        ..Tourney::default()
     };
     let third_planned = Tourney {
         id: "third-planned".into(),
@@ -1008,6 +1051,74 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         player_reporting: false,
         ..player_running.clone()
     };
+    // An open 2v2 with room for two teams and three that filled up, `td`
+    // first: places go by when a team filled, so `tc` waits although it is
+    // the strongest, and `tb` is still one short. Check-in opens in an hour.
+    let open_lineup = Tourney {
+        id: "open-lineup".into(),
+        published: true,
+        status: TourneyStatus::Signup,
+        formation: Formation::Open,
+        team_size: 2,
+        max_teams: 2,
+        check_in_opens_at: Some(CHECK_IN_NOW + 3_600),
+        players: vec![
+            tourney_player("p1", Some(1_200), Some("ta"), false),
+            tourney_player("p2", Some(1_100), Some("ta"), false),
+            tourney_player("p3", Some(1_900), Some("tb"), false),
+            tourney_player("p4", Some(1_800), Some("tc"), false),
+            tourney_player("p5", Some(1_700), Some("tc"), false),
+            tourney_player("p6", Some(1_000), Some("td"), false),
+            tourney_player("p7", None, Some("td"), false),
+        ],
+        teams: vec![
+            tourney_team("ta", &["p1", "p2"]),
+            tourney_team("tb", &["p3"]),
+            tourney_team("tc", &["p4", "p5"]),
+            tourney_team("td", &["p6", "p7"]),
+        ],
+        entry_order: vec!["td".into(), "ta".into(), "tc".into()],
+        viewer: TourneyViewer {
+            logged_in: true,
+            signed_up_player_id: Some("p1".into()),
+            member_team_id: Some("ta".into()),
+            ..TourneyViewer::default()
+        },
+        ..Tourney::default()
+    };
+    // The same field once check-in has opened.
+    let lineup_check_in = Tourney {
+        id: "lineup-check-in".into(),
+        check_in_opens_at: Some(CHECK_IN_NOW - 60),
+        ..open_lineup.clone()
+    };
+    // The same field once the organiser has locked it: the service refuses
+    // every team action from here on, check-in included.
+    let lineup_locked = Tourney {
+        id: "lineup-locked".into(),
+        status: TourneyStatus::Drafted,
+        ..lineup_check_in.clone()
+    };
+    // The organiser has seeded two teams and this one has checked in: seeds
+    // decide the order then, the unseeded team goes last, and a check-in can
+    // be taken back.
+    let lineup_seeded = Tourney {
+        id: "lineup-seeded".into(),
+        teams: vec![
+            TourneyTeam {
+                seed: 2,
+                checked_in: true,
+                ..tourney_team("ta", &["p1", "p2"])
+            },
+            tourney_team("tb", &["p3"]),
+            TourneyTeam {
+                seed: 1,
+                ..tourney_team("tc", &["p4", "p5"])
+            },
+            tourney_team("td", &["p6", "p7"]),
+        ],
+        ..lineup_check_in.clone()
+    };
     let renamed_once = Tourney {
         id: "renamed-once".into(),
         teams: vec![TourneyTeam {
@@ -1081,6 +1192,30 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             vec![],
         ),
         tourney_rule_case(
+            "an open 2v2 with more full teams than places, before check-in opens",
+            open_lineup,
+            Some("ta"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same field once check-in has opened",
+            lineup_check_in,
+            Some("ta"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same field once it is locked: no check-in any more",
+            lineup_locked,
+            Some("ta"),
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same field seeded by the organiser, this team checked in",
+            lineup_seeded,
+            Some("ta"),
+            vec![],
+        ),
+        tourney_rule_case(
             "a player in a running event that takes players' scores",
             player_running,
             Some("t1"),
@@ -1131,6 +1266,26 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         tourney_rule_case(
             "an elimination stopped early, which its organiser may reopen",
             stopped_early,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "an invited player, taking signups, who may decline",
+            invited_player.clone(),
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same player, banned: not offered Enter at all",
+            Tourney {
+                id: "banned-player".into(),
+                my_ban: Some(OwnBan {
+                    scope: BanScope::Series,
+                    reason: "No show".into(),
+                    expires: None,
+                }),
+                ..invited_player
+            },
             None,
             vec![],
         ),
@@ -1521,6 +1676,7 @@ fn tourney_pool_draft_cases() -> Vec<TourneyPoolDraftCase> {
             pool_step(PoolAction::Pick, PoolSide::B),
             pool_step(PoolAction::Pick, PoolSide::A),
         ],
+        publish_at: None,
     };
 
     [
@@ -1978,8 +2134,12 @@ fn tourney_series_detail(id: &str, name: &str) -> SeriesDetail {
             abandoned: false,
             champion_team_id: Some("t1".into()),
             champion: "Ada".into(),
+            can_manage: true,
+            signup_opens_at: None,
+            event_days: Vec::new(),
         }],
         can_edit: true,
+        bans: Vec::new(),
     }
 }
 
@@ -4513,6 +4673,217 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a player checks their rating, and an organiser opens two players' ratings",
+            vec![
+                // A refusal keeps its sentence: it says to sign in again.
+                TourneyEvent::RatingChecking.into(),
+                TourneyEvent::RatingCheckFailed {
+                    reason: "Checking your rating needs your FAF login.".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+                TourneyEvent::RatingChecking.into(),
+                TourneyEvent::RatingChecked {
+                    check: RatingCheck {
+                        rated: true,
+                        rating: Some(1480),
+                        rating_kind: RatingKind::Ladder1v1,
+                        min: Some(1500),
+                        eligible: Some(false),
+                        message: "Your rating is below the minimum of 1500.".into(),
+                        ..RatingCheck::default()
+                    },
+                }
+                .into(),
+                TourneyEvent::PlayerRatingsLoading.into(),
+                TourneyEvent::PlayerRatingsLoaded {
+                    ratings: EntrantRatings {
+                        player_id: "p1".into(),
+                        name: "Ada".into(),
+                        counts: RatingKind::Global,
+                        boards: vec![EntrantBoardRating {
+                            board: RatingKind::Global,
+                            rating: Some(1800),
+                            games: Some(400),
+                        }],
+                        ..EntrantRatings::default()
+                    },
+                }
+                .into(),
+                // The next player's request clears the first player's table.
+                TourneyEvent::PlayerRatingsLoading.into(),
+                TourneyEvent::PlayerRatingsFailed {
+                    reason: "FAF could not be reached just now.".into(),
+                    kind: RequestFailureKind::Offline,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "the site: the account, the pending bar, the Hall of Fame and the console",
+            vec![
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::Account(TourneyAccount {
+                        logged_in: true,
+                        oauth: true,
+                        faf_id: Some(7),
+                        faf_name: "Nuggets".into(),
+                        discord: "n#1".into(),
+                        director: true,
+                        allowed: true,
+                        ..TourneyAccount::default()
+                    }),
+                }
+                .into(),
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::Pending(PendingSummary {
+                        items: vec![PendingItem {
+                            tournament_id: "e1".into(),
+                            tournament_name: "Cup".into(),
+                            kind: "requests".into(),
+                            tab: "players".into(),
+                            text: "3 signup requests await your review".into(),
+                            count: Some(3),
+                        }],
+                        requests: Some(2),
+                        new_requests: None,
+                    }),
+                }
+                .into(),
+                TourneyEvent::SiteLoading {
+                    read: SiteRead::HallOfFame,
+                }
+                .into(),
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::HallOfFame(HallOfFame {
+                        players: vec![HallPlayer {
+                            faf_id: 5,
+                            name: "Ada".into(),
+                            wins: 2,
+                            entered: 4,
+                        }],
+                        teams: Vec::new(),
+                    }),
+                }
+                .into(),
+                TourneyEvent::SiteLoading {
+                    read: SiteRead::Console,
+                }
+                .into(),
+                TourneyEvent::SiteLoadFailed {
+                    read: SiteRead::Console,
+                    reason: "Site admin, director, or approved editor only".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::Console(Box::new(SiteAdminData {
+                        role: ConsoleRole::Editor,
+                        ..SiteAdminData::default()
+                    })),
+                }
+                .into(),
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::Access {
+                        kind: AccessKind::Editor,
+                        status: AccessStatus {
+                            oauth: true,
+                            logged_in: true,
+                            allowed: false,
+                            pending: true,
+                        },
+                    },
+                }
+                .into(),
+                TourneyEvent::SiteLoaded {
+                    document: SiteDocument::Access {
+                        kind: AccessKind::Host,
+                        status: AccessStatus {
+                            oauth: true,
+                            logged_in: true,
+                            allowed: true,
+                            pending: false,
+                        },
+                    },
+                }
+                .into(),
+                TourneyEvent::ArticleImageUploaded {
+                    url: "/article-images/a.png".into(),
+                }
+                .into(),
+                TourneyEvent::DescImageUploaded {
+                    url: "/desc-images/d.png".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "the create form reads the presets and fills from an earlier event twice",
+            vec![
+                TourneyEvent::PresetsLoaded {
+                    presets: vec![TourneyPreset {
+                        id: "lots".into(),
+                        name: "LotS".into(),
+                        blurb: "Invitational with longer deciders".into(),
+                        notes: vec!["Seeds 13-16 come from the qualifier.".into()],
+                        allowed: true,
+                        apply: Some(Box::new(tourney("preset:lots"))),
+                    }],
+                }
+                .into(),
+                TourneyEvent::TemplateLoading.into(),
+                TourneyEvent::TemplateLoaded {
+                    event: Box::new(tourney("e2")),
+                }
+                .into(),
+                // The next request drops the first template at once.
+                TourneyEvent::TemplateLoading.into(),
+                TourneyEvent::TemplateFailed {
+                    reason: "Tournament not found".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "an organiser looks for maps to import, and picks a source twice",
+            vec![
+                TourneyEvent::CopySourcesLoading.into(),
+                TourneyEvent::CopySourcesFailed {
+                    reason: "FAF could not be reached just now.".into(),
+                    kind: RequestFailureKind::Offline,
+                }
+                .into(),
+                TourneyEvent::CopySourcesLoading.into(),
+                TourneyEvent::CopySourcesLoaded {
+                    sources: vec![CopySource {
+                        id: "e2".into(),
+                        name: "Last season".into(),
+                        map_count: 2,
+                        pool_count: 1,
+                        may_copy: true,
+                    }],
+                }
+                .into(),
+                TourneyEvent::CopySourceLoading.into(),
+                TourneyEvent::CopySourceLoaded {
+                    source: CopySourceMaps {
+                        tournament_id: "e2".into(),
+                        maps: Vec::new(),
+                        pools: Vec::new(),
+                    },
+                }
+                .into(),
+                // The next source's request clears the first one's maps.
+                TourneyEvent::CopySourceLoading.into(),
+                TourneyEvent::CopySourceFailed {
+                    reason: "Tournament not found".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+            ],
+        ),
+        case(
             "an organiser checks names against FAF, fails once, then writes",
             vec![
                 TourneyEvent::RenamesChecking.into(),
@@ -4629,6 +5000,36 @@ fn cases() -> Vec<Case> {
                     posts: vec![],
                 }
                 .into(),
+                // A pinned room is a second slot: its answer lands there, and
+                // the open room keeps its own posts.
+                TourneyEvent::RoomPinned {
+                    room_id: Some("m1".into()),
+                }
+                .into(),
+                TourneyEvent::ChatLoaded {
+                    room_id: "m1".into(),
+                    posts: vec![ChatPost {
+                        faf_id: Some(103),
+                        id: "c2".into(),
+                        author: "Bo".into(),
+                        body: "ready?".into(),
+                        at: Some(1_700_000_200),
+                        system: false,
+                        reply_to: None,
+                        everyone: false,
+                    }],
+                }
+                .into(),
+                // A room list without it lets the pin go.
+                TourneyEvent::ChatRoomsLoaded {
+                    rooms: vec![tourney_room("global", 0)],
+                }
+                .into(),
+                TourneyEvent::RoomPinned {
+                    room_id: Some("global".into()),
+                }
+                .into(),
+                TourneyEvent::RoomPinned { room_id: None }.into(),
                 // Switching events takes the whole conversation with it.
                 TourneyEvent::Selected {
                     tournament_id: "e2".into(),

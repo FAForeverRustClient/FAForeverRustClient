@@ -70,8 +70,16 @@ import {
   swissCutRounds,
   factionVetoOn,
   mayAddThirdPlace,
+  mayCheckIn,
+  mayCheckRating,
   mayConfigureFactionVeto,
+  mayUndoCheckIn,
+  teamLineup,
+  type TeamLineup,
+  mayDeclineInvite,
   mayEditVeto,
+  maySignUp,
+  signupNeedsRating,
   mayEndEarly,
   mayRemoveOrganiser,
   mayRemoveThirdPlace,
@@ -169,6 +177,14 @@ interface HelperFixture {
     mayReopenEarly: boolean;
     mayRepullRatings: boolean;
     mayEditVeto: boolean;
+    maySignUp: boolean;
+    mayDeclineInvite: boolean;
+    mayCheckRating: boolean;
+    signupNeedsRating: boolean;
+    checkInNow: number;
+    mayCheckIn: boolean;
+    mayUndoCheckIn: boolean;
+    teamLineup: TeamLineup;
     name: string;
     event: Tourney;
     teamId: string | null;
@@ -486,6 +502,13 @@ describe("tournament rule twins match Rust", () => {
       mayReopenEarly: mayReopenEarly(event),
       mayRepullRatings: mayRepullRatings(event),
       mayEditVeto: mayEditVeto(event),
+      maySignUp: maySignUp(event),
+      mayDeclineInvite: mayDeclineInvite(event),
+      mayCheckRating: mayCheckRating(event),
+      signupNeedsRating: signupNeedsRating(event),
+      mayCheckIn: mayCheckIn(event, recorded.checkInNow),
+      mayUndoCheckIn: mayUndoCheckIn(event),
+      teamLineup: teamLineup(event),
     }).toEqual({
       teamRating: recorded.teamRating,
       wouldExceedTeamCap: recorded.wouldExceedTeamCap,
@@ -512,6 +535,13 @@ describe("tournament rule twins match Rust", () => {
       mayReopenEarly: recorded.mayReopenEarly,
       mayRepullRatings: recorded.mayRepullRatings,
       mayEditVeto: recorded.mayEditVeto,
+      maySignUp: recorded.maySignUp,
+      mayDeclineInvite: recorded.mayDeclineInvite,
+      mayCheckRating: recorded.mayCheckRating,
+      signupNeedsRating: recorded.signupNeedsRating,
+      mayCheckIn: recorded.mayCheckIn,
+      mayUndoCheckIn: recorded.mayUndoCheckIn,
+      teamLineup: recorded.teamLineup,
     });
   });
 

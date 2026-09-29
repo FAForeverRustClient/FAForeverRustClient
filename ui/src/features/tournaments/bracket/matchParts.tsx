@@ -6,7 +6,8 @@
 // report or answer" could drift from the others. The rules live in
 // `tourneyRules`; this is the one place that turns them into buttons.
 
-import { useContext } from "react";
+import { useContext, useState } from "react";
+import { Modal } from "../../../design-system/Modal";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { PlayerSummary, Tourney, TourneyMatch } from "../../../ipc/bindings";
@@ -16,6 +17,7 @@ import { PlayerChip } from "../PlayerChip";
 import { isMyMatch, myTeamId } from "../tourneyPresentation";
 import { hasVeto, myVetoSteps } from "./vetoPresentation";
 import { MatchChatContext, mayOpenMatchChat } from "./matchChat";
+import { playersLabel } from "../display";
 
 /**
  * A slot's name as the bracket prints it, or null for a slot nobody holds yet.
@@ -44,20 +46,94 @@ export function soloProfileOf(
   return profiles.find((profile) => profile.id === fafId) ?? null;
 }
 
-/** A slot's name, as a player chip that opens the card where there is one account. */
+/**
+ * A slot's name, as a player chip that opens the card where there is one
+ * account. With `asPlayers`, a team is its players' names, the website's "Show
+ * players": only where the website does it, so the caller decides.
+ */
 export function TeamName({
   event,
   profiles,
   teamId,
+  asPlayers = false,
 }: {
   event: Tourney;
   profiles: PlayerSummary[];
   teamId: string | null;
+  asPlayers?: boolean;
 }) {
   const { t } = useTranslation();
-  const name = teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd");
+  const [popup, setPopup] = useState(false);
+  const name =
+    (asPlayers ? playersLabel(event, teamId) : null) ?? teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd");
   const profile = soloProfileOf(event, profiles, teamId);
-  return profile ? <PlayerChip player={profile} overrideName={name} /> : <>{name}</>;
+  if (profile) return <PlayerChip player={profile} overrideName={name} />;
+  // A team of several opens its roster, the website's team popup. A solo
+  // team keeps the player card above, which says more than one row would.
+  const team = event.teams.find((candidate) => candidate.id === teamId);
+  if (team === undefined || team.playerIds.length < 2) return <>{name}</>;
+  return (
+    <>
+      <button type="button" className="tournament-link-button tournament-team-link" onClick={() => setPopup(true)}>
+        {name}
+      </button>
+      {popup && <TeamPopup event={event} teamId={team.id} onClose={() => setPopup(false)} />}
+    </>
+  );
+}
+
+/**
+ * One team's roster: the website's `showTeamPopup`. Seed and name, each
+ * member by rating with the captain marked and a FAF account ticked, and the
+ * combined rating against the event's cap where it has one.
+ */
+export function TeamPopup({ event, teamId, onClose }: { event: Tourney; teamId: string; onClose: () => void }) {
+  const { t } = useTranslation();
+  const team = event.teams.find((candidate) => candidate.id === teamId);
+  if (team === undefined) return null;
+  const members = team.playerIds
+    .map((id) => event.players.find((player) => player.id === id))
+    .filter((player) => player !== undefined)
+    .sort((left, right) => (right.rating ?? -1) - (left.rating ?? -1));
+  const combined = members.reduce((total, player) => total + (player.rating ?? 0), 0);
+  const cap = event.rating.maxTeam;
+  const title = teamNameOf(event, team.id) ?? t("tournaments.bracket.tbd");
+  return (
+    <Modal onClose={onClose} ariaLabel={title} className="tournament-team-popup">
+      <h4>
+        {team.seed > 0 && <span className="tournament-match-seed mono">#{team.seed}</span>} {title}
+      </h4>
+      {members.length === 0 ? (
+        <p className="muted">{t("tournaments.teamPopup.noMembers")}</p>
+      ) : (
+        <ul className="tournament-md-players">
+          {members.map((player) => (
+            <li key={player.id}>
+              {team.captainId === player.id && (
+                <span className="tournament-badge" title={t("tournaments.matches.captain")}>
+                  C
+                </span>
+              )}
+              <span>{player.name}</span>
+              {player.fafId !== null && (
+                <span className="muted" title={t("tournaments.teamPopup.verified")}>
+                  {"✓"}
+                </span>
+              )}
+              <span className="mono muted">{player.rating ?? "–"}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="muted">
+        {t("tournaments.teams.combinedTitle")}: <span className="mono">{combined}</span>
+        {cap !== null && <span className="mono"> / {cap}</span>}
+      </p>
+      <div className="tournament-form-actions">
+        <Button onClick={onClose}>{t("common.close")}</Button>
+      </div>
+    </Modal>
+  );
 }
 
 interface MatchActionsProps {

@@ -85,6 +85,14 @@ export function PlayerTable({
                         {t("tournaments.entrants.manualShort")}
                       </span>
                     )}
+                    {/* Sent only to organisers and to people signed up here, so
+                        a match can be arranged without a round trip through the
+                        chat. */}
+                    {player.discord !== "" && (
+                      <span className="tournament-discord muted" title={t("tournaments.entrants.discord")}>
+                        {"\u{1F4AC}"} {player.discord}
+                      </span>
+                    )}
                   </span>
                 </td>
                 {/* The tournament's own rating, not the account's: it is taken

@@ -25,7 +25,10 @@ import { MatchActions, TeamName, teamNameOf } from "../bracket/matchParts";
 import { isBye } from "../bracket/swissRecords";
 import { VetoPanel, type VetoHandlers } from "../bracket/VetoPanel";
 import { hasVeto, myVetoSteps, vetoSettled } from "../bracket/vetoPresentation";
-import { maySetMatchBestOf } from "../../../shared/rules/tourneyRules";
+import { hasGames, maySetMatchBestOf } from "../../../shared/rules/tourneyRules";
+import { matchPoolKey, poolForMatch } from "../bracket/poolPresentation";
+import { BYE, neverPlayed } from "../bracket/bracketPresentation";
+import { playersLabel, useTourneyDisplay } from "../display";
 
 /** The series lengths the service accepts. */
 const BEST_OF = [1, 3, 5, 7];
@@ -43,6 +46,8 @@ interface MatchesPanelProps {
   veto: VetoHandlers;
   /** An organiser's single-call change: here, one match's length. */
   onAdmin: (change: TourneyAdmin) => void;
+  /** Bind a pool to a key (`match:<id>`), or clear it with an empty id. */
+  onAssignPool?: (key: string, poolId: string) => void;
 }
 
 type MatchState = "notPlayed" | "waiting" | "done" | "vetoes" | "live" | "ready";
@@ -58,6 +63,9 @@ const STATE_LABELS: Record<MatchState, MessageKey> = {
 
 /** Where a match stands, in the website's order of checks. */
 export function matchState(event: Tourney, entry: TourneyMatch): MatchState {
+  // First, as on the website: an early finish decides these whatever else
+  // the match says.
+  if (neverPlayed(event, entry)) return "notPlayed";
   if (entry.team1 === null || entry.team2 === null) {
     return event.status === "finished" ? "notPlayed" : "waiting";
   }
@@ -75,6 +83,7 @@ export function listedMatches(event: Tourney): TourneyMatch[] {
 export function MatchesPanel(props: MatchesPanelProps) {
   const { event } = props;
   const { t } = useTranslation();
+  const display = useTourneyDisplay();
   const [details, setDetails] = useState<string | null>(null);
 
   const all = listedMatches(event);
@@ -95,14 +104,18 @@ export function MatchesPanel(props: MatchesPanelProps) {
     .sort((left, right) => matchRank(right) - matchRank(left) || left.index - right.index);
 
   const slot = (entry: TourneyMatch, teamId: string | null, number: 1 | 2) => {
-    if (teamId !== null) {
+    const feeder: Feeder | undefined = feeders.get(`${entry.id}:${number}`);
+    // Streamer mode: a slot filled by a hidden result names its feeder, not
+    // who came through it.
+    const hiddenFeed = feeder !== undefined && display.masked(feeder.from);
+    if (teamId !== null && !hiddenFeed) {
+      const winner = !display.masked(entry) && entry.winner === teamId;
       return (
-        <span className={entry.winner === teamId ? "tournament-mt-team is-winner" : "tournament-mt-team"}>
-          <TeamName event={event} profiles={props.profiles} teamId={teamId} />
+        <span className={winner ? "tournament-mt-team is-winner" : "tournament-mt-team"}>
+          <TeamName event={event} profiles={props.profiles} teamId={teamId} asPlayers={display.showPlayers} />
         </span>
       );
     }
-    const feeder: Feeder | undefined = feeders.get(`${entry.id}:${number}`);
     return (
       <span className="muted">
         {feeder === undefined
@@ -138,6 +151,7 @@ export function MatchesPanel(props: MatchesPanelProps) {
       </thead>
       <tbody>
         {entries.map((entry) => {
+          const masked = display.masked(entry);
           const state = matchState(event, entry);
           const owed = myVetoSteps(event, entry);
           const isMine = mine !== null && (entry.team1 === mine || entry.team2 === mine);
@@ -147,12 +161,21 @@ export function MatchesPanel(props: MatchesPanelProps) {
               <td className="tournament-mt-teamcell">{slot(entry, entry.team1, 1)}</td>
               <td className="tournament-mt-teamcell">{slot(entry, entry.team2, 2)}</td>
               <td className="tournament-mt-fixed">
-                <span className={`tournament-mt-state is-${state}`}>{t(STATE_LABELS[state])}</span>
+                {masked ? (
+                  <span className="tournament-mt-state is-live">{t("tournaments.display.played")}</span>
+                ) : (
+                  <span className={`tournament-mt-state is-${state}`}>{t(STATE_LABELS[state])}</span>
+                )}
               </td>
               <td className="mono tournament-mt-fixed">
-                <MatchScore entry={entry} />
+                {masked ? <span className="muted">{t("tournaments.display.hidden")}</span> : <MatchScore entry={entry} />}
               </td>
               <td className="tournament-mt-actions tournament-mt-fixed">
+                {display.streamer && entry.status === "done" && (
+                  <Button onClick={() => display.toggleReveal(entry.id)}>
+                    {t(masked ? "tournaments.display.revealShort" : "tournaments.display.hideShort")}
+                  </Button>
+                )}
                 {owed > 0 && (
                   <Button variant="primary" onClick={() => setDetails(entry.id)}>
                     {t("tournaments.matches.yourVeto", { count: owed })}
@@ -214,7 +237,10 @@ function MatchDetails({
 }: MatchesPanelProps & { entry: TourneyMatch; onClose: () => void }) {
   const { event } = props;
   const { t } = useTranslation();
+  const display = useTourneyDisplay();
+  const masked = display.masked(entry);
   const state = matchState(event, entry);
+  const winner = (teamId: string | null) => !masked && entry.winner !== null && entry.winner === teamId;
 
   const roster = (teamId: string | null) => {
     const team = event.teams.find((held) => held.id === teamId);
@@ -223,10 +249,12 @@ function MatchDetails({
       .filter((player) => player !== undefined)
       .sort((left, right) => (right.rating ?? 0) - (left.rating ?? 0));
     return (
-      <div className={entry.winner !== null && entry.winner === teamId ? "tournament-md-team is-winner" : "tournament-md-team"}>
+      <div className={winner(teamId) ? "tournament-md-team is-winner" : "tournament-md-team"}>
         <strong className="tournament-md-name">
-          {teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd")}
-          {entry.winner !== null && entry.winner === teamId && (
+          {(display.showPlayers ? playersLabel(event, teamId) : null) ??
+            teamNameOf(event, teamId) ??
+            t("tournaments.bracket.tbd")}
+          {winner(teamId) && (
             <span className="tournament-badge">{t("tournaments.matches.winner")}</span>
           )}
         </strong>
@@ -306,13 +334,23 @@ function MatchDetails({
       <div className="tournament-md-grid">
         {roster(entry.team1)}
         <div className="tournament-md-score mono">
-          <MatchScore entry={entry} />
+          {masked ? <span className="muted">{t("tournaments.display.hidden")}</span> : <MatchScore entry={entry} />}
+          {display.streamer && entry.status === "done" && (
+            <Button onClick={() => display.toggleReveal(entry.id)}>
+              {t(masked ? "tournaments.display.reveal" : "tournaments.display.hide")}
+            </Button>
+          )}
         </div>
         {roster(entry.team2)}
       </div>
-      {replays(entry.replayIds, "tournaments.matches.replays")}
-      {replays(entry.drawReplayIds, "tournaments.matches.drawReplays")}
-      {hasVeto(event, entry) && (
+      {props.onAssignPool !== undefined && (
+        <MatchPoolPicker event={event} entry={entry} onAssign={props.onAssignPool} />
+      )}
+      <MatchSlotEditor event={event} entry={entry} onAdmin={props.onAdmin} />
+      {!masked && replays(entry.replayIds, "tournaments.matches.replays")}
+      {!masked && replays(entry.drawReplayIds, "tournaments.matches.drawReplays")}
+      {masked && hasVeto(event, entry) && <p className="muted">{t("tournaments.display.vetoHidden")}</p>}
+      {!masked && hasVeto(event, entry) && (
         <VetoPanel
           event={event}
           entry={entry}
@@ -341,5 +379,120 @@ function MatchDetails({
         <Button onClick={onClose}>{t("common.close")}</Button>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * One match's own map pool, for an organiser: the website's service keeps a
+ * pool per match (`pool_assign` with `match:<id>`) and its pages never offer
+ * it. Useful for the one series on the day that is played on other maps, a
+ * rematch or a showmatch. "The round's pool" clears it.
+ *
+ * The service rebuilds the veto only while no step has been taken, so once
+ * one has, a new pool is stored and changes nothing; that is said rather than
+ * hidden. A pool of another length is allowed, as on the service, and warned.
+ */
+function MatchPoolPicker({
+  event,
+  entry,
+  onAssign,
+}: {
+  event: Tourney;
+  entry: TourneyMatch;
+  onAssign: (key: string, poolId: string) => void;
+}) {
+  const { t } = useTranslation();
+  if (!event.viewer.organiser || event.mapPools.length === 0 || entry.status === "done") return null;
+  const key = matchPoolKey(entry.id);
+  const own = event.poolAssign.find((assignment) => assignment.round === key)?.poolId ?? "";
+  const resolved = poolForMatch(event, entry);
+  const started = entry.veto !== null && entry.veto.stepIndex > 0;
+  const chosen = event.mapPools.find((pool) => pool.id === own);
+  return (
+    <div className="tournament-md-pool">
+      <label className="tournament-field">
+        <span>{t("tournaments.matches.poolLabel")}</span>
+        <select value={own} onChange={(changed) => onAssign(key, changed.target.value)}>
+          <option value="">
+            {t("tournaments.matches.poolOfRound", {
+              pool: resolved !== null && resolved.source !== "match" ? resolved.pool.name : "-",
+            })}
+          </option>
+          {event.mapPools.map((pool) => (
+            <option key={pool.id} value={pool.id}>
+              {t("tournaments.matches.poolOption", {
+                name: pool.name,
+                bo: pool.bestOf ?? 1,
+                count: pool.mapIds.length,
+              })}
+            </option>
+          ))}
+        </select>
+      </label>
+      {chosen !== undefined && (chosen.bestOf ?? 1) !== entry.bestOf && (
+        <small className="tournament-warning">
+          {t("tournaments.matches.poolLengthDiffers", { bo: entry.bestOf })}
+        </small>
+      )}
+      {started && <small className="muted">{t("tournaments.matches.poolVetoStarted")}</small>}
+    </div>
+  );
+}
+
+/**
+ * An organiser putting a team, a bye or nobody in a side of a match that has
+ * not begun (`set_match_team`).
+ *
+ * The service has it and the website offers no control for it; it is how a
+ * slot is repaired by hand. Held back to what cannot go wrong quietly: only
+ * before the first game, only teams of the match's own division, and a bye
+ * named for what it does, since it sends the other side straight through.
+ */
+function MatchSlotEditor({
+  event,
+  entry,
+  onAdmin,
+}: {
+  event: Tourney;
+  entry: TourneyMatch;
+  onAdmin: (change: TourneyAdmin) => void;
+}) {
+  const { t } = useTranslation();
+  if (!event.viewer.organiser || entry.bracket === "freeForAll") return null;
+  if (!(entry.status === "waiting" || entry.status === "ready") || hasGames(entry)) return null;
+  const teams = event.teams.filter((team) => entry.division === 0 || team.division === entry.division);
+  const slot = (number: 1 | 2, current: string | null) => (
+    <label className="tournament-field">
+      <span>{t("tournaments.matches.slotLabel", { number })}</span>
+      <select
+        value={current ?? ""}
+        onChange={(changed) => {
+          const value = changed.target.value;
+          if (value === BYE && !window.confirm(t("tournaments.matches.slotByeConfirm"))) return;
+          onAdmin({
+            type: "setMatchTeam",
+            payload: { matchId: entry.id, slot: number, teamId: value === "" ? null : value },
+          });
+        }}
+      >
+        <option value="">{t("tournaments.matches.slotEmpty")}</option>
+        <option value={BYE}>{t("tournaments.matches.slotBye")}</option>
+        {teams.map((team) => (
+          <option key={team.id} value={team.id}>
+            {teamNameOf(event, team.id) ?? team.id}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  return (
+    <details className="tournament-md-slots">
+      <summary>{t("tournaments.matches.slotsSummary")}</summary>
+      <p className="muted">{t("tournaments.matches.slotsHint")}</p>
+      <div className="tournament-form-row">
+        {slot(1, entry.team1)}
+        {slot(2, entry.team2)}
+      </div>
+    </details>
   );
 }

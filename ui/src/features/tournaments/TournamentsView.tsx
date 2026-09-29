@@ -17,6 +17,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type {
   AppCommand,
+  SiteWrite,
   BracketConfig,
   MatchReport,
   SeedOrder,
@@ -36,15 +37,30 @@ import { ScoreSubmitDialog } from "./bracket/ScoreSubmitDialog";
 import { TournamentDetailPane } from "./detail/TournamentDetailPane";
 import { TournamentForm } from "./manage/TournamentForm";
 import { SignUpDialog } from "./SignUpDialog";
+import { HostRequest, PendingBar, SiteNav } from "./site/SiteChrome";
+import { AccessPage, FaqPage, HallOfFamePage } from "./site/SitePageViews";
+import { SeriesIndex, SeriesPage } from "./site/SeriesPages";
+import { ConsolePage } from "./site/ConsolePage";
+import type { SitePage } from "./site/sitePages";
 import {
-  STATUS_LABELS,
   countdownTo,
   formatDay,
+  formatPrize,
   groupOf,
   groupedEvents,
   type ListGroup,
 } from "./tourneyPresentation";
-import { busyMatchId, mayReport, openEvent } from "../../shared/rules/tourneyRules";
+import {
+  archiveByYear,
+  eventDayCount,
+  eventDaysLabel,
+  listCountdowns,
+  listKind,
+  listRatingLine,
+  listTeamsLine,
+  statusPill,
+} from "./orientation";
+import { busyMatchId, mayReport, openEvent, signupNeedsRating } from "../../shared/rules/tourneyRules";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -81,6 +97,9 @@ const LIVE_GROUPS: [Exclude<ListGroup, "past">, MessageKey][] = [
   ["upcoming", "tournaments.list.upcoming"],
 ];
 
+/** How many finished events a year of the archive draws before "show more". */
+const ARCHIVE_PAGE = 50;
+
 /** How often the countdowns are recomputed. Minute resolution, minute ticks. */
 const TICK_MS = 60_000;
 
@@ -94,6 +113,12 @@ export function TournamentsView() {
   /** The event whose signup dialog is open, if any. */
   const [entering, setEntering] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
+  /** Which of the site's pages is showing; the list and the detail by default. */
+  const [page, setPage] = useState<SitePage>({ kind: "events" });
+  /** A section the pending bar asked the detail to open. */
+  const [jump, setJump] = useState<{ section: string; nonce: number } | null>(null);
+  /** How many of each archive year are drawn, keyed by year (0 for undated). */
+  const [pastShown, setPastShown] = useState<Record<number, number>>({});
   // A countdown drawn once is wrong within the minute, and this tab is one
   // people leave open waiting for exactly the thing it counts down to.
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
@@ -117,6 +142,36 @@ export function TournamentsView() {
       send({ type: "loadProfile" });
     }
   }, []);
+
+  useEffect(() => {
+    const poll = () => send({ type: "loadSite", payload: { read: "pending" } });
+    poll();
+    const timer = window.setInterval(poll, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const site = state.site;
+  const siteWrite = (write: SiteWrite) => send({ type: "siteWrite", payload: { write } });
+  /** Open a page, reading what it shows as it opens. */
+  const openPage = (next: SitePage) => {
+    setPage(next);
+    if (next.kind === "hall") send({ type: "loadSite", payload: { read: "hallOfFame" } });
+    if (next.kind === "console") send({ type: "loadSite", payload: { read: "console" } });
+    if (next.kind === "faq") send({ type: "loadArticles" });
+    if (next.kind === "access") {
+      send({ type: "loadSite", payload: { read: { access: { kind: next.access } } } });
+    }
+    if (next.kind === "series") {
+      send({ type: "loadSeries" });
+      if (next.seriesId !== null) send({ type: "openSeries", payload: { seriesId: next.seriesId } });
+      else send({ type: "closeSeries" });
+    }
+  };
+  const openEventPage = (tournamentId: string, section?: string) => {
+    setPage({ kind: "events" });
+    send({ type: "select", payload: { tournamentId } });
+    if (section !== undefined) setJump({ section, nonce: Date.now() });
+  };
 
   /**
    * Ask for FAF's map catalogue, once, and only when something needs it.
@@ -174,10 +229,24 @@ export function TournamentsView() {
    * `signup` or `running` too, and is neither.
    */
   const row = (event: Tourney) => {
-    const untilSignups =
-      event.status === "signup" && !event.abandoned
-        ? countdownTo(event.signupOpensAt, now)
-        : null;
+    // The website's three countdowns, in its precedence: signups opening, else
+    // the event starting; signups closing rides beside the status rather than
+    // replacing it, because "Signups open" is still the news.
+    const countdowns = listCountdowns(event, now);
+    const untilSignups = countdownTo(countdowns.signupsOpen, now);
+    const untilStart = countdownTo(countdowns.eventStarts, now);
+    const untilClose = countdownTo(countdowns.signupsClose, now);
+    const pill = statusPill(event, now);
+    const days = eventDayCount(event.eventDays);
+    const ratingLine = listRatingLine(event, t);
+    const teamsLine = listTeamsLine(event, t);
+    const prize = formatPrize(event.prize);
+    const facts = [
+      listKind(event),
+      ...(event.imported ? [] : [t("tournaments.list.signedUp", { count: event.playerCount })]),
+      ...(ratingLine === "" ? [] : [ratingLine]),
+      ...(teamsLine === "" ? [] : [teamsLine]),
+    ];
     return (
       <li key={event.id}>
         <button
@@ -212,23 +281,47 @@ export function TournamentsView() {
                   : "tournaments.list.community",
               )}
             </span>
-            {event.abandoned ? (
-              <span className="tournament-badge">{t("tournaments.list.abandoned")}</span>
-            ) : untilSignups !== null ? (
-              <span className="tournament-badge">
-                {t("tournaments.list.signupsIn", { time: untilSignups })}
+            {/* A draft says so, and a director looking at somebody else's
+                says that too: they can open it, not run it. */}
+            {!event.published && (
+              <span
+                className="tournament-badge"
+                title={t(event.canManage ? "tournaments.list.draftTitle" : "tournaments.list.viewOnlyTitle")}
+              >
+                {t(event.canManage ? "tournaments.list.draftBadge" : "tournaments.list.viewOnly")}
               </span>
+            )}
+            {untilClose !== null && (
+              <span className="tournament-countdown is-close">
+                {t("tournaments.list.closesIn", { time: untilClose })}
+              </span>
+            )}
+            {untilClose === null && untilSignups !== null ? (
+              <span className="tournament-countdown">{t("tournaments.list.signupsIn", { time: untilSignups })}</span>
+            ) : untilClose === null && untilStart !== null ? (
+              <span className="tournament-countdown">{t("tournaments.list.startsIn", { time: untilStart })}</span>
             ) : (
-              <span className={`tournament-badge is-${event.status}`}>
-                {t(STATUS_LABELS[event.status])}
-              </span>
+              <span className={`tournament-badge is-${pill.tone}`}>{t(pill.label)}</span>
             )}
           </span>
           <span className="tournament-row-when muted">
             {formatDay(event.eventDate, t("tournaments.noDate"))}
-            {event.playerCount > 0 &&
-              ` · ${t("tournaments.list.entrants", { count: event.playerCount })}`}
+            {days > 0 && (
+              <>
+                {" · "}
+                <span className="tournament-days" title={eventDaysLabel(event.eventDays)}>
+                  {t("tournaments.list.dayCount", { count: days })}
+                </span>
+              </>
+            )}
+            {prize !== "" && (
+              <>
+                {" · "}
+                <span className="tournament-row-prize">{prize}</span>
+              </>
+            )}
           </span>
+          <span className="tournament-row-when muted">{facts.join(" · ")}</span>
         </button>
       </li>
     );
@@ -259,6 +352,10 @@ export function TournamentsView() {
               variant="primary"
               onClick={() => {
                 act({ type: "loadSeries" });
+                // The form's two starting points: named formats and this
+                // account's earlier events, both read as the form opens.
+                act({ type: "loadPresets" });
+                act({ type: "loadCopySources" });
                 setEditing("create");
               }}
               disabled={busy}
@@ -277,6 +374,7 @@ export function TournamentsView() {
               )}
             </span>
           )}
+          <HostRequest hosting={state.hosting} busy={busy} onWrite={siteWrite} />
           {/* The same deployment the tab reads from, opened in the browser.
               The tournament site is not going away: it works on a phone, which
               is where a good share of sign-ups happen, and it is where events
@@ -295,6 +393,16 @@ export function TournamentsView() {
           </Button>
         </div>
       </header>
+
+      <SiteNav page={page} account={site.account} busy={busy} onPage={openPage} onWrite={siteWrite} />
+      <PendingBar
+        pending={site.pending}
+        openId={page.kind === "events" ? state.selectedId : null}
+        inConsole={page.kind === "console"}
+        onGo={(tournamentId, section) => openEventPage(tournamentId, section)}
+        onReview={() => openPage({ kind: "console" })}
+        onDismiss={() => siteWrite({ type: "dismissRequests" })}
+      />
 
       {state.status.type === "failed" && (
         <div className="surface-error tournaments-error">
@@ -318,15 +426,85 @@ export function TournamentsView() {
         </div>
       )}
 
-      {loading && state.events.length === 0 && (
+      {page.kind === "events" && loading && state.events.length === 0 && (
         <div className="surface tournaments-state muted">{t("tournaments.loading")}</div>
       )}
 
-      {state.status.type === "ready" && state.events.length === 0 && (
+      {page.kind === "events" && state.status.type === "ready" && state.events.length === 0 && (
         <div className="surface tournaments-state muted">{t("tournaments.none")}</div>
       )}
 
-      {state.events.length > 0 && (
+      {page.kind === "hall" && <HallOfFamePage hall={site.hall} status={site.hallStatus} />}
+      {page.kind === "faq" && (
+        <FaqPage
+          articles={state.articles}
+          articleId={page.articleId}
+          assetBase={state.assetBase}
+          siteAdmin={site.account.siteAdmin}
+          onOpen={(articleId) => setPage({ kind: "faq", articleId })}
+        />
+      )}
+      {page.kind === "access" && (
+        <AccessPage
+          access={page.access}
+          status={page.access === "editor" ? site.editorAccess : site.importerAccess}
+          name={site.account.fafName}
+          busy={busy}
+          onWrite={siteWrite}
+          onSwitch={(access) => openPage({ kind: "access", access })}
+        />
+      )}
+      {page.kind === "console" && (
+        <ConsolePage
+          console={site.console}
+          status={site.consoleStatus}
+          account={site.account}
+          assetBase={state.assetBase}
+          articleImage={site.articleImage}
+          accountSearch={state.accountSearch}
+          busy={busy}
+          onSearchAccounts={(query) => act({ type: "searchAccounts", payload: { query } })}
+          onWrite={siteWrite}
+        />
+      )}
+      {page.kind === "series" &&
+        (page.seriesId !== null && state.openSeries !== null && state.openSeries.id === page.seriesId ? (
+          <SeriesPage
+            key={state.openSeries.id}
+            series={state.openSeries}
+            assetBase={state.assetBase}
+            busy={busy}
+            accountSearch={state.accountSearch}
+            onSearchAccounts={(query) => act({ type: "searchAccounts", payload: { query } })}
+            onBack={() => openPage({ kind: "series", seriesId: null })}
+            onOpenEvent={(tournamentId) => openEventPage(tournamentId)}
+            onWrite={siteWrite}
+            onSave={(draft) =>
+              act({ type: "saveSeries", payload: { draft: { id: page.seriesId ?? "", ...draft } } })
+            }
+            onDelete={() => {
+              act({ type: "deleteSeries", payload: { seriesId: page.seriesId ?? "" } });
+              openPage({ kind: "series", seriesId: null });
+            }}
+          />
+        ) : page.seriesId !== null ? (
+          <p className="muted">{t("tournaments.loading")}</p>
+        ) : (
+          <SeriesIndex
+            series={state.series}
+            mayCreate={site.account.allowed || site.account.siteAdmin || site.account.director}
+            busy={busy}
+            onOpen={(seriesId) => openPage({ kind: "series", seriesId })}
+            onCreate={(name) =>
+              act({
+                type: "saveSeries",
+                payload: { draft: { id: "", name, description: "", colour: "plain", category: null } },
+              })
+            }
+          />
+        ))}
+
+      {page.kind === "events" && state.events.length > 0 && (
         <div className="tournaments-body">
           <div className="tournaments-list">
             {LIVE_GROUPS.map(([group, heading]) =>
@@ -358,7 +536,33 @@ export function TournamentsView() {
                   <span>{t("tournaments.list.past")}</span>
                   <span className="muted">({groups.past.length})</span>
                 </button>
-                {showPast && <ul>{groups.past.map(row)}</ul>}
+                {/* By the year it was played, newest first, and fifty at a
+                    time within a year: years of imported events are thousands
+                    of rows, and nobody scrolls through those. */}
+                {showPast &&
+                  archiveByYear(groups.past).map(({ year, events }) => {
+                    const key = year ?? 0;
+                    const shown = pastShown[key] ?? ARCHIVE_PAGE;
+                    const left = events.length - shown;
+                    return (
+                      <div className="tournaments-archive-year" key={key}>
+                        <h4>
+                          {year ?? t("tournaments.list.noYear")} <span className="muted">({events.length})</span>
+                        </h4>
+                        <ul>{events.slice(0, shown).map(row)}</ul>
+                        {left > 0 && (
+                          <Button
+                            onClick={() => setPastShown((held) => ({ ...held, [key]: shown + ARCHIVE_PAGE }))}
+                          >
+                            {t("tournaments.list.showMore", {
+                              count: Math.min(left, ARCHIVE_PAGE),
+                              total: events.length,
+                            })}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
               </section>
             )}
           </div>
@@ -366,6 +570,13 @@ export function TournamentsView() {
           {open !== null ? (
             <TournamentDetailPane
               event={open}
+              onOpenPage={openPage}
+              jump={jump}
+              siteAdmin={site.account.siteAdmin}
+              pastedImage={state.descImage}
+              onUploadImage={(dataUrl) =>
+                act({ type: "uploadDescImage", payload: { tournamentId: open.id, dataUrl } })
+              }
               detailLoading={state.detailStatus.type === "loading"}
               series={state.series}
               events={state.events}
@@ -386,9 +597,43 @@ export function TournamentsView() {
               renames={state.renames}
               renamesStatus={state.renamesStatus}
               onCheckRenames={() => act({ type: "checkRenames", payload: { tournamentId: open.id } })}
+              ratingCheck={state.ratingCheck}
+              ratingCheckStatus={state.ratingCheckStatus}
+              onCheckRating={() => act({ type: "checkRating", payload: { tournamentId: open.id } })}
+              onDeclineInvite={() => act({ type: "declineInvite", payload: { tournamentId: open.id } })}
+              playerRatings={state.playerRatings}
+              playerRatingsStatus={state.playerRatingsStatus}
+              mapImport={{
+                sources: state.copySources,
+                sourcesStatus: state.copySourcesStatus,
+                source: state.copySource,
+                sourceStatus: state.copySourceStatus,
+                onLoadSources: () => act({ type: "loadCopySources" }),
+                onLoadSource: (tournamentId) => act({ type: "loadCopySource", payload: { tournamentId } }),
+              }}
+              onLoadPlayerRatings={(playerId, refresh) =>
+                act({ type: "loadPlayerRatings", payload: { tournamentId: open.id, playerId, refresh } })
+              }
+              onBanPlayer={(player, reason, expires, remove) =>
+                player.fafId !== null &&
+                act({
+                  type: "banPlayer",
+                  payload: {
+                    tournamentId: open.id,
+                    playerId: player.id,
+                    fafId: player.fafId,
+                    name: player.name,
+                    reason,
+                    expires,
+                    remove,
+                  },
+                })
+              }
               onSignUp={() => setEntering(open.id)}
               onWithdraw={() => act({ type: "withdraw", payload: { tournamentId: open.id } })}
-              onCheckIn={() => act({ type: "checkIn", payload: { tournamentId: open.id } })}
+              onCheckIn={(checkedIn) =>
+                act({ type: "checkIn", payload: { tournamentId: open.id, checkedIn } })
+              }
               onReport={setReporting}
               onAnswer={(entry, accept) =>
                 act({
@@ -499,6 +744,11 @@ export function TournamentsView() {
                     type: "factionVeto",
                     payload: { tournamentId: open.id, matchId, game, faction },
                   }),
+                onFactionReset: (matchId, game, slot) =>
+                  act({
+                    type: "administer",
+                    payload: { tournamentId: open.id, change: { type: "factionReset", payload: { matchId, game, slot } } },
+                  }),
               }}
               onSaveMap={(map) => act({ type: "saveMap", payload: { tournamentId: open.id, map } })}
               onPublishMap={(mapId, published) =>
@@ -527,6 +777,13 @@ export function TournamentsView() {
               }
               onRefreshChat={(roomId) =>
                 act({ type: "refreshChat", payload: { tournamentId: open.id, roomId } })
+              }
+              onRefreshDetail={() => act({ type: "refreshDetail", payload: { tournamentId: open.id } })}
+              pinnedRoomId={state.pinnedRoomId}
+              pinnedPosts={state.pinnedPosts}
+              onPin={(roomId) => act({ type: "pinRoom", payload: { tournamentId: open.id, roomId } })}
+              onPostTo={(roomId, body, replyTo) =>
+                act({ type: "postChat", payload: { tournamentId: open.id, roomId, body, replyTo } })
               }
               onDeleteChatPost={(roomId, postId) =>
                 act({
@@ -634,6 +891,11 @@ export function TournamentsView() {
             setEditing(null);
           }}
           onClose={() => setEditing(null)}
+          presets={state.presets}
+          sources={state.copySources}
+          template={state.template}
+          templateStatus={state.templateStatus}
+          onLoadTemplate={(tournamentId) => act({ type: "loadTemplate", payload: { tournamentId } })}
         />
       )}
 
@@ -641,12 +903,16 @@ export function TournamentsView() {
         <SignUpDialog
           name={state.events.find((event) => event.id === entering)?.name ?? ""}
           discord={state.discord}
+          needsRating={(() => {
+            const entered = open !== null && open.id === entering ? open : state.events.find((event) => event.id === entering);
+            return entered !== undefined && signupNeedsRating(entered);
+          })()}
           busy={busy}
-          onConfirm={(discord) => {
+          onConfirm={(discord, rating) => {
             // The handle first, so an organiser reading the entrant list sees
             // it against the entry rather than a minute later.
             if (discord !== null) act({ type: "setDiscord", payload: { handle: discord } });
-            act({ type: "signUp", payload: { tournamentId: entering } });
+            act({ type: "signUp", payload: { tournamentId: entering, rating } });
             setEntering(null);
           }}
           onClose={() => setEntering(null)}

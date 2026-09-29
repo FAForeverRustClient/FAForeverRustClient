@@ -13,6 +13,8 @@ fn player(id: &str, name: &str, faf_id: Option<i32>) -> TourneyPlayer {
         pending: false,
         note: String::new(),
         signed_at: None,
+        discord: String::new(),
+        team_name: String::new(),
     }
 }
 
@@ -989,4 +991,33 @@ fn unknown_wire_values_fall_back_without_inventing_meaning() {
     assert_eq!(Formation::from_wire("premade"), Formation::Open);
     assert_eq!(BracketKind::from_wire("Double"), BracketKind::Double);
     assert_eq!(Competition::from_wire("FFA"), Competition::FreeForAll);
+}
+
+#[test]
+fn pasted_pictures_take_their_paths_once_the_event_exists() {
+    let draft = TourneyDraft {
+        description: "Intro\n![image](pending-image-0)\nMore".into(),
+        rewards: "![image](pending-image-1)".into(),
+        pending_images: vec![
+            PendingImage {
+                token: "pending-image-0".into(),
+                data_url: "data:image/png;base64,AA==".into(),
+            },
+            PendingImage {
+                token: "pending-image-1".into(),
+                data_url: "data:image/png;base64,AA==".into(),
+            },
+        ],
+        ..TourneyDraft::default()
+    };
+    let placed = draft.with_images_placed(&[
+        ("pending-image-0".into(), "/desc-images/a.png".into()),
+        ("pending-image-1".into(), "/desc-images/b.png".into()),
+    ]);
+    assert_eq!(
+        placed.description,
+        "Intro\n![image](/desc-images/a.png)\nMore"
+    );
+    assert_eq!(placed.rewards, "![image](/desc-images/b.png)");
+    assert!(placed.pending_images.is_empty());
 }

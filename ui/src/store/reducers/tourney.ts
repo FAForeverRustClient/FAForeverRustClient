@@ -18,6 +18,14 @@ function clearOpenEvent(state: TourneyState): TourneyState {
     chatStatus: { type: "idle" },
     renames: null,
     renamesStatus: { type: "idle" },
+    ratingCheck: null,
+    ratingCheckStatus: { type: "idle" },
+    playerRatings: null,
+    playerRatingsStatus: { type: "idle" },
+    copySource: null,
+    copySourceStatus: { type: "idle" },
+    pinnedRoomId: null,
+    pinnedPosts: [],
   };
 }
 
@@ -113,8 +121,20 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
       // An open room that no longer exists would leave posts on screen with
       // nothing to reload them from.
       const stillOpen = rooms.some((room) => room.id === state.openRoomId);
-      if (stillOpen) return { ...state, chatRooms: rooms };
-      return { ...state, chatRooms: rooms, openRoomId: null, chatPosts: [] };
+      // The pinned room likewise: gone from the list means it can no longer
+      // be read.
+      const stillPinned = rooms.some((room) => room.id === state.pinnedRoomId);
+      return {
+        ...state,
+        chatRooms: rooms,
+        ...(stillOpen ? {} : { openRoomId: null, chatPosts: [] }),
+        ...(stillPinned ? {} : { pinnedRoomId: null, pinnedPosts: [] }),
+      };
+    }
+    case "roomPinned": {
+      const { roomId } = event.payload;
+      if (state.pinnedRoomId === roomId) return { ...state, pinnedRoomId: roomId };
+      return { ...state, pinnedRoomId: roomId, pinnedPosts: [] };
     }
     case "roomOpened": {
       const { roomId } = event.payload;
@@ -125,9 +145,11 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
       return { ...state, chatStatus: { type: "loading" } };
     case "chatLoaded": {
       const { roomId, posts } = event.payload;
-      if (state.openRoomId !== roomId) return state;
+      const pinned = state.pinnedRoomId === roomId ? { pinnedPosts: posts } : {};
+      if (state.openRoomId !== roomId) return { ...state, ...pinned };
       return {
         ...state,
+        ...pinned,
         chatPosts: posts,
         chatStatus: { type: "ready" },
         // Reading a room is what clears its unread marker server-side, so the
@@ -192,6 +214,114 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
     case "accountSearchCleared":
       return { ...state, accountSearch: { query: "", matches: [], status: { type: "idle" } } };
 
+    case "ratingChecking":
+      return { ...state, ratingCheck: null, ratingCheckStatus: { type: "loading" } };
+    case "ratingChecked":
+      return { ...state, ratingCheck: event.payload.check, ratingCheckStatus: { type: "ready" } };
+    case "ratingCheckFailed":
+      return {
+        ...state,
+        ratingCheckStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
+    // A new request drops the previous player's table at once, so one entrant's
+    // ratings never show under another's name.
+    case "playerRatingsLoading":
+      return { ...state, playerRatings: null, playerRatingsStatus: { type: "loading" } };
+    case "playerRatingsLoaded":
+      return { ...state, playerRatings: event.payload.ratings, playerRatingsStatus: { type: "ready" } };
+    case "playerRatingsFailed":
+      return {
+        ...state,
+        playerRatingsStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
+    case "copySourcesLoading":
+      return { ...state, copySourcesStatus: { type: "loading" } };
+    case "copySourcesLoaded":
+      return { ...state, copySources: event.payload.sources, copySourcesStatus: { type: "ready" } };
+    case "copySourcesFailed":
+      return {
+        ...state,
+        copySourcesStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
+    case "presetsLoaded":
+      return { ...state, presets: event.payload.presets };
+    case "siteLoading": {
+      const read = event.payload.read;
+      if (read === "hallOfFame") return { ...state, site: { ...state.site, hallStatus: { type: "loading" } } };
+      if (read === "console") return { ...state, site: { ...state.site, consoleStatus: { type: "loading" } } };
+      return state;
+    }
+    case "siteLoaded": {
+      const document = event.payload.document;
+      switch (document.type) {
+        case "account":
+          // The handle comes with the account; the signup dialog reads it.
+          return { ...state, discord: document.payload.discord, site: { ...state.site, account: document.payload } };
+        case "pending":
+          return { ...state, site: { ...state.site, pending: document.payload } };
+        case "hallOfFame":
+          return { ...state, site: { ...state.site, hall: document.payload, hallStatus: { type: "ready" } } };
+        case "console":
+          return { ...state, site: { ...state.site, console: document.payload, consoleStatus: { type: "ready" } } };
+        case "access": {
+          const { kind, status } = document.payload;
+          if (kind === "editor") return { ...state, site: { ...state.site, editorAccess: status } };
+          if (kind === "importer") return { ...state, site: { ...state.site, importerAccess: status } };
+          return {
+            ...state,
+            hosting: { loggedIn: status.loggedIn, allowed: status.allowed, pending: status.pending },
+          };
+        }
+      }
+      return state;
+    }
+    case "siteLoadFailed": {
+      const failed = {
+        type: "failed" as const,
+        payload: { reason: event.payload.reason, kind: event.payload.kind },
+      };
+      if (event.payload.read === "hallOfFame") return { ...state, site: { ...state.site, hallStatus: failed } };
+      if (event.payload.read === "console") return { ...state, site: { ...state.site, consoleStatus: failed } };
+      return state;
+    }
+    case "articleImageUploaded":
+      return { ...state, site: { ...state.site, articleImage: event.payload.url } };
+    case "descImageUploaded":
+      return { ...state, descImage: event.payload.url };
+    case "templateLoading":
+      return { ...state, template: null, templateStatus: { type: "loading" } };
+    case "templateLoaded":
+      return { ...state, template: event.payload.event, templateStatus: { type: "ready" } };
+    case "templateFailed":
+      return {
+        ...state,
+        templateStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
+    // As with a player's ratings: the next source drops the previous one's maps.
+    case "copySourceLoading":
+      return { ...state, copySource: null, copySourceStatus: { type: "loading" } };
+    case "copySourceLoaded":
+      return { ...state, copySource: event.payload.source, copySourceStatus: { type: "ready" } };
+    case "copySourceFailed":
+      return {
+        ...state,
+        copySourceStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
     case "renamesChecking":
       return { ...state, renames: null, renamesStatus: { type: "loading" } };
     case "renamesChecked":

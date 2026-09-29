@@ -33,8 +33,10 @@ import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type {
   AccountSearch,
+  EntrantRatings,
   RenameCheck,
   TourneyLoadStatus,
+  TourneyPlayer,
   BracketConfig,
   FactionVetoConfig,
   FormatDraft,
@@ -82,6 +84,8 @@ import {
   mayShuffleTeams,
 } from "../../../shared/rules/tourneyRules";
 import { FactionVetoPanel } from "./FactionVetoPanel";
+import type { MapImport } from "./MapImportDialog";
+import { PlayoffsPanel } from "./PlayoffsPanel";
 
 const PHASE_LABELS: Record<TourneyPhase, MessageKey> = {
   formTeams: "tournaments.manage.formTeams",
@@ -154,12 +158,24 @@ interface ManagePanelProps {
   renames: RenameCheck | null;
   renamesStatus: TourneyLoadStatus;
   onCheckRenames: () => void;
+  /** One entrant's every rating, and asking for them. */
+  playerRatings: EntrantRatings | null;
+  playerRatingsStatus: TourneyLoadStatus;
+  onLoadPlayerRatings: (playerId: string, refresh: boolean) => void;
+  onBanPlayer: (player: TourneyPlayer, reason: string, expires: number | null, remove: boolean) => void;
+  /** Importing maps from another event. */
+  mapImport: MapImport;
   busy: boolean;
   /** Save the settings. The form is inline here, so there is no dialog. */
   onEditInfo: (draft: TourneyDraft) => void;
   onPublish: () => void;
   onAdvance: (phase: TourneyPhase, config?: BracketConfig) => void;
   onArchive: () => void;
+  /** Store a picture pasted into the event's text, and the last one stored. */
+  onUploadImage?: (dataUrl: string) => void;
+  pastedImage?: string | null;
+  /** A site admin, for whom archiving is deleting and the category is open. */
+  siteAdmin?: boolean;
   onAssignPool: (roundKey: string, poolId: string) => void;
   onOpenUrl: (url: string) => void;
   onAddPlayer: (name: string, rating: number | null) => void;
@@ -343,6 +359,15 @@ export function ManagePanel({
               <ManageLink event={event} onOpen={onOpenUrl} />
             </section>
 
+            {/* A running Swiss stage's playoffs: who picks, the clock, how
+                equal records are ordered, and undoing or redoing them. */}
+            {event.status === "running" && event.playoffs !== null && (
+              <section className="tournament-tile is-wide">
+                <h5>{t("tournaments.playoffs.title")}</h5>
+                <PlayoffsPanel event={event} busy={busy} onAdmin={rest.onAdmin} />
+              </section>
+            )}
+
             {(mayEndEarly(event) || mayReopenEarly(event)) && (
               <section className="tournament-tile is-wide">
                 <h5>
@@ -378,18 +403,45 @@ export function ManagePanel({
                     : t("tournaments.manage.abandon")}
                 </Button>
               </div>
+              {/* The website's category switch: organisers choose once, at
+                  creation, and only a site admin changes it afterwards. */}
+              {rest.siteAdmin === true && !event.imported && (
+                <div className="tournament-step">
+                  <h6>{t("tournaments.manage.categoryTitle")}</h6>
+                  <p className="tournament-step-hint muted">{t("tournaments.manage.categoryHint")}</p>
+                  <Button
+                    disabled={busy}
+                    onClick={() => {
+                      const category = event.category === "official" ? "community" : "official";
+                      if (window.confirm(t(category === "official" ? "tournaments.manage.toOfficialConfirm" : "tournaments.manage.toCommunityConfirm"))) {
+                        rest.onAdmin({ type: "setCategory", payload: { category } });
+                      }
+                    }}
+                  >
+                    {t(event.category === "official" ? "tournaments.manage.toCommunity" : "tournaments.manage.toOfficial")}
+                  </Button>
+                </div>
+              )}
+              {/* The service's `delete` archives for an organiser and deletes
+                  outright for a site admin. The website's button says
+                  "archive" either way; here a site admin is told the truth. */}
               <div className="tournament-step">
-                <h6>{t("tournaments.manage.archive")}</h6>
-                <p className="tournament-step-hint muted">{t("tournaments.manage.archiveHint")}</p>
+                <h6>{t(rest.siteAdmin === true ? "tournaments.manage.deleteForever" : "tournaments.manage.archive")}</h6>
+                <p className="tournament-step-hint muted">
+                  {t(rest.siteAdmin === true ? "tournaments.manage.deleteForeverHint" : "tournaments.manage.archiveHint")}
+                </p>
                 <Button
+                  variant={rest.siteAdmin === true ? "danger" : undefined}
                   disabled={busy}
                   onClick={() => {
-                    if (window.confirm(t("tournaments.manage.archiveConfirm", { name: event.name }))) {
-                      onArchive();
-                    }
+                    const confirm =
+                      rest.siteAdmin === true
+                        ? t("tournaments.manage.deleteForeverConfirm", { name: event.name })
+                        : t("tournaments.manage.archiveConfirm", { name: event.name });
+                    if (window.confirm(confirm)) onArchive();
                   }}
                 >
-                  {t("tournaments.manage.archive")}
+                  {t(rest.siteAdmin === true ? "tournaments.manage.deleteForever" : "tournaments.manage.archive")}
                 </Button>
               </div>
             </section>
@@ -423,6 +475,8 @@ export function ManagePanel({
                 series={rest.series}
                 busy={busy}
                 inline
+                onUploadImage={rest.onUploadImage}
+                pastedImage={rest.pastedImage}
                 onSubmit={onEditInfo}
                 onClose={() => setOpen(null)}
               />
@@ -477,6 +531,13 @@ export function ManagePanel({
               onUninvite={rest.onUninvite}
               onReseed={rest.onReseed}
               onSplit={rest.onSplitDivisions}
+              playerRatings={rest.playerRatings}
+              playerRatingsStatus={rest.playerRatingsStatus}
+              onLoadRatings={rest.onLoadPlayerRatings}
+              onBanPlayer={rest.onBanPlayer}
+              onReplace={(playerId, replacement) =>
+                rest.onAdmin({ type: "replacePlayer", payload: { playerId, with: replacement } })
+              }
             />
             <div className="tournament-step">
               <h6>{t("tournaments.renames.title")}</h6>
@@ -532,6 +593,7 @@ export function ManagePanel({
                     onPublish={rest.onPublishMap}
                     onDelete={rest.onDeleteMap}
                     onAdmin={rest.onAdmin}
+                    imports={rest.mapImport}
                   />
                 </li>
                 <li
@@ -549,6 +611,7 @@ export function ManagePanel({
                     onSave={rest.onSavePool}
                     onPublish={rest.onPublishPool}
                     onDelete={rest.onDeletePool}
+                    onAdmin={rest.onAdmin}
                   />
                 </li>
                 <li

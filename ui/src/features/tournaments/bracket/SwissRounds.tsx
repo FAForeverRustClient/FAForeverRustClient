@@ -37,6 +37,8 @@ interface SwissRoundsProps {
   busyMatchId: string | null;
   /** Whether the Swiss final belongs here, which it does unless a playoff bracket follows. */
   withFinal: boolean;
+  /** Leave out the rounds not paired yet: the playoffs have taken over. */
+  hideUpcoming?: boolean;
   onReport: (entry: TourneyMatch) => void;
   onAnswer: (entry: TourneyMatch, accept: boolean) => void;
   onHost: (entry: TourneyMatch) => void;
@@ -61,7 +63,7 @@ export function SwissRounds(props: SwissRoundsProps) {
   // Rounds that exist in the plan but have not been paired yet, while the
   // stage is still running: highest first, above the ones being played.
   const upcoming: number[] = [];
-  if (event.status === "running") {
+  if (event.status === "running" && props.hideUpcoming !== true) {
     for (let round = planned; round > played; round -= 1) upcoming.push(round);
   }
   const rounds: number[] = [];

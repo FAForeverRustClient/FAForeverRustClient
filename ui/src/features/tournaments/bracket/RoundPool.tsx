@@ -3,7 +3,7 @@
 
 import { Modal } from "../../../design-system/Modal";
 import { Icon } from "../../../design-system/Icon";
-import type { Tourney, VaultMap } from "../../../ipc/bindings";
+import type { MapPool, Tourney, VaultMap } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import {
   matchVaultMap,
@@ -59,17 +59,28 @@ export function PoolPanel({
   vault,
   assetBase,
   roundKey,
+  pool: given,
   onClose,
 }: {
   event: Tourney;
   vault: VaultMap[];
   assetBase: string;
   roundKey: string;
+  /** The pool to show, where the caller resolved it (a fallback included). */
+  pool?: MapPool;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const pool = poolForRound(event, roundKey);
+  const pool = given ?? poolForRound(event, roundKey);
   if (pool === null) return null;
+  const bans = pool.sequence.filter((step) => step.action === "ban").length;
+  const picks = pool.sequence.filter((step) => step.action === "pick").length;
+  const sides = {
+    lowerA: "tournaments.vetoPlan.lowerA",
+    lowerB: "tournaments.vetoPlan.lowerB",
+    random: "tournaments.vetoPlan.random",
+    manual: "tournaments.vetoPlan.manual",
+  } as const;
 
   const named = (mapId: string) => {
     const held = event.mapDb.find((candidate) => candidate.id === mapId);
@@ -92,7 +103,7 @@ export function PoolPanel({
       <header className="tournament-pool-modal-head">
         <h4>{pool.name}</h4>
         <span className="muted">
-          {t("tournaments.bracket.poolCount", { count: pool.mapIds.length })}
+          {`Bo${pool.bestOf ?? 1}`} · {t("tournaments.bracket.poolCount", { count: pool.mapIds.length })}
         </span>
       </header>
       {pool.mapIds.length === 0 ? (
@@ -113,6 +124,39 @@ export function PoolPanel({
             );
           })}
         </ul>
+      )}
+      {/* How the veto will run, in order, so captains do not meet the
+          sequence for the first time when it is their turn. The website's
+          footer reads a field the service never sends; this reads the mode. */}
+      <h5>{t("tournaments.vetoPlan.title")}</h5>
+      {!event.veto.enabled ? (
+        <p className="muted">{t("tournaments.vetoPlan.off")}</p>
+      ) : pool.sequence.length === 0 ? (
+        <p className="muted">{t("tournaments.vetoPlan.noOrder")}</p>
+      ) : (
+        <div className="tournament-veto-plan">
+          <p className="muted">
+            {t("tournaments.vetoPlan.summary", { maps: pool.mapIds.length, bans, picks })}{" "}
+            {t(sides[event.veto.teamA] ?? "tournaments.vetoPlan.lowerA")}
+          </p>
+          <ol className="tournament-veto-plan-steps">
+            {pool.sequence.map((step, index) => (
+              <li key={index}>
+                <span className={`tournament-veto-act is-${step.action}`}>
+                  {t(step.action === "ban" ? "tournaments.vetoPlan.ban" : "tournaments.vetoPlan.pick")}
+                </span>{" "}
+                {t(step.team === "a" ? "tournaments.pools.teamA" : "tournaments.pools.teamB")}
+              </li>
+            ))}
+            <li className="is-decider">
+              <span className="tournament-veto-act is-pick">{t("tournaments.vetoPlan.decider")}</span>{" "}
+              {t("tournaments.vetoPlan.lastStanding")}
+            </li>
+          </ol>
+          <p className="muted">
+            {t(event.veto.mode === "continuous" ? "tournaments.vetoPlan.continuous" : "tournaments.vetoPlan.upfront")}
+          </p>
+        </div>
       )}
     </Modal>
   );

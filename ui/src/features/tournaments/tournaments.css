@@ -4301,3 +4301,1208 @@
   flex-direction: column;
   gap: var(--space-1);
 }
+
+/* -- Entering: a ban, an invitation, a rating check ---------------------------- */
+.tournament-entry-notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tournament-entry-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-border);
+}
+
+.tournament-entry-notice h5,
+.tournament-entry-notice p {
+  margin: 0;
+}
+
+.tournament-entry-notice.is-danger {
+  border-left-color: var(--color-error);
+}
+
+.tournament-entry-notice.is-invite {
+  border-left-color: var(--color-warn);
+}
+
+/* The verdict first and bold, the numbers behind it underneath. */
+.tournament-rating-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--color-border);
+}
+
+.tournament-rating-verdict.is-good {
+  border-left-color: var(--color-ok);
+}
+
+.tournament-rating-verdict.is-bad {
+  border-left-color: var(--color-error);
+}
+
+.tournament-rating-verdict.is-warn {
+  border-left-color: var(--color-warn);
+}
+
+/* A Discord handle beside a name, set off from the badges. */
+.tournament-discord {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* -- Seeding by hand ----------------------------------------------------------- */
+.tournament-seed-list {
+  list-style: none;
+  margin: var(--space-2) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 520px;
+}
+
+.tournament-seed-row {
+  display: grid;
+  grid-template-columns: 2.5em minmax(0, 1fr) 4em auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.tournament-seed-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* -- A player's every rating --------------------------------------------------- */
+.tournament-ratings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tournament-ratings-table th,
+.tournament-ratings-table td {
+  text-align: left;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tournament-ratings-table tr.is-counted td {
+  font-weight: 600;
+}
+
+.tournament-ratings-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(560px, 92vw);
+}
+
+.tournament-replace-dialog,
+.tournament-choice-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(480px, 92vw);
+}
+
+.tournament-replace-dialog h6 {
+  margin: var(--space-2) 0 0;
+}
+
+.tournament-team-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-team-section.surface {
+  padding: var(--space-3);
+}
+
+.tournament-team-section.is-mine {
+  border-left: 3px solid var(--color-accent);
+}
+
+.tournament-team-section h5 {
+  margin: 0;
+}
+
+.tournament-warning {
+  color: var(--color-warn);
+}
+
+.tournament-team-seed {
+  color: var(--color-rating);
+  margin-right: var(--space-1);
+}
+
+.tournament-team-count.is-ok {
+  color: var(--color-ok);
+}
+
+.tournament-team-count.is-over {
+  color: var(--color-error);
+}
+
+.tournament-free-agents-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tournament-free-agents-head h5 {
+  margin: 0;
+}
+
+.tournament-sort-toggle {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.tournament-free-agent-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-2);
+}
+
+.tournament-free-agent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  min-width: 0;
+}
+
+.tournament-free-agent-top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.tournament-type-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.tournament-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tournament-pill.is-signup {
+  color: var(--color-ok);
+  border-color: var(--color-ok);
+}
+
+.tournament-pill.is-running,
+.tournament-pill.is-draft,
+.tournament-pill.is-drafted {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+}
+
+.tournament-pill.is-abandoned {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.tournament-pill.is-finished,
+.tournament-pill.is-presignup {
+  color: var(--color-muted);
+}
+
+.tournament-stepper {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 12px;
+}
+
+.tournament-stepper li {
+  color: var(--color-subtle);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.tournament-stepper li + li::before {
+  content: "\25B8";
+  margin-right: var(--space-2);
+  color: var(--color-subtle);
+}
+
+.tournament-stepper li.is-done {
+  color: var(--color-muted);
+}
+
+.tournament-stepper li.is-now {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.tournament-turn-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-warn);
+  border-radius: var(--radius-md, 6px);
+  background: var(--color-surface-raised);
+}
+
+.tournament-turn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-warn);
+  flex: none;
+}
+
+.tournament-turn-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.tournament-publish-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-warn);
+}
+
+.tournament-publish-banner p {
+  margin: 0;
+}
+
+.tournament-share-link {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The list row's countdowns: a quiet chip, amber when signups are closing. */
+.tournament-countdown {
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tournament-countdown.is-close {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+}
+
+.tournament-row-prize {
+  color: var(--color-ok);
+  font-weight: 600;
+}
+
+.tournaments-archive-year {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tournaments-archive-year h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tournament-days {
+  white-space: nowrap;
+}
+
+/* -- The map editor's spawn rows ----------------------------------------
+   Sixteen numbered chips per row, as the website draws them: a click switches
+   one in or out, and the row reads left to right like the spawn numbers do. */
+
+.tournament-spawn-row {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.tournament-spawn-row legend {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 var(--space-1);
+}
+
+.tournament-spawn-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.tournament-spawn-chip {
+  min-width: 28px;
+  padding: 2px var(--space-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.tournament-spawn-chip.is-on {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  font-weight: 600;
+}
+
+.tournament-map-editor-preview {
+  max-height: 120px;
+  max-width: 100%;
+  object-fit: contain;
+  align-self: flex-start;
+  border-radius: var(--radius-sm);
+}
+
+.tournament-md-pool {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+}
+
+.tournament-fveto-reset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+/* Importing maps from another event. */
+.tournament-map-db-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tournament-import-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(620px, 92vw);
+}
+
+.tournament-import-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.tournament-import-body h6 {
+  margin: var(--space-2) 0 0;
+}
+
+/* -- Overview: imports, schedule, rating source, recent results -------------- */
+
+/* An archived import, marked the way the website marks it: a coloured edge and
+   a small capitals label. */
+.tournament-imported {
+  border-left: 3px solid var(--color-accent);
+  gap: var(--space-2);
+}
+
+.tournament-imported-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.tournament-imported p {
+  margin: 0;
+}
+
+/* The second block of a cell, a step below the first. */
+.tournament-cell-gap {
+  margin-top: var(--space-2);
+}
+
+.tournament-rating-source {
+  margin: 0;
+}
+
+/* Where a "click here" lands, for two seconds. */
+.is-focus-flash {
+  outline: 2px solid var(--color-warn);
+  outline-offset: 2px;
+  transition: outline-color 0.4s ease;
+}
+
+.tournament-recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tournament-recent-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.tournament-recent-round {
+  flex: none;
+  min-width: 110px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.tournament-recent-teams {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-muted);
+}
+
+.tournament-recent-teams .is-winner {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.tournament-recent-vs {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.tournament-recent-score {
+  font-weight: 700;
+}
+
+.tournament-recent-maps {
+  font-size: 12px;
+}
+
+.tournament-recent-footer {
+  margin: 0;
+  font-size: 12px;
+}
+
+/* The Stats tab and an import's placings. */
+.tournament-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tournament-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-2);
+}
+
+.tournament-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.tournament-stat-value {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.tournament-stat-label {
+  font-size: 13px;
+}
+
+.tournament-stat-sub {
+  font-size: 12px;
+}
+
+.tournament-placings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tournament-placings li {
+  display: grid;
+  grid-template-columns: 2.5em minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.tournament-placings li.rank-1 {
+  color: var(--color-rating);
+  font-weight: 600;
+}
+
+.tournament-map-usage {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tournament-map-usage li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px 3em;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.tournament-map-usage li.is-unused {
+  color: var(--color-muted);
+}
+
+.tournament-map-usage-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-map-usage-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  overflow: hidden;
+}
+
+.tournament-map-usage-bar span {
+  display: block;
+  height: 100%;
+  background: var(--color-ok);
+  opacity: 0.6;
+}
+
+/* The display switches in the header, and the shortcut settings. */
+.tournament-display-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.tournament-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tournament-toggle.is-on {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+  background: var(--color-surface-raised);
+}
+
+.tournament-display-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(460px, 92vw);
+}
+
+.tournament-hotkeys {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tournament-hotkeys li {
+  display: grid;
+  grid-template-columns: 5em minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.tournament-hotkey.is-arming {
+  border-color: var(--color-warn);
+  color: var(--color-warn);
+}
+
+/* A chat pinned beside the sections. */
+.tournament-body-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.tournament-body-row > .tournament-section-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.tournament-pinned-chat {
+  position: sticky;
+  top: 0;
+  flex: none;
+  width: clamp(300px, 25vw, 370px);
+  max-height: calc(100vh - 160px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  overflow: hidden;
+}
+
+.tournament-pinned-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tournament-pinned-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-chat-room-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.tournament-chat-room-row > .tournament-chat-room {
+  flex: 1;
+  min-width: 0;
+}
+
+.tournament-pin {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 2px var(--space-1);
+  font-size: 12px;
+}
+
+.tournament-pin.is-on {
+  border-color: var(--color-warn);
+  color: var(--color-warn);
+}
+
+.tournament-chat-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.tournament-chat-open-head {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 980px) {
+  .tournament-body-row.has-pin {
+    flex-direction: column;
+  }
+
+  .tournament-pinned-chat {
+    position: static;
+    width: 100%;
+    max-height: min(58vh, 440px);
+  }
+}
+
+/* Swiss playoffs: the pick phase, the round 1 editor and the setup. */
+.tournament-picks,
+.tournament-round-one {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.tournament-picks h4,
+.tournament-round-one h4 {
+  margin: 0;
+}
+
+.tournament-picks-callout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-warn);
+  border-radius: var(--radius-md);
+}
+
+.tournament-picks-callout.is-urgent strong {
+  color: var(--color-error);
+}
+
+.tournament-picks-rows,
+.tournament-round-one-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tournament-picks-rows li {
+  display: grid;
+  grid-template-columns: 2em minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.tournament-picks-rows li.is-turn {
+  font-weight: 600;
+}
+
+.tournament-round-one-rows li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.tournament-playoffs-setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tournament-playoffs-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tournament-playoffs-head h4,
+.tournament-playoffs-head p {
+  margin: 0;
+}
+
+/* -- Format extras: cuts, playoffs, picking, ends early, FFA -------------
+   The website's indented boxes under each switch: the switch says what, the
+   box says how, and it is only there while the switch is on. */
+
+.tournament-format-extras {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.tournament-format-box {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--color-border);
+}
+
+.tournament-format-box p {
+  margin: 0;
+}
+
+/* -- Byes, missing arms, unplayed matches --------------------------------
+   A bye is not a game and is not drawn, but it keeps its slot, because the
+   connectors are derived from the card pitch: an empty slot of the same
+   height, with no border and no lines. A card whose feeder is such a slot
+   drops the arm that would lead to it. */
+
+.tournament-match.is-phantom {
+  visibility: hidden;
+}
+
+.tournament-round.is-bracket .tournament-match.is-no-top::after {
+  border-top: 0;
+  top: 50%;
+  height: calc(var(--pitch, 1) * var(--slot) / 4);
+}
+
+.tournament-round.is-bracket .tournament-match.is-no-bottom::after {
+  border-bottom: 0;
+  height: calc(var(--pitch, 1) * var(--slot) / 4);
+}
+
+.tournament-round.is-bracket .tournament-match.is-no-top.is-no-bottom::after {
+  display: none;
+}
+
+.tournament-round.is-straight .tournament-match.is-no-stub::before {
+  border-top: 0;
+}
+
+.tournament-match.is-not-played {
+  opacity: 0.4;
+}
+
+.tournament-not-played {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tournament-match.is-preview {
+  border-style: dashed;
+  opacity: 0.82;
+}
+
+.tournament-match-replays {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  font-size: 11px;
+}
+
+.tournament-division {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.tournament-division > h3 {
+  margin: var(--space-3) 0 0;
+}
+
+.tournament-stop-notice {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-warn);
+}
+
+.tournament-stop-notice.is-done {
+  border-left-color: var(--color-border-strong);
+}
+
+.tournament-stop-notice p {
+  margin: 0;
+}
+
+.tournament-stop-head {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.tournament-preview-head {
+  padding: var(--space-3);
+}
+
+.tournament-preview-head h4,
+.tournament-preview-head p {
+  margin: 0 0 var(--space-1);
+}
+
+.tournament-mapblock {
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+  min-width: 0;
+}
+
+.tournament-mapblock-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  color: var(--color-muted);
+}
+
+.tournament-pick-rows {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.tournament-pick-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tournament-pick-row.is-on {
+  border-color: var(--color-accent);
+  background: var(--color-surface-raised);
+}
+
+.tournament-veto-plan-steps {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.tournament-veto-act {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tournament-veto-act.is-ban {
+  color: var(--color-error);
+}
+
+.tournament-veto-act.is-pick {
+  color: var(--color-ok);
+}
+
+.tournament-team-link {
+  color: inherit;
+}
+
+/* -- The site around the tournaments ------------------------------------
+   The website's top bar as a row of buttons, the pending bar under it, and
+   the pages beside the list: Hall of Fame, series, FAQ / Rules, the console. */
+
+.tournament-site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tournament-standdown.is-off {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+}
+
+.tournament-pending {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.tournament-pending-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-warn);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.tournament-pending-bar.is-admin {
+  border-color: var(--color-faction-uef);
+}
+
+.tournament-site-page {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 1100px;
+}
+
+.tournament-site-page > h2 {
+  margin: 0;
+}
+
+.tournament-site-panel {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.tournament-site-panel h3,
+.tournament-site-panel h4,
+.tournament-site-panel p {
+  margin: 0;
+}
+
+.tournament-site-panel.is-editor {
+  border-left: 3px solid var(--color-faction-uef);
+}
+
+.tournament-site-panel.is-importer {
+  border-left: 3px solid var(--color-warn);
+}
+
+.tournament-faq-sub,
+.tournament-links {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.tournament-series-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tournament-series-row {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+}
+
+.tournament-series-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-series-name {
+  font-weight: 600;
+}
+
+.tournament-series-name.is-amber {
+  color: var(--color-warn);
+}
+
+.tournament-series-name.is-blue {
+  color: var(--color-faction-uef);
+}
+
+.tournament-series-name.is-green {
+  color: var(--color-ok);
+}
+
+.tournament-series-name.is-red {
+  color: var(--color-error);
+}
+
+.tournament-series-name.is-purple {
+  color: var(--color-league-diamond);
+}
+
+.tournament-colour-swatch {
+  min-width: 36px;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tournament-colour-swatch.is-on {
+  border-color: var(--color-accent);
+}
+
+.tournament-colour-swatch.is-amber {
+  color: var(--color-warn);
+}
+
+.tournament-colour-swatch.is-blue {
+  color: var(--color-faction-uef);
+}
+
+.tournament-colour-swatch.is-green {
+  color: var(--color-ok);
+}
+
+.tournament-colour-swatch.is-red {
+  color: var(--color-error);
+}
+
+.tournament-colour-swatch.is-purple {
+  color: var(--color-league-diamond);
+}
+
+.tournament-article-preview {
+  padding: var(--space-3);
+  max-height: 420px;
+  overflow: auto;
+}
+
+/* Premade teams forming during signups, one card per team name. */
+.tournament-premade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+
+.tournament-premade {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.tournament-premade.is-full {
+  border-color: var(--color-ok);
+}
+
+.tournament-premade-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.tournament-premade-head strong {
+  flex: 1;
+  min-width: 0;
+}

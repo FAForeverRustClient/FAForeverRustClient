@@ -303,6 +303,61 @@ pub struct Tourney {
     pub survivors: Option<Survivors>,
     /// How the event was stopped early, where it was (`earlyFinish`).
     pub early_finish: Option<EarlyFinish>,
+    /// Whether each round has its own best-of (`perRoundBo`), set on the
+    /// Format panel; the lists are then what the preview and the draw use.
+    pub per_round_bo: bool,
+    /// Premade teams (`formation: premade`), which a free-for-all of teams is:
+    /// players give a team name at signup and are grouped by it.
+    pub premade_teams: bool,
+    pub plan_lists: PlanLists,
+    /// The ban that stops this account entering, where one does (`myBan`).
+    pub my_ban: Option<OwnBan>,
+    /// Team ids in the order they entered (`entryKey`, which an organiser's
+    /// swap exchanges): when each filled up.
+    pub entry_order: Vec<String>,
+    /// How a draft's captains are chosen, and how many when by rating.
+    pub captain_mode: CaptainMode,
+    pub captain_count: i32,
+    /// Whether this account may run the event (`canManage`, on list rows).
+    /// A tournament director sees other organisers' unpublished drafts with
+    /// no right to them, and the list says so. Absent elsewhere, and then true.
+    pub can_manage: bool,
+    /// Chats with an unread mention of this account (`myMentionCount`).
+    pub my_mention_count: i32,
+    /// Chats asking for an organiser (`chatPingCount`); organisers only.
+    pub chat_ping_count: i32,
+    /// Unread messages across this account's chats (`myUnreadCount`). Sent
+    /// with the detail, so the Chat tab can say so before its rooms load.
+    pub my_unread_count: i32,
+    /// Where an imported event came from (`sourceUrl`).
+    pub source_url: String,
+    /// What the source called its format (`importedType`).
+    pub imported_type: String,
+    /// Whether only the final table came over, no matches (`standingsOnly`).
+    pub standings_only: bool,
+    /// Whether seeds choose their opponent (`pickOpponents`), the clock per
+    /// pick in minutes (0 for none), and who picks in a Swiss stage's playoffs.
+    pub pick_opponents: bool,
+    pub pick_minutes: i32,
+    pub pick_mode: PickMode,
+    /// A Swiss stage's deciding matches (`plan.decidingBo`): the length of a
+    /// match that qualifies or eliminates someone, 0 for the normal length.
+    pub deciding_best_of: i32,
+    /// A Swiss stage's playoff bracket as planned, where it has one.
+    pub stage_two_plan: Option<StageTwoPlan>,
+    /// A running Swiss stage's playoffs.
+    pub playoffs: Option<Playoffs>,
+    /// Seeds choosing their opponent, while that runs and once it has.
+    pub picks: Option<PickPhase>,
+    /// Swiss round 1 as the organiser pinned it before the start (`plannedR1`).
+    pub planned_round_one: Vec<(String, String)>,
+    /// Whether Swiss round 1 can still be set by hand (`swissR1Open`).
+    pub round_one_open: bool,
+    /// An import's group tables (`importedGroups`).
+    pub imported_groups: Vec<ImportedGroup>,
+    /// An import's final placings as its source recorded them
+    /// (`importedStandings`).
+    pub imported_standings: Vec<ImportedPlacing>,
     /// The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
     /// (`eventDays`). Empty for an event on its date alone.
     pub event_days: Vec<String>,
@@ -1198,7 +1253,122 @@ impl Tourney {
     /// is the answer a player needs, and they only get it by being allowed to
     /// try.
     pub fn may_sign_up(&self) -> bool {
-        self.viewer.logged_in && !self.viewer.is_signed_up() && self.status == TourneyStatus::Signup
+        self.viewer.logged_in
+            && !self.viewer.is_signed_up()
+            && self.status == TourneyStatus::Signup
+            && self.my_ban.is_none()
+    }
+
+    /// Whether the service still takes team actions at all: forming, joining,
+    /// inviting, captaincy and check-in. Self-made teams during signups only;
+    /// every one of those calls is refused with "Teams are locked" afterwards.
+    pub fn teams_are_open(&self) -> bool {
+        self.formation == Formation::Open && self.status == TourneyStatus::Signup
+    }
+
+    /// Whether this account may check its team in (`checkin_team`): a member
+    /// of a full team not checked in yet, on or after the day check-in opens.
+    ///
+    /// During signups, never after: the check-in decides who is dropped when
+    /// the field is locked, and the service refuses it once it is. This used
+    /// to be offered only after the lock, which is exactly when it cannot work.
+    pub fn may_check_in(&self, now: u32) -> bool {
+        self.teams_are_open()
+            && self.my_team().is_some_and(|team| {
+                self.team_is_full(team)
+                    && !team.checked_in
+                    && self.check_in_opens_at.is_none_or(|opens| opens <= now)
+            })
+    }
+
+    /// Whether this account may take its team's check-in back.
+    pub fn may_undo_check_in(&self) -> bool {
+        self.teams_are_open() && self.my_team().is_some_and(|team| team.checked_in)
+    }
+
+    /// Where every team of a self-organised field stands before it is locked.
+    /// See [`TeamLineup`]; the website's `drawOpenTeams`, and the service's
+    /// `finalizeOpenTeams` it mirrors.
+    pub fn team_lineup(&self) -> TeamLineup {
+        let full: Vec<&TourneyTeam> = self
+            .teams
+            .iter()
+            .filter(|team| self.team_is_full(team))
+            .collect();
+        let seeded = full.iter().any(|team| team.seed > 0);
+        let entered = |team: &TourneyTeam| {
+            self.entry_order
+                .iter()
+                .position(|id| *id == team.id)
+                .unwrap_or(usize::MAX)
+        };
+        let mut ordered = full.clone();
+        if seeded {
+            ordered.sort_by_key(|team| if team.seed > 0 { team.seed } else { i32::MAX });
+        } else {
+            ordered.sort_by_key(|team| entered(team));
+        }
+        let cap = usize::try_from(self.max_teams).unwrap_or(0);
+        let (participants, waiting) = if cap > 0 && ordered.len() > cap {
+            ordered.split_at(cap)
+        } else {
+            (ordered.as_slice(), &[][..])
+        };
+        let seeds = if seeded {
+            ordered
+                .iter()
+                .map(|team| TeamSeed {
+                    team_id: team.id.clone(),
+                    seed: team.seed,
+                })
+                .collect()
+        } else {
+            let mut by_rating = participants.to_vec();
+            by_rating.sort_by_key(|team| std::cmp::Reverse(self.team_rating(team)));
+            by_rating
+                .iter()
+                .enumerate()
+                .map(|(index, team)| TeamSeed {
+                    team_id: team.id.clone(),
+                    seed: index as i32 + 1,
+                })
+                .collect()
+        };
+        let mut forming: Vec<&TourneyTeam> = self
+            .teams
+            .iter()
+            .filter(|team| !self.team_is_full(team))
+            .collect();
+        forming.sort_by_key(|team| std::cmp::Reverse(self.team_rating(team)));
+        TeamLineup {
+            participants: participants.iter().map(|team| team.id.clone()).collect(),
+            waiting: waiting.iter().map(|team| team.id.clone()).collect(),
+            forming: forming.iter().map(|team| team.id.clone()).collect(),
+            seeds,
+        }
+    }
+
+    /// Whether this account may decline an invitation (`decline_invite`): it
+    /// has one and has not entered. The service keeps a declined invitation
+    /// on the organiser's list, and says nothing about it to the invitee, so
+    /// the offer stays until the event starts.
+    pub fn may_decline_invite(&self) -> bool {
+        self.viewer.invited
+            && !self.viewer.is_signed_up()
+            && self.status == TourneyStatus::Signup
+            && !self.viewer.organiser
+    }
+
+    /// Whether this account may check its own rating against the event
+    /// (`check_rating`): signed in, and the event takes ratings from FAF.
+    pub fn may_check_rating(&self) -> bool {
+        self.viewer.logged_in && self.rating_kind != RatingKind::None
+    }
+
+    /// Whether entering needs a rating typed by the player: the event takes
+    /// none from FAF, and the service refuses a signup without one.
+    pub fn signup_needs_rating(&self) -> bool {
+        self.rating_kind == RatingKind::None
     }
 
     /// Whether withdrawing is possible: signed up, and signups still open.

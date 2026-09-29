@@ -85,6 +85,7 @@ export function MapPoolPanel({
       mapIds: maps,
       sequence: [],
       bestOf: null,
+      publishAt: null,
     });
     setCombining(null);
     setTicked([]);

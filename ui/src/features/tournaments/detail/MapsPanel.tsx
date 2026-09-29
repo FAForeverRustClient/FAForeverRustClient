@@ -14,6 +14,7 @@ import type { MapPool, Tourney, TourneyMap, VaultMap } from "../../../ipc/bindin
 import { useTranslation } from "../../../i18n/useTranslation";
 import { tourneyMapImage } from "../../../shared/rules/tourneyRules";
 import { labelForRoundKey } from "../bracket/matchLabels";
+import { formatMoment } from "../tourneyPresentation";
 
 interface MapsPanelProps {
   event: Tourney;
@@ -121,10 +122,22 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
                       {organiser && !pool.published && (
                         <span className="tournament-badge">{t("tournaments.maps.hidden")}</span>
                       )}
+                      {/* A schedule only means something while the pool is
+                          hidden, and only its managers are ever sent one. */}
+                      {organiser && !pool.published && pool.publishAt !== null && (
+                        <span className="tournament-badge" title={t("tournaments.pools.scheduledHint")}>
+                          {t("tournaments.pools.scheduledBadge")}
+                        </span>
+                      )}
                       <span className="muted">
                         {t("tournaments.maps.poolCount", { bestOf, count: pool.mapIds.length })}
                       </span>
                     </header>
+                    {organiser && !pool.published && pool.publishAt !== null && (
+                      <p className="muted">
+                        {t("tournaments.pools.scheduled", { when: formatMoment(pool.publishAt, "") })}
+                      </p>
+                    )}
                     <div className="tournament-pool-thumbs">
                       {pool.mapIds.length === 0 && <span className="muted">{t("tournaments.pools.empty")}</span>}
                       {pool.mapIds.map((mapId) => {
