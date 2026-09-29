@@ -4812,4 +4812,5 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.premade.editTitle": "Название команды: {name}",
   "tournaments.premade.teamName": "Название команды",
   "tournaments.premade.emptySub": "(пусто: станет запасным)",
+  "tournaments.form.pasteHint": "Вставьте изображение прямо в текст, чтобы добавить его.",
 };

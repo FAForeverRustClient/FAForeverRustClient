@@ -136,6 +136,14 @@ pub trait TourneyPort: Send + Sync {
     /// The events this account organises, as places to import maps from.
     async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError>;
 
+    /// Attach a picture to an event's text, answering the path it is served
+    /// at (`add_desc_image`).
+    async fn upload_desc_image(
+        &self,
+        tournament_id: &str,
+        data_url: &str,
+    ) -> Result<String, RequestError>;
+
     /// The named formats, and whether this account may host each.
     async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError>;
 

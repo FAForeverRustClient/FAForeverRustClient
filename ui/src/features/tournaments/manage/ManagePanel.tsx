@@ -171,6 +171,9 @@ interface ManagePanelProps {
   onPublish: () => void;
   onAdvance: (phase: TourneyPhase, config?: BracketConfig) => void;
   onArchive: () => void;
+  /** Store a picture pasted into the event's text, and the last one stored. */
+  onUploadImage?: (dataUrl: string) => void;
+  pastedImage?: string | null;
   /** A site admin, for whom archiving is deleting and the category is open. */
   siteAdmin?: boolean;
   onAssignPool: (roundKey: string, poolId: string) => void;
@@ -472,6 +475,8 @@ export function ManagePanel({
                 series={rest.series}
                 busy={busy}
                 inline
+                onUploadImage={rest.onUploadImage}
+                pastedImage={rest.pastedImage}
                 onSubmit={onEditInfo}
                 onClose={() => setOpen(null)}
               />

@@ -207,6 +207,9 @@ impl TourneyPort for RefusingTourney {
     async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
         self.refused()
     }
+    async fn upload_desc_image(&self, _: &str, _: &str) -> Result<String, RequestError> {
+        self.refused()
+    }
     async fn site_read(&self, _: SiteRead) -> Result<SiteDocument, RequestError> {
         self.refused()
     }
@@ -1802,6 +1805,9 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             unreachable!()
         }
         async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
+            unreachable!()
+        }
+        async fn upload_desc_image(&self, _: &str, _: &str) -> Result<String, RequestError> {
             unreachable!()
         }
         async fn site_read(&self, _: SiteRead) -> Result<SiteDocument, RequestError> {

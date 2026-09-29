@@ -573,6 +573,10 @@ export function TournamentsView() {
               onOpenPage={openPage}
               jump={jump}
               siteAdmin={site.account.siteAdmin}
+              pastedImage={state.descImage}
+              onUploadImage={(dataUrl) =>
+                act({ type: "uploadDescImage", payload: { tournamentId: open.id, dataUrl } })
+              }
               detailLoading={state.detailStatus.type === "loading"}
               series={state.series}
               events={state.events}

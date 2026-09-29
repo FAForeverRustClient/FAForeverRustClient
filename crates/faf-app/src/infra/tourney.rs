@@ -380,6 +380,20 @@ impl TourneyPort for TourneyClient {
         Ok(tourney::parse_site_answer(write, &document))
     }
 
+    async fn upload_desc_image(
+        &self,
+        tournament_id: &str,
+        data_url: &str,
+    ) -> Result<String, RequestError> {
+        let document = self
+            .post(
+                &format!("t/{}/add_desc_image", encode(tournament_id)),
+                json!({ "image": data_url }),
+            )
+            .await?;
+        Ok(tourney::parse_uploaded_image(&document))
+    }
+
     async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
         let document = self.get("presets", &[]).await?;
         Ok(tourney::parse_presets(&document))

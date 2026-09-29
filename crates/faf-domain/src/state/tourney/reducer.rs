@@ -270,6 +270,7 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
             }
         }
         TourneyEvent::ArticleImageUploaded { url } => state.site.article_image = Some(url.clone()),
+        TourneyEvent::DescImageUploaded { url } => state.desc_image = Some(url.clone()),
         TourneyEvent::TemplateLoading => {
             state.template = None;
             state.template_status = TourneyLoadStatus::Loading;

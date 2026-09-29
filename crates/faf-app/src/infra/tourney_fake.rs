@@ -1224,6 +1224,10 @@ impl TourneyPort for FakeTourney {
         ))
     }
 
+    async fn upload_desc_image(&self, _: &str, _: &str) -> Result<String, RequestError> {
+        Err(RequestError::rejected("Pictures are not available offline"))
+    }
+
     async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
         // None offline: the create form then simply offers no preset.
         Ok(Vec::new())

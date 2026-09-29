@@ -145,6 +145,9 @@ function sectionLabel(section: Section, event: Tourney): MessageKey {
 
 interface TournamentDetailPaneProps {
   event: Tourney;
+  /** Store a picture pasted into the event's text, and the last one stored. */
+  onUploadImage?: (dataUrl: string) => void;
+  pastedImage?: string | null;
   /** This account is a site admin with its powers on. */
   siteAdmin?: boolean;
   /** Open one of the site's pages, from the Overview's links. */
@@ -875,6 +878,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       {section === "manage" && (
         <ManagePanel
           siteAdmin={props.siteAdmin}
+          onUploadImage={props.onUploadImage}
+          pastedImage={props.pastedImage}
           event={event}
           vault={props.vault}
           vaultStatus={props.vaultStatus}

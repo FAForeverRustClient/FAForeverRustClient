@@ -5121,6 +5121,7 @@ export const en = {
   "tournaments.premade.editTitle": "Team name: {name}",
   "tournaments.premade.teamName": "Team name",
   "tournaments.premade.emptySub": "(empty makes them a substitute)",
+  "tournaments.form.pasteHint": "Paste a picture straight into the text to add it.",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

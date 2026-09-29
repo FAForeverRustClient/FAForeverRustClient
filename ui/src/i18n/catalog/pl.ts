@@ -4769,4 +4769,5 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "tournaments.premade.editTitle": "Nazwa drużyny: {name}",
   "tournaments.premade.teamName": "Nazwa drużyny",
   "tournaments.premade.emptySub": "(puste oznacza rezerwowego)",
+  "tournaments.form.pasteHint": "Wklej obraz bezpośrednio do tekstu, aby go dodać.",
 };

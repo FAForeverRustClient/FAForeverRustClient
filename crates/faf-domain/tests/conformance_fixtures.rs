@@ -4811,6 +4811,10 @@ fn cases() -> Vec<Case> {
                     url: "/article-images/a.png".into(),
                 }
                 .into(),
+                TourneyEvent::DescImageUploaded {
+                    url: "/desc-images/d.png".into(),
+                }
+                .into(),
             ],
         ),
         case(

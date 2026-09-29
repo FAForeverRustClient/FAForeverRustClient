@@ -5374,6 +5374,13 @@ export type PathPreferences = {
 	winePrefix?: string,
 };
 
+/**  A picture pasted into the create form, waiting for the event to exist. */
+export type PendingImage = {
+	/**  The placeholder the text carries in its place. */
+	token: string,
+	dataUrl: string,
+};
+
 /**
  *  One thing waiting on this account in some tournament (`GET /api/my/pending`).
  *
@@ -9117,6 +9124,14 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 /**  The named formats a director may host (`presets`). */
 { type: "loadPresets" } |
 /**
+ *  Attach a picture pasted into the event's text (`add_desc_image`); the
+ *  answer's path is then inserted where it was pasted.
+ */
+{ type: "uploadDescImage"; payload: {
+	tournamentId: string,
+	dataUrl: string,
+} } |
+/**
  *  Read one of the site's documents: the account, the pending bar, the
  *  Hall of Fame, the console, or an access status.
  */
@@ -9665,6 +9680,12 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
  */
 export type TourneyDraft = {
 	/**
+	 *  Pictures pasted into the text before the tournament exists. The text
+	 *  holds each one's token (`pending-image-0`) where it goes; once the
+	 *  event is created they are uploaded and the tokens become their paths.
+	 */
+	pendingImages?: PendingImage[],
+	/**
 	 *  A named format a tournament director may host (`presetId`), or `None`.
 	 *  The service only checks the right to it and records its name; the
 	 *  form's own values are what it stores.
@@ -9864,6 +9885,10 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 } } |
 /**  An article picture was stored; its path, for the editor to insert. */
 { type: "articleImageUploaded"; payload: {
+	url: string,
+} } |
+/**  A picture pasted into an event's text was stored; its path. */
+{ type: "descImageUploaded"; payload: {
 	url: string,
 } } | { type: "templateLoading" } | { type: "templateLoaded"; payload: {
 	event: Tourney,
@@ -10290,6 +10315,11 @@ export type TourneyState = {
 	 *  bar, the Hall of Fame and the console.
 	 */
 	site: TourneySite,
+	/**
+	 *  The last picture pasted into an event's text and stored, for the form
+	 *  to insert.
+	 */
+	descImage: string | null,
 	/**  The event the create form is being filled from, once read. */
 	template: Tourney | null,
 	templateStatus: TourneyLoadStatus,

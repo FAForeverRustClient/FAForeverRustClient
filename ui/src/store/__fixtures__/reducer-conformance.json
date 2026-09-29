@@ -637,6 +637,7 @@
         },
         "articleImage": null
       },
+      "descImage": null,
       "template": null,
       "templateStatus": {
         "type": "idle"
@@ -7142,6 +7143,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -7264,6 +7266,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -7386,6 +7389,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -7510,6 +7514,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -7630,6 +7635,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -7889,6 +7895,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -8150,6 +8157,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -8547,6 +8555,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -8944,6 +8953,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -9338,6 +9348,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "loading"
@@ -9872,6 +9883,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -10408,6 +10420,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -10956,6 +10969,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -11487,6 +11501,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -12023,6 +12038,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -12562,6 +12578,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -13105,6 +13122,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -13650,6 +13668,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -14198,6 +14217,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -14599,6 +14619,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -15010,6 +15031,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -15551,6 +15573,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -16094,6 +16117,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -16358,6 +16382,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -16513,6 +16538,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -16633,6 +16659,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -16763,6 +16790,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -16902,6 +16930,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -17022,6 +17051,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -17148,6 +17178,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -17265,6 +17296,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -17387,6 +17419,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -17508,6 +17541,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -17629,6 +17663,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -17762,6 +17797,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -17892,6 +17928,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -18040,6 +18077,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -18185,6 +18223,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -18319,6 +18358,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -18477,6 +18517,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -18613,6 +18654,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -18742,6 +18784,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -18884,6 +18927,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -19023,6 +19067,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -19164,6 +19209,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -19326,6 +19372,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -19492,6 +19539,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -19658,6 +19706,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -19813,6 +19862,163 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": true,
+              "loggedIn": true,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": "/article-images/a.png",
+              "console": {
+                "archived": [],
+                "articles": [],
+                "bans": [],
+                "directors": [],
+                "editorAllowed": [],
+                "editorRequests": [],
+                "hostAllowed": [],
+                "hostRequests": [],
+                "importerAllowed": [],
+                "importerRequests": [],
+                "logs": [],
+                "me": null,
+                "oauth": false,
+                "role": "editor",
+                "siteAdmins": []
+              },
+              "consoleStatus": {
+                "type": "ready"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": true,
+                "oauth": true,
+                "pending": true
+              },
+              "hall": {
+                "players": [
+                  {
+                    "entered": 4,
+                    "fafId": 5,
+                    "name": "Ada",
+                    "wins": 2
+                  }
+                ],
+                "teams": []
+              },
+              "hallStatus": {
+                "type": "ready"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "descImageUploaded",
+              "payload": {
+                "url": "/desc-images/d.png"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": "/desc-images/d.png",
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -20121,6 +20327,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -20386,6 +20593,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -20791,6 +20999,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -21193,6 +21402,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -21462,6 +21672,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -21736,6 +21947,7 @@
             "copySourcesStatus": {
               "type": "loading"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -21861,6 +22073,7 @@
               },
               "type": "failed"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -21978,6 +22191,7 @@
             "copySourcesStatus": {
               "type": "loading"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -22114,6 +22328,7 @@
             "copySourcesStatus": {
               "type": "ready"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -22239,6 +22454,7 @@
             "copySourcesStatus": {
               "type": "ready"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -22375,6 +22591,7 @@
             "copySourcesStatus": {
               "type": "ready"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -22500,6 +22717,7 @@
             "copySourcesStatus": {
               "type": "ready"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -22633,6 +22851,7 @@
             "copySourcesStatus": {
               "type": "ready"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -22755,6 +22974,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -22876,6 +23096,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -22997,6 +23218,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -23129,6 +23351,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -23263,6 +23486,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -23400,6 +23624,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -23522,6 +23747,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -23656,6 +23882,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -23819,6 +24046,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -23996,6 +24224,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -24159,6 +24388,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -24336,6 +24566,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -24496,6 +24727,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -24631,6 +24863,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -25051,6 +25284,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -25585,6 +25819,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -26157,6 +26392,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -26710,6 +26946,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -27260,6 +27497,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -27836,6 +28074,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -28401,6 +28640,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -28965,6 +29205,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -29541,6 +29782,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -30117,6 +30359,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -30672,6 +30915,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -31227,6 +31471,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -31761,6 +32006,7 @@
             "copySourcesStatus": {
               "type": "idle"
             },
+            "descImage": null,
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -59535,6 +59781,7 @@
       {
         "name": "a plain valid draft",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {
@@ -59607,6 +59854,7 @@
       {
         "name": "no name at all, which is the server's first complaint",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {
@@ -59679,6 +59927,7 @@
       {
         "name": "a name of nothing but spaces still counts as none",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {
@@ -59751,6 +60000,7 @@
       {
         "name": "a team of seven",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {
@@ -59823,6 +60073,7 @@
       {
         "name": "a team of none",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {
@@ -59895,6 +60146,7 @@
       {
         "name": "a rating floor above the ceiling",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {
@@ -59967,6 +60219,7 @@
       {
         "name": "a gate on an unrated event, which could only refuse everybody",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {
@@ -60039,6 +60292,7 @@
       {
         "name": "an unrated event with no gate is fine",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {
@@ -60111,6 +60365,7 @@
       {
         "name": "signups closing before they open",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {
@@ -60183,6 +60438,7 @@
       {
         "name": "signups opening and closing at the same instant",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {
@@ -60255,6 +60511,7 @@
       {
         "name": "a nameless draft that also has an inverted rating range",
         "draft": {
+          "pendingImages": [],
           "presetId": null,
           "swiss": {
             "cuts": {

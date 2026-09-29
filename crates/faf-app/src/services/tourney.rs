@@ -433,9 +433,58 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         TourneyCommand::Create { draft } => {
             write_selecting(TourneyAction::Creating, ctx, out, {
                 let draft = trimmed_draft(draft);
-                async move { ctx.ports.tourney.create(&draft).await.map(Some) }
+                async move {
+                    let id = ctx.ports.tourney.create(&draft).await?;
+                    // Pictures pasted before the event existed go up now, and
+                    // the text is saved again with their paths in place of
+                    // the tokens. A failure leaves the event created, as the
+                    // website does, with the token where the picture was.
+                    if !draft.pending_images.is_empty() {
+                        let mut placed = Vec::new();
+                        for image in &draft.pending_images {
+                            match ctx.ports.tourney.upload_desc_image(&id, &image.data_url).await {
+                                Ok(url) if !url.is_empty() => placed.push((image.token.clone(), url)),
+                                Ok(_) => {}
+                                Err(error) => tracing::warn!(%error, "a pasted picture could not be stored"),
+                            }
+                        }
+                        if !placed.is_empty() {
+                            let swapped = draft.with_images_placed(&placed);
+                            if let Err(error) = ctx.ports.tourney.edit_info(&id, &swapped).await {
+                                tracing::warn!(%error, "the text with the pasted pictures could not be saved");
+                            }
+                        }
+                    }
+                    Ok(Some(id))
+                }
             })
             .await;
+        }
+
+        TourneyCommand::UploadDescImage {
+            tournament_id,
+            data_url,
+        } => {
+            let stored = std::sync::Arc::new(std::sync::Mutex::new(None::<String>));
+            let held = stored.clone();
+            write(TourneyAction::Editing, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    let url = ctx
+                        .ports
+                        .tourney
+                        .upload_desc_image(&tournament_id, &data_url)
+                        .await?;
+                    if let Ok(mut slot) = held.lock() {
+                        *slot = Some(url);
+                    }
+                    Ok(())
+                }
+            })
+            .await;
+            if let Some(url) = stored.lock().ok().and_then(|mut slot| slot.take()) {
+                out.emit(TourneyEvent::DescImageUploaded { url });
+            }
         }
 
         TourneyCommand::EditInfo {

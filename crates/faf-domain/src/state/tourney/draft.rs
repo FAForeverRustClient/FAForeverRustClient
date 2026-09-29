@@ -120,6 +120,11 @@ impl Seeding {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TourneyDraft {
+    /// Pictures pasted into the text before the tournament exists. The text
+    /// holds each one's token (`pending-image-0`) where it goes; once the
+    /// event is created they are uploaded and the tokens become their paths.
+    #[serde(default)]
+    pub pending_images: Vec<PendingImage>,
     /// A named format a tournament director may host (`presetId`), or `None`.
     /// The service only checks the right to it and records its name; the
     /// form's own values are what it stores.
@@ -451,6 +456,34 @@ pub struct FeedsInto {
     pub rule: QualifierRule,
     /// Unix seconds, once the parent has taken its entrants.
     pub applied: Option<u32>,
+}
+
+/// A picture pasted into the create form, waiting for the event to exist.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingImage {
+    /// The placeholder the text carries in its place.
+    pub token: String,
+    pub data_url: String,
+}
+
+impl TourneyDraft {
+    /// The text with each pending picture's token swapped for its path.
+    pub fn with_images_placed(&self, placed: &[(String, String)]) -> Self {
+        let swap = |text: &str| {
+            placed.iter().fold(text.to_string(), |held, (token, url)| {
+                held.replace(token.as_str(), url)
+            })
+        };
+        Self {
+            description: swap(&self.description),
+            rewards: swap(&self.rewards),
+            sponsors: swap(&self.sponsors),
+            lobby_options: swap(&self.lobby_options),
+            pending_images: Vec::new(),
+            ..self.clone()
+        }
+    }
 }
 
 /// A named format on the service (`GET /api/presets`): the Invitational, LotS.

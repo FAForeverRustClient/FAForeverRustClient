@@ -297,6 +297,9 @@ pub struct TourneyState {
     /// The site around the tournaments: this account's roles, the pending
     /// bar, the Hall of Fame and the console.
     pub site: TourneySite,
+    /// The last picture pasted into an event's text and stored, for the form
+    /// to insert.
+    pub desc_image: Option<String>,
     /// The event the create form is being filled from, once read.
     pub template: Option<Box<Tourney>>,
     pub template_status: TourneyLoadStatus,

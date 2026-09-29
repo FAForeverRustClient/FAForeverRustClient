@@ -4965,4 +4965,5 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.premade.editTitle": "Teamname: {name}",
   "tournaments.premade.teamName": "Teamname",
   "tournaments.premade.emptySub": "(leer macht ihn zum Ersatz)",
+  "tournaments.form.pasteHint": "Füge ein Bild direkt in den Text ein, um es hinzuzufügen.",
 };

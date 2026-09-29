@@ -278,6 +278,13 @@ pub enum TourneyCommand {
     LoadCopySources,
     /// The named formats a director may host (`presets`).
     LoadPresets,
+    /// Attach a picture pasted into the event's text (`add_desc_image`); the
+    /// answer's path is then inserted where it was pasted.
+    #[serde(rename_all = "camelCase")]
+    UploadDescImage {
+        tournament_id: String,
+        data_url: String,
+    },
     /// Read one of the site's documents: the account, the pending bar, the
     /// Hall of Fame, the console, or an access status.
     #[serde(rename_all = "camelCase")]
@@ -979,6 +986,10 @@ pub enum TourneyEvent {
     },
     /// An article picture was stored; its path, for the editor to insert.
     ArticleImageUploaded {
+        url: String,
+    },
+    /// A picture pasted into an event's text was stored; its path.
+    DescImageUploaded {
         url: String,
     },
     TemplateLoading,

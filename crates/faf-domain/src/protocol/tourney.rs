@@ -820,6 +820,21 @@ pub fn signup_body(rating: Option<i32>) -> Value {
     }
 }
 
+/// The path an uploaded event picture is served at (`add_desc_image`):
+/// `url`, else built from `file`.
+pub fn parse_uploaded_image(document: &Value) -> String {
+    let url = text(document, "url");
+    if !url.is_empty() {
+        return url;
+    }
+    let file = text(document, "file");
+    if file.is_empty() {
+        String::new()
+    } else {
+        format!("/desc-images/{file}")
+    }
+}
+
 /// The named formats, from `GET /api/presets`.
 ///
 /// A preset's `apply` is shaped like a tournament document, so it is read as

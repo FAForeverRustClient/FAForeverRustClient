@@ -295,6 +295,8 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
     }
     case "articleImageUploaded":
       return { ...state, site: { ...state.site, articleImage: event.payload.url } };
+    case "descImageUploaded":
+      return { ...state, descImage: event.payload.url };
     case "templateLoading":
       return { ...state, template: null, templateStatus: { type: "loading" } };
     case "templateLoaded":

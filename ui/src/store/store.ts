@@ -337,6 +337,7 @@ const INITIAL: AppState = {
       importerAccess: { oauth: false, loggedIn: false, allowed: false, pending: false },
       articleImage: null,
     },
+    descImage: null,
   },
   guides: {
     auth: { type: "signedOut" },
