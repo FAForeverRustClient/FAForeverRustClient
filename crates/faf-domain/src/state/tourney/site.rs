@@ -266,9 +266,6 @@ pub enum SiteWrite {
     /// Ask for hosting, editor or importer access, with an optional note.
     #[serde(rename_all = "camelCase")]
     RequestAccess { kind: AccessKind, message: String },
-    /// Link this account as a site admin with the master password.
-    #[serde(rename_all = "camelCase")]
-    LinkSiteAdmin { password: String },
     /// Approve or deny an access request.
     #[serde(rename_all = "camelCase")]
     Decide {

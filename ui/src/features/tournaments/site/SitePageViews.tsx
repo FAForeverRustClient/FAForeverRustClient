@@ -160,14 +160,15 @@ export function AccessPage({
   name,
   busy,
   onWrite,
-  onImport,
+  onSwitch,
 }: {
   access: "editor" | "importer";
   status: AccessStatus;
   name: string;
   busy: boolean;
   onWrite: (write: SiteWrite) => void;
-  onImport: () => void;
+  /** Show the other kind of access. */
+  onSwitch: (access: "editor" | "importer") => void;
 }) {
   const { t } = useTranslation();
   const [message, setMessage] = useState("");
@@ -186,11 +187,9 @@ export function AccessPage({
       return (
         <>
           <h3>{t(editor ? "tournaments.access.haveEditor" : "tournaments.access.haveImporter")}</h3>
-          {!editor && (
-            <Button variant="primary" onClick={onImport}>
-              {t("tournaments.site.import")}
-            </Button>
-          )}
+          <p className="muted">
+            {t(editor ? "tournaments.access.whereEditor" : "tournaments.access.whereImporter")}
+          </p>
         </>
       );
     }
@@ -230,6 +229,19 @@ export function AccessPage({
   };
   return (
     <div className="tournament-site-page">
+      <nav className="tournament-sections" aria-label={t("tournaments.site.access")}>
+        {(["editor", "importer"] as const).map((kind) => (
+          <button
+            type="button"
+            key={kind}
+            className={kind === access ? "tournament-section is-active" : "tournament-section"}
+            aria-current={kind === access ? "page" : undefined}
+            onClick={() => onSwitch(kind)}
+          >
+            {t(kind === "editor" ? "tournaments.access.tabEditor" : "tournaments.access.tabImporter")}
+          </button>
+        ))}
+      </nav>
       <section className="surface tournament-site-panel">{body()}</section>
     </div>
   );

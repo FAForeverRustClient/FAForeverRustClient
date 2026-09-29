@@ -25,7 +25,6 @@ interface SiteNavProps {
 export function SiteNav({ page, account, busy, onPage, onWrite }: SiteNavProps) {
   const { t } = useTranslation();
   const [importing, setImporting] = useState(false);
-  const [linking, setLinking] = useState(false);
   const role = account.siteAdmin
     ? "tournaments.site.siteAdmin"
     : account.director
@@ -72,9 +71,15 @@ export function SiteNav({ page, account, busy, onPage, onWrite }: SiteNavProps) 
           {t(account.adminStandDown ? "tournaments.site.powersOff" : "tournaments.site.powersOn")}
         </Button>
       )}
-      {account.loggedIn && !account.siteAdminAccount && (
-        <Button title={t("tournaments.site.linkTitle")} onClick={() => setLinking(true)}>
-          {"\u{1F512}"}
+      {/* Editor and importer access are asked for here, as on the website's
+          `/editor` and `/importer` pages; only for an account lacking one. */}
+      {account.loggedIn && (!account.editor || !(account.importer || account.siteAdmin)) && (
+        <Button
+          variant={page.kind === "access" ? "primary" : undefined}
+          title={t("tournaments.site.accessTitle")}
+          onClick={() => onPage({ kind: "access", access: account.editor ? "importer" : "editor" })}
+        >
+          {t("tournaments.site.access")}
         </Button>
       )}
       {importing && (
@@ -85,17 +90,6 @@ export function SiteNav({ page, account, busy, onPage, onWrite }: SiteNavProps) 
             setImporting(false);
           }}
           onClose={() => setImporting(false)}
-        />
-      )}
-      {linking && (
-        <LinkAdminDialog
-          name={account.fafName}
-          busy={busy}
-          onLink={(password) => {
-            onWrite({ type: "linkSiteAdmin", payload: { password } });
-            setLinking(false);
-          }}
-          onClose={() => setLinking(false)}
         />
       )}
     </nav>
@@ -143,38 +137,6 @@ function ImportDialog({
           onClick={() => onImport(tournament, apiKey)}
         >
           {t(busy ? "tournaments.import.importing" : "tournaments.import.go")}
-        </Button>
-      </div>
-    </Modal>
-  );
-}
-
-/** Linking this account as a site admin with the master password. */
-function LinkAdminDialog({
-  name,
-  busy,
-  onLink,
-  onClose,
-}: {
-  name: string;
-  busy: boolean;
-  onLink: (password: string) => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const [password, setPassword] = useState("");
-  return (
-    <Modal onClose={onClose} ariaLabel={t("tournaments.site.linkTitle")} className="tournament-form">
-      <h3>{t("tournaments.site.linkTitle")}</h3>
-      <p className="muted">{t("tournaments.site.linkHint", { name })}</p>
-      <label className="tournament-field">
-        <span>{t("tournaments.site.password")}</span>
-        <input type="password" autoComplete="off" value={password} onChange={(changed) => setPassword(changed.target.value)} />
-      </label>
-      <div className="tournament-form-actions">
-        <Button onClick={onClose}>{t("common.cancel")}</Button>
-        <Button variant="primary" disabled={busy || password === ""} onClick={() => onLink(password)}>
-          {t("tournaments.site.link")}
         </Button>
       </div>
     </Modal>

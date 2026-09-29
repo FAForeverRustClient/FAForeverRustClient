@@ -2781,9 +2781,6 @@ pub fn site_request(write: &SiteWrite) -> (String, Value) {
             .into(),
             json!({ "message": message.trim() }),
         ),
-        SiteWrite::LinkSiteAdmin { password } => {
-            ("siteadmin".into(), json!({ "password": password }))
-        }
         SiteWrite::Decide { kind, id, approve } => (
             access(*kind, "decide", "editor_decide", "importer_decide"),
             json!({ "id": id, "approve": u8::from(*approve) }),

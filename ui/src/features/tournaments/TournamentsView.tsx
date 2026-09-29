@@ -451,7 +451,7 @@ export function TournamentsView() {
           name={site.account.fafName}
           busy={busy}
           onWrite={siteWrite}
-          onImport={() => setPage({ kind: "events" })}
+          onSwitch={(access) => openPage({ kind: "access", access })}
         />
       )}
       {page.kind === "console" && (

@@ -4900,10 +4900,6 @@ export const en = {
   "tournaments.site.powersOff": "Admin off",
   "tournaments.site.powersOnTitle": "Your site-admin powers are on. Click to switch them off site-wide, so you cannot see anything a normal player cannot.",
   "tournaments.site.powersOffTitle": "Your site-admin powers are off. You see the site exactly as a normal player, map pools included. Click to switch them back on.",
-  "tournaments.site.linkTitle": "Link this account as site admin",
-  "tournaments.site.linkHint": "Enter the master password to link {name} as a site admin. You stay a site admin from then on (managed in the console); the password can always re-link you.",
-  "tournaments.site.password": "Password",
-  "tournaments.site.link": "Link account",
   "tournaments.import.title": "Import from Challonge",
   "tournaments.import.hint": "Pulls a completed Challonge tournament and adds it to the finished list. Single and double elimination.",
   "tournaments.import.link": "Challonge tournament link or ID",
@@ -5122,6 +5118,12 @@ export const en = {
   "tournaments.premade.teamName": "Team name",
   "tournaments.premade.emptySub": "(empty makes them a substitute)",
   "tournaments.form.pasteHint": "Paste a picture straight into the text to add it.",
+  "tournaments.site.access": "Access",
+  "tournaments.site.accessTitle": "Ask for editor or importer access",
+  "tournaments.access.tabEditor": "FAQ / Rules articles",
+  "tournaments.access.tabImporter": "Challonge import",
+  "tournaments.access.whereEditor": "The articles are edited in the console: Editor, at the top of this tab.",
+  "tournaments.access.whereImporter": "Use Import at the top of this tab to pull a finished tournament in.",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

@@ -7848,10 +7848,6 @@ export type SiteWrite =
 	kind: AccessKind,
 	message: string,
 } } |
-/**  Link this account as a site admin with the master password. */
-{ type: "linkSiteAdmin"; payload: {
-	password: string,
-} } |
 /**  Approve or deny an access request. */
 { type: "decide"; payload: {
 	kind: AccessKind,
