@@ -58,7 +58,14 @@ export function matchTitle(event: Tourney, entry: TourneyMatch): string {
     return login === "" ? UNDECIDED_SLOT : login;
   };
 
-  const pairing = `${roundTag(entry.bracket, entry.round)}: ${nameOf(entry.team1)} vs ${nameOf(entry.team2)}`;
+  // A Swiss event's playoff rounds would otherwise share "R1" with its first
+  // Swiss round in the custom-games list.
+  const twoStage = event.bracketKind === "swiss" && (event.playoffs !== null || event.stageTwoPlan !== null);
+  const tag =
+    twoStage && (entry.bracket === "winners" || entry.bracket === "losers")
+      ? `PO ${roundTag(entry.bracket, entry.round)}`
+      : roundTag(entry.bracket, entry.round);
+  const pairing = `${tag}: ${nameOf(entry.team1)} vs ${nameOf(entry.team2)}`;
   const name = event.name.trim();
   const full = name === "" ? pairing : `${name} ${pairing}`;
   if ([...full].length <= MAX_TITLE_CHARS) return full;

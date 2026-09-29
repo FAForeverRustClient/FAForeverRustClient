@@ -13,13 +13,38 @@ import { BRACKET_LABELS } from "../tourneyPresentation";
 
 type Translate = (key: MessageKey, values?: MessageValues) => string;
 
+/**
+ * Whether a Swiss event has a playoff bracket after its stage: then its
+ * bracket matches are named as playoffs, not as a Swiss final, the website's
+ * `twoStage`.
+ */
+export function isTwoStage(event: Tourney): boolean {
+  return event.bracketKind === "swiss" && (event.playoffs !== null || event.stageTwoPlan !== null);
+}
+
 /** A match's short code, e.g. "WB R1 M3". */
 export function matchLabel(event: Tourney, entry: TourneyMatch, t: Translate): string {
+  const twoStage = isTwoStage(event);
+  const double = event.playoffs?.double ?? event.stageTwoPlan?.double ?? false;
   if (entry.bracket === "grandFinal") {
+    if (twoStage) return t(double ? "tournaments.bracket.grandFinal" : "tournaments.swiss.final");
     return t(event.bracketKind === "swiss" ? "tournaments.swiss.final" : "tournaments.bracket.grandFinal");
   }
-  if (entry.bracket === "thirdPlace") return t("tournaments.bracket.thirdPlace");
+  if (entry.bracket === "thirdPlace") {
+    return t(twoStage ? "tournaments.playoffs.thirdLabel" : "tournaments.bracket.thirdPlace");
+  }
   const number = `R${entry.round} M${entry.index + 1}`;
+  if (twoStage && (entry.bracket === "winners" || entry.bracket === "losers")) {
+    const deepest = Math.max(
+      0,
+      ...event.matches.filter((held) => held.bracket === entry.bracket).map((held) => held.round),
+    );
+    if (entry.bracket === "winners" && !double && entry.round === deepest) {
+      return t("tournaments.playoffs.finalLabel");
+    }
+    const side = entry.bracket === "losers" ? "LB " : double ? "WB " : "";
+    return `${t("tournaments.swiss.playoffs")} ${side}${number}`;
+  }
   const division = entry.division > 0 ? `D${entry.division} ` : "";
   switch (entry.bracket) {
     case "losers":

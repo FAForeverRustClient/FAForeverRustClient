@@ -11,6 +11,8 @@
 // only thing keeping the three honest is that pin.
 
 import type { PlayerSummary, Tourney, TourneyTeam } from "../../../ipc/bindings";
+import type { Standing, StandingsKind } from "../../../shared/rules/tourneyRules";
+import { tiebreakText } from "./swissPresentation";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { EntrantName } from "../EntrantName";
@@ -117,6 +119,85 @@ export function StandingsPanel({ event, profiles }: StandingsPanelProps) {
     return <p className="muted">{t("tournaments.standings.none")}</p>;
   }
 
+  if (kind !== "swiss") return <StandingsTable event={event} profiles={profiles} kind={kind} rows={rows} />;
+
+  // A Swiss with playoffs: the playoffs decide the places, so their table
+  // comes first, worked out like any elimination bracket's from the playoff
+  // matches and field. The Swiss table below is how everyone got there.
+  const playoffs = event.playoffs;
+  const field = playoffs !== null && playoffs.built ? playoffs.field : [];
+  const playoffEvent: Tourney | null =
+    field.length > 0
+      ? {
+          ...event,
+          bracketKind: playoffs?.double === true ? "double" : "single",
+          teams: event.teams.filter((team) => field.includes(team.id)),
+          matches: event.matches.filter((entry) => entry.bracket !== "swiss"),
+        }
+      : null;
+  const playoffRows = playoffEvent === null ? [] : standings(playoffEvent);
+  const cuts = event.swissCuts;
+  const withCuts = cuts.wins > 0 || cuts.losses > 0;
+  const cutTo = playoffs?.cutTo ?? event.stageTwoPlan?.cutTo ?? 0;
+  const cutLabel =
+    cuts.wins > 0 && cuts.losses > 0
+      ? t("tournaments.swiss.cutBoth", { wins: cuts.wins, losses: cuts.losses })
+      : cuts.wins > 0
+        ? t("tournaments.swiss.cutWins", { wins: cuts.wins })
+        : t("tournaments.swiss.cutLosses", { losses: cuts.losses });
+  const note = [withCuts ? cutLabel : "", cutTo > 0 ? t("tournaments.standings.throughToPlayoffs", { count: cutTo }) : ""]
+    .filter((part) => part !== "")
+    .join(" · ");
+
+  return (
+    <div className="tournament-stats">
+      {playoffEvent !== null && playoffRows.length > 0 && (
+        <section className="tournament-panel">
+          <h4>{t("tournaments.standings.playoffTitle")}</h4>
+          <StandingsTable
+            event={playoffEvent}
+            profiles={profiles}
+            kind={standingsKind(playoffEvent)}
+            rows={playoffRows}
+          />
+        </section>
+      )}
+      <section className="tournament-panel">
+        {playoffEvent !== null && <h4>{t("tournaments.standings.swissTitle")}</h4>}
+        {note !== "" && <p className="muted">{note}</p>}
+        {event.swissTiebreak === "beaten" && <p className="muted">{tiebreakText(event, t)}</p>}
+        <StandingsTable event={event} profiles={profiles} kind={kind} rows={rows} withStatus={withCuts} />
+      </section>
+    </div>
+  );
+}
+
+interface StandingsTableProps {
+  event: Tourney;
+  profiles: PlayerSummary[];
+  kind: StandingsKind;
+  rows: Standing[];
+  /** A Swiss stage with record cuts says what each record means. */
+  withStatus?: boolean;
+}
+
+function StandingsTable({ event, profiles, kind, rows, withStatus = false }: StandingsTableProps) {
+  const { t } = useTranslation();
+  const cuts = event.swissCuts;
+  const statusOf = (row: Standing) => {
+    if (cuts.wins > 0 && row.wins >= cuts.wins) {
+      return <span className="tournament-badge is-ok">{t("tournaments.standings.qualified")}</span>;
+    }
+    if (cuts.losses > 0 && row.losses >= cuts.losses) {
+      return <span className="tournament-badge">{t("tournaments.standings.eliminated")}</span>;
+    }
+    const need = [
+      cuts.wins > 0 ? t("tournaments.standings.moreWins", { count: cuts.wins - row.wins }) : "",
+      cuts.losses > 0 ? t("tournaments.standings.lossesLeft", { count: cuts.losses - row.losses }) : "",
+    ].filter((part) => part !== "");
+    return <span className="muted">{need.join(" · ")}</span>;
+  };
+
   const teamOf = (teamId: string): TourneyTeam | undefined =>
     event.teams.find((team) => team.id === teamId);
 
@@ -179,6 +260,7 @@ export function StandingsPanel({ event, profiles }: StandingsPanelProps) {
             {kind !== "swiss" && kind !== "points" && (
               <th scope="col">{t("tournaments.standings.result")}</th>
             )}
+            {withStatus && <th scope="col">{t("tournaments.standings.status")}</th>}
           </tr>
         </thead>
         <tbody>
@@ -209,6 +291,7 @@ export function StandingsPanel({ event, profiles }: StandingsPanelProps) {
               {kind !== "swiss" && kind !== "points" && (
                 <td className="muted">{resultOf(row)}</td>
               )}
+              {withStatus && <td>{statusOf(row)}</td>}
             </tr>
           ))}
         </tbody>
