@@ -51876,6 +51876,23 @@
       {
         "name": "a plain valid draft",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "Weekend Cup",
           "description": "",
           "rewards": "",
@@ -51931,6 +51948,23 @@
       {
         "name": "no name at all, which is the server's first complaint",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "",
           "description": "",
           "rewards": "",
@@ -51986,6 +52020,23 @@
       {
         "name": "a name of nothing but spaces still counts as none",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "   ",
           "description": "",
           "rewards": "",
@@ -52041,6 +52092,23 @@
       {
         "name": "a team of seven",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "Weekend Cup",
           "description": "",
           "rewards": "",
@@ -52096,6 +52164,23 @@
       {
         "name": "a team of none",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "Weekend Cup",
           "description": "",
           "rewards": "",
@@ -52151,6 +52236,23 @@
       {
         "name": "a rating floor above the ceiling",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "Weekend Cup",
           "description": "",
           "rewards": "",
@@ -52206,6 +52308,23 @@
       {
         "name": "a gate on an unrated event, which could only refuse everybody",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "Weekend Cup",
           "description": "",
           "rewards": "",
@@ -52261,6 +52380,23 @@
       {
         "name": "an unrated event with no gate is fine",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "Weekend Cup",
           "description": "",
           "rewards": "",
@@ -52316,6 +52452,23 @@
       {
         "name": "signups closing before they open",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "Weekend Cup",
           "description": "",
           "rewards": "",
@@ -52371,6 +52524,23 @@
       {
         "name": "signups opening and closing at the same instant",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "Weekend Cup",
           "description": "",
           "rewards": "",
@@ -52426,6 +52596,23 @@
       {
         "name": "a nameless draft that also has an inverted rating range",
         "draft": {
+          "presetId": null,
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "stopAtAlive": 0,
+          "ffa": null,
           "name": "",
           "description": "",
           "rewards": "",
@@ -65894,6 +66081,21 @@
         "mayPostChat": true,
         "unreadNews": 2,
         "format": {
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "ffa": null,
           "competition": "team",
           "teamSize": 2,
           "formation": "open",
@@ -66057,6 +66259,21 @@
         "mayPostChat": true,
         "unreadNews": 2,
         "format": {
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "ffa": null,
           "competition": "team",
           "teamSize": 4,
           "formation": "open",
@@ -66220,6 +66437,21 @@
         "mayPostChat": true,
         "unreadNews": 2,
         "format": {
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "ffa": null,
           "competition": "team",
           "teamSize": 2,
           "formation": "open",
@@ -66383,6 +66615,21 @@
         "mayPostChat": true,
         "unreadNews": 2,
         "format": {
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "ffa": null,
           "competition": "team",
           "teamSize": 4,
           "formation": "open",
@@ -66546,6 +66793,21 @@
         "mayPostChat": true,
         "unreadNews": 2,
         "format": {
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "ffa": null,
           "competition": "team",
           "teamSize": 2,
           "formation": "open",
@@ -66709,6 +66971,21 @@
         "mayPostChat": true,
         "unreadNews": 2,
         "format": {
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "ffa": null,
           "competition": "team",
           "teamSize": 2,
           "formation": "open",
@@ -66872,6 +67149,21 @@
         "mayPostChat": false,
         "unreadNews": 2,
         "format": {
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "ffa": null,
           "competition": "team",
           "teamSize": 2,
           "formation": "open",
@@ -67035,6 +67327,21 @@
         "mayPostChat": false,
         "unreadNews": 2,
         "format": {
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "ffa": null,
           "competition": "team",
           "teamSize": 2,
           "formation": "open",
@@ -67198,6 +67505,21 @@
         "mayPostChat": true,
         "unreadNews": 1,
         "format": {
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "ffa": null,
           "competition": "team",
           "teamSize": 2,
           "formation": "open",
@@ -67361,6 +67683,21 @@
         "mayPostChat": false,
         "unreadNews": 0,
         "format": {
+          "swiss": {
+            "cuts": {
+              "wins": 0,
+              "losses": 0
+            },
+            "decidingBestOf": 0,
+            "stageTwo": null
+          },
+          "picks": {
+            "on": false,
+            "minutes": 0,
+            "mode": "half"
+          },
+          "tiebreak": "gameDiff",
+          "ffa": null,
           "competition": "team",
           "teamSize": 2,
           "formation": "open",

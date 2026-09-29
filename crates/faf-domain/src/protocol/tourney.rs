@@ -47,6 +47,7 @@ use crate::state::{
     SeriesDraft, SeriesEdition, TourneySeries,
 };
 use crate::state::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
+use crate::state::{PickSettings, SwissExtras};
 
 /// A string field, empty when absent or not a string.
 fn text(value: &Value, name: &str) -> String {
@@ -1531,9 +1532,80 @@ pub fn create_body(draft: &TourneyDraft) -> Value {
     }
     if let Some(plan) = draft.plan {
         body["plan"] = plan_body(plan);
+        if matches!(plan, MatchPlan::Swiss { .. }) {
+            merge_swiss_extras(&mut body["plan"], &draft.swiss);
+        }
+    }
+    if let Some(preset) = draft.preset_id.as_ref().filter(|id| !id.trim().is_empty()) {
+        body["presetId"] = json!(preset.trim());
+    }
+    merge_picks(&mut body, &draft.picks, draft.tiebreak, draft.bracket_kind);
+    body["stopAtAlive"] = json!(draft.stop_at_alive.clamp(0, 128));
+    if draft.competition == Competition::FreeForAll {
+        if let Some(ffa) = &draft.ffa {
+            merge_ffa(&mut body, ffa);
+        }
     }
     merge_shared(&mut body, draft);
     body
+}
+
+/// A Swiss stage's extras, into its `plan`: the cuts (0 when off, which the
+/// service reads as off), the deciding length, and the playoffs with their
+/// `s2*` keys only when they are on, as the website sends them.
+fn merge_swiss_extras(plan: &mut Value, extras: &SwissExtras) {
+    let cut = |value: i32| value.clamp(0, 15);
+    plan["winCut"] = json!(cut(extras.cuts.wins));
+    plan["lossCut"] = json!(cut(extras.cuts.losses));
+    plan["decidingBo"] = json!(if [1, 3, 5, 7].contains(&extras.deciding_best_of) {
+        extras.deciding_best_of
+    } else {
+        0
+    });
+    match &extras.stage_two {
+        Some(stage) => {
+            plan["stage2"] = json!(1);
+            plan["s2CutTo"] = json!(stage.cut_to.clamp(2, 64));
+            plan["s2Type"] = json!(if stage.double { "double" } else { "single" });
+            plan["s2Bo"] = json!(stage.best_of);
+            plan["s2Final"] = json!(stage.final_best_of);
+            // The website sends the grand final as the final's length.
+            plan["s2Gf"] = json!(stage.final_best_of);
+            plan["s2Third"] = json!(u8::from(stage.third_place && !stage.double));
+        }
+        None => plan["stage2"] = json!(0),
+    }
+}
+
+/// Who picks their opponent, and the tiebreak, which only a Swiss sends:
+/// anything else gets `gd`, as on the website.
+fn merge_picks(body: &mut Value, picks: &PickSettings, tiebreak: SwissTiebreak, kind: BracketKind) {
+    body["pickOpponents"] = json!(u8::from(picks.on));
+    body["pickMinutes"] = json!(if picks.on {
+        picks.minutes.clamp(0, 1440)
+    } else {
+        0
+    });
+    body["pickMode"] = json!(picks.mode.as_wire());
+    body["tiebreak"] = json!(if kind == BracketKind::Swiss {
+        tiebreak.as_wire()
+    } else {
+        "gd"
+    });
+}
+
+/// A free-for-all's configuration, as its six keys.
+fn merge_ffa(body: &mut Value, ffa: &FfaConfig) {
+    body["perMatch"] = json!(ffa.per_match);
+    body["mode"] = json!(ffa.mode.as_wire());
+    body["advance"] = json!(if ffa.mode == FfaMode::Elimination {
+        ffa.advance
+    } else {
+        1
+    });
+    body["rounds"] = json!(ffa.rounds);
+    body["cutTo"] = json!(ffa.cut_to);
+    body["finalSize"] = json!(ffa.final_size);
 }
 
 /// The best-of template, in the shape the service stores for this bracket type.
@@ -1884,6 +1956,32 @@ pub fn edit_format_body(format: &FormatDraft, structural: bool) -> Value {
         } else {
             "linear"
         });
+    }
+    // The stage's extras ride in `plan`, where every key left out keeps its
+    // stored value, so the lengths the client does not edit here stay put.
+    match format.competition {
+        Competition::Team => {
+            if format.bracket_kind == BracketKind::Swiss {
+                let mut plan = json!({});
+                merge_swiss_extras(&mut plan, &format.swiss);
+                body["plan"] = plan;
+            }
+            merge_picks(
+                &mut body,
+                &format.picks,
+                format.tiebreak,
+                format.bracket_kind,
+            );
+            if format.bracket_kind != BracketKind::Swiss {
+                // Not sent for anything but a Swiss: leaving it out keeps it.
+                body.as_object_mut().map(|held| held.remove("tiebreak"));
+            }
+        }
+        Competition::FreeForAll => {
+            if let Some(ffa) = &format.ffa {
+                merge_ffa(&mut body, ffa);
+            }
+        }
     }
     body
 }
@@ -3179,6 +3277,136 @@ See the [rules](https://x.invalid/r)."
     }
 
     #[test]
+    fn a_swiss_is_created_with_its_cuts_its_playoffs_and_who_picks() {
+        let draft = TourneyDraft {
+            name: "LotS".into(),
+            bracket_kind: BracketKind::Swiss,
+            plan: Some(MatchPlan::default_for(BracketKind::Swiss)),
+            preset_id: Some("lots".into()),
+            swiss: SwissExtras {
+                cuts: SwissCuts { wins: 3, losses: 3 },
+                deciding_best_of: 3,
+                stage_two: Some(StageTwoPlan {
+                    double: false,
+                    cut_to: 8,
+                    best_of: 3,
+                    final_best_of: 5,
+                    grand_final: 5,
+                    handicap: false,
+                    third_place: true,
+                }),
+            },
+            picks: PickSettings {
+                on: true,
+                minutes: 5,
+                mode: PickMode::Bottom,
+            },
+            tiebreak: SwissTiebreak::Beaten,
+            ..TourneyDraft::new()
+        };
+        let body = create_body(&draft);
+        assert_eq!(body["presetId"], "lots");
+        assert_eq!(body["plan"]["winCut"], 3);
+        assert_eq!(body["plan"]["decidingBo"], 3);
+        assert_eq!(body["plan"]["stage2"], 1);
+        assert_eq!(body["plan"]["s2CutTo"], 8);
+        assert_eq!(body["plan"]["s2Gf"], 5);
+        assert_eq!(body["plan"]["s2Third"], 1);
+        assert_eq!(body["pickOpponents"], 1);
+        assert_eq!(body["pickMinutes"], 5);
+        assert_eq!(body["pickMode"], "bottom");
+        assert_eq!(body["tiebreak"], "beaten");
+        assert_eq!(body["stopAtAlive"], 0);
+        // Picking off sends no clock; a bracket that is not Swiss sends `gd`.
+        let single = create_body(&TourneyDraft {
+            name: "Cup".into(),
+            picks: PickSettings {
+                on: false,
+                minutes: 9,
+                mode: PickMode::Half,
+            },
+            tiebreak: SwissTiebreak::Beaten,
+            stop_at_alive: 4,
+            ..TourneyDraft::new()
+        });
+        assert_eq!(single["pickMinutes"], 0);
+        assert_eq!(single["tiebreak"], "gd");
+        assert_eq!(single["stopAtAlive"], 4);
+        assert!(single["plan"].get("winCut").is_none());
+    }
+
+    #[test]
+    fn a_free_for_all_is_created_with_its_lobbies() {
+        let body = create_body(&TourneyDraft {
+            name: "FFA night".into(),
+            competition: Competition::FreeForAll,
+            team_size: 1,
+            plan: None,
+            ffa: Some(FfaConfig {
+                per_match: 8,
+                advance: 3,
+                mode: FfaMode::Points,
+                rounds: 4,
+                cut_to: 8,
+                final_size: 4,
+            }),
+            ..TourneyDraft::new()
+        });
+        assert_eq!(body["competition"], "ffa");
+        assert_eq!(body["perMatch"], 8);
+        assert_eq!(body["mode"], "points");
+        // Only knockout lobbies advance anyone; points mode sends 1.
+        assert_eq!(body["advance"], 1);
+        assert_eq!(
+            (
+                body["rounds"].clone(),
+                body["cutTo"].clone(),
+                body["finalSize"].clone()
+            ),
+            (json!(4), json!(8), json!(4))
+        );
+    }
+
+    #[test]
+    fn a_format_change_sends_the_swiss_extras_in_plan_and_the_tiebreak_only_for_swiss() {
+        let swiss = FormatDraft {
+            swiss: SwissExtras {
+                cuts: SwissCuts { wins: 3, losses: 2 },
+                deciding_best_of: 0,
+                stage_two: None,
+            },
+            picks: PickSettings {
+                on: false,
+                minutes: 0,
+                mode: PickMode::Half,
+            },
+            tiebreak: SwissTiebreak::GameDiff,
+            ffa: None,
+            competition: Competition::Team,
+            team_size: 1,
+            formation: Formation::Solo,
+            bracket_kind: BracketKind::Swiss,
+            draft_snakes: false,
+        };
+        let body = edit_format_body(&swiss, false);
+        assert_eq!(
+            body["plan"],
+            json!({ "winCut": 3, "lossCut": 2, "decidingBo": 0, "stage2": 0 })
+        );
+        assert_eq!(body["tiebreak"], "gd");
+        let single = edit_format_body(
+            &FormatDraft {
+                bracket_kind: BracketKind::Single,
+                ..swiss
+            },
+            false,
+        );
+        assert!(single.get("plan").is_none());
+        assert!(single.get("tiebreak").is_none());
+        assert_eq!(single["pickOpponents"], 0);
+    }
+
+    #[test]
     fn a_swiss_with_playoffs_reads_its_plan_its_playoffs_and_the_picks() {
         let event = parse_tourney(&json!({
             "id": "e1", "bracketType": "swiss", "competition": "team",
@@ -3826,6 +4054,7 @@ See the [rules](https://x.invalid/r)."
             formation: Formation::Draft,
             bracket_kind: BracketKind::Swiss,
             draft_snakes: true,
+            ..FormatDraft::default()
         };
 
         let bracket_only = edit_format_body(&format, false);
@@ -3845,10 +4074,18 @@ See the [rules](https://x.invalid/r)."
 
         // Never sent, in either shape: the client reads none of these off the
         // event, so any value here would overwrite with a guess.
-        for guessed in ["plan", "perRoundBo", "seeding", "maxTeams"] {
+        for guessed in ["perRoundBo", "seeding", "maxTeams"] {
             assert!(
                 whole.get(guessed).is_none() && bracket_only.get(guessed).is_none(),
                 "{guessed} is not ours to send"
+            );
+        }
+        // A Swiss plan carries its extras alone: the lengths are left out, and
+        // a key left out keeps its stored value.
+        for length in ["bo", "final", "finalBo", "fast"] {
+            assert!(
+                bracket_only["plan"].get(length).is_none(),
+                "{length} is not ours to send"
             );
         }
     }

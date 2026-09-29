@@ -27,6 +27,7 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { defaultPlanFor, rejectionOf, type DraftRejection } from "../../../shared/rules/tourneyRules";
 import { PlanFields } from "./PlanFields";
+import { defaultFfa, FfaFields, PickFields, StopAtField, SwissExtrasFields } from "./FormatExtras";
 import { formatDay, formatPrize } from "../tourneyPresentation";
 
 const REJECTION_LABELS: Record<DraftRejection, MessageKey> = {
@@ -217,6 +218,14 @@ export function draftOf(event: Tourney): TourneyDraft {
     // Both always sent by `edit_info` too, so both are the event's own.
     checkInDeadline: event.checkInDeadline,
     eventDays: event.eventDays,
+    // The format is the Format panel's to change once the event exists; these
+    // are carried so the draft is whole, and `edit_info` does not send them.
+    presetId: null,
+    swiss: { cuts: event.swissCuts, decidingBestOf: event.decidingBestOf, stageTwo: event.stageTwoPlan },
+    picks: { on: event.pickOpponents, minutes: event.pickMinutes, mode: event.pickMode },
+    tiebreak: event.swissTiebreak,
+    stopAtAlive: event.stopAtAlive,
+    ffa: event.ffa,
   };
 }
 
@@ -251,6 +260,12 @@ const BLANK: TourneyDraft = {
   maxTeams: 0,
   checkInDeadline: null,
   eventDays: [],
+  presetId: null,
+  swiss: { cuts: { wins: 0, losses: 0 }, decidingBestOf: 0, stageTwo: null },
+  picks: { on: false, minutes: 0, mode: "half" },
+  tiebreak: "gameDiff",
+  stopAtAlive: 0,
+  ffa: null,
 };
 
 interface TournamentFormProps {
@@ -459,6 +474,36 @@ export function TournamentForm({
         ) : (
           <div className="tournament-form-row">
             <label className="tournament-field">
+              <span>{t("tournaments.form.competition")}</span>
+              <select
+                value={draft.competition}
+                onChange={(changed) => {
+                  const competition = changed.target.value as TourneyDraft["competition"];
+                  // A free-for-all is solo or teams of up to three, with its
+                  // own lobby settings; a team event gets its plan back.
+                  set(
+                    competition === "freeForAll"
+                      ? {
+                          competition,
+                          teamSize: Math.min(draft.teamSize, 3),
+                          formation: "solo",
+                          ffa: draft.ffa ?? defaultFfa(Math.min(draft.teamSize, 3)),
+                          plan: null,
+                        }
+                      : {
+                          competition,
+                          formation: draft.teamSize > 1 ? "open" : "solo",
+                          ffa: null,
+                          plan: defaultPlanFor(draft.bracketKind),
+                        },
+                  );
+                }}
+              >
+                <option value="team">{t("tournaments.form.competitionTeam")}</option>
+                <option value="freeForAll">{t("tournaments.form.competitionFfa")}</option>
+              </select>
+            </label>
+            <label className="tournament-field">
               <span>{t("tournaments.form.category")}</span>
               <select
                 value={draft.category}
@@ -476,13 +521,14 @@ export function TournamentForm({
                 value={draft.teamSize}
                 onChange={(changed) => set({ teamSize: Number(changed.target.value) })}
               >
-                {[1, 2, 3, 4, 5, 6].map((size) => (
+                {(draft.competition === "freeForAll" ? [1, 2, 3] : [1, 2, 3, 4, 5, 6]).map((size) => (
                   <option value={size} key={size}>
                     {size}v{size}
                   </option>
                 ))}
               </select>
             </label>
+            {draft.competition === "team" && (
             <label className="tournament-field">
               <span>{t("tournaments.form.bracket")}</span>
               <select
@@ -496,6 +542,7 @@ export function TournamentForm({
                 <option value="swiss">{t("tournaments.bracketKind.swiss")}</option>
               </select>
             </label>
+            )}
             {picksFormation && (
               <label className="tournament-field">
                 <span>{t("tournaments.form.formation")}</span>
@@ -544,6 +591,34 @@ export function TournamentForm({
                 : defaultPlanFor(draft.bracketKind)
             }
             onChange={(plan) => set({ plan })}
+          />
+          {draft.bracketKind === "swiss" && (
+            <SwissExtrasFields value={draft.swiss} busy={busy} onChange={(swiss) => set({ swiss })} />
+          )}
+          <PickFields
+            picks={draft.picks}
+            tiebreak={draft.tiebreak}
+            swiss={draft.bracketKind === "swiss"}
+            stageTwo={draft.swiss.stageTwo !== null}
+            cuts={draft.swiss.cuts}
+            busy={busy}
+            onChange={(picks, tiebreak) => set({ picks, tiebreak })}
+          />
+          {/* Elimination only: the service ignores it for a Swiss. */}
+          {draft.bracketKind !== "swiss" && (
+            <StopAtField value={draft.stopAtAlive} busy={busy} onChange={(stopAtAlive) => set({ stopAtAlive })} />
+          )}
+        </fieldset>
+      )}
+
+      {!editing && draft.competition === "freeForAll" && (
+        <fieldset className="tournament-field">
+          <legend>{t("tournaments.form.ffaLegend")}</legend>
+          <FfaFields
+            value={draft.ffa ?? defaultFfa(draft.teamSize)}
+            teamSize={draft.teamSize}
+            busy={busy}
+            onChange={(ffa) => set({ ffa })}
           />
         </fieldset>
       )}

@@ -120,6 +120,20 @@ impl Seeding {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TourneyDraft {
+    /// A named format a tournament director may host (`presetId`), or `None`.
+    /// The service only checks the right to it and records its name; the
+    /// form's own values are what it stores.
+    pub preset_id: Option<String>,
+    /// A Swiss stage's record cuts, deciding matches and playoffs.
+    pub swiss: SwissExtras,
+    /// Whether seeds choose their opponent, and how.
+    pub picks: PickSettings,
+    /// How equal Swiss records are ordered.
+    pub tiebreak: SwissTiebreak,
+    /// End once this many are left (`stopAtAlive`), 0 for never.
+    pub stop_at_alive: i32,
+    /// A free-for-all's lobbies and rounds; `None` for a team event.
+    pub ffa: Option<FfaConfig>,
     pub name: String,
     /// The briefing, as markdown source. See [`Tourney::description`].
     pub description: String,
@@ -270,6 +284,13 @@ pub enum DraftRejection {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FormatDraft {
+    /// A Swiss stage's record cuts, deciding matches and playoffs. Sent in
+    /// `plan`, where keys left out keep their stored value.
+    pub swiss: SwissExtras,
+    pub picks: PickSettings,
+    pub tiebreak: SwissTiebreak,
+    /// A free-for-all's lobbies and rounds.
+    pub ffa: Option<FfaConfig>,
     pub competition: Competition,
     /// 1 to 6 for a team event, 1 to 3 for a free-for-all: the service clamps
     /// each to its own range.
@@ -284,6 +305,18 @@ impl FormatDraft {
     /// The event's current format, as the starting point for editing it.
     pub fn of(event: &Tourney) -> Self {
         Self {
+            swiss: SwissExtras {
+                cuts: event.swiss_cuts,
+                deciding_best_of: event.deciding_best_of,
+                stage_two: event.stage_two_plan,
+            },
+            picks: PickSettings {
+                on: event.pick_opponents,
+                minutes: event.pick_minutes,
+                mode: event.pick_mode,
+            },
+            tiebreak: event.swiss_tiebreak,
+            ffa: event.ffa.clone(),
             competition: event.competition,
             team_size: event.team_size,
             formation: event.formation,
@@ -418,6 +451,28 @@ pub struct FeedsInto {
     pub rule: QualifierRule,
     /// Unix seconds, once the parent has taken its entrants.
     pub applied: Option<u32>,
+}
+
+/// A Swiss stage's settings beyond the match lengths: record cuts, the length
+/// of a deciding match, and a playoff bracket after it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SwissExtras {
+    /// Zero wins and losses is no cuts: a fixed number of rounds.
+    pub cuts: SwissCuts,
+    /// 0 for the normal length.
+    pub deciding_best_of: i32,
+    pub stage_two: Option<StageTwoPlan>,
+}
+
+/// Whether seeds choose their own opponent, the clock per pick in minutes,
+/// and who picks in a Swiss stage's playoffs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PickSettings {
+    pub on: bool,
+    pub minutes: i32,
+    pub mode: PickMode,
 }
 
 /// Why the service would refuse a qualifier link, in the order it checks.

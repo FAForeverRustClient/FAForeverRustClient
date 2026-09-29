@@ -2209,6 +2209,15 @@ export type FfaReport = {
  *  field where a draft was meant.
  */
 export type FormatDraft = {
+	/**
+	 *  A Swiss stage's record cuts, deciding matches and playoffs. Sent in
+	 *  `plan`, where keys left out keep their stored value.
+	 */
+	swiss: SwissExtras,
+	picks: PickSettings,
+	tiebreak: SwissTiebreak,
+	/**  A free-for-all's lobbies and rounds. */
+	ffa: FfaConfig | null,
 	competition: Competition,
 	/**
 	 *  1 to 6 for a team event, 1 to 3 for a free-for-all: the service clamps
@@ -5360,6 +5369,16 @@ export type PickPhase = {
 };
 
 /**
+ *  Whether seeds choose their own opponent, the clock per pick in minutes,
+ *  and who picks in a Swiss stage's playoffs.
+ */
+export type PickSettings = {
+	on: boolean,
+	minutes: number,
+	mode: PickMode,
+};
+
+/**
  *  One list of the per-round best-of plan an organiser edits before the draw
  *  (`set_plan_round_bo`): a single elimination's rounds, a double
  *  elimination's winners or losers rounds, or its grand final.
@@ -7804,6 +7823,18 @@ export type SwissCuts = {
 };
 
 /**
+ *  A Swiss stage's settings beyond the match lengths: record cuts, the length
+ *  of a deciding match, and a playoff bracket after it.
+ */
+export type SwissExtras = {
+	/**  Zero wins and losses is no cuts: a fixed number of rounds. */
+	cuts: SwissCuts,
+	/**  0 for the normal length. */
+	decidingBestOf: number,
+	stageTwo: StageTwoPlan | null,
+};
+
+/**
  *  How a Swiss event separates equal records, after wins and fewer losses.
  *
  *  The website's per-tournament choice (`tiebreak`): game difference, which is
@@ -9230,6 +9261,22 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
  *  best-of overrides, which cannot be asked about before the rounds exist.
  */
 export type TourneyDraft = {
+	/**
+	 *  A named format a tournament director may host (`presetId`), or `None`.
+	 *  The service only checks the right to it and records its name; the
+	 *  form's own values are what it stores.
+	 */
+	presetId: string | null,
+	/**  A Swiss stage's record cuts, deciding matches and playoffs. */
+	swiss: SwissExtras,
+	/**  Whether seeds choose their opponent, and how. */
+	picks: PickSettings,
+	/**  How equal Swiss records are ordered. */
+	tiebreak: SwissTiebreak,
+	/**  End once this many are left (`stopAtAlive`), 0 for never. */
+	stopAtAlive: number,
+	/**  A free-for-all's lobbies and rounds; `None` for a team event. */
+	ffa: FfaConfig | null,
 	name: string,
 	/**  The briefing, as markdown source. See [`Tourney::description`]. */
 	description: string,
