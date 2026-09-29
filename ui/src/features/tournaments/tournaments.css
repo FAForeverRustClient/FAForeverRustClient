@@ -3654,18 +3654,20 @@
   }
 }
 
+/* A picture with a caption under it. The name used to lie on the bottom of the
+   picture over a fade to the page colour, which left light text on a light
+   map: unreadable on every snow map. */
 .tournament-pool-thumb {
-  position: relative;
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--color-bg);
+  background: var(--color-surface);
   color: inherit;
   font: inherit;
+  text-align: left;
   cursor: zoom-in;
 }
 
@@ -3673,7 +3675,17 @@
   cursor: default;
 }
 
+.tournament-pool-thumb-image {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
 .tournament-pool-thumb img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -3683,14 +3695,18 @@
   font-size: 11px;
 }
 
-.tournament-pool-thumb-name {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: 10px 6px 4px;
-  background: linear-gradient(transparent, var(--color-bg));
+.tournament-pool-thumb-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px 6px;
+  border-top: 1px solid var(--color-border);
   font-size: 11px;
-  text-align: left;
+}
+
+.tournament-pool-thumb-name {
   color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .tournament-pool-card-warn {
@@ -3721,10 +3737,16 @@
   overflow: hidden;
 }
 
+/* The picture stays inside its 150 px. A grid row sized to its content let a
+   256 px preview grow past the button and under the card's text, which on a
+   snow map was white on white. */
 .tournament-mapdb-thumb {
   display: grid;
+  grid-template-rows: minmax(0, 1fr);
   place-items: center;
+  flex: none;
   height: 150px;
+  overflow: hidden;
   padding: 0;
   border: 0;
   background: var(--color-bg);

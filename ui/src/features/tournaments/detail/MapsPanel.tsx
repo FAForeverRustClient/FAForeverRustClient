@@ -131,6 +131,8 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
                         const map = byId(mapId);
                         if (map === undefined) return null;
                         const picture = image(map);
+                        // The name sits under the picture, not on it: laid over
+                        // the image it was white on white on every snow map.
                         return (
                           <button
                             type="button"
@@ -139,12 +141,19 @@ export function MapsPanel({ event, vault, assetBase, onManage }: MapsPanelProps)
                             disabled={picture === ""}
                             onClick={() => setEnlarged(mapId)}
                           >
-                            {picture !== "" ? (
-                              <img src={picture} alt="" loading="lazy" decoding="async" />
-                            ) : (
-                              <span className="tournament-pool-thumb-none muted">{noPicture(map)}</span>
-                            )}
-                            <span className="tournament-pool-thumb-name">{map.name}</span>
+                            <span className="tournament-pool-thumb-image">
+                              {picture !== "" ? (
+                                <img src={picture} alt="" loading="lazy" decoding="async" />
+                              ) : (
+                                <span className="tournament-pool-thumb-none muted">{noPicture(map)}</span>
+                              )}
+                            </span>
+                            <span className="tournament-pool-thumb-caption">
+                              <span className="tournament-pool-thumb-name">{map.name}</span>
+                              {map.spec !== null && map.spec.size !== "" && (
+                                <span className="muted">{map.spec.size}</span>
+                              )}
+                            </span>
                           </button>
                         );
                       })}
