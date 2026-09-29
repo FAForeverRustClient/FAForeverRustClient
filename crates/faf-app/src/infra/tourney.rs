@@ -26,6 +26,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use serde_json::{json, Value};
 
 use crate::infra::env_or;
@@ -666,11 +667,12 @@ impl TourneyPort for TourneyClient {
         tournament_id: &str,
         room_id: &str,
         body: &str,
+        reply_to: Option<&str>,
     ) -> Result<(), RequestError> {
         self.act(
             tournament_id,
             "chat_post",
-            json!({ "room": room_id, "text": body }),
+            tourney::chat_post_body(room_id, body, reply_to),
         )
         .await
     }
@@ -774,6 +776,57 @@ impl TourneyPort for TourneyClient {
     async fn veto_undo(&self, tournament_id: &str, match_id: &str) -> Result<(), RequestError> {
         self.act(tournament_id, "veto_undo", json!({ "matchId": match_id }))
             .await
+    }
+
+    async fn faction_veto(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        game: i32,
+        faction: TourneyFaction,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "fveto_action",
+            tourney::faction_veto_body(match_id, game, faction),
+        )
+        .await
+    }
+
+    async fn set_faction_veto(
+        &self,
+        tournament_id: &str,
+        config: &FactionVetoConfig,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "fveto_config",
+            tourney::faction_veto_config_body(config),
+        )
+        .await
+    }
+
+    async fn check_renames(&self, tournament_id: &str) -> Result<RenameCheck, RequestError> {
+        // A `POST` that writes nothing: the service reads FAF on the
+        // organiser's token, and keeps it off `GET` for that reason.
+        let document = self
+            .send(
+                reqwest::Method::POST,
+                &format!("t/{}/check_renames", encode(tournament_id)),
+                &[],
+                Some(json!({})),
+            )
+            .await?;
+        Ok(tourney::parse_rename_check(&document))
+    }
+
+    async fn administer(
+        &self,
+        tournament_id: &str,
+        change: &TourneyAdmin,
+    ) -> Result<(), RequestError> {
+        let (action, body) = tourney::admin_request(change);
+        self.act(tournament_id, action, body).await
     }
 
     async fn save_map(&self, tournament_id: &str, map: &MapDraft) -> Result<(), RequestError> {

@@ -64,6 +64,7 @@ struct HelperFixture {
     tourney_phase_legality: Vec<TourneyPhaseLegalityCase>,
     tourney_busy_matches: Vec<TourneyBusyMatchCase>,
     tourney_swiss_cuts: Vec<TourneySwissCutCase>,
+    tourney_faction_configs: Vec<TourneyFactionConfigCase>,
     tourney_draft_rejections: Vec<TourneyDraftRejectionCase>,
     tourney_reports: Vec<TourneyReportCase>,
     tourney_map_matches: TourneyMapMatchFixture,
@@ -218,6 +219,28 @@ struct TourneyRuleCase {
     reportable_match_ids: Vec<String>,
     /// `Tourney::may_submit` over every match: the players' own path.
     submittable_match_ids: Vec<String>,
+    /// `Tourney::faction_veto_on`: 1v1 only, and never free-for-all.
+    faction_veto_on: bool,
+    /// `Tourney::may_configure_faction_veto`.
+    may_configure_faction_veto: bool,
+    /// `Tourney::third_place_on`: the plan before the draw, the match after.
+    third_place_on: bool,
+    /// `Tourney::may_add_third_place`.
+    may_add_third_place: bool,
+    /// `Tourney::may_remove_third_place`: only until anything happens in it.
+    may_remove_third_place: bool,
+    /// `Tourney::may_set_match_best_of` over every match, in bracket order.
+    best_of_match_ids: Vec<String>,
+    /// `Tourney::may_remove_organiser` over every organiser account.
+    removable_organiser_ids: Vec<i32>,
+    /// `Tourney::may_end_early`.
+    may_end_early: bool,
+    /// `Tourney::may_reopen_early`.
+    may_reopen_early: bool,
+    /// `Tourney::may_repull_ratings`.
+    may_repull_ratings: bool,
+    /// `Tourney::may_edit_veto`.
+    may_edit_veto: bool,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -243,6 +266,14 @@ struct TourneyOpenEventCase {
 struct TourneyBusyMatchCase {
     pending: Option<TourneyAction>,
     busy_match_id: Option<String>,
+}
+
+/// `FactionVetoConfig::is_submittable`: what `fveto_config` accepts.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TourneyFactionConfigCase {
+    config: FactionVetoConfig,
+    submittable: bool,
 }
 
 /// `SwissCuts::rounds`: the round count the start dialog shows in place of
@@ -657,6 +688,27 @@ fn tourney_rule_case(
             .collect(),
         may_rename: team.as_ref().is_some_and(|team| event.may_rename(team)),
         may_publish: event.may_publish(),
+        faction_veto_on: event.faction_veto_on(),
+        may_configure_faction_veto: event.may_configure_faction_veto(),
+        third_place_on: event.third_place_on(),
+        may_add_third_place: event.may_add_third_place(),
+        may_remove_third_place: event.may_remove_third_place(),
+        best_of_match_ids: event
+            .matches
+            .iter()
+            .filter(|entry| event.may_set_match_best_of(entry))
+            .map(|entry| entry.id.clone())
+            .collect(),
+        removable_organiser_ids: event
+            .organiser_accounts
+            .iter()
+            .filter(|organiser| event.may_remove_organiser(organiser.faf_id))
+            .map(|organiser| organiser.faf_id)
+            .collect(),
+        may_end_early: event.may_end_early(),
+        may_reopen_early: event.may_reopen_early(),
+        may_repull_ratings: event.may_repull_ratings(),
+        may_edit_veto: event.may_edit_veto(),
         reportable_match_ids: event
             .matches
             .iter()
@@ -700,6 +752,7 @@ fn tourney_match(
         loser_to: None,
         pending_report: None,
         veto: None,
+        faction_veto: None,
         entrants: Vec::new(),
         winners: Vec::new(),
         points: Vec::new(),
@@ -725,6 +778,77 @@ fn tourney_matches() -> Vec<TourneyMatch> {
 }
 
 fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
+    let four_single = four_team_single();
+    let third = TourneyMatch {
+        round: 2,
+        team2: None,
+        ..tourney_match("third", BracketSide::ThirdPlace, Some("t4"), None)
+    };
+    let with_third = Tourney {
+        id: "with-third".into(),
+        matches: [four_single.matches.clone(), vec![third.clone()]].concat(),
+        ..four_single.clone()
+    };
+    let third_started = Tourney {
+        id: "third-started".into(),
+        matches: [
+            four_single.matches.clone(),
+            vec![TourneyMatch {
+                veto: Some(MatchVeto {
+                    banned: vec![VetoChoice {
+                        map: "map1".into(),
+                        by: "t4".into(),
+                        game: None,
+                    }],
+                    ..running_veto(1, Some("t4"), false)
+                }),
+                ..third
+            }],
+        ]
+        .concat(),
+        ..four_single.clone()
+    };
+    let organiser = |faf_id: i32, name: &str| Organiser {
+        faf_id,
+        name: name.into(),
+        hidden: false,
+    };
+    let two_organisers = Tourney {
+        id: "two-organisers".into(),
+        organiser_accounts: vec![organiser(1, "Nuggets"), organiser(2, "Seraphim")],
+        ..four_single.clone()
+    };
+    let last_organiser = Tourney {
+        id: "last-organiser".into(),
+        organiser_accounts: vec![organiser(1, "Nuggets")],
+        rating_kind: RatingKind::None,
+        ..four_single.clone()
+    };
+    let stopped_early = Tourney {
+        id: "stopped-early".into(),
+        status: TourneyStatus::Finished,
+        early_finish: Some(EarlyFinish {
+            at: Some(1_790_000_000),
+            by: "Nuggets".into(),
+            automatic: false,
+            target: 0,
+            alive: 2,
+            names: vec!["T1".into(), "T2".into()],
+        }),
+        ..four_single.clone()
+    };
+    let third_planned = Tourney {
+        id: "third-planned".into(),
+        status: TourneyStatus::Drafted,
+        matches: Vec::new(),
+        plan: Some(MatchPlan::Single {
+            early: 3,
+            semi: 3,
+            final_bo: 5,
+            third_place: true,
+        }),
+        ..four_single.clone()
+    };
     // An open 2v2 taking signups, with a combined-rating ceiling that this
     // account would push `t1` over but not `t2`.
     let capped = Tourney {
@@ -865,6 +989,12 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
     let player_running = Tourney {
         id: "player-running".into(),
         player_reporting: true,
+        team_size: 1,
+        faction_veto: FactionVetoConfig {
+            enabled: true,
+            bans: 1,
+            picks: 2,
+        },
         viewer: TourneyViewer {
             logged_in: true,
             member_team_id: Some("t1".into()),
@@ -962,7 +1092,102 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             Some("t1"),
             vec![],
         ),
+        tourney_rule_case(
+            "a running single elimination of four, without a 3rd place match",
+            four_single.clone(),
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same bracket with a 3rd place match nobody has touched",
+            with_third,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same, once a map has been banned in it: it stays",
+            third_started,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "a single elimination planned with a 3rd place match, before the draw",
+            third_planned,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "two organisers, either of whom may remove the other or leave",
+            two_organisers,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "the last organiser, who may not leave the event with nobody",
+            last_organiser,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "an elimination stopped early, which its organiser may reopen",
+            stopped_early,
+            None,
+            vec![],
+        ),
     ]
+}
+
+/// A single elimination of four, running, seen by its organiser: one
+/// semi-final played, the other and the final still to come.
+fn four_team_single() -> Tourney {
+    let semi = |id: &str, index: i32, team1: &str, team2: &str| TourneyMatch {
+        index,
+        winner_to: Some(MatchLink {
+            match_id: "final".into(),
+            slot: index + 1,
+        }),
+        ..tourney_match(id, BracketSide::Winners, Some(team1), Some(team2))
+    };
+    Tourney {
+        id: "four-single".into(),
+        status: TourneyStatus::Running,
+        competition: Competition::Team,
+        bracket_kind: BracketKind::Single,
+        team_size: 1,
+        viewer: TourneyViewer {
+            logged_in: true,
+            organiser: true,
+            ..TourneyViewer::default()
+        },
+        teams: ["t1", "t2", "t3", "t4"]
+            .iter()
+            .map(|id| tourney_team(id, &[]))
+            .collect(),
+        matches: vec![
+            TourneyMatch {
+                status: MatchStatus::Done,
+                score1: Some(2),
+                score2: Some(0),
+                winner: Some("t1".into()),
+                loser: Some("t4".into()),
+                ..semi("s1", 0, "t1", "t4")
+            },
+            // A live score is a game played, so its length is locked.
+            TourneyMatch {
+                status: MatchStatus::Live,
+                score1: Some(1),
+                score2: Some(0),
+                ..semi("s2", 1, "t2", "t3")
+            },
+            TourneyMatch {
+                round: 2,
+                best_of: 5,
+                team2: None,
+                ..tourney_match("final", BracketSide::Winners, Some("t1"), None)
+            },
+        ],
+        ..Tourney::default()
+    }
 }
 
 fn standings_team(id: &str, seed: i32, out: Option<(BracketSide, i32)>) -> TourneyTeam {
@@ -1147,6 +1372,30 @@ fn tourney_standings_cases() -> Vec<TourneyStandingsCase> {
         }],
         ..Tourney::default()
     };
+    // A single elimination of four with a 3rd place match played: 1, 2, 3, 4
+    // rather than a shared 3rd. The final loser is out in the final's round,
+    // the two semi-final losers in the 3rd place match that carries the same
+    // round number.
+    let third_place = Tourney {
+        id: "third-place".into(),
+        status: TourneyStatus::Finished,
+        bracket_kind: BracketKind::Single,
+        champion_team_id: Some("t1".into()),
+        teams: vec![
+            standings_team("t4", 4, Some((BracketSide::ThirdPlace, 2))),
+            standings_team("t3", 3, Some((BracketSide::ThirdPlace, 2))),
+            standings_team("t2", 2, Some((BracketSide::Winners, 2))),
+            standings_team("t1", 1, None),
+        ],
+        matches: vec![TourneyMatch {
+            round: 2,
+            status: MatchStatus::Done,
+            winner: Some("t4".into()),
+            loser: Some("t3".into()),
+            ..tourney_match("third", BracketSide::ThirdPlace, Some("t3"), Some("t4"))
+        }],
+        ..Tourney::default()
+    };
     // Signups: no table at all, and a pane that drew one would be inventing it.
     let early = Tourney {
         id: "early".into(),
@@ -1176,6 +1425,10 @@ fn tourney_standings_cases() -> Vec<TourneyStandingsCase> {
             points,
         ),
         ("signups, where there is no table", early),
+        (
+            "a single elimination whose 3rd place match was played",
+            third_place,
+        ),
     ]
     .into_iter()
     .map(|(name, event)| TourneyStandingsCase {
@@ -1526,6 +1779,21 @@ fn tourney_round_cases() -> Vec<TourneyRoundCase> {
                 ..base.clone()
             },
         ),
+        (
+            // The website projects a round of its own for it, so a pool can
+            // be bound to it before the draw.
+            "a single elimination planned with a 3rd place match",
+            Tourney {
+                max_teams: 8,
+                plan: Some(MatchPlan::Single {
+                    early: 3,
+                    semi: 3,
+                    final_bo: 5,
+                    third_place: true,
+                }),
+                ..base.clone()
+            },
+        ),
     ]
     .into_iter()
     .map(|(name, event)| TourneyRoundCase {
@@ -1817,6 +2085,7 @@ fn veto_event(
         veto: VetoConfig {
             enabled: true,
             mode: VetoMode::Upfront,
+            ..VetoConfig::default()
         },
         players: vec![
             tourney_player("cap1", Some(1_500), Some("t1"), false),
@@ -2497,6 +2766,7 @@ fn tourney_report_cases() -> Vec<TourneyReportCase> {
             loser_to: None,
             pending_report: None,
             veto: None,
+            faction_veto: None,
             entrants: Vec::new(),
             winners: Vec::new(),
             points: Vec::new(),
@@ -2673,6 +2943,8 @@ fn tourney_map_match_fixture() -> TourneyMapMatchFixture {
                 description: String::new(),
                 published: true,
                 spec: None,
+                secret: false,
+                masked: false,
             };
             TourneyMapMatchCase {
                 typed: name.into(),
@@ -2842,6 +3114,29 @@ fn helper_fixture() -> HelperFixture {
         tourney_open_events: tourney_open_event_cases(),
         tourney_phase_legality: tourney_phase_legality_cases(),
         tourney_busy_matches: tourney_busy_match_cases(),
+        tourney_faction_configs: [
+            (true, 1, 2),
+            (true, 2, 3),
+            (true, 1, 1),
+            (true, 2, 2),
+            (true, 1, 4),
+            (true, 3, 3),
+            (false, 1, 1),
+            (false, 0, 2),
+        ]
+        .into_iter()
+        .map(|(enabled, bans, picks)| {
+            let config = FactionVetoConfig {
+                enabled,
+                bans,
+                picks,
+            };
+            TourneyFactionConfigCase {
+                config,
+                submittable: config.is_submittable(),
+            }
+        })
+        .collect(),
         tourney_swiss_cuts: [(0, 0), (3, 0), (0, 2), (3, 3), (4, 2), (1, 1), (-1, 3)]
             .into_iter()
             .map(|(wins, losses)| {
@@ -4218,6 +4513,44 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "an organiser checks names against FAF, fails once, then writes",
+            vec![
+                TourneyEvent::RenamesChecking.into(),
+                // A refusal keeps its sentence: it is the one that says to sign
+                // in again.
+                TourneyEvent::RenamesCheckFailed {
+                    reason: "Checking names needs your FAF login.".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+                TourneyEvent::RenamesChecking.into(),
+                TourneyEvent::RenamesChecked {
+                    check: RenameCheck {
+                        checked: 3,
+                        changed: vec![Rename {
+                            player_id: "p1".into(),
+                            from: "Old".into(),
+                            to: "New".into(),
+                            team: Some("Team Old".into()),
+                        }],
+                        failed: 0,
+                        manual: 1,
+                    },
+                }
+                .into(),
+                // Any write re-reads the event, so the list goes with it.
+                TourneyEvent::ActionStarted {
+                    action: TourneyAction::Administering,
+                }
+                .into(),
+                TourneyEvent::ActionSucceeded {
+                    action: TourneyAction::Administering,
+                    select: None,
+                }
+                .into(),
+            ],
+        ),
+        case(
             "a series is browsed, opened and then deleted underneath",
             vec![
                 TourneyEvent::SeriesLoading.into(),
@@ -4285,6 +4618,8 @@ fn cases() -> Vec<Case> {
                         body: "gl hf".into(),
                         at: Some(1_700_000_100),
                         system: false,
+                        reply_to: None,
+                        everyone: false,
                     }],
                 }
                 .into(),

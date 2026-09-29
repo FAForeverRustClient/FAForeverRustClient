@@ -10,12 +10,14 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
+import { Modal } from "../../../design-system/Modal";
 import type {
   AccountSearch,
   Article,
   BracketConfig,
   ChatPost,
   ChatRoom,
+  FactionVetoConfig,
   FfaReport,
   MapDraft,
   MapListStatus,
@@ -23,9 +25,11 @@ import type {
   PlayerSummary,
   FormatDraft,
   QualifierRule,
+  RenameCheck,
   SeedOrder,
   SeriesDraft,
   Tourney,
+  TourneyAdmin,
   TourneyLoadStatus,
   TourneyDraft,
   TourneyMatch,
@@ -45,6 +49,15 @@ import { ManagePanel } from "../manage/ManagePanel";
 import { NewsPanel } from "./NewsPanel";
 import { OverviewPanel } from "./OverviewPanel";
 import { StandingsPanel } from "../bracket/StandingsPanel";
+import type { VetoHandlers } from "../bracket/VetoPanel";
+import { myVetoSteps, vetoSettled } from "../bracket/vetoPresentation";
+import { MapsPanel } from "./MapsPanel";
+import { listedMatches, MatchesPanel } from "./MatchesPanel";
+import { vetoMatches, VetoesPanel } from "./VetoesPanel";
+import { ChatRoomView } from "./ChatRoomView";
+import { MatchChatContext, matchRoomId, type MatchChatApi } from "../bracket/matchChat";
+import { matchLabel } from "../bracket/matchLabels";
+import { teamNameOf } from "../bracket/matchParts";
 import { formatMoment, formatOf } from "../tourneyPresentation";
 import { selfOrganised, standingsKind, unreadNews, unreadTotal } from "../../../shared/rules/tourneyRules";
 
@@ -55,6 +68,9 @@ type Section =
   | "teams"
   | "draft"
   | "bracket"
+  | "matches"
+  | "vetoes"
+  | "maps"
   | "standings"
   | "chat"
   | "manage"
@@ -67,6 +83,9 @@ const SECTION_LABELS: Record<Section, MessageKey> = {
   teams: "tournaments.section.teams",
   draft: "tournaments.section.draft",
   bracket: "tournaments.section.bracket",
+  matches: "tournaments.section.matches",
+  vetoes: "tournaments.section.vetoes",
+  maps: "tournaments.section.maps",
   standings: "tournaments.section.standings",
   chat: "tournaments.section.chat",
   manage: "tournaments.section.manage",
@@ -115,6 +134,10 @@ interface TournamentDetailPaneProps {
   /** The organiser's name-search state, forwarded to the entrant pickers. */
   accountSearch: AccountSearch;
   onSearchAccounts: (query: string) => void;
+  /** The organiser's last check of entrant names against FAF. */
+  renames: RenameCheck | null;
+  renamesStatus: TourneyLoadStatus;
+  onCheckRenames: () => void;
   onSignUp: () => void;
   onWithdraw: () => void;
   onCheckIn: () => void;
@@ -123,9 +146,11 @@ interface TournamentDetailPaneProps {
   onHost: (entry: TourneyMatch) => void;
   onOpenChat: () => void;
   onOpenRoom: (roomId: string) => void;
-  onPost: (body: string) => void;
+  onPost: (body: string, replyTo: string | null) => void;
   onAssignPool: (roundKey: string, poolId: string) => void;
   onOpenUrl: (url: string) => void;
+  /** Play a FAF replay by its vault id, in the client. */
+  onWatchReplay: (uid: number) => void;
   /** Save the settings, from the form Manage now shows inline. */
   onEditInfo: (draft: TourneyDraft) => void;
   onPublish: () => void;
@@ -148,6 +173,9 @@ interface TournamentDetailPaneProps {
   onSaveMap: (map: MapDraft) => void;
   onPublishMap: (mapId: string, published: boolean) => void;
   onDeleteMap: (mapId: string) => void;
+  onSetFactionVeto: (config: FactionVetoConfig) => void;
+  /** One of the organiser's single-call changes. */
+  onAdmin: (change: TourneyAdmin) => void;
   onSavePool: (pool: PoolDraft) => void;
   onPublishPool: (poolId: string, published: boolean) => void;
   onDeletePool: (poolId: string) => void;
@@ -166,9 +194,7 @@ interface TournamentDetailPaneProps {
   onSaveSeries: (draft: SeriesDraft) => void;
   onAddQualifier: (qualifierId: string, rule: QualifierRule) => void;
   onRemoveQualifier: (linkId: string) => void;
-  onVetoAct: (matchId: string, mapId: string) => void;
-  onVetoSetSides: (matchId: string, teamA: string) => void;
-  onVetoUndo: (matchId: string) => void;
+  veto: VetoHandlers;
   onReportFfa: (report: FfaReport) => void;
   onDraftPick: (playerId: string) => void;
   onDraftUndo: () => void;
@@ -206,6 +232,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     !event.teams.some((team) => team.id === event.viewer.memberTeamId && team.checkedIn);
 
   const unread = unreadTotal(props.chatRooms);
+  const openVetoes = vetoMatches(event).filter((entry) => !vetoSettled(event, entry)).length;
+  const owedVetoes = event.matches.reduce((total, entry) => total + myVetoSteps(event, entry), 0);
 
   /*
    * FAF's whole map catalogue, asked for by the sections that draw a preview
@@ -218,7 +246,11 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
    * tournament to another while standing on Manage left every map without a
    * preview, and so did anything that re-mounted the pane.
    */
-  const needsVault = section === "manage" || section === "bracket";
+  // Manage only. The rounds used to ask for it too, for the veto previews, and
+  // a player opening a match's vetoes waited on the whole catalogue before a
+  // single picture appeared; those pictures are the organiser's own uploads
+  // now, which the website shows too.
+  const needsVault = section === "manage";
   useEffect(() => {
     if (needsVault) props.onNeedVault();
     // The callback is stable per render of the view above; re-running on it
@@ -240,7 +272,22 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     if (next === "news" && unreadNews(event) > 0) props.onMarkNewsRead();
   };
 
+  // The match whose chat is open in the popup, if any. The room itself is the
+  // tab's one open room, so the popup and the Chat tab never disagree about it.
+  const [matchChat, setMatchChat] = useState<TourneyMatch | null>(null);
+  const chatApi: MatchChatApi = {
+    open: (entry) => {
+      // The room list carries the unread counts; load it if the Chat tab
+      // never has.
+      if (props.chatRooms.length === 0) props.onOpenChat();
+      setMatchChat(entry);
+      props.onOpenRoom(matchRoomId(entry));
+    },
+    unread: (entry) => props.chatRooms.find((room) => room.id === matchRoomId(entry))?.unread ?? 0,
+  };
+
   return (
+    <MatchChatContext.Provider value={chatApi}>
     <div className="surface tournament-detail">
       <header className="tournament-detail-header">
         <div>
@@ -303,6 +350,16 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           // that the tab would open on "nothing yet", which is a worse answer
           // than not offering it.
           .filter((candidate) => candidate !== "standings" || standingsKind(event) !== "none")
+          // Matches once there is a head-to-head match to list, and Vetoes
+          // while the bracket runs and some match has a run to show: the
+          // website's conditions. Maps is always there, as it is on the website.
+          .filter((candidate) => candidate !== "matches" || listedMatches(event).length > 0)
+          .filter(
+            (candidate) =>
+              candidate !== "vetoes" ||
+              ((event.status === "running" || event.status === "finished") &&
+                vetoMatches(event).length > 0),
+          )
           // News is a section only when there is news, or somebody who can
           // write it. An empty tab that nobody can fill is a dead end.
           .filter(
@@ -329,6 +386,12 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
               {candidate === "chat" && unread > 0 && (
                 <span className="tournament-badge">{unread}</span>
               )}
+              {candidate === "vetoes" && openVetoes > 0 && ` (${openVetoes})`}
+              {/* The steps this account owes, across every match: the count
+                  above is everyone's work, this one is yours. */}
+              {candidate === "vetoes" && owedVetoes > 0 && (
+                <span className="tournament-badge">{owedVetoes}</span>
+              )}
             </button>
           ))}
       </nav>
@@ -344,7 +407,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         className={
           section === "bracket"
             ? "tournament-section-body is-wide"
-            : "tournament-section-body"
+            : section === "chat"
+              ? "tournament-section-body is-wide is-fill"
+              : "tournament-section-body"
         }
       >
 
@@ -397,10 +462,10 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onAnswer={props.onAnswer}
           onHost={props.onHost}
           vault={props.vault}
-          onVetoAct={props.onVetoAct}
-          onVetoSetSides={props.onVetoSetSides}
-          onVetoUndo={props.onVetoUndo}
+          assetBase={props.assetBase}
+          veto={props.veto}
           onReportFfa={props.onReportFfa}
+          onAdmin={props.onAdmin}
         />
       )}
 
@@ -413,6 +478,42 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onUndo={props.onDraftUndo}
           onSetCaptains={props.onSetCaptains}
           onStart={() => props.onAdvance("startDraft")}
+        />
+      )}
+
+      {section === "matches" && (
+        <MatchesPanel
+          event={event}
+          profiles={props.profiles}
+          vault={props.vault}
+          assetBase={props.assetBase}
+          busyMatchId={props.busyMatchId}
+          onReport={props.onReport}
+          onAnswer={props.onAnswer}
+          onHost={props.onHost}
+          onWatchReplay={props.onWatchReplay}
+          veto={props.veto}
+          onAdmin={props.onAdmin}
+        />
+      )}
+
+      {section === "vetoes" && (
+        <VetoesPanel
+          event={event}
+          profiles={props.profiles}
+          vault={props.vault}
+          assetBase={props.assetBase}
+          busyMatchId={props.busyMatchId}
+          veto={props.veto}
+        />
+      )}
+
+      {section === "maps" && (
+        <MapsPanel
+          event={event}
+          vault={props.vault}
+          assetBase={props.assetBase}
+          onManage={() => openSection("manage")}
         />
       )}
 
@@ -443,10 +544,14 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           event={event}
           vault={props.vault}
           vaultStatus={props.vaultStatus}
+          assetBase={props.assetBase}
           series={props.series}
           events={props.events}
           profiles={props.profiles}
           accountSearch={props.accountSearch}
+          renames={props.renames}
+          renamesStatus={props.renamesStatus}
+          onCheckRenames={props.onCheckRenames}
           onSearchAccounts={props.onSearchAccounts}
           busy={busy}
           onEditInfo={props.onEditInfo}
@@ -463,6 +568,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onSaveMap={props.onSaveMap}
           onPublishMap={props.onPublishMap}
           onDeleteMap={props.onDeleteMap}
+          onSetFactionVeto={props.onSetFactionVeto}
+          onAdmin={props.onAdmin}
           onSavePool={props.onSavePool}
           onPublishPool={props.onPublishPool}
           onDeletePool={props.onDeletePool}
@@ -486,6 +593,32 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       )}
       </div>
     </div>
+    {matchChat !== null && props.openRoomId === matchRoomId(matchChat) && (
+      <Modal
+        onClose={() => setMatchChat(null)}
+        className="tournament-match-chat"
+        ariaLabel={t("tournaments.chat.matchChat")}
+      >
+        <h3>{t("tournaments.chat.matchChat")}</h3>
+        <p className="muted">
+          {matchLabel(event, matchChat, t)}: {teamNameOf(event, matchChat.team1) ?? ""}{" "}
+          {t("tournaments.swiss.vs")} {teamNameOf(event, matchChat.team2) ?? ""}
+        </p>
+        <ChatRoomView
+          event={event}
+          roomId={matchRoomId(matchChat)}
+          posts={props.chatPosts}
+          status={props.chatStatus}
+          busy={busy}
+          onPost={props.onPost}
+          onDeletePost={props.onDeleteChatPost}
+          onMute={props.onMute}
+          onRefresh={props.onRefreshChat}
+          compact
+        />
+      </Modal>
+    )}
+    </MatchChatContext.Provider>
   );
 }
 

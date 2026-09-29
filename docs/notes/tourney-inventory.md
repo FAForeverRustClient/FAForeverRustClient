@@ -102,6 +102,102 @@ These come first because each one is a defect in what already ships.
 | 1.9 | Fixed, with a service test |
 | 1.10 | Fixed, together with 1.8 |
 
+### Status on `tourney/batch-2` (PR 373), re-measured against `2b6be08`
+
+Re-run on 2026-09-28 against the website at `2b6be08` (21:37 +0200), which
+added one feature since `d2cac09`: the **3rd place match** (a `3p` bracket
+side, `third_place`, `plan.thirdPlace`, the Rounds/Bracket tab name once
+playoffs exist). The client read a `3p` match as a second final; it is its
+own side now.
+
+Two more defects of the kind section 1 lists, found on the way:
+
+| # | Finding | Status |
+|---|---|---|
+| 1.11 | **"Which rating counts" could not be changed from the client.** The settings form showed the select, and `edit_info` never sent `ratingType`. | Fixed |
+| 1.12 | **A `3p` match was read as a winners match** with the final's round and index, so it was drawn on top of the final and ranked the semi-final losers level with the beaten finalist. | Fixed |
+
+What batch 2 covers of section 3:
+
+| Area | Done in batch 2 |
+|---|---|
+| 3.5 Chat | Layout, day dividers, replies with quote and jump, @ completion, ping the organisers, match chat as a popup |
+| 3.8 Bracket / Rounds | Swiss rounds as a list with record chips, the 3rd place match, per-round best-of on the drawn bracket (`set_round_bo`) |
+| 3.9 Matches | The tab, with per-match best-of in the details (`set_match_bo`) |
+| 3.10 Vetoes | The tab, faction vetoes, the map veto run as the website runs it |
+| 3.11 Maps | The public tab; secret maps, one or all (`map_secret`) |
+| 3.14 Admin | Organisers remove and leave, bans, FAF renames, re-pull ratings, ending early (stop-at, finish, reopen), qualifier seed block, attached images, organiser notes, veto rules (Team A, reveal on ban) with their own save, multi-day events, check-in deadline, which rating counts |
+
+**Actions still not called** (of 105 `sub` branches and the `phase` steps),
+after taking out the browser's OAuth round trip (`login`, `logout`,
+`callback`), an alias (`generate`), a dead one (`claim_organizer` answers
+410) and two the client covers another way (`edit_date` through
+`edit_info`, `faf_lookup` through FAF's own account search):
+
+- Swiss and playoffs: `pick_opponent`, `undo_pick_opponent`, `playoff_setup`
+- Teams: `org_create_team`, `signup_team`, `join_team`, `set_team_name`, `swap_team`, `set_match_team`, `replace_player`, `set_captain_mode`
+- Maps: `copy_maps`, `pool_copy_sequence`, `set_maps`, `set_plan_round_bo`
+- Vetoes: `fveto_reset`
+- Players: `player_ratings` (issue 158's second half), `check_rating`, `cancel_invite`, `decline_invite`
+- Decide: `secrets` (share links)
+- Site administration: `set_category`, `stand_down`, `restore`
+
+**Still open on screen**, checked on 2026-09-29 against every render
+function of `public/app*.js` at `2b6be08` and the client's panels. Not
+applicable and left out: whole-team registration (`signup_team`, off with FAF
+login), instant team join (`join_team`, removed), organiser links
+(`claim_organizer`, 410), premade team names (`set_team_name`, legacy
+formation).
+
+- List: the card's format, event days, rating limits, entrant limits and cash
+  prize; the "Event starts in" and "Signups close in" countdowns; the archive
+  by year, 50 at a time; "draft, view only" for a director (`canManage`).
+- Site-wide: the pending bar across tournaments (`my/pending`), Hall of Fame,
+  the series index and series pages (editions, winners, series bans), FAQ as
+  pages with the three official rules links, asking for hosting rights
+  (`host_request`), and site administration (section 3.19).
+- Header: status pill, category and type line, the stage stepper, the turn
+  banner on every tab, view as player, show players, streamer mode, hotkeys,
+  and the draft banner's scheduled publishing (`publish` with `publishAt`).
+- Overview: the Schedule and "Ends early" cells, "Don't know your rating?",
+  recent results, the turn / mention / ping / own-ban banners, the series in
+  its colour with a link, the Links panel, the Challonge source line.
+- Players: a typed rating on an unrated event (signup sends `{}`), checking
+  one's own rating (`check_rating`), declining an invite (`decline_invite`),
+  being told about one's own ban (`myBan`), Discord handles in the list;
+  organiser: all of a player's ratings (`player_ratings`), replace a player
+  (`replace_player`), ban from the row, edit name and team name, seed by
+  invite.
+- Teams and draft: cancel an invite (`cancel_invite`), a captain passing the
+  captaincy, the waiting list and first-come cut, undo check-in, an organiser
+  checking a team in, the check-in deadline shown, projected seeds, a team from
+  a free agent (`org_create_team`), swapping a waiting team in (`swap_team`),
+  sorting free agents, captains chosen by rating (`set_captain_mode`).
+- Bracket: byes and phantom losers matches drawn as cards, divisions as
+  separate brackets, the preview before the draw with per-round Bo
+  (`set_plan_round_bo`), the Swiss round 1 editor, record cuts after creation,
+  stage two, playoffs and the pick phase, the ends-early notice and "not
+  played", the team popup, replay links on the card, setting a match's teams
+  (`set_match_team`), "how the veto will run", maps pinned to a round
+  (`set_maps`).
+- Vetoes: resetting one side's faction choices (`fveto_reset`).
+- Maps: editing spawn information, uploading a map picture, scheduled pool
+  publishing, copying a ban/pick order (`pool_copy_sequence`), importing maps
+  (`copy_maps`), a pool for one match.
+- Standings and stats: imported group tables; the Stats tab.
+- Creation: presets, "fill from this", record cuts, stage two, ends early and
+  opponent picking at creation, the FFA block, images pasted into the text.
+- Chat: pinning a chat to the right.
+
+**Fields still not read** (27 of 114): `pickOpponents`, `pickMinutes`,
+`pickMode`, `playoffs`, `stage2`, `plannedR1`, `swissR1Open` (Swiss and
+playoffs); `importedType`, `importedGroups`, `importedStandings`,
+`standingsOnly`, `source`, `sourceUrl` (Challonge imports); `preset`,
+`presetName`; `captainMode`, `captainCount`; `myBan`; `aliveCount` (the
+client counts `survivors`); `archived`, `chatLockAt`, `chatPingCount`,
+`myMentionCount`, `myUnreadCount`, `createdByName`, `hasOrganizer`,
+`challongeDate`.
+
 ---
 
 ## 2. The two open issues, item by item

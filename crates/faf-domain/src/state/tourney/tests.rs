@@ -54,6 +54,7 @@ fn playable_match() -> TourneyMatch {
         loser_to: None,
         pending_report: None,
         veto: None,
+        faction_veto: None,
         entrants: Vec::new(),
         winners: Vec::new(),
         points: Vec::new(),
@@ -270,6 +271,8 @@ fn a_pool_is_found_through_its_round_assignment() {
                 description: String::new(),
                 published: true,
                 spec: None,
+                secret: false,
+                masked: false,
             },
             TourneyMap {
                 id: "m2".into(),
@@ -278,6 +281,8 @@ fn a_pool_is_found_through_its_round_assignment() {
                 description: String::new(),
                 published: true,
                 spec: None,
+                secret: false,
+                masked: false,
             },
         ],
         map_pools: vec![MapPool {
@@ -335,6 +340,8 @@ fn resolve(name: &str) -> Option<&'static str> {
         description: String::new(),
         published: true,
         spec: None,
+        secret: false,
+        masked: false,
     };
     match_vault_map(&map, &VAULT, |v| v.display, |v| v.folder).map(|v| v.display)
 }
@@ -535,6 +542,8 @@ fn switching_events_drops_the_previous_ones_conversation_at_once() {
                     body: "gl hf".into(),
                     at: None,
                     system: false,
+                    reply_to: None,
+                    everyone: false,
                 }],
             },
             TourneyEvent::Selected {
@@ -605,6 +614,8 @@ fn posts_for_a_room_that_is_no_longer_open_are_ignored() {
                     body: "wrong room".into(),
                     at: None,
                     system: false,
+                    reply_to: None,
+                    everyone: false,
                 }],
             },
         ],

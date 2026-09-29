@@ -32,6 +32,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 
 use super::RequestError;
 
@@ -311,12 +312,13 @@ pub trait TourneyPort: Send + Sync {
         room_id: &str,
     ) -> Result<Vec<ChatPost>, RequestError>;
 
-    /// Post to one room.
+    /// Post to one room, optionally as a reply to one of its posts.
     async fn chat_post(
         &self,
         tournament_id: &str,
         room_id: &str,
         body: &str,
+        reply_to: Option<&str>,
     ) -> Result<(), RequestError>;
 
     /// The rules and FAQ pages, shown alongside official tournaments.
@@ -389,6 +391,33 @@ pub trait TourneyPort: Send + Sync {
 
     /// Take back the last step. Organiser only.
     async fn veto_undo(&self, tournament_id: &str, match_id: &str) -> Result<(), RequestError>;
+
+    /// Make the faction ban or pick that is due for one game. The players' own.
+    async fn faction_veto(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        game: i32,
+        faction: TourneyFaction,
+    ) -> Result<(), RequestError>;
+
+    /// Switch faction vetoes on or off, or change their numbers. Organiser only.
+    async fn set_faction_veto(
+        &self,
+        tournament_id: &str,
+        config: &FactionVetoConfig,
+    ) -> Result<(), RequestError>;
+
+    /// Ask FAF for every entrant's current name. Writes nothing. Organiser
+    /// only, and it needs the organiser's own FAF login on the service.
+    async fn check_renames(&self, tournament_id: &str) -> Result<RenameCheck, RequestError>;
+
+    /// One of the organiser's single-call changes. Organiser only, every one.
+    async fn administer(
+        &self,
+        tournament_id: &str,
+        change: &TourneyAdmin,
+    ) -> Result<(), RequestError>;
 
     /// Add a map to the event's own database, or edit one already there.
     ///

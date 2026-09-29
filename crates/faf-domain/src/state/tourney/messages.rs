@@ -2,6 +2,103 @@
 
 use super::*;
 
+/// One organiser change that is a single call and a reload.
+///
+/// Grouped, where every earlier write has a command of its own, because each
+/// of these is exactly that: one `POST` to the event, an answer with nothing
+/// worth keeping, and the event read again afterwards. A command, a port
+/// method and a busy marker apiece would say nothing the variant name does not.
+/// [`TourneyPhase`] is the precedent: one command, the step named inside it.
+///
+/// Every one of them is organiser-only on the service. The rules that decide
+/// whether one is offered live on [`Tourney`], beside the rest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(tag = "type", content = "payload", rename_all = "camelCase")]
+pub enum TourneyAdmin {
+    /// Add the 3rd place match to the running bracket, or take it away again
+    /// (`third_place`). Before the draw the plan carries the choice instead.
+    #[serde(rename_all = "camelCase")]
+    ThirdPlace { on: bool },
+    /// Change the best-of of every match in one round of the drawn bracket
+    /// that has not begun (`set_round_bo`).
+    #[serde(rename_all = "camelCase")]
+    RoundBestOf {
+        bracket: BracketSide,
+        round: i32,
+        best_of: i32,
+    },
+    /// Change the best-of of one match that has not begun (`set_match_bo`).
+    #[serde(rename_all = "camelCase")]
+    MatchBestOf { match_id: String, best_of: i32 },
+    /// Strip organiser rights from an account, this one included, which is
+    /// how an organiser leaves (`remove_organizer`). The service refuses to
+    /// remove the last one.
+    #[serde(rename_all = "camelCase")]
+    RemoveOrganiser { faf_id: i32 },
+    /// Keep an account out of this event, or change the terms of a ban already
+    /// there (`ban_set`). A ban without an expiry lasts until it is lifted.
+    #[serde(rename_all = "camelCase")]
+    Ban {
+        faf_id: i32,
+        name: String,
+        reason: String,
+        /// Unix seconds.
+        expires: Option<u32>,
+    },
+    /// Lift this event's ban on an account (`ban_remove`).
+    #[serde(rename_all = "camelCase")]
+    Unban { faf_id: i32 },
+    /// Fetch every entrant's rating again from the board that counts now
+    /// (`repull_ratings`). Changing the board or the date does not rewrite the
+    /// ratings already stored, which is what this is for.
+    RepullRatings,
+    /// Take the current FAF name of each of these entrants (`apply_renames`).
+    /// The service reads the names from FAF again rather than trusting the
+    /// check the organiser was shown.
+    #[serde(rename_all = "camelCase")]
+    ApplyRenames { player_ids: Vec<String> },
+    /// Reserve a block of seeds for the qualifiers one linked event sends,
+    /// from this seed down, or 0 to seed them normally (`qualifier_seed`).
+    #[serde(rename_all = "camelCase")]
+    QualifierSeed { link_id: String, seed_from: i32 },
+    /// End the event once this many are left, or 0 to play it out
+    /// (`set_stop_at`). Elimination only. Sent confirmed: the tab asks before
+    /// sending a number the field has already reached, which ends the event
+    /// on the spot.
+    #[serde(rename_all = "camelCase")]
+    StopAt { alive: i32 },
+    /// Stop the running event and lock the standings where they are, with no
+    /// champion (`phase` `finish_early`). Sent forced: the tab says how many
+    /// matches are still live before asking.
+    FinishEarly,
+    /// Take an early finish back (`phase` `undo_finish_early`). Sent forced,
+    /// after the tab has said that invitations a qualifier already sent stay
+    /// sent.
+    ReopenEarly,
+    /// Attach an image to the event, as a `data:` URL (`add_desc_image`).
+    /// The service takes up to ten, of 5 MB each.
+    #[serde(rename_all = "camelCase")]
+    AddImage { data_url: String },
+    /// Remove an attached image by its file name (`remove_desc_image`).
+    #[serde(rename_all = "camelCase")]
+    RemoveImage { file: String },
+    /// Change how map vetoes run (`edit_info` with `veto` alone).
+    ///
+    /// Its own change rather than part of saving the settings, because the
+    /// service rebuilds every veto that has not started when it receives
+    /// one, sides chosen by hand included. Sending it unchanged with every
+    /// save would quietly undo them.
+    #[serde(rename_all = "camelCase")]
+    SetVeto { config: VetoConfig },
+    /// Hide a map's identity from players until it is played, or show it
+    /// again (`map_secret`). No map id means every map in the database.
+    #[serde(rename_all = "camelCase")]
+    MapSecret {
+        map_id: Option<String>,
+        secret: bool,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum TourneyCommand {
@@ -67,6 +164,10 @@ pub enum TourneyCommand {
         tournament_id: String,
         room_id: String,
         body: String,
+        /// The post this answers, by id. The service snapshots it into the
+        /// reply, and quietly drops the link if the post is not in the room.
+        #[serde(default)]
+        reply_to: Option<String>,
     },
     /// Re-read the open room and the room list, without saying so.
     ///
@@ -342,6 +443,36 @@ pub enum TourneyCommand {
         tournament_id: String,
         match_id: String,
     },
+    /// Make the faction ban or pick that is due for one game (`fveto_action`).
+    ///
+    /// The two players' own: an organiser cannot act for them, because the
+    /// choices are secret until both sides are done.
+    #[serde(rename_all = "camelCase")]
+    FactionVeto {
+        tournament_id: String,
+        match_id: String,
+        game: i32,
+        faction: TourneyFaction,
+    },
+    /// Switch faction vetoes on or off, or change their numbers
+    /// (`fveto_config`). Applied to every match that has no result yet.
+    #[serde(rename_all = "camelCase")]
+    SetFactionVeto {
+        tournament_id: String,
+        config: FactionVetoConfig,
+    },
+    /// Ask FAF for the current name of every entrant (`check_renames`). Reads
+    /// only; taking a new name is [`TourneyAdmin::ApplyRenames`].
+    #[serde(rename_all = "camelCase")]
+    CheckRenames {
+        tournament_id: String,
+    },
+    /// One of the organiser's single-call changes. See [`TourneyAdmin`].
+    #[serde(rename_all = "camelCase")]
+    Administer {
+        tournament_id: String,
+        change: TourneyAdmin,
+    },
     /// Add a map to the event's own database, or edit one already in it.
     #[serde(rename_all = "camelCase")]
     SaveMap {
@@ -588,6 +719,14 @@ pub enum TourneyEvent {
     },
     /// The organiser picked somebody, or left the field: drop the list.
     AccountSearchCleared,
+    RenamesChecking,
+    RenamesChecked {
+        check: RenameCheck,
+    },
+    RenamesCheckFailed {
+        reason: String,
+        kind: RequestFailureKind,
+    },
     SeriesLoading,
     SeriesLoaded {
         series: Vec<TourneySeries>,

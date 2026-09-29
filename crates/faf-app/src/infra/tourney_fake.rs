@@ -29,6 +29,7 @@ use faf_domain::state::{
     BracketConfig, Caster, Currency, FormatDraft, Prize, Qualifier, QualifierRule, SeriesColour,
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries,
 };
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
 
 use crate::ports::{RequestError, TourneyPort};
@@ -1147,6 +1148,37 @@ impl TourneyPort for FakeTourney {
         })
     }
 
+    async fn faction_veto(
+        &self,
+        _: &str,
+        _: &str,
+        _: i32,
+        _: TourneyFaction,
+    ) -> Result<(), RequestError> {
+        // Not simulated, like every action added after 2026-09-28.
+        Err(RequestError::rejected(
+            "Faction vetoes are not available offline",
+        ))
+    }
+
+    async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
+        Err(RequestError::rejected(
+            "Faction vetoes are not available offline",
+        ))
+    }
+
+    async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
+        Err(RequestError::rejected(
+            "Checking names against FAF is not available offline",
+        ))
+    }
+
+    async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
+        Err(RequestError::rejected(
+            "This organiser change is not available offline",
+        ))
+    }
+
     async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
         // Not simulated: the offline fake is no longer extended with new
         // actions. The body is covered at the codec level instead.
@@ -1262,6 +1294,9 @@ impl TourneyPort for FakeTourney {
         tournament_id: &str,
         room_id: &str,
         body: &str,
+        // Replies are not simulated, like every chat feature added after
+        // 2026-09-28: the post lands as an ordinary one.
+        _reply_to: Option<&str>,
     ) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
             if body.trim().is_empty() {
@@ -1278,6 +1313,8 @@ impl TourneyPort for FakeTourney {
                     body: body.trim().to_string(),
                     at: Some(1_785_400_000),
                     system: false,
+                    reply_to: None,
+                    everyone: false,
                 });
             Ok(())
         })
@@ -1612,6 +1649,8 @@ impl TourneyPort for FakeTourney {
                 description: map.description.trim().to_string(),
                 published: map.published,
                 spec: map.spec.clone(),
+                secret: false,
+                masked: false,
             });
             Ok(())
         })
@@ -1918,6 +1957,7 @@ impl TourneyPort for FakeTourney {
             applied: settled.is_some().then_some(1_786_300_000),
             qualified,
             unreachable,
+            seed_from: 0,
         });
         Ok(())
     }
@@ -2487,6 +2527,7 @@ fn entry(id: &str, round: i32, index: i32, teams: (Option<&str>, Option<&str>)) 
         loser_to: None,
         pending_report: None,
         veto: None,
+        faction_veto: None,
         entrants: Vec::new(),
         winners: Vec::new(),
         points: Vec::new(),
@@ -2580,6 +2621,8 @@ fn map(id: &str, name: &str) -> TourneyMap {
         description: String::new(),
         published: true,
         spec: None,
+        secret: false,
+        masked: false,
     }
 }
 
@@ -2717,6 +2760,8 @@ fn signup_event() -> FakeEvent {
             description: String::new(),
             published: true,
             spec: None,
+            secret: false,
+            masked: false,
         },
         TourneyMap {
             id: "map2".into(),
@@ -2725,6 +2770,8 @@ fn signup_event() -> FakeEvent {
             description: String::new(),
             published: true,
             spec: None,
+            secret: false,
+            masked: false,
         },
     ];
     event.map_pools = vec![MapPool {
@@ -2796,6 +2843,7 @@ fn running_event() -> FakeEvent {
     event.veto = faf_domain::state::VetoConfig {
         enabled: true,
         mode: faf_domain::state::VetoMode::Upfront,
+        ..Default::default()
     };
     event.map_db = vec![
         map("map1", "Setons Clutch"),
@@ -2855,6 +2903,8 @@ fn running_event() -> FakeEvent {
             body: "Semifinals start at 19:00 UTC. Post your replay ids when you report.".into(),
             at: Some(1_785_300_000),
             system: false,
+            reply_to: None,
+            everyone: false,
         }],
     );
 
@@ -3327,13 +3377,16 @@ mod tests {
             "nothing has been played, so nothing folds away yet"
         );
 
-        fake.chat_post("e9z9z", "match:m1", "  gl hf  ")
+        fake.chat_post("e9z9z", "match:m1", "  gl hf  ", None)
             .await
             .unwrap();
         let posts = fake.chat_read("e9z9z", "match:m1").await.unwrap();
         assert_eq!(posts.len(), 1);
         assert_eq!(posts[0].body, "gl hf");
-        assert!(fake.chat_post("e9z9z", "match:m1", "   ").await.is_err());
+        assert!(fake
+            .chat_post("e9z9z", "match:m1", "   ", None)
+            .await
+            .is_err());
     }
 
     #[tokio::test]

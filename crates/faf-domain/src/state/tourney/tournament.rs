@@ -170,6 +170,9 @@ pub struct Tourney {
     pub chat_locked: bool,
     /// Whether this event bans and picks its maps, and how.
     pub veto: VetoConfig,
+    /// Whether this event runs faction vetoes, and with how many bans and
+    /// picks. Only in effect where [`Self::faction_veto_on`] says so.
+    pub faction_veto: FactionVetoConfig,
     /// How the free-for-all is run. `None` for a team event.
     pub ffa: Option<FfaConfig>,
     /// The captains draft, while one is running. `None` for every other
@@ -218,7 +221,13 @@ pub struct Tourney {
     pub map_pools: Vec<MapPool>,
     /// Which pool is played in which round, keyed by the server's round label.
     pub pool_assign: Vec<PoolAssignment>,
+    /// Maps pinned to a round directly, for events without vetoes.
+    pub round_maps: Vec<RoundMaps>,
     pub organisers: Vec<String>,
+    /// The public organisers' Discord handles, where they listed one, for the
+    /// chat's "organisers may not be around yet" notice. Same order as
+    /// `organisers`; an organiser without a handle is simply absent.
+    pub organiser_discords: Vec<String>,
     /// The organiser's announcements, newest first.
     pub news: Vec<NewsPost>,
     /// People the organiser invited. Empty for anyone who is not one: the
@@ -276,9 +285,27 @@ pub struct Tourney {
     /// website for now; the client reads them so the start dialog does not ask
     /// for a round count the server would replace.
     pub swiss_cuts: SwissCuts,
+    /// The Swiss round count the draw was started with (`cfg.rounds`), or the
+    /// plan's before it starts; zero where neither says. With record cuts the
+    /// cuts decide instead, see [`SwissCuts::rounds`].
+    pub swiss_rounds: i32,
     /// Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
     /// that is the tiebreak.
     pub swiss_beaten: std::collections::BTreeMap<String, i32>,
+    /// Who this event's organisers keep out of it (`bans`). Sent to its
+    /// organisers only, and absent for everyone else, which reads as empty.
+    pub bans: Vec<TourneyBan>,
+    /// End the event once this many are left, or 0 to play it out
+    /// (`stopAtAlive`). Elimination only.
+    pub stop_at_alive: i32,
+    /// Who is still standing (`survivors`), in a running or finished
+    /// elimination; `None` for Swiss and free-for-all.
+    pub survivors: Option<Survivors>,
+    /// How the event was stopped early, where it was (`earlyFinish`).
+    pub early_finish: Option<EarlyFinish>,
+    /// The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
+    /// (`eventDays`). Empty for an event on its date alone.
+    pub event_days: Vec<String>,
     /// What this account may do here, as the server sees it.
     pub viewer: TourneyViewer,
 }
@@ -721,6 +748,13 @@ impl Tourney {
                 (false, Some(exit)) if exit.bracket == BracketSide::GrandFinal => {
                     StandingOutcome::LostFinal
                 }
+                (false, Some(exit)) if exit.bracket == BracketSide::ThirdPlace => {
+                    if self.won_third_place(&team.id) {
+                        StandingOutcome::WonThirdPlace
+                    } else {
+                        StandingOutcome::LostThirdPlace
+                    }
+                }
                 (false, Some(exit)) => StandingOutcome::OutIn {
                     bracket: exit.bracket,
                     round: exit.round,
@@ -751,6 +785,12 @@ impl Tourney {
     ///
     /// The bands sit far apart on purpose: losing the grand final beats any
     /// number of lower-bracket rounds, and being alive beats having lost at all.
+    ///
+    /// Winners rounds count in tens so the 3rd place match fits between the
+    /// final and the semi-finals, the way the service ranks it: its winner is
+    /// 3rd and its loser 4th, both behind the beaten finalist and both ahead
+    /// of everyone who went out before the semis. It carries the final's
+    /// round number, so the semi-finals it hangs off are one round shallower.
     fn depth_of(&self, team: &TourneyTeam) -> i64 {
         if Some(team.id.as_str()) == self.champion_team_id.as_deref() {
             return 1_000_000_000;
@@ -761,8 +801,27 @@ impl Tourney {
         match exit.bracket {
             BracketSide::GrandFinal => 1_000_000,
             BracketSide::Losers => 1_000 + i64::from(exit.round),
-            _ => i64::from(exit.round),
+            BracketSide::ThirdPlace => {
+                let semis = i64::from(exit.round - 1) * 10;
+                semis + if self.won_third_place(&team.id) { 6 } else { 5 }
+            }
+            _ => i64::from(exit.round) * 10,
         }
+    }
+
+    /// Whether this team won the 3rd place match.
+    fn won_third_place(&self, team_id: &str) -> bool {
+        self.third_place_match()
+            .is_some_and(|entry| entry.winner.as_deref() == Some(team_id))
+    }
+
+    /// The 3rd place match, where the bracket has one.
+    ///
+    /// Divisions never get one, so there is at most one per event.
+    pub fn third_place_match(&self) -> Option<&TourneyMatch> {
+        self.matches
+            .iter()
+            .find(|entry| entry.bracket == BracketSide::ThirdPlace)
     }
 
     fn seed_of(&self, team_id: &str) -> i32 {
@@ -948,6 +1007,153 @@ impl Tourney {
             return true;
         }
         self.is_captain_of(team) && self.team_size > 1 && !team.captain_renamed
+    }
+
+    /// Whether faction vetoes are in effect: switched on, in a 1v1 event that
+    /// is not a free-for-all. The service's `factionVetoOn`.
+    pub fn faction_veto_on(&self) -> bool {
+        self.faction_veto.enabled
+            && self.team_size == 1
+            && self.competition != Competition::FreeForAll
+    }
+
+    /// Whether this account may switch faction vetoes on or change them: an
+    /// organiser, on an event the service offers them for, before it ends.
+    pub fn may_configure_faction_veto(&self) -> bool {
+        self.viewer.organiser
+            && self.team_size == 1
+            && self.competition != Competition::FreeForAll
+            && self.status != TourneyStatus::Finished
+    }
+
+    /// Whether the bracket has, or will be drawn with, a 3rd place match.
+    ///
+    /// Before the draw the stored plan says; after it, the match itself. The
+    /// service builds it at the draw only with four entrants or more and no
+    /// divisions, so a plan that asked for one can still end up without it.
+    pub fn third_place_on(&self) -> bool {
+        if self.third_place_match().is_some() {
+            return true;
+        }
+        self.matches.is_empty()
+            && matches!(
+                self.plan,
+                Some(MatchPlan::Single {
+                    third_place: true,
+                    ..
+                })
+            )
+    }
+
+    /// Whether this account may add a 3rd place match to the running bracket
+    /// (`third_place` with `on`).
+    ///
+    /// The service's conditions: a single elimination between teams, without
+    /// divisions, with four entrants or more, still running, and none there
+    /// yet. A semi-final already played is fine: its loser is brought back.
+    /// A final already won is not, because it finished the event.
+    pub fn may_add_third_place(&self) -> bool {
+        self.viewer.organiser
+            && self.status == TourneyStatus::Running
+            && self.third_place_eligible()
+            && self.third_place_match().is_none()
+    }
+
+    /// Whether this account may take the 3rd place match away again: only
+    /// until anything has happened in it.
+    pub fn may_remove_third_place(&self) -> bool {
+        self.viewer.organiser
+            && self.status == TourneyStatus::Running
+            && self
+                .third_place_match()
+                .is_some_and(|entry| !entry.has_started())
+    }
+
+    /// A single elimination between teams, without divisions, of four or
+    /// more: the only bracket the service builds a 3rd place match into.
+    fn third_place_eligible(&self) -> bool {
+        self.competition != Competition::FreeForAll
+            && !self.imported
+            && self.bracket_kind == BracketKind::Single
+            && self.divisions <= 1
+            && self.teams.len() >= 4
+    }
+
+    /// Whether this account may change the length of `entry` alone
+    /// (`set_match_bo`): an organiser, on a two-sided match that has not
+    /// begun. A free-for-all lobby has no best-of.
+    pub fn may_set_match_best_of(&self, entry: &TourneyMatch) -> bool {
+        self.viewer.organiser
+            && self.status.has_bracket()
+            && entry.bracket != BracketSide::FreeForAll
+            && entry.status != MatchStatus::Done
+            && !entry.has_games()
+    }
+
+    /// Whether this account may change the length of a whole round of the
+    /// drawn bracket (`set_round_bo`). The service skips every match in it
+    /// that has begun, so a round with none left to change is not offered.
+    pub fn may_set_round_best_of(&self, bracket: BracketSide, round: i32) -> bool {
+        self.viewer.organiser
+            && self.status == TourneyStatus::Running
+            && bracket != BracketSide::FreeForAll
+            && self.matches.iter().any(|entry| {
+                entry.bracket == bracket
+                    && entry.round == round
+                    && entry.status != MatchStatus::Done
+                    && !entry.has_games()
+            })
+    }
+
+    /// Whether this account may strip organiser rights from `faf_id`, itself
+    /// included (`remove_organizer`).
+    ///
+    /// Any organiser may remove any other, or leave: the people who can add a
+    /// co-organiser are the people who can remove one. Never the last one,
+    /// which the service refuses for everybody but a site admin, and this
+    /// client does not know whether it is talking to one.
+    pub fn may_remove_organiser(&self, faf_id: i32) -> bool {
+        self.viewer.organiser
+            && self.organiser_accounts.len() > 1
+            && self
+                .organiser_accounts
+                .iter()
+                .any(|organiser| organiser.faf_id == faf_id)
+    }
+
+    /// Whether this account may end the event early: stop it by hand, or set
+    /// the survivor count it stops at by itself.
+    ///
+    /// A running elimination only. Swiss and free-for-all have no survivors
+    /// to count, and the service sends none for them.
+    pub fn may_end_early(&self) -> bool {
+        self.viewer.organiser
+            && self.status == TourneyStatus::Running
+            && self.competition != Competition::FreeForAll
+            && self.bracket_kind != BracketKind::Swiss
+            && self.early_finish.is_none()
+    }
+
+    /// Whether this account may take an early finish back.
+    pub fn may_reopen_early(&self) -> bool {
+        self.viewer.organiser
+            && self.status == TourneyStatus::Finished
+            && self.early_finish.is_some()
+    }
+
+    /// Whether this account may change how map vetoes run (`edit_info` with a
+    /// `veto`). Two-sided events only, and not once the event has finished,
+    /// which the service refuses.
+    pub fn may_edit_veto(&self) -> bool {
+        self.viewer.organiser
+            && self.competition == Competition::Team
+            && self.status != TourneyStatus::Finished
+    }
+
+    /// Whether this account may fetch every entrant's rating again
+    /// (`repull_ratings`). An unrated event has none to fetch.
+    pub fn may_repull_ratings(&self) -> bool {
+        self.viewer.organiser && self.rating_kind != RatingKind::None
     }
 
     /// Whether this account may submit a score for `entry` for the other side
@@ -1159,6 +1365,15 @@ impl Tourney {
         } else {
             for round in 1..=rounds {
                 pairs.push((BracketSide::Winners, round));
+            }
+            // Played on the semi-finals' pool unless it gets its own, but a
+            // round of its own to bind one to, as the website projects it.
+            if self.bracket_kind == BracketKind::Single
+                && self.third_place_on()
+                && teams >= 4
+                && self.divisions <= 1
+            {
+                pairs.push((BracketSide::ThirdPlace, rounds));
             }
             if self.bracket_kind == BracketKind::Double {
                 for round in 1..=(2 * rounds - 2).max(0) {

@@ -55,7 +55,7 @@ impl MatchStatus {
 /// Which part of the event a match belongs to.
 ///
 /// An explicit field here, where Challonge used the sign of the round number.
-/// The server writes `wb` / `lb` / `gf` / `sw` / `ffa`.
+/// The server writes `wb` / `lb` / `gf` / `3p` / `sw` / `ffa`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum BracketSide {
@@ -64,6 +64,11 @@ pub enum BracketSide {
     Losers,
     /// The bout between the two bracket winners.
     GrandFinal,
+    /// The two beaten semi-finalists of a single elimination, playing for 3rd.
+    ///
+    /// Its own side on the wire, so nothing that walks the winners bracket
+    /// takes it for a second final: it carries the final's round number.
+    ThirdPlace,
     /// A Swiss round, which has no elimination tree at all.
     Swiss,
     /// A free-for-all round: many entrants, no two sides.
@@ -75,6 +80,7 @@ impl BracketSide {
         match raw.trim().to_ascii_lowercase().as_str() {
             "l" | "lb" | "losers" | "lower" => Self::Losers,
             "gf" | "grandfinal" | "grand_final" => Self::GrandFinal,
+            "3p" => Self::ThirdPlace,
             "sw" | "swiss" => Self::Swiss,
             "ffa" => Self::FreeForAll,
             _ => Self::Winners,
@@ -88,10 +94,49 @@ impl BracketSide {
             Self::Winners => "wb",
             Self::Losers => "lb",
             Self::GrandFinal => "gf",
+            Self::ThirdPlace => "3p",
             Self::Swiss => "sw",
             Self::FreeForAll => "ffa",
         }
     }
+}
+
+/// Who is still standing in a running elimination (`survivors`).
+///
+/// Split the way the service splits it: the winners side, and in a double
+/// elimination the losers side too. Each in seed order, by team id.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Survivors {
+    pub winners: Vec<String>,
+    pub losers: Vec<String>,
+}
+
+impl Survivors {
+    /// How many are still standing, on both sides.
+    pub fn alive(&self) -> i32 {
+        i32::try_from(self.winners.len() + self.losers.len()).unwrap_or(i32::MAX)
+    }
+}
+
+/// How an event was stopped before its final, where it was (`earlyFinish`).
+///
+/// No champion is recorded: the standings are locked where they stood, which
+/// is what a qualifier that only has to find its top four wants.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EarlyFinish {
+    /// Unix seconds.
+    pub at: Option<u32>,
+    /// The organiser who stopped it, or the service's own name for itself.
+    pub by: String,
+    /// Whether the survivor count stopped it rather than an organiser.
+    pub automatic: bool,
+    /// The count it was set to stop at, where it stopped by itself.
+    pub target: i32,
+    /// How many were still standing, and who, by name.
+    pub alive: i32,
+    pub names: Vec<String>,
 }
 
 /// One row of the standings table.
@@ -177,6 +222,10 @@ pub enum StandingOutcome {
     /// Not knocked out, and not the champion: still playing.
     StillIn,
     LostFinal,
+    /// Beat the other semi-final loser in the 3rd place match.
+    WonThirdPlace,
+    /// Lost the 3rd place match, and so is 4th rather than a shared 3rd.
+    LostThirdPlace,
     #[serde(rename_all = "camelCase")]
     OutIn {
         bracket: BracketSide,
@@ -294,6 +343,9 @@ pub struct TourneyMatch {
     /// The ban/pick run, when the event has vetoes and this match has reached
     /// the point of having one.
     pub veto: Option<MatchVeto>,
+    /// The faction veto, where the event runs them, in the slice this account
+    /// may see.
+    pub faction_veto: Option<MatchFactionVeto>,
     /// Everyone in this free-for-all lobby. Empty for a two-sided match, which
     /// uses `team1`/`team2` instead.
     pub entrants: Vec<String>,
@@ -343,6 +395,38 @@ impl TourneyMatch {
             (other, Some(two)) if two == team_id => other,
             _ => None,
         }
+    }
+
+    /// Whether a game of this series has been played: it is live, or it
+    /// carries a score. The service locks a series' length from that point
+    /// (`set_match_bo`, `set_round_bo`).
+    ///
+    /// The service asks its own `games` list, which is not modelled; a live
+    /// status or a score is how that list shows from outside.
+    pub fn has_games(&self) -> bool {
+        self.status == MatchStatus::Live
+            || self.score1.is_some_and(|score| score != 0)
+            || self.score2.is_some_and(|score| score != 0)
+    }
+
+    /// Whether anything has happened in this match that taking it away would
+    /// destroy: a result, a game, a submission waiting, or a single map or
+    /// faction choice. The service's `thirdPlaceStarted`.
+    pub fn has_started(&self) -> bool {
+        if self.status == MatchStatus::Done || self.has_games() || self.pending_report.is_some() {
+            return true;
+        }
+        let map_choice = self.veto.as_ref().is_some_and(|veto| {
+            veto.step_index > 0 || !veto.banned.is_empty() || !veto.picks.is_empty()
+        });
+        // Faction choices stay secret until both sides are done, so a side
+        // that is done is the only trace a start leaves in this view.
+        let faction_choice = self.faction_veto.as_ref().is_some_and(|veto| {
+            veto.games
+                .iter()
+                .any(|game| game.team1_done || game.team2_done)
+        });
+        map_choice || faction_choice
     }
 }
 
@@ -442,6 +526,9 @@ pub enum MatchPlan {
         early: i32,
         semi: i32,
         final_bo: i32,
+        /// Whether the two beaten semi-finalists play for 3rd. Built at the
+        /// draw only with four entrants or more and no divisions.
+        third_place: bool,
     },
     #[serde(rename_all = "camelCase")]
     Double {
@@ -474,6 +561,7 @@ impl MatchPlan {
                 early: 3,
                 semi: 3,
                 final_bo: 5,
+                third_place: false,
             },
             BracketKind::Double => Self::Double {
                 wb: 3,
@@ -753,7 +841,13 @@ pub enum BracketConfig {
     /// A free-for-all is drawn from its own configuration and asks nothing.
     FreeForAll,
     /// One best-of per round, deepest last.
-    Single { rounds: Vec<i32> },
+    #[serde(rename_all = "camelCase")]
+    Single {
+        rounds: Vec<i32>,
+        /// Whether the two beaten semi-finalists play for 3rd. The service
+        /// skips it below four entrants and with divisions.
+        third_place: bool,
+    },
     #[serde(rename_all = "camelCase")]
     Double {
         /// Winners rounds, `ceil(log2(teams))` of them.
@@ -814,6 +908,15 @@ impl BracketConfig {
                 rounds: (1..=rounds)
                     .map(|round| if round == rounds { 5 } else { 3 })
                     .collect(),
+                // What the service falls back to when the start config does
+                // not say: the stored plan's choice.
+                third_place: matches!(
+                    event.plan,
+                    Some(MatchPlan::Single {
+                        third_place: true,
+                        ..
+                    })
+                ),
             },
         }
     }
@@ -828,7 +931,7 @@ impl BracketConfig {
         let rounds = rounds_for(teams.max(2));
         match self {
             Self::FreeForAll => true,
-            Self::Single { rounds: list } => list.len() as i32 == rounds,
+            Self::Single { rounds: list, .. } => list.len() as i32 == rounds,
             Self::Double { wb, lb, .. } => {
                 wb.len() as i32 == rounds && lb.len() as i32 == (2 * rounds - 2).max(0)
             }

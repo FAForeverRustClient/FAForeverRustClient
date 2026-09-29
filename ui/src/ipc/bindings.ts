@@ -285,6 +285,11 @@ export type BracketConfig =
 /**  One best-of per round, deepest last. */
 { type: "single"; payload: {
 	rounds: number[],
+	/**
+	 *  Whether the two beaten semi-finalists play for 3rd. The service
+	 *  skips it below four entrants and with divisions.
+	 */
+	thirdPlace: boolean,
 } } | { type: "double"; payload: {
 	/**  Winners rounds, `ceil(log2(teams))` of them. */
 	wb: number[],
@@ -314,11 +319,18 @@ export type BracketKind = "single" | "double" | "swiss";
  *  Which part of the event a match belongs to.
  *
  *  An explicit field here, where Challonge used the sign of the round number.
- *  The server writes `wb` / `lb` / `gf` / `sw` / `ffa`.
+ *  The server writes `wb` / `lb` / `gf` / `3p` / `sw` / `ffa`.
  */
 export type BracketSide = "winners" | "losers" |
 /**  The bout between the two bracket winners. */
 "grandFinal" |
+/**
+ *  The two beaten semi-finalists of a single elimination, playing for 3rd.
+ *
+ *  Its own side on the wire, so nothing that walks the winners bracket
+ *  takes it for a second final: it carries the final's round number.
+ */
+"thirdPlace" |
 /**  A Swiss round, which has no elimination tree at all. */
 "swiss" |
 /**  A free-for-all round: many entrants, no two sides. */
@@ -950,6 +962,17 @@ export type ChatPost = {
 	 *  room shows differently from something a person typed.
 	 */
 	system: boolean,
+	/**
+	 *  The post this one answers, as the service snapshotted it when it was
+	 *  sent: its author and the first 140 characters. A snapshot rather than a
+	 *  link, so the quote survives the original being deleted or scrolled out.
+	 */
+	replyTo: ChatQuote | null,
+	/**
+	 *  Posted with `@everyone` by an organiser, which pinged every player who
+	 *  can read the room. The room marks it.
+	 */
+	everyone: boolean,
 };
 
 export type ChatPreferences = {
@@ -1009,6 +1032,13 @@ export type ChatPreferences = {
 	 *  without moving this field, by widening the value to a map.
 	 */
 	hiddenRosterCategories: string[],
+};
+
+/**  The quoted post above a reply. */
+export type ChatQuote = {
+	id: string,
+	author: string,
+	body: string,
 };
 
 /**
@@ -1778,6 +1808,26 @@ export type DraftPick = {
 	atIndex: number,
 };
 
+/**
+ *  How an event was stopped before its final, where it was (`earlyFinish`).
+ *
+ *  No champion is recorded: the standings are locked where they stood, which
+ *  is what a qualifier that only has to find its top four wants.
+ */
+export type EarlyFinish = {
+	/**  Unix seconds. */
+	at: number | null,
+	/**  The organiser who stopped it, or the service's own name for itself. */
+	by: string,
+	/**  Whether the survivor count stopped it rather than an organiser. */
+	automatic: boolean,
+	/**  The count it was set to stop at, where it stopped by itself. */
+	target: number,
+	/**  How many were still standing, and who, by name. */
+	alive: number,
+	names: string[],
+};
+
 /**  The catalogue document, as the port hands it over. */
 export type EventCatalogue = {
 	events: CalendarEvent[],
@@ -1968,6 +2018,53 @@ export type EventsState = {
 export type EventsStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
 	reason: string,
 } };
+
+export type FactionChoices = {
+	bans: TourneyFaction[],
+	/**  In order of preference: the first the opponent did not ban is played. */
+	picks: TourneyFaction[],
+	done: boolean,
+};
+
+export type FactionResult = {
+	team1: TourneyFaction,
+	team2: TourneyFaction,
+};
+
+/**  The choice that is due: "ban, the 1st of 1", "pick, the 2nd of 3". */
+export type FactionStep = {
+	action: PoolAction,
+	index: number,
+	of: number,
+};
+
+/**
+ *  Whether an event runs faction vetoes, and how many bans and picks each
+ *  player makes per game (`fveto`).
+ *
+ *  A 1v1 feature: the service refuses it for teams and for free-for-all, see
+ *  [`Tourney::faction_veto_on`]. Picks always outnumber bans, so an opponent
+ *  can never ban every faction a player named.
+ */
+export type FactionVetoConfig = {
+	enabled: boolean,
+	bans: number,
+	picks: number,
+};
+
+/**  One game's faction veto. */
+export type FactionVetoGame = {
+	/**  Which game of the series, from 1. */
+	game: number,
+	team1Done: boolean,
+	team2Done: boolean,
+	/**  The factions played, once both sides are done. */
+	result: FactionResult | null,
+	/**  This account's own choices so far. Sent to the two players only. */
+	mine: FactionChoices | null,
+	/**  What this account owes next, or `None` when it owes nothing. */
+	next: FactionStep | null,
+};
 
 /**  The parent this tournament feeds, where it feeds one. */
 export type FeedsInto = {
@@ -4075,6 +4172,21 @@ export type MapsState = {
 };
 
 /**
+ *  One match's faction veto, as this account may see it.
+ *
+ *  The choices are secret: the service sends a competitor their own bans and
+ *  picks, and everybody else, organisers included, only which side is done,
+ *  until both are and the result exists. Nothing here is worked out
+ *  client-side for the same reason.
+ */
+export type MatchFactionVeto = {
+	bans: number,
+	picks: number,
+	/**  One per game of the series, in game order. */
+	games: FactionVetoGame[],
+};
+
+/**
  *  Where a match sends the player it produces.
  *
  *  The edge that makes the bracket a real graph: `slot` is which side of the
@@ -4099,6 +4211,11 @@ export type MatchPlan = { type: "single"; payload: {
 	early: number,
 	semi: number,
 	finalBo: number,
+	/**
+	 *  Whether the two beaten semi-finalists play for 3rd. Built at the
+	 *  draw only with four entrants or more and no divisions.
+	 */
+	thirdPlace: boolean,
 } } | { type: "double"; payload: {
 	wb: number,
 	wbFinal: number,
@@ -5671,6 +5788,11 @@ export type Qualifier = {
 	 *  is the organiser who then has to add them by hand.
 	 */
 	unreachable: string[],
+	/**
+	 *  The first of a block of seeds kept for this link's arrivals, in the
+	 *  order they qualified, or 0 to seed them with everyone else.
+	 */
+	seedFrom: number,
 };
 
 /**  Which measure a qualifier link ranks by. */
@@ -5831,6 +5953,38 @@ export type RejectReason = "duplicate" | "incorrectInformation" | "poorQuality" 
  *  exclusive on the server, and the reducer keeps them that way locally too.
  */
 export type Relation = "friend" | "foe";
+
+/**  One entrant whose FAF name has changed since they entered. */
+export type Rename = {
+	playerId: string,
+	from: string,
+	to: string,
+	/**
+	 *  The entry named after them, which is renamed with them: an organiser
+	 *  who cannot see that beforehand finds out from a bracket that changed.
+	 */
+	team: string | null,
+};
+
+/**
+ *  The organiser's check of entrant names against FAF (`check_renames`).
+ *
+ *  A name is stamped on an entrant at signup and FAF tells nobody when it
+ *  changes, so a renamed player keeps their old one here until somebody asks.
+ *  The check writes nothing: the old name is sometimes the wanted one, a
+ *  caster's on-stream name or a bracket already screenshotted, so the
+ *  organiser picks which to take.
+ */
+export type RenameCheck = {
+	/**  How many entrants with a FAF account were asked about. */
+	checked: number,
+	/**  Those whose FAF name is no longer the one on the entry. */
+	changed: Rename[],
+	/**  How many FAF did not answer for. */
+	failed: number,
+	/**  How many were added by hand and have no FAF account to ask about. */
+	manual: number,
+};
 
 /**  When one client was giving orders. */
 export type ReplayActivity = {
@@ -6844,6 +6998,16 @@ export type ReviewsStatus = { type: "idle" } | { type: "loading" } | { type: "re
 	reason: string,
 } };
 
+/**
+ *  Maps an organiser pinned to a round directly, without a veto (`maps`):
+ *  `{"sw:1": [mapId, ...]}`, flattened.
+ */
+export type RoundMaps = {
+	/**  The server's own key for the round, `{bracket}:{round}`. */
+	round: string,
+	mapIds: string[],
+};
+
 export type SeasonLeaderboard = {
 	entries: LeaderboardEntry[],
 	tiers: LeaderboardTier[],
@@ -7307,6 +7471,17 @@ export type SubmitStatus = { type: "idle" } | { type: "sending" } |
 } };
 
 /**
+ *  Who is still standing in a running elimination (`survivors`).
+ *
+ *  Split the way the service splits it: the winners side, and in a double
+ *  elimination the losers side too. Each in seed order, by team id.
+ */
+export type Survivors = {
+	winners: string[],
+	losers: string[],
+};
+
+/**
  *  A Swiss stage's record cuts (`winCut`, `lossCut`): a team leaves the stage
  *  on reaching that many wins or that many losses, rather than after a fixed
  *  number of rounds. Zero is off, which is what every event without them has.
@@ -7508,6 +7683,11 @@ export type Tourney = {
 	chatLocked: boolean,
 	/**  Whether this event bans and picks its maps, and how. */
 	veto: VetoConfig,
+	/**
+	 *  Whether this event runs faction vetoes, and with how many bans and
+	 *  picks. Only in effect where [`Self::faction_veto_on`] says so.
+	 */
+	factionVeto: FactionVetoConfig,
 	/**  How the free-for-all is run. `None` for a team event. */
 	ffa: FfaConfig | null,
 	/**
@@ -7572,7 +7752,15 @@ export type Tourney = {
 	mapPools: MapPool[],
 	/**  Which pool is played in which round, keyed by the server's round label. */
 	poolAssign: PoolAssignment[],
+	/**  Maps pinned to a round directly, for events without vetoes. */
+	roundMaps: RoundMaps[],
 	organisers: string[],
+	/**
+	 *  The public organisers' Discord handles, where they listed one, for the
+	 *  chat's "organisers may not be around yet" notice. Same order as
+	 *  `organisers`; an organiser without a handle is simply absent.
+	 */
+	organiserDiscords: string[],
 	/**  The organiser's announcements, newest first. */
 	news: NewsPost[],
 	/**
@@ -7651,10 +7839,38 @@ export type Tourney = {
 	 */
 	swissCuts: SwissCuts,
 	/**
+	 *  The Swiss round count the draw was started with (`cfg.rounds`), or the
+	 *  plan's before it starts; zero where neither says. With record cuts the
+	 *  cuts decide instead, see [`SwissCuts::rounds`].
+	 */
+	swissRounds: number,
+	/**
 	 *  Per team, the `beaten` tiebreak's number (`swissSB`), sent only when
 	 *  that is the tiebreak.
 	 */
 	swissBeaten: { [key in string]: number },
+	/**
+	 *  Who this event's organisers keep out of it (`bans`). Sent to its
+	 *  organisers only, and absent for everyone else, which reads as empty.
+	 */
+	bans: TourneyBan[],
+	/**
+	 *  End the event once this many are left, or 0 to play it out
+	 *  (`stopAtAlive`). Elimination only.
+	 */
+	stopAtAlive: number,
+	/**
+	 *  Who is still standing (`survivors`), in a running or finished
+	 *  elimination; `None` for Swiss and free-for-all.
+	 */
+	survivors: Survivors | null,
+	/**  How the event was stopped early, where it was (`earlyFinish`). */
+	earlyFinish: EarlyFinish | null,
+	/**
+	 *  The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
+	 *  (`eventDays`). Empty for an event on its date alone.
+	 */
+	eventDays: string[],
 	/**  What this account may do here, as the server sees it. */
 	viewer: TourneyViewer,
 };
@@ -7707,7 +7923,12 @@ export type TourneyAction = { type: "addingPlayer" } |
 	matchId: string,
 } } | { type: "reportingFfa"; payload: {
 	matchId: string,
-} } | { type: "drafting" } | { type: "savingMap" } | { type: "publishingMap"; payload: {
+} } | { type: "drafting" } | { type: "savingFactionVeto" } |
+/**
+ *  One of the organiser's single-call changes. It names no target: the
+ *  whole pane waits on it, as it does on most writes.
+ */
+{ type: "administering" } | { type: "savingMap" } | { type: "publishingMap"; payload: {
 	mapId: string,
 } } | { type: "deletingMap"; payload: {
 	mapId: string,
@@ -7741,6 +7962,162 @@ export type TourneyActionFailure = {
 	 */
 	reason: string,
 	kind: RequestFailureKind,
+};
+
+/**
+ *  One organiser change that is a single call and a reload.
+ *
+ *  Grouped, where every earlier write has a command of its own, because each
+ *  of these is exactly that: one `POST` to the event, an answer with nothing
+ *  worth keeping, and the event read again afterwards. A command, a port
+ *  method and a busy marker apiece would say nothing the variant name does not.
+ *  [`TourneyPhase`] is the precedent: one command, the step named inside it.
+ *
+ *  Every one of them is organiser-only on the service. The rules that decide
+ *  whether one is offered live on [`Tourney`], beside the rest.
+ */
+export type TourneyAdmin =
+/**
+ *  Add the 3rd place match to the running bracket, or take it away again
+ *  (`third_place`). Before the draw the plan carries the choice instead.
+ */
+{ type: "thirdPlace"; payload: {
+	on: boolean,
+} } |
+/**
+ *  Change the best-of of every match in one round of the drawn bracket
+ *  that has not begun (`set_round_bo`).
+ */
+{ type: "roundBestOf"; payload: {
+	bracket: BracketSide,
+	round: number,
+	bestOf: number,
+} } |
+/**  Change the best-of of one match that has not begun (`set_match_bo`). */
+{ type: "matchBestOf"; payload: {
+	matchId: string,
+	bestOf: number,
+} } |
+/**
+ *  Strip organiser rights from an account, this one included, which is
+ *  how an organiser leaves (`remove_organizer`). The service refuses to
+ *  remove the last one.
+ */
+{ type: "removeOrganiser"; payload: {
+	fafId: number,
+} } |
+/**
+ *  Keep an account out of this event, or change the terms of a ban already
+ *  there (`ban_set`). A ban without an expiry lasts until it is lifted.
+ */
+{ type: "ban"; payload: {
+	fafId: number,
+	name: string,
+	reason: string,
+	/**  Unix seconds. */
+	expires: number | null,
+} } |
+/**  Lift this event's ban on an account (`ban_remove`). */
+{ type: "unban"; payload: {
+	fafId: number,
+} } |
+/**
+ *  Fetch every entrant's rating again from the board that counts now
+ *  (`repull_ratings`). Changing the board or the date does not rewrite the
+ *  ratings already stored, which is what this is for.
+ */
+{ type: "repullRatings" } |
+/**
+ *  Take the current FAF name of each of these entrants (`apply_renames`).
+ *  The service reads the names from FAF again rather than trusting the
+ *  check the organiser was shown.
+ */
+{ type: "applyRenames"; payload: {
+	playerIds: string[],
+} } |
+/**
+ *  Reserve a block of seeds for the qualifiers one linked event sends,
+ *  from this seed down, or 0 to seed them normally (`qualifier_seed`).
+ */
+{ type: "qualifierSeed"; payload: {
+	linkId: string,
+	seedFrom: number,
+} } |
+/**
+ *  End the event once this many are left, or 0 to play it out
+ *  (`set_stop_at`). Elimination only. Sent confirmed: the tab asks before
+ *  sending a number the field has already reached, which ends the event
+ *  on the spot.
+ */
+{ type: "stopAt"; payload: {
+	alive: number,
+} } |
+/**
+ *  Stop the running event and lock the standings where they are, with no
+ *  champion (`phase` `finish_early`). Sent forced: the tab says how many
+ *  matches are still live before asking.
+ */
+{ type: "finishEarly" } |
+/**
+ *  Take an early finish back (`phase` `undo_finish_early`). Sent forced,
+ *  after the tab has said that invitations a qualifier already sent stay
+ *  sent.
+ */
+{ type: "reopenEarly" } |
+/**
+ *  Attach an image to the event, as a `data:` URL (`add_desc_image`).
+ *  The service takes up to ten, of 5 MB each.
+ */
+{ type: "addImage"; payload: {
+	dataUrl: string,
+} } |
+/**  Remove an attached image by its file name (`remove_desc_image`). */
+{ type: "removeImage"; payload: {
+	file: string,
+} } |
+/**
+ *  Change how map vetoes run (`edit_info` with `veto` alone).
+ *
+ *  Its own change rather than part of saving the settings, because the
+ *  service rebuilds every veto that has not started when it receives
+ *  one, sides chosen by hand included. Sending it unchanged with every
+ *  save would quietly undo them.
+ */
+{ type: "setVeto"; payload: {
+	config: VetoConfig,
+} } |
+/**
+ *  Hide a map's identity from players until it is played, or show it
+ *  again (`map_secret`). No map id means every map in the database.
+ */
+{ type: "mapSecret"; payload: {
+	mapId: string | null,
+	secret: boolean,
+} };
+
+/**
+ *  One account this event's organisers keep out of it (`ban_set`).
+ *
+ *  A ban stops a signup, an organiser's add and an invite alike: removing
+ *  somebody was already possible, and nothing stopped them entering again.
+ *  It lives on this event alone; a series ban or a site ban is somebody
+ *  else's and is not in this list.
+ */
+export type TourneyBan = {
+	fafId: number,
+	name: string,
+	reason: string,
+	/**  Unix seconds, or `None` for a ban that lasts until it is lifted. */
+	expires: number | null,
+	/**  When it was set, in Unix seconds. */
+	at: number | null,
+	/**  Who set it. */
+	by: string,
+	/**
+	 *  Whether it has run out. An expired ban stays listed until it is
+	 *  lifted, and keeps nobody out.
+	 */
+	expired: boolean,
 };
 
 /**  Who runs the event, which decides whether FAF's rules articles apply. */
@@ -7803,6 +8180,11 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 	roomId: string,
 	body: string,
+	/**
+	 *  The post this answers, by id. The service snapshots it into the
+	 *  reply, and quietly drops the link if the post is not in the room.
+	 */
+	replyTo?: string | null,
 } } |
 /**
  *  Re-read the open room and the room list, without saying so.
@@ -8063,6 +8445,38 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 	matchId: string,
 } } |
+/**
+ *  Make the faction ban or pick that is due for one game (`fveto_action`).
+ *
+ *  The two players' own: an organiser cannot act for them, because the
+ *  choices are secret until both sides are done.
+ */
+{ type: "factionVeto"; payload: {
+	tournamentId: string,
+	matchId: string,
+	game: number,
+	faction: TourneyFaction,
+} } |
+/**
+ *  Switch faction vetoes on or off, or change their numbers
+ *  (`fveto_config`). Applied to every match that has no result yet.
+ */
+{ type: "setFactionVeto"; payload: {
+	tournamentId: string,
+	config: FactionVetoConfig,
+} } |
+/**
+ *  Ask FAF for the current name of every entrant (`check_renames`). Reads
+ *  only; taking a new name is [`TourneyAdmin::ApplyRenames`].
+ */
+{ type: "checkRenames"; payload: {
+	tournamentId: string,
+} } |
+/**  One of the organiser's single-call changes. See [`TourneyAdmin`]. */
+{ type: "administer"; payload: {
+	tournamentId: string,
+	change: TourneyAdmin,
+} } |
 /**  Add a map to the event's own database, or edit one already in it. */
 { type: "saveMap"; payload: {
 	tournamentId: string,
@@ -8277,6 +8691,17 @@ export type TourneyDraft = {
 	 *  were saved from the client.
 	 */
 	playerReporting: boolean,
+	/**
+	 *  Unix seconds by which a full team has to check in, or `None` for no
+	 *  check-in, in which case teams enter in signup order.
+	 */
+	checkInDeadline: number | null,
+	/**
+	 *  The days a multi-day event runs on, as `YYYY-MM-DD`, or empty for an
+	 *  event on its date alone. The service keeps the earliest as the event
+	 *  date's day, with the event date's own time.
+	 */
+	eventDays: string[],
 };
 
 export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
@@ -8355,7 +8780,12 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	kind: RequestFailureKind,
 } } |
 /**  The organiser picked somebody, or left the field: drop the list. */
-{ type: "accountSearchCleared" } | { type: "seriesLoading" } | { type: "seriesLoaded"; payload: {
+{ type: "accountSearchCleared" } | { type: "renamesChecking" } | { type: "renamesChecked"; payload: {
+	check: RenameCheck,
+} } | { type: "renamesCheckFailed"; payload: {
+	reason: string,
+	kind: RequestFailureKind,
+} } | { type: "seriesLoading" } | { type: "seriesLoaded"; payload: {
 	series: TourneySeries[],
 } } | { type: "seriesFailed"; payload: {
 	reason: string,
@@ -8369,6 +8799,9 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	 */
 	detail: SeriesDetail,
 } } | { type: "seriesClosed" };
+
+/**  One of the four factions a faction veto bans and picks from. */
+export type TourneyFaction = "uef" | "aeon" | "cybran" | "seraphim";
 
 /**
  *  Somebody the organiser asked to enter.
@@ -8391,11 +8824,12 @@ export type TourneyMap = {
 	id: string,
 	name: string,
 	/**
-	 *  Preview image served by the tournament server, when it has one.
+	 *  The organiser's uploaded picture, as the service sends it: a bare file
+	 *  name under `/map-images/` on the tournament server, or empty.
 	 *
-	 *  Usually empty, and that is fine: the client prefers FAF's own vault
-	 *  preview anyway (see [`match_vault_map`]). The tournament server's copy
-	 *  exists for maps that are not in the vault at all.
+	 *  The only picture the website shows. The frontend resolves it against
+	 *  the service's base and falls back to FAF's vault (see
+	 *  [`match_vault_map`]) only where nobody uploaded one.
 	 */
 	imageUrl: string,
 	/**
@@ -8420,6 +8854,16 @@ export type TourneyMap = {
 	 *  wiped it.
 	 */
 	spec: MapSpec | null,
+	/**
+	 *  A secret map: one players see only as "Hidden Map N" until it is
+	 *  played (`secret`). Organisers and casters get its real name.
+	 */
+	secret: boolean,
+	/**
+	 *  Whether this copy is the masked one (`masked`): the service sent the
+	 *  placeholder name and no picture, because the viewer may not see it yet.
+	 */
+	masked: boolean,
 };
 
 /**  One match. */
@@ -8454,6 +8898,11 @@ export type TourneyMatch = {
 	 *  the point of having one.
 	 */
 	veto: MatchVeto | null,
+	/**
+	 *  The faction veto, where the event runs them, in the slice this account
+	 *  may see.
+	 */
+	factionVeto: MatchFactionVeto | null,
 	/**
 	 *  Everyone in this free-for-all lobby. Empty for a two-sided match, which
 	 *  uses `team1`/`team2` instead.
@@ -8660,6 +9109,13 @@ export type TourneyState = {
 	 *  image on the way through the codec.
 	 */
 	assetBase: string,
+	/**
+	 *  The open event's last name check against FAF, until the next write:
+	 *  any write re-reads the event, and a list of renames that may already
+	 *  have been taken is worse than an empty panel with a button.
+	 */
+	renames: RenameCheck | null,
+	renamesStatus: TourneyLoadStatus,
 };
 
 /**
@@ -9703,10 +10159,24 @@ export type VetoChoice = {
 	game: number | null,
 };
 
-/**  Whether an event runs vetoes at all, and how. */
+/**
+ *  Whether an event runs vetoes at all, and how.
+ *
+ *  All four fields travel together: the service rebuilds the whole object
+ *  from what it is sent (`cleanVeto`), so a key left out is not left alone
+ *  but reset to its default.
+ */
 export type VetoConfig = {
 	enabled: boolean,
 	mode: VetoMode,
+	/**  Who acts first in each match (`abMode`). */
+	teamA: VetoTeamA,
+	/**
+	 *  Whether a secret map is revealed when it is banned (`revealBans`).
+	 *  Off by default: banning blind is the point of secret maps. A secret map
+	 *  is always revealed when it is picked or left as the decider.
+	 */
+	revealBans: boolean,
 };
 
 export type VetoDecider = {
@@ -9719,6 +10189,21 @@ export type VetoMode =
 "upfront" |
 /**  One step between games. */
 "continuous";
+
+/**
+ *  How Team A, the side that acts first, is chosen for each match.
+ *
+ *  Rated by the team's combined rating, the same number the Teams tab shows.
+ *  Whatever the rule, an organiser can still set the sides of any match by
+ *  hand before its veto starts.
+ */
+export type VetoTeamA =
+/**  The lower rated side acts first. The service's default. */
+"lowerA" |
+/**  The higher rated side acts first. */
+"lowerB" | "random" |
+/**  Nobody until the organiser says, match by match. */
+"manual";
 
 /**
  *  Which day a calendar week starts on.

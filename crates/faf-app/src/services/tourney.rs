@@ -171,6 +171,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             tournament_id,
             room_id,
             body,
+            reply_to,
         } => {
             if body.trim().is_empty() {
                 return;
@@ -188,7 +189,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             match ctx
                 .ports
                 .tourney
-                .chat_post(&tournament_id, &room_id, body.trim())
+                .chat_post(&tournament_id, &room_id, body.trim(), reply_to.as_deref())
                 .await
             {
                 Ok(()) => {
@@ -827,6 +828,67 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             write(action, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.veto_undo(&tournament_id, &match_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::FactionVeto {
+            tournament_id,
+            match_id,
+            game,
+            faction,
+        } => {
+            let action = TourneyAction::Vetoing {
+                match_id: match_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .faction_veto(&tournament_id, &match_id, game, faction)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::SetFactionVeto {
+            tournament_id,
+            config,
+        } => {
+            write(TourneyAction::SavingFactionVeto, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .set_faction_veto(&tournament_id, &config)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::CheckRenames { tournament_id } => {
+            out.emit(TourneyEvent::RenamesChecking);
+            match ctx.ports.tourney.check_renames(&tournament_id).await {
+                Ok(check) => out.emit(TourneyEvent::RenamesChecked { check }),
+                // Shown where the button is: the service's own sentence says
+                // when the organiser has to sign in again.
+                Err(error) => out.emit(TourneyEvent::RenamesCheckFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        TourneyCommand::Administer {
+            tournament_id,
+            change,
+        } => {
+            write(TourneyAction::Administering, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.administer(&tournament_id, &change).await }
             })
             .await;
         }

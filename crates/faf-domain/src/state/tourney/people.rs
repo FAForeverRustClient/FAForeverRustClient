@@ -17,6 +17,61 @@ pub struct Organiser {
     pub hidden: bool,
 }
 
+/// One account this event's organisers keep out of it (`ban_set`).
+///
+/// A ban stops a signup, an organiser's add and an invite alike: removing
+/// somebody was already possible, and nothing stopped them entering again.
+/// It lives on this event alone; a series ban or a site ban is somebody
+/// else's and is not in this list.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TourneyBan {
+    pub faf_id: i32,
+    pub name: String,
+    pub reason: String,
+    /// Unix seconds, or `None` for a ban that lasts until it is lifted.
+    pub expires: Option<u32>,
+    /// When it was set, in Unix seconds.
+    pub at: Option<u32>,
+    /// Who set it.
+    pub by: String,
+    /// Whether it has run out. An expired ban stays listed until it is
+    /// lifted, and keeps nobody out.
+    pub expired: bool,
+}
+
+/// The organiser's check of entrant names against FAF (`check_renames`).
+///
+/// A name is stamped on an entrant at signup and FAF tells nobody when it
+/// changes, so a renamed player keeps their old one here until somebody asks.
+/// The check writes nothing: the old name is sometimes the wanted one, a
+/// caster's on-stream name or a bracket already screenshotted, so the
+/// organiser picks which to take.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameCheck {
+    /// How many entrants with a FAF account were asked about.
+    pub checked: i32,
+    /// Those whose FAF name is no longer the one on the entry.
+    pub changed: Vec<Rename>,
+    /// How many FAF did not answer for.
+    pub failed: i32,
+    /// How many were added by hand and have no FAF account to ask about.
+    pub manual: i32,
+}
+
+/// One entrant whose FAF name has changed since they entered.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Rename {
+    pub player_id: String,
+    pub from: String,
+    pub to: String,
+    /// The entry named after them, which is renamed with them: an organiser
+    /// who cannot see that beforehand finds out from a bracket that changed.
+    pub team: Option<String>,
+}
+
 /// Somebody allowed to watch the whole event in order to cast it.
 ///
 /// A caster sees every match chat, not only the ones they are in, which is the

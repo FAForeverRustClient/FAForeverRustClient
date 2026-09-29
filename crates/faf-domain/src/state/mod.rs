@@ -166,10 +166,14 @@ pub use tourney::{
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries, BEST_OF_CHOICES,
 };
 pub use tourney::{
-    Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
-    VetoDecider, VetoMode, VetoTurn,
+    ChatQuote, FactionChoices, FactionResult, FactionStep, FactionVetoConfig, FactionVetoGame,
+    MapSpec, MatchFactionVeto, RoundMaps, SwissCuts, SwissTiebreak, TourneyAdmin, TourneyFaction,
 };
-pub use tourney::{MapSpec, SwissCuts, SwissTiebreak};
+pub use tourney::{
+    Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
+    VetoDecider, VetoMode, VetoTeamA, VetoTurn,
+};
+pub use tourney::{EarlyFinish, Rename, RenameCheck, Survivors, TourneyBan};
 pub use training::{
     compose_contribution, compose_review_request, compose_url, contribution_problem, derive_level,
     derive_topics, filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label,

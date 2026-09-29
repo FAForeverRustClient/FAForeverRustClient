@@ -20,21 +20,34 @@ import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import type { MapPool, PoolDraft, Tourney, VaultMap } from "../../../ipc/bindings";
-import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { BRACKET_LABELS } from "../tourneyPresentation";
-import { matchVaultMap, roundPlan, type RoundKey } from "../../../shared/rules/tourneyRules";
+import { roundKeyLabel as roundLabel } from "../bracket/matchLabels";
+import {
+  matchVaultMap,
+  roundPlan,
+  tourneyMapImage,
+  type RoundKey,
+} from "../../../shared/rules/tourneyRules";
 
 interface MapPoolPanelProps {
   event: Tourney;
   vault: VaultMap[];
+  /** Where the service lives, for the organisers' uploaded map pictures. */
+  assetBase: string;
   busy: boolean;
   onAssign: (roundKey: string, poolId: string) => void;
   /** Create the pool a combination needs. The same write the pool editor makes. */
   onSavePool: (pool: PoolDraft) => void;
 }
 
-export function MapPoolPanel({ event, vault, busy, onAssign, onSavePool }: MapPoolPanelProps) {
+export function MapPoolPanel({
+  event,
+  vault,
+  assetBase,
+  busy,
+  onAssign,
+  onSavePool,
+}: MapPoolPanelProps) {
   const { t } = useTranslation();
   const plan = roundPlan(event);
   const rounds = plan.keys;
@@ -244,7 +257,7 @@ export function MapPoolPanel({ event, vault, busy, onAssign, onSavePool }: MapPo
                   // FAF's own preview is preferred: it is the picture players
                   // already recognise from the maps tab. The tournament
                   // server's copy is the fallback for a map never uploaded.
-                  const preview = vaultMap?.thumbnailUrl || held.imageUrl;
+                  const preview = tourneyMapImage(held, assetBase, vault);
                   return (
                     <li className="tournament-pool-map" key={mapId}>
                       {preview ? (
@@ -268,32 +281,6 @@ export function MapPoolPanel({ event, vault, busy, onAssign, onSavePool }: MapPo
       })}
     </div>
   );
-}
-
-/**
- * A round's name as the bracket itself would say it.
- *
- * "Semifinals" rather than "Winners round 3", because that is what an organiser
- * calls the round they are assigning maps to. Only the deepest rounds get a
- * name; anything earlier stays numbered, which is also what the website does.
- */
-function roundLabel(
-  t: (key: MessageKey, values?: Record<string, string | number>) => string,
-  bracket: string,
-  round: number,
-  lastRound: number,
-): string {
-  if (bracket === "grandFinal") return t("tournaments.pools.roundGrandFinal");
-  if (bracket === "swiss") return t("tournaments.pools.roundSwiss", { round });
-  if (bracket === "losers") {
-    return round === lastRound
-      ? t("tournaments.pools.roundLosersFinal")
-      : t("tournaments.pools.roundLosers", { round });
-  }
-  if (round === lastRound) return t("tournaments.pools.roundFinal");
-  if (round === lastRound - 1) return t("tournaments.pools.roundSemi");
-  if (round === lastRound - 2) return t("tournaments.pools.roundQuarter");
-  return `${t(BRACKET_LABELS[bracket as keyof typeof BRACKET_LABELS])} ${t("tournaments.bracket.round", { round })}`;
 }
 
 interface ManageLinkProps {

@@ -69,6 +69,8 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
         TourneyEvent::ActionSucceeded { select, .. } => {
             state.pending = None;
             state.action_error = None;
+            state.renames = None;
+            state.renames_status = TourneyLoadStatus::Idle;
             if let Some(tournament_id) = select {
                 // A newly created event. Its detail has not been fetched yet,
                 // so the previous one has to go with the selection or it would
@@ -161,6 +163,21 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
         }
         TourneyEvent::AccountSearchCleared => state.account_search = AccountSearch::default(),
 
+        TourneyEvent::RenamesChecking => {
+            state.renames = None;
+            state.renames_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::RenamesChecked { check } => {
+            state.renames = Some(check.clone());
+            state.renames_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::RenamesCheckFailed { reason, kind } => {
+            state.renames_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
+
         TourneyEvent::SeriesLoading => state.series_status = TourneyLoadStatus::Loading,
         TourneyEvent::SeriesLoaded { series } => {
             state.series = series.clone();
@@ -198,4 +215,6 @@ fn clear_open_event(state: &mut TourneyState) {
     state.chat_posts.clear();
     state.open_room_id = None;
     state.chat_status = TourneyLoadStatus::Idle;
+    state.renames = None;
+    state.renames_status = TourneyLoadStatus::Idle;
 }

@@ -17,6 +17,7 @@ use faf_domain::state::{
     SeriesDraft, Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent,
     TourneyLoadStatus, TourneyPhase, TourneySeries, TourneyStatus,
 };
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::AppEvent;
 
 fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {
@@ -172,13 +173,37 @@ impl TourneyPort for RefusingTourney {
     async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
         self.refused()
     }
+    async fn faction_veto(
+        &self,
+        _: &str,
+        _: &str,
+        _: i32,
+        _: TourneyFaction,
+    ) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
+        self.refused()
+    }
+    async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
+        self.refused()
+    }
     async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
         self.inner.chat_rooms(tournament_id).await
     }
     async fn chat_read(&self, t: &str, room: &str) -> Result<Vec<ChatPost>, RequestError> {
         self.inner.chat_read(t, room).await
     }
-    async fn chat_post(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+    async fn chat_post(
+        &self,
+        _: &str,
+        _: &str,
+        _: &str,
+        _: Option<&str>,
+    ) -> Result<(), RequestError> {
         self.refused()
     }
     async fn articles(&self) -> Result<Vec<Article>, RequestError> {
@@ -1311,6 +1336,7 @@ async fn posting_reloads_the_room_and_not_the_whole_tournament() {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "  on my way  ".into(),
+            reply_to: None,
         }
         .into(),
     )
@@ -1328,6 +1354,7 @@ async fn posting_reloads_the_room_and_not_the_whole_tournament() {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "   ".into(),
+            reply_to: None,
         }
         .into(),
     )
@@ -1703,13 +1730,41 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
             unreachable!()
         }
+        async fn faction_veto(
+            &self,
+            _: &str,
+            _: &str,
+            _: i32,
+            _: TourneyFaction,
+        ) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn set_faction_veto(
+            &self,
+            _: &str,
+            _: &FactionVetoConfig,
+        ) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
+            unreachable!()
+        }
+        async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
+            unreachable!()
+        }
         async fn chat_rooms(&self, _: &str) -> Result<Vec<ChatRoom>, RequestError> {
             unreachable!()
         }
         async fn chat_read(&self, _: &str, _: &str) -> Result<Vec<ChatPost>, RequestError> {
             unreachable!()
         }
-        async fn chat_post(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+        async fn chat_post(
+            &self,
+            _: &str,
+            _: &str,
+            _: &str,
+            _: Option<&str>,
+        ) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn articles(&self) -> Result<Vec<Article>, RequestError> {
@@ -3642,6 +3697,7 @@ async fn refreshing_a_room_brings_in_what_somebody_else_wrote() {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "on my way".into(),
+            reply_to: None,
         }
         .into(),
     )
@@ -3777,7 +3833,10 @@ async fn a_plan_with_the_wrong_number_of_rounds_is_caught_here() {
     let event = app.snapshot().tourney.detail.expect("a drawn event");
     let teams = event.teams.len() as i32;
 
-    let short = BracketConfig::Single { rounds: vec![3] };
+    let short = BracketConfig::Single {
+        rounds: vec![3],
+        third_place: false,
+    };
     assert!(!short.is_submittable(teams), "one round for four teams");
     assert!(BracketConfig::of(&event).is_submittable(teams));
 }

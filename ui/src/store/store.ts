@@ -298,6 +298,8 @@ const INITIAL: AppState = {
     series: [],
     seriesStatus: { type: "idle" },
     openSeries: null,
+    renames: null,
+    renamesStatus: { type: "idle" },
   },
   guides: {
     auth: { type: "signedOut" },

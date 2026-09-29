@@ -383,6 +383,9 @@ export function TournamentsView() {
               busyMatchId={busyMatch}
               accountSearch={state.accountSearch}
               onSearchAccounts={(query) => act({ type: "searchAccounts", payload: { query } })}
+              renames={state.renames}
+              renamesStatus={state.renamesStatus}
+              onCheckRenames={() => act({ type: "checkRenames", payload: { tournamentId: open.id } })}
               onSignUp={() => setEntering(open.id)}
               onWithdraw={() => act({ type: "withdraw", payload: { tournamentId: open.id } })}
               onCheckIn={() => act({ type: "checkIn", payload: { tournamentId: open.id } })}
@@ -398,11 +401,11 @@ export function TournamentsView() {
               onOpenRoom={(roomId) =>
                 act({ type: "openRoom", payload: { tournamentId: open.id, roomId } })
               }
-              onPost={(body) => {
+              onPost={(body, replyTo) => {
                 if (state.openRoomId === null) return;
                 act({
                   type: "postChat",
-                  payload: { tournamentId: open.id, roomId: state.openRoomId, body },
+                  payload: { tournamentId: open.id, roomId: state.openRoomId, body, replyTo },
                 });
               }}
               onAssignPool={(roundKey, poolId) =>
@@ -484,21 +487,34 @@ export function TournamentsView() {
               onReportFfa={(report) =>
                 act({ type: "reportFfa", payload: { tournamentId: open.id, report } })
               }
-              onVetoAct={(matchId, mapId) =>
-                act({ type: "vetoAct", payload: { tournamentId: open.id, matchId, mapId } })
-              }
-              onVetoSetSides={(matchId, teamA) =>
-                act({ type: "vetoSetSides", payload: { tournamentId: open.id, matchId, teamA } })
-              }
-              onVetoUndo={(matchId) =>
-                act({ type: "vetoUndo", payload: { tournamentId: open.id, matchId } })
-              }
+              veto={{
+                onAct: (matchId, mapId) =>
+                  act({ type: "vetoAct", payload: { tournamentId: open.id, matchId, mapId } }),
+                onSetSides: (matchId, teamA) =>
+                  act({ type: "vetoSetSides", payload: { tournamentId: open.id, matchId, teamA } }),
+                onUndo: (matchId) =>
+                  act({ type: "vetoUndo", payload: { tournamentId: open.id, matchId } }),
+                onFaction: (matchId, game, faction) =>
+                  act({
+                    type: "factionVeto",
+                    payload: { tournamentId: open.id, matchId, game, faction },
+                  }),
+              }}
               onSaveMap={(map) => act({ type: "saveMap", payload: { tournamentId: open.id, map } })}
               onPublishMap={(mapId, published) =>
                 act({ type: "publishMap", payload: { tournamentId: open.id, mapId, published } })
               }
               onDeleteMap={(mapId) =>
                 act({ type: "deleteMap", payload: { tournamentId: open.id, mapId } })
+              }
+              onWatchReplay={(uid) =>
+                ipc.send({ kind: "Replays", command: { type: "watchVault", payload: { uid } } })
+              }
+              onSetFactionVeto={(config) =>
+                act({ type: "setFactionVeto", payload: { tournamentId: open.id, config } })
+              }
+              onAdmin={(change) =>
+                act({ type: "administer", payload: { tournamentId: open.id, change } })
               }
               onSavePool={(pool) =>
                 act({ type: "savePool", payload: { tournamentId: open.id, pool } })

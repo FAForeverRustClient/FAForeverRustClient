@@ -22,6 +22,7 @@ import type {
   TourneyPlayer,
   TourneyStatus,
 } from "../../ipc/bindings";
+import { thirdPlaceOn } from "../../shared/rules/tourneyRules";
 
 export const STATUS_LABELS: Record<TourneyStatus, MessageKey> = {
   draft: "tournaments.status.draft",
@@ -49,6 +50,7 @@ export const BRACKET_LABELS: Record<BracketSide, MessageKey> = {
   winners: "tournaments.bracket.winners",
   losers: "tournaments.bracket.losers",
   grandFinal: "tournaments.bracket.grandFinal",
+  thirdPlace: "tournaments.bracket.thirdPlace",
   swiss: "tournaments.bracket.swiss",
   freeForAll: "tournaments.bracket.freeForAll",
 };
@@ -305,11 +307,12 @@ export function planSummary(
   const plan = event.plan;
   if (plan === null) return "";
   if (plan.type === "single") {
-    return t("tournaments.overview.planSingle", {
+    const line = t("tournaments.overview.planSingle", {
       early: plan.payload.early,
       semi: plan.payload.semi,
       final: plan.payload.finalBo,
     });
+    return thirdPlaceOn(event) ? `${line} · ${t("tournaments.bracket.thirdPlace")}` : line;
   }
   if (plan.type === "double") {
     const line = t("tournaments.overview.planDouble", {
