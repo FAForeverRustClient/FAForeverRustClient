@@ -9,7 +9,7 @@ import { useAppStore } from "../../../store/store";
 import { friendKeys } from "./friendPresence";
 import { t } from "../../../i18n";
 import { useLocale } from "../../../i18n/useTranslation";
-import { type GameViewMode } from "./gameRules";
+import { type GameViewMode } from "../../../shared/gameRules";
 import { hideGlobalLineup } from "./hoverPopovers";
 import { GameTile } from "./GameTile";
 import { GameBrowserRow } from "./GameBrowserRow";

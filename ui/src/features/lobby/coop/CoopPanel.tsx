@@ -22,7 +22,7 @@ import { formatShortDate } from "../../../shared/format/dates";
 import { loadStatusNote } from "../../../shared/loadStatusNote";
 import { GameBrowserRow } from "../browser/GameBrowserRow";
 import { GameTile } from "../browser/GameTile";
-import { type GameViewMode } from "../browser/gameRules";
+import { type GameViewMode } from "../../../shared/gameRules";
 import { useGameBrowserColumns } from "../browser/gameBrowserColumns";
 import { coopFailureAction } from "./coopFailure";
 import "../browser/custom-games.css";

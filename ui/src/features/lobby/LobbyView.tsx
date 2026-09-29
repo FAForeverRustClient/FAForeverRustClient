@@ -16,7 +16,7 @@ import { ResizeHandle } from "../../design-system/ResizeHandle";
 import { CustomGamesBrowser } from "./browser/CustomGamesBrowser";
 import { GamePreviewDialog } from "./browser/GamePreviewDialog";
 import { displayTeamName } from "./browser/GameLineup";
-import { isCoopGame, isCustomGameRanked, type GameViewMode } from "./browser/gameRules";
+import { isCoopGame, isCustomGameRanked, type GameViewMode } from "../../shared/gameRules";
 import { CustomGamesToolbar, type SortMode } from "./browser/CustomGamesToolbar";
 import { compareGames } from "./browser/gameSortOrder";
 import { detailWidth, withDetailResized } from "./browser/browserLayout";

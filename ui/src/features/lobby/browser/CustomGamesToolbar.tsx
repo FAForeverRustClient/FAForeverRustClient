@@ -1,7 +1,7 @@
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { CustomGameSort } from "../../../ipc/bindings";
-import type { GameViewMode } from "./gameRules";
+import type { GameViewMode } from "../../../shared/gameRules";
 import { useTranslation } from "../../../i18n/useTranslation";
 
 /**

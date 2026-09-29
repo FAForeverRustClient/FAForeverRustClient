@@ -88,6 +88,12 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   // `vaultStatus` still reads `idle` for a beat. The ref is that beat.
   const handedOver = useRef(false);
 
+  // One re-run per visit to the tab (issue 363). The effect below also fires
+  // when the remembered vault player changes, which is a thing `handleSearch`
+  // does on its way to running the reader's own search: without this the
+  // re-run would land on top of it with the query it is replacing.
+  const refreshed = useRef(false);
+
   const runRequestedSearch = useCallback(() => {
     const requested = takeReplaySearch();
     if (!requested) return false;
@@ -100,8 +106,19 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     const state = useAppStore.getState().state;
     const playerToSearch = self || state.settings.browsing.replayVaultPlayer;
     if (!runRequestedSearch() && !handedOver.current) {
-      if (state.replays.vaultStatus.type === "idle" && playerToSearch) {
-        searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
+      const status = state.replays.vaultStatus.type;
+      if (status === "idle") {
+        if (playerToSearch) searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
+      } else if (status !== "loading" && !refreshed.current) {
+        refreshed.current = true;
+        // Every later visit runs the search that is on screen again, rather
+        // than showing whatever the vault answered the last time the tab was
+        // open (issue 363). Only the active tab is mounted, so this is once
+        // per visit; the game you just finished is the row that was missing,
+        // and pressing Search by hand to see it is not something a reader
+        // should have to know to do. A search already in flight is left to
+        // finish, and a failed one gets another try on the way back in.
+        searchVault(state.replays.vaultQuery);
       }
     }
     // The two dropdowns' contents. Both are cheap and cached in state, so

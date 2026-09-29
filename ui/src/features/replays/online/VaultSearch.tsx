@@ -323,7 +323,7 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
           />
         </div>
 
-        <label className="vault-field search-panel-field">
+        <label className="vault-field vault-search-sort search-panel-field">
           <span className="vault-field-label search-panel-label">{t("replays.search.sortBy")}</span>
           <select
             className="vault-input search-panel-control"

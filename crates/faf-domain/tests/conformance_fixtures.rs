@@ -5526,6 +5526,7 @@ fn cases() -> Vec<Case> {
                             max_players: "999".into(),
                             hide_modded: true,
                             hide_single_player: false,
+                            hide_unranked: true,
                             friends_only: true,
                         },
                         host_game: HostGamePreferences {
