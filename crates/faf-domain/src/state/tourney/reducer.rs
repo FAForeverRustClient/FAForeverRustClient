@@ -69,6 +69,8 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
         TourneyEvent::ActionSucceeded { select, .. } => {
             state.pending = None;
             state.action_error = None;
+            state.renames = None;
+            state.renames_status = TourneyLoadStatus::Idle;
             if let Some(tournament_id) = select {
                 // A newly created event. Its detail has not been fetched yet,
                 // so the previous one has to go with the selection or it would
@@ -97,6 +99,22 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
                 state.open_room_id = None;
                 state.chat_posts.clear();
             }
+            // The same for the pinned room: gone from the list means this
+            // account can no longer read it.
+            if !state
+                .pinned_room_id
+                .as_deref()
+                .is_some_and(|pinned| rooms.iter().any(|room| room.id == pinned))
+            {
+                state.pinned_room_id = None;
+                state.pinned_posts.clear();
+            }
+        }
+        TourneyEvent::RoomPinned { room_id } => {
+            if state.pinned_room_id != *room_id {
+                state.pinned_posts.clear();
+            }
+            state.pinned_room_id = room_id.clone();
         }
         TourneyEvent::RoomOpened { room_id } => {
             if state.open_room_id.as_deref() != Some(room_id.as_str()) {
@@ -106,6 +124,9 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
         }
         TourneyEvent::ChatLoading => state.chat_status = TourneyLoadStatus::Loading,
         TourneyEvent::ChatLoaded { room_id, posts } => {
+            if state.pinned_room_id.as_deref() == Some(room_id.as_str()) {
+                state.pinned_posts = posts.clone();
+            }
             if state.open_room_id.as_deref() == Some(room_id.as_str()) {
                 state.chat_posts = posts.clone();
                 state.chat_status = TourneyLoadStatus::Ready;
@@ -161,6 +182,140 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
         }
         TourneyEvent::AccountSearchCleared => state.account_search = AccountSearch::default(),
 
+        TourneyEvent::RatingChecking => {
+            state.rating_check = None;
+            state.rating_check_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::RatingChecked { check } => {
+            state.rating_check = Some(check.clone());
+            state.rating_check_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::RatingCheckFailed { reason, kind } => {
+            state.rating_check_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
+        // A new request drops the previous player's table at once, so one
+        // entrant's ratings never show under another's name.
+        TourneyEvent::PlayerRatingsLoading => {
+            state.player_ratings = None;
+            state.player_ratings_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::PlayerRatingsLoaded { ratings } => {
+            state.player_ratings = Some(ratings.clone());
+            state.player_ratings_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::PlayerRatingsFailed { reason, kind } => {
+            state.player_ratings_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
+        TourneyEvent::CopySourcesLoading => {
+            state.copy_sources_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::CopySourcesLoaded { sources } => {
+            state.copy_sources = sources.clone();
+            state.copy_sources_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::CopySourcesFailed { reason, kind } => {
+            state.copy_sources_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
+        TourneyEvent::PresetsLoaded { presets } => state.presets = presets.clone(),
+        TourneyEvent::SiteLoading { read } => match read {
+            SiteRead::HallOfFame => state.site.hall_status = TourneyLoadStatus::Loading,
+            SiteRead::Console => state.site.console_status = TourneyLoadStatus::Loading,
+            _ => {}
+        },
+        TourneyEvent::SiteLoaded { document } => match document {
+            SiteDocument::Account(account) => {
+                state.site.account = account.clone();
+                // The handle comes with the account; the signup dialog reads it.
+                state.discord = account.discord.clone();
+            }
+            SiteDocument::Pending(pending) => state.site.pending = pending.clone(),
+            SiteDocument::HallOfFame(hall) => {
+                state.site.hall = Some(hall.clone());
+                state.site.hall_status = TourneyLoadStatus::Ready;
+            }
+            SiteDocument::Console(console) => {
+                state.site.console = Some(console.clone());
+                state.site.console_status = TourneyLoadStatus::Ready;
+            }
+            SiteDocument::Access { kind, status } => match kind {
+                AccessKind::Editor => state.site.editor_access = status.clone(),
+                AccessKind::Importer => state.site.importer_access = status.clone(),
+                AccessKind::Host => {
+                    state.hosting = HostingStatus {
+                        logged_in: status.logged_in,
+                        allowed: status.allowed,
+                        pending: status.pending,
+                    }
+                }
+            },
+        },
+        TourneyEvent::SiteLoadFailed { read, reason, kind } => {
+            let failed = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            };
+            match read {
+                SiteRead::HallOfFame => state.site.hall_status = failed,
+                SiteRead::Console => state.site.console_status = failed,
+                _ => {}
+            }
+        }
+        TourneyEvent::ArticleImageUploaded { url } => state.site.article_image = Some(url.clone()),
+        TourneyEvent::DescImageUploaded { url } => state.desc_image = Some(url.clone()),
+        TourneyEvent::TemplateLoading => {
+            state.template = None;
+            state.template_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::TemplateLoaded { event } => {
+            state.template = Some(event.clone());
+            state.template_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::TemplateFailed { reason, kind } => {
+            state.template_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
+        // As with a player's ratings: the next source's request drops the
+        // previous one's maps at once, so they never show under its name.
+        TourneyEvent::CopySourceLoading => {
+            state.copy_source = None;
+            state.copy_source_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::CopySourceLoaded { source } => {
+            state.copy_source = Some(source.clone());
+            state.copy_source_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::CopySourceFailed { reason, kind } => {
+            state.copy_source_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
+        TourneyEvent::RenamesChecking => {
+            state.renames = None;
+            state.renames_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::RenamesChecked { check } => {
+            state.renames = Some(check.clone());
+            state.renames_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::RenamesCheckFailed { reason, kind } => {
+            state.renames_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
+
         TourneyEvent::SeriesLoading => state.series_status = TourneyLoadStatus::Loading,
         TourneyEvent::SeriesLoaded { series } => {
             state.series = series.clone();
@@ -197,5 +352,15 @@ fn clear_open_event(state: &mut TourneyState) {
     state.chat_rooms.clear();
     state.chat_posts.clear();
     state.open_room_id = None;
+    state.pinned_room_id = None;
+    state.pinned_posts.clear();
     state.chat_status = TourneyLoadStatus::Idle;
+    state.renames = None;
+    state.renames_status = TourneyLoadStatus::Idle;
+    state.rating_check = None;
+    state.rating_check_status = TourneyLoadStatus::Idle;
+    state.player_ratings = None;
+    state.player_ratings_status = TourneyLoadStatus::Idle;
+    state.copy_source = None;
+    state.copy_source_status = TourneyLoadStatus::Idle;
 }

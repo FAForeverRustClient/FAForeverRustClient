@@ -16,7 +16,13 @@ import { Modal } from "../../../design-system/Modal";
 import type { BracketConfig, Tourney } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { bracketConfigOf, configIsSubmittable, roundsFor } from "../../../shared/rules/tourneyRules";
+import {
+  bracketConfigOf,
+  configIsSubmittable,
+  roundsFor,
+  swissCutRounds,
+} from "../../../shared/rules/tourneyRules";
+import { isFullBracket } from "../bracket/swissPresentation";
 import { NumberInput } from "../../../design-system/NumberInput";
 
 /** The series lengths the service accepts. Anything else it silently makes 3. */
@@ -34,6 +40,13 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
   const [config, setConfig] = useState<BracketConfig>(() => bracketConfigOf(event));
   const teams = event.teams.length;
   const rounds = roundsFor(Math.max(teams, 2));
+  const cutRounds = swissCutRounds(event.swissCuts);
+  // Seeds choosing their opponent need a full bracket; the service refuses the
+  // draw otherwise, and saying so here beats that refusal.
+  const pickWarning =
+    event.pickOpponents && event.divisions === 0 && !isFullBracket(teams) ? (
+      <p className="tournament-warning">{t("tournaments.setup.pickNeedsFull", { teams })}</p>
+    ) : null;
 
   const boSelect = (value: number, onPick: (bo: number) => void, label: string) => (
     <label className="tournament-field tournament-bo">
@@ -69,6 +82,7 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
             <p className="muted">
               {t("tournaments.setup.single", { teams: String(teams), rounds: String(rounds) })}
             </p>
+            {pickWarning}
             {config.payload.rounds.map((bo, index) =>
               boSelect(
                 bo,
@@ -76,6 +90,7 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
                   setConfig({
                     type: "single",
                     payload: {
+                      ...config.payload,
                       rounds: config.payload.rounds.map((held, other) =>
                         other === index ? picked : held,
                       ),
@@ -83,6 +98,24 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
                   }),
                 eliminationLabel(index + 1, config.payload.rounds.length),
               ),
+            )}
+            {/* Only where the service would build it: four entrants or more
+                and no divisions. Anywhere else it is skipped in silence. */}
+            {teams >= 4 && event.divisions <= 1 && (
+              <label className="tournament-checkbox">
+                <input
+                  type="checkbox"
+                  checked={config.payload.thirdPlace}
+                  disabled={busy}
+                  onChange={(changed) =>
+                    setConfig({
+                      type: "single",
+                      payload: { ...config.payload, thirdPlace: changed.target.checked },
+                    })
+                  }
+                />
+                <span>{t("tournaments.form.planThirdPlace")}</span>
+              </label>
             )}
           </>
         );
@@ -100,6 +133,7 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
                 losers: String(lb.length),
               })}
             </p>
+            {pickWarning}
             <h5>{t("tournaments.setup.winners")}</h5>
             {wb.map((bo, index) =>
               boSelect(
@@ -136,19 +170,86 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
         const { rounds: count, bestOf, finalMatch, finalBestOf, fast } = config.payload;
         const set = (patch: Partial<typeof config.payload>) =>
           setConfig({ type: "swiss", payload: { ...config.payload, ...patch } });
+        const cuts = event.swissCuts;
+        const withCuts = cutRounds !== null;
+        const stageTwo = event.stageTwoPlan;
+        const most = Math.max(cuts.wins, cuts.losses);
+        // Below 2^(most + 1) the draw can run out of fresh opponents.
+        const comfy = withCuts ? 2 ** (most + 1) : 0;
         return (
           <>
-            <p className="muted">{t("tournaments.setup.swiss", { teams: String(teams) })}</p>
-            <label className="tournament-field">
-              <span>{t("tournaments.setup.rounds")}</span>
-              <NumberInput
-                min={1}
-                max={15}
-                value={count}
-                disabled={busy}
-                onChange={(rounds) => set({ rounds })}
-              />
-            </label>
+            <p className="muted">
+              {t(withCuts ? "tournaments.setup.swissCuts" : "tournaments.setup.swiss", { teams: String(teams) })}
+            </p>
+            {withCuts && (
+              <div className="tournament-cell">
+                <div className="tournament-cell-label">{t("tournaments.setup.format")}</div>
+                <div className="tournament-cell-body">
+                  <p>
+                    {cuts.wins > 0 && cuts.losses > 0
+                      ? t("tournaments.swiss.cutBoth", { wins: cuts.wins, losses: cuts.losses })
+                      : cuts.wins > 0
+                        ? t("tournaments.swiss.cutWins", { wins: cuts.wins })
+                        : t("tournaments.swiss.cutLosses", { losses: cuts.losses })}
+                  </p>
+                  <p>
+                    {t("tournaments.setup.atMostRounds", { count: cutRounds ?? 0 })}
+                    {event.decidingBestOf > 0 &&
+                      ` · ${t("tournaments.setup.decidingBo", { bo: event.decidingBestOf })}`}
+                  </p>
+                  {teams < comfy && (
+                    <p className="tournament-warning">{t("tournaments.setup.smallField", { teams, comfy })}</p>
+                  )}
+                  {(teams & (teams - 1)) !== 0 && (
+                    <p className="tournament-warning">{t("tournaments.setup.notPowerOfTwo", { teams, wins: cuts.wins })}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {stageTwo !== null && (
+              <div className="tournament-cell">
+                <div className="tournament-cell-label">{t("tournaments.setup.secondStage")}</div>
+                <div className="tournament-cell-body">
+                  <p>
+                    {t(stageTwo.double ? "tournaments.setup.stageTwoDouble" : "tournaments.setup.stageTwoSingle", {
+                      count: stageTwo.cutTo,
+                    })}
+                    {!stageTwo.double && stageTwo.thirdPlace && ` ${t("tournaments.setup.withThird")}`}
+                  </p>
+                  <p className="muted">{t("tournaments.setup.stageTwoBuilt")}</p>
+                  {stageTwo.cutTo >= teams && (
+                    <p className="tournament-warning">
+                      {t("tournaments.setup.cutTooBig", { cut: stageTwo.cutTo, teams })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* With record cuts the server derives the round count and ignores
+                the one sent, so it is shown rather than asked for. */}
+            {cutRounds !== null ? (
+              <label className="tournament-field">
+                <span>{t("tournaments.setup.rounds")}</span>
+                <input type="number" value={cutRounds} disabled readOnly />
+                <small className="muted">
+                  {t("tournaments.setup.roundsFromCuts", {
+                    wins: event.swissCuts.wins,
+                    losses: event.swissCuts.losses,
+                  })}
+                </small>
+              </label>
+            ) : (
+              <label className="tournament-field">
+                <span>{t("tournaments.setup.rounds")}</span>
+                <NumberInput
+                  min={1}
+                  max={15}
+                  value={count}
+                  disabled={busy}
+                  onChange={(rounds) => set({ rounds })}
+                />
+              </label>
+            )}
             <label className="tournament-field">
               <span>{t("tournaments.setup.eachMatch")}</span>
               {/* Swiss takes Bo1 or Bo3 and nothing else. */}
@@ -161,30 +262,39 @@ export function BracketSetupDialog({ event, busy, onStart, onClose }: BracketSet
                 <option value={3}>{t("tournaments.setup.bestOf", { count: "3" })}</option>
               </select>
             </label>
-            <label className="tournament-checkbox">
-              <input
-                type="checkbox"
-                checked={finalMatch}
-                disabled={busy}
-                onChange={(changed) => set({ finalMatch: changed.target.checked })}
-              />
-              <span>{t("tournaments.setup.swissFinal")}</span>
-            </label>
-            {finalMatch &&
+            {/* The playoff bracket replaces the single top-2 final, and the
+                service zeroes it; offering it would be a switch that does
+                nothing. */}
+            {stageTwo === null && (
+              <label className="tournament-checkbox">
+                <input
+                  type="checkbox"
+                  checked={finalMatch}
+                  disabled={busy}
+                  onChange={(changed) => set({ finalMatch: changed.target.checked })}
+                />
+                <span>{t("tournaments.setup.swissFinal")}</span>
+              </label>
+            )}
+            {stageTwo === null &&
+              finalMatch &&
               boSelect(
                 finalBestOf,
                 (picked) => set({ finalBestOf: picked }),
                 t("tournaments.pools.roundFinal"),
               )}
-            <label className="tournament-checkbox">
-              <input
-                type="checkbox"
-                checked={fast}
-                disabled={busy}
-                onChange={(changed) => set({ fast: changed.target.checked })}
-              />
-              <span>{t("tournaments.setup.fast")}</span>
-            </label>
+            {/* With cuts a whole round waits for the previous one. */}
+            {!withCuts && (
+              <label className="tournament-checkbox">
+                <input
+                  type="checkbox"
+                  checked={fast}
+                  disabled={busy}
+                  onChange={(changed) => set({ fast: changed.target.checked })}
+                />
+                <span>{t("tournaments.setup.fast")}</span>
+              </label>
+            )}
           </>
         );
       }

@@ -19,29 +19,47 @@
 // the one on the right" is a border on a pseudo-element and survives any amount
 // of scrolling and resizing. An SVG overlay would need measured coordinates and
 // a resize observer to say the same thing.
+//
+// The 3rd place match is the one card outside that grid. It hangs under the
+// final, in the final's own column, the way the website and most printed
+// brackets show it, and it is joined to nothing: its two players come from the
+// semi-finals' losers, and a line from there would cross the final's.
 
 import { useState, type CSSProperties } from "react";
 import { Button } from "../../../design-system/Button";
-import { Modal } from "../../../design-system/Modal";
-import { Icon } from "../../../design-system/Icon";
 import type {
+  BracketSide,
   FfaReport,
   PlayerSummary,
   Tourney,
+  TourneyAdmin,
   TourneyMatch,
   VaultMap,
 } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { FfaLobby } from "./FfaLobby";
-import { PlayerChip } from "../PlayerChip";
-import { VetoPanel } from "./VetoPanel";
-import { BRACKET_LABELS, isMyMatch, myTeamId } from "../tourneyPresentation";
+import { VetoPanel, type VetoHandlers } from "./VetoPanel";
+import { MatchActions, TeamName, teamNameOf } from "./matchParts";
+import { feedersOf, matchLabel } from "./matchLabels";
+import { useTourneyDisplay } from "../display";
+import { PreviewBracket, RoundMapBlock, StopNotice } from "./BracketParts";
+import { bracketPreview, columnLabel, divisionLabel, isPhantom, neverPlayed } from "./bracketPresentation";
+import { SwissRounds } from "./SwissRounds";
+import { PickPhasePanel } from "./PickPhasePanel";
+import { RoundOneEditor } from "./RoundOneEditor";
+import { playoffOrigin } from "./swissPresentation";
+import { hasVeto } from "./vetoPresentation";
+import { BRACKET_LABELS, myTeamId } from "../tourneyPresentation";
 import {
-  matchVaultMap,
-  mayReport,
-  poolForRound,
-  roundKeyOf,
+  hasGames,
+  mayAddThirdPlace,
+  mayRemoveThirdPlace,
+  maySetRoundBestOf,
+  thirdPlaceMatch,
 } from "../../../shared/rules/tourneyRules";
+
+/** The series lengths the service accepts. */
+const BEST_OF = [1, 3, 5, 7];
 
 interface Column {
   round: number;
@@ -71,6 +89,8 @@ export function groupIntoSides(matches: TourneyMatch[]): Side[] {
     winners: 0,
     losers: 1,
     grandFinal: 2,
+    // Never a side of its own in practice: the view hangs it under the final.
+    thirdPlace: 3,
     swiss: 0,
     freeForAll: 0,
   };
@@ -161,10 +181,38 @@ interface BracketViewProps {
   onAnswer: (entry: TourneyMatch, accept: boolean) => void;
   onHost: (entry: TourneyMatch) => void;
   vault: VaultMap[];
-  onVetoAct: (matchId: string, mapId: string) => void;
-  onVetoSetSides: (matchId: string, teamA: string) => void;
-  onVetoUndo: (matchId: string) => void;
+  /** Where the service lives, for the organisers' uploaded map pictures. */
+  assetBase: string;
+  veto: VetoHandlers;
   onReportFfa: (report: FfaReport) => void;
+  /** An organiser's single-call change: the 3rd place match, a round's length. */
+  onAdmin: (change: TourneyAdmin) => void;
+  /** Whether any write is in flight, for the pick phase and round 1 editor. */
+  busy?: boolean;
+  /** Read the event again silently, while seeds are picking. */
+  onRefresh?: () => void;
+  /** Bind a pool to a round, from the round's map block. Organisers only. */
+  onAssignPool?: (key: string, poolId: string) => void;
+  /** Play a FAF replay by its vault id, from a card's replay line. */
+  onWatchReplay?: (uid: number) => void;
+}
+
+/**
+ * How a card joins the round before it, where a feeder is not drawn: a bye,
+ * or a losers match only a bye fed, leaves one arm of the bracket with
+ * nothing at its end, so that arm is not drawn either.
+ */
+function missingArms(entry: TourneyMatch, feeders: ReturnType<typeof feedersOf>): string[] {
+  const classes: string[] = [];
+  for (const slot of [1, 2] as const) {
+    const feeder = feeders.get(`${entry.id}:${slot}`);
+    if (feeder === undefined || feeder.kind !== "winner" || !isPhantom(feeder.from)) continue;
+    if (feeder.from.bracket === entry.bracket && feeder.from.round === entry.round - 1) {
+      classes.push(feeder.from.index % 2 === 0 ? "no-top" : "no-bottom");
+      if (slot === 2) classes.push("no-stub");
+    }
+  }
+  return classes;
 }
 
 export function BracketView({
@@ -175,13 +223,96 @@ export function BracketView({
   onAnswer,
   onHost,
   vault,
-  onVetoAct,
-  onVetoSetSides,
-  onVetoUndo,
+  assetBase,
+  veto,
   onReportFfa,
+  onAdmin,
+  busy = false,
+  onRefresh = () => undefined,
+  onAssignPool,
+  onWatchReplay,
 }: BracketViewProps) {
   const { t } = useTranslation();
-  const sides = groupIntoSides(event.matches);
+  const rawThird = thirdPlaceMatch(event);
+  // A 3rd place match nobody reaches is a bye like any other, and divisions
+  // have none: each is its own bracket.
+  const third = rawThird !== null && !isPhantom(rawThird) && event.divisions <= 1 ? rawThird : null;
+  // A Swiss stage is a list of rounds, not a tree: see `SwissRounds`. What is
+  // left for the columns is a playoff bracket, where the stage feeds one.
+  const swissStage = event.bracketKind === "swiss" && event.competition !== "freeForAll";
+  const playoffs = event.matches.filter(
+    (entry) => entry.bracket === "winners" || entry.bracket === "losers",
+  );
+  const drawn = (
+    swissStage
+      ? playoffs.length > 0
+        ? event.matches.filter((entry) => entry.bracket !== "swiss")
+        : []
+      : event.matches
+  ).filter((entry) => entry.bracket !== "thirdPlace");
+  // Divisions are separate brackets, each under its own name, as the website
+  // draws them: grouped by round alone, two divisions' first rounds merged
+  // into one column.
+  const blocks =
+    event.divisions > 1 && !swissStage
+      ? Array.from({ length: event.divisions }, (_, index) => ({
+          division: index + 1,
+          sides: groupIntoSides(drawn.filter((entry) => entry.division === index + 1)),
+        })).filter((block) => block.sides.length > 0)
+      : [{ division: 0, sides: groupIntoSides(drawn) }];
+  const sides = blocks.flatMap((block) => block.sides);
+  const feeders = feedersOf(event.matches);
+  /** Whether a match is drawn on this side, the 3rd place match included. */
+  const onSide = (side: Side, matchId: string) =>
+    side.columns.some((column) => column.matches.some((entry) => entry.id === matchId)) ||
+    (side.bracket === "winners" && third !== null && third.id === matchId);
+
+  /**
+   * An organiser's best-of for a whole round, in its header.
+   *
+   * Only while a match in it can still change: the service skips every match
+   * that has begun, and a select that changed nothing would read as broken.
+   */
+  const roundBestOf = (bracket: BracketSide, column: Column, division = 0) => {
+    if (!maySetRoundBestOf(event, bracket, column.round)) return null;
+    const open = column.matches.find((entry) => entry.status !== "done" && !hasGames(entry));
+    const current = (open ?? column.matches[0])?.bestOf ?? 3;
+    return (
+      <select
+        className="tournament-round-bo"
+        value={current}
+        aria-label={t("tournaments.bracket.roundBestOf")}
+        title={t("tournaments.bracket.roundBestOfHint")}
+        onChange={(changed) =>
+          onAdmin({
+            type: "roundBestOf",
+            payload: {
+              bracket,
+              round: column.round,
+              bestOf: Number(changed.target.value),
+              division: division > 0 ? division : null,
+            },
+          })
+        }
+      >
+        {BEST_OF.map((bo) => (
+          <option key={bo} value={bo}>
+            {`Bo${bo}`}
+          </option>
+        ))}
+      </select>
+    );
+  };
+  /** Whether a semi-final has been played, which the add hint mentions. */
+  const semiPlayed =
+    third === null &&
+    event.matches.some((entry) => {
+      if (entry.bracket !== "winners" || entry.status !== "done" || entry.winnerTo === null) {
+        return false;
+      }
+      const next = event.matches.find((held) => held.id === entry.winnerTo?.matchId);
+      return next !== undefined && next.winnerTo === null;
+    });
   /**
    * The round whose map pool is open, by its service key, or null.
    *
@@ -191,21 +322,107 @@ export function BracketView({
    * children. So the button is in the round's header and the panel is under the
    * whole side, which also means it is readable at any bracket width.
    */
-  const [openPool, setOpenPool] = useState<string | null>(null);
   /** The match whose ban and pick run is open, by id, or null. */
   const [openVeto, setOpenVeto] = useState<string | null>(null);
 
-  if (event.matches.length === 0) {
-    return <p className="muted">{t("tournaments.bracket.notDrawn")}</p>;
+  // The main bracket's pick phase comes before any draw: until the last pick
+  // it is the whole section.
+  if (event.picks !== null && event.picks.open && !event.picks.stageTwo) {
+    return <PickPhasePanel event={event} picks={event.picks} busy={busy} onAdmin={onAdmin} onRefresh={onRefresh} />;
   }
+
+  // Swiss round 1 by hand, for the organiser: before the start it pins a
+  // plan, and once running it holds until anything in round 1 begins.
+  const roundOneEditor =
+    swissStage && event.viewer.organiser && (event.status === "drafted" || event.roundOneOpen) ? (
+      <RoundOneEditor key={`${event.status}-${event.matches.length}`} event={event} busy={busy} onAdmin={onAdmin} />
+    ) : null;
+
+  if (event.matches.length === 0) {
+    // An elimination bracket is drawn before it exists, as the website does:
+    // the shape it will have, with seeds where no team is placed yet.
+    if (!swissStage && event.competition === "team" && !event.imported) {
+      return (
+        <>
+          <StopNotice event={event} />
+          <PreviewBracket
+            event={event}
+            preview={bracketPreview(event, t)}
+            vault={vault}
+            assetBase={assetBase}
+            onAdmin={onAdmin}
+            onAssignPool={onAssignPool}
+          />
+        </>
+      );
+    }
+    return (
+      <>
+        {roundOneEditor}
+        <p className="muted">{t("tournaments.bracket.notDrawn")}</p>
+      </>
+    );
+  }
+
+  const stagePicks = event.picks !== null && event.picks.stageTwo && event.picks.open ? event.picks : null;
+  const builtPlayoffs = swissStage && event.playoffs !== null && event.playoffs.built ? event.playoffs : null;
 
   return (
     <div className="tournament-bracket">
-      {sides.map((side) => {
+      <StopNotice event={event} />
+      {/* The organiser's switch for the 3rd place match, above the bracket, and
+          only while it can still be switched: added any time the event runs,
+          taken away until anything happens in it. */}
+      {mayAddThirdPlace(event) && event.divisions <= 1 && (
+        <div className="tournament-third-tools">
+          <Button onClick={() => onAdmin({ type: "thirdPlace", payload: { on: true } })}>
+            {t("tournaments.bracket.addThirdPlace")}
+          </Button>
+          <span className="muted">
+            {t(
+              semiPlayed
+                ? "tournaments.bracket.addThirdPlaceHintPlayed"
+                : "tournaments.bracket.addThirdPlaceHint",
+            )}
+          </span>
+        </div>
+      )}
+      {mayRemoveThirdPlace(event) && (
+        <div className="tournament-third-tools">
+          <Button onClick={() => onAdmin({ type: "thirdPlace", payload: { on: false } })}>
+            {t("tournaments.bracket.removeThirdPlace")}
+          </Button>
+          <span className="muted">{t("tournaments.bracket.removeThirdPlaceHint")}</span>
+        </div>
+      )}
+      {stagePicks !== null && (
+        <PickPhasePanel event={event} picks={stagePicks} busy={busy} onAdmin={onAdmin} onRefresh={onRefresh} />
+      )}
+      {swissStage && sides.length > 0 && (
+        <header className="tournament-playoffs-head">
+          <h4>
+            {builtPlayoffs !== null
+              ? t(builtPlayoffs.double ? "tournaments.playoffs.headDouble" : "tournaments.playoffs.headSingle", {
+                  count: builtPlayoffs.cutTo,
+                })
+              : t("tournaments.swiss.playoffs")}
+          </h4>
+          {builtPlayoffs !== null && <p className="muted">{playoffOrigin(event, t)}</p>}
+        </header>
+      )}
+      {blocks.map((block) => (
+        <div className="tournament-division" key={block.division}>
+          {block.division > 0 && <h3>{divisionLabel(block.division, t)}</h3>}
+      {block.sides.map((rawSide) => {
+        // A column that is nothing but byes is not drawn at all; one that has
+        // a real game keeps its byes as empty slots, so the lines still meet.
+        const side = { ...rawSide, columns: rawSide.columns.filter((column) => column.matches.some((entry) => !isPhantom(entry))) };
+        if (side.columns.length === 0) return null;
         const layouts = columnLayouts(side.columns);
+        const deepest = Math.max(...rawSide.columns.map((column) => column.round));
         return (
           <div className="tournament-bracket-side" key={side.bracket}>
-            {sides.length > 1 && <h4>{t(BRACKET_LABELS[side.bracket])}</h4>}
+            {block.sides.length > 1 && <h4>{t(BRACKET_LABELS[side.bracket])}</h4>}
             <div className="tournament-bracket-columns">
               {side.columns.map((column, index) => (
                 <div
@@ -213,16 +430,21 @@ export function BracketView({
                   key={column.round}
                 >
                   <div className="tournament-round-head">
-                    <h5>{t("tournaments.bracket.round", { round: column.round })}</h5>
+                    <h5>{columnLabel(event, side.bracket, column.round, deepest, t)}</h5>
+                    {roundBestOf(side.bracket, column, block.division)}
                     {/* Which maps this round is played on, next to the round it
                         belongs to. It was two sections away, in Manage, which
                         only an organiser can open: a player wanting to know
                         what they are about to play had nowhere to look. */}
-                    <PoolToggle
+                    <RoundMapBlock
                       event={event}
-                      roundKey={roundKeyOf(side.bracket, column.round)}
-                      open={openPool === roundKeyOf(side.bracket, column.round)}
-                      onToggle={(key) => setOpenPool((held) => (held === key ? null : key))}
+                      bracket={side.bracket}
+                      round={column.round}
+                      vault={vault}
+                      assetBase={assetBase}
+                      bestOf={column.matches[0]?.bestOf ?? 3}
+                      onAdmin={onAdmin}
+                      onAssignPool={onAssignPool}
                     />
                   </div>
                   {/* `--pitch` is how far apart this round's cards sit, as a
@@ -234,9 +456,14 @@ export function BracketView({
                     className="tournament-round-matches"
                     style={{ "--pitch": layouts[index].pitch } as CSSProperties}
                   >
-                    {column.matches.map((entry) => (
+                    {column.matches.map((entry) =>
+                      isPhantom(entry) ? (
+                        <div key={entry.id} className="tournament-match is-phantom" aria-hidden />
+                      ) : (
                       <MatchCard
                         key={entry.id}
+                        arms={missingArms(entry, feeders)}
+                        onWatchReplay={onWatchReplay}
                         event={event}
                         entry={entry}
                         profiles={profiles}
@@ -251,159 +478,99 @@ export function BracketView({
                         profilesForFfa={profiles}
                         onHost={() => onHost(entry)}
                       />
-                    ))}
+                      ),
+                    )}
                   </div>
+                  {third !== null &&
+                    side.bracket === "winners" &&
+                    index === side.columns.length - 1 && (
+                      <div className="tournament-third-place">
+                        <div className="tournament-round-head">
+                          <h5>{t("tournaments.bracket.colThirdPlace")}</h5>
+                          {roundBestOf("thirdPlace", { round: third.round, matches: [third] })}
+                          <RoundMapBlock
+                            event={event}
+                            bracket="thirdPlace"
+                            round={third.round}
+                            vault={vault}
+                            assetBase={assetBase}
+                            bestOf={third.bestOf}
+                            onAdmin={onAdmin}
+                            onAssignPool={onAssignPool}
+                          />
+                        </div>
+                        <div className="tournament-round-matches">
+                          <MatchCard
+                            arms={[]}
+                            onWatchReplay={onWatchReplay}
+                            event={event}
+                            entry={third}
+                            profiles={profiles}
+                            busy={busyMatchId === third.id}
+                            onReport={() => onReport(third)}
+                            onAnswer={(accept) => onAnswer(third, accept)}
+                            vetoOpen={openVeto === third.id}
+                            onToggleVeto={() =>
+                              setOpenVeto((held) => (held === third.id ? null : third.id))
+                            }
+                            onReportFfa={onReportFfa}
+                            profilesForFfa={profiles}
+                            onHost={() => onHost(third)}
+                          />
+                        </div>
+                      </div>
+                    )}
                 </div>
               ))}
             </div>
             {/* Outside the scrolling box, under the round it belongs to. The
                 run and the pool sit in the same place for the same reason: both
                 are a grid of maps, and neither fits in a bracket column. */}
-            {side.columns.some((column) =>
-              column.matches.some((entry) => entry.id === openVeto),
-            ) &&
-              openVeto !== null &&
+            {openVeto !== null &&
+              onSide(side, openVeto) &&
               (() => {
                 const entry = event.matches.find((held) => held.id === openVeto);
-                if (entry === undefined || entry.veto === null) return null;
+                if (entry === undefined || !hasVeto(event, entry)) return null;
                 return (
                   <div className="tournament-veto-drawer surface">
                     <VetoPanel
                       event={event}
                       entry={entry}
                       vault={vault}
+                      assetBase={assetBase}
                       profiles={profiles}
                       busy={busyMatchId === entry.id}
-                      onAct={onVetoAct}
-                      onSetSides={onVetoSetSides}
-                      onUndo={onVetoUndo}
+                      handlers={veto}
                     />
                   </div>
                 );
               })()}
 
-            {/* Outside the scrolling box, under the round it belongs to. */}
-            {side.columns.some(
-              (column) => roundKeyOf(side.bracket, column.round) === openPool,
-            ) &&
-              openPool !== null && (
-                <PoolPanel
-                  event={event}
-                  vault={vault}
-                  roundKey={openPool}
-                  onClose={() => setOpenPool(null)}
-                />
-              )}
           </div>
         );
       })}
-    </div>
-  );
-}
-
-/**
- * The button that opens a round's map pool.
- *
- * Nothing at all where no pool is bound, which is most rounds of most events: a
- * button that opens on "none" is worse than no button.
- */
-function PoolToggle({
-  event,
-  roundKey,
-  open,
-  onToggle,
-}: {
-  event: Tourney;
-  roundKey: string;
-  open: boolean;
-  onToggle: (roundKey: string) => void;
-}) {
-  const { t } = useTranslation();
-  const pool = poolForRound(event, roundKey);
-  if (pool === null) return null;
-  return (
-    <button
-      type="button"
-      className={
-        open
-          ? "tournament-round-pool-toggle is-open"
-          : "tournament-round-pool-toggle"
-      }
-      aria-expanded={open}
-      onClick={() => onToggle(roundKey)}
-      title={t("tournaments.bracket.poolHint", { name: pool.name })}
-    >
-      <Icon name="maps" size={12} /> {t("tournaments.bracket.pool")}
-    </button>
-  );
-}
-
-/**
- * The maps one round is played on.
- *
- * The maps come from the event's own database, with a preview from FAF's vault
- * where the name matches something in it, which is the one thing this client can
- * show here that the website cannot.
- */
-function PoolPanel({
-  event,
-  vault,
-  roundKey,
-  onClose,
-}: {
-  event: Tourney;
-  vault: VaultMap[];
-  roundKey: string;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const pool = poolForRound(event, roundKey);
-  if (pool === null) return null;
-
-  const named = (mapId: string) => {
-    const held = event.mapDb.find((candidate) => candidate.id === mapId);
-    if (held === undefined) return { name: mapId, image: "" };
-    const vaultMap = matchVaultMap(held, vault);
-    return {
-      name: vaultMap?.displayName ?? held.name,
-      image: vaultMap?.thumbnailUrl || held.imageUrl,
-    };
-  };
-
-  // An overlay rather than a panel under the bracket. It is a grid of pictures
-  // that answers one question and is then finished with, which is what an
-  // overlay is for: it opens over whatever the reader was looking at, keeps its
-  // place, and Escape or a click outside gives it back. The map generator's
-  // preview works the same way, so this is one pattern in the client rather
-  // than two for the same thing.
-  return (
-    <Modal onClose={onClose} ariaLabel={pool.name} className="tournament-pool-modal">
-      <header className="tournament-pool-modal-head">
-        <h4>{pool.name}</h4>
-        <span className="muted">
-          {t("tournaments.bracket.poolCount", { count: pool.mapIds.length })}
-        </span>
-      </header>
-      {pool.mapIds.length === 0 ? (
-        <p className="muted">{t("tournaments.pools.empty")}</p>
-      ) : (
-        <ul className="tournament-veto-grid">
-          {pool.mapIds.map((mapId) => {
-            const map = named(mapId);
-            return (
-              <li className="tournament-veto-map" key={mapId}>
-                {map.image === "" ? (
-                  <span className="tournament-pool-map-blank" aria-hidden />
-                ) : (
-                  <img src={map.image} alt="" loading="lazy" aria-hidden />
-                )}
-                <span>{map.name}</span>
-              </li>
-            );
-          })}
-        </ul>
+        </div>
+      ))}
+      {swissStage && (
+        <>
+          {sides.length > 0 && <h4>{t("tournaments.swiss.stage")}</h4>}
+          {roundOneEditor}
+          <SwissRounds
+            event={event}
+            profiles={profiles}
+            busyMatchId={busyMatchId}
+            withFinal={playoffs.length === 0}
+            hideUpcoming={builtPlayoffs !== null}
+            onReport={onReport}
+            onAnswer={onAnswer}
+            onHost={onHost}
+            vault={vault}
+            assetBase={assetBase}
+            veto={veto}
+          />
+        </>
       )}
-    </Modal>
+    </div>
   );
 }
 
@@ -421,6 +588,9 @@ interface MatchCardProps {
   onReportFfa: (report: FfaReport) => void;
   /** Only the free-for-all lobby needs these; a two-sided card resolves its own. */
   profilesForFfa: PlayerSummary[];
+  /** Connector arms with nothing at their end: see `missingArms`. */
+  arms: string[];
+  onWatchReplay?: (uid: number) => void;
 }
 
 function MatchCard({
@@ -435,8 +605,11 @@ function MatchCard({
   onToggleVeto,
   onReportFfa,
   profilesForFfa,
+  arms,
+  onWatchReplay,
 }: MatchCardProps) {
   const { t } = useTranslation();
+  const display = useTourneyDisplay();
   // A free-for-all lobby has entrants rather than two sides, so the card below
   // would draw it as "TBD vs TBD". Its own shape, same place in the column.
   if (entry.bracket === "freeForAll") {
@@ -452,34 +625,8 @@ function MatchCard({
   }
   const mine = myTeamId(event);
   const pending = entry.pendingReport;
-  // Twins of `Tourney::may_report` and `may_confirm`. Offering a control the
-  // server refuses is worse than offering none: the player fills in a score and
-  // loses it.
-  const playable =
-    (entry.status === "ready" || entry.status === "live") &&
-    entry.team1 !== null &&
-    entry.team2 !== null;
-  const reportable = mayReport(event, entry);
-  const mayAnswer = pending !== null && isMyMatch(event, entry) && pending.byTeam !== mine;
-
-  const teamName = (teamId: string | null): string => {
-    if (teamId === null) return t("tournaments.bracket.tbd");
-    const team = event.teams.find((candidate) => candidate.id === teamId);
-    if (team === undefined) return t("tournaments.bracket.tbd");
-    const named = team.name.trim();
-    if (named !== "") return named;
-    const first = event.players.find((player) => player.id === team.playerIds[0]);
-    return first?.name ?? t("tournaments.bracket.tbd");
-  };
-
-  /** The FAF account behind a slot, for a solo team where there is exactly one. */
-  const profileOf = (teamId: string | null): PlayerSummary | null => {
-    const team = event.teams.find((candidate) => candidate.id === teamId);
-    if (team === undefined || team.playerIds.length !== 1) return null;
-    const fafId = event.players.find((player) => player.id === team.playerIds[0])?.fafId ?? null;
-    if (fafId === null) return null;
-    return profiles.find((profile) => profile.id === fafId) ?? null;
-  };
+  const teamName = (teamId: string | null): string =>
+    teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd");
 
   /** The seed the organiser gave a team, or null for a slot nobody has yet. */
   const seedOf = (teamId: string | null): number | null => {
@@ -495,30 +642,64 @@ function MatchCard({
    * scores down the right, so a column of matches can be scanned without
    * reading any of it. Two of these, flush against each other, are a match.
    */
-  const side = (teamId: string | null, score: number | null) => {
-    const profile = profileOf(teamId);
+  // Streamer mode: a finished match draws as not yet played until revealed,
+  // and a slot filled by a hidden result says where it comes from instead of
+  // who, or the next round would give the result away.
+  const masked = display.masked(entry);
+  const hiddenFeed = (slot: 1 | 2) => {
+    const feeder = feedersOf(event.matches).get(`${entry.id}:${slot}`);
+    return feeder !== undefined && display.masked(feeder.from) ? feeder : null;
+  };
+  const side = (teamId: string | null, score: number | null, slot: 1 | 2) => {
     const seed = seedOf(teamId);
     const classes = ["tournament-match-side"];
-    if (entry.winner !== null && entry.winner === teamId) classes.push("is-winner");
-    if (teamId !== null && teamId === mine) classes.push("is-mine");
-    if (teamId === null) classes.push("is-tbd");
+    const feed = teamId !== null ? hiddenFeed(slot) : null;
+    if (!masked && entry.winner !== null && entry.winner === teamId) classes.push("is-winner");
+    if (teamId !== null && teamId === mine && feed === null) classes.push("is-mine");
+    if (teamId === null || feed !== null) classes.push("is-tbd");
+    if (feed !== null) {
+      return (
+        <span className={classes.join(" ")}>
+          <span className="tournament-match-seed mono" />
+          <span className="tournament-match-who muted">
+            {t(feed.kind === "winner" ? "tournaments.matches.winnerOf" : "tournaments.matches.loserOf", {
+              match: matchLabel(event, feed.from, t),
+            })}
+          </span>
+          <span className="tournament-match-score mono" />
+        </span>
+      );
+    }
     return (
       <span className={classes.join(" ")}>
         <span className="tournament-match-seed mono">{seed ?? ""}</span>
         <span className="tournament-match-who">
-          {profile ? (
-            <PlayerChip player={profile} overrideName={teamName(teamId)} />
-          ) : (
-            teamName(teamId)
-          )}
+          <TeamName event={event} profiles={profiles} teamId={teamId} asPlayers={display.showPlayers} />
         </span>
-        <span className="tournament-match-score mono">{score ?? ""}</span>
+        {masked ? (
+          <span className="tournament-match-score mono" />
+        ) : /* A walkover stores the absent side at -1. It is not a score. */
+        teamId !== null && entry.forfeit === teamId && score !== null && score < 0 ? (
+          <span className="tournament-match-score mono" title={t("tournaments.match.forfeited")}>
+            {t("tournaments.match.forfeitShort")}
+          </span>
+        ) : (
+          <span className="tournament-match-score mono">{score ?? ""}</span>
+        )}
       </span>
     );
   };
 
   return (
-    <div className={`surface tournament-match is-${entry.status}`}>
+    <div
+      className={[
+        "surface",
+        "tournament-match",
+        `is-${masked ? "ready" : entry.status}`,
+        ...(neverPlayed(event, entry) ? ["is-not-played"] : []),
+        ...arms.map((arm) => `is-${arm}`),
+      ].join(" ")}
+    >
       {/* Pair on the left, controls on the right. They used to sit under the
           two rows, which a card one slot high has no room for: on a match that
           can be hosted *and* reported, the buttons ran over the card below it.
@@ -529,11 +710,11 @@ function MatchCard({
           cards stacked flush against each other they read as a list of sixteen
           names instead. Tight inside, spaced outside. */}
       <div className="tournament-match-pair">
-        {side(entry.team1, entry.score1)}
-        {side(entry.team2, entry.score2)}
+        {side(entry.team1, entry.score1, 1)}
+        {side(entry.team2, entry.score2, 2)}
       </div>
 
-      {pending !== null && (
+      {pending !== null && !masked && (
         <span className="tournament-match-pending muted">
           {t("tournaments.match.awaiting", {
             who: pending.byName || teamName(pending.byTeam),
@@ -546,55 +727,49 @@ function MatchCard({
           column has to be the same height, or the connector geometry, which is
           derived from the card pitch, stops lining up. */}
       <div className="tournament-match-actions">
-        {mayAnswer && (
-          <>
-            <Button variant="primary" onClick={() => onAnswer(true)} disabled={busy}>
-              {t("tournaments.match.confirm")}
-            </Button>
-            <Button onClick={() => onAnswer(false)} disabled={busy}>
-              {t("tournaments.match.reject")}
-            </Button>
-          </>
+        {!masked && (
+          <MatchActions
+            event={event}
+            entry={entry}
+            busy={busy}
+            onReport={onReport}
+            onAnswer={onAnswer}
+            onHost={onHost}
+            vetoOpen={vetoOpen}
+            onToggleVeto={onToggleVeto}
+          />
         )}
-        {!mayAnswer && (
-          <>
-            {/* Hosting is offered to everyone watching, not just the two
-                players: a caster or an organiser opening the lobby is normal. */}
-            {playable && (
-              <Button onClick={onHost} title={t("tournaments.match.hostHint")}>
-                <Icon name="play" size={14} /> {t("tournaments.match.host")}
-              </Button>
+        {neverPlayed(event, entry) && (
+          <span className="tournament-not-played mono">{t("tournaments.bracket.notPlayed")}</span>
+        )}
+        {/* The FAF replays, in game order, as soon as they are confirmed:
+            played here in the client rather than linked to the vault page. */}
+        {!masked && onWatchReplay !== undefined && entry.replayIds.length + entry.drawReplayIds.length > 0 && (
+          <span className="tournament-match-replays" title={t("tournaments.bracket.replaysTitle")}>
+            {[...entry.replayIds, ...entry.drawReplayIds].slice(0, 3).map((id) => {
+              const uid = Number(id.replace(/\D/g, ""));
+              return Number.isSafeInteger(uid) && uid > 0 ? (
+                <button
+                  type="button"
+                  key={id}
+                  className="tournament-link-button mono"
+                  title={t("tournaments.matches.watchReplay")}
+                  onClick={() => onWatchReplay(uid)}
+                >
+                  {"\u25B6"}
+                  {uid}
+                </button>
+              ) : null;
+            })}
+            {entry.replayIds.length + entry.drawReplayIds.length > 3 && (
+              <span className="muted">+{entry.replayIds.length + entry.drawReplayIds.length - 3}</span>
             )}
-            {/* The run itself opens under the bracket. A card is 210 pixels
-                wide and one slot high; a grid of maps is neither, and every
-                card drawing its own was what made this tab unusable. */}
-            {entry.veto !== null && event.veto.enabled && (
-              <button
-                type="button"
-                className={
-                  vetoOpen
-                    ? "tournament-round-pool-toggle is-open"
-                    : "tournament-round-pool-toggle"
-                }
-                aria-expanded={vetoOpen}
-                onClick={onToggleVeto}
-                title={t("tournaments.veto.openHint")}
-              >
-                <Icon name="maps" size={12} /> {t("tournaments.veto.open")}
-              </button>
-            )}
-            {reportable && (
-              <Button variant="primary" onClick={onReport} disabled={busy}>
-                {t(
-                  busy
-                    ? "tournaments.match.reporting"
-                    : entry.status === "done"
-                      ? "tournaments.match.correct"
-                      : "tournaments.match.report",
-                )}
-              </Button>
-            )}
-          </>
+          </span>
+        )}
+        {display.streamer && entry.status === "done" && (
+          <button type="button" className="tournament-link-button" onClick={() => display.toggleReveal(entry.id)}>
+            {masked ? `○ ${t("tournaments.display.reveal")}` : `◉ ${t("tournaments.display.hide")}`}
+          </button>
         )}
       </div>
 

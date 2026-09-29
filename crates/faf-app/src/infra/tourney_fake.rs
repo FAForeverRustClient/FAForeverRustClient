@@ -29,7 +29,10 @@ use faf_domain::state::{
     BracketConfig, Caster, Currency, FormatDraft, Prize, Qualifier, QualifierRule, SeriesColour,
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries,
 };
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
+use faf_domain::state::{PendingSummary, SiteDocument, SiteRead, SiteWrite, TourneyAccount};
 
 use crate::ports::{RequestError, TourneyPort};
 
@@ -447,7 +450,7 @@ impl TourneyPort for FakeTourney {
         self.with_event(tournament_id, |held| Ok(held.event.clone()))
     }
 
-    async fn sign_up(&self, tournament_id: &str) -> Result<(), RequestError> {
+    async fn sign_up(&self, tournament_id: &str, _: Option<i32>) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
             if held.event.status != TourneyStatus::Signup {
                 return Err(RequestError::rejected("Signups are closed"));
@@ -471,7 +474,9 @@ impl TourneyPort for FakeTourney {
                 late: false,
                 pending: false,
                 signed_at: Some(1_785_100_000),
+                discord: String::new(),
                 note: String::new(),
+                team_name: String::new(),
             });
             held.event.player_count = held.event.players.len() as i32;
             held.event.viewer.signed_up_player_id = Some(player_id);
@@ -806,7 +811,9 @@ impl TourneyPort for FakeTourney {
                 late: false,
                 pending: false,
                 signed_at: Some(1_785_400_000),
+                discord: String::new(),
                 note: String::new(),
+                team_name: String::new(),
             });
             held.event.player_count = held.event.players.len() as i32;
             Ok(())
@@ -1004,6 +1011,12 @@ impl TourneyPort for FakeTourney {
                 ));
             }
             match order {
+                // Not simulated, like every action added after 2026-09-28.
+                SeedOrder::InviteOrder => {
+                    return Err(RequestError::rejected(
+                        "Seeding by invite order is not available offline",
+                    ));
+                }
                 SeedOrder::Randomise => {
                     // Reversed rather than shuffled: the fake has no clock and
                     // no randomness, and a deterministic reorder proves the
@@ -1111,7 +1124,7 @@ impl TourneyPort for FakeTourney {
         })
     }
 
-    async fn check_in(&self, tournament_id: &str) -> Result<(), RequestError> {
+    async fn check_in(&self, tournament_id: &str, checked_in: bool) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
             let Some(team_id) = held.event.viewer.member_team_id.clone() else {
                 return Err(RequestError::rejected("Join a team first"));
@@ -1122,7 +1135,7 @@ impl TourneyPort for FakeTourney {
                 .iter_mut()
                 .find(|team| team.id == team_id)
                 .ok_or_else(|| RequestError::rejected("Team not found"))?;
-            team.checked_in = true;
+            team.checked_in = checked_in;
             Ok(())
         })
     }
@@ -1145,6 +1158,110 @@ impl TourneyPort for FakeTourney {
             held.finalise(match_id, pending.score1, pending.score2);
             Ok(())
         })
+    }
+
+    async fn faction_veto(
+        &self,
+        _: &str,
+        _: &str,
+        _: i32,
+        _: TourneyFaction,
+    ) -> Result<(), RequestError> {
+        // Not simulated, like every action added after 2026-09-28.
+        Err(RequestError::rejected(
+            "Faction vetoes are not available offline",
+        ))
+    }
+
+    async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
+        Err(RequestError::rejected(
+            "Faction vetoes are not available offline",
+        ))
+    }
+
+    async fn decline_invite(&self, _: &str) -> Result<(), RequestError> {
+        Err(RequestError::rejected(
+            "Invitations are not available offline",
+        ))
+    }
+
+    async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
+        Err(RequestError::rejected(
+            "Checking a rating against FAF is not available offline",
+        ))
+    }
+
+    async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
+        Err(RequestError::rejected(
+            "Importing maps is not available offline",
+        ))
+    }
+
+    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError> {
+        // The account is the one the fixture events belong to, with no role
+        // on the site; nothing else about the site is simulated offline.
+        match read {
+            SiteRead::Account => Ok(SiteDocument::Account(TourneyAccount {
+                logged_in: true,
+                faf_id: Some(1),
+                faf_name: "OfflinePlayer".into(),
+                allowed: true,
+                ..TourneyAccount::default()
+            })),
+            SiteRead::Pending => Ok(SiteDocument::Pending(PendingSummary::default())),
+            _ => Err(RequestError::rejected(
+                "The tournament site is not available offline",
+            )),
+        }
+    }
+
+    async fn site_write(
+        &self,
+        _: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError> {
+        Err(RequestError::rejected(
+            "The tournament site is not available offline",
+        ))
+    }
+
+    async fn upload_desc_image(&self, _: &str, _: &str) -> Result<String, RequestError> {
+        Err(RequestError::rejected("Pictures are not available offline"))
+    }
+
+    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
+        // None offline: the create form then simply offers no preset.
+        Ok(Vec::new())
+    }
+
+    async fn player_ratings(
+        &self,
+        _: &str,
+        _: &str,
+        _: bool,
+    ) -> Result<EntrantRatings, RequestError> {
+        Err(RequestError::rejected(
+            "A player's ratings are not available offline",
+        ))
+    }
+
+    async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
+        Err(RequestError::rejected(
+            "Checking names against FAF is not available offline",
+        ))
+    }
+
+    async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
+        Err(RequestError::rejected(
+            "This organiser change is not available offline",
+        ))
+    }
+
+    async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+        // Not simulated: the offline fake is no longer extended with new
+        // actions. The body is covered at the codec level instead.
+        Err(RequestError::rejected(
+            "Submitting a score is not available offline",
+        ))
     }
 
     async fn decide_report(
@@ -1254,6 +1371,9 @@ impl TourneyPort for FakeTourney {
         tournament_id: &str,
         room_id: &str,
         body: &str,
+        // Replies are not simulated, like every chat feature added after
+        // 2026-09-28: the post lands as an ordinary one.
+        _reply_to: Option<&str>,
     ) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
             if body.trim().is_empty() {
@@ -1270,6 +1390,8 @@ impl TourneyPort for FakeTourney {
                     body: body.trim().to_string(),
                     at: Some(1_785_400_000),
                     system: false,
+                    reply_to: None,
+                    everyone: false,
                 });
             Ok(())
         })
@@ -1593,6 +1715,7 @@ impl TourneyPort for FakeTourney {
                 existing.name = name.to_string();
                 existing.description = map.description.trim().to_string();
                 existing.published = map.published;
+                existing.spec = map.spec.clone();
                 return Ok(());
             }
             let id = held.handle("map");
@@ -1602,6 +1725,9 @@ impl TourneyPort for FakeTourney {
                 image_url: String::new(),
                 description: map.description.trim().to_string(),
                 published: map.published,
+                spec: map.spec.clone(),
+                secret: false,
+                masked: false,
             });
             Ok(())
         })
@@ -1750,6 +1876,7 @@ impl TourneyPort for FakeTourney {
             // The offline account organises every fixture event, so it manages
             // every series they could reach.
             can_edit: true,
+            bans: Vec::new(),
         })
     }
 
@@ -1908,6 +2035,7 @@ impl TourneyPort for FakeTourney {
             applied: settled.is_some().then_some(1_786_300_000),
             qualified,
             unreachable,
+            seed_from: 0,
         });
         Ok(())
     }
@@ -2208,6 +2336,9 @@ fn edition_of(event: &Tourney) -> SeriesEdition {
             .as_deref()
             .map(|id| team_name(event, id))
             .unwrap_or_default(),
+        can_manage: true,
+        signup_opens_at: event.signup_opens_at,
+        event_days: event.event_days.clone(),
     }
 }
 
@@ -2303,9 +2434,7 @@ fn apply(event: &mut Tourney, draft: &TourneyDraft) {
     event.mods = draft.mods.trim().to_string();
     event.prize = draft.prize;
     event.streams = draft.streams.clone();
-    // Always off, as the real body says: the client has no player reporting
-    // path, and the service would default an absent key to *on*.
-    event.player_reporting = false;
+    event.player_reporting = draft.player_reporting;
     event.event_date = draft.event_date;
     event.signup_opens_at = draft.signup_opens_at;
     event.signup_closes_at = draft.signup_closes_at;
@@ -2433,7 +2562,9 @@ fn player(id: &str, name: &str, faf_id: i32, team_id: &str, rating: i32) -> Tour
         late: false,
         pending: false,
         signed_at: Some(1_785_100_000),
+        discord: String::new(),
         note: String::new(),
+        team_name: String::new(),
     }
 }
 
@@ -2479,11 +2610,14 @@ fn entry(id: &str, round: i32, index: i32, teams: (Option<&str>, Option<&str>)) 
         loser_to: None,
         pending_report: None,
         veto: None,
+        faction_veto: None,
         entrants: Vec::new(),
         winners: Vec::new(),
         points: Vec::new(),
         is_final: false,
         replay_ids: Vec::new(),
+        draw_replay_ids: Vec::new(),
+        forfeit: None,
     }
 }
 
@@ -2569,6 +2703,9 @@ fn map(id: &str, name: &str) -> TourneyMap {
         image_url: String::new(),
         description: String::new(),
         published: true,
+        spec: None,
+        secret: false,
+        masked: false,
     }
 }
 
@@ -2705,6 +2842,9 @@ fn signup_event() -> FakeEvent {
             image_url: String::new(),
             description: String::new(),
             published: true,
+            spec: None,
+            secret: false,
+            masked: false,
         },
         TourneyMap {
             id: "map2".into(),
@@ -2712,6 +2852,9 @@ fn signup_event() -> FakeEvent {
             image_url: String::new(),
             description: String::new(),
             published: true,
+            spec: None,
+            secret: false,
+            masked: false,
         },
     ];
     event.map_pools = vec![MapPool {
@@ -2769,10 +2912,8 @@ fn running_event() -> FakeEvent {
         slot: 1,
     });
     // A result the opponent raised, waiting on this account's answer. Seeded
-    // rather than submitted, because the client no longer raises one: recording
-    // a result is the organiser's, and `report_submit` additionally insists on a
-    // replay id per game. Answering a report raised on the website is the case
-    // that remains, and it has to be exercisable offline.
+    // rather than submitted: the fake does not simulate `report_submit`, but
+    // answering a submission has to be exercisable offline.
     semi_one.pending_report = Some(PendingReport {
         score1: 2,
         score2: 0,
@@ -2780,10 +2921,12 @@ fn running_event() -> FakeEvent {
         by_name: "Alan".into(),
         replay_ids: vec!["22334455".into(), "22334456".into()],
         at: Some(1_786_215_600),
+        draw_replay_ids: Vec::new(),
     });
     event.veto = faf_domain::state::VetoConfig {
         enabled: true,
         mode: faf_domain::state::VetoMode::Upfront,
+        ..Default::default()
     };
     event.map_db = vec![
         map("map1", "Setons Clutch"),
@@ -2843,6 +2986,8 @@ fn running_event() -> FakeEvent {
             body: "Semifinals start at 19:00 UTC. Post your replay ids when you report.".into(),
             at: Some(1_785_300_000),
             system: false,
+            reply_to: None,
+            everyone: false,
         }],
     );
 
@@ -3182,7 +3327,7 @@ mod tests {
         let before = fake.detail("e1a2b").await.unwrap();
         assert!(before.may_sign_up());
 
-        fake.sign_up("e1a2b").await.unwrap();
+        fake.sign_up("e1a2b", None).await.unwrap();
         let entered = fake.detail("e1a2b").await.unwrap();
         assert_eq!(entered.player_count, 3);
         assert!(entered.viewer.is_signed_up());
@@ -3192,7 +3337,7 @@ mod tests {
         assert!(entered.may_withdraw());
         assert!(!entered.may_sign_up());
         // Entering twice is the server's refusal, not a second entry.
-        assert!(fake.sign_up("e1a2b").await.is_err());
+        assert!(fake.sign_up("e1a2b", None).await.is_err());
 
         let player_id = entered.viewer.signed_up_player_id.clone().unwrap();
         fake.withdraw("e1a2b", &player_id).await.unwrap();
@@ -3292,7 +3437,7 @@ mod tests {
     #[tokio::test]
     async fn checking_in_marks_the_whole_team() {
         let fake = FakeTourney::new();
-        fake.check_in("e9z9z").await.unwrap();
+        fake.check_in("e9z9z", true).await.unwrap();
         let event = fake.detail("e9z9z").await.unwrap();
         assert!(event.team("t1").unwrap().checked_in);
     }
@@ -3315,13 +3460,16 @@ mod tests {
             "nothing has been played, so nothing folds away yet"
         );
 
-        fake.chat_post("e9z9z", "match:m1", "  gl hf  ")
+        fake.chat_post("e9z9z", "match:m1", "  gl hf  ", None)
             .await
             .unwrap();
         let posts = fake.chat_read("e9z9z", "match:m1").await.unwrap();
         assert_eq!(posts.len(), 1);
         assert_eq!(posts[0].body, "gl hf");
-        assert!(fake.chat_post("e9z9z", "match:m1", "   ").await.is_err());
+        assert!(fake
+            .chat_post("e9z9z", "match:m1", "   ", None)
+            .await
+            .is_err());
     }
 
     #[tokio::test]
@@ -3335,6 +3483,7 @@ mod tests {
                 map_ids: vec!["map1".into(), "map2".into()],
                 best_of: Some(3),
                 sequence: Vec::new(),
+                publish_at: None,
             },
         )
         .await

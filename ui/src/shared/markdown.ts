@@ -45,7 +45,7 @@ function linkUrl(raw: string): string | null {
 /**
  * A url an image may load from, resolved against the service.
  *
- * Two shapes, matching what the service can produce: its own upload path, which
+ * Two shapes, matching what the service can produce: its own upload paths, which
  * is relative and needs the deployment's base, and an absolute `https` url.
  * `http` is refused here for a second reason beyond the one above: the desktop
  * shell's own content policy blocks it, so it could only ever render as a
@@ -53,7 +53,9 @@ function linkUrl(raw: string): string | null {
  */
 function imageUrl(raw: string, assetBase: string): string | null {
   const url = raw.trim();
-  if (/^\/desc-images\/[A-Za-z0-9_.%-]+$/.test(url)) {
+  // The FAQ / Rules articles store their pictures under `/article-images/`,
+  // an event's text under `/desc-images/`: the website's own rule.
+  if (/^\/(article|desc)-images\/[A-Za-z0-9_.%-]+$/.test(url)) {
     const base = assetBase.trim().replace(/\/+$/, "");
     return base === "" ? null : `${base}${url}`;
   }

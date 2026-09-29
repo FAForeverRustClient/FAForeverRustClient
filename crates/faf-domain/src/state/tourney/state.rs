@@ -49,6 +49,9 @@ pub enum TourneyAction {
     AddingPlayer,
     /// Saving this account's own Discord handle.
     SavingProfile,
+    /// A write to the site around the tournaments: a request, a decision in
+    /// the console, an article, an import.
+    SiteWriting,
     #[serde(rename_all = "camelCase")]
     AnsweringSignup {
         player_id: String,
@@ -95,6 +98,11 @@ pub enum TourneyAction {
     },
     Archiving,
     SigningUp,
+    DecliningInvite,
+    #[serde(rename_all = "camelCase")]
+    BanningPlayer {
+        player_id: String,
+    },
     Withdrawing,
     CheckingIn,
     #[serde(rename_all = "camelCase")]
@@ -103,6 +111,10 @@ pub enum TourneyAction {
     },
     #[serde(rename_all = "camelCase")]
     DecidingReport {
+        match_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    SubmittingReport {
         match_id: String,
     },
     #[serde(rename_all = "camelCase")]
@@ -122,6 +134,10 @@ pub enum TourneyAction {
         match_id: String,
     },
     Drafting,
+    SavingFactionVeto,
+    /// One of the organiser's single-call changes. It names no target: the
+    /// whole pane waits on it, as it does on most writes.
+    Administering,
     SavingMap,
     #[serde(rename_all = "camelCase")]
     PublishingMap {
@@ -253,6 +269,40 @@ pub struct TourneyState {
     /// one event, so it is carried once here rather than pasted onto every
     /// image on the way through the codec.
     pub asset_base: String,
+    /// The open event's last name check against FAF, until the next write:
+    /// any write re-reads the event, and a list of renames that may already
+    /// have been taken is worse than an empty panel with a button.
+    pub renames: Option<RenameCheck>,
+    pub renames_status: TourneyLoadStatus,
+    /// This account's last rating check for the open event.
+    pub rating_check: Option<RatingCheck>,
+    pub rating_check_status: TourneyLoadStatus,
+    /// One entrant's every rating, while the organiser has them open.
+    pub player_ratings: Option<EntrantRatings>,
+    pub player_ratings_status: TourneyLoadStatus,
+    /// The room pinned beside the sections, and its posts. A second slot
+    /// beside the open room, so the Chat tab and the pinned room can be two
+    /// different rooms, as on the website.
+    pub pinned_room_id: Option<String>,
+    pub pinned_posts: Vec<ChatPost>,
+    /// The events maps can be imported from, while the organiser is choosing.
+    pub copy_sources: Vec<CopySource>,
+    pub copy_sources_status: TourneyLoadStatus,
+    /// The chosen one's maps and pools.
+    pub copy_source: Option<CopySourceMaps>,
+    pub copy_source_status: TourneyLoadStatus,
+    /// The named formats, for the create form. Empty until asked, and where
+    /// the service offers none.
+    pub presets: Vec<TourneyPreset>,
+    /// The site around the tournaments: this account's roles, the pending
+    /// bar, the Hall of Fame and the console.
+    pub site: TourneySite,
+    /// The last picture pasted into an event's text and stored, for the form
+    /// to insert.
+    pub desc_image: Option<String>,
+    /// The event the create form is being filled from, once read.
+    pub template: Option<Box<Tourney>>,
+    pub template_status: TourneyLoadStatus,
 }
 
 /// A name-to-account search, as the organiser types.
@@ -328,7 +378,7 @@ impl TourneyState {
     /// The one match a write is in flight against, if the pending write names
     /// one at all.
     ///
-    /// Only the two reporting actions do; every other write is event-wide.
+    /// Only the reporting and veto actions do; every other write is event-wide.
     /// Answered as the single id rather than tested per match because that is
     /// what a bracket needs: it reads this once and compares, instead of asking
     /// the same question of every match it draws.
@@ -337,6 +387,7 @@ impl TourneyState {
             Some(
                 TourneyAction::AnsweringReport { match_id }
                 | TourneyAction::DecidingReport { match_id }
+                | TourneyAction::SubmittingReport { match_id }
                 | TourneyAction::Vetoing { match_id }
                 | TourneyAction::ReportingFfa { match_id },
             ) => Some(match_id),
