@@ -142,6 +142,53 @@ after taking out the browser's OAuth round trip (`login`, `logout`,
 - Decide: `secrets` (share links)
 - Site administration: `set_category`, `stand_down`, `restore`
 
+**Still open on screen**, checked on 2026-09-29 against every render
+function of `public/app*.js` at `2b6be08` and the client's panels. Not
+applicable and left out: whole-team registration (`signup_team`, off with FAF
+login), instant team join (`join_team`, removed), organiser links
+(`claim_organizer`, 410), premade team names (`set_team_name`, legacy
+formation).
+
+- List: the card's format, event days, rating limits, entrant limits and cash
+  prize; the "Event starts in" and "Signups close in" countdowns; the archive
+  by year, 50 at a time; "draft, view only" for a director (`canManage`).
+- Site-wide: the pending bar across tournaments (`my/pending`), Hall of Fame,
+  the series index and series pages (editions, winners, series bans), FAQ as
+  pages with the three official rules links, asking for hosting rights
+  (`host_request`), and site administration (section 3.19).
+- Header: status pill, category and type line, the stage stepper, the turn
+  banner on every tab, view as player, show players, streamer mode, hotkeys,
+  and the draft banner's scheduled publishing (`publish` with `publishAt`).
+- Overview: the Schedule and "Ends early" cells, "Don't know your rating?",
+  recent results, the turn / mention / ping / own-ban banners, the series in
+  its colour with a link, the Links panel, the Challonge source line.
+- Players: a typed rating on an unrated event (signup sends `{}`), checking
+  one's own rating (`check_rating`), declining an invite (`decline_invite`),
+  being told about one's own ban (`myBan`), Discord handles in the list;
+  organiser: all of a player's ratings (`player_ratings`), replace a player
+  (`replace_player`), ban from the row, edit name and team name, seed by
+  invite.
+- Teams and draft: cancel an invite (`cancel_invite`), a captain passing the
+  captaincy, the waiting list and first-come cut, undo check-in, an organiser
+  checking a team in, the check-in deadline shown, projected seeds, a team from
+  a free agent (`org_create_team`), swapping a waiting team in (`swap_team`),
+  sorting free agents, captains chosen by rating (`set_captain_mode`).
+- Bracket: byes and phantom losers matches drawn as cards, divisions as
+  separate brackets, the preview before the draw with per-round Bo
+  (`set_plan_round_bo`), the Swiss round 1 editor, record cuts after creation,
+  stage two, playoffs and the pick phase, the ends-early notice and "not
+  played", the team popup, replay links on the card, setting a match's teams
+  (`set_match_team`), "how the veto will run", maps pinned to a round
+  (`set_maps`).
+- Vetoes: resetting one side's faction choices (`fveto_reset`).
+- Maps: editing spawn information, uploading a map picture, scheduled pool
+  publishing, copying a ban/pick order (`pool_copy_sequence`), importing maps
+  (`copy_maps`), a pool for one match.
+- Standings and stats: imported group tables; the Stats tab.
+- Creation: presets, "fill from this", record cuts, stage two, ends early and
+  opponent picking at creation, the FFA block, images pasted into the text.
+- Chat: pinning a chat to the right.
+
 **Fields still not read** (27 of 114): `pickOpponents`, `pickMinutes`,
 `pickMode`, `playoffs`, `stage2`, `plannedR1`, `swissR1Open` (Swiss and
 playoffs); `importedType`, `importedGroups`, `importedStandings`,
