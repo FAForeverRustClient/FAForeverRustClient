@@ -251,6 +251,15 @@ export type AvailableAvatar = {
 export type AvatarListStatus = "idle" | "loading" | "ready" | "failed";
 
 /**
+ *  Where a ban was set: official tournaments site-wide, a series, or this
+ *  event. The service checks them in that order and names the first that
+ *  matches.
+ */
+export type BanScope =
+/**  Every official tournament, set by the tournament directors. */
+"official" | "series" | "tournament";
+
+/**
  *  One player's rating on one board, for the columns beside the board being
  *  ranked.
  *
@@ -1826,6 +1835,41 @@ export type EarlyFinish = {
 	/**  How many were still standing, and who, by name. */
 	alive: number,
 	names: string[],
+};
+
+/**  One leaderboard of [`EntrantRatings`]. */
+export type EntrantBoardRating = {
+	board: RatingKind,
+	rating: number | null,
+	games: number | null,
+};
+
+/**
+ *  Every leaderboard rating of one entrant (`player_ratings`), for the
+ *  organiser.
+ *
+ *  Information only: the event's own board decided the entry, the cap and the
+ *  seed. Issue 158 asked for it: a TO checking a bracket needs all of a
+ *  player's ratings, not only the one that counts.
+ */
+export type EntrantRatings = {
+	playerId: string,
+	name: string,
+	/**  The board that counts for this event. */
+	counts: RatingKind,
+	/**  The rating that counted, before any cap. */
+	countsRating: number | null,
+	/**  What it counts as, where the event caps it. */
+	capped: number | null,
+	/**  Unix seconds; `None` means as of the signup. */
+	ratingDate: number | null,
+	/**
+	 *  Global, 1v1 and the three team boards, in that order. Empty with a
+	 *  reason where there is nothing to show.
+	 */
+	boards: EntrantBoardRating[],
+	/**  Why there are no boards: a hand-added entrant, or FAF not answering. */
+	reason: string,
 };
 
 /**  The catalogue document, as the port hands it over. */
@@ -5085,6 +5129,19 @@ export type Organiser = {
 	hidden: boolean,
 };
 
+/**
+ *  Why this account may not enter, where a ban stops it (`myBan`).
+ *
+ *  Sent to the banned person only, so they are told before they press
+ *  anything rather than refused at the button.
+ */
+export type OwnBan = {
+	scope: BanScope,
+	reason: string,
+	/**  Unix seconds, or `None` for a ban without an expiry. */
+	expires: number | null,
+};
+
 export type PartyMember = {
 	playerId: number,
 	name: string,
@@ -5817,6 +5874,40 @@ export type QualifierRule = {
 	 *  score for [`QualifierKind::Points`]. At least 1 either way.
 	 */
 	n: number,
+};
+
+/**
+ *  A player's own rating check (`check_rating`): the verdict the signup gate
+ *  would reach, without signing anybody up.
+ *
+ *  People cannot see their FAF rating from the client's tournament tab, so the
+ *  only other way to learn whether they qualify is to press Enter and be
+ *  refused.
+ */
+export type RatingCheck = {
+	/**  Whether the event takes ratings from FAF at all. */
+	rated: boolean,
+	/**
+	 *  The rating on the board that counts, as of the event's rating date;
+	 *  `None` when FAF has none.
+	 */
+	rating: number | null,
+	/**  What the rating counts as, where the event caps it. */
+	capped: number | null,
+	ratingKind: RatingKind,
+	/**  Unix seconds. */
+	asOf: number | null,
+	min: number | null,
+	max: number | null,
+	/**  Invited, so the range does not apply. */
+	exempt: boolean,
+	alreadyIn: boolean,
+	/**  The ban that would stop the signup, in the service's words. */
+	banned: string | null,
+	/**  `None` where no rating could be found to judge. */
+	eligible: boolean | null,
+	/**  The service's sentence: why not, or why nothing could be checked. */
+	message: string,
 };
 
 /**  Rating limits an organiser set on entry. */
@@ -7021,6 +7112,11 @@ export type SeedOrder =
  */
 { type: "randomise" } |
 /**
+ *  The order the invitations went out, accepted ones first; everyone not
+ *  invited keeps their order behind them. The server works it out.
+ */
+{ type: "inviteOrder" } |
+/**
  *  An explicit order, best seed first. Must name every team exactly once,
  *  which the server checks and so does [`Self::is_complete`].
  */
@@ -7866,6 +7962,8 @@ export type Tourney = {
 	survivors: Survivors | null,
 	/**  How the event was stopped early, where it was (`earlyFinish`). */
 	earlyFinish: EarlyFinish | null,
+	/**  The ban that stops this account entering, where one does (`myBan`). */
+	myBan: OwnBan | null,
 	/**
 	 *  The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
 	 *  (`eventDays`). Empty for an event on its date alone.
@@ -7909,7 +8007,9 @@ export type TourneyAction = { type: "addingPlayer" } |
 	playerId: string,
 } } | { type: "renamingTeam" } | { type: "creating" } | { type: "editing" } | { type: "publishing" } | { type: "advancing"; payload: {
 	phase: TourneyPhase,
-} } | { type: "archiving" } | { type: "signingUp" } | { type: "withdrawing" } | { type: "checkingIn" } | { type: "answeringReport"; payload: {
+} } | { type: "archiving" } | { type: "signingUp" } | { type: "decliningInvite" } | { type: "banningPlayer"; payload: {
+	playerId: string,
+} } | { type: "withdrawing" } | { type: "checkingIn" } | { type: "answeringReport"; payload: {
 	matchId: string,
 } } | { type: "decidingReport"; payload: {
 	matchId: string,
@@ -8128,9 +8228,54 @@ export type TourneyCategory =
 export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 } } |
-/**  Enter as the signed-in player. The primary action of the whole tab. */
+/**
+ *  Enter as the signed-in player. The primary action of the whole tab.
+ *
+ *  The rating is the player's own, and only an unrated event takes one:
+ *  there the service refuses a signup without it. Everywhere else it is
+ *  fetched from FAF and this is `None`.
+ */
 { type: "signUp"; payload: {
 	tournamentId: string,
+	rating: number | null,
+} } |
+/**  Decline an invitation (`decline_invite`). */
+{ type: "declineInvite"; payload: {
+	tournamentId: string,
+} } |
+/**
+ *  Ask whether this account would get in, without entering
+ *  (`check_rating`).
+ */
+{ type: "checkRating"; payload: {
+	tournamentId: string,
+} } |
+/**
+ *  Read every leaderboard rating of one entrant (`player_ratings`),
+ *  fetched from FAF again when `refresh` is set. Organiser only.
+ */
+{ type: "loadPlayerRatings"; payload: {
+	tournamentId: string,
+	playerId: string,
+	refresh: boolean,
+} } |
+/**
+ *  Ban an entrant from this event and, where the service still allows
+ *  it, take them out in the same step: what an organiser means by "kick".
+ *
+ *  The ban goes first. If the removal then fails they are banned and still
+ *  listed, which is visible and can be finished by hand; the other order
+ *  could leave them removed and free to enter again.
+ */
+{ type: "banPlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+	fafId: number,
+	name: string,
+	reason: string,
+	/**  Unix seconds. */
+	expires: number | null,
+	remove: boolean,
 } } |
 /**
  *  Leave again. Which entry to remove is read from the open event's viewer
@@ -8780,7 +8925,17 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	kind: RequestFailureKind,
 } } |
 /**  The organiser picked somebody, or left the field: drop the list. */
-{ type: "accountSearchCleared" } | { type: "renamesChecking" } | { type: "renamesChecked"; payload: {
+{ type: "accountSearchCleared" } | { type: "ratingChecking" } | { type: "ratingChecked"; payload: {
+	check: RatingCheck,
+} } | { type: "ratingCheckFailed"; payload: {
+	reason: string,
+	kind: RequestFailureKind,
+} } | { type: "playerRatingsLoading" } | { type: "playerRatingsLoaded"; payload: {
+	ratings: EntrantRatings,
+} } | { type: "playerRatingsFailed"; payload: {
+	reason: string,
+	kind: RequestFailureKind,
+} } | { type: "renamesChecking" } | { type: "renamesChecked"; payload: {
 	check: RenameCheck,
 } } | { type: "renamesCheckFailed"; payload: {
 	reason: string,
@@ -8987,6 +9142,11 @@ export type TourneyPlayer = {
 	note: string,
 	/**  Unix seconds. */
 	signedAt: number | null,
+	/**
+	 *  The player's Discord handle, where they gave one. Sent only to the
+	 *  event's organisers and to people signed up for it; empty otherwise.
+	 */
+	discord: string,
 };
 
 /**
@@ -9116,6 +9276,12 @@ export type TourneyState = {
 	 */
 	renames: RenameCheck | null,
 	renamesStatus: TourneyLoadStatus,
+	/**  This account's last rating check for the open event. */
+	ratingCheck: RatingCheck | null,
+	ratingCheckStatus: TourneyLoadStatus,
+	/**  One entrant's every rating, while the organiser has them open. */
+	playerRatings: EntrantRatings | null,
+	playerRatingsStatus: TourneyLoadStatus,
 };
 
 /**
@@ -9224,6 +9390,11 @@ export type TourneyViewer = {
 	 *  reader who is not signed in, where nothing is remembered at all.
 	 */
 	newsReadAt: number | null,
+	/**
+	 *  Whether this account has an invitation to the event, declined or not:
+	 *  the service tells the invitee only that there is one.
+	 */
+	invited: boolean,
 };
 
 /**

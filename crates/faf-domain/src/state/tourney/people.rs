@@ -40,6 +40,109 @@ pub struct TourneyBan {
     pub expired: bool,
 }
 
+/// Why this account may not enter, where a ban stops it (`myBan`).
+///
+/// Sent to the banned person only, so they are told before they press
+/// anything rather than refused at the button.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct OwnBan {
+    pub scope: BanScope,
+    pub reason: String,
+    /// Unix seconds, or `None` for a ban without an expiry.
+    pub expires: Option<u32>,
+}
+
+/// Where a ban was set: official tournaments site-wide, a series, or this
+/// event. The service checks them in that order and names the first that
+/// matches.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum BanScope {
+    /// Every official tournament, set by the tournament directors.
+    Official,
+    Series,
+    #[default]
+    Tournament,
+}
+
+impl BanScope {
+    pub fn from_wire(raw: &str) -> Self {
+        match raw.trim() {
+            "global" => Self::Official,
+            "series" => Self::Series,
+            _ => Self::Tournament,
+        }
+    }
+}
+
+/// A player's own rating check (`check_rating`): the verdict the signup gate
+/// would reach, without signing anybody up.
+///
+/// People cannot see their FAF rating from the client's tournament tab, so the
+/// only other way to learn whether they qualify is to press Enter and be
+/// refused.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RatingCheck {
+    /// Whether the event takes ratings from FAF at all.
+    pub rated: bool,
+    /// The rating on the board that counts, as of the event's rating date;
+    /// `None` when FAF has none.
+    pub rating: Option<i32>,
+    /// What the rating counts as, where the event caps it.
+    pub capped: Option<i32>,
+    pub rating_kind: RatingKind,
+    /// Unix seconds.
+    pub as_of: Option<u32>,
+    pub min: Option<i32>,
+    pub max: Option<i32>,
+    /// Invited, so the range does not apply.
+    pub exempt: bool,
+    pub already_in: bool,
+    /// The ban that would stop the signup, in the service's words.
+    pub banned: Option<String>,
+    /// `None` where no rating could be found to judge.
+    pub eligible: Option<bool>,
+    /// The service's sentence: why not, or why nothing could be checked.
+    pub message: String,
+}
+
+/// Every leaderboard rating of one entrant (`player_ratings`), for the
+/// organiser.
+///
+/// Information only: the event's own board decided the entry, the cap and the
+/// seed. Issue 158 asked for it: a TO checking a bracket needs all of a
+/// player's ratings, not only the one that counts.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EntrantRatings {
+    pub player_id: String,
+    pub name: String,
+    /// The board that counts for this event.
+    pub counts: RatingKind,
+    /// The rating that counted, before any cap.
+    pub counts_rating: Option<i32>,
+    /// What it counts as, where the event caps it.
+    pub capped: Option<i32>,
+    /// Unix seconds; `None` means as of the signup.
+    pub rating_date: Option<u32>,
+    /// Global, 1v1 and the three team boards, in that order. Empty with a
+    /// reason where there is nothing to show.
+    pub boards: Vec<EntrantBoardRating>,
+    /// Why there are no boards: a hand-added entrant, or FAF not answering.
+    pub reason: String,
+}
+
+/// One leaderboard of [`EntrantRatings`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EntrantBoardRating {
+    pub board: RatingKind,
+    pub rating: Option<i32>,
+    pub games: Option<i32>,
+}
+
 /// The organiser's check of entrant names against FAF (`check_renames`).
 ///
 /// A name is stamped on an entrant at signup and FAF tells nobody when it
@@ -178,6 +281,9 @@ pub struct TourneyPlayer {
     pub note: String,
     /// Unix seconds.
     pub signed_at: Option<u32>,
+    /// The player's Discord handle, where they gave one. Sent only to the
+    /// event's organisers and to people signed up for it; empty otherwise.
+    pub discord: String,
 }
 
 /// A team, which for a 1v1 event is one player.
@@ -276,6 +382,9 @@ pub struct TourneyViewer {
     /// badge clears on every device rather than once per machine. `None` for a
     /// reader who is not signed in, where nothing is remembered at all.
     pub news_read_at: Option<u32>,
+    /// Whether this account has an invitation to the event, declined or not:
+    /// the service tells the invitee only that there is one.
+    pub invited: bool,
 }
 
 impl TourneyViewer {
@@ -321,6 +430,9 @@ pub enum SeedOrder {
     /// Shuffle. The server does the shuffling, so nobody can claim the client
     /// picked a favourable draw.
     Randomise,
+    /// The order the invitations went out, accepted ones first; everyone not
+    /// invited keeps their order behind them. The server works it out.
+    InviteOrder,
     /// An explicit order, best seed first. Must name every team exactly once,
     /// which the server checks and so does [`Self::is_complete`].
     Explicit { team_ids: Vec<String> },

@@ -34,6 +34,7 @@ use crate::state::{
     Tourney, TourneyCategory, TourneyDraft, TourneyFaction, TourneyInvite, TourneyMap,
     TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
 };
+use crate::state::{BanScope, EntrantBoardRating, EntrantRatings, OwnBan, RatingCheck};
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
     VetoDecider, VetoMode, VetoTeamA,
@@ -479,8 +480,84 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
                 alive: int(held, "alive").unwrap_or(0),
                 names: string_list(held, "names"),
             }),
+        my_ban: document
+            .get("myBan")
+            .filter(|held| held.is_object())
+            .map(|held| OwnBan {
+                scope: BanScope::from_wire(&text(held, "scope")),
+                reason: text(held, "reason"),
+                expires: calendar_moment(held, "expires"),
+            }),
         viewer: parse_viewer(document),
     })
+}
+
+/// The answer to `POST /api/t/{id}/check_rating`.
+pub fn parse_rating_check(document: &Value) -> RatingCheck {
+    RatingCheck {
+        rated: flag(document, "rated"),
+        rating: int(document, "rating"),
+        capped: int(document, "capped"),
+        rating_kind: RatingKind::from_wire(&text(document, "ratingType")),
+        // Milliseconds, like the event's own `ratingDate` it echoes.
+        as_of: moment(document, "asOf"),
+        min: int(document, "min"),
+        max: int(document, "max"),
+        exempt: flag(document, "exempt"),
+        already_in: flag(document, "alreadyIn"),
+        banned: document
+            .get("banned")
+            .and_then(Value::as_str)
+            .filter(|text| !text.trim().is_empty())
+            .map(str::to_string),
+        eligible: document.get("eligible").and_then(Value::as_bool),
+        message: text(document, "message"),
+    }
+}
+
+/// The answer to `GET /api/t/{id}/player_ratings`.
+///
+/// The five boards come keyed by the service's own names under
+/// `allRatings.boards`, and are listed here in the website's order.
+pub fn parse_player_ratings(document: &Value) -> EntrantRatings {
+    let boards = document
+        .get("allRatings")
+        .and_then(|all| all.get("boards"))
+        .filter(|boards| boards.is_object());
+    EntrantRatings {
+        player_id: id(document, "playerId").unwrap_or_default(),
+        name: text(document, "name"),
+        counts: RatingKind::from_wire(&text(document, "counts")),
+        counts_rating: int(document, "countsRating"),
+        capped: int(document, "capped"),
+        rating_date: moment(document, "ratingDate"),
+        boards: boards.map_or_else(Vec::new, |boards| {
+            ["global", "1v1", "2v2", "3v3", "4v4"]
+                .iter()
+                .map(|key| {
+                    let row = boards.get(*key).unwrap_or(&Value::Null);
+                    EntrantBoardRating {
+                        board: RatingKind::from_wire(key),
+                        rating: int(row, "rating"),
+                        games: int(row, "games"),
+                    }
+                })
+                .collect()
+        }),
+        reason: text(document, "reason"),
+    }
+}
+
+/// The body for `POST /api/t/{id}/signup`.
+///
+/// Empty but for the rating an unrated event needs: with FAF login on, the
+/// service takes the entrant's name and account from the session and refuses
+/// anything the caller claims.
+pub fn signup_body(rating: Option<i32>) -> Value {
+    match rating {
+        Some(rating) => json!({ "rating": rating }),
+        None => json!({}),
+    }
 }
 
 /// The answer to `POST /api/t/{id}/check_renames`.
@@ -563,6 +640,7 @@ fn parse_viewer(document: &Value) -> TourneyViewer {
         member_team_id: id(viewer, "memberTeamId"),
         caster: flag(viewer, "caster"),
         news_read_at: moment(viewer, "newsReadAt"),
+        invited: flag(viewer, "invited"),
     }
 }
 
@@ -594,6 +672,7 @@ fn parse_player(value: &Value) -> Option<TourneyPlayer> {
         pending: flag(value, "pending"),
         note: text(value, "note"),
         signed_at: moment(value, "signedAt"),
+        discord: text(value, "discord").trim().to_string(),
     })
 }
 
@@ -2527,6 +2606,81 @@ See the [rules](https://x.invalid/r)."
             Some("t")
         );
         assert_eq!(BracketSide::ThirdPlace.as_wire(), "3p");
+    }
+
+    #[test]
+    fn a_rating_check_carries_the_verdict_and_the_numbers_behind_it() {
+        let check = parse_rating_check(&json!({
+            "ok": true, "rated": 1, "rating": 1480, "capped": null, "ratingType": "1v1",
+            "asOf": 1_790_000_000_000_i64, "min": 1500, "max": null, "exempt": false,
+            "alreadyIn": false, "banned": null, "eligible": false,
+            "message": "Your rating is below the minimum of 1500.",
+        }));
+        assert!(check.rated);
+        assert_eq!(check.rating, Some(1480));
+        assert_eq!(check.rating_kind, RatingKind::Ladder1v1);
+        assert_eq!(check.min, Some(1500));
+        assert_eq!(check.eligible, Some(false));
+        assert_eq!(check.banned, None);
+        // No rating found: the verdict is unknown, not a refusal.
+        let unknown = parse_rating_check(&json!({ "rated": 1, "rating": null, "eligible": null }));
+        assert_eq!(unknown.eligible, None);
+    }
+
+    #[test]
+    fn every_board_of_a_player_is_listed_in_the_websites_order() {
+        let ratings = parse_player_ratings(&json!({
+            "playerId": "p1", "name": "Ada", "counts": "2v2", "countsRating": 2300, "capped": 2200,
+            "ratingDate": 1_790_000_000_000_i64,
+            "allRatings": { "boards": {
+                "1v1": { "rating": 1800, "games": 120 },
+                "global": { "rating": 2100, "games": 900 },
+                "2v2": { "rating": 2300, "games": null },
+            } },
+        }));
+        assert_eq!(ratings.counts, RatingKind::Team2v2);
+        assert_eq!(ratings.capped, Some(2200));
+        let boards: Vec<_> = ratings.boards.iter().map(|row| row.board).collect();
+        assert_eq!(
+            boards,
+            vec![
+                RatingKind::Global,
+                RatingKind::Ladder1v1,
+                RatingKind::Team2v2,
+                RatingKind::Team3v3,
+                RatingKind::Team4v4,
+            ]
+        );
+        assert_eq!(ratings.boards[3].rating, None);
+        // A hand-added entrant: no boards, and the service says why.
+        let manual = parse_player_ratings(&json!({
+            "playerId": "p2", "name": "Bob", "counts": "none", "allRatings": null,
+            "reason": "This player has no FAF account linked (added manually).",
+        }));
+        assert!(manual.boards.is_empty());
+        assert!(!manual.reason.is_empty());
+    }
+
+    #[test]
+    fn a_signup_sends_a_rating_only_when_the_event_takes_one_by_hand() {
+        assert_eq!(signup_body(None), json!({}));
+        assert_eq!(signup_body(Some(1500)), json!({ "rating": 1500 }));
+    }
+
+    #[test]
+    fn the_players_own_ban_and_invitation_are_read() {
+        let mut document = document();
+        document["myBan"] = json!({ "scope": "global", "reason": "Smurfing", "expires": null });
+        document["viewer"]["invited"] = json!(1);
+        document["players"][0]["discord"] = json!("ada#1");
+        let event = parse_tourney(&document).unwrap();
+        let ban = event.my_ban.as_ref().unwrap();
+        assert_eq!(ban.scope, BanScope::Official);
+        assert_eq!(ban.expires, None);
+        assert!(event.viewer.invited);
+        assert_eq!(event.players[0].discord, "ada#1");
+        // A banned account is not offered Enter at all.
+        assert!(!event.may_sign_up());
     }
 
     #[test]

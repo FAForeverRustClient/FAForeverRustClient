@@ -270,6 +270,41 @@ export function mayReopenEarly(event: Tourney): boolean {
   return event.viewer.organiser && event.status === "finished" && event.earlyFinish !== null;
 }
 
+/**
+ * Twin of `Tourney::may_sign_up`. The rating gate and the entrant cap are
+ * deliberately not checked: the server owns those and explains them far better
+ * than a hidden button would. A ban is checked, because the service sends it
+ * to the banned account so that it can be said beforehand.
+ */
+export function maySignUp(event: Tourney): boolean {
+  return (
+    event.viewer.loggedIn &&
+    event.viewer.signedUpPlayerId === null &&
+    event.status === "signup" &&
+    event.myBan === null
+  );
+}
+
+/** Twin of `Tourney::may_decline_invite`. */
+export function mayDeclineInvite(event: Tourney): boolean {
+  return (
+    event.viewer.invited &&
+    event.viewer.signedUpPlayerId === null &&
+    event.status === "signup" &&
+    !event.viewer.organiser
+  );
+}
+
+/** Twin of `Tourney::may_check_rating`: signed in, and the event rates from FAF. */
+export function mayCheckRating(event: Tourney): boolean {
+  return event.viewer.loggedIn && event.ratingKind !== "none";
+}
+
+/** Twin of `Tourney::signup_needs_rating`: an unrated event takes a typed one. */
+export function signupNeedsRating(event: Tourney): boolean {
+  return event.ratingKind === "none";
+}
+
 /** Twin of `Tourney::may_edit_veto`: two-sided events, until they finish. */
 export function mayEditVeto(event: Tourney): boolean {
   return event.viewer.organiser && event.competition === "team" && event.status !== "finished";

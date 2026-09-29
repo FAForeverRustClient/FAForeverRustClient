@@ -9,7 +9,7 @@
 
 use faf_domain::state::{
     MatchReport, PoolDraft, SeedOrder, SeriesDraft, TourneyAction, TourneyActionFailure,
-    TourneyCommand, TourneyDraft, TourneyEvent,
+    TourneyAdmin, TourneyCommand, TourneyDraft, TourneyEvent,
 };
 
 use crate::ports::RequestError;
@@ -28,10 +28,86 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             load_detail(&tournament_id, ctx, out).await;
         }
 
-        TourneyCommand::SignUp { tournament_id } => {
+        TourneyCommand::SignUp {
+            tournament_id,
+            rating,
+        } => {
             write(TourneyAction::SigningUp, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.sign_up(&tournament_id).await }
+                async move { ctx.ports.tourney.sign_up(&tournament_id, rating).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::DeclineInvite { tournament_id } => {
+            write(TourneyAction::DecliningInvite, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.decline_invite(&tournament_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::CheckRating { tournament_id } => {
+            out.emit(TourneyEvent::RatingChecking);
+            match ctx.ports.tourney.check_rating(&tournament_id).await {
+                Ok(check) => out.emit(TourneyEvent::RatingChecked { check }),
+                Err(error) => out.emit(TourneyEvent::RatingCheckFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        TourneyCommand::LoadPlayerRatings {
+            tournament_id,
+            player_id,
+            refresh,
+        } => {
+            out.emit(TourneyEvent::PlayerRatingsLoading);
+            match ctx
+                .ports
+                .tourney
+                .player_ratings(&tournament_id, &player_id, refresh)
+                .await
+            {
+                Ok(ratings) => out.emit(TourneyEvent::PlayerRatingsLoaded { ratings }),
+                Err(error) => out.emit(TourneyEvent::PlayerRatingsFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        TourneyCommand::BanPlayer {
+            tournament_id,
+            player_id,
+            faf_id,
+            name,
+            reason,
+            expires,
+            remove,
+        } => {
+            let action = TourneyAction::BanningPlayer {
+                player_id: player_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    let ban = TourneyAdmin::Ban {
+                        faf_id,
+                        name,
+                        reason,
+                        expires,
+                    };
+                    ctx.ports.tourney.administer(&tournament_id, &ban).await?;
+                    if remove {
+                        ctx.ports
+                            .tourney
+                            .withdraw(&tournament_id, &player_id)
+                            .await?;
+                    }
+                    Ok(())
+                }
             })
             .await;
         }
@@ -1317,6 +1393,7 @@ fn trimmed_draft(draft: TourneyDraft) -> TourneyDraft {
 fn tidy_order(order: SeedOrder) -> SeedOrder {
     match order {
         SeedOrder::Randomise => SeedOrder::Randomise,
+        SeedOrder::InviteOrder => SeedOrder::InviteOrder,
         SeedOrder::Explicit { team_ids } => SeedOrder::Explicit {
             team_ids: team_ids
                 .into_iter()

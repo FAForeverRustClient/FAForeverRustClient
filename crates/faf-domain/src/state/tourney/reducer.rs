@@ -163,6 +163,36 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
         }
         TourneyEvent::AccountSearchCleared => state.account_search = AccountSearch::default(),
 
+        TourneyEvent::RatingChecking => {
+            state.rating_check = None;
+            state.rating_check_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::RatingChecked { check } => {
+            state.rating_check = Some(check.clone());
+            state.rating_check_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::RatingCheckFailed { reason, kind } => {
+            state.rating_check_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
+        // A new request drops the previous player's table at once, so one
+        // entrant's ratings never show under another's name.
+        TourneyEvent::PlayerRatingsLoading => {
+            state.player_ratings = None;
+            state.player_ratings_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::PlayerRatingsLoaded { ratings } => {
+            state.player_ratings = Some(ratings.clone());
+            state.player_ratings_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::PlayerRatingsFailed { reason, kind } => {
+            state.player_ratings_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
         TourneyEvent::RenamesChecking => {
             state.renames = None;
             state.renames_status = TourneyLoadStatus::Loading;
@@ -217,4 +247,8 @@ fn clear_open_event(state: &mut TourneyState) {
     state.chat_status = TourneyLoadStatus::Idle;
     state.renames = None;
     state.renames_status = TourneyLoadStatus::Idle;
+    state.rating_check = None;
+    state.rating_check_status = TourneyLoadStatus::Idle;
+    state.player_ratings = None;
+    state.player_ratings_status = TourneyLoadStatus::Idle;
 }

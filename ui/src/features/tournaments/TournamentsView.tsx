@@ -44,7 +44,7 @@ import {
   groupedEvents,
   type ListGroup,
 } from "./tourneyPresentation";
-import { busyMatchId, mayReport, openEvent } from "../../shared/rules/tourneyRules";
+import { busyMatchId, mayReport, openEvent, signupNeedsRating } from "../../shared/rules/tourneyRules";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -386,6 +386,30 @@ export function TournamentsView() {
               renames={state.renames}
               renamesStatus={state.renamesStatus}
               onCheckRenames={() => act({ type: "checkRenames", payload: { tournamentId: open.id } })}
+              ratingCheck={state.ratingCheck}
+              ratingCheckStatus={state.ratingCheckStatus}
+              onCheckRating={() => act({ type: "checkRating", payload: { tournamentId: open.id } })}
+              onDeclineInvite={() => act({ type: "declineInvite", payload: { tournamentId: open.id } })}
+              playerRatings={state.playerRatings}
+              playerRatingsStatus={state.playerRatingsStatus}
+              onLoadPlayerRatings={(playerId, refresh) =>
+                act({ type: "loadPlayerRatings", payload: { tournamentId: open.id, playerId, refresh } })
+              }
+              onBanPlayer={(player, reason, expires, remove) =>
+                player.fafId !== null &&
+                act({
+                  type: "banPlayer",
+                  payload: {
+                    tournamentId: open.id,
+                    playerId: player.id,
+                    fafId: player.fafId,
+                    name: player.name,
+                    reason,
+                    expires,
+                    remove,
+                  },
+                })
+              }
               onSignUp={() => setEntering(open.id)}
               onWithdraw={() => act({ type: "withdraw", payload: { tournamentId: open.id } })}
               onCheckIn={() => act({ type: "checkIn", payload: { tournamentId: open.id } })}
@@ -641,12 +665,16 @@ export function TournamentsView() {
         <SignUpDialog
           name={state.events.find((event) => event.id === entering)?.name ?? ""}
           discord={state.discord}
+          needsRating={(() => {
+            const entered = open !== null && open.id === entering ? open : state.events.find((event) => event.id === entering);
+            return entered !== undefined && signupNeedsRating(entered);
+          })()}
           busy={busy}
-          onConfirm={(discord) => {
+          onConfirm={(discord, rating) => {
             // The handle first, so an organiser reading the entrant list sees
             // it against the entry rather than a minute later.
             if (discord !== null) act({ type: "setDiscord", payload: { handle: discord } });
-            act({ type: "signUp", payload: { tournamentId: entering } });
+            act({ type: "signUp", payload: { tournamentId: entering, rating } });
             setEntering(null);
           }}
           onClose={() => setEntering(null)}

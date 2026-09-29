@@ -108,9 +108,50 @@ pub enum TourneyCommand {
         tournament_id: String,
     },
     /// Enter as the signed-in player. The primary action of the whole tab.
+    ///
+    /// The rating is the player's own, and only an unrated event takes one:
+    /// there the service refuses a signup without it. Everywhere else it is
+    /// fetched from FAF and this is `None`.
     #[serde(rename_all = "camelCase")]
     SignUp {
         tournament_id: String,
+        rating: Option<i32>,
+    },
+    /// Decline an invitation (`decline_invite`).
+    #[serde(rename_all = "camelCase")]
+    DeclineInvite {
+        tournament_id: String,
+    },
+    /// Ask whether this account would get in, without entering
+    /// (`check_rating`).
+    #[serde(rename_all = "camelCase")]
+    CheckRating {
+        tournament_id: String,
+    },
+    /// Read every leaderboard rating of one entrant (`player_ratings`),
+    /// fetched from FAF again when `refresh` is set. Organiser only.
+    #[serde(rename_all = "camelCase")]
+    LoadPlayerRatings {
+        tournament_id: String,
+        player_id: String,
+        refresh: bool,
+    },
+    /// Ban an entrant from this event and, where the service still allows
+    /// it, take them out in the same step: what an organiser means by "kick".
+    ///
+    /// The ban goes first. If the removal then fails they are banned and still
+    /// listed, which is visible and can be finished by hand; the other order
+    /// could leave them removed and free to enter again.
+    #[serde(rename_all = "camelCase")]
+    BanPlayer {
+        tournament_id: String,
+        player_id: String,
+        faf_id: i32,
+        name: String,
+        reason: String,
+        /// Unix seconds.
+        expires: Option<u32>,
+        remove: bool,
     },
     /// Leave again. Which entry to remove is read from the open event's viewer
     /// block rather than passed in: the server hands out that id, and a client
@@ -719,6 +760,22 @@ pub enum TourneyEvent {
     },
     /// The organiser picked somebody, or left the field: drop the list.
     AccountSearchCleared,
+    RatingChecking,
+    RatingChecked {
+        check: RatingCheck,
+    },
+    RatingCheckFailed {
+        reason: String,
+        kind: RequestFailureKind,
+    },
+    PlayerRatingsLoading,
+    PlayerRatingsLoaded {
+        ratings: EntrantRatings,
+    },
+    PlayerRatingsFailed {
+        reason: String,
+        kind: RequestFailureKind,
+    },
     RenamesChecking,
     RenamesChecked {
         check: RenameCheck,

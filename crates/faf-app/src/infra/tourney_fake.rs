@@ -29,6 +29,7 @@ use faf_domain::state::{
     BracketConfig, Caster, Currency, FormatDraft, Prize, Qualifier, QualifierRule, SeriesColour,
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries,
 };
+use faf_domain::state::{EntrantRatings, RatingCheck};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
 
@@ -448,7 +449,7 @@ impl TourneyPort for FakeTourney {
         self.with_event(tournament_id, |held| Ok(held.event.clone()))
     }
 
-    async fn sign_up(&self, tournament_id: &str) -> Result<(), RequestError> {
+    async fn sign_up(&self, tournament_id: &str, _: Option<i32>) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
             if held.event.status != TourneyStatus::Signup {
                 return Err(RequestError::rejected("Signups are closed"));
@@ -472,6 +473,7 @@ impl TourneyPort for FakeTourney {
                 late: false,
                 pending: false,
                 signed_at: Some(1_785_100_000),
+                discord: String::new(),
                 note: String::new(),
             });
             held.event.player_count = held.event.players.len() as i32;
@@ -807,6 +809,7 @@ impl TourneyPort for FakeTourney {
                 late: false,
                 pending: false,
                 signed_at: Some(1_785_400_000),
+                discord: String::new(),
                 note: String::new(),
             });
             held.event.player_count = held.event.players.len() as i32;
@@ -1005,6 +1008,12 @@ impl TourneyPort for FakeTourney {
                 ));
             }
             match order {
+                // Not simulated, like every action added after 2026-09-28.
+                SeedOrder::InviteOrder => {
+                    return Err(RequestError::rejected(
+                        "Seeding by invite order is not available offline",
+                    ));
+                }
                 SeedOrder::Randomise => {
                     // Reversed rather than shuffled: the fake has no clock and
                     // no randomness, and a deterministic reorder proves the
@@ -1164,6 +1173,29 @@ impl TourneyPort for FakeTourney {
     async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
         Err(RequestError::rejected(
             "Faction vetoes are not available offline",
+        ))
+    }
+
+    async fn decline_invite(&self, _: &str) -> Result<(), RequestError> {
+        Err(RequestError::rejected(
+            "Invitations are not available offline",
+        ))
+    }
+
+    async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
+        Err(RequestError::rejected(
+            "Checking a rating against FAF is not available offline",
+        ))
+    }
+
+    async fn player_ratings(
+        &self,
+        _: &str,
+        _: &str,
+        _: bool,
+    ) -> Result<EntrantRatings, RequestError> {
+        Err(RequestError::rejected(
+            "A player's ratings are not available offline",
         ))
     }
 
@@ -2481,6 +2513,7 @@ fn player(id: &str, name: &str, faf_id: i32, team_id: &str, rating: i32) -> Tour
         late: false,
         pending: false,
         signed_at: Some(1_785_100_000),
+        discord: String::new(),
         note: String::new(),
     }
 }
@@ -3244,7 +3277,7 @@ mod tests {
         let before = fake.detail("e1a2b").await.unwrap();
         assert!(before.may_sign_up());
 
-        fake.sign_up("e1a2b").await.unwrap();
+        fake.sign_up("e1a2b", None).await.unwrap();
         let entered = fake.detail("e1a2b").await.unwrap();
         assert_eq!(entered.player_count, 3);
         assert!(entered.viewer.is_signed_up());
@@ -3254,7 +3287,7 @@ mod tests {
         assert!(entered.may_withdraw());
         assert!(!entered.may_sign_up());
         // Entering twice is the server's refusal, not a second entry.
-        assert!(fake.sign_up("e1a2b").await.is_err());
+        assert!(fake.sign_up("e1a2b", None).await.is_err());
 
         let player_id = entered.viewer.signed_up_player_id.clone().unwrap();
         fake.withdraw("e1a2b", &player_id).await.unwrap();

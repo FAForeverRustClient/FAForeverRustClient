@@ -32,6 +32,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
+use faf_domain::state::{EntrantRatings, RatingCheck};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 
 use super::RequestError;
@@ -113,7 +114,22 @@ pub trait TourneyPort: Send + Sync {
     /// The client's best reason to exist for a player: they are already
     /// authenticated here, so entering is one click instead of a browser and a
     /// second login.
-    async fn sign_up(&self, tournament_id: &str) -> Result<(), RequestError>;
+    async fn sign_up(&self, tournament_id: &str, rating: Option<i32>) -> Result<(), RequestError>;
+
+    /// Decline this account's invitation.
+    async fn decline_invite(&self, tournament_id: &str) -> Result<(), RequestError>;
+
+    /// The verdict the signup gate would reach, without signing up.
+    async fn check_rating(&self, tournament_id: &str) -> Result<RatingCheck, RequestError>;
+
+    /// Every leaderboard rating of one entrant; fetched from FAF again on
+    /// `refresh`. Organiser only.
+    async fn player_ratings(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        refresh: bool,
+    ) -> Result<EntrantRatings, RequestError>;
 
     /// Withdraw from the tournament.
     ///

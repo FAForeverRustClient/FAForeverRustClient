@@ -95,6 +95,11 @@ pub enum TourneyAction {
     },
     Archiving,
     SigningUp,
+    DecliningInvite,
+    #[serde(rename_all = "camelCase")]
+    BanningPlayer {
+        player_id: String,
+    },
     Withdrawing,
     CheckingIn,
     #[serde(rename_all = "camelCase")]
@@ -266,6 +271,12 @@ pub struct TourneyState {
     /// have been taken is worse than an empty panel with a button.
     pub renames: Option<RenameCheck>,
     pub renames_status: TourneyLoadStatus,
+    /// This account's last rating check for the open event.
+    pub rating_check: Option<RatingCheck>,
+    pub rating_check_status: TourneyLoadStatus,
+    /// One entrant's every rating, while the organiser has them open.
+    pub player_ratings: Option<EntrantRatings>,
+    pub player_ratings_status: TourneyLoadStatus,
 }
 
 /// A name-to-account search, as the organiser types.

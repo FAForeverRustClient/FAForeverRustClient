@@ -241,6 +241,14 @@ struct TourneyRuleCase {
     may_repull_ratings: bool,
     /// `Tourney::may_edit_veto`.
     may_edit_veto: bool,
+    /// `Tourney::may_sign_up`: a ban withdraws the offer.
+    may_sign_up: bool,
+    /// `Tourney::may_decline_invite`.
+    may_decline_invite: bool,
+    /// `Tourney::may_check_rating`.
+    may_check_rating: bool,
+    /// `Tourney::signup_needs_rating`.
+    signup_needs_rating: bool,
     /// `TourneyState::unread_total` over the rooms below.
     rooms: Vec<ChatRoom>,
     unread_total: i32,
@@ -625,6 +633,7 @@ fn tourney_player(
         pending,
         note: String::new(),
         signed_at: None,
+        discord: String::new(),
     }
 }
 
@@ -709,6 +718,10 @@ fn tourney_rule_case(
         may_reopen_early: event.may_reopen_early(),
         may_repull_ratings: event.may_repull_ratings(),
         may_edit_veto: event.may_edit_veto(),
+        may_sign_up: event.may_sign_up(),
+        may_decline_invite: event.may_decline_invite(),
+        may_check_rating: event.may_check_rating(),
+        signup_needs_rating: event.signup_needs_rating(),
         reportable_match_ids: event
             .matches
             .iter()
@@ -836,6 +849,18 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
             names: vec!["T1".into(), "T2".into()],
         }),
         ..four_single.clone()
+    };
+    // Signups open on an unrated event, seen by a player with an invitation.
+    let invited_player = Tourney {
+        id: "invited-player".into(),
+        status: TourneyStatus::Signup,
+        rating_kind: RatingKind::None,
+        viewer: TourneyViewer {
+            logged_in: true,
+            invited: true,
+            ..TourneyViewer::default()
+        },
+        ..Tourney::default()
     };
     let third_planned = Tourney {
         id: "third-planned".into(),
@@ -1131,6 +1156,26 @@ fn tourney_rule_cases() -> Vec<TourneyRuleCase> {
         tourney_rule_case(
             "an elimination stopped early, which its organiser may reopen",
             stopped_early,
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "an invited player, taking signups, who may decline",
+            invited_player.clone(),
+            None,
+            vec![],
+        ),
+        tourney_rule_case(
+            "the same player, banned: not offered Enter at all",
+            Tourney {
+                id: "banned-player".into(),
+                my_ban: Some(OwnBan {
+                    scope: BanScope::Series,
+                    reason: "No show".into(),
+                    expires: None,
+                }),
+                ..invited_player
+            },
             None,
             vec![],
         ),
@@ -4510,6 +4555,53 @@ fn cases() -> Vec<Case> {
                 .into(),
                 // Picking somebody, or leaving the field, drops the list.
                 TourneyEvent::AccountSearchCleared.into(),
+            ],
+        ),
+        case(
+            "a player checks their rating, and an organiser opens two players' ratings",
+            vec![
+                // A refusal keeps its sentence: it says to sign in again.
+                TourneyEvent::RatingChecking.into(),
+                TourneyEvent::RatingCheckFailed {
+                    reason: "Checking your rating needs your FAF login.".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+                TourneyEvent::RatingChecking.into(),
+                TourneyEvent::RatingChecked {
+                    check: RatingCheck {
+                        rated: true,
+                        rating: Some(1480),
+                        rating_kind: RatingKind::Ladder1v1,
+                        min: Some(1500),
+                        eligible: Some(false),
+                        message: "Your rating is below the minimum of 1500.".into(),
+                        ..RatingCheck::default()
+                    },
+                }
+                .into(),
+                TourneyEvent::PlayerRatingsLoading.into(),
+                TourneyEvent::PlayerRatingsLoaded {
+                    ratings: EntrantRatings {
+                        player_id: "p1".into(),
+                        name: "Ada".into(),
+                        counts: RatingKind::Global,
+                        boards: vec![EntrantBoardRating {
+                            board: RatingKind::Global,
+                            rating: Some(1800),
+                            games: Some(400),
+                        }],
+                        ..EntrantRatings::default()
+                    },
+                }
+                .into(),
+                // The next player's request clears the first player's table.
+                TourneyEvent::PlayerRatingsLoading.into(),
+                TourneyEvent::PlayerRatingsFailed {
+                    reason: "FAF could not be reached just now.".into(),
+                    kind: RequestFailureKind::Offline,
+                }
+                .into(),
             ],
         ),
         case(

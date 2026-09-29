@@ -575,6 +575,14 @@
       "renames": null,
       "renamesStatus": {
         "type": "idle"
+      },
+      "ratingCheck": null,
+      "ratingCheckStatus": {
+        "type": "idle"
+      },
+      "playerRatings": null,
+      "playerRatingsStatus": {
+        "type": "idle"
       }
     },
     "training": {
@@ -7084,6 +7092,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -7143,6 +7159,14 @@
             "pending": {
               "type": "savingProfile"
             },
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -7199,6 +7223,14 @@
             "openSeries": null,
             "pending": {
               "type": "savingProfile"
+            },
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
             },
             "renames": null,
             "renamesStatus": {
@@ -7257,6 +7289,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -7312,6 +7352,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -7429,6 +7477,7 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "myBan": null,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -7438,7 +7487,8 @@
                       "signedUpPlayerId": null,
                       "memberTeamId": null,
                       "caster": false,
-                      "newsReadAt": null
+                      "newsReadAt": null,
+                      "invited": false
                     }
                   }
                 ]
@@ -7509,6 +7559,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -7569,6 +7620,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -7585,6 +7637,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -7642,6 +7702,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -7759,6 +7827,7 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "myBan": null,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -7768,7 +7837,8 @@
                       "signedUpPlayerId": null,
                       "memberTeamId": null,
                       "caster": false,
-                      "newsReadAt": null
+                      "newsReadAt": null,
+                      "invited": false
                     }
                   },
                   {
@@ -7867,6 +7937,7 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "myBan": null,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -7876,7 +7947,8 @@
                       "signedUpPlayerId": null,
                       "memberTeamId": null,
                       "caster": false,
-                      "newsReadAt": null
+                      "newsReadAt": null,
+                      "invited": false
                     }
                   }
                 ]
@@ -7947,6 +8019,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -8007,6 +8080,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -8055,6 +8129,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -8115,6 +8190,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -8131,6 +8207,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -8219,6 +8303,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -8279,6 +8364,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -8327,6 +8413,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -8387,6 +8474,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -8403,6 +8491,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -8488,6 +8584,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -8548,6 +8645,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -8596,6 +8694,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -8656,6 +8755,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -8672,6 +8772,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -8788,6 +8896,7 @@
                   "stopAtAlive": 0,
                   "survivors": null,
                   "earlyFinish": null,
+                  "myBan": null,
                   "eventDays": [],
                   "viewer": {
                     "loggedIn": false,
@@ -8797,7 +8906,8 @@
                     "signedUpPlayerId": null,
                     "memberTeamId": null,
                     "caster": false,
-                    "newsReadAt": null
+                    "newsReadAt": null,
+                    "invited": false
                   }
                 }
               }
@@ -8860,6 +8970,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e2",
               "news": [],
               "organiserAccounts": [],
@@ -8920,6 +9031,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -8974,6 +9086,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -9034,6 +9147,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -9082,6 +9196,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -9142,6 +9257,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -9158,6 +9274,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -9241,6 +9365,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e2",
               "news": [],
               "organiserAccounts": [],
@@ -9301,6 +9426,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -9355,6 +9481,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -9415,6 +9542,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -9463,6 +9591,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -9523,6 +9652,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -9540,6 +9670,14 @@
             "openSeries": null,
             "pending": {
               "type": "signingUp"
+            },
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
             },
             "renames": null,
             "renamesStatus": {
@@ -9634,6 +9772,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e2",
               "news": [],
               "organiserAccounts": [],
@@ -9694,6 +9833,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -9748,6 +9888,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -9808,6 +9949,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -9856,6 +9998,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -9916,6 +10059,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -9932,6 +10076,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -10010,6 +10162,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e2",
               "news": [],
               "organiserAccounts": [],
@@ -10070,6 +10223,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -10124,6 +10278,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -10184,6 +10339,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -10232,6 +10388,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -10292,6 +10449,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -10308,6 +10466,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -10391,6 +10557,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e2",
               "news": [],
               "organiserAccounts": [],
@@ -10451,6 +10618,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -10505,6 +10673,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -10565,6 +10734,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -10613,6 +10783,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -10673,6 +10844,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -10690,6 +10862,14 @@
             "openSeries": null,
             "pending": {
               "type": "signingUp"
+            },
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
             },
             "renames": null,
             "renamesStatus": {
@@ -10775,6 +10955,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e2",
               "news": [],
               "organiserAccounts": [],
@@ -10835,6 +11016,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -10889,6 +11071,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -10949,6 +11132,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -10997,6 +11181,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -11057,6 +11242,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -11073,6 +11259,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -11163,6 +11357,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e2",
               "news": [],
               "organiserAccounts": [],
@@ -11223,6 +11418,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -11286,6 +11482,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -11346,6 +11543,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -11394,6 +11592,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -11454,6 +11653,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -11470,6 +11670,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -11553,6 +11761,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e2",
               "news": [],
               "organiserAccounts": [],
@@ -11613,6 +11822,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -11676,6 +11886,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -11736,6 +11947,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -11784,6 +11996,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -11844,6 +12057,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -11861,6 +12075,14 @@
             "openSeries": null,
             "pending": {
               "type": "creating"
+            },
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
             },
             "renames": null,
             "renamesStatus": {
@@ -11953,6 +12175,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -12013,6 +12236,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -12061,6 +12285,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -12121,6 +12346,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -12137,6 +12363,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -12229,6 +12463,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -12289,6 +12524,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -12337,6 +12573,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -12397,6 +12634,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -12413,6 +12651,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -12515,6 +12761,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -12575,6 +12822,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -12623,6 +12871,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -12683,6 +12932,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -12699,6 +12949,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -12815,6 +13073,7 @@
                   "stopAtAlive": 0,
                   "survivors": null,
                   "earlyFinish": null,
+                  "myBan": null,
                   "eventDays": [],
                   "viewer": {
                     "loggedIn": false,
@@ -12824,7 +13083,8 @@
                     "signedUpPlayerId": null,
                     "memberTeamId": null,
                     "caster": false,
-                    "newsReadAt": null
+                    "newsReadAt": null,
+                    "invited": false
                   }
                 }
               }
@@ -12901,6 +13161,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -12961,6 +13222,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -13009,6 +13271,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -13069,6 +13332,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -13085,6 +13349,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -13202,6 +13474,7 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "myBan": null,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -13211,7 +13484,8 @@
                       "signedUpPlayerId": null,
                       "memberTeamId": null,
                       "caster": false,
-                      "newsReadAt": null
+                      "newsReadAt": null,
+                      "invited": false
                     }
                   }
                 ]
@@ -13289,6 +13563,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -13349,6 +13624,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -13365,6 +13641,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -13425,6 +13709,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -13515,6 +13807,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -13570,6 +13870,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -13635,6 +13943,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -13709,6 +14025,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -13764,6 +14088,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -13825,6 +14157,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -13877,6 +14217,629 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "a player checks their rating, and an organiser opens two players' ratings",
+      "steps": [
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "ratingChecking"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "loading"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "ratingCheckFailed",
+              "payload": {
+                "reason": "Checking your rating needs your FAF login.",
+                "kind": "rejected"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "payload": {
+                "kind": "rejected",
+                "reason": "Checking your rating needs your FAF login."
+              },
+              "type": "failed"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "ratingChecking"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "loading"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "ratingChecked",
+              "payload": {
+                "check": {
+                  "rated": true,
+                  "rating": 1480,
+                  "capped": null,
+                  "ratingKind": "ladder1v1",
+                  "asOf": null,
+                  "min": 1500,
+                  "max": null,
+                  "exempt": false,
+                  "alreadyIn": false,
+                  "banned": null,
+                  "eligible": false,
+                  "message": "Your rating is below the minimum of 1500."
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": {
+              "alreadyIn": false,
+              "asOf": null,
+              "banned": null,
+              "capped": null,
+              "eligible": false,
+              "exempt": false,
+              "max": null,
+              "message": "Your rating is below the minimum of 1500.",
+              "min": 1500,
+              "rated": true,
+              "rating": 1480,
+              "ratingKind": "ladder1v1"
+            },
+            "ratingCheckStatus": {
+              "type": "ready"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "playerRatingsLoading"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "loading"
+            },
+            "ratingCheck": {
+              "alreadyIn": false,
+              "asOf": null,
+              "banned": null,
+              "capped": null,
+              "eligible": false,
+              "exempt": false,
+              "max": null,
+              "message": "Your rating is below the minimum of 1500.",
+              "min": 1500,
+              "rated": true,
+              "rating": 1480,
+              "ratingKind": "ladder1v1"
+            },
+            "ratingCheckStatus": {
+              "type": "ready"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "playerRatingsLoaded",
+              "payload": {
+                "ratings": {
+                  "playerId": "p1",
+                  "name": "Ada",
+                  "counts": "global",
+                  "countsRating": null,
+                  "capped": null,
+                  "ratingDate": null,
+                  "boards": [
+                    {
+                      "board": "global",
+                      "rating": 1800,
+                      "games": 400
+                    }
+                  ],
+                  "reason": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": {
+              "boards": [
+                {
+                  "board": "global",
+                  "games": 400,
+                  "rating": 1800
+                }
+              ],
+              "capped": null,
+              "counts": "global",
+              "countsRating": null,
+              "name": "Ada",
+              "playerId": "p1",
+              "ratingDate": null,
+              "reason": ""
+            },
+            "playerRatingsStatus": {
+              "type": "ready"
+            },
+            "ratingCheck": {
+              "alreadyIn": false,
+              "asOf": null,
+              "banned": null,
+              "capped": null,
+              "eligible": false,
+              "exempt": false,
+              "max": null,
+              "message": "Your rating is below the minimum of 1500.",
+              "min": 1500,
+              "rated": true,
+              "rating": 1480,
+              "ratingKind": "ladder1v1"
+            },
+            "ratingCheckStatus": {
+              "type": "ready"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "playerRatingsLoading"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "loading"
+            },
+            "ratingCheck": {
+              "alreadyIn": false,
+              "asOf": null,
+              "banned": null,
+              "capped": null,
+              "eligible": false,
+              "exempt": false,
+              "max": null,
+              "message": "Your rating is below the minimum of 1500.",
+              "min": 1500,
+              "rated": true,
+              "rating": 1480,
+              "ratingKind": "ladder1v1"
+            },
+            "ratingCheckStatus": {
+              "type": "ready"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "playerRatingsFailed",
+              "payload": {
+                "reason": "FAF could not be reached just now.",
+                "kind": "offline"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "payload": {
+                "kind": "offline",
+                "reason": "FAF could not be reached just now."
+              },
+              "type": "failed"
+            },
+            "ratingCheck": {
+              "alreadyIn": false,
+              "asOf": null,
+              "banned": null,
+              "capped": null,
+              "eligible": false,
+              "exempt": false,
+              "max": null,
+              "message": "Your rating is below the minimum of 1500.",
+              "min": 1500,
+              "rated": true,
+              "rating": 1480,
+              "ratingKind": "ladder1v1"
+            },
+            "ratingCheckStatus": {
+              "type": "ready"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -13934,6 +14897,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "loading"
@@ -13990,6 +14961,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "payload": {
@@ -14046,6 +15025,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "loading"
@@ -14113,6 +15100,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": {
               "changed": [
                 {
@@ -14184,6 +15179,14 @@
             "pending": {
               "type": "administering"
             },
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": {
               "changed": [
                 {
@@ -14254,6 +15257,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -14311,6 +15322,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -14380,6 +15399,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -14499,6 +15526,14 @@
               "name": "Weekend Ladder"
             },
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -14582,6 +15617,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -14701,6 +15744,14 @@
               "name": "Midweek Blitz"
             },
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -14809,6 +15860,14 @@
               "name": "Midweek Blitz"
             },
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -14875,6 +15934,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -14945,6 +16012,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -15085,6 +16160,7 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "myBan": null,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -15094,7 +16170,8 @@
                       "signedUpPlayerId": null,
                       "memberTeamId": null,
                       "caster": false,
-                      "newsReadAt": null
+                      "newsReadAt": null,
+                      "invited": false
                     }
                   },
                   {
@@ -15193,6 +16270,7 @@
                     "stopAtAlive": 0,
                     "survivors": null,
                     "earlyFinish": null,
+                    "myBan": null,
                     "eventDays": [],
                     "viewer": {
                       "loggedIn": false,
@@ -15202,7 +16280,8 @@
                       "signedUpPlayerId": null,
                       "memberTeamId": null,
                       "caster": false,
-                      "newsReadAt": null
+                      "newsReadAt": null,
+                      "invited": false
                     }
                   }
                 ]
@@ -15273,6 +16352,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -15333,6 +16413,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -15381,6 +16462,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -15441,6 +16523,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -15457,6 +16540,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -15573,6 +16664,7 @@
                   "stopAtAlive": 0,
                   "survivors": null,
                   "earlyFinish": null,
+                  "myBan": null,
                   "eventDays": [],
                   "viewer": {
                     "loggedIn": false,
@@ -15582,7 +16674,8 @@
                     "signedUpPlayerId": null,
                     "memberTeamId": null,
                     "caster": false,
-                    "newsReadAt": null
+                    "newsReadAt": null,
+                    "invited": false
                   }
                 }
               }
@@ -15645,6 +16738,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e1",
               "news": [],
               "organiserAccounts": [],
@@ -15705,6 +16799,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -15759,6 +16854,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -15819,6 +16915,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -15867,6 +16964,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -15927,6 +17025,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -15943,6 +17042,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -16062,6 +17169,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e1",
               "news": [],
               "organiserAccounts": [],
@@ -16122,6 +17230,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -16176,6 +17285,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -16236,6 +17346,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -16284,6 +17395,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -16344,6 +17456,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -16360,6 +17473,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -16460,6 +17581,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e1",
               "news": [],
               "organiserAccounts": [],
@@ -16520,6 +17642,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -16574,6 +17697,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -16634,6 +17758,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -16682,6 +17807,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -16742,6 +17868,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -16758,6 +17885,14 @@
             "openRoomId": "global",
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -16855,6 +17990,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e1",
               "news": [],
               "organiserAccounts": [],
@@ -16915,6 +18051,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -16969,6 +18106,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -17029,6 +18167,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -17077,6 +18216,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -17137,6 +18277,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -17153,6 +18294,14 @@
             "openRoomId": "global",
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -17276,6 +18425,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e1",
               "news": [],
               "organiserAccounts": [],
@@ -17336,6 +18486,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -17390,6 +18541,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -17450,6 +18602,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -17498,6 +18651,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -17558,6 +18712,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -17574,6 +18729,14 @@
             "openRoomId": "global",
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -17686,6 +18849,7 @@
               "maxTeams": 0,
               "minTeams": 0,
               "mods": "",
+              "myBan": null,
               "name": "Event e1",
               "news": [],
               "organiserAccounts": [],
@@ -17746,6 +18910,7 @@
                 "caster": false,
                 "fafId": null,
                 "fafName": "",
+                "invited": false,
                 "loggedIn": false,
                 "memberTeamId": null,
                 "newsReadAt": null,
@@ -17800,6 +18965,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -17860,6 +19026,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -17908,6 +19075,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -17968,6 +19136,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -17984,6 +19153,14 @@
             "openRoomId": "global",
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -18072,6 +19249,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e1",
                 "news": [],
                 "organiserAccounts": [],
@@ -18132,6 +19310,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -18180,6 +19359,7 @@
                 "maxTeams": 0,
                 "minTeams": 0,
                 "mods": "",
+                "myBan": null,
                 "name": "Event e2",
                 "news": [],
                 "organiserAccounts": [],
@@ -18240,6 +19420,7 @@
                   "caster": false,
                   "fafId": null,
                   "fafName": "",
+                  "invited": false,
                   "loggedIn": false,
                   "memberTeamId": null,
                   "newsReadAt": null,
@@ -18256,6 +19437,14 @@
             "openRoomId": null,
             "openSeries": null,
             "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
             "renames": null,
             "renamesStatus": {
               "type": "idle"
@@ -37400,7 +38589,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p1",
@@ -37413,7 +38603,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p2",
@@ -37426,7 +38617,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p3",
@@ -37439,7 +38631,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p9",
@@ -37452,7 +38645,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -37532,6 +38726,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -37541,7 +38736,8 @@
             "signedUpPlayerId": "me",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -37575,6 +38771,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [
           {
             "id": "global",
@@ -37671,7 +38871,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p1",
@@ -37684,7 +38885,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p2",
@@ -37697,7 +38899,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p3",
@@ -37710,7 +38913,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p9",
@@ -37723,7 +38927,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -37803,6 +39008,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -37812,7 +39018,8 @@
             "signedUpPlayerId": "me",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t2",
@@ -37847,6 +39054,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -37924,7 +39135,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -37980,6 +39192,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -37989,7 +39202,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -38019,6 +39233,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": false,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -38096,7 +39314,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [],
@@ -38134,6 +39353,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -38143,7 +39363,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": null,
@@ -38173,6 +39394,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": false,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -38250,7 +39475,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -38391,6 +39617,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -38400,7 +39627,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -38430,6 +39658,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": true,
         "mayEditVeto": true,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -38507,7 +39739,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -38648,6 +39881,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -38657,7 +39891,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -38692,6 +39927,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": true,
         "mayEditVeto": true,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -38769,7 +40008,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -38910,6 +40150,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -38919,7 +40160,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -38949,6 +40191,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": true,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": false,
+        "signupNeedsRating": true,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -39026,7 +40272,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -39167,6 +40414,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -39176,7 +40424,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -39206,6 +40455,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": true,
         "mayEditVeto": true,
+        "maySignUp": true,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -39283,7 +40536,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -39424,6 +40678,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -39433,7 +40688,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -39463,6 +40719,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": false,
+        "maySignUp": true,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -39540,7 +40800,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p2",
@@ -39553,7 +40814,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -39610,6 +40872,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -39619,7 +40882,8 @@
             "signedUpPlayerId": "me",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -39650,6 +40914,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -39727,7 +40995,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p2",
@@ -39740,7 +41009,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -39797,6 +41067,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -39806,7 +41077,8 @@
             "signedUpPlayerId": "me",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -39837,6 +41109,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -39914,7 +41190,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -40055,6 +41332,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -40064,7 +41342,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": "t1",
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -40096,6 +41375,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -40173,7 +41456,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -40314,6 +41598,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -40323,7 +41608,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": "t1",
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": "t1",
@@ -40353,6 +41639,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -40606,6 +41896,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -40615,7 +41906,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": null,
@@ -40648,6 +41940,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": true,
         "mayEditVeto": true,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -40929,6 +42225,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -40938,7 +42235,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": null,
@@ -40972,6 +42270,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": true,
         "mayEditVeto": true,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -41287,6 +42589,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -41296,7 +42599,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": null,
@@ -41330,6 +42634,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": true,
         "mayEditVeto": true,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -41500,6 +42808,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -41509,7 +42818,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": null,
@@ -41537,6 +42847,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": true,
         "mayEditVeto": true,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -41801,6 +43115,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -41810,7 +43125,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": null,
@@ -41846,6 +43162,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": true,
         "mayEditVeto": true,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -42105,6 +43425,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -42114,7 +43435,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": null,
@@ -42147,6 +43469,10 @@
         "mayReopenEarly": false,
         "mayRepullRatings": false,
         "mayEditVeto": true,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": false,
+        "signupNeedsRating": true,
         "rooms": [],
         "unreadTotal": 0
       },
@@ -42410,6 +43736,7 @@
               "T2"
             ]
           },
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -42419,7 +43746,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "teamId": null,
@@ -42452,6 +43780,302 @@
         "mayReopenEarly": true,
         "mayRepullRatings": true,
         "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": false,
+        "mayCheckRating": true,
+        "signupNeedsRating": false,
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "an invited player, taking signups, who may decline",
+        "event": {
+          "id": "invited-player",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "signup",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "single",
+          "teamSize": 0,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "none",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront",
+            "teamA": "lowerA",
+            "revealBans": false
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": false,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [],
+          "teams": [],
+          "subs": [],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "bans": [],
+          "stopAtAlive": 0,
+          "survivors": null,
+          "earlyFinish": null,
+          "myBan": null,
+          "eventDays": [],
+          "viewer": {
+            "loggedIn": true,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null,
+            "caster": false,
+            "newsReadAt": null,
+            "invited": true
+          }
+        },
+        "teamId": null,
+        "teamRating": 0,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [],
+        "myInviteTeamIds": [],
+        "mayRename": false,
+        "mayPublish": false,
+        "reportableMatchIds": [],
+        "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
+        "removableOrganiserIds": [],
+        "mayEndEarly": false,
+        "mayReopenEarly": false,
+        "mayRepullRatings": false,
+        "mayEditVeto": false,
+        "maySignUp": true,
+        "mayDeclineInvite": true,
+        "mayCheckRating": false,
+        "signupNeedsRating": true,
+        "rooms": [],
+        "unreadTotal": 0
+      },
+      {
+        "name": "the same player, banned: not offered Enter at all",
+        "event": {
+          "id": "banned-player",
+          "name": "",
+          "description": "",
+          "rewards": "",
+          "sponsors": "",
+          "prize": null,
+          "streams": [],
+          "lobbyOptions": "",
+          "mods": "",
+          "descImages": [],
+          "status": "signup",
+          "category": "community",
+          "competition": "team",
+          "formation": "solo",
+          "bracketKind": "single",
+          "teamSize": 0,
+          "divisions": 0,
+          "maxTeams": 0,
+          "minTeams": 0,
+          "seeding": "rating",
+          "plan": null,
+          "playerReporting": false,
+          "signupMode": "open",
+          "vetoEnabled": false,
+          "rating": {
+            "min": null,
+            "max": null,
+            "maxTeam": null,
+            "cap": null
+          },
+          "ratingKind": "none",
+          "ratingDate": null,
+          "createdAt": null,
+          "eventDate": null,
+          "signupOpensAt": null,
+          "signupClosesAt": null,
+          "checkInOpensAt": null,
+          "checkInDeadline": null,
+          "chatLocked": false,
+          "veto": {
+            "enabled": false,
+            "mode": "upfront",
+            "teamA": "lowerA",
+            "revealBans": false
+          },
+          "factionVeto": {
+            "enabled": false,
+            "bans": 1,
+            "picks": 2
+          },
+          "ffa": null,
+          "draft": null,
+          "pendingCaptains": [],
+          "draftSnakes": false,
+          "imported": false,
+          "published": false,
+          "publishAt": null,
+          "playerCount": 0,
+          "teamCount": 0,
+          "players": [],
+          "teams": [],
+          "subs": [],
+          "matches": [],
+          "mapDb": [],
+          "mapPools": [],
+          "poolAssign": [],
+          "roundMaps": [],
+          "organisers": [],
+          "organiserDiscords": [],
+          "news": [],
+          "invites": [],
+          "auditLog": [],
+          "organiserAccounts": [],
+          "chatMutes": [],
+          "casters": [],
+          "abandoned": false,
+          "chatMutedMe": false,
+          "seriesId": null,
+          "seriesName": "",
+          "seriesColour": "plain",
+          "qualifiers": [],
+          "feedsInto": null,
+          "championTeamId": null,
+          "swissOrder": [],
+          "swissTiebreak": "gameDiff",
+          "swissCuts": {
+            "wins": 0,
+            "losses": 0
+          },
+          "swissRounds": 0,
+          "swissBeaten": {},
+          "bans": [],
+          "stopAtAlive": 0,
+          "survivors": null,
+          "earlyFinish": null,
+          "myBan": {
+            "scope": "series",
+            "reason": "No show",
+            "expires": null
+          },
+          "eventDays": [],
+          "viewer": {
+            "loggedIn": true,
+            "organiser": false,
+            "fafId": null,
+            "fafName": "",
+            "signedUpPlayerId": null,
+            "memberTeamId": null,
+            "caster": false,
+            "newsReadAt": null,
+            "invited": true
+          }
+        },
+        "teamId": null,
+        "teamRating": 0,
+        "wouldExceedTeamCap": false,
+        "selfOrganised": false,
+        "mayReseed": false,
+        "mayShuffleTeams": false,
+        "maySetRating": false,
+        "pendingSignupIds": [],
+        "memberIds": [],
+        "myInviteTeamIds": [],
+        "mayRename": false,
+        "mayPublish": false,
+        "reportableMatchIds": [],
+        "submittableMatchIds": [],
+        "factionVetoOn": false,
+        "mayConfigureFactionVeto": false,
+        "thirdPlaceOn": false,
+        "mayAddThirdPlace": false,
+        "mayRemoveThirdPlace": false,
+        "bestOfMatchIds": [],
+        "removableOrganiserIds": [],
+        "mayEndEarly": false,
+        "mayReopenEarly": false,
+        "mayRepullRatings": false,
+        "mayEditVeto": false,
+        "maySignUp": false,
+        "mayDeclineInvite": true,
+        "mayCheckRating": false,
+        "signupNeedsRating": true,
         "rooms": [],
         "unreadTotal": 0
       }
@@ -43868,6 +45492,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -43877,7 +45502,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "kind": "elimination",
@@ -44080,6 +45706,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -44089,7 +45716,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "kind": "elimination",
@@ -44334,6 +45962,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -44343,7 +45972,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "kind": "swiss",
@@ -44692,6 +46322,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -44701,7 +46332,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "kind": "swiss",
@@ -45077,6 +46709,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -45086,7 +46719,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "kind": "swiss",
@@ -45282,6 +46916,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -45291,7 +46926,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "kind": "imported",
@@ -45518,6 +47154,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -45527,7 +47164,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "kind": "points",
@@ -45675,6 +47313,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -45684,7 +47323,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "kind": "none",
@@ -45887,6 +47527,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -45896,7 +47537,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "kind": "elimination",
@@ -45977,7 +47619,8 @@
           "late": false,
           "pending": false,
           "note": "",
-          "signedAt": null
+          "signedAt": null,
+          "discord": ""
         },
         "resolvedLogin": "Ada"
       },
@@ -46012,7 +47655,8 @@
           "late": false,
           "pending": false,
           "note": "",
-          "signedAt": null
+          "signedAt": null,
+          "discord": ""
         },
         "resolvedLogin": null
       },
@@ -46047,7 +47691,8 @@
           "late": false,
           "pending": false,
           "note": "",
-          "signedAt": null
+          "signedAt": null,
+          "discord": ""
         },
         "resolvedLogin": null
       }
@@ -46322,7 +47967,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -46335,7 +47981,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -46465,6 +48112,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -46474,7 +48122,8 @@
             "signedUpPlayerId": "cap1",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": "t1",
@@ -46555,7 +48204,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -46568,7 +48218,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -46698,6 +48349,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -46707,7 +48359,8 @@
             "signedUpPlayerId": "cap2",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": "t1",
@@ -46788,7 +48441,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -46801,7 +48455,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -46931,6 +48586,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -46940,7 +48596,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": "t1",
@@ -47021,7 +48678,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -47034,7 +48692,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -47164,6 +48823,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -47173,7 +48833,8 @@
             "signedUpPlayerId": "cap1",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": "t2",
@@ -47254,7 +48915,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -47267,7 +48929,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -47397,6 +49060,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -47406,7 +49070,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": null,
@@ -47487,7 +49152,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -47500,7 +49166,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -47630,6 +49297,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -47639,7 +49307,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": null,
@@ -47720,7 +49389,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -47733,7 +49403,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -47863,6 +49534,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -47872,7 +49544,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": null,
@@ -47953,7 +49626,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -47966,7 +49640,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -48096,6 +49771,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -48105,7 +49781,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": "t1",
@@ -48186,7 +49863,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -48199,7 +49877,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -48301,6 +49980,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -48310,7 +49990,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": null,
@@ -48580,6 +50261,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -48589,7 +50271,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -48876,6 +50559,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -48885,7 +50569,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -49168,6 +50853,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -49177,7 +50863,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -49464,6 +51151,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -49473,7 +51161,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -49749,6 +51438,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -49758,7 +51448,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -50035,6 +51726,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -50044,7 +51736,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -50320,6 +52013,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -50329,7 +52023,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -50606,6 +52301,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -50615,7 +52311,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -50860,6 +52557,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -50869,7 +52567,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -51113,6 +52812,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -51122,7 +52822,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -51366,6 +53067,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -51375,7 +53077,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "report": {
@@ -51473,7 +53176,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -51486,7 +53190,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free1",
@@ -51499,7 +53204,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free2",
@@ -51512,7 +53218,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "pending",
@@ -51525,7 +53232,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -51598,6 +53306,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -51607,7 +53316,8 @@
             "signedUpPlayerId": "cap1",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": "d1",
@@ -51699,7 +53409,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -51712,7 +53423,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free1",
@@ -51725,7 +53437,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free2",
@@ -51738,7 +53451,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "pending",
@@ -51751,7 +53465,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -51824,6 +53539,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -51833,7 +53549,8 @@
             "signedUpPlayerId": "cap2",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": "d1",
@@ -51925,7 +53642,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -51938,7 +53656,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free1",
@@ -51951,7 +53670,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free2",
@@ -51964,7 +53684,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "pending",
@@ -51977,7 +53698,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -52050,6 +53772,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -52059,7 +53782,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": "d1",
@@ -52155,7 +53879,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -52168,7 +53893,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free1",
@@ -52181,7 +53907,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free2",
@@ -52194,7 +53921,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "pending",
@@ -52207,7 +53935,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -52280,6 +54009,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -52289,7 +54019,8 @@
             "signedUpPlayerId": "cap1",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": "d2",
@@ -52385,7 +54116,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -52398,7 +54130,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free1",
@@ -52411,7 +54144,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free2",
@@ -52424,7 +54158,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "pending",
@@ -52437,7 +54172,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -52510,6 +54246,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -52519,7 +54256,8 @@
             "signedUpPlayerId": "cap1",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": null,
@@ -52615,7 +54353,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -52628,7 +54367,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free1",
@@ -52641,7 +54381,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free2",
@@ -52654,7 +54395,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "pending",
@@ -52667,7 +54409,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -52740,6 +54483,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -52749,7 +54493,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": null,
@@ -52845,7 +54590,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -52858,7 +54604,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free1",
@@ -52871,7 +54618,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free2",
@@ -52884,7 +54632,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "pending",
@@ -52897,7 +54646,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -52970,6 +54720,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -52979,7 +54730,8 @@
             "signedUpPlayerId": "cap2",
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": "d2",
@@ -53071,7 +54823,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -53084,7 +54837,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free1",
@@ -53097,7 +54851,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free2",
@@ -53110,7 +54865,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "pending",
@@ -53123,7 +54879,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -53196,6 +54953,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -53205,7 +54963,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": null,
@@ -53301,7 +55060,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -53314,7 +55074,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free1",
@@ -53327,7 +55088,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free2",
@@ -53340,7 +55102,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "pending",
@@ -53353,7 +55116,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -53426,6 +55190,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -53435,7 +55200,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": null,
@@ -53527,7 +55293,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "cap2",
@@ -53540,7 +55307,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free1",
@@ -53553,7 +55321,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "free2",
@@ -53566,7 +55335,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "pending",
@@ -53579,7 +55349,8 @@
               "late": false,
               "pending": true,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [
@@ -53652,6 +55423,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -53661,7 +55433,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "turnTeamId": null,
@@ -53787,6 +55560,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -53796,7 +55570,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "candidate": {
@@ -53895,6 +55670,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -53904,7 +55680,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "rule": {
@@ -54026,6 +55803,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -54035,7 +55813,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "candidate": {
@@ -54134,6 +55913,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -54143,7 +55923,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "rule": {
@@ -54265,6 +56046,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -54274,7 +56056,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "candidate": {
@@ -54373,6 +56156,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -54382,7 +56166,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "rule": {
@@ -54504,6 +56289,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -54513,7 +56299,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "candidate": {
@@ -54612,6 +56399,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -54621,7 +56409,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "rule": {
@@ -54743,6 +56532,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -54752,7 +56542,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "candidate": {
@@ -54851,6 +56642,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -54860,7 +56652,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "rule": {
@@ -54982,6 +56775,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -54991,7 +56785,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "candidate": {
@@ -55090,6 +56885,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -55099,7 +56895,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "rule": {
@@ -55221,6 +57018,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -55230,7 +57028,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "candidate": {
@@ -55329,6 +57128,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -55338,7 +57138,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "rule": {
@@ -55464,6 +57265,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -55473,7 +57275,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "mayEditFormat": true,
@@ -55604,6 +57407,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -55613,7 +57417,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "mayEditFormat": true,
@@ -55744,6 +57549,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -55753,7 +57559,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "mayEditFormat": true,
@@ -55884,6 +57691,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -55893,7 +57701,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "mayEditFormat": true,
@@ -56024,6 +57833,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -56033,7 +57843,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "mayEditFormat": false,
@@ -56164,6 +57975,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -56173,7 +57985,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "mayEditFormat": false,
@@ -56304,6 +58117,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -56313,7 +58127,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "mayEditFormat": true,
@@ -56444,6 +58259,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -56453,7 +58269,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "mayEditFormat": true,
@@ -56584,6 +58401,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": true,
@@ -56593,7 +58411,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": 1786100000
+            "newsReadAt": 1786100000,
+            "invited": false
           }
         },
         "mayEditFormat": true,
@@ -56724,6 +58543,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -56733,7 +58553,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "mayEditFormat": false,
@@ -56825,7 +58646,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p1",
@@ -56838,7 +58660,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p2",
@@ -56851,7 +58674,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p3",
@@ -56864,7 +58688,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p4",
@@ -56877,7 +58702,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p5",
@@ -56890,7 +58716,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p6",
@@ -56903,7 +58730,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p7",
@@ -56916,7 +58744,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [],
@@ -56954,6 +58783,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -56963,7 +58793,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "plan": {
@@ -57083,6 +58914,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -57092,7 +58924,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "plan": {
@@ -57194,7 +59027,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p1",
@@ -57207,7 +59041,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p2",
@@ -57220,7 +59055,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p3",
@@ -57233,7 +59069,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p4",
@@ -57246,7 +59083,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p5",
@@ -57259,7 +59097,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p6",
@@ -57272,7 +59111,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p7",
@@ -57285,7 +59125,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p8",
@@ -57298,7 +59139,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             },
             {
               "id": "p9",
@@ -57311,7 +59153,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [],
@@ -57349,6 +59192,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -57358,7 +59202,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "plan": {
@@ -57484,6 +59329,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -57493,7 +59339,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "plan": {
@@ -57649,6 +59496,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -57658,7 +59506,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "plan": {
@@ -57766,7 +59615,8 @@
               "late": false,
               "pending": false,
               "note": "",
-              "signedAt": null
+              "signedAt": null,
+              "discord": ""
             }
           ],
           "teams": [],
@@ -57804,6 +59654,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -57813,7 +59664,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "plan": {
@@ -57920,6 +59772,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -57929,7 +59782,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "plan": {
@@ -58121,6 +59975,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -58130,7 +59985,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "plan": {
@@ -58252,6 +60108,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -58261,7 +60118,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "plan": {
@@ -58696,6 +60554,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -58705,7 +60564,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "config": {
@@ -58910,6 +60770,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -58919,7 +60780,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "config": {
@@ -59154,6 +61016,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -59163,7 +61026,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "config": {
@@ -59405,6 +61269,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -59414,7 +61279,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "config": {
@@ -59648,6 +61514,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -59657,7 +61524,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "config": {
@@ -59794,6 +61662,7 @@
           "stopAtAlive": 0,
           "survivors": null,
           "earlyFinish": null,
+          "myBan": null,
           "eventDays": [],
           "viewer": {
             "loggedIn": false,
@@ -59803,7 +61672,8 @@
             "signedUpPlayerId": null,
             "memberTeamId": null,
             "caster": false,
-            "newsReadAt": null
+            "newsReadAt": null,
+            "invited": false
           }
         },
         "config": {

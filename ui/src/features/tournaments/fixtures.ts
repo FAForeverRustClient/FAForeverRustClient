@@ -91,6 +91,7 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     survivors: null,
     earlyFinish: null,
     eventDays: [],
+    myBan: null,
     // The service sets this on the detail response, after `publicView` builds the
     // document. Spelled out here because a component fixture has no response.
     viewer: {
@@ -102,6 +103,7 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
       memberTeamId: null,
       newsReadAt: null,
       caster: false,
+      invited: false,
     },
     ...over,
   };
@@ -120,6 +122,7 @@ export function player(over: Partial<TourneyPlayer> = {}): TourneyPlayer {
     pending: false,
     note: "",
     signedAt: null,
+    discord: "",
     ...over,
   };
 }

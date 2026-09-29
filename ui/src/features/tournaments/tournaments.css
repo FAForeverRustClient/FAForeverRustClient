@@ -4301,3 +4301,112 @@
   flex-direction: column;
   gap: var(--space-1);
 }
+
+/* -- Entering: a ban, an invitation, a rating check ---------------------------- */
+.tournament-entry-notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tournament-entry-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-border);
+}
+
+.tournament-entry-notice h5,
+.tournament-entry-notice p {
+  margin: 0;
+}
+
+.tournament-entry-notice.is-danger {
+  border-left-color: var(--color-error);
+}
+
+.tournament-entry-notice.is-invite {
+  border-left-color: var(--color-warn);
+}
+
+/* The verdict first and bold, the numbers behind it underneath. */
+.tournament-rating-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--color-border);
+}
+
+.tournament-rating-verdict.is-good {
+  border-left-color: var(--color-ok);
+}
+
+.tournament-rating-verdict.is-bad {
+  border-left-color: var(--color-error);
+}
+
+.tournament-rating-verdict.is-warn {
+  border-left-color: var(--color-warn);
+}
+
+/* A Discord handle beside a name, set off from the badges. */
+.tournament-discord {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* -- Seeding by hand ----------------------------------------------------------- */
+.tournament-seed-list {
+  list-style: none;
+  margin: var(--space-2) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 520px;
+}
+
+.tournament-seed-row {
+  display: grid;
+  grid-template-columns: 2.5em minmax(0, 1fr) 4em auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.tournament-seed-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* -- A player's every rating --------------------------------------------------- */
+.tournament-ratings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tournament-ratings-table th,
+.tournament-ratings-table td {
+  text-align: left;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tournament-ratings-table tr.is-counted td {
+  font-weight: 600;
+}
+
+.tournament-ratings-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(560px, 92vw);
+}

@@ -303,6 +303,8 @@ pub struct Tourney {
     pub survivors: Option<Survivors>,
     /// How the event was stopped early, where it was (`earlyFinish`).
     pub early_finish: Option<EarlyFinish>,
+    /// The ban that stops this account entering, where one does (`myBan`).
+    pub my_ban: Option<OwnBan>,
     /// The days a multi-day event runs on, as `YYYY-MM-DD`, earliest first
     /// (`eventDays`). Empty for an event on its date alone.
     pub event_days: Vec<String>,
@@ -1198,7 +1200,33 @@ impl Tourney {
     /// is the answer a player needs, and they only get it by being allowed to
     /// try.
     pub fn may_sign_up(&self) -> bool {
-        self.viewer.logged_in && !self.viewer.is_signed_up() && self.status == TourneyStatus::Signup
+        self.viewer.logged_in
+            && !self.viewer.is_signed_up()
+            && self.status == TourneyStatus::Signup
+            && self.my_ban.is_none()
+    }
+
+    /// Whether this account may decline an invitation (`decline_invite`): it
+    /// has one and has not entered. The service keeps a declined invitation
+    /// on the organiser's list, and says nothing about it to the invitee, so
+    /// the offer stays until the event starts.
+    pub fn may_decline_invite(&self) -> bool {
+        self.viewer.invited
+            && !self.viewer.is_signed_up()
+            && self.status == TourneyStatus::Signup
+            && !self.viewer.organiser
+    }
+
+    /// Whether this account may check its own rating against the event
+    /// (`check_rating`): signed in, and the event takes ratings from FAF.
+    pub fn may_check_rating(&self) -> bool {
+        self.viewer.logged_in && self.rating_kind != RatingKind::None
+    }
+
+    /// Whether entering needs a rating typed by the player: the event takes
+    /// none from FAF, and the service refuses a signup without one.
+    pub fn signup_needs_rating(&self) -> bool {
+        self.rating_kind == RatingKind::None
     }
 
     /// Whether withdrawing is possible: signed up, and signups still open.

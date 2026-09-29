@@ -18,6 +18,10 @@ function clearOpenEvent(state: TourneyState): TourneyState {
     chatStatus: { type: "idle" },
     renames: null,
     renamesStatus: { type: "idle" },
+    ratingCheck: null,
+    ratingCheckStatus: { type: "idle" },
+    playerRatings: null,
+    playerRatingsStatus: { type: "idle" },
   };
 }
 
@@ -192,6 +196,32 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
     case "accountSearchCleared":
       return { ...state, accountSearch: { query: "", matches: [], status: { type: "idle" } } };
 
+    case "ratingChecking":
+      return { ...state, ratingCheck: null, ratingCheckStatus: { type: "loading" } };
+    case "ratingChecked":
+      return { ...state, ratingCheck: event.payload.check, ratingCheckStatus: { type: "ready" } };
+    case "ratingCheckFailed":
+      return {
+        ...state,
+        ratingCheckStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
+    // A new request drops the previous player's table at once, so one entrant's
+    // ratings never show under another's name.
+    case "playerRatingsLoading":
+      return { ...state, playerRatings: null, playerRatingsStatus: { type: "loading" } };
+    case "playerRatingsLoaded":
+      return { ...state, playerRatings: event.payload.ratings, playerRatingsStatus: { type: "ready" } };
+    case "playerRatingsFailed":
+      return {
+        ...state,
+        playerRatingsStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
     case "renamesChecking":
       return { ...state, renames: null, renamesStatus: { type: "loading" } };
     case "renamesChecked":

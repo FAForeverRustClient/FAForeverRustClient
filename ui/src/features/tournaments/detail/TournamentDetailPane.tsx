@@ -25,8 +25,11 @@ import type {
   PlayerSummary,
   FormatDraft,
   QualifierRule,
+  RatingCheck,
+  EntrantRatings,
   RenameCheck,
   SeedOrder,
+  TourneyPlayer,
   SeriesDraft,
   Tourney,
   TourneyAdmin,
@@ -40,6 +43,7 @@ import type {
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { AuditLogPanel } from "./AuditLogPanel";
+import { EntryNotices } from "./EntryNotices";
 import { BracketView } from "../bracket/BracketView";
 import { ChatPanel } from "./ChatPanel";
 import { DraftPanel } from "../bracket/DraftPanel";
@@ -59,7 +63,13 @@ import { MatchChatContext, matchRoomId, type MatchChatApi } from "../bracket/mat
 import { matchLabel } from "../bracket/matchLabels";
 import { teamNameOf } from "../bracket/matchParts";
 import { formatMoment, formatOf } from "../tourneyPresentation";
-import { selfOrganised, standingsKind, unreadNews, unreadTotal } from "../../../shared/rules/tourneyRules";
+import {
+  maySignUp,
+  selfOrganised,
+  standingsKind,
+  unreadNews,
+  unreadTotal,
+} from "../../../shared/rules/tourneyRules";
 
 type Section =
   | "overview"
@@ -138,6 +148,16 @@ interface TournamentDetailPaneProps {
   renames: RenameCheck | null;
   renamesStatus: TourneyLoadStatus;
   onCheckRenames: () => void;
+  /** This account's last rating check, and asking for one. */
+  ratingCheck: RatingCheck | null;
+  ratingCheckStatus: TourneyLoadStatus;
+  onCheckRating: () => void;
+  onDeclineInvite: () => void;
+  /** One entrant's every rating, for the organiser. */
+  playerRatings: EntrantRatings | null;
+  playerRatingsStatus: TourneyLoadStatus;
+  onLoadPlayerRatings: (playerId: string, refresh: boolean) => void;
+  onBanPlayer: (player: TourneyPlayer, reason: string, expires: number | null, remove: boolean) => void;
   onSignUp: () => void;
   onWithdraw: () => void;
   onCheckIn: () => void;
@@ -214,11 +234,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   const { event, busy } = props;
   const [section, setSection] = useState<Section>("overview");
 
-  // Twins of `may_sign_up` and `may_withdraw`. The rating gate and the entrant
-  // cap are deliberately not checked: the server owns those and explains them
-  // far better than a hidden button would.
-  const maySignUp =
-    event.viewer.loggedIn && event.viewer.signedUpPlayerId === null && event.status === "signup";
+  // Twins of `may_sign_up` and `may_withdraw`, the first in shared/rules where
+  // the conformance harness pins it.
+  const mayEnter = maySignUp(event);
   const mayWithdraw = event.viewer.signedUpPlayerId !== null && event.status === "signup";
   // Check-in opens on the day of the event and needs a team, which only exists
   // once the organiser has formed them. Offering it earlier produces a refusal
@@ -298,7 +316,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           </p>
         </div>
         <div className="tournament-detail-actions">
-          {maySignUp && (
+          {mayEnter && (
             <Button variant="primary" onClick={props.onSignUp} disabled={busy}>
               <Icon name="plus" size={16} /> {t("tournaments.action.enter")}
             </Button>
@@ -434,6 +452,17 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       )}
 
 
+      {(section === "overview" || section === "players") && (
+        <EntryNotices
+          event={event}
+          check={props.ratingCheck}
+          checkStatus={props.ratingCheckStatus}
+          busy={busy}
+          onDecline={props.onDeclineInvite}
+          onCheckRating={props.onCheckRating}
+        />
+      )}
+
       {section === "players" && <EntrantsPanel event={event} profiles={props.profiles} />}
 
       {section === "teams" && (
@@ -552,6 +581,10 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           renames={props.renames}
           renamesStatus={props.renamesStatus}
           onCheckRenames={props.onCheckRenames}
+          playerRatings={props.playerRatings}
+          playerRatingsStatus={props.playerRatingsStatus}
+          onLoadPlayerRatings={props.onLoadPlayerRatings}
+          onBanPlayer={props.onBanPlayer}
           onSearchAccounts={props.onSearchAccounts}
           busy={busy}
           onEditInfo={props.onEditInfo}

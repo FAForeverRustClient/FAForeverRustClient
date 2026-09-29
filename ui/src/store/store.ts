@@ -300,6 +300,10 @@ const INITIAL: AppState = {
     openSeries: null,
     renames: null,
     renamesStatus: { type: "idle" },
+    ratingCheck: null,
+    ratingCheckStatus: { type: "idle" },
+    playerRatings: null,
+    playerRatingsStatus: { type: "idle" },
   },
   guides: {
     auth: { type: "signedOut" },

@@ -70,8 +70,12 @@ import {
   swissCutRounds,
   factionVetoOn,
   mayAddThirdPlace,
+  mayCheckRating,
   mayConfigureFactionVeto,
+  mayDeclineInvite,
   mayEditVeto,
+  maySignUp,
+  signupNeedsRating,
   mayEndEarly,
   mayRemoveOrganiser,
   mayRemoveThirdPlace,
@@ -169,6 +173,10 @@ interface HelperFixture {
     mayReopenEarly: boolean;
     mayRepullRatings: boolean;
     mayEditVeto: boolean;
+    maySignUp: boolean;
+    mayDeclineInvite: boolean;
+    mayCheckRating: boolean;
+    signupNeedsRating: boolean;
     name: string;
     event: Tourney;
     teamId: string | null;
@@ -486,6 +494,10 @@ describe("tournament rule twins match Rust", () => {
       mayReopenEarly: mayReopenEarly(event),
       mayRepullRatings: mayRepullRatings(event),
       mayEditVeto: mayEditVeto(event),
+      maySignUp: maySignUp(event),
+      mayDeclineInvite: mayDeclineInvite(event),
+      mayCheckRating: mayCheckRating(event),
+      signupNeedsRating: signupNeedsRating(event),
     }).toEqual({
       teamRating: recorded.teamRating,
       wouldExceedTeamCap: recorded.wouldExceedTeamCap,
@@ -512,6 +524,10 @@ describe("tournament rule twins match Rust", () => {
       mayReopenEarly: recorded.mayReopenEarly,
       mayRepullRatings: recorded.mayRepullRatings,
       mayEditVeto: recorded.mayEditVeto,
+      maySignUp: recorded.maySignUp,
+      mayDeclineInvite: recorded.mayDeclineInvite,
+      mayCheckRating: recorded.mayCheckRating,
+      signupNeedsRating: recorded.signupNeedsRating,
     });
   });
 

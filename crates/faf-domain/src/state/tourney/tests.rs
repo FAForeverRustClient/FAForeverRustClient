@@ -13,6 +13,7 @@ fn player(id: &str, name: &str, faf_id: Option<i32>) -> TourneyPlayer {
         pending: false,
         note: String::new(),
         signed_at: None,
+        discord: String::new(),
     }
 }
 

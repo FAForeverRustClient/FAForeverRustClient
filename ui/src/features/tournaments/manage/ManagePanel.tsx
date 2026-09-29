@@ -33,8 +33,10 @@ import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type {
   AccountSearch,
+  EntrantRatings,
   RenameCheck,
   TourneyLoadStatus,
+  TourneyPlayer,
   BracketConfig,
   FactionVetoConfig,
   FormatDraft,
@@ -154,6 +156,11 @@ interface ManagePanelProps {
   renames: RenameCheck | null;
   renamesStatus: TourneyLoadStatus;
   onCheckRenames: () => void;
+  /** One entrant's every rating, and asking for them. */
+  playerRatings: EntrantRatings | null;
+  playerRatingsStatus: TourneyLoadStatus;
+  onLoadPlayerRatings: (playerId: string, refresh: boolean) => void;
+  onBanPlayer: (player: TourneyPlayer, reason: string, expires: number | null, remove: boolean) => void;
   busy: boolean;
   /** Save the settings. The form is inline here, so there is no dialog. */
   onEditInfo: (draft: TourneyDraft) => void;
@@ -477,6 +484,10 @@ export function ManagePanel({
               onUninvite={rest.onUninvite}
               onReseed={rest.onReseed}
               onSplit={rest.onSplitDivisions}
+              playerRatings={rest.playerRatings}
+              playerRatingsStatus={rest.playerRatingsStatus}
+              onLoadRatings={rest.onLoadPlayerRatings}
+              onBanPlayer={rest.onBanPlayer}
             />
             <div className="tournament-step">
               <h6>{t("tournaments.renames.title")}</h6>

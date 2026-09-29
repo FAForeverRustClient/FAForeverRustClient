@@ -26,6 +26,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
+use faf_domain::state::{EntrantRatings, RatingCheck};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use serde_json::{json, Value};
 
@@ -331,10 +332,46 @@ impl TourneyPort for TourneyClient {
             .ok_or_else(|| RequestError::not_found("That tournament no longer exists."))
     }
 
-    async fn sign_up(&self, tournament_id: &str) -> Result<(), RequestError> {
-        // No body: with FAF login on, the server takes the entrant's name and
-        // account from the session and refuses anything the caller claims.
-        self.act(tournament_id, "signup", json!({})).await
+    async fn sign_up(&self, tournament_id: &str, rating: Option<i32>) -> Result<(), RequestError> {
+        self.act(tournament_id, "signup", tourney::signup_body(rating))
+            .await
+    }
+
+    async fn decline_invite(&self, tournament_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "decline_invite", json!({})).await
+    }
+
+    async fn check_rating(&self, tournament_id: &str) -> Result<RatingCheck, RequestError> {
+        // A `POST` that writes nothing, as `check_renames` is: it reads FAF on
+        // the player's own token.
+        let document = self
+            .send(
+                reqwest::Method::POST,
+                &format!("t/{}/check_rating", encode(tournament_id)),
+                &[],
+                Some(json!({})),
+            )
+            .await?;
+        Ok(tourney::parse_rating_check(&document))
+    }
+
+    async fn player_ratings(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        refresh: bool,
+    ) -> Result<EntrantRatings, RequestError> {
+        let mut query = vec![("playerId", player_id)];
+        if refresh {
+            query.push(("refresh", "1"));
+        }
+        let document = self
+            .get(
+                &format!("t/{}/player_ratings", encode(tournament_id)),
+                &query,
+            )
+            .await?;
+        Ok(tourney::parse_player_ratings(&document))
     }
 
     async fn withdraw(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError> {
@@ -520,6 +557,7 @@ impl TourneyPort for TourneyClient {
     async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError> {
         let body = match order {
             SeedOrder::Randomise => json!({ "randomize": true }),
+            SeedOrder::InviteOrder => json!({ "inviteOrder": 1 }),
             SeedOrder::Explicit { team_ids } => json!({ "order": team_ids }),
         };
         self.act(tournament_id, "reseed", body).await

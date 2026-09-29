@@ -17,6 +17,7 @@ use faf_domain::state::{
     SeriesDraft, Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent,
     TourneyLoadStatus, TourneyPhase, TourneySeries, TourneyStatus,
 };
+use faf_domain::state::{EntrantRatings, RatingCheck};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::AppEvent;
 
@@ -86,7 +87,7 @@ impl TourneyPort for RefusingTourney {
     async fn archive(&self, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
-    async fn sign_up(&self, _: &str) -> Result<(), RequestError> {
+    async fn sign_up(&self, _: &str, _: Option<i32>) -> Result<(), RequestError> {
         self.refused()
     }
     async fn withdraw(&self, _: &str, _: &str) -> Result<(), RequestError> {
@@ -183,6 +184,20 @@ impl TourneyPort for RefusingTourney {
         self.refused()
     }
     async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn decline_invite(&self, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
+        self.refused()
+    }
+    async fn player_ratings(
+        &self,
+        _: &str,
+        _: &str,
+        _: bool,
+    ) -> Result<EntrantRatings, RequestError> {
         self.refused()
     }
     async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
@@ -460,6 +475,7 @@ async fn entering_a_tournament_reloads_both_the_row_and_the_detail() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e1a2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -489,6 +505,7 @@ async fn withdrawing_uses_the_player_id_the_server_handed_out() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e1a2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -1259,6 +1276,7 @@ async fn a_refused_write_keeps_the_servers_sentence_and_clears_the_spinner() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e1a2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -1652,7 +1670,7 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         async fn archive(&self, _: &str) -> Result<(), RequestError> {
             unreachable!()
         }
-        async fn sign_up(&self, _: &str) -> Result<(), RequestError> {
+        async fn sign_up(&self, _: &str, _: Option<i32>) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn withdraw(&self, _: &str, _: &str) -> Result<(), RequestError> {
@@ -1744,6 +1762,20 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             _: &str,
             _: &FactionVetoConfig,
         ) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn decline_invite(&self, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
+            unreachable!()
+        }
+        async fn player_ratings(
+            &self,
+            _: &str,
+            _: &str,
+            _: bool,
+        ) -> Result<EntrantRatings, RequestError> {
             unreachable!()
         }
         async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
@@ -1899,6 +1931,7 @@ async fn entering_one_tournament_never_enters_another() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e1a2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -2229,6 +2262,7 @@ async fn team_event(app: &App) -> String {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: id.clone(),
+            rating: None,
         }
         .into(),
     )
@@ -2323,6 +2357,7 @@ async fn a_captain_can_invite_an_entrant_who_has_no_team() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e2v2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -2376,6 +2411,7 @@ async fn asking_a_team_for_a_place_shows_up_on_that_team() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e2v2b".into(),
+            rating: None,
         }
         .into(),
     )
