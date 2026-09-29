@@ -4714,6 +4714,34 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "the create form reads the presets and fills from an earlier event twice",
+            vec![
+                TourneyEvent::PresetsLoaded {
+                    presets: vec![TourneyPreset {
+                        id: "lots".into(),
+                        name: "LotS".into(),
+                        blurb: "Invitational with longer deciders".into(),
+                        notes: vec!["Seeds 13-16 come from the qualifier.".into()],
+                        allowed: true,
+                        apply: Some(Box::new(tourney("preset:lots"))),
+                    }],
+                }
+                .into(),
+                TourneyEvent::TemplateLoading.into(),
+                TourneyEvent::TemplateLoaded {
+                    event: Box::new(tourney("e2")),
+                }
+                .into(),
+                // The next request drops the first template at once.
+                TourneyEvent::TemplateLoading.into(),
+                TourneyEvent::TemplateFailed {
+                    reason: "Tournament not found".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+            ],
+        ),
+        case(
             "an organiser looks for maps to import, and picks a source twice",
             vec![
                 TourneyEvent::CopySourcesLoading.into(),

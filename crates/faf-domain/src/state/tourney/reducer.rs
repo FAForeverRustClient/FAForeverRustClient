@@ -225,6 +225,21 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
                 kind: *kind,
             }
         }
+        TourneyEvent::PresetsLoaded { presets } => state.presets = presets.clone(),
+        TourneyEvent::TemplateLoading => {
+            state.template = None;
+            state.template_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::TemplateLoaded { event } => {
+            state.template = Some(event.clone());
+            state.template_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::TemplateFailed { reason, kind } => {
+            state.template_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
         // As with a player's ratings: the next source's request drops the
         // previous one's maps at once, so they never show under its name.
         TourneyEvent::CopySourceLoading => {

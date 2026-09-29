@@ -310,6 +310,9 @@ const INITIAL: AppState = {
     copySourcesStatus: { type: "idle" },
     copySource: null,
     copySourceStatus: { type: "idle" },
+    presets: [],
+    template: null,
+    templateStatus: { type: "idle" },
   },
   guides: {
     auth: { type: "signedOut" },

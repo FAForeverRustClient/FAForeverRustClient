@@ -32,7 +32,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
-use faf_domain::state::{CopySource, EntrantRatings, RatingCheck};
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 
 use super::RequestError;
@@ -133,6 +133,9 @@ pub trait TourneyPort: Send + Sync {
 
     /// The events this account organises, as places to import maps from.
     async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError>;
+
+    /// The named formats, and whether this account may host each.
+    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError>;
 
     /// Withdraw from the tournament.
     ///

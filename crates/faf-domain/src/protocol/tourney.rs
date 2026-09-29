@@ -47,7 +47,7 @@ use crate::state::{
     SeriesDraft, SeriesEdition, TourneySeries,
 };
 use crate::state::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
-use crate::state::{PickSettings, SwissExtras};
+use crate::state::{PickSettings, SwissExtras, TourneyPreset};
 
 /// A string field, empty when absent or not a string.
 fn text(value: &Value, name: &str) -> String {
@@ -775,6 +775,39 @@ pub fn signup_body(rating: Option<i32>) -> Value {
         Some(rating) => json!({ "rating": rating }),
         None => json!({}),
     }
+}
+
+/// The named formats, from `GET /api/presets`.
+///
+/// A preset's `apply` is shaped like a tournament document, so it is read as
+/// one; its opponent picking is `pickPhase` there, which a document calls
+/// `pickOpponents`.
+pub fn parse_presets(document: &Value) -> Vec<TourneyPreset> {
+    array(document, "presets")
+        .iter()
+        .filter_map(|value| {
+            let id = id(value, "id")?;
+            let apply = value
+                .get("apply")
+                .filter(|held| held.is_object())
+                .and_then(|held| {
+                    let mut shaped = held.clone();
+                    shaped["id"] = json!(format!("preset:{id}"));
+                    if shaped.get("pickOpponents").is_none() {
+                        shaped["pickOpponents"] = json!(flag(held, "pickPhase"));
+                    }
+                    parse_tourney(&shaped).map(Box::new)
+                });
+            Some(TourneyPreset {
+                name: text(value, "name"),
+                blurb: text(value, "blurb"),
+                notes: string_list(value, "notes"),
+                allowed: flag(value, "allowed") && apply.is_some(),
+                apply,
+                id,
+            })
+        })
+        .collect()
 }
 
 /// The events this account organises, from `GET /api/my_tournaments`.
@@ -3274,6 +3307,28 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(event.publish_at, Some(1_790_812_800));
         let event = parse_tourney(&json!({ "id": "e1", "publishAt": null })).unwrap();
         assert_eq!(event.publish_at, None);
+    }
+
+    #[test]
+    fn a_preset_is_read_as_the_tournament_it_describes() {
+        let presets = parse_presets(&json!({ "presets": [
+            { "id": "lots", "name": "LotS", "blurb": "b", "notes": ["n1"], "allowed": true,
+              "apply": { "competition": "team", "teamSize": 1, "bracketType": "swiss",
+                         "maxTeams": 16, "signupMode": "invite", "pickPhase": 1,
+                         "plan": { "bo": 1, "winCut": 3, "lossCut": 3, "decidingBo": 3,
+                                   "stage2": 1, "s2CutTo": 8 } } },
+            { "id": "invitational", "name": "Invitational", "allowed": false, "apply": null },
+        ] }));
+        assert_eq!(presets.len(), 2);
+        let lots = presets[0].apply.as_deref().unwrap();
+        assert_eq!(lots.bracket_kind, BracketKind::Swiss);
+        assert_eq!(lots.swiss_cuts, SwissCuts { wins: 3, losses: 3 });
+        assert_eq!(lots.deciding_best_of, 3);
+        assert!(lots.pick_opponents);
+        assert_eq!(lots.stage_two_plan.map(|stage| stage.cut_to), Some(8));
+        assert_eq!(presets[0].notes, vec!["n1".to_string()]);
+        assert!(!presets[1].allowed);
+        assert!(presets[1].apply.is_none());
     }
 
     #[test]

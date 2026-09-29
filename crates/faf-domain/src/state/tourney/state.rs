@@ -288,6 +288,12 @@ pub struct TourneyState {
     /// The chosen one's maps and pools.
     pub copy_source: Option<CopySourceMaps>,
     pub copy_source_status: TourneyLoadStatus,
+    /// The named formats, for the create form. Empty until asked, and where
+    /// the service offers none.
+    pub presets: Vec<TourneyPreset>,
+    /// The event the create form is being filled from, once read.
+    pub template: Option<Box<Tourney>>,
+    pub template_status: TourneyLoadStatus,
 }
 
 /// A name-to-account search, as the organiser types.

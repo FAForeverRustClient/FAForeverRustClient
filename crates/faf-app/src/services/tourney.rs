@@ -102,6 +102,28 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
 
+        TourneyCommand::LoadPresets => match ctx.ports.tourney.presets().await {
+            Ok(presets) => out.emit(TourneyEvent::PresetsLoaded { presets }),
+            // Silent, like the rules pages: without them the form is the
+            // form, only without the shortcut.
+            Err(error) => tracing::warn!(%error, "could not load the tournament presets"),
+        },
+
+        // Read like a map source, without opening it: the form fills from it
+        // while whatever event is open stays open.
+        TourneyCommand::LoadTemplate { tournament_id } => {
+            out.emit(TourneyEvent::TemplateLoading);
+            match ctx.ports.tourney.detail(&tournament_id).await {
+                Ok(event) => out.emit(TourneyEvent::TemplateLoaded {
+                    event: Box::new(event),
+                }),
+                Err(error) => out.emit(TourneyEvent::TemplateFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
         // The source's own detail, read without opening it: the open event
         // stays the one the maps are imported into.
         TourneyCommand::LoadCopySource { tournament_id } => {

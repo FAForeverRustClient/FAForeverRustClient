@@ -8729,8 +8729,20 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	playerId: string,
 	refresh: boolean,
 } } |
-/**  The events this account may import maps from (`my_tournaments`). */
+/**
+ *  The events this account may import maps from (`my_tournaments`).
+ *  The create form's "Copy from an existing tournament" reads the same.
+ */
 { type: "loadCopySources" } |
+/**  The named formats a director may host (`presets`). */
+{ type: "loadPresets" } |
+/**
+ *  Another event's whole document, to fill the create form from
+ *  ("Fill from this"), read without opening it.
+ */
+{ type: "loadTemplate"; payload: {
+	tournamentId: string,
+} } |
 /**  One of those events' maps and pools, to choose from. */
 { type: "loadCopySource"; payload: {
 	tournamentId: string,
@@ -9448,6 +9460,13 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 } } | { type: "copySourcesFailed"; payload: {
 	reason: string,
 	kind: RequestFailureKind,
+} } | { type: "presetsLoaded"; payload: {
+	presets: TourneyPreset[],
+} } | { type: "templateLoading" } | { type: "templateLoaded"; payload: {
+	event: Tourney,
+} } | { type: "templateFailed"; payload: {
+	reason: string,
+	kind: RequestFailureKind,
 } } | { type: "copySourceLoading" } | { type: "copySourceLoaded"; payload: {
 	source: CopySourceMaps,
 } } | { type: "copySourceFailed"; payload: {
@@ -9668,6 +9687,28 @@ export type TourneyPlayer = {
 };
 
 /**
+ *  A named format on the service (`GET /api/presets`): the Invitational, LotS.
+ *
+ *  Everyone may see that one exists; only a tournament director or a site
+ *  admin gets its settings (`apply`) and may create with it. The service does
+ *  not apply a preset itself: it checks the right to it, forces its category
+ *  and records its name, and the form sends the settings as its own.
+ */
+export type TourneyPreset = {
+	id: string,
+	name: string,
+	blurb: string,
+	notes: string[],
+	/**  Whether this account may host it. */
+	allowed: boolean,
+	/**
+	 *  Its settings, read as a tournament document so the form fills from it
+	 *  exactly as it fills from an existing event; `None` where not allowed.
+	 */
+	apply: Tourney | null,
+};
+
+/**
  *  A named grouping of tournaments.
  *
  *  Only a label, and worth saying plainly because the name invites a stronger
@@ -9813,6 +9854,14 @@ export type TourneyState = {
 	/**  The chosen one's maps and pools. */
 	copySource: CopySourceMaps | null,
 	copySourceStatus: TourneyLoadStatus,
+	/**
+	 *  The named formats, for the create form. Empty until asked, and where
+	 *  the service offers none.
+	 */
+	presets: TourneyPreset[],
+	/**  The event the create form is being filled from, once read. */
+	template: Tourney | null,
+	templateStatus: TourneyLoadStatus,
 };
 
 /**

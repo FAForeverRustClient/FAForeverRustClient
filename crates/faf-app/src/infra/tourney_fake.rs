@@ -29,7 +29,7 @@ use faf_domain::state::{
     BracketConfig, Caster, Currency, FormatDraft, Prize, Qualifier, QualifierRule, SeriesColour,
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries,
 };
-use faf_domain::state::{CopySource, EntrantRatings, RatingCheck};
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
 
@@ -1192,6 +1192,11 @@ impl TourneyPort for FakeTourney {
         Err(RequestError::rejected(
             "Importing maps is not available offline",
         ))
+    }
+
+    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
+        // None offline: the create form then simply offers no preset.
+        Ok(Vec::new())
     }
 
     async fn player_ratings(

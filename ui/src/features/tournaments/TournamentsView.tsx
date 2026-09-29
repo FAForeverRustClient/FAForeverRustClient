@@ -312,6 +312,10 @@ export function TournamentsView() {
               variant="primary"
               onClick={() => {
                 act({ type: "loadSeries" });
+                // The form's two starting points: named formats and this
+                // account's earlier events, both read as the form opens.
+                act({ type: "loadPresets" });
+                act({ type: "loadCopySources" });
                 setEditing("create");
               }}
               disabled={busy}
@@ -759,6 +763,11 @@ export function TournamentsView() {
             setEditing(null);
           }}
           onClose={() => setEditing(null)}
+          presets={state.presets}
+          sources={state.copySources}
+          template={state.template}
+          templateStatus={state.templateStatus}
+          onLoadTemplate={(tournamentId) => act({ type: "loadTemplate", payload: { tournamentId } })}
         />
       )}
 

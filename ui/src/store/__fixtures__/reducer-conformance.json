@@ -593,6 +593,11 @@
       "copySource": null,
       "copySourceStatus": {
         "type": "idle"
+      },
+      "presets": [],
+      "template": null,
+      "templateStatus": {
+        "type": "idle"
       }
     },
     "training": {
@@ -7116,6 +7121,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -7130,6 +7136,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -7193,6 +7203,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -7207,6 +7218,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -7268,6 +7283,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -7282,6 +7298,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -7343,6 +7363,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -7358,6 +7379,10 @@
             },
             "status": {
               "type": "loading"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -7416,6 +7441,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -7431,6 +7457,10 @@
             },
             "status": {
               "type": "loading"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -7753,6 +7783,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -7768,6 +7799,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         }
@@ -7828,6 +7863,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -7843,6 +7879,10 @@
             },
             "status": {
               "type": "loading"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -8427,6 +8467,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -8442,6 +8483,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -8763,6 +8808,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -8778,6 +8824,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -9096,6 +9146,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -9111,6 +9162,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -9692,6 +9747,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -9707,6 +9763,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -10162,6 +10222,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -10177,6 +10238,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -10640,6 +10705,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -10655,6 +10721,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -11103,6 +11173,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -11118,6 +11189,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -11573,6 +11648,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -11588,6 +11664,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -12042,6 +12122,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -12057,6 +12138,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -12526,6 +12611,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -12541,6 +12627,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -13005,6 +13095,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -13020,6 +13111,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -13344,6 +13439,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -13359,6 +13455,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -13684,6 +13784,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -13699,6 +13800,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -14034,6 +14139,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -14049,6 +14155,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -14507,6 +14617,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -14522,6 +14633,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -14851,6 +14966,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -14866,6 +14982,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         }
@@ -14929,6 +15049,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -14943,6 +15064,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15037,6 +15162,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -15051,6 +15177,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15110,6 +15240,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -15124,6 +15255,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15193,6 +15328,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -15207,6 +15343,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15285,6 +15425,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -15299,6 +15440,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15358,6 +15503,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -15372,6 +15518,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15437,6 +15587,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -15451,6 +15602,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15507,6 +15662,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -15521,6 +15677,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15582,6 +15742,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "loading"
@@ -15596,6 +15757,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15656,6 +15821,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "payload": {
@@ -15674,6 +15840,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15730,6 +15900,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "loading"
@@ -15744,6 +15915,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15816,6 +15991,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": {
               "alreadyIn": false,
               "asOf": null,
@@ -15843,6 +16019,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -15899,6 +16079,7 @@
             "playerRatingsStatus": {
               "type": "loading"
             },
+            "presets": [],
             "ratingCheck": {
               "alreadyIn": false,
               "asOf": null,
@@ -15926,6 +16107,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16015,6 +16200,7 @@
             "playerRatingsStatus": {
               "type": "ready"
             },
+            "presets": [],
             "ratingCheck": {
               "alreadyIn": false,
               "asOf": null,
@@ -16042,6 +16228,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16098,6 +16288,7 @@
             "playerRatingsStatus": {
               "type": "loading"
             },
+            "presets": [],
             "ratingCheck": {
               "alreadyIn": false,
               "asOf": null,
@@ -16125,6 +16316,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16189,6 +16384,7 @@
               },
               "type": "failed"
             },
+            "presets": [],
             "ratingCheck": {
               "alreadyIn": false,
               "asOf": null,
@@ -16217,6 +16413,1510 @@
             },
             "status": {
               "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "the create form reads the presets and fills from an earlier event twice",
+      "steps": [
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "presetsLoaded",
+              "payload": {
+                "presets": [
+                  {
+                    "id": "lots",
+                    "name": "LotS",
+                    "blurb": "Invitational with longer deciders",
+                    "notes": [
+                      "Seeds 13-16 come from the qualifier."
+                    ],
+                    "allowed": true,
+                    "apply": {
+                      "id": "preset:lots",
+                      "name": "Event preset:lots",
+                      "description": "",
+                      "rewards": "",
+                      "sponsors": "",
+                      "prize": null,
+                      "streams": [],
+                      "lobbyOptions": "",
+                      "mods": "",
+                      "descImages": [],
+                      "status": "signup",
+                      "category": "community",
+                      "competition": "team",
+                      "formation": "solo",
+                      "bracketKind": "single",
+                      "teamSize": 0,
+                      "divisions": 0,
+                      "maxTeams": 0,
+                      "minTeams": 0,
+                      "seeding": "rating",
+                      "plan": null,
+                      "playerReporting": false,
+                      "signupMode": "open",
+                      "vetoEnabled": false,
+                      "rating": {
+                        "min": null,
+                        "max": null,
+                        "maxTeam": null,
+                        "cap": null
+                      },
+                      "ratingKind": "global",
+                      "ratingDate": null,
+                      "createdAt": 1700000000,
+                      "eventDate": null,
+                      "signupOpensAt": null,
+                      "signupClosesAt": null,
+                      "checkInOpensAt": null,
+                      "checkInDeadline": null,
+                      "chatLocked": false,
+                      "veto": {
+                        "enabled": false,
+                        "mode": "upfront",
+                        "teamA": "lowerA",
+                        "revealBans": false
+                      },
+                      "factionVeto": {
+                        "enabled": false,
+                        "bans": 1,
+                        "picks": 2
+                      },
+                      "ffa": null,
+                      "draft": null,
+                      "pendingCaptains": [],
+                      "draftSnakes": false,
+                      "imported": false,
+                      "published": false,
+                      "publishAt": null,
+                      "playerCount": 8,
+                      "teamCount": 8,
+                      "players": [],
+                      "teams": [],
+                      "subs": [],
+                      "matches": [],
+                      "mapDb": [],
+                      "mapPools": [],
+                      "poolAssign": [],
+                      "roundMaps": [],
+                      "organisers": [],
+                      "organiserDiscords": [],
+                      "news": [],
+                      "invites": [],
+                      "auditLog": [],
+                      "organiserAccounts": [],
+                      "chatMutes": [],
+                      "casters": [],
+                      "abandoned": false,
+                      "chatMutedMe": false,
+                      "seriesId": null,
+                      "seriesName": "",
+                      "seriesColour": "plain",
+                      "qualifiers": [],
+                      "feedsInto": null,
+                      "championTeamId": null,
+                      "swissOrder": [],
+                      "swissTiebreak": "gameDiff",
+                      "swissCuts": {
+                        "wins": 0,
+                        "losses": 0
+                      },
+                      "swissRounds": 0,
+                      "swissBeaten": {},
+                      "bans": [],
+                      "stopAtAlive": 0,
+                      "survivors": null,
+                      "earlyFinish": null,
+                      "myBan": null,
+                      "entryOrder": [],
+                      "captainMode": "manual",
+                      "captainCount": 0,
+                      "canManage": false,
+                      "myMentionCount": 0,
+                      "chatPingCount": 0,
+                      "myUnreadCount": 0,
+                      "sourceUrl": "",
+                      "importedType": "",
+                      "standingsOnly": false,
+                      "pickOpponents": false,
+                      "pickMinutes": 0,
+                      "pickMode": "half",
+                      "decidingBestOf": 0,
+                      "stageTwoPlan": null,
+                      "playoffs": null,
+                      "picks": null,
+                      "plannedRoundOne": [],
+                      "roundOneOpen": false,
+                      "importedGroups": [],
+                      "importedStandings": [],
+                      "eventDays": [],
+                      "viewer": {
+                        "loggedIn": false,
+                        "organiser": false,
+                        "fafId": null,
+                        "fafName": "",
+                        "signedUpPlayerId": null,
+                        "memberTeamId": null,
+                        "caster": false,
+                        "newsReadAt": null,
+                        "invited": false
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [
+              {
+                "allowed": true,
+                "apply": {
+                  "abandoned": false,
+                  "auditLog": [],
+                  "bans": [],
+                  "bracketKind": "single",
+                  "canManage": false,
+                  "captainCount": 0,
+                  "captainMode": "manual",
+                  "casters": [],
+                  "category": "community",
+                  "championTeamId": null,
+                  "chatLocked": false,
+                  "chatMutedMe": false,
+                  "chatMutes": [],
+                  "chatPingCount": 0,
+                  "checkInDeadline": null,
+                  "checkInOpensAt": null,
+                  "competition": "team",
+                  "createdAt": 1700000000,
+                  "decidingBestOf": 0,
+                  "descImages": [],
+                  "description": "",
+                  "divisions": 0,
+                  "draft": null,
+                  "draftSnakes": false,
+                  "earlyFinish": null,
+                  "entryOrder": [],
+                  "eventDate": null,
+                  "eventDays": [],
+                  "factionVeto": {
+                    "bans": 1,
+                    "enabled": false,
+                    "picks": 2
+                  },
+                  "feedsInto": null,
+                  "ffa": null,
+                  "formation": "solo",
+                  "id": "preset:lots",
+                  "imported": false,
+                  "importedGroups": [],
+                  "importedStandings": [],
+                  "importedType": "",
+                  "invites": [],
+                  "lobbyOptions": "",
+                  "mapDb": [],
+                  "mapPools": [],
+                  "matches": [],
+                  "maxTeams": 0,
+                  "minTeams": 0,
+                  "mods": "",
+                  "myBan": null,
+                  "myMentionCount": 0,
+                  "myUnreadCount": 0,
+                  "name": "Event preset:lots",
+                  "news": [],
+                  "organiserAccounts": [],
+                  "organiserDiscords": [],
+                  "organisers": [],
+                  "pendingCaptains": [],
+                  "pickMinutes": 0,
+                  "pickMode": "half",
+                  "pickOpponents": false,
+                  "picks": null,
+                  "plan": null,
+                  "plannedRoundOne": [],
+                  "playerCount": 8,
+                  "playerReporting": false,
+                  "players": [],
+                  "playoffs": null,
+                  "poolAssign": [],
+                  "prize": null,
+                  "publishAt": null,
+                  "published": false,
+                  "qualifiers": [],
+                  "rating": {
+                    "cap": null,
+                    "max": null,
+                    "maxTeam": null,
+                    "min": null
+                  },
+                  "ratingDate": null,
+                  "ratingKind": "global",
+                  "rewards": "",
+                  "roundMaps": [],
+                  "roundOneOpen": false,
+                  "seeding": "rating",
+                  "seriesColour": "plain",
+                  "seriesId": null,
+                  "seriesName": "",
+                  "signupClosesAt": null,
+                  "signupMode": "open",
+                  "signupOpensAt": null,
+                  "sourceUrl": "",
+                  "sponsors": "",
+                  "stageTwoPlan": null,
+                  "standingsOnly": false,
+                  "status": "signup",
+                  "stopAtAlive": 0,
+                  "streams": [],
+                  "subs": [],
+                  "survivors": null,
+                  "swissBeaten": {},
+                  "swissCuts": {
+                    "losses": 0,
+                    "wins": 0
+                  },
+                  "swissOrder": [],
+                  "swissRounds": 0,
+                  "swissTiebreak": "gameDiff",
+                  "teamCount": 8,
+                  "teamSize": 0,
+                  "teams": [],
+                  "veto": {
+                    "enabled": false,
+                    "mode": "upfront",
+                    "revealBans": false,
+                    "teamA": "lowerA"
+                  },
+                  "vetoEnabled": false,
+                  "viewer": {
+                    "caster": false,
+                    "fafId": null,
+                    "fafName": "",
+                    "invited": false,
+                    "loggedIn": false,
+                    "memberTeamId": null,
+                    "newsReadAt": null,
+                    "organiser": false,
+                    "signedUpPlayerId": null
+                  }
+                },
+                "blurb": "Invitational with longer deciders",
+                "id": "lots",
+                "name": "LotS",
+                "notes": [
+                  "Seeds 13-16 come from the qualifier."
+                ]
+              }
+            ],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "templateLoading"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [
+              {
+                "allowed": true,
+                "apply": {
+                  "abandoned": false,
+                  "auditLog": [],
+                  "bans": [],
+                  "bracketKind": "single",
+                  "canManage": false,
+                  "captainCount": 0,
+                  "captainMode": "manual",
+                  "casters": [],
+                  "category": "community",
+                  "championTeamId": null,
+                  "chatLocked": false,
+                  "chatMutedMe": false,
+                  "chatMutes": [],
+                  "chatPingCount": 0,
+                  "checkInDeadline": null,
+                  "checkInOpensAt": null,
+                  "competition": "team",
+                  "createdAt": 1700000000,
+                  "decidingBestOf": 0,
+                  "descImages": [],
+                  "description": "",
+                  "divisions": 0,
+                  "draft": null,
+                  "draftSnakes": false,
+                  "earlyFinish": null,
+                  "entryOrder": [],
+                  "eventDate": null,
+                  "eventDays": [],
+                  "factionVeto": {
+                    "bans": 1,
+                    "enabled": false,
+                    "picks": 2
+                  },
+                  "feedsInto": null,
+                  "ffa": null,
+                  "formation": "solo",
+                  "id": "preset:lots",
+                  "imported": false,
+                  "importedGroups": [],
+                  "importedStandings": [],
+                  "importedType": "",
+                  "invites": [],
+                  "lobbyOptions": "",
+                  "mapDb": [],
+                  "mapPools": [],
+                  "matches": [],
+                  "maxTeams": 0,
+                  "minTeams": 0,
+                  "mods": "",
+                  "myBan": null,
+                  "myMentionCount": 0,
+                  "myUnreadCount": 0,
+                  "name": "Event preset:lots",
+                  "news": [],
+                  "organiserAccounts": [],
+                  "organiserDiscords": [],
+                  "organisers": [],
+                  "pendingCaptains": [],
+                  "pickMinutes": 0,
+                  "pickMode": "half",
+                  "pickOpponents": false,
+                  "picks": null,
+                  "plan": null,
+                  "plannedRoundOne": [],
+                  "playerCount": 8,
+                  "playerReporting": false,
+                  "players": [],
+                  "playoffs": null,
+                  "poolAssign": [],
+                  "prize": null,
+                  "publishAt": null,
+                  "published": false,
+                  "qualifiers": [],
+                  "rating": {
+                    "cap": null,
+                    "max": null,
+                    "maxTeam": null,
+                    "min": null
+                  },
+                  "ratingDate": null,
+                  "ratingKind": "global",
+                  "rewards": "",
+                  "roundMaps": [],
+                  "roundOneOpen": false,
+                  "seeding": "rating",
+                  "seriesColour": "plain",
+                  "seriesId": null,
+                  "seriesName": "",
+                  "signupClosesAt": null,
+                  "signupMode": "open",
+                  "signupOpensAt": null,
+                  "sourceUrl": "",
+                  "sponsors": "",
+                  "stageTwoPlan": null,
+                  "standingsOnly": false,
+                  "status": "signup",
+                  "stopAtAlive": 0,
+                  "streams": [],
+                  "subs": [],
+                  "survivors": null,
+                  "swissBeaten": {},
+                  "swissCuts": {
+                    "losses": 0,
+                    "wins": 0
+                  },
+                  "swissOrder": [],
+                  "swissRounds": 0,
+                  "swissTiebreak": "gameDiff",
+                  "teamCount": 8,
+                  "teamSize": 0,
+                  "teams": [],
+                  "veto": {
+                    "enabled": false,
+                    "mode": "upfront",
+                    "revealBans": false,
+                    "teamA": "lowerA"
+                  },
+                  "vetoEnabled": false,
+                  "viewer": {
+                    "caster": false,
+                    "fafId": null,
+                    "fafName": "",
+                    "invited": false,
+                    "loggedIn": false,
+                    "memberTeamId": null,
+                    "newsReadAt": null,
+                    "organiser": false,
+                    "signedUpPlayerId": null
+                  }
+                },
+                "blurb": "Invitational with longer deciders",
+                "id": "lots",
+                "name": "LotS",
+                "notes": [
+                  "Seeds 13-16 come from the qualifier."
+                ]
+              }
+            ],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "loading"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "templateLoaded",
+              "payload": {
+                "event": {
+                  "id": "e2",
+                  "name": "Event e2",
+                  "description": "",
+                  "rewards": "",
+                  "sponsors": "",
+                  "prize": null,
+                  "streams": [],
+                  "lobbyOptions": "",
+                  "mods": "",
+                  "descImages": [],
+                  "status": "signup",
+                  "category": "community",
+                  "competition": "team",
+                  "formation": "solo",
+                  "bracketKind": "single",
+                  "teamSize": 0,
+                  "divisions": 0,
+                  "maxTeams": 0,
+                  "minTeams": 0,
+                  "seeding": "rating",
+                  "plan": null,
+                  "playerReporting": false,
+                  "signupMode": "open",
+                  "vetoEnabled": false,
+                  "rating": {
+                    "min": null,
+                    "max": null,
+                    "maxTeam": null,
+                    "cap": null
+                  },
+                  "ratingKind": "global",
+                  "ratingDate": null,
+                  "createdAt": 1700000000,
+                  "eventDate": null,
+                  "signupOpensAt": null,
+                  "signupClosesAt": null,
+                  "checkInOpensAt": null,
+                  "checkInDeadline": null,
+                  "chatLocked": false,
+                  "veto": {
+                    "enabled": false,
+                    "mode": "upfront",
+                    "teamA": "lowerA",
+                    "revealBans": false
+                  },
+                  "factionVeto": {
+                    "enabled": false,
+                    "bans": 1,
+                    "picks": 2
+                  },
+                  "ffa": null,
+                  "draft": null,
+                  "pendingCaptains": [],
+                  "draftSnakes": false,
+                  "imported": false,
+                  "published": false,
+                  "publishAt": null,
+                  "playerCount": 8,
+                  "teamCount": 8,
+                  "players": [],
+                  "teams": [],
+                  "subs": [],
+                  "matches": [],
+                  "mapDb": [],
+                  "mapPools": [],
+                  "poolAssign": [],
+                  "roundMaps": [],
+                  "organisers": [],
+                  "organiserDiscords": [],
+                  "news": [],
+                  "invites": [],
+                  "auditLog": [],
+                  "organiserAccounts": [],
+                  "chatMutes": [],
+                  "casters": [],
+                  "abandoned": false,
+                  "chatMutedMe": false,
+                  "seriesId": null,
+                  "seriesName": "",
+                  "seriesColour": "plain",
+                  "qualifiers": [],
+                  "feedsInto": null,
+                  "championTeamId": null,
+                  "swissOrder": [],
+                  "swissTiebreak": "gameDiff",
+                  "swissCuts": {
+                    "wins": 0,
+                    "losses": 0
+                  },
+                  "swissRounds": 0,
+                  "swissBeaten": {},
+                  "bans": [],
+                  "stopAtAlive": 0,
+                  "survivors": null,
+                  "earlyFinish": null,
+                  "myBan": null,
+                  "entryOrder": [],
+                  "captainMode": "manual",
+                  "captainCount": 0,
+                  "canManage": false,
+                  "myMentionCount": 0,
+                  "chatPingCount": 0,
+                  "myUnreadCount": 0,
+                  "sourceUrl": "",
+                  "importedType": "",
+                  "standingsOnly": false,
+                  "pickOpponents": false,
+                  "pickMinutes": 0,
+                  "pickMode": "half",
+                  "decidingBestOf": 0,
+                  "stageTwoPlan": null,
+                  "playoffs": null,
+                  "picks": null,
+                  "plannedRoundOne": [],
+                  "roundOneOpen": false,
+                  "importedGroups": [],
+                  "importedStandings": [],
+                  "eventDays": [],
+                  "viewer": {
+                    "loggedIn": false,
+                    "organiser": false,
+                    "fafId": null,
+                    "fafName": "",
+                    "signedUpPlayerId": null,
+                    "memberTeamId": null,
+                    "caster": false,
+                    "newsReadAt": null,
+                    "invited": false
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [
+              {
+                "allowed": true,
+                "apply": {
+                  "abandoned": false,
+                  "auditLog": [],
+                  "bans": [],
+                  "bracketKind": "single",
+                  "canManage": false,
+                  "captainCount": 0,
+                  "captainMode": "manual",
+                  "casters": [],
+                  "category": "community",
+                  "championTeamId": null,
+                  "chatLocked": false,
+                  "chatMutedMe": false,
+                  "chatMutes": [],
+                  "chatPingCount": 0,
+                  "checkInDeadline": null,
+                  "checkInOpensAt": null,
+                  "competition": "team",
+                  "createdAt": 1700000000,
+                  "decidingBestOf": 0,
+                  "descImages": [],
+                  "description": "",
+                  "divisions": 0,
+                  "draft": null,
+                  "draftSnakes": false,
+                  "earlyFinish": null,
+                  "entryOrder": [],
+                  "eventDate": null,
+                  "eventDays": [],
+                  "factionVeto": {
+                    "bans": 1,
+                    "enabled": false,
+                    "picks": 2
+                  },
+                  "feedsInto": null,
+                  "ffa": null,
+                  "formation": "solo",
+                  "id": "preset:lots",
+                  "imported": false,
+                  "importedGroups": [],
+                  "importedStandings": [],
+                  "importedType": "",
+                  "invites": [],
+                  "lobbyOptions": "",
+                  "mapDb": [],
+                  "mapPools": [],
+                  "matches": [],
+                  "maxTeams": 0,
+                  "minTeams": 0,
+                  "mods": "",
+                  "myBan": null,
+                  "myMentionCount": 0,
+                  "myUnreadCount": 0,
+                  "name": "Event preset:lots",
+                  "news": [],
+                  "organiserAccounts": [],
+                  "organiserDiscords": [],
+                  "organisers": [],
+                  "pendingCaptains": [],
+                  "pickMinutes": 0,
+                  "pickMode": "half",
+                  "pickOpponents": false,
+                  "picks": null,
+                  "plan": null,
+                  "plannedRoundOne": [],
+                  "playerCount": 8,
+                  "playerReporting": false,
+                  "players": [],
+                  "playoffs": null,
+                  "poolAssign": [],
+                  "prize": null,
+                  "publishAt": null,
+                  "published": false,
+                  "qualifiers": [],
+                  "rating": {
+                    "cap": null,
+                    "max": null,
+                    "maxTeam": null,
+                    "min": null
+                  },
+                  "ratingDate": null,
+                  "ratingKind": "global",
+                  "rewards": "",
+                  "roundMaps": [],
+                  "roundOneOpen": false,
+                  "seeding": "rating",
+                  "seriesColour": "plain",
+                  "seriesId": null,
+                  "seriesName": "",
+                  "signupClosesAt": null,
+                  "signupMode": "open",
+                  "signupOpensAt": null,
+                  "sourceUrl": "",
+                  "sponsors": "",
+                  "stageTwoPlan": null,
+                  "standingsOnly": false,
+                  "status": "signup",
+                  "stopAtAlive": 0,
+                  "streams": [],
+                  "subs": [],
+                  "survivors": null,
+                  "swissBeaten": {},
+                  "swissCuts": {
+                    "losses": 0,
+                    "wins": 0
+                  },
+                  "swissOrder": [],
+                  "swissRounds": 0,
+                  "swissTiebreak": "gameDiff",
+                  "teamCount": 8,
+                  "teamSize": 0,
+                  "teams": [],
+                  "veto": {
+                    "enabled": false,
+                    "mode": "upfront",
+                    "revealBans": false,
+                    "teamA": "lowerA"
+                  },
+                  "vetoEnabled": false,
+                  "viewer": {
+                    "caster": false,
+                    "fafId": null,
+                    "fafName": "",
+                    "invited": false,
+                    "loggedIn": false,
+                    "memberTeamId": null,
+                    "newsReadAt": null,
+                    "organiser": false,
+                    "signedUpPlayerId": null
+                  }
+                },
+                "blurb": "Invitational with longer deciders",
+                "id": "lots",
+                "name": "LotS",
+                "notes": [
+                  "Seeds 13-16 come from the qualifier."
+                ]
+              }
+            ],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": {
+              "abandoned": false,
+              "auditLog": [],
+              "bans": [],
+              "bracketKind": "single",
+              "canManage": false,
+              "captainCount": 0,
+              "captainMode": "manual",
+              "casters": [],
+              "category": "community",
+              "championTeamId": null,
+              "chatLocked": false,
+              "chatMutedMe": false,
+              "chatMutes": [],
+              "chatPingCount": 0,
+              "checkInDeadline": null,
+              "checkInOpensAt": null,
+              "competition": "team",
+              "createdAt": 1700000000,
+              "decidingBestOf": 0,
+              "descImages": [],
+              "description": "",
+              "divisions": 0,
+              "draft": null,
+              "draftSnakes": false,
+              "earlyFinish": null,
+              "entryOrder": [],
+              "eventDate": null,
+              "eventDays": [],
+              "factionVeto": {
+                "bans": 1,
+                "enabled": false,
+                "picks": 2
+              },
+              "feedsInto": null,
+              "ffa": null,
+              "formation": "solo",
+              "id": "e2",
+              "imported": false,
+              "importedGroups": [],
+              "importedStandings": [],
+              "importedType": "",
+              "invites": [],
+              "lobbyOptions": "",
+              "mapDb": [],
+              "mapPools": [],
+              "matches": [],
+              "maxTeams": 0,
+              "minTeams": 0,
+              "mods": "",
+              "myBan": null,
+              "myMentionCount": 0,
+              "myUnreadCount": 0,
+              "name": "Event e2",
+              "news": [],
+              "organiserAccounts": [],
+              "organiserDiscords": [],
+              "organisers": [],
+              "pendingCaptains": [],
+              "pickMinutes": 0,
+              "pickMode": "half",
+              "pickOpponents": false,
+              "picks": null,
+              "plan": null,
+              "plannedRoundOne": [],
+              "playerCount": 8,
+              "playerReporting": false,
+              "players": [],
+              "playoffs": null,
+              "poolAssign": [],
+              "prize": null,
+              "publishAt": null,
+              "published": false,
+              "qualifiers": [],
+              "rating": {
+                "cap": null,
+                "max": null,
+                "maxTeam": null,
+                "min": null
+              },
+              "ratingDate": null,
+              "ratingKind": "global",
+              "rewards": "",
+              "roundMaps": [],
+              "roundOneOpen": false,
+              "seeding": "rating",
+              "seriesColour": "plain",
+              "seriesId": null,
+              "seriesName": "",
+              "signupClosesAt": null,
+              "signupMode": "open",
+              "signupOpensAt": null,
+              "sourceUrl": "",
+              "sponsors": "",
+              "stageTwoPlan": null,
+              "standingsOnly": false,
+              "status": "signup",
+              "stopAtAlive": 0,
+              "streams": [],
+              "subs": [],
+              "survivors": null,
+              "swissBeaten": {},
+              "swissCuts": {
+                "losses": 0,
+                "wins": 0
+              },
+              "swissOrder": [],
+              "swissRounds": 0,
+              "swissTiebreak": "gameDiff",
+              "teamCount": 8,
+              "teamSize": 0,
+              "teams": [],
+              "veto": {
+                "enabled": false,
+                "mode": "upfront",
+                "revealBans": false,
+                "teamA": "lowerA"
+              },
+              "vetoEnabled": false,
+              "viewer": {
+                "caster": false,
+                "fafId": null,
+                "fafName": "",
+                "invited": false,
+                "loggedIn": false,
+                "memberTeamId": null,
+                "newsReadAt": null,
+                "organiser": false,
+                "signedUpPlayerId": null
+              }
+            },
+            "templateStatus": {
+              "type": "ready"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "templateLoading"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [
+              {
+                "allowed": true,
+                "apply": {
+                  "abandoned": false,
+                  "auditLog": [],
+                  "bans": [],
+                  "bracketKind": "single",
+                  "canManage": false,
+                  "captainCount": 0,
+                  "captainMode": "manual",
+                  "casters": [],
+                  "category": "community",
+                  "championTeamId": null,
+                  "chatLocked": false,
+                  "chatMutedMe": false,
+                  "chatMutes": [],
+                  "chatPingCount": 0,
+                  "checkInDeadline": null,
+                  "checkInOpensAt": null,
+                  "competition": "team",
+                  "createdAt": 1700000000,
+                  "decidingBestOf": 0,
+                  "descImages": [],
+                  "description": "",
+                  "divisions": 0,
+                  "draft": null,
+                  "draftSnakes": false,
+                  "earlyFinish": null,
+                  "entryOrder": [],
+                  "eventDate": null,
+                  "eventDays": [],
+                  "factionVeto": {
+                    "bans": 1,
+                    "enabled": false,
+                    "picks": 2
+                  },
+                  "feedsInto": null,
+                  "ffa": null,
+                  "formation": "solo",
+                  "id": "preset:lots",
+                  "imported": false,
+                  "importedGroups": [],
+                  "importedStandings": [],
+                  "importedType": "",
+                  "invites": [],
+                  "lobbyOptions": "",
+                  "mapDb": [],
+                  "mapPools": [],
+                  "matches": [],
+                  "maxTeams": 0,
+                  "minTeams": 0,
+                  "mods": "",
+                  "myBan": null,
+                  "myMentionCount": 0,
+                  "myUnreadCount": 0,
+                  "name": "Event preset:lots",
+                  "news": [],
+                  "organiserAccounts": [],
+                  "organiserDiscords": [],
+                  "organisers": [],
+                  "pendingCaptains": [],
+                  "pickMinutes": 0,
+                  "pickMode": "half",
+                  "pickOpponents": false,
+                  "picks": null,
+                  "plan": null,
+                  "plannedRoundOne": [],
+                  "playerCount": 8,
+                  "playerReporting": false,
+                  "players": [],
+                  "playoffs": null,
+                  "poolAssign": [],
+                  "prize": null,
+                  "publishAt": null,
+                  "published": false,
+                  "qualifiers": [],
+                  "rating": {
+                    "cap": null,
+                    "max": null,
+                    "maxTeam": null,
+                    "min": null
+                  },
+                  "ratingDate": null,
+                  "ratingKind": "global",
+                  "rewards": "",
+                  "roundMaps": [],
+                  "roundOneOpen": false,
+                  "seeding": "rating",
+                  "seriesColour": "plain",
+                  "seriesId": null,
+                  "seriesName": "",
+                  "signupClosesAt": null,
+                  "signupMode": "open",
+                  "signupOpensAt": null,
+                  "sourceUrl": "",
+                  "sponsors": "",
+                  "stageTwoPlan": null,
+                  "standingsOnly": false,
+                  "status": "signup",
+                  "stopAtAlive": 0,
+                  "streams": [],
+                  "subs": [],
+                  "survivors": null,
+                  "swissBeaten": {},
+                  "swissCuts": {
+                    "losses": 0,
+                    "wins": 0
+                  },
+                  "swissOrder": [],
+                  "swissRounds": 0,
+                  "swissTiebreak": "gameDiff",
+                  "teamCount": 8,
+                  "teamSize": 0,
+                  "teams": [],
+                  "veto": {
+                    "enabled": false,
+                    "mode": "upfront",
+                    "revealBans": false,
+                    "teamA": "lowerA"
+                  },
+                  "vetoEnabled": false,
+                  "viewer": {
+                    "caster": false,
+                    "fafId": null,
+                    "fafName": "",
+                    "invited": false,
+                    "loggedIn": false,
+                    "memberTeamId": null,
+                    "newsReadAt": null,
+                    "organiser": false,
+                    "signedUpPlayerId": null
+                  }
+                },
+                "blurb": "Invitational with longer deciders",
+                "id": "lots",
+                "name": "LotS",
+                "notes": [
+                  "Seeds 13-16 come from the qualifier."
+                ]
+              }
+            ],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "loading"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "templateFailed",
+              "payload": {
+                "reason": "Tournament not found",
+                "kind": "rejected"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [
+              {
+                "allowed": true,
+                "apply": {
+                  "abandoned": false,
+                  "auditLog": [],
+                  "bans": [],
+                  "bracketKind": "single",
+                  "canManage": false,
+                  "captainCount": 0,
+                  "captainMode": "manual",
+                  "casters": [],
+                  "category": "community",
+                  "championTeamId": null,
+                  "chatLocked": false,
+                  "chatMutedMe": false,
+                  "chatMutes": [],
+                  "chatPingCount": 0,
+                  "checkInDeadline": null,
+                  "checkInOpensAt": null,
+                  "competition": "team",
+                  "createdAt": 1700000000,
+                  "decidingBestOf": 0,
+                  "descImages": [],
+                  "description": "",
+                  "divisions": 0,
+                  "draft": null,
+                  "draftSnakes": false,
+                  "earlyFinish": null,
+                  "entryOrder": [],
+                  "eventDate": null,
+                  "eventDays": [],
+                  "factionVeto": {
+                    "bans": 1,
+                    "enabled": false,
+                    "picks": 2
+                  },
+                  "feedsInto": null,
+                  "ffa": null,
+                  "formation": "solo",
+                  "id": "preset:lots",
+                  "imported": false,
+                  "importedGroups": [],
+                  "importedStandings": [],
+                  "importedType": "",
+                  "invites": [],
+                  "lobbyOptions": "",
+                  "mapDb": [],
+                  "mapPools": [],
+                  "matches": [],
+                  "maxTeams": 0,
+                  "minTeams": 0,
+                  "mods": "",
+                  "myBan": null,
+                  "myMentionCount": 0,
+                  "myUnreadCount": 0,
+                  "name": "Event preset:lots",
+                  "news": [],
+                  "organiserAccounts": [],
+                  "organiserDiscords": [],
+                  "organisers": [],
+                  "pendingCaptains": [],
+                  "pickMinutes": 0,
+                  "pickMode": "half",
+                  "pickOpponents": false,
+                  "picks": null,
+                  "plan": null,
+                  "plannedRoundOne": [],
+                  "playerCount": 8,
+                  "playerReporting": false,
+                  "players": [],
+                  "playoffs": null,
+                  "poolAssign": [],
+                  "prize": null,
+                  "publishAt": null,
+                  "published": false,
+                  "qualifiers": [],
+                  "rating": {
+                    "cap": null,
+                    "max": null,
+                    "maxTeam": null,
+                    "min": null
+                  },
+                  "ratingDate": null,
+                  "ratingKind": "global",
+                  "rewards": "",
+                  "roundMaps": [],
+                  "roundOneOpen": false,
+                  "seeding": "rating",
+                  "seriesColour": "plain",
+                  "seriesId": null,
+                  "seriesName": "",
+                  "signupClosesAt": null,
+                  "signupMode": "open",
+                  "signupOpensAt": null,
+                  "sourceUrl": "",
+                  "sponsors": "",
+                  "stageTwoPlan": null,
+                  "standingsOnly": false,
+                  "status": "signup",
+                  "stopAtAlive": 0,
+                  "streams": [],
+                  "subs": [],
+                  "survivors": null,
+                  "swissBeaten": {},
+                  "swissCuts": {
+                    "losses": 0,
+                    "wins": 0
+                  },
+                  "swissOrder": [],
+                  "swissRounds": 0,
+                  "swissTiebreak": "gameDiff",
+                  "teamCount": 8,
+                  "teamSize": 0,
+                  "teams": [],
+                  "veto": {
+                    "enabled": false,
+                    "mode": "upfront",
+                    "revealBans": false,
+                    "teamA": "lowerA"
+                  },
+                  "vetoEnabled": false,
+                  "viewer": {
+                    "caster": false,
+                    "fafId": null,
+                    "fafName": "",
+                    "invited": false,
+                    "loggedIn": false,
+                    "memberTeamId": null,
+                    "newsReadAt": null,
+                    "organiser": false,
+                    "signedUpPlayerId": null
+                  }
+                },
+                "blurb": "Invitational with longer deciders",
+                "id": "lots",
+                "name": "LotS",
+                "notes": [
+                  "Seeds 13-16 come from the qualifier."
+                ]
+              }
+            ],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "payload": {
+                "kind": "rejected",
+                "reason": "Tournament not found"
+              },
+              "type": "failed"
             }
           }
         }
@@ -16277,6 +17977,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -16291,6 +17992,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16355,6 +18060,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -16369,6 +18075,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16425,6 +18135,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -16439,6 +18150,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16514,6 +18229,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -16528,6 +18244,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16592,6 +18312,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -16606,6 +18327,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16681,6 +18406,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -16695,6 +18421,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16759,6 +18489,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -16773,6 +18504,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16845,6 +18580,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -16859,6 +18595,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16920,6 +18660,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -16934,6 +18675,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -16994,6 +18739,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -17012,6 +18758,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -17068,6 +18818,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -17082,6 +18833,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -17153,6 +18908,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -17179,6 +18935,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -17242,6 +19002,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -17268,6 +19029,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -17330,6 +19095,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -17344,6 +19110,10 @@
               "type": "idle"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -17405,6 +19175,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -17419,6 +19190,10 @@
               "type": "loading"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -17492,6 +19267,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -17520,6 +19296,10 @@
               "type": "ready"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -17629,6 +19409,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -17657,6 +19438,10 @@
               "type": "ready"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -17730,6 +19515,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -17758,6 +19544,10 @@
               "type": "ready"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -17867,6 +19657,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -17895,6 +19686,10 @@
               "type": "ready"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -17993,6 +19788,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -18021,6 +19817,10 @@
               "type": "ready"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -18077,6 +19877,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -18105,6 +19906,10 @@
               "type": "ready"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -18165,6 +19970,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -18197,6 +20003,10 @@
               "type": "failed"
             },
             "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
               "type": "idle"
             }
           }
@@ -18787,6 +20597,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -18802,6 +20613,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -19383,6 +21198,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -19398,6 +21214,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -19887,6 +21707,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -19902,6 +21723,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -20372,6 +22197,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -20387,6 +22213,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -20854,6 +22684,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -20869,6 +22700,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -21362,6 +23197,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -21377,6 +23213,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -21859,6 +23699,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -21874,6 +23715,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -22355,6 +24200,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -22370,6 +24216,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -22874,6 +24724,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -22889,6 +24740,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -23371,6 +25226,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -23386,6 +25242,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -23858,6 +25718,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -23873,6 +25734,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -24345,6 +26210,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -24360,6 +26226,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         },
@@ -24681,6 +26551,7 @@
             "playerRatingsStatus": {
               "type": "idle"
             },
+            "presets": [],
             "ratingCheck": null,
             "ratingCheckStatus": {
               "type": "idle"
@@ -24696,6 +26567,10 @@
             },
             "status": {
               "type": "ready"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
             }
           }
         }

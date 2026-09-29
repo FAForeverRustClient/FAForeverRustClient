@@ -17,7 +17,7 @@ use faf_domain::state::{
     SeriesDraft, Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent,
     TourneyLoadStatus, TourneyPhase, TourneySeries, TourneyStatus,
 };
-use faf_domain::state::{CopySource, EntrantRatings, RatingCheck};
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::AppEvent;
 
@@ -201,6 +201,9 @@ impl TourneyPort for RefusingTourney {
         self.refused()
     }
     async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
+        self.refused()
+    }
+    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
         self.refused()
     }
     async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
@@ -1786,6 +1789,9 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             unreachable!()
         }
         async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
+            unreachable!()
+        }
+        async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
             unreachable!()
         }
         async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {

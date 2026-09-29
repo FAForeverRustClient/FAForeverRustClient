@@ -262,7 +262,16 @@ pub enum TourneyCommand {
         refresh: bool,
     },
     /// The events this account may import maps from (`my_tournaments`).
+    /// The create form's "Copy from an existing tournament" reads the same.
     LoadCopySources,
+    /// The named formats a director may host (`presets`).
+    LoadPresets,
+    /// Another event's whole document, to fill the create form from
+    /// ("Fill from this"), read without opening it.
+    #[serde(rename_all = "camelCase")]
+    LoadTemplate {
+        tournament_id: String,
+    },
     /// One of those events' maps and pools, to choose from.
     #[serde(rename_all = "camelCase")]
     LoadCopySource {
@@ -928,6 +937,17 @@ pub enum TourneyEvent {
         sources: Vec<CopySource>,
     },
     CopySourcesFailed {
+        reason: String,
+        kind: RequestFailureKind,
+    },
+    PresetsLoaded {
+        presets: Vec<TourneyPreset>,
+    },
+    TemplateLoading,
+    TemplateLoaded {
+        event: Box<Tourney>,
+    },
+    TemplateFailed {
         reason: String,
         kind: RequestFailureKind,
     },

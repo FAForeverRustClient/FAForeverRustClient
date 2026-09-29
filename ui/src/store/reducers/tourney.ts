@@ -252,6 +252,20 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
           payload: { reason: event.payload.reason, kind: event.payload.kind },
         },
       };
+    case "presetsLoaded":
+      return { ...state, presets: event.payload.presets };
+    case "templateLoading":
+      return { ...state, template: null, templateStatus: { type: "loading" } };
+    case "templateLoaded":
+      return { ...state, template: event.payload.event, templateStatus: { type: "ready" } };
+    case "templateFailed":
+      return {
+        ...state,
+        templateStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
     // As with a player's ratings: the next source drops the previous one's maps.
     case "copySourceLoading":
       return { ...state, copySource: null, copySourceStatus: { type: "loading" } };

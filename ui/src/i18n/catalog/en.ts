@@ -4801,6 +4801,16 @@ export const en = {
   "tournaments.form.competitionTeam": "Teams (bracket or Swiss)",
   "tournaments.form.competitionFfa": "Free-for-all lobbies",
   "tournaments.form.ffaLegend": "Free-for-all",
+  "tournaments.create.copyLegend": "Copy from an existing tournament",
+  "tournaments.create.copyHint": "(optional, fills everything except dates; maps are copied later in Manage)",
+  "tournaments.create.startBlank": "Start blank",
+  "tournaments.create.fill": "Fill from this",
+  "tournaments.create.filled": "Filled from \"{name}\": review, then create. Maps are copied in Manage afterwards.",
+  "tournaments.create.presetLegend": "Format preset",
+  "tournaments.create.presetNone": "Set everything up myself",
+  "tournaments.create.presetRestrictedOption": "{name} (tournament directors only)",
+  "tournaments.create.presetRestricted": "{name} can only be hosted by a global tournament director.",
+  "tournaments.create.presetEditable": "Everything below is pre-filled and still editable: the preset is a starting point, not a lock.",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

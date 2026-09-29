@@ -22,7 +22,16 @@
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
-import type { Prize, Tourney, TourneyDraft, TourneySeries } from "../../../ipc/bindings";
+import type {
+  CopySource,
+  Prize,
+  Tourney,
+  TourneyDraft,
+  TourneyLoadStatus,
+  TourneyPreset,
+  TourneySeries,
+} from "../../../ipc/bindings";
+import { CreateStarters } from "./CreateStarters";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { defaultPlanFor, rejectionOf, type DraftRejection } from "../../../shared/rules/tourneyRules";
@@ -285,6 +294,12 @@ interface TournamentFormProps {
   inline?: boolean;
   onSubmit: (draft: TourneyDraft) => void;
   onClose: () => void;
+  /** The create form's starting points: named formats and earlier events. */
+  presets?: TourneyPreset[];
+  sources?: CopySource[];
+  template?: Tourney | null;
+  templateStatus?: TourneyLoadStatus;
+  onLoadTemplate?: (tournamentId: string) => void;
 }
 
 export function TournamentForm({
@@ -294,6 +309,11 @@ export function TournamentForm({
   inline = false,
   onSubmit,
   onClose,
+  presets = [],
+  sources = [],
+  template = null,
+  templateStatus = { type: "idle" },
+  onLoadTemplate,
 }: TournamentFormProps) {
   const { t } = useTranslation();
   const editing = event !== null;
@@ -324,6 +344,19 @@ export function TournamentForm({
   return (
     <Frame>
       {!inline && <h3>{title}</h3>}
+
+      {!editing && onLoadTemplate !== undefined && (
+        <CreateStarters
+          draft={draft}
+          presets={presets}
+          sources={sources}
+          template={template}
+          templateStatus={templateStatus}
+          busy={busy}
+          onLoadTemplate={onLoadTemplate}
+          onChange={setDraft}
+        />
+      )}
 
       <label className="tournament-field">
         <span>{t("tournaments.form.name")}</span>

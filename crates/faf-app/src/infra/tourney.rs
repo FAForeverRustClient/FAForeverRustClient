@@ -26,7 +26,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
-use faf_domain::state::{CopySource, EntrantRatings, RatingCheck};
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use serde_json::{json, Value};
 
@@ -358,6 +358,11 @@ impl TourneyPort for TourneyClient {
     async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
         let document = self.get("my_tournaments", &[]).await?;
         Ok(tourney::parse_copy_sources(&document))
+    }
+
+    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
+        let document = self.get("presets", &[]).await?;
+        Ok(tourney::parse_presets(&document))
     }
 
     async fn player_ratings(

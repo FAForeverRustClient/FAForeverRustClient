@@ -453,6 +453,26 @@ pub struct FeedsInto {
     pub applied: Option<u32>,
 }
 
+/// A named format on the service (`GET /api/presets`): the Invitational, LotS.
+///
+/// Everyone may see that one exists; only a tournament director or a site
+/// admin gets its settings (`apply`) and may create with it. The service does
+/// not apply a preset itself: it checks the right to it, forces its category
+/// and records its name, and the form sends the settings as its own.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TourneyPreset {
+    pub id: String,
+    pub name: String,
+    pub blurb: String,
+    pub notes: Vec<String>,
+    /// Whether this account may host it.
+    pub allowed: bool,
+    /// Its settings, read as a tournament document so the form fills from it
+    /// exactly as it fills from an existing event; `None` where not allowed.
+    pub apply: Option<Box<Tourney>>,
+}
+
 /// A Swiss stage's settings beyond the match lengths: record cuts, the length
 /// of a deciding match, and a playoff bracket after it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
