@@ -16,6 +16,7 @@ import { PlayerChip } from "../PlayerChip";
 import { isMyMatch, myTeamId } from "../tourneyPresentation";
 import { hasVeto, myVetoSteps } from "./vetoPresentation";
 import { MatchChatContext, mayOpenMatchChat } from "./matchChat";
+import { playersLabel } from "../display";
 
 /**
  * A slot's name as the bracket prints it, or null for a slot nobody holds yet.
@@ -44,18 +45,25 @@ export function soloProfileOf(
   return profiles.find((profile) => profile.id === fafId) ?? null;
 }
 
-/** A slot's name, as a player chip that opens the card where there is one account. */
+/**
+ * A slot's name, as a player chip that opens the card where there is one
+ * account. With `asPlayers`, a team is its players' names, the website's "Show
+ * players": only where the website does it, so the caller decides.
+ */
 export function TeamName({
   event,
   profiles,
   teamId,
+  asPlayers = false,
 }: {
   event: Tourney;
   profiles: PlayerSummary[];
   teamId: string | null;
+  asPlayers?: boolean;
 }) {
   const { t } = useTranslation();
-  const name = teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd");
+  const name =
+    (asPlayers ? playersLabel(event, teamId) : null) ?? teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd");
   const profile = soloProfileOf(event, profiles, teamId);
   return profile ? <PlayerChip player={profile} overrideName={name} /> : <>{name}</>;
 }

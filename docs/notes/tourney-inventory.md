@@ -153,7 +153,8 @@ login), instant team join (`join_team`, removed), organiser links
   the series index and series pages (editions, winners, series bans), FAQ as
   pages with the three official rules links, asking for hosting rights
   (`host_request`), and site administration (section 3.19).
-- Header: view as player, show players, streamer mode, hotkeys. The status
+- Header: done on `tourney/batch-3`, the three display switches and their
+  shortcuts included. The status
   pill, category and type line, stage stepper, turn banner and scheduled
   publishing are done on `tourney/batch-3`; a scheduled publish never showed
   before, because `publishAt` is an ISO date and was read as milliseconds.

@@ -14,6 +14,7 @@ import type { PlayerSummary, Tourney, TourneyTeam } from "../../../ipc/bindings"
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { EntrantName } from "../EntrantName";
+import { useTourneyDisplay } from "../display";
 import { BRACKET_LABELS } from "../tourneyPresentation";
 import { profileOf, standings, standingsKind, teamMembers } from "../../../shared/rules/tourneyRules";
 
@@ -99,8 +100,14 @@ function ImportedTables({ event }: { event: Tourney }) {
 
 export function StandingsPanel({ event, profiles }: StandingsPanelProps) {
   const { t } = useTranslation();
+  const display = useTourneyDisplay();
   const kind = standingsKind(event);
   const rows = standings(event);
+
+  // The whole table would give every result away at once.
+  if (display.streamer) {
+    return <p className="muted">{t("tournaments.display.standingsHidden")}</p>;
+  }
 
   if (event.imported && (event.importedGroups.length > 0 || event.importedStandings.length > 0)) {
     return <ImportedTables event={event} />;

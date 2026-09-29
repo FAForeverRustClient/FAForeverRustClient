@@ -7,7 +7,7 @@
 // Entering is the primary action and sits in the header, not in a section. It
 // is the one thing a player opens this tab to do.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
@@ -44,6 +44,17 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { AuditLogPanel } from "./AuditLogPanel";
 import { PublishBanner } from "./PublishBanner";
+import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
+import {
+  hotkeyAction,
+  isMasked,
+  loadHotkeys,
+  saveHotkeys,
+  TourneyDisplayContext,
+  useRevealed,
+  useStoredFlag,
+  type TourneyDisplay,
+} from "../display";
 import { StatsPanel } from "./StatsPanel";
 import { RichLine } from "../RichLine";
 import type { MapImport } from "../manage/MapImportDialog";
@@ -243,8 +254,75 @@ interface TournamentDetailPaneProps {
 
 export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   const { t } = useTranslation();
-  const { event, busy } = props;
+  const { busy } = props;
   const [section, setSection] = useState<Section>("overview");
+
+  // The website's three display switches, kept on this machine and never sent.
+  const [playerView, setPlayerView] = useStoredFlag("faf_player_view");
+  const [showPlayers, setShowPlayers] = useStoredFlag("faf_show_players");
+  const [streamer, setStreamer] = useStoredFlag("faf_streamer_mode");
+  const [revealed, toggleReveal] = useRevealed(props.event.id);
+  const [hotkeys, setHotkeys] = useState(loadHotkeys);
+  const [displaySettings, setDisplaySettings] = useState(false);
+  const rights = props.event.viewer.organiser;
+  // View as player: the event as a player sees it, organiser tools and all,
+  // on this screen only. The service still sends what it sends, and the
+  // switch stays, so the way back is where it was.
+  const event = useMemo(
+    () =>
+      playerView && rights
+        ? { ...props.event, viewer: { ...props.event.viewer, organiser: false } }
+        : props.event,
+    [playerView, rights, props.event],
+  );
+  const display: TourneyDisplay = {
+    showPlayers,
+    streamer,
+    masked: (entry) => isMasked(streamer, revealed, entry),
+    toggleReveal,
+  };
+  const root = useRef<HTMLDivElement>(null);
+
+  // A caster opening a running event gets streamer mode once, so the first
+  // look on stream does not give the results away. Once per tournament; the
+  // switch is theirs afterwards.
+  useEffect(() => {
+    if (!props.event.viewer.caster || props.event.status !== "running") return;
+    const key = `faf_sm_auto_${props.event.id}`;
+    try {
+      if (window.localStorage.getItem(key) !== null) return;
+      window.localStorage.setItem(key, "1");
+    } catch {
+      return;
+    }
+    setStreamer(true);
+  }, [props.event.id, props.event.status, props.event.viewer.caster, setStreamer]);
+
+  // The shortcuts. Not while typing, not with a modifier, not over a dialog,
+  // and only while this pane is on screen: the client keeps other tabs mounted.
+  useEffect(() => {
+    const listen = (pressed: KeyboardEvent) => {
+      if (pressed.ctrlKey || pressed.metaKey || pressed.altKey || pressed.repeat) return;
+      const target = pressed.target as HTMLElement | null;
+      if (target !== null && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) {
+        return;
+      }
+      if (document.querySelector(".modal-backdrop") !== null) return;
+      if (root.current === null || root.current.offsetParent === null) return;
+      const action = hotkeyAction(hotkeys, pressed.key);
+      if (action === "players") setShowPlayers(!showPlayers);
+      else if (action === "streamer") setStreamer(!streamer);
+      else if (action === "playerView" && rights) setPlayerView(!playerView);
+    };
+    window.addEventListener("keydown", listen);
+    return () => window.removeEventListener("keydown", listen);
+  }, [hotkeys, showPlayers, streamer, playerView, rights, setShowPlayers, setStreamer, setPlayerView]);
+
+  /** A switch's tooltip, with its shortcut where one is bound. */
+  const toggleTitle = (base: MessageKey, key: string, tail: MessageKey) =>
+    [t(base), key === "" ? "" : t("tournaments.display.shortcut", { key: key.toUpperCase() }), t(tail)]
+      .filter((part) => part !== "")
+      .join(" ");
 
   // Twins of `may_sign_up` and `may_withdraw`, the first in shared/rules where
   // the conformance harness pins it.
@@ -337,7 +415,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
 
   return (
     <MatchChatContext.Provider value={chatApi}>
-    <div className="surface tournament-detail">
+    <TourneyDisplayContext.Provider value={display}>
+    <div className="surface tournament-detail" ref={root}>
       <header className="tournament-detail-header">
         <div>
           <h3>{event.name || t("tournaments.untitled")}</h3>
@@ -359,6 +438,46 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           </p>
         </div>
         <div className="tournament-detail-actions">
+          <div className="tournament-display-toggles">
+            {rights && (
+              <button
+                type="button"
+                className={playerView ? "tournament-toggle is-on" : "tournament-toggle"}
+                aria-pressed={playerView}
+                title={toggleTitle("tournaments.display.playerViewHint", hotkeys.playerView, "tournaments.display.playerViewTail")}
+                onClick={() => setPlayerView(!playerView)}
+              >
+                {playerView ? "◉" : "○"} {t("tournaments.display.playerView")}
+              </button>
+            )}
+            <button
+              type="button"
+              className={showPlayers ? "tournament-toggle is-on" : "tournament-toggle"}
+              aria-pressed={showPlayers}
+              title={toggleTitle("tournaments.display.showPlayersHint", hotkeys.players, "tournaments.display.ownScreen")}
+              onClick={() => setShowPlayers(!showPlayers)}
+            >
+              {showPlayers ? "◉" : "○"} {t("tournaments.display.showPlayers")}
+            </button>
+            <button
+              type="button"
+              className={streamer ? "tournament-toggle is-on" : "tournament-toggle"}
+              aria-pressed={streamer}
+              title={toggleTitle("tournaments.display.streamerHint", hotkeys.streamer, "tournaments.display.ownScreen")}
+              onClick={() => setStreamer(!streamer)}
+            >
+              {streamer ? "◉" : "○"} {t("tournaments.display.streamer")}
+            </button>
+            <button
+              type="button"
+              className="tournament-toggle"
+              title={t("tournaments.display.title")}
+              aria-label={t("tournaments.display.title")}
+              onClick={() => setDisplaySettings(true)}
+            >
+              <Icon name="settings" size={14} />
+            </button>
+          </div>
           <span
             className={`tournament-pill is-${pill.tone}`}
             title={
@@ -777,6 +896,17 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         />
       </Modal>
     )}
+    {displaySettings && (
+      <DisplaySettingsDialog
+        keys={hotkeys}
+        onChange={(keys) => {
+          saveHotkeys(keys);
+          setHotkeys(keys);
+        }}
+        onClose={() => setDisplaySettings(false)}
+      />
+    )}
+    </TourneyDisplayContext.Provider>
     </MatchChatContext.Provider>
   );
 }

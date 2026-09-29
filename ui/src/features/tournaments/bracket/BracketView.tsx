@@ -40,6 +40,8 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { FfaLobby } from "./FfaLobby";
 import { VetoPanel, type VetoHandlers } from "./VetoPanel";
 import { MatchActions, TeamName, teamNameOf } from "./matchParts";
+import { feedersOf, matchLabel } from "./matchLabels";
+import { useTourneyDisplay } from "../display";
 import { PoolPanel, PoolToggle } from "./RoundPool";
 import { SwissRounds } from "./SwissRounds";
 import { hasVeto } from "./vetoPresentation";
@@ -493,6 +495,7 @@ function MatchCard({
   profilesForFfa,
 }: MatchCardProps) {
   const { t } = useTranslation();
+  const display = useTourneyDisplay();
   // A free-for-all lobby has entrants rather than two sides, so the card below
   // would draw it as "TBD vs TBD". Its own shape, same place in the column.
   if (entry.bracket === "freeForAll") {
@@ -525,20 +528,44 @@ function MatchCard({
    * scores down the right, so a column of matches can be scanned without
    * reading any of it. Two of these, flush against each other, are a match.
    */
-  const side = (teamId: string | null, score: number | null) => {
+  // Streamer mode: a finished match draws as not yet played until revealed,
+  // and a slot filled by a hidden result says where it comes from instead of
+  // who, or the next round would give the result away.
+  const masked = display.masked(entry);
+  const hiddenFeed = (slot: 1 | 2) => {
+    const feeder = feedersOf(event.matches).get(`${entry.id}:${slot}`);
+    return feeder !== undefined && display.masked(feeder.from) ? feeder : null;
+  };
+  const side = (teamId: string | null, score: number | null, slot: 1 | 2) => {
     const seed = seedOf(teamId);
     const classes = ["tournament-match-side"];
-    if (entry.winner !== null && entry.winner === teamId) classes.push("is-winner");
-    if (teamId !== null && teamId === mine) classes.push("is-mine");
-    if (teamId === null) classes.push("is-tbd");
+    const feed = teamId !== null ? hiddenFeed(slot) : null;
+    if (!masked && entry.winner !== null && entry.winner === teamId) classes.push("is-winner");
+    if (teamId !== null && teamId === mine && feed === null) classes.push("is-mine");
+    if (teamId === null || feed !== null) classes.push("is-tbd");
+    if (feed !== null) {
+      return (
+        <span className={classes.join(" ")}>
+          <span className="tournament-match-seed mono" />
+          <span className="tournament-match-who muted">
+            {t(feed.kind === "winner" ? "tournaments.matches.winnerOf" : "tournaments.matches.loserOf", {
+              match: matchLabel(event, feed.from, t),
+            })}
+          </span>
+          <span className="tournament-match-score mono" />
+        </span>
+      );
+    }
     return (
       <span className={classes.join(" ")}>
         <span className="tournament-match-seed mono">{seed ?? ""}</span>
         <span className="tournament-match-who">
-          <TeamName event={event} profiles={profiles} teamId={teamId} />
+          <TeamName event={event} profiles={profiles} teamId={teamId} asPlayers={display.showPlayers} />
         </span>
-        {/* A walkover stores the absent side at -1. It is not a score. */}
-        {teamId !== null && entry.forfeit === teamId && score !== null && score < 0 ? (
+        {masked ? (
+          <span className="tournament-match-score mono" />
+        ) : /* A walkover stores the absent side at -1. It is not a score. */
+        teamId !== null && entry.forfeit === teamId && score !== null && score < 0 ? (
           <span className="tournament-match-score mono" title={t("tournaments.match.forfeited")}>
             {t("tournaments.match.forfeitShort")}
           </span>
@@ -550,7 +577,7 @@ function MatchCard({
   };
 
   return (
-    <div className={`surface tournament-match is-${entry.status}`}>
+    <div className={`surface tournament-match is-${masked ? "ready" : entry.status}`}>
       {/* Pair on the left, controls on the right. They used to sit under the
           two rows, which a card one slot high has no room for: on a match that
           can be hosted *and* reported, the buttons ran over the card below it.
@@ -561,11 +588,11 @@ function MatchCard({
           cards stacked flush against each other they read as a list of sixteen
           names instead. Tight inside, spaced outside. */}
       <div className="tournament-match-pair">
-        {side(entry.team1, entry.score1)}
-        {side(entry.team2, entry.score2)}
+        {side(entry.team1, entry.score1, 1)}
+        {side(entry.team2, entry.score2, 2)}
       </div>
 
-      {pending !== null && (
+      {pending !== null && !masked && (
         <span className="tournament-match-pending muted">
           {t("tournaments.match.awaiting", {
             who: pending.byName || teamName(pending.byTeam),
@@ -578,16 +605,23 @@ function MatchCard({
           column has to be the same height, or the connector geometry, which is
           derived from the card pitch, stops lining up. */}
       <div className="tournament-match-actions">
-        <MatchActions
-          event={event}
-          entry={entry}
-          busy={busy}
-          onReport={onReport}
-          onAnswer={onAnswer}
-          onHost={onHost}
-          vetoOpen={vetoOpen}
-          onToggleVeto={onToggleVeto}
-        />
+        {!masked && (
+          <MatchActions
+            event={event}
+            entry={entry}
+            busy={busy}
+            onReport={onReport}
+            onAnswer={onAnswer}
+            onHost={onHost}
+            vetoOpen={vetoOpen}
+            onToggleVeto={onToggleVeto}
+          />
+        )}
+        {display.streamer && entry.status === "done" && (
+          <button type="button" className="tournament-link-button" onClick={() => display.toggleReveal(entry.id)}>
+            {masked ? `○ ${t("tournaments.display.reveal")}` : `◉ ${t("tournaments.display.hide")}`}
+          </button>
+        )}
       </div>
 
     </div>

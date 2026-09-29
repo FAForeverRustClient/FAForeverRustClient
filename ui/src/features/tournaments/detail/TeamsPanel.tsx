@@ -41,6 +41,7 @@ import {
   wouldExceedCap,
 } from "../../../shared/rules/tourneyRules";
 import { ChangeCaptainDialog, SwapInDialog, TeamFromFreeAgentDialog } from "./TeamDialogs";
+import { useTourneyDisplay } from "../display";
 
 interface TeamsPanelProps {
   event: Tourney;
@@ -558,6 +559,7 @@ interface TeamCardProps {
 
 function TeamCard(props: TeamCardProps) {
   const { t } = useTranslation();
+  const display = useTourneyDisplay();
   const { event, team, busy } = props;
   const open = teamsAreOpen(event);
   const organiser = event.viewer.organiser;
@@ -578,7 +580,8 @@ function TeamCard(props: TeamCardProps) {
       className={[
         "surface tournament-team",
         props.isMine ? "is-mine" : "",
-        team.eliminated ? "is-eliminated" : "",
+        // Streamer mode keeps who is out off screen too.
+        team.eliminated && !display.streamer ? "is-eliminated" : "",
       ]
         .filter((part) => part !== "")
         .join(" ")}

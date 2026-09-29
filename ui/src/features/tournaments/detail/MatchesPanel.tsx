@@ -27,6 +27,7 @@ import { VetoPanel, type VetoHandlers } from "../bracket/VetoPanel";
 import { hasVeto, myVetoSteps, vetoSettled } from "../bracket/vetoPresentation";
 import { maySetMatchBestOf } from "../../../shared/rules/tourneyRules";
 import { matchPoolKey, poolForMatch } from "../bracket/poolPresentation";
+import { playersLabel, useTourneyDisplay } from "../display";
 
 /** The series lengths the service accepts. */
 const BEST_OF = [1, 3, 5, 7];
@@ -78,6 +79,7 @@ export function listedMatches(event: Tourney): TourneyMatch[] {
 export function MatchesPanel(props: MatchesPanelProps) {
   const { event } = props;
   const { t } = useTranslation();
+  const display = useTourneyDisplay();
   const [details, setDetails] = useState<string | null>(null);
 
   const all = listedMatches(event);
@@ -98,14 +100,18 @@ export function MatchesPanel(props: MatchesPanelProps) {
     .sort((left, right) => matchRank(right) - matchRank(left) || left.index - right.index);
 
   const slot = (entry: TourneyMatch, teamId: string | null, number: 1 | 2) => {
-    if (teamId !== null) {
+    const feeder: Feeder | undefined = feeders.get(`${entry.id}:${number}`);
+    // Streamer mode: a slot filled by a hidden result names its feeder, not
+    // who came through it.
+    const hiddenFeed = feeder !== undefined && display.masked(feeder.from);
+    if (teamId !== null && !hiddenFeed) {
+      const winner = !display.masked(entry) && entry.winner === teamId;
       return (
-        <span className={entry.winner === teamId ? "tournament-mt-team is-winner" : "tournament-mt-team"}>
-          <TeamName event={event} profiles={props.profiles} teamId={teamId} />
+        <span className={winner ? "tournament-mt-team is-winner" : "tournament-mt-team"}>
+          <TeamName event={event} profiles={props.profiles} teamId={teamId} asPlayers={display.showPlayers} />
         </span>
       );
     }
-    const feeder: Feeder | undefined = feeders.get(`${entry.id}:${number}`);
     return (
       <span className="muted">
         {feeder === undefined
@@ -141,6 +147,7 @@ export function MatchesPanel(props: MatchesPanelProps) {
       </thead>
       <tbody>
         {entries.map((entry) => {
+          const masked = display.masked(entry);
           const state = matchState(event, entry);
           const owed = myVetoSteps(event, entry);
           const isMine = mine !== null && (entry.team1 === mine || entry.team2 === mine);
@@ -150,12 +157,21 @@ export function MatchesPanel(props: MatchesPanelProps) {
               <td className="tournament-mt-teamcell">{slot(entry, entry.team1, 1)}</td>
               <td className="tournament-mt-teamcell">{slot(entry, entry.team2, 2)}</td>
               <td className="tournament-mt-fixed">
-                <span className={`tournament-mt-state is-${state}`}>{t(STATE_LABELS[state])}</span>
+                {masked ? (
+                  <span className="tournament-mt-state is-live">{t("tournaments.display.played")}</span>
+                ) : (
+                  <span className={`tournament-mt-state is-${state}`}>{t(STATE_LABELS[state])}</span>
+                )}
               </td>
               <td className="mono tournament-mt-fixed">
-                <MatchScore entry={entry} />
+                {masked ? <span className="muted">{t("tournaments.display.hidden")}</span> : <MatchScore entry={entry} />}
               </td>
               <td className="tournament-mt-actions tournament-mt-fixed">
+                {display.streamer && entry.status === "done" && (
+                  <Button onClick={() => display.toggleReveal(entry.id)}>
+                    {t(masked ? "tournaments.display.revealShort" : "tournaments.display.hideShort")}
+                  </Button>
+                )}
                 {owed > 0 && (
                   <Button variant="primary" onClick={() => setDetails(entry.id)}>
                     {t("tournaments.matches.yourVeto", { count: owed })}
@@ -217,7 +233,10 @@ function MatchDetails({
 }: MatchesPanelProps & { entry: TourneyMatch; onClose: () => void }) {
   const { event } = props;
   const { t } = useTranslation();
+  const display = useTourneyDisplay();
+  const masked = display.masked(entry);
   const state = matchState(event, entry);
+  const winner = (teamId: string | null) => !masked && entry.winner !== null && entry.winner === teamId;
 
   const roster = (teamId: string | null) => {
     const team = event.teams.find((held) => held.id === teamId);
@@ -226,10 +245,12 @@ function MatchDetails({
       .filter((player) => player !== undefined)
       .sort((left, right) => (right.rating ?? 0) - (left.rating ?? 0));
     return (
-      <div className={entry.winner !== null && entry.winner === teamId ? "tournament-md-team is-winner" : "tournament-md-team"}>
+      <div className={winner(teamId) ? "tournament-md-team is-winner" : "tournament-md-team"}>
         <strong className="tournament-md-name">
-          {teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd")}
-          {entry.winner !== null && entry.winner === teamId && (
+          {(display.showPlayers ? playersLabel(event, teamId) : null) ??
+            teamNameOf(event, teamId) ??
+            t("tournaments.bracket.tbd")}
+          {winner(teamId) && (
             <span className="tournament-badge">{t("tournaments.matches.winner")}</span>
           )}
         </strong>
@@ -309,16 +330,22 @@ function MatchDetails({
       <div className="tournament-md-grid">
         {roster(entry.team1)}
         <div className="tournament-md-score mono">
-          <MatchScore entry={entry} />
+          {masked ? <span className="muted">{t("tournaments.display.hidden")}</span> : <MatchScore entry={entry} />}
+          {display.streamer && entry.status === "done" && (
+            <Button onClick={() => display.toggleReveal(entry.id)}>
+              {t(masked ? "tournaments.display.reveal" : "tournaments.display.hide")}
+            </Button>
+          )}
         </div>
         {roster(entry.team2)}
       </div>
       {props.onAssignPool !== undefined && (
         <MatchPoolPicker event={event} entry={entry} onAssign={props.onAssignPool} />
       )}
-      {replays(entry.replayIds, "tournaments.matches.replays")}
-      {replays(entry.drawReplayIds, "tournaments.matches.drawReplays")}
-      {hasVeto(event, entry) && (
+      {!masked && replays(entry.replayIds, "tournaments.matches.replays")}
+      {!masked && replays(entry.drawReplayIds, "tournaments.matches.drawReplays")}
+      {masked && hasVeto(event, entry) && <p className="muted">{t("tournaments.display.vetoHidden")}</p>}
+      {!masked && hasVeto(event, entry) && (
         <VetoPanel
           event={event}
           entry={entry}
