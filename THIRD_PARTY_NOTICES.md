@@ -42,8 +42,10 @@ project's MIT License: it is redistributed, unmodified,
 under section 1.1(b) of the
 [Steamworks SDK Access Agreement](https://partner.steamgames.com/documentation/sdk_access_agreement),
 and all rights not granted there remain with Valve. It is used only by the
-optional Steam status setting, which is off by default. See
-`vendor/steamworks/README.md` for what is called and why.
+optional Steam status setting, which is experimental and off by default. It is
+closed source: we know which of its functions the client calls, but cannot
+verify what the library does or sends to Valve. See
+`vendor/steamworks/README.md` for what is called, why, and what that means.
 
 This project is not affiliated with or endorsed by Valve Corporation. Steam is
 a trademark of Valve Corporation.
