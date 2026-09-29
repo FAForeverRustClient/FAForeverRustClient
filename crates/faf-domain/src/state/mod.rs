@@ -171,6 +171,7 @@ pub use tourney::{
     ChatQuote, FactionChoices, FactionResult, FactionStep, FactionVetoConfig, FactionVetoGame,
     MapSpec, MatchFactionVeto, RoundMaps, SwissCuts, SwissTiebreak, TourneyAdmin, TourneyFaction,
 };
+pub use tourney::{CopySource, CopySourceMaps, MapPick, PickMode, PlanList};
 pub use tourney::{
     Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
     VetoDecider, VetoMode, VetoTeamA, VetoTurn,

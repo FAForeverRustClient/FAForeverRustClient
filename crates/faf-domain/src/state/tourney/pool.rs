@@ -110,6 +110,29 @@ pub fn match_vault_map<'a, M>(
         })
 }
 
+/// One of this account's events, as a place to import maps from
+/// (`GET /api/my_tournaments`).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CopySource {
+    pub id: String,
+    pub name: String,
+    pub map_count: i32,
+    pub pool_count: i32,
+    /// Whether this account may take its maps (`canCopyMaps`): a named
+    /// organiser of it. The service sends zero counts where it may not.
+    pub may_copy: bool,
+}
+
+/// The maps and pools of an event being imported from, to choose among.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CopySourceMaps {
+    pub tournament_id: String,
+    pub maps: Vec<TourneyMap>,
+    pub pools: Vec<MapPool>,
+}
+
 /// A named set of maps, with the ban/pick order it is played in.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -222,6 +245,11 @@ pub struct PoolDraft {
     /// count with `best_of - 1` picks among them: the service refuses anything
     /// else, naming the numbers it wanted.
     pub sequence: Vec<PoolStep>,
+    /// When the pool goes public on its own, in Unix seconds; `None` for no
+    /// schedule. Always sent: the service treats a missing value as "keep",
+    /// but an empty one as "clear", and the editor carries the stored one.
+    #[serde(default)]
+    pub publish_at: Option<u32>,
 }
 
 /// A map being added to or edited in a tournament's own map database.
@@ -238,6 +266,13 @@ pub struct MapDraft {
     /// not "unchanged" but "delete it".
     #[serde(default)]
     pub spec: Option<MapSpec>,
+    /// A new picture of the event's own, as a `data:` URL, or `None` to keep
+    /// the one it has. The service stores it under a file name of its own.
+    #[serde(default)]
+    pub image: Option<String>,
+    /// Delete the stored picture. Ignored when a new one is sent.
+    #[serde(default)]
+    pub remove_image: bool,
 }
 
 impl MapDraft {

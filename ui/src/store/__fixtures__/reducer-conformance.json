@@ -583,6 +583,14 @@
       "playerRatings": null,
       "playerRatingsStatus": {
         "type": "idle"
+      },
+      "copySources": [],
+      "copySourcesStatus": {
+        "type": "idle"
+      },
+      "copySource": null,
+      "copySourceStatus": {
+        "type": "idle"
       }
     },
     "training": {
@@ -7077,6 +7085,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -7142,6 +7158,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -7205,6 +7229,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -7274,6 +7306,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -7335,6 +7375,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -7521,6 +7569,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -7705,6 +7761,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -8011,6 +8075,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -8315,6 +8387,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -8614,6 +8694,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -9039,6 +9127,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -9462,6 +9558,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": {
@@ -9901,6 +10005,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -10319,6 +10431,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": {
@@ -10744,6 +10864,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": {
@@ -11172,6 +11300,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": {
@@ -11606,6 +11742,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -12038,6 +12182,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": {
@@ -12477,6 +12629,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -12783,6 +12943,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -13101,6 +13269,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -13531,6 +13707,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -13965,6 +14149,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -14154,6 +14346,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -14252,6 +14452,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -14313,6 +14521,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -14386,6 +14602,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -14470,6 +14694,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -14531,6 +14763,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -14602,6 +14842,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -14660,6 +14908,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -14727,6 +14983,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -14791,6 +15055,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -14853,6 +15125,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -14931,6 +15211,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -15002,6 +15290,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -15095,6 +15391,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -15183,6 +15487,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -15260,6 +15572,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -15317,6 +15637,633 @@
       ]
     },
     {
+      "name": "an organiser looks for maps to import, and picks a source twice",
+      "steps": [
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "copySourcesLoading"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "loading"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "copySourcesFailed",
+              "payload": {
+                "reason": "FAF could not be reached just now.",
+                "kind": "offline"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "payload": {
+                "kind": "offline",
+                "reason": "FAF could not be reached just now."
+              },
+              "type": "failed"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "copySourcesLoading"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "loading"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "copySourcesLoaded",
+              "payload": {
+                "sources": [
+                  {
+                    "id": "e2",
+                    "name": "Last season",
+                    "mapCount": 2,
+                    "poolCount": 1,
+                    "mayCopy": true
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [
+              {
+                "id": "e2",
+                "mapCount": 2,
+                "mayCopy": true,
+                "name": "Last season",
+                "poolCount": 1
+              }
+            ],
+            "copySourcesStatus": {
+              "type": "ready"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "copySourceLoading"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "loading"
+            },
+            "copySources": [
+              {
+                "id": "e2",
+                "mapCount": 2,
+                "mayCopy": true,
+                "name": "Last season",
+                "poolCount": 1
+              }
+            ],
+            "copySourcesStatus": {
+              "type": "ready"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "copySourceLoaded",
+              "payload": {
+                "source": {
+                  "tournamentId": "e2",
+                  "maps": [],
+                  "pools": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": {
+              "maps": [],
+              "pools": [],
+              "tournamentId": "e2"
+            },
+            "copySourceStatus": {
+              "type": "ready"
+            },
+            "copySources": [
+              {
+                "id": "e2",
+                "mapCount": 2,
+                "mayCopy": true,
+                "name": "Last season",
+                "poolCount": 1
+              }
+            ],
+            "copySourcesStatus": {
+              "type": "ready"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "copySourceLoading"
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "loading"
+            },
+            "copySources": [
+              {
+                "id": "e2",
+                "mapCount": 2,
+                "mayCopy": true,
+                "name": "Last season",
+                "poolCount": 1
+              }
+            ],
+            "copySourcesStatus": {
+              "type": "ready"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "copySourceFailed",
+              "payload": {
+                "reason": "Tournament not found",
+                "kind": "rejected"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "payload": {
+                "kind": "rejected",
+                "reason": "Tournament not found"
+              },
+              "type": "failed"
+            },
+            "copySources": [
+              {
+                "id": "e2",
+                "mapCount": 2,
+                "mayCopy": true,
+                "name": "Last season",
+                "poolCount": 1
+              }
+            ],
+            "copySourcesStatus": {
+              "type": "ready"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "status": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "an organiser checks names against FAF, fails once, then writes",
       "steps": [
         {
@@ -15340,6 +16287,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -15406,6 +16361,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -15468,6 +16431,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -15545,6 +16516,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -15620,6 +16599,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -15702,6 +16689,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -15765,6 +16760,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -15842,6 +16845,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -15944,6 +16955,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -16062,6 +17081,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -16162,6 +17189,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -16280,6 +17315,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -16379,6 +17422,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -16455,6 +17506,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -16784,6 +17843,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -17205,6 +18272,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": {
@@ -17668,6 +18743,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -18110,6 +19193,14 @@
             "chatStatus": {
               "type": "idle"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -18548,6 +19639,14 @@
             ],
             "chatStatus": {
               "type": "loading"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
             },
             "detail": {
               "abandoned": false,
@@ -19014,6 +20113,14 @@
             "chatStatus": {
               "type": "ready"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -19468,6 +20575,14 @@
             "chatStatus": {
               "type": "ready"
             },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
             "detail": {
               "abandoned": false,
               "auditLog": [],
@@ -19889,6 +21004,14 @@
             "chatPosts": [],
             "chatRooms": [],
             "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
               "type": "idle"
             },
             "detail": null,
@@ -50466,7 +51589,8 @@
               "action": "pick",
               "team": "a"
             }
-          ]
+          ],
+          "publishAt": null
         },
         "rejection": null,
         "submittable": true
@@ -50496,7 +51620,8 @@
               "action": "pick",
               "team": "a"
             }
-          ]
+          ],
+          "publishAt": null
         },
         "rejection": "nameRequired",
         "submittable": false
@@ -50521,7 +51646,8 @@
               "action": "pick",
               "team": "a"
             }
-          ]
+          ],
+          "publishAt": null
         },
         "rejection": "mapsRequired",
         "submittable": false
@@ -50538,7 +51664,8 @@
             "map3"
           ],
           "bestOf": 3,
-          "sequence": []
+          "sequence": [],
+          "publishAt": null
         },
         "rejection": null,
         "submittable": true
@@ -50569,7 +51696,8 @@
               "action": "pick",
               "team": "a"
             }
-          ]
+          ],
+          "publishAt": null
         },
         "rejection": {
           "stepCountWrong": {
@@ -50604,7 +51732,8 @@
               "action": "pick",
               "team": "a"
             }
-          ]
+          ],
+          "publishAt": null
         },
         "rejection": {
           "pickCountWrong": {
@@ -50629,7 +51758,8 @@
               "action": "ban",
               "team": "a"
             }
-          ]
+          ],
+          "publishAt": null
         },
         "rejection": null,
         "submittable": true

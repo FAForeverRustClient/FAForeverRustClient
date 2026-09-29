@@ -44,6 +44,7 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { AuditLogPanel } from "./AuditLogPanel";
 import { PublishBanner } from "./PublishBanner";
+import type { MapImport } from "../manage/MapImportDialog";
 import { eventDaysLabel, stages, statusPill, turnInfo } from "../orientation";
 import { EntryNotices } from "./EntryNotices";
 import { BracketView } from "../bracket/BracketView";
@@ -163,6 +164,8 @@ interface TournamentDetailPaneProps {
   playerRatingsStatus: TourneyLoadStatus;
   onLoadPlayerRatings: (playerId: string, refresh: boolean) => void;
   onBanPlayer: (player: TourneyPlayer, reason: string, expires: number | null, remove: boolean) => void;
+  /** Importing maps from another event, for Manage. */
+  mapImport: MapImport;
   onSignUp: () => void;
   onWithdraw: () => void;
   /** Check this account's team in, or take the check-in back. */
@@ -606,6 +609,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           onWatchReplay={props.onWatchReplay}
           veto={props.veto}
           onAdmin={props.onAdmin}
+          onAssignPool={props.onAssignPool}
         />
       )}
 
@@ -668,6 +672,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           playerRatingsStatus={props.playerRatingsStatus}
           onLoadPlayerRatings={props.onLoadPlayerRatings}
           onBanPlayer={props.onBanPlayer}
+          mapImport={props.mapImport}
           onSearchAccounts={props.onSearchAccounts}
           busy={busy}
           onEditInfo={props.onEditInfo}

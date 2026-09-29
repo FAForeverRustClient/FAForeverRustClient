@@ -26,7 +26,7 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
-use faf_domain::state::{EntrantRatings, RatingCheck};
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use serde_json::{json, Value};
 
@@ -353,6 +353,11 @@ impl TourneyPort for TourneyClient {
             )
             .await?;
         Ok(tourney::parse_rating_check(&document))
+    }
+
+    async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
+        let document = self.get("my_tournaments", &[]).await?;
+        Ok(tourney::parse_copy_sources(&document))
     }
 
     async fn player_ratings(
@@ -886,6 +891,13 @@ impl TourneyPort for TourneyClient {
         if !map.id.is_empty() {
             body["id"] = json!(map.id);
         }
+        // A picture only as a data URL: the service ignores any other string
+        // and keeps what it has, which is also what leaving it out does.
+        match map.image.as_deref() {
+            Some(image) if image.starts_with("data:") => body["image"] = json!(image),
+            _ if map.remove_image => body["removeImage"] = json!(1),
+            _ => {}
+        }
         self.act(tournament_id, "map_save", body).await
     }
 
@@ -941,6 +953,10 @@ impl TourneyPort for TourneyClient {
                 .iter()
                 .map(|step| json!({ "action": step.action.as_wire(), "team": step.team.as_wire() }))
                 .collect::<Vec<_>>(),
+            // Always sent, as the website does: `null` clears a schedule and a
+            // moment sets one. The editor carries the stored value, so an edit
+            // that did not touch it keeps it.
+            "publishAt": tourney::iso_moment(pool.publish_at),
         });
         // An empty id creates; the server distinguishes on the key being
         // present at all, so it is left out rather than sent blank.

@@ -84,6 +84,7 @@ import {
   mayShuffleTeams,
 } from "../../../shared/rules/tourneyRules";
 import { FactionVetoPanel } from "./FactionVetoPanel";
+import type { MapImport } from "./MapImportDialog";
 
 const PHASE_LABELS: Record<TourneyPhase, MessageKey> = {
   formTeams: "tournaments.manage.formTeams",
@@ -161,6 +162,8 @@ interface ManagePanelProps {
   playerRatingsStatus: TourneyLoadStatus;
   onLoadPlayerRatings: (playerId: string, refresh: boolean) => void;
   onBanPlayer: (player: TourneyPlayer, reason: string, expires: number | null, remove: boolean) => void;
+  /** Importing maps from another event. */
+  mapImport: MapImport;
   busy: boolean;
   /** Save the settings. The form is inline here, so there is no dialog. */
   onEditInfo: (draft: TourneyDraft) => void;
@@ -546,6 +549,7 @@ export function ManagePanel({
                     onPublish={rest.onPublishMap}
                     onDelete={rest.onDeleteMap}
                     onAdmin={rest.onAdmin}
+                    imports={rest.mapImport}
                   />
                 </li>
                 <li
@@ -563,6 +567,7 @@ export function ManagePanel({
                     onSave={rest.onSavePool}
                     onPublish={rest.onPublishPool}
                     onDelete={rest.onDeletePool}
+                    onAdmin={rest.onAdmin}
                   />
                 </li>
                 <li

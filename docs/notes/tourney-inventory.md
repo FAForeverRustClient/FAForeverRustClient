@@ -148,16 +148,15 @@ applicable and left out: whole-team registration (`signup_team`, off with FAF
 login), instant team join (`join_team`, removed), organiser links
 (`claim_organizer`, 410).
 
-- List: the card's format, event days, rating limits, entrant limits and cash
-  prize; the "Event starts in" and "Signups close in" countdowns; the archive
-  by year, 50 at a time; "draft, view only" for a director (`canManage`).
+- List: done on `tourney/batch-3`.
 - Site-wide: the pending bar across tournaments (`my/pending`), Hall of Fame,
   the series index and series pages (editions, winners, series bans), FAQ as
   pages with the three official rules links, asking for hosting rights
   (`host_request`), and site administration (section 3.19).
-- Header: status pill, category and type line, the stage stepper, the turn
-  banner on every tab, view as player, show players, streamer mode, hotkeys,
-  and the draft banner's scheduled publishing (`publish` with `publishAt`).
+- Header: view as player, show players, streamer mode, hotkeys. The status
+  pill, category and type line, stage stepper, turn banner and scheduled
+  publishing are done on `tourney/batch-3`; a scheduled publish never showed
+  before, because `publishAt` is an ISO date and was read as milliseconds.
 - Overview: the Schedule and "Ends early" cells, "Don't know your rating?",
   recent results, the turn / mention / ping / own-ban banners, the series in
   its colour with a link, the Links panel, the Challonge source line.
@@ -174,10 +173,11 @@ login), instant team join (`join_team`, removed), organiser links
   played", the team popup, replay links on the card, setting a match's teams
   (`set_match_team`), "how the veto will run", maps pinned to a round
   (`set_maps`).
-- Vetoes: resetting one side's faction choices (`fveto_reset`).
-- Maps: editing spawn information, uploading a map picture, scheduled pool
-  publishing, copying a ban/pick order (`pool_copy_sequence`), importing maps
-  (`copy_maps`), a pool for one match.
+- Vetoes and maps: done on `tourney/batch-3`. Two have no control on the
+  website although its service takes them, and the client designed its own:
+  a pool for one match (in the match details) and resetting one side's
+  faction choices (`fveto_reset`). `copy_maps` copies no spawn information,
+  a website fault the client does not work around.
 - Standings and stats: imported group tables; the Stats tab.
 - Creation: presets, "fill from this", record cuts, stage two, ends early and
   opponent picking at creation, the FFA block (with premade team names:

@@ -8,8 +8,8 @@
 //! response. Any local simulation of it would drift within one round.
 
 use faf_domain::state::{
-    MatchReport, PoolDraft, SeedOrder, SeriesDraft, TourneyAction, TourneyActionFailure,
-    TourneyAdmin, TourneyCommand, TourneyDraft, TourneyEvent,
+    CopySourceMaps, MatchReport, PoolDraft, SeedOrder, SeriesDraft, TourneyAction,
+    TourneyActionFailure, TourneyAdmin, TourneyCommand, TourneyDraft, TourneyEvent,
 };
 
 use crate::ports::RequestError;
@@ -72,6 +72,36 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             {
                 Ok(ratings) => out.emit(TourneyEvent::PlayerRatingsLoaded { ratings }),
                 Err(error) => out.emit(TourneyEvent::PlayerRatingsFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        TourneyCommand::LoadCopySources => {
+            out.emit(TourneyEvent::CopySourcesLoading);
+            match ctx.ports.tourney.copy_sources().await {
+                Ok(sources) => out.emit(TourneyEvent::CopySourcesLoaded { sources }),
+                Err(error) => out.emit(TourneyEvent::CopySourcesFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        // The source's own detail, read without opening it: the open event
+        // stays the one the maps are imported into.
+        TourneyCommand::LoadCopySource { tournament_id } => {
+            out.emit(TourneyEvent::CopySourceLoading);
+            match ctx.ports.tourney.detail(&tournament_id).await {
+                Ok(event) => out.emit(TourneyEvent::CopySourceLoaded {
+                    source: CopySourceMaps {
+                        tournament_id,
+                        maps: event.map_db,
+                        pools: event.map_pools,
+                    },
+                }),
+                Err(error) => out.emit(TourneyEvent::CopySourceFailed {
                     reason: error.to_string(),
                     kind: error.kind(),
                 }),

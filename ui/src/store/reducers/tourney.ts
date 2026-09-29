@@ -22,6 +22,8 @@ function clearOpenEvent(state: TourneyState): TourneyState {
     ratingCheckStatus: { type: "idle" },
     playerRatings: null,
     playerRatingsStatus: { type: "idle" },
+    copySource: null,
+    copySourceStatus: { type: "idle" },
   };
 }
 
@@ -218,6 +220,31 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
       return {
         ...state,
         playerRatingsStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
+    case "copySourcesLoading":
+      return { ...state, copySourcesStatus: { type: "loading" } };
+    case "copySourcesLoaded":
+      return { ...state, copySources: event.payload.sources, copySourcesStatus: { type: "ready" } };
+    case "copySourcesFailed":
+      return {
+        ...state,
+        copySourcesStatus: {
+          type: "failed",
+          payload: { reason: event.payload.reason, kind: event.payload.kind },
+        },
+      };
+    // As with a player's ratings: the next source drops the previous one's maps.
+    case "copySourceLoading":
+      return { ...state, copySource: null, copySourceStatus: { type: "loading" } };
+    case "copySourceLoaded":
+      return { ...state, copySource: event.payload.source, copySourceStatus: { type: "ready" } };
+    case "copySourceFailed":
+      return {
+        ...state,
+        copySourceStatus: {
           type: "failed",
           payload: { reason: event.payload.reason, kind: event.payload.kind },
         },

@@ -304,6 +304,10 @@ const INITIAL: AppState = {
     ratingCheckStatus: { type: "idle" },
     playerRatings: null,
     playerRatingsStatus: { type: "idle" },
+    copySources: [],
+    copySourcesStatus: { type: "idle" },
+    copySource: null,
+    copySourceStatus: { type: "idle" },
   },
   guides: {
     auth: { type: "signedOut" },

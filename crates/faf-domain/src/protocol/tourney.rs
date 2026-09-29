@@ -36,6 +36,7 @@ use crate::state::{
 };
 use crate::state::{BanScope, EntrantBoardRating, EntrantRatings, OwnBan, RatingCheck};
 use crate::state::{CaptainMode, Replacement};
+use crate::state::{CopySource, PickMode};
 use crate::state::{
     Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
     VetoDecider, VetoMode, VetoTeamA,
@@ -602,6 +603,26 @@ pub fn signup_body(rating: Option<i32>) -> Value {
         Some(rating) => json!({ "rating": rating }),
         None => json!({}),
     }
+}
+
+/// The events this account organises, from `GET /api/my_tournaments`.
+pub fn parse_copy_sources(document: &Value) -> Vec<CopySource> {
+    let items = match document {
+        Value::Array(items) => items.as_slice(),
+        _ => array(document, "tournaments"),
+    };
+    items
+        .iter()
+        .filter_map(|value| {
+            Some(CopySource {
+                id: id(value, "id")?,
+                name: text(value, "name"),
+                map_count: int(value, "mapCount").unwrap_or(0).max(0),
+                pool_count: int(value, "poolCount").unwrap_or(0).max(0),
+                may_copy: flag(value, "canCopyMaps"),
+            })
+        })
+        .collect()
 }
 
 /// The answer to `POST /api/t/{id}/check_renames`.
@@ -1479,6 +1500,11 @@ fn gate(value: Option<i32>) -> Value {
     value.map_or(Value::Null, |bound| json!(bound))
 }
 
+/// A moment as the RFC 3339 string the service's `cleanDate` reads, or `null`.
+pub fn iso_moment(seconds: Option<u32>) -> Value {
+    iso(seconds)
+}
+
 /// Unix seconds as the ISO instant `cleanDate` normalises to.
 ///
 /// Text rather than a number, because `cleanDate` accepts only strings: a
@@ -1865,15 +1891,107 @@ pub fn admin_request(change: &TourneyAdmin) -> (&'static str, Value) {
             bracket,
             round,
             best_of,
+            division,
         } => (
             "set_round_bo",
-            // `division: null` is every division, as the website sends it.
+            // `division: null` is every division, as the website sends it
+            // outside a division's own block.
             json!({
                 "bracket": bracket.as_wire(),
                 "round": round,
                 "bo": best_of,
-                "division": Value::Null,
+                "division": division,
             }),
+        ),
+        TourneyAdmin::PlanRoundBestOf {
+            list,
+            index,
+            best_of,
+        } => (
+            "set_plan_round_bo",
+            json!({ "list": list.as_wire(), "index": index, "bo": best_of }),
+        ),
+        TourneyAdmin::SetMaps {
+            bracket,
+            round,
+            map_ids,
+        } => (
+            "set_maps",
+            json!({ "bracket": bracket.as_wire(), "round": round, "maps": map_ids }),
+        ),
+        TourneyAdmin::SetMatchTeam {
+            match_id,
+            slot,
+            team_id,
+        } => (
+            "set_match_team",
+            json!({ "matchId": match_id, "slot": slot, "teamId": team_id }),
+        ),
+        TourneyAdmin::CopyPoolOrder { source_id, targets } => (
+            "pool_copy_sequence",
+            match targets {
+                Some(ids) => json!({ "sourceId": source_id, "targetIds": ids }),
+                None => json!({ "sourceId": source_id, "applyAll": 1 }),
+            },
+        ),
+        TourneyAdmin::CopyMaps { source_id, picked } => (
+            "copy_maps",
+            // The service's three shapes: everything; whole pools with any
+            // extra maps; or maps alone, which needs `pools: false` spelled
+            // out, since no pool ids otherwise means every pool.
+            match picked {
+                None => json!({ "sourceId": source_id }),
+                Some(pick) if pick.pool_ids.is_empty() => {
+                    json!({ "sourceId": source_id, "pools": false, "mapIds": pick.map_ids })
+                }
+                Some(pick) => {
+                    let mut body = json!({ "sourceId": source_id, "poolIds": pick.pool_ids });
+                    if !pick.map_ids.is_empty() {
+                        body["mapIds"] = json!(pick.map_ids);
+                    }
+                    body
+                }
+            },
+        ),
+        TourneyAdmin::FactionReset {
+            match_id,
+            game,
+            slot,
+        } => {
+            let mut body = json!({ "matchId": match_id, "game": game });
+            match slot {
+                Some(1) => body["side"] = json!("t1"),
+                Some(2) => body["side"] = json!("t2"),
+                _ => {}
+            }
+            ("fveto_reset", body)
+        }
+        TourneyAdmin::PickOpponent { team_id } => ("pick_opponent", json!({ "teamId": team_id })),
+        TourneyAdmin::UndoPickOpponent => ("undo_pick_opponent", json!({})),
+        TourneyAdmin::PlayoffSetup {
+            pick,
+            minutes,
+            tiebreak,
+            redo,
+        } => {
+            let mut body = json!({
+                "pick": pick.map_or("off", PickMode::as_wire),
+                "minutes": (*minutes).clamp(0, 1440),
+                "tiebreak": tiebreak.as_wire(),
+            });
+            if *redo {
+                body["redo"] = json!(1);
+            }
+            ("playoff_setup", body)
+        }
+        TourneyAdmin::SwissRound1 { pairs } => (
+            "swiss_round1",
+            match pairs {
+                Some(pairs) => json!({
+                    "pairs": pairs.iter().map(|(one, two)| json!([one, two])).collect::<Vec<_>>()
+                }),
+                None => json!({ "shuffle": 1 }),
+            },
         ),
         TourneyAdmin::MatchBestOf { match_id, best_of } => (
             "set_match_bo",
@@ -2017,6 +2135,7 @@ pub fn submit_report_body(report: &MatchReport) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::{MapPick, PlanList};
 
     /// A document shaped like `publicView`, with the conventions that matter:
     /// string ids, 0/1 flags, millisecond timestamps.
@@ -2889,6 +3008,25 @@ See the [rules](https://x.invalid/r)."
     }
 
     #[test]
+    fn the_import_sources_say_which_events_may_give_maps() {
+        let sources = parse_copy_sources(&json!({ "tournaments": [
+            { "id": "e1", "name": "Cup", "mapCount": 12, "poolCount": 3, "canCopyMaps": 1 },
+            { "id": "e2", "name": "Official", "mapCount": 0, "poolCount": 0, "canCopyMaps": 0 },
+            { "name": "no id" },
+        ] }));
+        assert_eq!(sources.len(), 2);
+        assert_eq!(
+            (
+                sources[0].map_count,
+                sources[0].pool_count,
+                sources[0].may_copy
+            ),
+            (12, 3, true)
+        );
+        assert!(!sources[1].may_copy);
+    }
+
+    #[test]
     fn a_detail_carries_the_chat_counts_and_where_an_import_came_from() {
         let event = parse_tourney(&json!({
             "id": "e1", "myMentionCount": 2, "chatPingCount": 1, "myUnreadCount": 7,
@@ -2968,11 +3106,171 @@ See the [rules](https://x.invalid/r)."
                 bracket: BracketSide::ThirdPlace,
                 round: 3,
                 best_of: 5,
+                division: None,
             }),
             (
                 "set_round_bo",
                 json!({ "bracket": "3p", "round": 3, "bo": 5, "division": null })
             )
+        );
+        assert_eq!(
+            request(TourneyAdmin::RoundBestOf {
+                bracket: BracketSide::Winners,
+                round: 1,
+                best_of: 3,
+                division: Some(2),
+            }),
+            (
+                "set_round_bo",
+                json!({ "bracket": "wb", "round": 1, "bo": 3, "division": 2 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::PlanRoundBestOf {
+                list: PlanList::Losers,
+                index: 2,
+                best_of: 5,
+            }),
+            (
+                "set_plan_round_bo",
+                json!({ "list": "lb", "index": 2, "bo": 5 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::SetMaps {
+                bracket: BracketSide::Winners,
+                round: 2,
+                map_ids: vec!["mp1".into(), "mp2".into()],
+            }),
+            (
+                "set_maps",
+                json!({ "bracket": "wb", "round": 2, "maps": ["mp1", "mp2"] })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::SetMatchTeam {
+                match_id: "m1".into(),
+                slot: 2,
+                team_id: None,
+            }),
+            (
+                "set_match_team",
+                json!({ "matchId": "m1", "slot": 2, "teamId": null })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::CopyPoolOrder {
+                source_id: "pl1".into(),
+                targets: None,
+            }),
+            (
+                "pool_copy_sequence",
+                json!({ "sourceId": "pl1", "applyAll": 1 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::CopyPoolOrder {
+                source_id: "pl1".into(),
+                targets: Some(vec!["pl2".into()]),
+            }),
+            (
+                "pool_copy_sequence",
+                json!({ "sourceId": "pl1", "targetIds": ["pl2"] })
+            )
+        );
+        // The three shapes `copy_maps` reads.
+        assert_eq!(
+            request(TourneyAdmin::CopyMaps {
+                source_id: "e2".into(),
+                picked: None,
+            }),
+            ("copy_maps", json!({ "sourceId": "e2" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::CopyMaps {
+                source_id: "e2".into(),
+                picked: Some(MapPick {
+                    pool_ids: vec!["pl1".into()],
+                    map_ids: vec![],
+                }),
+            }),
+            ("copy_maps", json!({ "sourceId": "e2", "poolIds": ["pl1"] }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::CopyMaps {
+                source_id: "e2".into(),
+                picked: Some(MapPick {
+                    pool_ids: vec![],
+                    map_ids: vec!["mp9".into()],
+                }),
+            }),
+            (
+                "copy_maps",
+                json!({ "sourceId": "e2", "pools": false, "mapIds": ["mp9"] })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::FactionReset {
+                match_id: "m1".into(),
+                game: 2,
+                slot: Some(2),
+            }),
+            (
+                "fveto_reset",
+                json!({ "matchId": "m1", "game": 2, "side": "t2" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::FactionReset {
+                match_id: "m1".into(),
+                game: 1,
+                slot: None,
+            }),
+            ("fveto_reset", json!({ "matchId": "m1", "game": 1 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::PickOpponent {
+                team_id: "t7".into(),
+            }),
+            ("pick_opponent", json!({ "teamId": "t7" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::UndoPickOpponent),
+            ("undo_pick_opponent", json!({}))
+        );
+        assert_eq!(
+            request(TourneyAdmin::PlayoffSetup {
+                pick: None,
+                minutes: 5000,
+                tiebreak: SwissTiebreak::GameDiff,
+                redo: false,
+            }),
+            (
+                "playoff_setup",
+                json!({ "pick": "off", "minutes": 1440, "tiebreak": "gd" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::PlayoffSetup {
+                pick: Some(PickMode::Bottom),
+                minutes: 10,
+                tiebreak: SwissTiebreak::Beaten,
+                redo: true,
+            }),
+            (
+                "playoff_setup",
+                json!({ "pick": "bottom", "minutes": 10, "tiebreak": "beaten", "redo": 1 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::SwissRound1 {
+                pairs: Some(vec![("t1".into(), "t2".into())]),
+            }),
+            ("swiss_round1", json!({ "pairs": [["t1", "t2"]] }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::SwissRound1 { pairs: None }),
+            ("swiss_round1", json!({ "shuffle": 1 }))
         );
         assert_eq!(
             request(TourneyAdmin::MatchBestOf {

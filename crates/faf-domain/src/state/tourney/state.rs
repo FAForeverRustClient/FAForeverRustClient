@@ -277,6 +277,12 @@ pub struct TourneyState {
     /// One entrant's every rating, while the organiser has them open.
     pub player_ratings: Option<EntrantRatings>,
     pub player_ratings_status: TourneyLoadStatus,
+    /// The events maps can be imported from, while the organiser is choosing.
+    pub copy_sources: Vec<CopySource>,
+    pub copy_sources_status: TourneyLoadStatus,
+    /// The chosen one's maps and pools.
+    pub copy_source: Option<CopySourceMaps>,
+    pub copy_source_status: TourneyLoadStatus,
 }
 
 /// A name-to-account search, as the organiser types.

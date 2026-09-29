@@ -26,6 +26,7 @@ import { isBye } from "../bracket/swissRecords";
 import { VetoPanel, type VetoHandlers } from "../bracket/VetoPanel";
 import { hasVeto, myVetoSteps, vetoSettled } from "../bracket/vetoPresentation";
 import { maySetMatchBestOf } from "../../../shared/rules/tourneyRules";
+import { matchPoolKey, poolForMatch } from "../bracket/poolPresentation";
 
 /** The series lengths the service accepts. */
 const BEST_OF = [1, 3, 5, 7];
@@ -43,6 +44,8 @@ interface MatchesPanelProps {
   veto: VetoHandlers;
   /** An organiser's single-call change: here, one match's length. */
   onAdmin: (change: TourneyAdmin) => void;
+  /** Bind a pool to a key (`match:<id>`), or clear it with an empty id. */
+  onAssignPool?: (key: string, poolId: string) => void;
 }
 
 type MatchState = "notPlayed" | "waiting" | "done" | "vetoes" | "live" | "ready";
@@ -310,6 +313,9 @@ function MatchDetails({
         </div>
         {roster(entry.team2)}
       </div>
+      {props.onAssignPool !== undefined && (
+        <MatchPoolPicker event={event} entry={entry} onAssign={props.onAssignPool} />
+      )}
       {replays(entry.replayIds, "tournaments.matches.replays")}
       {replays(entry.drawReplayIds, "tournaments.matches.drawReplays")}
       {hasVeto(event, entry) && (
@@ -341,5 +347,62 @@ function MatchDetails({
         <Button onClick={onClose}>{t("common.close")}</Button>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * One match's own map pool, for an organiser: the website's service keeps a
+ * pool per match (`pool_assign` with `match:<id>`) and its pages never offer
+ * it. Useful for the one series on the day that is played on other maps, a
+ * rematch or a showmatch. "The round's pool" clears it.
+ *
+ * The service rebuilds the veto only while no step has been taken, so once
+ * one has, a new pool is stored and changes nothing; that is said rather than
+ * hidden. A pool of another length is allowed, as on the service, and warned.
+ */
+function MatchPoolPicker({
+  event,
+  entry,
+  onAssign,
+}: {
+  event: Tourney;
+  entry: TourneyMatch;
+  onAssign: (key: string, poolId: string) => void;
+}) {
+  const { t } = useTranslation();
+  if (!event.viewer.organiser || event.mapPools.length === 0 || entry.status === "done") return null;
+  const key = matchPoolKey(entry.id);
+  const own = event.poolAssign.find((assignment) => assignment.round === key)?.poolId ?? "";
+  const resolved = poolForMatch(event, entry);
+  const started = entry.veto !== null && entry.veto.stepIndex > 0;
+  const chosen = event.mapPools.find((pool) => pool.id === own);
+  return (
+    <div className="tournament-md-pool">
+      <label className="tournament-field">
+        <span>{t("tournaments.matches.poolLabel")}</span>
+        <select value={own} onChange={(changed) => onAssign(key, changed.target.value)}>
+          <option value="">
+            {t("tournaments.matches.poolOfRound", {
+              pool: resolved !== null && resolved.source !== "match" ? resolved.pool.name : "-",
+            })}
+          </option>
+          {event.mapPools.map((pool) => (
+            <option key={pool.id} value={pool.id}>
+              {t("tournaments.matches.poolOption", {
+                name: pool.name,
+                bo: pool.bestOf ?? 1,
+                count: pool.mapIds.length,
+              })}
+            </option>
+          ))}
+        </select>
+      </label>
+      {chosen !== undefined && (chosen.bestOf ?? 1) !== entry.bestOf && (
+        <small className="tournament-warning">
+          {t("tournaments.matches.poolLengthDiffers", { bo: entry.bestOf })}
+        </small>
+      )}
+      {started && <small className="muted">{t("tournaments.matches.poolVetoStarted")}</small>}
+    </div>
   );
 }

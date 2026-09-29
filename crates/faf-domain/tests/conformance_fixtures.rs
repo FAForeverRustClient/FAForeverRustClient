@@ -1674,6 +1674,7 @@ fn tourney_pool_draft_cases() -> Vec<TourneyPoolDraftCase> {
             pool_step(PoolAction::Pick, PoolSide::B),
             pool_step(PoolAction::Pick, PoolSide::A),
         ],
+        publish_at: None,
     };
 
     [
@@ -4708,6 +4709,44 @@ fn cases() -> Vec<Case> {
                 TourneyEvent::PlayerRatingsFailed {
                     reason: "FAF could not be reached just now.".into(),
                     kind: RequestFailureKind::Offline,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "an organiser looks for maps to import, and picks a source twice",
+            vec![
+                TourneyEvent::CopySourcesLoading.into(),
+                TourneyEvent::CopySourcesFailed {
+                    reason: "FAF could not be reached just now.".into(),
+                    kind: RequestFailureKind::Offline,
+                }
+                .into(),
+                TourneyEvent::CopySourcesLoading.into(),
+                TourneyEvent::CopySourcesLoaded {
+                    sources: vec![CopySource {
+                        id: "e2".into(),
+                        name: "Last season".into(),
+                        map_count: 2,
+                        pool_count: 1,
+                        may_copy: true,
+                    }],
+                }
+                .into(),
+                TourneyEvent::CopySourceLoading.into(),
+                TourneyEvent::CopySourceLoaded {
+                    source: CopySourceMaps {
+                        tournament_id: "e2".into(),
+                        maps: Vec::new(),
+                        pools: Vec::new(),
+                    },
+                }
+                .into(),
+                // The next source's request clears the first one's maps.
+                TourneyEvent::CopySourceLoading.into(),
+                TourneyEvent::CopySourceFailed {
+                    reason: "Tournament not found".into(),
+                    kind: RequestFailureKind::Rejected,
                 }
                 .into(),
             ],

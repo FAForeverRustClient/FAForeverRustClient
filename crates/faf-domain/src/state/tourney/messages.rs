@@ -28,6 +28,88 @@ pub enum TourneyAdmin {
         bracket: BracketSide,
         round: i32,
         best_of: i32,
+        /// One division's round, or `None` for that round in every division.
+        #[serde(default)]
+        division: Option<i32>,
+    },
+    /// Change one round's best-of in the plan, before the draw
+    /// (`set_plan_round_bo`). The service switches the event to a best-of
+    /// per round as it does so.
+    #[serde(rename_all = "camelCase")]
+    PlanRoundBestOf {
+        list: PlanList,
+        /// Zero-based round; ignored for the grand final.
+        index: i32,
+        best_of: i32,
+    },
+    /// Pin the maps a round is played on, one per game, without a veto
+    /// (`set_maps`). At most nine; an empty list clears them.
+    #[serde(rename_all = "camelCase")]
+    SetMaps {
+        bracket: BracketSide,
+        round: i32,
+        map_ids: Vec<String>,
+    },
+    /// Put a team, a bye or nobody in one side of a match that has not been
+    /// played (`set_match_team`). The website has no control for it; the
+    /// service does, and it is how a TO repairs a slot by hand.
+    #[serde(rename_all = "camelCase")]
+    SetMatchTeam {
+        match_id: String,
+        /// 1 or 2.
+        slot: i32,
+        /// A team id, `BYE`, or `None` to empty the slot.
+        team_id: Option<String>,
+    },
+    /// Copy one pool's ban/pick order, and its best-of, onto other pools with
+    /// as many maps (`pool_copy_sequence`). No targets means every such pool.
+    #[serde(rename_all = "camelCase")]
+    CopyPoolOrder {
+        source_id: String,
+        targets: Option<Vec<String>>,
+    },
+    /// Import maps and pools from another event this account organises
+    /// (`copy_maps`). No pick means everything; maps already here, by name,
+    /// are not duplicated.
+    #[serde(rename_all = "camelCase")]
+    CopyMaps {
+        source_id: String,
+        picked: Option<MapPick>,
+    },
+    /// Clear one game's faction choices for one side, or for both
+    /// (`fveto_reset`), so they can be made again.
+    #[serde(rename_all = "camelCase")]
+    FactionReset {
+        match_id: String,
+        game: i32,
+        /// 1 or 2 for that side's choices, `None` for both.
+        slot: Option<i32>,
+    },
+    /// Choose an opponent in a pick phase (`pick_opponent`). Sent by the team
+    /// on the clock, or by an organiser on its behalf: the one change here a
+    /// player makes too, besides a captain's own invitations.
+    #[serde(rename_all = "camelCase")]
+    PickOpponent { team_id: String },
+    /// Take the last pick back (`undo_pick_opponent`). Organisers only, and
+    /// only until a playoff match has begun.
+    UndoPickOpponent,
+    /// How a running Swiss stage's playoffs are set up (`playoff_setup`):
+    /// who picks their opponent (`None` for nobody), the clock per pick in
+    /// minutes (0 for none), and the tiebreak. `redo` takes playoffs already
+    /// built down and sets them up again.
+    #[serde(rename_all = "camelCase")]
+    PlayoffSetup {
+        pick: Option<PickMode>,
+        minutes: i32,
+        tiebreak: SwissTiebreak,
+        redo: bool,
+    },
+    /// Set a Swiss stage's round 1 by hand, or draw it again at random
+    /// (`swiss_round1`, `None` pairs). Before the start it pins a plan; once
+    /// running it replaces round 1 while nothing in it has begun.
+    #[serde(rename_all = "camelCase")]
+    SwissRound1 {
+        pairs: Option<Vec<(String, String)>>,
     },
     /// Change the best-of of one match that has not begun (`set_match_bo`).
     #[serde(rename_all = "camelCase")]
@@ -171,6 +253,13 @@ pub enum TourneyCommand {
         tournament_id: String,
         player_id: String,
         refresh: bool,
+    },
+    /// The events this account may import maps from (`my_tournaments`).
+    LoadCopySources,
+    /// One of those events' maps and pools, to choose from.
+    #[serde(rename_all = "camelCase")]
+    LoadCopySource {
+        tournament_id: String,
     },
     /// Ban an entrant from this event and, where the service still allows
     /// it, take them out in the same step: what an organiser means by "kick".
@@ -811,6 +900,22 @@ pub enum TourneyEvent {
         ratings: EntrantRatings,
     },
     PlayerRatingsFailed {
+        reason: String,
+        kind: RequestFailureKind,
+    },
+    CopySourcesLoading,
+    CopySourcesLoaded {
+        sources: Vec<CopySource>,
+    },
+    CopySourcesFailed {
+        reason: String,
+        kind: RequestFailureKind,
+    },
+    CopySourceLoading,
+    CopySourceLoaded {
+        source: CopySourceMaps,
+    },
+    CopySourceFailed {
         reason: String,
         kind: RequestFailureKind,
     },

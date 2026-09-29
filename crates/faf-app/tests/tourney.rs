@@ -17,7 +17,7 @@ use faf_domain::state::{
     SeriesDraft, Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent,
     TourneyLoadStatus, TourneyPhase, TourneySeries, TourneyStatus,
 };
-use faf_domain::state::{EntrantRatings, RatingCheck};
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::AppEvent;
 
@@ -198,6 +198,9 @@ impl TourneyPort for RefusingTourney {
         _: &str,
         _: bool,
     ) -> Result<EntrantRatings, RequestError> {
+        self.refused()
+    }
+    async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
         self.refused()
     }
     async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
@@ -671,6 +674,7 @@ async fn the_map_database_takes_maps_and_hides_them_until_published() {
                 description: "8 spawns".into(),
                 published: false,
                 spec: None,
+                ..MapDraft::default()
             },
         }
         .into(),
@@ -746,6 +750,7 @@ async fn publishing_a_pool_publishes_the_maps_in_it() {
                 description: String::new(),
                 published: false,
                 spec: None,
+                ..MapDraft::default()
             },
         }
         .into(),
@@ -773,6 +778,7 @@ async fn publishing_a_pool_publishes_the_maps_in_it() {
                 map_ids: vec![hidden.clone()],
                 best_of: Some(1),
                 sequence: Vec::new(),
+                publish_at: None,
             },
         }
         .into(),
@@ -1554,6 +1560,7 @@ async fn assigning_a_pool_to_a_round_survives_the_reload() {
                 map_ids: vec!["map1".into(), "map2".into()],
                 best_of: Some(3),
                 sequence: Vec::new(),
+                publish_at: None,
             },
         }
         .into(),
@@ -1776,6 +1783,9 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
             _: &str,
             _: bool,
         ) -> Result<EntrantRatings, RequestError> {
+            unreachable!()
+        }
+        async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
             unreachable!()
         }
         async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {

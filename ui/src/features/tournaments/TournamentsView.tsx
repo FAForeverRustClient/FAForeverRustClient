@@ -471,6 +471,14 @@ export function TournamentsView() {
               onDeclineInvite={() => act({ type: "declineInvite", payload: { tournamentId: open.id } })}
               playerRatings={state.playerRatings}
               playerRatingsStatus={state.playerRatingsStatus}
+              mapImport={{
+                sources: state.copySources,
+                sourcesStatus: state.copySourcesStatus,
+                source: state.copySource,
+                sourceStatus: state.copySourceStatus,
+                onLoadSources: () => act({ type: "loadCopySources" }),
+                onLoadSource: (tournamentId) => act({ type: "loadCopySource", payload: { tournamentId } }),
+              }}
               onLoadPlayerRatings={(playerId, refresh) =>
                 act({ type: "loadPlayerRatings", payload: { tournamentId: open.id, playerId, refresh } })
               }
@@ -603,6 +611,11 @@ export function TournamentsView() {
                   act({
                     type: "factionVeto",
                     payload: { tournamentId: open.id, matchId, game, faction },
+                  }),
+                onFactionReset: (matchId, game, slot) =>
+                  act({
+                    type: "administer",
+                    payload: { tournamentId: open.id, change: { type: "factionReset", payload: { matchId, game, slot } } },
                   }),
               }}
               onSaveMap={(map) => act({ type: "saveMap", payload: { tournamentId: open.id, map } })}

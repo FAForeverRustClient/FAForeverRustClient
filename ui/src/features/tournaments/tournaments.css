@@ -4646,3 +4646,94 @@
 .tournament-days {
   white-space: nowrap;
 }
+
+/* -- The map editor's spawn rows ----------------------------------------
+   Sixteen numbered chips per row, as the website draws them: a click switches
+   one in or out, and the row reads left to right like the spawn numbers do. */
+
+.tournament-spawn-row {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.tournament-spawn-row legend {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 var(--space-1);
+}
+
+.tournament-spawn-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.tournament-spawn-chip {
+  min-width: 28px;
+  padding: 2px var(--space-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.tournament-spawn-chip.is-on {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  font-weight: 600;
+}
+
+.tournament-map-editor-preview {
+  max-height: 120px;
+  max-width: 100%;
+  object-fit: contain;
+  align-self: flex-start;
+  border-radius: var(--radius-sm);
+}
+
+.tournament-md-pool {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+}
+
+.tournament-fveto-reset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+/* Importing maps from another event. */
+.tournament-map-db-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tournament-import-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(620px, 92vw);
+}
+
+.tournament-import-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.tournament-import-body h6 {
+  margin: var(--space-2) 0 0;
+}

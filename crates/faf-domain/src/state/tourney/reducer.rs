@@ -193,6 +193,35 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
                 kind: *kind,
             }
         }
+        TourneyEvent::CopySourcesLoading => {
+            state.copy_sources_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::CopySourcesLoaded { sources } => {
+            state.copy_sources = sources.clone();
+            state.copy_sources_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::CopySourcesFailed { reason, kind } => {
+            state.copy_sources_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
+        // As with a player's ratings: the next source's request drops the
+        // previous one's maps at once, so they never show under its name.
+        TourneyEvent::CopySourceLoading => {
+            state.copy_source = None;
+            state.copy_source_status = TourneyLoadStatus::Loading;
+        }
+        TourneyEvent::CopySourceLoaded { source } => {
+            state.copy_source = Some(source.clone());
+            state.copy_source_status = TourneyLoadStatus::Ready;
+        }
+        TourneyEvent::CopySourceFailed { reason, kind } => {
+            state.copy_source_status = TourneyLoadStatus::Failed {
+                reason: reason.clone(),
+                kind: *kind,
+            }
+        }
         TourneyEvent::RenamesChecking => {
             state.renames = None;
             state.renames_status = TourneyLoadStatus::Loading;
@@ -251,4 +280,6 @@ fn clear_open_event(state: &mut TourneyState) {
     state.rating_check_status = TourneyLoadStatus::Idle;
     state.player_ratings = None;
     state.player_ratings_status = TourneyLoadStatus::Idle;
+    state.copy_source = None;
+    state.copy_source_status = TourneyLoadStatus::Idle;
 }

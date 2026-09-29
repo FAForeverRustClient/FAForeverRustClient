@@ -188,6 +188,87 @@ impl SwissTiebreak {
     }
 }
 
+impl SwissTiebreak {
+    /// The service's spelling (`tiebreak`).
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::GameDiff => "gd",
+            Self::Beaten => "beaten",
+        }
+    }
+}
+
+/// Who chooses their opponent when opponents are picked (`pickMode`).
+///
+/// - `Half`: the top half of the seeds, each from the bottom half, in seed
+///   order. The only mode for a main bracket.
+/// - `Unbeaten`: in Swiss playoffs, only those who went through without a
+///   loss; everyone else is drawn, a different record against each other
+///   where possible.
+/// - `Bottom`: the unbeaten again, but only from the lowest record through;
+///   the rest are paired by seed, best against lowest. Forces the `beaten`
+///   tiebreak.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PickMode {
+    #[default]
+    Half,
+    Unbeaten,
+    Bottom,
+}
+
+impl PickMode {
+    /// `cleanPickMode`: anything unknown is `half`.
+    pub fn from_wire(value: &str) -> Self {
+        match value {
+            "unbeaten" => Self::Unbeaten,
+            "bottom" => Self::Bottom,
+            _ => Self::Half,
+        }
+    }
+
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::Half => "half",
+            Self::Unbeaten => "unbeaten",
+            Self::Bottom => "bottom",
+        }
+    }
+}
+
+/// One list of the per-round best-of plan an organiser edits before the draw
+/// (`set_plan_round_bo`): a single elimination's rounds, a double
+/// elimination's winners or losers rounds, or its grand final.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PlanList {
+    Rounds,
+    Winners,
+    Losers,
+    GrandFinal,
+}
+
+impl PlanList {
+    pub fn as_wire(self) -> &'static str {
+        match self {
+            Self::Rounds => "rounds",
+            Self::Winners => "wb",
+            Self::Losers => "lb",
+            Self::GrandFinal => "gf",
+        }
+    }
+}
+
+/// What an organiser takes from another event's map database (`copy_maps`).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MapPick {
+    /// Whole pools, with every map in them.
+    pub pool_ids: Vec<String>,
+    /// Single maps, on top of the pools' own.
+    pub map_ids: Vec<String>,
+}
+
 /// A Swiss stage's record cuts (`winCut`, `lossCut`): a team leaves the stage
 /// on reaching that many wins or that many losses, rather than after a fixed
 /// number of rounds. Zero is off, which is what every event without them has.

@@ -29,7 +29,7 @@ use faf_domain::state::{
     BracketConfig, Caster, Currency, FormatDraft, Prize, Qualifier, QualifierRule, SeriesColour,
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries,
 };
-use faf_domain::state::{EntrantRatings, RatingCheck};
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck};
 use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
 
@@ -1185,6 +1185,12 @@ impl TourneyPort for FakeTourney {
     async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
         Err(RequestError::rejected(
             "Checking a rating against FAF is not available offline",
+        ))
+    }
+
+    async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
+        Err(RequestError::rejected(
+            "Importing maps is not available offline",
         ))
     }
 
@@ -3433,6 +3439,7 @@ mod tests {
                 map_ids: vec!["map1".into(), "map2".into()],
                 best_of: Some(3),
                 sequence: Vec::new(),
+                publish_at: None,
             },
         )
         .await

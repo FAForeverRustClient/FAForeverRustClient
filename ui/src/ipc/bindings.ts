@@ -1623,6 +1623,29 @@ export type CoopStatus = { type: "idle" } | { type: "loading" } | { type: "ready
 } };
 
 /**
+ *  One of this account's events, as a place to import maps from
+ *  (`GET /api/my_tournaments`).
+ */
+export type CopySource = {
+	id: string,
+	name: string,
+	mapCount: number,
+	poolCount: number,
+	/**
+	 *  Whether this account may take its maps (`canCopyMaps`): a named
+	 *  organiser of it. The service sends zero counts where it may not.
+	 */
+	mayCopy: boolean,
+};
+
+/**  The maps and pools of an event being imported from, to choose among. */
+export type CopySourceMaps = {
+	tournamentId: string,
+	maps: TourneyMap[],
+	pools: MapPool[],
+};
+
+/**
  *  The three currencies a cash prize may be named in.
  *
  *  The service's own list (`PRIZE_CURRENCIES`), and closed rather than a free
@@ -3745,6 +3768,13 @@ export type MapDraft = {
 	 *  not "unchanged" but "delete it".
 	 */
 	spec?: MapSpec | null,
+	/**
+	 *  A new picture of the event's own, as a `data:` URL, or `None` to keep
+	 *  the one it has. The service stores it under a file name of its own.
+	 */
+	image?: string | null,
+	/**  Delete the stored picture. Ignored when a new one is sent. */
+	removeImage?: boolean,
 };
 
 export type MapGeneratorCommand =
@@ -3931,6 +3961,14 @@ export type MapInstallStatus = { type: "idle" } | { type: "installing"; payload:
 export type MapListStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
 	reason: string,
 } };
+
+/**  What an organiser takes from another event's map database (`copy_maps`). */
+export type MapPick = {
+	/**  Whole pools, with every map in them. */
+	poolIds: string[],
+	/**  Single maps, on top of the pools' own. */
+	mapIds: string[],
+};
 
 /**  A named set of maps, with the ban/pick order it is played in. */
 export type MapPool = {
@@ -5225,6 +5263,27 @@ export type PendingReport = {
 };
 
 /**
+ *  Who chooses their opponent when opponents are picked (`pickMode`).
+ *
+ *  - `Half`: the top half of the seeds, each from the bottom half, in seed
+ *    order. The only mode for a main bracket.
+ *  - `Unbeaten`: in Swiss playoffs, only those who went through without a
+ *    loss; everyone else is drawn, a different record against each other
+ *    where possible.
+ *  - `Bottom`: the unbeaten again, but only from the lowest record through;
+ *    the rest are paired by seed, best against lowest. Forces the `beaten`
+ *    tiebreak.
+ */
+export type PickMode = "half" | "unbeaten" | "bottom";
+
+/**
+ *  One list of the per-round best-of plan an organiser edits before the draw
+ *  (`set_plan_round_bo`): a single elimination's rounds, a double
+ *  elimination's winners or losers rounds, or its grand final.
+ */
+export type PlanList = "rounds" | "winners" | "losers" | "grandFinal";
+
+/**
  *  The active surface inside Play. It lives in the domain state so the UI never
  *  creates a second, local navigation source of truth.
  */
@@ -5757,6 +5816,12 @@ export type PoolDraft = {
 	 *  else, naming the numbers it wanted.
 	 */
 	sequence: PoolStep[],
+	/**
+	 *  When the pool goes public on its own, in Unix seconds; `None` for no
+	 *  schedule. Always sent: the service treats a missing value as "keep",
+	 *  but an empty one as "clear", and the editor carries the stored one.
+	 */
+	publishAt?: number | null,
 };
 
 export type PoolSide = "a" | "b";
@@ -8148,6 +8213,100 @@ export type TourneyAdmin =
 	bracket: BracketSide,
 	round: number,
 	bestOf: number,
+	/**  One division's round, or `None` for that round in every division. */
+	division?: number | null,
+} } |
+/**
+ *  Change one round's best-of in the plan, before the draw
+ *  (`set_plan_round_bo`). The service switches the event to a best-of
+ *  per round as it does so.
+ */
+{ type: "planRoundBestOf"; payload: {
+	list: PlanList,
+	/**  Zero-based round; ignored for the grand final. */
+	index: number,
+	bestOf: number,
+} } |
+/**
+ *  Pin the maps a round is played on, one per game, without a veto
+ *  (`set_maps`). At most nine; an empty list clears them.
+ */
+{ type: "setMaps"; payload: {
+	bracket: BracketSide,
+	round: number,
+	mapIds: string[],
+} } |
+/**
+ *  Put a team, a bye or nobody in one side of a match that has not been
+ *  played (`set_match_team`). The website has no control for it; the
+ *  service does, and it is how a TO repairs a slot by hand.
+ */
+{ type: "setMatchTeam"; payload: {
+	matchId: string,
+	/**  1 or 2. */
+	slot: number,
+	/**  A team id, `BYE`, or `None` to empty the slot. */
+	teamId: string | null,
+} } |
+/**
+ *  Copy one pool's ban/pick order, and its best-of, onto other pools with
+ *  as many maps (`pool_copy_sequence`). No targets means every such pool.
+ */
+{ type: "copyPoolOrder"; payload: {
+	sourceId: string,
+	targets: string[] | null,
+} } |
+/**
+ *  Import maps and pools from another event this account organises
+ *  (`copy_maps`). No pick means everything; maps already here, by name,
+ *  are not duplicated.
+ */
+{ type: "copyMaps"; payload: {
+	sourceId: string,
+	picked: MapPick | null,
+} } |
+/**
+ *  Clear one game's faction choices for one side, or for both
+ *  (`fveto_reset`), so they can be made again.
+ */
+{ type: "factionReset"; payload: {
+	matchId: string,
+	game: number,
+	/**  1 or 2 for that side's choices, `None` for both. */
+	slot: number | null,
+} } |
+/**
+ *  Choose an opponent in a pick phase (`pick_opponent`). Sent by the team
+ *  on the clock, or by an organiser on its behalf: the one change here a
+ *  player makes too, besides a captain's own invitations.
+ */
+{ type: "pickOpponent"; payload: {
+	teamId: string,
+} } |
+/**
+ *  Take the last pick back (`undo_pick_opponent`). Organisers only, and
+ *  only until a playoff match has begun.
+ */
+{ type: "undoPickOpponent" } |
+/**
+ *  How a running Swiss stage's playoffs are set up (`playoff_setup`):
+ *  who picks their opponent (`None` for nobody), the clock per pick in
+ *  minutes (0 for none), and the tiebreak. `redo` takes playoffs already
+ *  built down and sets them up again.
+ */
+{ type: "playoffSetup"; payload: {
+	pick: PickMode | null,
+	minutes: number,
+	tiebreak: SwissTiebreak,
+	redo: boolean,
+} } |
+/**
+ *  Set a Swiss stage's round 1 by hand, or draw it again at random
+ *  (`swiss_round1`, `None` pairs). Before the start it pins a plan; once
+ *  running it replaces round 1 while nothing in it has begun.
+ */
+{ type: "swissRound1"; payload: {
+	pairs: ([string, string])[] | null,
 } } |
 /**  Change the best-of of one match that has not begun (`set_match_bo`). */
 { type: "matchBestOf"; payload: {
@@ -8372,6 +8531,12 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 	tournamentId: string,
 	playerId: string,
 	refresh: boolean,
+} } |
+/**  The events this account may import maps from (`my_tournaments`). */
+{ type: "loadCopySources" } |
+/**  One of those events' maps and pools, to choose from. */
+{ type: "loadCopySource"; payload: {
+	tournamentId: string,
 } } |
 /**
  *  Ban an entrant from this event and, where the service still allows
@@ -9052,6 +9217,16 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 } } | { type: "playerRatingsFailed"; payload: {
 	reason: string,
 	kind: RequestFailureKind,
+} } | { type: "copySourcesLoading" } | { type: "copySourcesLoaded"; payload: {
+	sources: CopySource[],
+} } | { type: "copySourcesFailed"; payload: {
+	reason: string,
+	kind: RequestFailureKind,
+} } | { type: "copySourceLoading" } | { type: "copySourceLoaded"; payload: {
+	source: CopySourceMaps,
+} } | { type: "copySourceFailed"; payload: {
+	reason: string,
+	kind: RequestFailureKind,
 } } | { type: "renamesChecking" } | { type: "renamesChecked"; payload: {
 	check: RenameCheck,
 } } | { type: "renamesCheckFailed"; payload: {
@@ -9399,6 +9574,12 @@ export type TourneyState = {
 	/**  One entrant's every rating, while the organiser has them open. */
 	playerRatings: EntrantRatings | null,
 	playerRatingsStatus: TourneyLoadStatus,
+	/**  The events maps can be imported from, while the organiser is choosing. */
+	copySources: CopySource[],
+	copySourcesStatus: TourneyLoadStatus,
+	/**  The chosen one's maps and pools. */
+	copySource: CopySourceMaps | null,
+	copySourceStatus: TourneyLoadStatus,
 };
 
 /**
