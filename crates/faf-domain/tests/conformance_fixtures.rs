@@ -643,6 +643,7 @@ fn tourney_player(
         note: String::new(),
         signed_at: None,
         discord: String::new(),
+        team_name: String::new(),
     }
 }
 

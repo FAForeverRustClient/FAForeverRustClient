@@ -208,6 +208,14 @@ pub enum TourneyAdmin {
     /// save would quietly undo them.
     #[serde(rename_all = "camelCase")]
     SetVeto { config: VetoConfig },
+    /// Set a player's team name in an event of premade teams
+    /// (`set_team_name`): the signed-in player's own with no id, or an
+    /// organiser any player's. Empty makes them a substitute.
+    #[serde(rename_all = "camelCase")]
+    SetTeamName {
+        player_id: Option<String>,
+        team_name: String,
+    },
     /// Tag the event official or community (`set_category`). Site admins
     /// only; organisers choose it once, at creation.
     #[serde(rename_all = "camelCase")]

@@ -7820,6 +7820,7 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "perRoundBo": false,
+                    "premadeTeams": false,
                     "planLists": {
                       "rounds": [],
                       "winners": [],
@@ -7971,6 +7972,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -8338,6 +8340,7 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "perRoundBo": false,
+                    "premadeTeams": false,
                     "planLists": {
                       "rounds": [],
                       "winners": [],
@@ -8475,6 +8478,7 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "perRoundBo": false,
+                    "premadeTeams": false,
                     "planLists": {
                       "rounds": [],
                       "winners": [],
@@ -8626,6 +8630,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -8763,6 +8768,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -9021,6 +9027,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -9158,6 +9165,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -9413,6 +9421,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -9550,6 +9559,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -9794,6 +9804,7 @@
                   "survivors": null,
                   "earlyFinish": null,
                   "perRoundBo": false,
+                  "premadeTeams": false,
                   "planLists": {
                     "rounds": [],
                     "winners": [],
@@ -9937,6 +9948,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -10080,6 +10092,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -10217,6 +10230,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -10470,6 +10484,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -10613,6 +10628,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -10750,6 +10766,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -11015,6 +11032,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -11158,6 +11176,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -11295,6 +11314,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -11543,6 +11563,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -11686,6 +11707,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -11823,6 +11845,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -12076,6 +12099,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -12219,6 +12243,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -12356,6 +12381,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -12612,6 +12638,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -12755,6 +12782,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -12892,6 +12920,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -13152,6 +13181,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -13304,6 +13334,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -13441,6 +13472,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -13694,6 +13726,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -13846,6 +13879,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -13983,6 +14017,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -14246,6 +14281,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -14383,6 +14419,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -14645,6 +14682,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -14782,6 +14820,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -15054,6 +15093,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -15191,6 +15231,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -15435,6 +15476,7 @@
                   "survivors": null,
                   "earlyFinish": null,
                   "perRoundBo": false,
+                  "premadeTeams": false,
                   "planLists": {
                     "rounds": [],
                     "winners": [],
@@ -15592,6 +15634,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -15729,6 +15772,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -15974,6 +16018,7 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "perRoundBo": false,
+                    "premadeTeams": false,
                     "planLists": {
                       "rounds": [],
                       "winners": [],
@@ -16132,6 +16177,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -20005,6 +20051,7 @@
                       "survivors": null,
                       "earlyFinish": null,
                       "perRoundBo": false,
+                      "premadeTeams": false,
                       "planLists": {
                         "rounds": [],
                         "winners": [],
@@ -20174,6 +20221,7 @@
                   "players": [],
                   "playoffs": null,
                   "poolAssign": [],
+                  "premadeTeams": false,
                   "prize": null,
                   "publishAt": null,
                   "published": false,
@@ -20438,6 +20486,7 @@
                   "players": [],
                   "playoffs": null,
                   "poolAssign": [],
+                  "premadeTeams": false,
                   "prize": null,
                   "publishAt": null,
                   "published": false,
@@ -20674,6 +20723,7 @@
                   "survivors": null,
                   "earlyFinish": null,
                   "perRoundBo": false,
+                  "premadeTeams": false,
                   "planLists": {
                     "rounds": [],
                     "winners": [],
@@ -20841,6 +20891,7 @@
                   "players": [],
                   "playoffs": null,
                   "poolAssign": [],
+                  "premadeTeams": false,
                   "prize": null,
                   "publishAt": null,
                   "published": false,
@@ -21044,6 +21095,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -21241,6 +21293,7 @@
                   "players": [],
                   "playoffs": null,
                   "poolAssign": [],
+                  "premadeTeams": false,
                   "prize": null,
                   "publishAt": null,
                   "published": false,
@@ -21509,6 +21562,7 @@
                   "players": [],
                   "playoffs": null,
                   "poolAssign": [],
+                  "premadeTeams": false,
                   "prize": null,
                   "publishAt": null,
                   "published": false,
@@ -24790,6 +24844,7 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "perRoundBo": false,
+                    "premadeTeams": false,
                     "planLists": {
                       "rounds": [],
                       "winners": [],
@@ -24927,6 +24982,7 @@
                     "survivors": null,
                     "earlyFinish": null,
                     "perRoundBo": false,
+                    "premadeTeams": false,
                     "planLists": {
                       "rounds": [],
                       "winners": [],
@@ -25078,6 +25134,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -25215,6 +25272,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -25459,6 +25517,7 @@
                   "survivors": null,
                   "earlyFinish": null,
                   "perRoundBo": false,
+                  "premadeTeams": false,
                   "planLists": {
                     "rounds": [],
                     "winners": [],
@@ -25602,6 +25661,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -25745,6 +25805,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -25882,6 +25943,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -26171,6 +26233,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -26314,6 +26377,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -26451,6 +26515,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -26721,6 +26786,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -26864,6 +26930,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -27001,6 +27068,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -27268,6 +27336,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -27411,6 +27480,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -27548,6 +27618,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -27841,6 +27912,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -27984,6 +28056,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -28121,6 +28194,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -28403,6 +28477,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -28546,6 +28621,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -28683,6 +28759,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -28964,6 +29041,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -29107,6 +29185,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -29244,6 +29323,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -29537,6 +29617,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -29680,6 +29761,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -29817,6 +29899,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -30110,6 +30193,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -30253,6 +30337,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -30390,6 +30475,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -30662,6 +30748,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -30805,6 +30892,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -30942,6 +31030,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -31214,6 +31303,7 @@
               "players": [],
               "playoffs": null,
               "poolAssign": [],
+              "premadeTeams": false,
               "prize": null,
               "publishAt": null,
               "published": false,
@@ -31357,6 +31447,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -31494,6 +31585,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -31752,6 +31844,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -31889,6 +31982,7 @@
                 "players": [],
                 "playoffs": null,
                 "poolAssign": [],
+                "premadeTeams": false,
                 "prize": null,
                 "publishAt": null,
                 "published": false,
@@ -51161,7 +51255,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p1",
@@ -51175,7 +51270,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p2",
@@ -51189,7 +51285,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p3",
@@ -51203,7 +51300,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p9",
@@ -51217,7 +51315,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -51298,6 +51397,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -51488,7 +51588,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p1",
@@ -51502,7 +51603,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p2",
@@ -51516,7 +51618,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p3",
@@ -51530,7 +51633,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p9",
@@ -51544,7 +51648,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -51625,6 +51730,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -51797,7 +51903,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -51854,6 +51961,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -52014,7 +52122,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [],
@@ -52053,6 +52162,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -52211,7 +52321,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -52353,6 +52464,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -52513,7 +52625,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -52655,6 +52768,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -52820,7 +52934,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -52962,6 +53077,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -53122,7 +53238,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -53264,6 +53381,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -53424,7 +53542,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -53566,6 +53685,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -53726,7 +53846,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p2",
@@ -53740,7 +53861,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -53798,6 +53920,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -53964,7 +54087,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p2",
@@ -53978,7 +54102,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -54036,6 +54161,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -54202,7 +54328,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p2",
@@ -54216,7 +54343,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p3",
@@ -54230,7 +54358,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p4",
@@ -54244,7 +54373,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p5",
@@ -54258,7 +54388,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p6",
@@ -54272,7 +54403,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p7",
@@ -54286,7 +54418,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -54397,6 +54530,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -54576,7 +54710,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p2",
@@ -54590,7 +54725,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p3",
@@ -54604,7 +54740,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p4",
@@ -54618,7 +54755,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p5",
@@ -54632,7 +54770,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p6",
@@ -54646,7 +54785,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p7",
@@ -54660,7 +54800,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -54771,6 +54912,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -54950,7 +55092,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p2",
@@ -54964,7 +55107,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p3",
@@ -54978,7 +55122,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p4",
@@ -54992,7 +55137,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p5",
@@ -55006,7 +55152,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p6",
@@ -55020,7 +55167,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p7",
@@ -55034,7 +55182,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -55145,6 +55294,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -55324,7 +55474,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p2",
@@ -55338,7 +55489,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p3",
@@ -55352,7 +55504,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p4",
@@ -55366,7 +55519,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p5",
@@ -55380,7 +55534,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p6",
@@ -55394,7 +55549,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p7",
@@ -55408,7 +55564,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -55519,6 +55676,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -55702,7 +55860,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -55844,6 +56003,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -56011,7 +56171,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -56153,6 +56314,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -56494,6 +56656,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -56864,6 +57027,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -57269,6 +57433,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -57529,6 +57694,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -57877,6 +58043,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -58228,6 +58395,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -58581,6 +58749,7 @@
             "unplayed": []
           },
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -58771,6 +58940,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -58951,6 +59121,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -60637,6 +60808,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -60878,6 +61050,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -61161,6 +61334,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -61548,6 +61722,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -61962,6 +62137,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -62196,6 +62372,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -62461,6 +62638,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -62647,6 +62825,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -62888,6 +63067,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -63007,7 +63187,8 @@
           "pending": false,
           "note": "",
           "signedAt": null,
-          "discord": ""
+          "discord": "",
+          "teamName": ""
         },
         "resolvedLogin": "Ada"
       },
@@ -63043,7 +63224,8 @@
           "pending": false,
           "note": "",
           "signedAt": null,
-          "discord": ""
+          "discord": "",
+          "teamName": ""
         },
         "resolvedLogin": null
       },
@@ -63079,7 +63261,8 @@
           "pending": false,
           "note": "",
           "signedAt": null,
-          "discord": ""
+          "discord": "",
+          "teamName": ""
         },
         "resolvedLogin": null
       }
@@ -63362,7 +63545,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -63376,7 +63560,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -63507,6 +63692,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -63626,7 +63812,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -63640,7 +63827,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -63771,6 +63959,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -63890,7 +64079,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -63904,7 +64094,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -64035,6 +64226,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -64154,7 +64346,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -64168,7 +64361,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -64299,6 +64493,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -64418,7 +64613,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -64432,7 +64628,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -64563,6 +64760,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -64682,7 +64880,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -64696,7 +64895,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -64827,6 +65027,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -64946,7 +65147,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -64960,7 +65162,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -65091,6 +65294,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -65210,7 +65414,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -65224,7 +65429,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -65355,6 +65561,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -65474,7 +65681,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -65488,7 +65696,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -65591,6 +65800,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -65899,6 +66109,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -66224,6 +66435,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -66545,6 +66757,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -66870,6 +67083,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -67184,6 +67398,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -67499,6 +67714,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -67813,6 +68029,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -68128,6 +68345,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -68411,6 +68629,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -68693,6 +68912,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -68975,6 +69195,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -69111,7 +69332,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -69125,7 +69347,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free1",
@@ -69139,7 +69362,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free2",
@@ -69153,7 +69377,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "pending",
@@ -69167,7 +69392,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -69241,6 +69467,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -69371,7 +69598,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -69385,7 +69613,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free1",
@@ -69399,7 +69628,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free2",
@@ -69413,7 +69643,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "pending",
@@ -69427,7 +69658,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -69501,6 +69733,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -69631,7 +69864,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -69645,7 +69879,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free1",
@@ -69659,7 +69894,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free2",
@@ -69673,7 +69909,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "pending",
@@ -69687,7 +69924,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -69761,6 +69999,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -69895,7 +70134,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -69909,7 +70149,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free1",
@@ -69923,7 +70164,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free2",
@@ -69937,7 +70179,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "pending",
@@ -69951,7 +70194,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -70025,6 +70269,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -70159,7 +70404,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -70173,7 +70419,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free1",
@@ -70187,7 +70434,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free2",
@@ -70201,7 +70449,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "pending",
@@ -70215,7 +70464,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -70289,6 +70539,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -70423,7 +70674,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -70437,7 +70689,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free1",
@@ -70451,7 +70704,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free2",
@@ -70465,7 +70719,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "pending",
@@ -70479,7 +70734,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -70553,6 +70809,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -70687,7 +70944,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -70701,7 +70959,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free1",
@@ -70715,7 +70974,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free2",
@@ -70729,7 +70989,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "pending",
@@ -70743,7 +71004,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -70817,6 +71079,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -70947,7 +71210,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -70961,7 +71225,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free1",
@@ -70975,7 +71240,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free2",
@@ -70989,7 +71255,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "pending",
@@ -71003,7 +71270,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -71077,6 +71345,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -71211,7 +71480,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -71225,7 +71495,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free1",
@@ -71239,7 +71510,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free2",
@@ -71253,7 +71525,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "pending",
@@ -71267,7 +71540,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -71341,6 +71615,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -71471,7 +71746,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "cap2",
@@ -71485,7 +71761,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free1",
@@ -71499,7 +71776,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "free2",
@@ -71513,7 +71791,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "pending",
@@ -71527,7 +71806,8 @@
               "pending": true,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [
@@ -71601,6 +71881,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -71765,6 +72046,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -71902,6 +72184,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -72062,6 +72345,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -72199,6 +72483,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -72359,6 +72644,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -72496,6 +72782,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -72656,6 +72943,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -72793,6 +73081,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -72953,6 +73242,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -73090,6 +73380,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -73250,6 +73541,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -73387,6 +73679,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -73547,6 +73840,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -73684,6 +73978,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -73848,6 +74143,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -74032,6 +74328,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -74216,6 +74513,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -74400,6 +74698,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -74584,6 +74883,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -74768,6 +75068,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -74952,6 +75253,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -75136,6 +75438,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -75320,6 +75623,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -75504,6 +75808,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -75649,7 +75954,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p1",
@@ -75663,7 +75969,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p2",
@@ -75677,7 +75984,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p3",
@@ -75691,7 +75999,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p4",
@@ -75705,7 +76014,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p5",
@@ -75719,7 +76029,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p6",
@@ -75733,7 +76044,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p7",
@@ -75747,7 +76059,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [],
@@ -75786,6 +76099,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -75944,6 +76258,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -76084,7 +76399,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p1",
@@ -76098,7 +76414,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p2",
@@ -76112,7 +76429,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p3",
@@ -76126,7 +76444,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p4",
@@ -76140,7 +76459,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p5",
@@ -76154,7 +76474,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p6",
@@ -76168,7 +76489,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p7",
@@ -76182,7 +76504,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p8",
@@ -76196,7 +76519,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             },
             {
               "id": "p9",
@@ -76210,7 +76534,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [],
@@ -76249,6 +76574,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -76413,6 +76739,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -76607,6 +76934,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -76753,7 +77081,8 @@
               "pending": false,
               "note": "",
               "signedAt": null,
-              "discord": ""
+              "discord": "",
+              "teamName": ""
             }
           ],
           "teams": [],
@@ -76792,6 +77121,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -76937,6 +77267,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -77167,6 +77498,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -77327,6 +77659,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -77800,6 +78133,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -78043,6 +78377,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -78316,6 +78651,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -78596,6 +78932,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -78868,6 +79205,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],
@@ -79043,6 +79381,7 @@
           "survivors": null,
           "earlyFinish": null,
           "perRoundBo": false,
+          "premadeTeams": false,
           "planLists": {
             "rounds": [],
             "winners": [],

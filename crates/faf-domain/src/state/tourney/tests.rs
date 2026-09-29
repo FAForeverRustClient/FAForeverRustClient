@@ -14,6 +14,7 @@ fn player(id: &str, name: &str, faf_id: Option<i32>) -> TourneyPlayer {
         note: String::new(),
         signed_at: None,
         discord: String::new(),
+        team_name: String::new(),
     }
 }
 

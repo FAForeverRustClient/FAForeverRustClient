@@ -353,6 +353,11 @@ pub struct TourneyPlayer {
     /// The player's Discord handle, where they gave one. Sent only to the
     /// event's organisers and to people signed up for it; empty otherwise.
     pub discord: String,
+    /// The team name a player gave in an event of premade teams (`teamName`):
+    /// players with the same one are grouped into a team when signups close,
+    /// and one with none is a substitute. Empty everywhere else.
+    #[serde(default)]
+    pub team_name: String,
 }
 
 /// A team, which for a 1v1 event is one player.

@@ -5478,3 +5478,31 @@
   max-height: 420px;
   overflow: auto;
 }
+
+/* Premade teams forming during signups, one card per team name. */
+.tournament-premade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+
+.tournament-premade {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.tournament-premade.is-full {
+  border-color: var(--color-ok);
+}
+
+.tournament-premade-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.tournament-premade-head strong {
+  flex: 1;
+  min-width: 0;
+}

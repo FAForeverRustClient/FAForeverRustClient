@@ -654,6 +654,9 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
                 }),
             }),
         per_round_bo: flag(document, "perRoundBo"),
+        // Read beside `formation`, which folds it into open teams: the one
+        // thing premade changes is that players name their team at signup.
+        premade_teams: text(document, "formation") == "premade",
         plan_lists: plan_lists(document),
         entry_order: entry_order(document),
         captain_mode: CaptainMode::from_wire(&text(document, "captainMode")),
@@ -983,6 +986,7 @@ fn parse_player(value: &Value) -> Option<TourneyPlayer> {
         note: text(value, "note"),
         signed_at: moment(value, "signedAt"),
         discord: text(value, "discord").trim().to_string(),
+        team_name: text(value, "teamName").trim().to_string(),
     })
 }
 
@@ -2437,6 +2441,16 @@ pub fn admin_request(change: &TourneyAdmin) -> (&'static str, Value) {
                 body["count"] = json!(count);
             }
             ("phase", body)
+        }
+        TourneyAdmin::SetTeamName {
+            player_id,
+            team_name,
+        } => {
+            let mut body = json!({ "teamName": team_name.trim() });
+            if let Some(player_id) = player_id {
+                body["playerId"] = json!(player_id);
+            }
+            ("set_team_name", body)
         }
         TourneyAdmin::SetCategory { category } => (
             "set_category",
@@ -3930,6 +3944,25 @@ See the [rules](https://x.invalid/r)."
             }),
             ("set_category", json!({ "category": "official" }))
         );
+        assert_eq!(
+            admin_request(&TourneyAdmin::SetTeamName {
+                player_id: None,
+                team_name: " Blue Squad ".into(),
+            }),
+            ("set_team_name", json!({ "teamName": "Blue Squad" }))
+        );
+        assert_eq!(
+            admin_request(&TourneyAdmin::SetTeamName {
+                player_id: Some("p3".into()),
+                team_name: String::new(),
+            }),
+            ("set_team_name", json!({ "teamName": "", "playerId": "p3" }))
+        );
+        let event = parse_tourney(&json!({ "id": "e1", "formation": "premade",
+            "players": [{ "id": "p1", "name": "A", "teamName": " Blue " }] }))
+        .unwrap();
+        assert!(event.premade_teams);
+        assert_eq!(event.players[0].team_name, "Blue");
     }
 
     #[test]

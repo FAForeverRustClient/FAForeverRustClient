@@ -41,6 +41,7 @@ import {
   wouldExceedCap,
 } from "../../../shared/rules/tourneyRules";
 import { ChangeCaptainDialog, SwapInDialog, TeamFromFreeAgentDialog } from "./TeamDialogs";
+import { PremadeTeams } from "./PremadeTeams";
 import { useTourneyDisplay } from "../display";
 
 interface TeamsPanelProps {
@@ -161,6 +162,9 @@ export function TeamsPanel(props: TeamsPanelProps) {
 
   return (
     <div className="tournament-teams">
+      {event.premadeTeams && event.teamSize > 1 && event.status === "signup" && (
+        <PremadeTeams event={event} busy={busy} onAdmin={props.onAdmin} />
+      )}
       {invites.length > 0 && (
         <section className="surface tournament-team-invites">
           <h5>{t("tournaments.teams.invitedYou")}</h5>

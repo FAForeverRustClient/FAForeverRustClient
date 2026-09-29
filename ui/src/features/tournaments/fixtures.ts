@@ -91,6 +91,7 @@ export function tourney(over: Partial<Tourney> = {}): Tourney {
     survivors: null,
     earlyFinish: null,
     perRoundBo: false,
+    premadeTeams: false,
     planLists: { rounds: [], winners: [], losers: [] },
     eventDays: [],
     myBan: null,
@@ -146,6 +147,7 @@ export function player(over: Partial<TourneyPlayer> = {}): TourneyPlayer {
     note: "",
     signedAt: null,
     discord: "",
+    teamName: "",
     ...over,
   };
 }

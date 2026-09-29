@@ -5108,6 +5108,19 @@ export const en = {
   "tournaments.manage.deleteForever": "Delete tournament",
   "tournaments.manage.deleteForeverHint": "As a site admin this deletes it permanently rather than archiving it.",
   "tournaments.manage.deleteForeverConfirm": "Remove {name} permanently? This cannot be undone.",
+  "tournaments.premade.yours": "Your team name",
+  "tournaments.premade.entered": "You entered {name}. Teammates must enter the exact same name to be grouped with you.",
+  "tournaments.premade.none": "You have not entered a team name yet: without one you become a substitute when signups close. Enter the exact name your teammates use to join their team, or a new name to start one.",
+  "tournaments.premade.placeholder": "Team name",
+  "tournaments.premade.forming": "Forming",
+  "tournaments.premade.formingHint": "Grouped by team name as entered at signup. Teams need exactly {size} players; extras and players without a full team become substitutes when signups close.",
+  "tournaments.premade.tooMany": "Too many players: only the first {size} by signup order enter; the rest become substitutes.",
+  "tournaments.premade.noName": "No team name yet",
+  "tournaments.premade.noNameHint": "These players become substitutes unless they enter a team name before signups close.",
+  "tournaments.premade.setTeam": "set team",
+  "tournaments.premade.editTitle": "Team name: {name}",
+  "tournaments.premade.teamName": "Team name",
+  "tournaments.premade.emptySub": "(empty makes them a substitute)",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

@@ -476,6 +476,7 @@ impl TourneyPort for FakeTourney {
                 signed_at: Some(1_785_100_000),
                 discord: String::new(),
                 note: String::new(),
+                team_name: String::new(),
             });
             held.event.player_count = held.event.players.len() as i32;
             held.event.viewer.signed_up_player_id = Some(player_id);
@@ -812,6 +813,7 @@ impl TourneyPort for FakeTourney {
                 signed_at: Some(1_785_400_000),
                 discord: String::new(),
                 note: String::new(),
+                team_name: String::new(),
             });
             held.event.player_count = held.event.players.len() as i32;
             Ok(())
@@ -2558,6 +2560,7 @@ fn player(id: &str, name: &str, faf_id: i32, team_id: &str, rating: i32) -> Tour
         signed_at: Some(1_785_100_000),
         discord: String::new(),
         note: String::new(),
+        team_name: String::new(),
     }
 }
 

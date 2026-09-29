@@ -306,6 +306,9 @@ pub struct Tourney {
     /// Whether each round has its own best-of (`perRoundBo`), set on the
     /// Format panel; the lists are then what the preview and the draw use.
     pub per_round_bo: bool,
+    /// Premade teams (`formation: premade`), which a free-for-all of teams is:
+    /// players give a team name at signup and are grouped by it.
+    pub premade_teams: bool,
     pub plan_lists: PlanLists,
     /// The ban that stops this account entering, where one does (`myBan`).
     pub my_ban: Option<OwnBan>,

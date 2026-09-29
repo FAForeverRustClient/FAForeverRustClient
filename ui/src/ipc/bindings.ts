@@ -8525,6 +8525,11 @@ export type Tourney = {
 	 *  Format panel; the lists are then what the preview and the draw use.
 	 */
 	perRoundBo: boolean,
+	/**
+	 *  Premade teams (`formation: premade`), which a free-for-all of teams is:
+	 *  players give a team name at signup and are grouped by it.
+	 */
+	premadeTeams: boolean,
 	planLists: PlanLists,
 	/**  The ban that stops this account entering, where one does (`myBan`). */
 	myBan: OwnBan | null,
@@ -9009,6 +9014,15 @@ export type TourneyAdmin =
  */
 { type: "setVeto"; payload: {
 	config: VetoConfig,
+} } |
+/**
+ *  Set a player's team name in an event of premade teams
+ *  (`set_team_name`): the signed-in player's own with no id, or an
+ *  organiser any player's. Empty makes them a substitute.
+ */
+{ type: "setTeamName"; payload: {
+	playerId: string | null,
+	teamName: string,
 } } |
 /**
  *  Tag the event official or community (`set_category`). Site admins
@@ -10073,6 +10087,12 @@ export type TourneyPlayer = {
 	 *  event's organisers and to people signed up for it; empty otherwise.
 	 */
 	discord: string,
+	/**
+	 *  The team name a player gave in an event of premade teams (`teamName`):
+	 *  players with the same one are grouped into a team when signups close,
+	 *  and one with none is a substitute. Empty everywhere else.
+	 */
+	teamName?: string,
 };
 
 /**
