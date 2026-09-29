@@ -1,7 +1,9 @@
 {
   "bundle": {
     "resources": {
-      "../natives/jre/": "natives/jre/"
+      "../natives/jre/": "natives/jre/",
+      "../vendor/steamworks/win64/steam_api64.dll": "natives/steam/steam_api64.dll",
+      "../vendor/steamworks/README.md": "natives/steam/README.md"
     }
   }
 }

@@ -31,6 +31,7 @@ import { GameSettingsSection } from "./GameSettingsSection";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
 import { NotificationsSettingsSection } from "./NotificationsSettingsSection";
 import { PathsSettingsSection } from "./PathsSettingsSection";
+import { SteamSettingsSection } from "./SteamSettingsSection";
 import { UpdatesSettingsSection } from "./UpdatesSettingsSection";
 
 export type SectionKey =
@@ -95,7 +96,7 @@ export const SECTIONS: Record<SectionKey, SectionDef> = {
     description: "settings.page.account.description",
     keywords: "settings.section.account.keywords",
     icon: "user",
-    panels: [AccountSupportSettingsSection, DiscordSettingsSection],
+    panels: [AccountSupportSettingsSection, DiscordSettingsSection, SteamSettingsSection],
   },
   game: {
     title: "settings.page.game.title",

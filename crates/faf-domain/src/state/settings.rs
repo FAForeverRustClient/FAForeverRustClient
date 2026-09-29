@@ -1627,6 +1627,19 @@ pub struct GamePreferences {
     /// rather than a quota that refuses new maps once it is full.
     #[serde(default)]
     pub keep_generated_maps_limit: u32,
+    /// Show Forged Alliance as being played on Steam while a game runs, and
+    /// only then (issue 364).
+    ///
+    /// The Java client does this from the moment it opens until it closes,
+    /// so Steam records the client's hours rather than the game's. Here it
+    /// covers the game process and nothing else.
+    ///
+    /// Off by default, and a switch rather than a given: it tells Steam, and
+    /// through it your friends list, when you play. It also needs Valve's own
+    /// library, Steam running, and Forged Alliance in the signed-in account's
+    /// library; without any of those it does nothing. Windows and Linux.
+    #[serde(default)]
+    pub steam_presence: bool,
 }
 
 /// The most generated maps a keep list may hold. Far past what anybody sets,
@@ -1659,6 +1672,7 @@ impl Default for GamePreferences {
             pipe_live_replay: false,
             keep_generated_maps: false,
             keep_generated_maps_limit: 0,
+            steam_presence: false,
         }
     }
 }
