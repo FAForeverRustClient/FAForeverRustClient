@@ -6740,6 +6740,10 @@ export type ReplayDownloadStatus = { type: "idle" } | { type: "downloading"; pay
 } };
 
 export type ReplayEvent = { type: "connecting" } |
+/**  One step of the launch being prepared. See [`ReplayState::preparing`]. */
+{ type: "preparing"; payload: {
+	step: ReplayPreparation,
+} } |
 /**
  *  `warning` carries a non-fatal prep-step issue (see
  *  [`ReplayState::last_warning`]): `None` when prep was clean/skipped.
@@ -6956,6 +6960,13 @@ export type ReplayPoint = {
 	source: number,
 };
 
+/**  One step of a replay launch's preparation, as the dialog shows it. */
+export type ReplayPreparation = {
+	detail: string,
+	/**  Percent, when the step can say how far along it is. */
+	progress: number | null,
+};
+
 /**
  *  Everything the vault search can be narrowed by.
  *
@@ -7117,6 +7128,13 @@ export type ReplayState = {
 	 *  a non-fatal prep step failed. Cleared on the next [`ReplayEvent::Connecting`].
 	 */
 	lastWarning: string | null,
+	/**
+	 *  What the launch in progress is doing right now (#392): downloading an
+	 *  old engine build file by file can take minutes on a slow line, and a
+	 *  bar that only says "starting" read as stuck. Set while
+	 *  [`ReplayStatus::Connecting`], cleared by every change of status.
+	 */
+	preparing?: ReplayPreparation | null,
 	/**
 	 *  At most one delayed live replay is tracked, matching the Java client:
 	 *  scheduling another replaces the previous choice.

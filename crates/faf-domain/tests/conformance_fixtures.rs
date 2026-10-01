@@ -6002,6 +6002,32 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "an old replay reports what it is preparing, and the report ends with it",
+            vec![
+                // Ignored: nothing is starting yet.
+                ReplayEvent::Preparing {
+                    step: ReplayPreparation {
+                        detail: "too early".into(),
+                        progress: None,
+                    },
+                }
+                .into(),
+                ReplayEvent::Connecting.into(),
+                ReplayEvent::Preparing {
+                    step: ReplayPreparation {
+                        detail: "Downloading ForgedAlliance.exe".into(),
+                        progress: Some(40),
+                    },
+                }
+                .into(),
+                ReplayEvent::Playing {
+                    uid: Some(5),
+                    warning: None,
+                }
+                .into(),
+            ],
+        ),
+        case(
             "a replay connects, fails, and is dismissed",
             vec![
                 ReplayEvent::Connecting.into(),

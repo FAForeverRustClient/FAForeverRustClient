@@ -120,9 +120,10 @@ pub use replays::{
     LiveReplayTrackingAction, LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam,
     ReplayActivity, ReplayAnalysis, ReplayArmy, ReplayChatMessage, ReplayCommand,
     ReplayCommandStats, ReplayDetails, ReplayEvent, ReplayGameOption, ReplayNotice, ReplayOrder,
-    ReplayPlayer, ReplayPlayerStats, ReplayPoint, ReplayQuery, ReplayResourceStat, ReplayScenario,
-    ReplaySortField, ReplayState, ReplayStatus, ReplayTeam, ReplayTotals, ReplayUnitStat,
-    ResolvedReplayMap, VaultReplay, VaultStatus, LIVE_REPLAY_DELAY_SECONDS,
+    ReplayPlayer, ReplayPlayerStats, ReplayPoint, ReplayPreparation, ReplayQuery,
+    ReplayResourceStat, ReplayScenario, ReplaySortField, ReplayState, ReplayStatus, ReplayTeam,
+    ReplayTotals, ReplayUnitStat, ResolvedReplayMap, VaultReplay, VaultStatus,
+    LIVE_REPLAY_DELAY_SECONDS,
 };
 pub use reporting::{
     ModerationReportSummary, ReportHistoryStatus, ReportStatus, ReportingCommand, ReportingEvent,

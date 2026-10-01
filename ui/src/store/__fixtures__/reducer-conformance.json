@@ -121,6 +121,7 @@
         "type": "idle"
       },
       "lastWarning": null,
+      "preparing": null,
       "liveTracking": null,
       "vault": [],
       "vaultStatus": {
@@ -43001,6 +43002,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -43138,6 +43140,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -43217,6 +43220,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -43297,6 +43301,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -44488,6 +44493,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "loading"
@@ -44567,6 +44573,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "payload": {
@@ -44646,6 +44653,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "loading"
@@ -44766,6 +44774,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [
               {
                 "averageRating": null,
@@ -44862,6 +44871,341 @@
       ]
     },
     {
+      "name": "an old replay reports what it is preparing, and the report ends with it",
+      "steps": [
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "preparing",
+              "payload": {
+                "step": {
+                  "detail": "too early",
+                  "progress": null
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "connecting"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "preparing",
+              "payload": {
+                "step": {
+                  "detail": "Downloading ForgedAlliance.exe",
+                  "progress": 40
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": {
+              "detail": "Downloading ForgedAlliance.exe",
+              "progress": 40
+            },
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "connecting"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "playing",
+              "payload": {
+                "uid": 5,
+                "warning": null
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "payload": {
+                "uid": 5
+              },
+              "type": "playing"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        }
+      ]
+    },
+    {
       "name": "a replay connects, fails, and is dismissed",
       "steps": [
         {
@@ -44888,6 +45232,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -44967,6 +45312,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45046,6 +45392,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45143,6 +45490,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45219,6 +45567,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45295,6 +45644,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45411,6 +45761,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45499,6 +45850,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45584,6 +45936,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45711,6 +46064,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45817,6 +46171,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45925,6 +46280,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46031,6 +46387,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46135,6 +46492,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46244,6 +46602,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46350,6 +46709,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46459,6 +46819,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46562,6 +46923,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46653,6 +47015,7 @@
                 "type": "loading"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46776,6 +47139,7 @@
                 "type": "found"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46882,6 +47246,7 @@
                 "type": "loading"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46989,6 +47354,7 @@
                 "type": "missing"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47098,6 +47464,7 @@
                 "type": "loading"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47211,6 +47578,7 @@
                 "type": "failed"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
