@@ -240,7 +240,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 return;
             }
             match result {
-                Ok(search) => {
+                Ok(mut search) => {
                     // A full page is direct evidence that another one exists,
                     // and it outranks the reported count. The API's totals for
                     // a table this size can be capped or estimated, and
@@ -248,6 +248,12 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                     // total stranded the user on its last page with a dead
                     // Next button.
                     let full_page = search.replays.len() as u32 >= query.page_size;
+                    // A game still being played has a record and no end yet.
+                    // It belongs to the live tab, where it can be watched;
+                    // here it was a replay that did not exist (#399). Counted
+                    // for `full_page` above first, so dropping it never makes
+                    // a page look like the last one.
+                    search.replays.retain(|replay| !replay.end_time.is_empty());
                     let has_more = full_page
                         || search
                             .total_pages
