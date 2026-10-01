@@ -13,6 +13,44 @@
 .custom-games-layout > .custom-games-divider {
   grid-column: 2;
   grid-row: 2;
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+
+.custom-games-divider > .resize-handle {
+  flex: 1;
+}
+
+/* The fold arrow sits on the divider, near the top, so it is found where the
+   panel's edge is rather than in a toolbar (issues 370 and 377). It points
+   at where the panel goes: right to fold it away, left to bring it back. */
+.custom-games-detail-toggle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 36px;
+  padding: 0;
+  transform: translateX(-50%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.custom-games-detail-toggle:hover,
+.custom-games-detail-toggle:focus-visible {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.custom-games-detail-toggle[aria-expanded="false"] svg {
+  transform: rotate(180deg);
 }
 
 .custom-games-layout > .play-toolbar {

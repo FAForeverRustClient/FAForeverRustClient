@@ -2366,6 +2366,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.sortAscending": "croissant",
   "lobby.browser.sortDescending": "décroissant",
   "lobby.browser.resizeDetails": "Redimensionner le panneau de détails",
+  "lobby.browser.hideDetails": "Masquer le panneau de détails",
+  "lobby.browser.showDetails": "Afficher le panneau de détails",
   "lobby.matchmaker.resizeChat": "Redimensionner le chat du groupe",
   "lobby.browser.openProfile": "Ouvrir le profil de {name}",
   "lobby.browser.tileAria": "{title}, hébergée par {host}. Double-cliquez pour rejoindre.",

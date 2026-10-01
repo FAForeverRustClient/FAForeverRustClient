@@ -1747,6 +1747,13 @@ export type CustomGameBrowserPreferences = {
 	 *  narrower and nothing offered that trade.
 	 */
 	detailWidth: number,
+	/**
+	 *  Whether the detail panel is folded away (#370, #377).
+	 *
+	 *  Kept apart from `detail_width` so folding it and unfolding it again
+	 *  brings back the width somebody dragged it to, rather than the default.
+	 */
+	detailHidden: boolean,
 };
 
 export type CustomGameFilterConstraint = "contains" | "starts" | "ends" | "equals" | "notEquals" | "above" | "below";

@@ -1915,6 +1915,11 @@ pub struct CustomGameBrowserPreferences {
     /// not, so a wider preview could only be had by making the browser
     /// narrower and nothing offered that trade.
     pub detail_width: u32,
+    /// Whether the detail panel is folded away (#370, #377).
+    ///
+    /// Kept apart from `detail_width` so folding it and unfolding it again
+    /// brings back the width somebody dragged it to, rather than the default.
+    pub detail_hidden: bool,
 }
 
 impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
@@ -1935,6 +1940,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             rules: Vec<CustomGameFilterRule>,
             column_widths: Vec<u32>,
             detail_width: u32,
+            detail_hidden: bool,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -1949,6 +1955,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             rules: wire.rules,
             column_widths: wire.column_widths,
             detail_width: wire.detail_width,
+            detail_hidden: wire.detail_hidden,
         })
     }
 }

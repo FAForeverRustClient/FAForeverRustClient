@@ -38,6 +38,7 @@ describe("browsing preferences", () => {
         applyFilters: true,
         columnWidths: [10, 5000, 200, 200, 200, 200, 200],
         detailWidth: 40,
+        detailHidden: false,
         rules: [
           { field: "title", constraint: "contains", value: "  no rush  " },
           { field: "title", constraint: "contains", value: "NO RUSH" },

@@ -1181,6 +1181,8 @@ export const en = {
   "lobby.browser.sortAscending": "ascending",
   "lobby.browser.sortDescending": "descending",
   "lobby.browser.resizeDetails": "Resize the details panel",
+  "lobby.browser.hideDetails": "Hide the details panel",
+  "lobby.browser.showDetails": "Show the details panel",
   "lobby.matchmaker.resizeChat": "Resize the party chat",
   "lobby.browser.openProfile": "Open {name}'s profile",
   "lobby.browser.tileAria": "{title}, hosted by {host}. Double-click to join.",

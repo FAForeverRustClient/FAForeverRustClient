@@ -4394,6 +4394,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.sortAscending": "aufsteigend",
   "lobby.browser.sortDescending": "absteigend",
   "lobby.browser.resizeDetails": "Breite der Detailspalte ändern",
+  "lobby.browser.hideDetails": "Detailspalte ausblenden",
+  "lobby.browser.showDetails": "Detailspalte einblenden",
   "lobby.matchmaker.resizeChat": "Breite des Party-Chats ändern",
   "lobby.browser.openProfile": "Profil von {name} öffnen",
   "lobby.browser.tileAria": "{title}, gehostet von {host}. Doppelklick zum Beitreten.",

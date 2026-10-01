@@ -2519,6 +2519,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.sortAscending": "по возрастанию",
   "lobby.browser.sortDescending": "по убыванию",
   "lobby.browser.resizeDetails": "Изменить ширину панели подробностей",
+  "lobby.browser.hideDetails": "Скрыть панель подробностей",
+  "lobby.browser.showDetails": "Показать панель подробностей",
   "lobby.matchmaker.resizeChat": "Изменить ширину чата группы",
   "lobby.browser.openProfile": "Открыть профиль игрока {name}",
   "lobby.browser.tileAria": "{title}, хост {host}. Двойной щелчок, чтобы войти.",
