@@ -3925,6 +3925,10 @@ export type MapDraft = {
 	/**
 	 *  A new picture of the event's own, as a `data:` URL, or `None` to keep
 	 *  the one it has. The service stores it under a file name of its own.
+	 *
+	 *  The client may also put FAF's own vault preview here, as its
+	 *  `https://content.faforever.com/` address: the port fetches that and
+	 *  sends the picture. See [`vault_preview_for_new_picture`].
 	 */
 	image?: string | null,
 	/**  Delete the stored picture. Ignored when a new one is sent. */

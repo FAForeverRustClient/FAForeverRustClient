@@ -172,6 +172,32 @@ impl TourneyClient {
 
     /// One write against a tournament. Every one of them is a `POST` to
     /// `/api/t/{id}/{action}`, whatever it does.
+    /// A vault preview as a `data:` URL, the only form `map_save` takes a
+    /// picture in. `None` for anything that is not a picture of a sane size.
+    async fn vault_preview_data_url(&self, url: &str) -> Option<String> {
+        use base64::Engine as _;
+        const MAX_PREVIEW_BYTES: usize = 4 * 1024 * 1024;
+        let response = self.http.get(url).send().await.ok()?;
+        if !response.status().is_success() {
+            return None;
+        }
+        let mime = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("image/png")
+            .to_owned();
+        if !mime.starts_with("image/") {
+            return None;
+        }
+        let bytes = response.bytes().await.ok()?;
+        if bytes.is_empty() || bytes.len() > MAX_PREVIEW_BYTES {
+            return None;
+        }
+        let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        Some(format!("data:{mime};base64,{encoded}"))
+    }
+
     async fn act(
         &self,
         tournament_id: &str,
@@ -934,6 +960,15 @@ impl TourneyPort for TourneyClient {
         // and keeps what it has, which is also what leaving it out does.
         match map.image.as_deref() {
             Some(image) if image.starts_with("data:") => body["image"] = json!(image),
+            // FAF's own vault preview, chosen by the service for a map saved
+            // without a picture (#386). Fetched here and sent like an upload;
+            // a preview that cannot be had leaves the map without one, as
+            // before, rather than failing the save.
+            Some(url) if url.starts_with("https://content.faforever.com/") => {
+                if let Some(image) = self.vault_preview_data_url(url).await {
+                    body["image"] = json!(image);
+                }
+            }
             _ if map.remove_image => body["removeImage"] = json!(1),
             _ => {}
         }

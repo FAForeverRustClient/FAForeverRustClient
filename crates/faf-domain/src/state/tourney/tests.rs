@@ -1021,3 +1021,56 @@ fn pasted_pictures_take_their_paths_once_the_event_exists() {
     assert_eq!(placed.rewards, "![image](/desc-images/b.png)");
     assert!(placed.pending_images.is_empty());
 }
+
+/// #386: a map added without a picture gets the vault's, and only then.
+#[test]
+fn a_map_saved_without_a_picture_borrows_the_vault_preview() {
+    let vault = [(
+        "Seton's Clutch",
+        "setons_clutch.v0002",
+        "https://content.faforever.com/maps/previews/large/setons_clutch.v0002.png",
+    )];
+    let pick = |draft: &MapDraft, stored: &[TourneyMap]| {
+        vault_preview_for_new_picture(draft, stored, &vault, |m| m.0, |m| m.1, |m| m.2)
+            .map(str::to_owned)
+    };
+    let added = MapDraft {
+        name: "setons clutch".into(),
+        ..MapDraft::default()
+    };
+    assert_eq!(pick(&added, &[]).as_deref(), Some(vault[0].2));
+
+    let chose_one = MapDraft {
+        image: Some("data:image/png;base64,AA==".into()),
+        ..added.clone()
+    };
+    assert_eq!(pick(&chose_one, &[]), None);
+
+    let removing = MapDraft {
+        remove_image: true,
+        ..added.clone()
+    };
+    assert_eq!(pick(&removing, &[]), None);
+
+    let stored = TourneyMap {
+        id: "m1".into(),
+        name: "Seton's Clutch".into(),
+        image_url: "m1.png".into(),
+        description: String::new(),
+        published: true,
+        spec: None,
+        secret: false,
+        masked: false,
+    };
+    let editing = MapDraft {
+        id: "m1".into(),
+        ..added.clone()
+    };
+    assert_eq!(pick(&editing, std::slice::from_ref(&stored)), None);
+
+    let unknown = MapDraft {
+        name: "Never Uploaded".into(),
+        ..MapDraft::default()
+    };
+    assert_eq!(pick(&unknown, &[]), None);
+}
