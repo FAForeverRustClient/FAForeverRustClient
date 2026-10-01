@@ -1811,6 +1811,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.host": "Hôte :",
   "lobby.browser.hostedBy": "Hébergée par",
   "lobby.browser.mapPreview": "Aperçu de la carte",
+  "lobby.browser.addFavoriteMap": "Ajouter aux favoris",
+  "lobby.browser.removeFavoriteMap": "Retirer des favoris",
   "lobby.browser.gameDetails": "Détails de la partie",
   "lobby.browser.players": "Joueurs",
   "lobby.browser.averageRating": "Classement moyen",

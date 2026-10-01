@@ -9,7 +9,7 @@ import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNav
 import { OFFICIAL_BASE_MAPS } from "../../../shared/mapPresentation";
 import { GameMapImage } from "../GameMapImage";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
-import { isOfficialMap } from "../../../shared/mapPresentation";
+import { isGeneratedMap, isOfficialMap } from "../../../shared/mapPresentation";
 import { MapUninstallDialog } from "../../maps/MapVaultComponents";
 import { GenerateMapModal } from "../../maps/GenerateMapModal";
 import { generatedMapDescriptionRows } from "../../../shared/generatedMapDescription";
@@ -347,8 +347,26 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
         description: t("lobby.host.mapGeneratedDescription"),
       });
     }
+    // A generated map starred from a game's preview (#394) is in no vault and
+    // usually not on disk either, and hosting it by name generates it again.
+    // So it is listed from the favourites alone, or the star would lead
+    // nowhere.
+    for (const favorite of browsing.favoriteMaps) {
+      const key = favorite.toLowerCase();
+      if (!isGeneratedMap(favorite) || catalogue.has(key) || key === selectedMap?.toLowerCase()) continue;
+      all.push({
+        displayName: favorite,
+        folderName: favorite,
+        maxPlayers: 16,
+        width: 1024,
+        height: 1024,
+        version: "1.0",
+        ranked: false,
+        description: t("lobby.host.mapGeneratedDescription"),
+      });
+    }
     return all;
-  }, [catalogue, selectedMap, t]);
+  }, [browsing.favoriteMaps, catalogue, selectedMap, t]);
 
   // The only step the search box and the filters touch.
   const availableMaps = useMemo(() => {

@@ -1880,6 +1880,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.host": "Хост:",
   "lobby.browser.hostedBy": "Создал",
   "lobby.browser.mapPreview": "Превью карты",
+  "lobby.browser.addFavoriteMap": "В избранное",
+  "lobby.browser.removeFavoriteMap": "Убрать из избранного",
   "lobby.browser.gameDetails": "Подробности игры",
   "lobby.browser.players": "Игроки",
   "lobby.browser.averageRating": "Средний рейтинг",

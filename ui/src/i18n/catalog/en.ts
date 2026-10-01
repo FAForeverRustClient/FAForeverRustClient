@@ -855,6 +855,8 @@ export const en = {
   "lobby.browser.host": "Host:",
   "lobby.browser.hostedBy": "Hosted by",
   "lobby.browser.mapPreview": "Map preview",
+  "lobby.browser.addFavoriteMap": "Add to favourites",
+  "lobby.browser.removeFavoriteMap": "Remove from favourites",
   "lobby.browser.gameDetails": "Game details",
   "lobby.browser.players": "Players",
   "lobby.browser.averageRating": "Average rating",

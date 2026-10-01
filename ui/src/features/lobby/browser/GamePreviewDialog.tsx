@@ -18,6 +18,7 @@ import {
 } from "../../../shared/generatedMapDescription";
 import { t } from "../../../i18n";
 import { displayedRating, gameLeaderboard, ratingGateBlocks } from "../../../shared/playerRatings";
+import { toggleFavoriteMap, useIsFavoriteMap } from "../../../shared/favoriteMaps";
 
 export const GamePreviewDialog = memo(function GamePreviewDialog({
   game,
@@ -31,6 +32,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
   onJoin: () => void;
 }) {
   const presentation = mapPresentation(vault, game.map);
+  const favorite = useIsFavoriteMap(game.map);
   const vaultMap = findVaultMap(vault, game.map);
   const maps = useAppStore((state) => state.state.maps);
   const lobby = useAppStore((state) => state.state.lobby);
@@ -156,7 +158,24 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           their own: the zoom's viewport clips whatever is inside it, which is
           the point of it, and a lock badge is not part of the map. */}
       <div className="game-preview-dialog-map">
-        <ZoomableImage label={presentation.displayName || game.map}>
+        <ZoomableImage
+          label={presentation.displayName || game.map}
+          actions={(
+            // Starring from here is what makes a generated map worth keeping
+            // (#394): it has no vault page to star it on, and the name is all
+            // the host dialog needs to host it again.
+            <Button
+              aria-pressed={favorite}
+              onClick={() => toggleFavoriteMap(game.map)}
+              title={t(favorite ? "maps.vault.removeFavoriteAria" : "maps.vault.addFavoriteAria", {
+                name: presentation.displayName || game.map,
+              })}
+            >
+              <Icon name="star" size={14} />
+              {t(favorite ? "lobby.browser.removeFavoriteMap" : "lobby.browser.addFavoriteMap")}
+            </Button>
+          )}
+        >
           <GameMapImage
             mapName={game.map}
             vault={vault}
