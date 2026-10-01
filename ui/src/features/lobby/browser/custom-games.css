@@ -362,8 +362,16 @@
    that made the whole row taller, and a chip wider than the column spilled
    over the map name beside it. */
 .game-browser-tags-col {
-  flex-wrap: nowrap;
   justify-content: flex-start;
+  align-content: center;
+  /* Two lines of chips at most (issue 379): a list too long for the column
+     breaks onto a second line instead of being cut off at the first, and
+     anything beyond two lines is still cut rather than stacking into a tower
+     that makes the row taller. A chip is 11px text on a normal line height
+     plus 1px padding and a 1px border either side, 17 to 19px depending on
+     the font, so two of them and the 4px gap fit in 44px and a third does
+     not. */
+  max-height: 44px;
   overflow: hidden;
 }
 
