@@ -1301,6 +1301,10 @@ fn period_cutoff(period: RatingHistoryPeriod) -> Option<String> {
     Some(cutoff.format("%Y-%m-%dT%H:%M:%SZ").to_string())
 }
 
+/// How many accounts a lookup reads before ranking them: the most the API
+/// hands out in one page.
+const LOOKUP_CANDIDATES: usize = 100;
+
 /// Which accounts matched a login-or-former-name prefix, and how (#315).
 ///
 /// A current login that starts with the query is a plain match. Otherwise the
@@ -1308,10 +1312,6 @@ fn period_cutoff(period: RatingHistoryPeriod) -> Option<String> {
 /// starts with the query is named, so two accounts that once shared a name are
 /// told apart. Plain matches first, shortest login first; former-name matches
 /// after, most recently changed first.
-/// How many accounts a lookup reads before ranking them: the most the API
-/// hands out in one page.
-const LOOKUP_CANDIDATES: usize = 100;
-
 fn account_matches(doc: &JsonApiDoc, query: &str) -> Vec<AccountLookupMatch> {
     let wanted = query.trim().to_lowercase();
     let records = index(doc);
