@@ -783,7 +783,8 @@
       },
       "social": {
         "playerNotes": [],
-        "replayNotes": []
+        "replayNotes": [],
+        "avatarHistory": []
       },
       "notifications": {
         "enabled": true,
@@ -2381,6 +2382,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -48048,6 +48050,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -48311,6 +48314,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -48583,6 +48587,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -48852,6 +48857,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -49120,6 +49126,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -49408,6 +49415,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -49686,6 +49694,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -49752,7 +49761,8 @@
                       "comment": " ",
                       "tags": []
                     }
-                  ]
+                  ],
+                  "avatarHistory": []
                 }
               }
             }
@@ -50009,6 +50019,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [
                 {
                   "login": "Ada",
@@ -50308,6 +50319,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [
                 {
                   "login": "Ada",
@@ -50609,6 +50621,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [
                 {
                   "login": "Ada",
@@ -51031,6 +51044,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [
                 {
                   "login": "Ada",
