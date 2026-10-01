@@ -6292,6 +6292,13 @@ fn cases() -> Vec<Case> {
                     }],
                 }
                 .into(),
+                SettingsEvent::MapPoolsSeen {
+                    seen: vec![faf_domain::state::settings::MapPoolsSeen {
+                        queue_name: "ladder1v1".into(),
+                        assignments: vec![91, 92],
+                    }],
+                }
+                .into(),
                 SettingsEvent::SocialChanged {
                     preferences: SocialPreferences {
                         player_notes: vec![

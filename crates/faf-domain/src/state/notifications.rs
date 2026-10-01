@@ -56,6 +56,10 @@ pub enum NotificationKind {
     /// Opt-in per queue, and off until then: see
     /// `NotificationPreferences::queue_opponent_queues`.
     QueueOpponent,
+    /// A matchmaker queue was given a new map pool since the last login
+    /// (#406). On for every queue unless one is switched off: see
+    /// `NotificationPreferences::map_pool_muted_queues`.
+    MapPoolReleased,
     Error,
 }
 

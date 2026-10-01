@@ -549,6 +549,19 @@ async fn handle_update(
             out.emit(LobbyEvent::LiveGamesChanged { upserted, removed });
         }
         LobbyUpdate::MatchmakerQueues(queues) => {
+            if !ctx
+                .map_pools_checked
+                .swap(true, std::sync::atomic::Ordering::AcqRel)
+            {
+                announce_new_map_pools(
+                    ctx,
+                    out,
+                    queues
+                        .iter()
+                        .map(|queue| queue.queue_name.clone())
+                        .collect(),
+                );
+            }
             let (watched, ratings, searching) = out.with_state(|state| {
                 let own_ratings = state
                     .auth
@@ -872,6 +885,87 @@ fn join_auto_channels(ctx: &ServiceCtx, out: &EventSink) {
 /// Also emits `VetoesUpdated`, because `Disconnected` clears the lobby's copy:
 /// without it the Play tab would show an empty selection while the server held
 /// the real one.
+/// Compare every queue's map pools with the ones seen last time, announce the
+/// queues that changed, and remember what was seen (#406).
+///
+/// Off the lobby loop: it is one API request per queue, and the lists the
+/// server sends at login should not wait on them. Nothing is written before
+/// the settings file has been read, for the reason `settings::persist` gives.
+fn announce_new_map_pools(ctx: &ServiceCtx, out: &EventSink, queue_names: Vec<String>) {
+    let maps = ctx.ports.maps.clone();
+    let settings = ctx.ports.settings.clone();
+    let serial = ctx.settings_persist.clone();
+    let loaded = ctx.settings_loaded.has_loaded();
+    let out = out.clone();
+    tokio::spawn(async move {
+        let mut current = Vec::new();
+        for queue_name in queue_names {
+            // A queue that cannot be read this time is left as it was seen, so
+            // a failed request is never mistaken for a new pool next time.
+            let Ok(pools) = maps.list_matchmaker_pools(queue_name.clone()).await else {
+                continue;
+            };
+            let mut assignments: Vec<i32> = pools
+                .iter()
+                .flat_map(|pool| pool.maps.iter().map(|map| map.assignment_id))
+                .collect();
+            if assignments.is_empty() {
+                continue;
+            }
+            assignments.sort_unstable();
+            assignments.dedup();
+            current.push(faf_domain::state::settings::MapPoolsSeen {
+                queue_name,
+                assignments,
+            });
+        }
+        if current.is_empty() {
+            return;
+        }
+        let (seen, muted) = out.with_state(|state| {
+            (
+                state.settings.map_pools_seen.clone(),
+                state.settings.notifications.map_pool_muted_queues.clone(),
+            )
+        });
+        for queue_name in faf_domain::state::settings::changed_map_pools(&seen, &current) {
+            if muted.contains(&queue_name) {
+                continue;
+            }
+            let label = queue_display_name(&queue_name);
+            notifications::add(
+                &out,
+                NotificationKind::MapPoolReleased,
+                "New map pool",
+                format!("{label} has a new map pool."),
+                Some(NotificationAction::OpenMatchmaking),
+            );
+        }
+        let mut remembered = seen;
+        for entry in current {
+            remembered.retain(|old| old.queue_name != entry.queue_name);
+            remembered.push(entry);
+        }
+        out.emit(SettingsEvent::MapPoolsSeen { seen: remembered });
+        if loaded {
+            let _guard = serial.acquire().await;
+            let snapshot = out.with_state(|state| state.settings.clone());
+            settings.save(&snapshot).await;
+        }
+    });
+}
+
+/// `ladder1v1` and `tmm2v2` as players say them, for a notification's text.
+fn queue_display_name(queue_name: &str) -> String {
+    match queue_name {
+        "ladder1v1" => "1v1".into(),
+        other => other
+            .strip_prefix("tmm")
+            .map(|rest| rest.split('_').next().unwrap_or(rest).to_string())
+            .unwrap_or_else(|| other.to_string()),
+    }
+}
+
 fn restore_player_vetoes(ctx: &ServiceCtx, out: &EventSink) {
     let vetoes = out.with_state(|state| state.settings.matchmaker_vetoes.clone());
     if vetoes.is_empty() {

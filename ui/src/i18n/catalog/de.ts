@@ -1111,6 +1111,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.volumeAria": "Lautstärke der Benachrichtigungstöne",
   "settings.notifications.repeatCooldown": "Wiederholen nach (Sekunden)",
   "settings.notifications.repeatCooldownHint": "Eine weitere Benachrichtigung derselben Art innerhalb dieser Zeit landet in der Liste, erscheint aber nicht und spielt keinen Ton. 0 meldet jede.",
+  "settings.notifications.mapPool": "Neue Map-Pools",
+  "settings.notifications.mapPoolHint": "Wird beim Login gemeldet, wenn eine Matchmaker-Queue einen neuen Map-Pool hat. Entferne den Haken bei einer Queue, um nichts mehr dazu zu hören.",
   "settings.notifications.sound.silent": "Stumm",
   "settings.notifications.sound.soft": "Leise",
   "settings.notifications.sound.chime": "Glocke",

@@ -983,6 +983,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.volumeAria": "Volumen de los sonidos de notificación",
   "settings.notifications.repeatCooldown": "Repetir tras (segundos)",
   "settings.notifications.repeatCooldownHint": "Otra notificación del mismo tipo dentro de este tiempo queda en la lista, pero no aparece ni suena. 0 avisa de todas.",
+  "settings.notifications.mapPool": "Nuevos grupos de mapas",
+  "settings.notifications.mapPoolHint": "Se avisa al iniciar sesión cuando una cola del matchmaker tiene un nuevo grupo de mapas. Desmarca una cola para dejar de recibir avisos.",
   "settings.notifications.whenFocused": "Avisar con la ventana activa",
   "settings.notifications.whenFocusedHint": "Mostrar también avisos del escritorio mientras usas el cliente activamente.",
   "settings.notifications.matchFound": "Partida encontrada",

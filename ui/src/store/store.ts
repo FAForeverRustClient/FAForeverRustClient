@@ -466,6 +466,7 @@ const INITIAL: AppState = {
     },
     keptGeneratedMaps: [],
     matchmakerVetoes: [],
+    mapPoolsSeen: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
     general: { startPage: "news", autoLogin: true, rememberTypedEntries: false },
     appearance: {
@@ -530,6 +531,7 @@ const INITIAL: AppState = {
       queueOpponentQueues: [],
       volume: 70,
       repeatCooldownSeconds: 2,
+      mapPoolMutedQueues: [],
     },
     chat: {
       showJoinsParts: false,

@@ -1006,6 +1006,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.volumeAria": "Громкость звуков уведомлений",
   "settings.notifications.repeatCooldown": "Повторять через (секунд)",
   "settings.notifications.repeatCooldownHint": "Следующее уведомление того же типа в течение этого времени попадает в список, но не всплывает и не звучит. 0 показывает все.",
+  "settings.notifications.mapPool": "Новые пулы карт",
+  "settings.notifications.mapPoolHint": "Сообщается при входе, когда у очереди матчмейкера появляется новый пул карт. Снимите отметку с очереди, чтобы больше о ней не слышать.",
   "settings.notifications.whenFocused": "Уведомлять при активном окне",
   "settings.notifications.whenFocusedHint": "Показывать системные уведомления, когда клиент открыт на переднем плане.",
   "settings.notifications.matchFound": "Матч найден",

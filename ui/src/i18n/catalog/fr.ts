@@ -984,6 +984,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.volumeAria": "Volume des sons de notification",
   "settings.notifications.repeatCooldown": "Répéter après (secondes)",
   "settings.notifications.repeatCooldownHint": "Une autre notification du même type pendant ce délai reste dans la liste, sans s'afficher ni sonner. 0 les annonce toutes.",
+  "settings.notifications.mapPool": "Nouveaux pools de cartes",
+  "settings.notifications.mapPoolHint": "Annoncé à la connexion quand une file du matchmaker a un nouveau pool de cartes. Décochez une file pour ne plus en être averti.",
   "settings.notifications.whenFocused": "Notifier même en premier plan",
   "settings.notifications.whenFocusedHint": "Afficher aussi les alertes du bureau pendant que vous utilisez activement le client.",
   "settings.notifications.matchFound": "Partie trouvée",

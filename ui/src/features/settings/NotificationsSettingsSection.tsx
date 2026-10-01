@@ -138,6 +138,12 @@ export function NotificationsSettingsSection() {
       .filter((name) => !queues.some((queue) => queue.queueName === name))
       .map((name) => ({ value: name, label: name })),
   ];
+  const mapPoolOptions = [
+    ...queues.map((queue) => ({ value: queue.queueName, label: `${queue.teamSize} vs ${queue.teamSize}` })),
+    ...(preferences.mapPoolMutedQueues ?? [])
+      .filter((name) => !queues.some((queue) => queue.queueName === name))
+      .map((name) => ({ value: name, label: name })),
+  ];
   const update = (patch: Partial<NotificationPreferences>) =>
     void save({ ...preferences, ...patch });
   const setSound = (patch: Partial<NotificationSoundChoices>) =>
@@ -386,6 +392,26 @@ export function NotificationsSettingsSection() {
             options={queueOpponentOptions}
             selected={preferences.queueOpponentQueues}
             onChange={(queueOpponentQueues) => update({ queueOpponentQueues })}
+          />
+        </div>
+      </SettingRow>
+      {/* New map pools (#406): every queue on by default, so the setting
+          stores the ones switched off and the list shows the ones on. */}
+      <SettingRow label={t("settings.notifications.mapPool")} hint={t("settings.notifications.mapPoolHint")}>
+        <div className="settings-multi-select">
+          <MultiSelect
+            label={t("settings.notifications.mapPool")}
+            anyLabel={t("settings.notifications.queueOpponentOff")}
+            options={mapPoolOptions}
+            selected={mapPoolOptions
+              .map((option) => option.value)
+              .filter((name) => !(preferences.mapPoolMutedQueues ?? []).includes(name))}
+            onChange={(announced) =>
+              update({
+                mapPoolMutedQueues: mapPoolOptions
+                  .map((option) => option.value)
+                  .filter((name) => !announced.includes(name)),
+              })}
           />
         </div>
       </SettingRow>
