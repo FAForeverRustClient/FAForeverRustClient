@@ -49,8 +49,9 @@ export function isCustomGameRanked(
     return false;
   }
 
-  // 0. A free-for-all is never rated (#292). See `isFreeForAll`.
-  if (isFreeForAll(game)) {
+  // 0. A free-for-all is never rated (#292), and neither is a game of more
+  //    than two teams (#368). See `isFreeForAll` and `isMultiTeam`.
+  if (isFreeForAll(game) || isMultiTeam(game)) {
     return false;
   }
 
@@ -95,6 +96,27 @@ export function isFreeForAll(game: Game): boolean {
   return players >= 3 && seated.some(([team, members]) => team === FFA_TEAM && members.length > 0);
 }
 
+
+/**
+ * Would the server rate this lobby as it stands a game of more than two teams?
+ *
+ * The server's `Game.is_multi_team`: more than two distinct teams among the
+ * players, the "no team" slot counting as one of them. Such a game is marked
+ * `MULTI_TEAM` and rates nobody. Without this rule a four-team lobby read as
+ * ranked whenever every player had picked a team and as unranked whenever one
+ * had not, through the free-for-all rule above, so the tag came and went while
+ * players moved around (#368). It is unranked the whole time.
+ *
+ * Uneven teams are deliberately not checked, although the server rejects
+ * those too: every lobby is uneven while it fills, and a tag on nearly every
+ * open game would stop saying anything.
+ */
+export function isMultiTeam(game: Game): boolean {
+  const teams = Object.entries(game.teams).filter(
+    ([team, members]) => !observerTeam(team) && members.length > 0,
+  );
+  return teams.length > 2;
+}
 
 /**
  * Is this a co-op mission rather than a custom game?
