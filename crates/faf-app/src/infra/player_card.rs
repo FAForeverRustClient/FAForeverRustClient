@@ -352,12 +352,20 @@ impl PlayerCardPort for PlayerCardClient {
             .ok_or_else(|| RequestError::unauthorized("Sign in to FAF to look up players."))?;
         let prefix = quote_prefix(trimmed);
         let mut url = self.url("player").map_err(RequestError::unexpected)?;
+        // More rows than are shown, in name order, and ranked here (#393).
+        // Asking for exactly `limit` returned the first ten accounts by id
+        // that matched, which for a common start like `fatal` or `valkyr` are
+        // ten old accounts, and the player being typed was never among them
+        // until the name was nearly complete.
         url.query_pairs_mut()
             .append_pair("filter", &format!("(login=={prefix},names.name=={prefix})"))
             .append_pair("include", "names")
-            .append_pair("page[size]", &limit.max(1).to_string());
+            .append_pair("sort", "login")
+            .append_pair("page[size]", &LOOKUP_CANDIDATES.to_string());
         let doc = fetch_document_typed(&self.http, url, &token).await?;
-        Ok(account_matches(&doc, trimmed))
+        let mut matches = account_matches(&doc, trimmed);
+        matches.truncate(limit.max(1));
+        Ok(matches)
     }
 
     async fn players_by_login(
@@ -1300,6 +1308,10 @@ fn period_cutoff(period: RatingHistoryPeriod) -> Option<String> {
 /// starts with the query is named, so two accounts that once shared a name are
 /// told apart. Plain matches first, shortest login first; former-name matches
 /// after, most recently changed first.
+/// How many accounts a lookup reads before ranking them: the most the API
+/// hands out in one page.
+const LOOKUP_CANDIDATES: usize = 100;
+
 fn account_matches(doc: &JsonApiDoc, query: &str) -> Vec<AccountLookupMatch> {
     let wanted = query.trim().to_lowercase();
     let records = index(doc);
