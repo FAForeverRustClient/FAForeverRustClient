@@ -8004,10 +8004,23 @@ export type SocialEvent =
 /**  The lobby connection went away; relations are no longer authoritative. */
 { type: "cleared" };
 
-/**  The player's own annotations: notes on players and on replays. */
+/**
+ *  The player's own annotations: notes on players and on replays, and the
+ *  avatars they have worn.
+ */
 export type SocialPreferences = {
 	playerNotes: PlayerNote[],
 	replayNotes: ReplayNote[],
+	/**
+	 *  The avatars this account wore, newest first, by URL (#389).
+	 *
+	 *  A tournament avatar is lent for a season and taken back by the server,
+	 *  which leaves the player with none. The next one in this list that the
+	 *  server still offers is put back on at login, which is the "last
+	 *  selected one" the request asked for. Choosing no avatar empties it, so
+	 *  a player who wants none keeps none.
+	 */
+	avatarHistory: string[],
 };
 
 export type SocialState = {

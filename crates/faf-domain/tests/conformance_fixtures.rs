@@ -3254,6 +3254,7 @@ fn helper_fixture() -> HelperFixture {
                 expected: SocialPreferences {
                     player_notes: notes.clone(),
                     replay_notes: Vec::new(),
+                    avatar_history: Vec::new(),
                 }
                 .note_for(player_id)
                 .map_or_else(String::new, |entry| entry.note.clone()),
@@ -6294,6 +6295,7 @@ fn cases() -> Vec<Case> {
                 .into(),
                 SettingsEvent::SocialChanged {
                     preferences: SocialPreferences {
+                        avatar_history: Vec::new(),
                         player_notes: vec![
                             PlayerNote {
                                 player_id: 42,
