@@ -214,9 +214,10 @@ function VaultView({ busy }: { busy: boolean }) {
     setSearch(focused);
     setApplied((prev) => ({ ...prev, search: focused }));
     setPage(1);
-    // The recommended preset ignores the search box, exactly as typing in it
-    // does elsewhere in this view.
-    if (preset === "recommended") choosePreset("all");
+    // A preset that narrows the list (recommended, favourites, my uploads,
+    // UI mods) would hide the very mod that was asked for, so it gives way to
+    // the whole vault. The sorting presets keep their order.
+    if (preset !== "all" && preset !== "rating" && preset !== "newest") choosePreset("all");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

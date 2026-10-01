@@ -38,8 +38,14 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             // No guard and no dedupe beyond the generation check: this is a
             // user-driven search, and asking again is exactly what the search
             // button means.
+            let generation = ctx.maps_search_generation.begin();
             out.emit(MapsEvent::VaultSearching);
-            match ctx.ports.maps.search_vault(query.clone()).await {
+            let result = ctx.ports.maps.search_vault(query.clone()).await;
+            // Only the newest search may answer: see `maps_search_generation`.
+            if !ctx.maps_search_generation.is_current(generation) {
+                return;
+            }
+            match result {
                 Ok(page) => out.emit(MapsEvent::VaultSearched {
                     maps: page.maps,
                     query,

@@ -98,6 +98,12 @@ pub struct ServiceCtx {
     pub auth_cancellation: std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>,
     pub reviews_generation: LatestRequest,
     pub reporting_generation: LatestRequest,
+    /// Vault searches go out as fast as filters change, and a tab opened on a
+    /// mod from elsewhere sends two in the same frame: the remembered filters,
+    /// then the mod's name. Whichever answer arrived last used to win, which
+    /// was often the first question (#380).
+    pub maps_search_generation: LatestRequest,
+    pub mods_search_generation: LatestRequest,
     pub replay_vault_generation: LatestRequest,
     pub replay_local_generation: LatestRequest,
     /// The in-flight replay launch, so the overlay's Cancel button has
@@ -349,6 +355,8 @@ impl App {
             auth_cancellation: std::sync::Mutex::new(None),
             reviews_generation: LatestRequest::default(),
             reporting_generation: LatestRequest::default(),
+            maps_search_generation: LatestRequest::default(),
+            mods_search_generation: LatestRequest::default(),
             replay_vault_generation: LatestRequest::default(),
             replay_local_generation: LatestRequest::default(),
             replay_cancellation: std::sync::Mutex::new(None),
