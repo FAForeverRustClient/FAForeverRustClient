@@ -251,7 +251,14 @@ export type AuthCommand =
 /**  Try a previously remembered refresh token. No-op when none is stored. */
 { type: "restore" } |
 /**  Open the client without signing in, on local files only. */
-{ type: "playOffline" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
+{ type: "playOffline" } |
+/**
+ *  Start Forged Alliance on its own, into its own menu, without signing
+ *  in: the Java client's "Play Offline" (#397). Skirmish against the AI
+ *  needs no server. A failure is reported as a failed login, which is what
+ *  the login screen it is started from shows.
+ */
+{ type: "launchOfflineGame" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
 
 /**  The only way [`AuthState`] changes. */
 export type AuthEvent = { type: "loginStarted" } | { type: "loggedIn"; payload: {

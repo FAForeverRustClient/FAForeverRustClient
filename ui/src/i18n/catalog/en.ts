@@ -111,7 +111,7 @@ export const en = {
   "auth.login": "Log in with FAF",
   "auth.hint": "Opens your browser to sign in. The client never sees your password.",
   "auth.playOffline": "Play offline",
-  "auth.playOfflineHint": "Opens the client on this machine’s replays and settings, with no account and no server.",
+  "auth.playOfflineHint": "Play offline starts Forged Alliance on its own, for skirmish against the AI. Local replays opens this client on the replays and settings on this machine. Neither needs an account.",
   "auth.localReplays": "Local replays",
   "auth.signIn": "Sign in",
   "auth.staySignedIn": "Stay signed in on this computer",

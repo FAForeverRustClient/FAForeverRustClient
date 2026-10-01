@@ -86,7 +86,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "auth.login": "Se connecter avec FAF",
   "auth.hint": "Ouvre votre navigateur pour la connexion. Le client ne voit jamais votre mot de passe.",
   "auth.playOffline": "Jouer hors ligne",
-  "auth.playOfflineHint": "Ouvre le client avec les parties enregistrées et les réglages de cette machine, sans compte ni serveur.",
+  "auth.playOfflineHint": "Jouer hors ligne lance Forged Alliance seul, pour des escarmouches contre l'IA. Replays locaux ouvre ce client sur les replays et les paramètres de cette machine. Aucun des deux ne demande de compte.",
   "auth.localReplays": "Replays locaux",
   "auth.signIn": "Se connecter",
   "auth.staySignedIn": "Rester connecté sur cet ordinateur",

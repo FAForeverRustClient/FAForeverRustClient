@@ -85,7 +85,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "auth.login": "Iniciar sesión con FAF",
   "auth.hint": "Abre tu navegador para iniciar sesión. El cliente nunca ve tu contraseña.",
   "auth.playOffline": "Jugar sin conexión",
-  "auth.playOfflineHint": "Abre el cliente con las repeticiones y los ajustes de este equipo, sin cuenta y sin servidor.",
+  "auth.playOfflineHint": "Jugar sin conexión inicia Forged Alliance por sí solo, para escaramuzas contra la IA. Repeticiones locales abre este cliente con las repeticiones y los ajustes de este equipo. Ninguno necesita cuenta.",
   "auth.localReplays": "Repeticiones locales",
   "auth.signIn": "Iniciar sesión",
   "auth.staySignedIn": "Mantener la sesión iniciada en este equipo",

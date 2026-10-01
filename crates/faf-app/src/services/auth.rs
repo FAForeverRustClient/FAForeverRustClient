@@ -79,6 +79,32 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             next_generation(ctx);
             out.emit(AuthEvent::WentOffline);
         }
+        AuthCommand::LaunchOfflineGame => {
+            let game_path = out.with_state(|state| state.settings.game_path.clone());
+            // No updater run, unlike every other launch: there may be no
+            // network at all, and an install that was patched once is a
+            // playable install. Without one there is nothing to start, which
+            // is the Java client's answer too.
+            if !ctx.ports.process.install_path_is_present(&game_path) {
+                out.emit(AuthEvent::LoginFailed {
+                    message: "Forged Alliance with FAF's files was not found. Sign in once and \
+                              play or watch a game, so the client can set the game up, then \
+                              playing offline works without an account."
+                        .into(),
+                });
+                return;
+            }
+            if let Err(reason) = ctx
+                .ports
+                .process
+                .launch_offline("faf".into(), String::new())
+                .await
+            {
+                out.emit(AuthEvent::LoginFailed {
+                    message: format!("Forged Alliance could not be started: {reason}"),
+                });
+            }
+        }
         AuthCommand::LoginTest => {
             if let Ok(mut slot) = ctx.auth_cancellation.lock() {
                 if let Some(token) = slot.take() {

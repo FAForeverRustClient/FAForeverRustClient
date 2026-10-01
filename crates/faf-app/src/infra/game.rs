@@ -1014,16 +1014,20 @@ fn build_arguments(
 /// Mirrors the Java client's `LaunchCommandBuilder` for `launchOfflineGame`:
 /// the init script for the featured mod, no bug reporter, and the scenario to
 /// load. Deliberately no `/gpgnet`: there is no adapter and no lobby.
+///
+/// An empty `map` leaves `/map` out, which opens the game's own menu rather
+/// than a scenario: the "Play offline" on the login screen (#397).
 fn offline_arguments(featured_mod: &str, map: &str, log_path: &str) -> Vec<String> {
-    vec![
+    let mut arguments = vec![
         "/init".into(),
         format!("init_{featured_mod}.lua"),
         "/nobugreport".into(),
-        "/map".into(),
-        map.into(),
-        "/log".into(),
-        log_path.to_string(),
-    ]
+    ];
+    if !map.is_empty() {
+        arguments.extend(["/map".into(), map.into()]);
+    }
+    arguments.extend(["/log".into(), log_path.to_string()]);
+    arguments
 }
 
 /// Inert game launcher: used offline and in tests. Launching is a no-op success.
@@ -1172,6 +1176,20 @@ mod tests {
             args: vec!["/numgames".into(), "5".into()],
             replay: Default::default(),
         }
+    }
+
+    #[test]
+    fn an_offline_launch_without_a_map_opens_the_game_menu() {
+        let menu = offline_arguments("faf", "", "game.log");
+        assert!(!menu.iter().any(|argument| argument == "/map"));
+        assert_eq!(&menu[..2], ["/init", "init_faf.lua"]);
+
+        let tutorial = offline_arguments("tutorials", "SCMP_001", "game.log");
+        let at = tutorial
+            .iter()
+            .position(|argument| argument == "/map")
+            .unwrap();
+        assert_eq!(tutorial[at + 1], "SCMP_001");
     }
 
     #[test]
