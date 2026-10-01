@@ -870,7 +870,14 @@ pub struct NotificationPreferences {
     pub queue_opponent_queues: Vec<String>,
     /// Sound volume from 0 to 100.
     pub volume: u8,
+    /// Seconds after one notification of a kind before another of the same
+    /// kind toasts, sounds or reaches the desktop again (#382). Zero announces
+    /// every one. The later ones still land in the notification history.
+    pub repeat_cooldown_seconds: u16,
 }
+
+/// The longest repeat cooldown a settings file may ask for: ten minutes.
+pub const MAX_NOTIFICATION_REPEAT_COOLDOWN_SECONDS: u16 = 600;
 
 impl Default for NotificationPreferences {
     fn default() -> Self {
@@ -899,6 +906,8 @@ impl Default for NotificationPreferences {
             map_generated: true,
             queue_opponent_queues: Vec::new(),
             volume: 70,
+            // What the request asked for: a ping every two seconds at most.
+            repeat_cooldown_seconds: 2,
         }
     }
 }
@@ -938,6 +947,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             map_generated: bool,
             queue_opponent_queues: Vec<String>,
             volume: u8,
+            repeat_cooldown_seconds: u16,
         }
 
         impl Default for Wire {
@@ -971,6 +981,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     map_generated: defaults.map_generated,
                     queue_opponent_queues: defaults.queue_opponent_queues,
                     volume: defaults.volume,
+                    repeat_cooldown_seconds: defaults.repeat_cooldown_seconds,
                 }
             }
         }
@@ -1015,6 +1026,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             map_generated: wire.map_generated,
             queue_opponent_queues: wire.queue_opponent_queues,
             volume: wire.volume,
+            repeat_cooldown_seconds: wire.repeat_cooldown_seconds,
         })
     }
 }
@@ -1022,6 +1034,9 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
 impl NotificationPreferences {
     fn normalized(mut self) -> Self {
         self.volume = self.volume.min(100);
+        self.repeat_cooldown_seconds = self
+            .repeat_cooldown_seconds
+            .min(MAX_NOTIFICATION_REPEAT_COOLDOWN_SECONDS);
         self
     }
 }

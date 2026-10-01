@@ -5181,6 +5181,12 @@ export type NotificationPreferences = {
 	queueOpponentQueues: string[],
 	/**  Sound volume from 0 to 100. */
 	volume: number,
+	/**
+	 *  Seconds after one notification of a kind before another of the same
+	 *  kind toasts, sounds or reaches the desktop again (#382). Zero announces
+	 *  every one. The later ones still land in the notification history.
+	 */
+	repeatCooldownSeconds: number,
 };
 
 /**

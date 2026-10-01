@@ -529,6 +529,7 @@ const INITIAL: AppState = {
       mapGenerated: true,
       queueOpponentQueues: [],
       volume: 70,
+      repeatCooldownSeconds: 2,
     },
     chat: {
       showJoinsParts: false,

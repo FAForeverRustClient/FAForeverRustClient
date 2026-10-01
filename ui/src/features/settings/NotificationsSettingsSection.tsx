@@ -19,6 +19,7 @@ import {
   soundOptionValue,
 } from "../notifications/notificationSound";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { NumberInput } from "../../design-system/NumberInput";
 import { MultiSelect } from "../../design-system/MultiSelect";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -265,6 +266,21 @@ export function NotificationsSettingsSection() {
           />
           <span>{preferences.volume}%</span>
         </label>
+      </SettingRow>
+      <SettingRow
+        label={t("settings.notifications.repeatCooldown")}
+        hint={t("settings.notifications.repeatCooldownHint")}
+      >
+        <NumberInput
+          className="number-input"
+          value={preferences.repeatCooldownSeconds ?? 0}
+          min={0}
+          max={600}
+          disabled={!preferences.enabled}
+          aria-label={t("settings.notifications.repeatCooldown")}
+          onChange={(seconds) =>
+            update({ repeatCooldownSeconds: Math.min(600, Math.max(0, Math.round(seconds))) })}
+        />
       </SettingRow>
       {/* The added files, once there are any. Adding one is a row in every
           dropdown, but removing one cannot be: a dropdown sets a value and

@@ -1290,6 +1290,8 @@ export const en = {
   "settings.notifications.volume": "Sound volume",
   "settings.notifications.volumeHint": "Adjust alert volume without changing game audio.",
   "settings.notifications.volumeAria": "Notification sound volume",
+  "settings.notifications.repeatCooldown": "Repeat after (seconds)",
+  "settings.notifications.repeatCooldownHint": "Another notification of the same kind within this time stays in the list but does not pop up or play a sound. 0 announces every one.",
   // The shipped tones, quietest first. Synthesised rather than sampled, so
   // "shipped" costs no files: see notificationSound.ts.
   "settings.notifications.sound.silent": "Silent",

@@ -9,7 +9,7 @@ import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/messages/chatFormat";
 import { playNotificationSound, soundForKind } from "./notificationSound";
 import { raisesOsNotification } from "./osNotifications";
-import { happensInView } from "./notificationGate";
+import { RepeatCooldown, happensInView } from "./notificationGate";
 import "./notifications.css";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -157,6 +157,7 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const [toastIds, setToastIds] = useState<string[]>([]);
   const processed = useRef(new Set<string>());
+  const cooldown = useRef(new RepeatCooldown());
   const timers = useRef(new Map<string, number>());
   const panelRef = useRef<HTMLDivElement>(null);
   const unread = items.filter((item) => !item.read).length;
@@ -221,10 +222,15 @@ export function NotificationCenter() {
     // so it goes straight into the history as read and is not announced.
     const { nav, chat } = useAppStore.getState().state;
     const focused = document.hasFocus();
+    const now = Date.now();
     const fresh = arrived.filter((item) => {
-      if (!happensInView(item, nav.activeTab, chat.activeChannel, focused)) return true;
-      markRead(item.id);
-      return false;
+      if (happensInView(item, nav.activeTab, chat.activeChannel, focused)) {
+        markRead(item.id);
+        return false;
+      }
+      // Another of the same kind too soon after the last one (#382): kept in
+      // the history, unread, but not announced a second time.
+      return cooldown.current.admit(item.kind, now, preferences.repeatCooldownSeconds ?? 0);
     });
     if (fresh.length === 0) return;
     setToastIds((current) => [...fresh.map((item) => item.id), ...current].slice(0, 3));

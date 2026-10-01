@@ -982,6 +982,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.volume": "Volume sonore",
   "settings.notifications.volumeHint": "Régler le volume des alertes sans changer le son du jeu.",
   "settings.notifications.volumeAria": "Volume des sons de notification",
+  "settings.notifications.repeatCooldown": "Répéter après (secondes)",
+  "settings.notifications.repeatCooldownHint": "Une autre notification du même type pendant ce délai reste dans la liste, sans s'afficher ni sonner. 0 les annonce toutes.",
   "settings.notifications.whenFocused": "Notifier même en premier plan",
   "settings.notifications.whenFocusedHint": "Afficher aussi les alertes du bureau pendant que vous utilisez activement le client.",
   "settings.notifications.matchFound": "Partie trouvée",

@@ -1106,6 +1106,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.volume": "Lautstärke",
   "settings.notifications.volumeHint": "Hinweislautstärke anpassen, ohne den Spielton zu ändern.",
   "settings.notifications.volumeAria": "Lautstärke der Benachrichtigungstöne",
+  "settings.notifications.repeatCooldown": "Wiederholen nach (Sekunden)",
+  "settings.notifications.repeatCooldownHint": "Eine weitere Benachrichtigung derselben Art innerhalb dieser Zeit landet in der Liste, erscheint aber nicht und spielt keinen Ton. 0 meldet jede.",
   "settings.notifications.sound.silent": "Stumm",
   "settings.notifications.sound.soft": "Leise",
   "settings.notifications.sound.chime": "Glocke",

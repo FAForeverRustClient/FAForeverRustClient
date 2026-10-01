@@ -934,6 +934,28 @@ struct GameNotificationTracker {
     live: Option<HashMap<i32, Game>>,
     suppress_until: Option<Instant>,
     queue_opponents: QueueOpponentTracker,
+    /// When each game was last announced as full, so a lobby that fills,
+    /// loses a player to the observers and fills again is announced once
+    /// rather than on every move (#382).
+    full_announced: HashMap<i32, Instant>,
+}
+
+/// How long a game stays announced as full. People move between the slots
+/// and the observers for the whole of a lobby's setup.
+const GAME_FULL_COOLDOWN: Duration = Duration::from_secs(5 * 60);
+
+/// Whether a game that just filled up should be announced, and if so, record
+/// that it was. See [`GameNotificationTracker::full_announced`].
+fn announce_full(announced: &mut HashMap<i32, Instant>, game_id: i32) -> bool {
+    let now = Instant::now();
+    if announced
+        .get(&game_id)
+        .is_some_and(|at| now.duration_since(*at) < GAME_FULL_COOLDOWN)
+    {
+        return false;
+    }
+    announced.insert(game_id, now);
+    true
 }
 
 /// How long a queue keeps quiet after announcing an opponent.
@@ -1144,7 +1166,9 @@ impl GameNotificationTracker {
                 None => signals.push(GameNotificationSignal::NewGame(game.clone())),
                 Some(old) => {
                     if let Some(player_name) = player_name {
-                        if filled_up(&old, game, player_name) {
+                        if filled_up(&old, game, player_name)
+                            && announce_full(&mut self.full_announced, game.id)
+                        {
                             signals.push(GameNotificationSignal::GameFull(game.clone()));
                         }
                     }
@@ -1153,6 +1177,7 @@ impl GameNotificationTracker {
         }
         for id in removed {
             index.remove(id);
+            self.full_announced.remove(id);
         }
         signals
     }
@@ -1230,7 +1255,9 @@ impl GameNotificationTracker {
                 signals.push(GameNotificationSignal::NewGame(game.clone()));
             }
             if let (Some(player_name), Some(old)) = (player_name, previous.get(&game.id)) {
-                if filled_up(old, game, player_name) {
+                if filled_up(old, game, player_name)
+                    && announce_full(&mut self.full_announced, game.id)
+                {
                     signals.push(GameNotificationSignal::GameFull(game.clone()));
                 }
             }
@@ -1545,6 +1572,24 @@ mod tests {
         assert!(signals.iter().any(
             |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
         ));
+    }
+
+    /// The report in #382: people going to the observers and back made the
+    /// lobby full again, and every time was a toast and a sound.
+    #[test]
+    fn a_lobby_that_fills_again_is_announced_once() {
+        let mut tracker = GameNotificationTracker::default();
+        tracker.observe_open(&[game(1, "Me", &["Me"], 1, 2)], Some("me"));
+        let full = |tracker: &mut GameNotificationTracker| {
+            tracker
+                .observe_open(&[game(1, "Me", &["Me", "Other"], 2, 2)], Some("me"))
+                .iter()
+                .filter(|signal| matches!(signal, GameNotificationSignal::GameFull(_)))
+                .count()
+        };
+        assert_eq!(full(&mut tracker), 1);
+        tracker.observe_open(&[game(1, "Me", &["Me"], 1, 2)], Some("me"));
+        assert_eq!(full(&mut tracker), 0);
     }
 
     #[test]

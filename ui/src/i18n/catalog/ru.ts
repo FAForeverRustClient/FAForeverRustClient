@@ -1004,6 +1004,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.volume": "Громкость уведомлений",
   "settings.notifications.volumeHint": "Настроить громкость уведомлений в клиенте.",
   "settings.notifications.volumeAria": "Громкость звуков уведомлений",
+  "settings.notifications.repeatCooldown": "Повторять через (секунд)",
+  "settings.notifications.repeatCooldownHint": "Следующее уведомление того же типа в течение этого времени попадает в список, но не всплывает и не звучит. 0 показывает все.",
   "settings.notifications.whenFocused": "Уведомлять при активном окне",
   "settings.notifications.whenFocusedHint": "Показывать системные уведомления, когда клиент открыт на переднем плане.",
   "settings.notifications.matchFound": "Матч найден",

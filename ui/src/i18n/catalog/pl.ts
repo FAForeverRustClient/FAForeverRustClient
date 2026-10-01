@@ -935,6 +935,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.volume": "Głośność dźwięku",
   "settings.notifications.volumeHint": "Ustaw głośność alertów bez zmiany dźwięku gry.",
   "settings.notifications.volumeAria": "Głośność dźwięku powiadomień",
+  "settings.notifications.repeatCooldown": "Powtórz po (sekundach)",
+  "settings.notifications.repeatCooldownHint": "Kolejne powiadomienie tego samego rodzaju w tym czasie trafia na listę, ale się nie wyświetla ani nie gra dźwięku. 0 zgłasza każde.",
   "settings.notifications.whenFocused": "Powiadamiaj przy aktywnym oknie",
   "settings.notifications.whenFocusedHint": "Pokazuj powiadomienia systemowe także wtedy, gdy aktywnie korzystasz z klienta.",
   "settings.notifications.matchFound": "Znaleziono grę",

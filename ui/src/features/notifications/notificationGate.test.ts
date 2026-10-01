@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ClientNotification } from "../../ipc/bindings";
-import { happensInView } from "./notificationGate";
+import { RepeatCooldown, happensInView } from "./notificationGate";
 
 function message(kind: ClientNotification["kind"], channel: string): ClientNotification {
   return {
@@ -24,5 +24,21 @@ describe("a message in the conversation on screen (#381)", () => {
     expect(happensInView(message("mention", "#aeolus"), "chat", "#german", true)).toBe(false);
     expect(happensInView(message("mention", "#aeolus"), "play", "#aeolus", true)).toBe(false);
     expect(happensInView(message("mention", "#aeolus"), "chat", "#aeolus", false)).toBe(false);
+  });
+});
+
+describe("the repeat cooldown (#382)", () => {
+  it("lets one of a kind through per cooldown and keeps kinds apart", () => {
+    const gate = new RepeatCooldown();
+    expect(gate.admit("mention", 0, 2)).toBe(true);
+    expect(gate.admit("mention", 1500, 2)).toBe(false);
+    expect(gate.admit("partyInvite", 1500, 2)).toBe(true);
+    expect(gate.admit("mention", 2000, 2)).toBe(true);
+  });
+
+  it("lets everything through at zero", () => {
+    const gate = new RepeatCooldown();
+    expect(gate.admit("mention", 0, 0)).toBe(true);
+    expect(gate.admit("mention", 0, 0)).toBe(true);
   });
 });
