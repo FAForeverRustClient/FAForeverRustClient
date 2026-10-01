@@ -58,3 +58,15 @@
 .resize-handle.is-vertical:focus-visible::after {
   background: var(--color-accent);
 }
+
+/* A column header can be picked up and dropped on another one to move the
+   column there (issue 409). The cell it would land on is outlined, the way
+   the divider above marks the line it would move. */
+[draggable="true"] {
+  cursor: grab;
+}
+
+.is-drop-target {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: -2px;
+}

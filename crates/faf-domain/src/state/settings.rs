@@ -2225,6 +2225,16 @@ pub struct BrowsingPreferences {
     pub coop_board_columns: Vec<u32>,
     /// And for the matchmaker tab's recent games (#301).
     pub matchmaker_recent_columns: Vec<u32>,
+    /// The order the columns of each list are drawn in, by list (#409):
+    /// `gameBrowser`, `replayList`, `liveReplays`, `matchmakerRecent`. Each is
+    /// the designed column at each drawn position, so `[2, 0, 1]` draws the
+    /// third column first. A list with no entry, or with one that is not an
+    /// arrangement of its columns, is drawn as designed.
+    ///
+    /// The widths above stay by column, not by position, so a column keeps
+    /// its width wherever it is moved. Java's tables let a column be dragged
+    /// to another place too (JavaFX `TableView`).
+    pub column_orders: BTreeMap<String, Vec<u32>>,
     /// Named mod sets the host dialog can re-apply in one click.
     ///
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -2283,6 +2293,7 @@ impl Default for BrowsingPreferences {
             live_replay_columns: Vec::new(),
             coop_board_columns: Vec::new(),
             matchmaker_recent_columns: Vec::new(),
+            column_orders: BTreeMap::new(),
             mod_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
@@ -2328,6 +2339,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             #[serde(default)]
             coop_board_columns: Vec<u32>,
             matchmaker_recent_columns: Vec<u32>,
+            #[serde(default)]
+            column_orders: BTreeMap<String, Vec<u32>>,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
             replay_vault_player: String,
@@ -2359,6 +2372,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     live_replay_columns: defaults.live_replay_columns,
                     coop_board_columns: defaults.coop_board_columns,
                     matchmaker_recent_columns: defaults.matchmaker_recent_columns,
+                    column_orders: defaults.column_orders,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     replay_vault_player: defaults.replay_vault_player,
@@ -2390,6 +2404,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             live_replay_columns: wire.live_replay_columns,
             coop_board_columns: wire.coop_board_columns,
             matchmaker_recent_columns: wire.matchmaker_recent_columns,
+            column_orders: wire.column_orders,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             replay_vault_player: wire.replay_vault_player,
@@ -2508,6 +2523,17 @@ impl BrowsingPreferences {
         self.live_replay_columns = normalize_column_widths(self.live_replay_columns);
         self.coop_board_columns = normalize_column_widths(self.coop_board_columns);
         self.matchmaker_recent_columns = normalize_column_widths(self.matchmaker_recent_columns);
+        // Bounded against a corrupt or hand-edited file: a handful of lists,
+        // short names, and no more positions than a list has columns. Whether
+        // an entry is a real arrangement is the list's own question, because
+        // only the list knows how many columns it has.
+        self.column_orders = self
+            .column_orders
+            .into_iter()
+            .filter(|(list, _)| !list.is_empty() && list.len() <= MAX_COLUMN_ORDER_KEY_CHARS)
+            .take(MAX_COLUMN_ORDER_LISTS)
+            .map(|(list, order)| (list, normalize_column_widths(order)))
+            .collect();
         self
     }
 }
@@ -2518,6 +2544,11 @@ impl BrowsingPreferences {
 /// width", and clamping it up to the minimum would silently turn an unset
 /// column into a narrow one. Everything else is bounded, against a corrupt or
 /// hand-edited file rather than against anything a drag can produce.
+/// How many lists may keep a column order. Four do today.
+const MAX_COLUMN_ORDER_LISTS: usize = 16;
+/// The longest list name a column order is kept under.
+const MAX_COLUMN_ORDER_KEY_CHARS: usize = 32;
+
 fn normalize_column_widths(mut widths: Vec<u32>) -> Vec<u32> {
     widths.truncate(MAX_TABLE_COLUMNS);
     widths
@@ -3554,6 +3585,7 @@ mod tests {
                 live_replay_columns: vec![1; 40],
                 coop_board_columns: Vec::new(),
                 matchmaker_recent_columns: Vec::new(),
+                column_orders: Default::default(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![

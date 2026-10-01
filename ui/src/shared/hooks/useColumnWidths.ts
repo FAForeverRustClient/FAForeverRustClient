@@ -13,6 +13,7 @@ import type { BrowsingPreferences } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { MIN_BROWSER_COLUMN_PX } from "../browsingPreferences";
+import { fromDrawnOrder, inDrawnOrder, type ColumnList } from "../columnOrder";
 import {
   drawnColumnWidth,
   fitScale,
@@ -28,20 +29,22 @@ type ColumnField = {
 }[keyof BrowsingPreferences];
 
 export interface ColumnWidths {
-  /** The widths as stored: the drag in progress, or what was saved. */
+  /** The widths as stored, one per designed column: the drag in progress, or what was saved. */
   widths: number[];
   /**
-   * What to draw with: `widths` fitted to the list's space. See the note on
-   * fitting in `tableColumns`.
+   * What to draw with: `widths` fitted to the list's space, in the order the
+   * columns are drawn. See the note on fitting in `tableColumns`.
    */
   drawn: number[];
+  /** The drawn position of the flexible column. */
+  flexible: number;
   /**
    * For the element whose width the columns share: a grid list's header row,
    * or a table.
    */
   containerRef: (element: HTMLElement | null) => void;
   /**
-   * Where the divider in front of `boundary` has been dragged to: pixels from
+   * Where the divider in front of drawn position `boundary` has been dragged to: pixels from
    * where the drag began, not since the last pointer move. The column before
    * the line grows by what the column after it gives up, so the line moves and
    * nothing else does.
@@ -51,8 +54,14 @@ export interface ColumnWidths {
   onStart: (handle: HTMLElement) => void;
   /** The drag ended: persist it. */
   onCommit: () => void;
-  /** Back to the designed widths, and stay there across a restart. */
+  /** Back to the designed widths, and the designed order, and stay there across a restart. */
   onReset: () => void;
+}
+
+/** A list whose columns can be moved: which one, and its current order. */
+export interface ColumnArrangement {
+  list: ColumnList;
+  order: readonly number[];
 }
 
 /**
@@ -66,7 +75,9 @@ export function useColumnWidths(
   flexible: number,
   layout: "grid" | "table" = "table",
   flexibleFloor = 80,
+  arrangement?: ColumnArrangement,
 ): ColumnWidths {
+  const order = arrangement?.order ?? defaults.map((_, index) => index);
   const stored = useAppStore((state) => state.state.settings.browsing[field]);
   // Local until the pointer is released: persisting per frame would write a
   // settings file on every mouse move.
@@ -95,32 +106,48 @@ export function useColumnWidths(
   const resolve = () => resolveColumnWidths(stored, defaults);
   const current = dragged ?? resolve();
   const scale = fitScale(space, current);
+  const flexibleAt = order.indexOf(flexible);
 
-  const save = (widths: number[]) => {
+  // One write for the widths and, on a reset, the order as well: two writes
+  // in a row would each start from the settings as they were, and the second
+  // would put back what the first had just cleared.
+  const save = (widths: number[], resetOrder = false) => {
     const browsing = useAppStore.getState().state.settings.browsing;
+    const columnOrders = { ...browsing.columnOrders };
+    if (resetOrder && arrangement) delete columnOrders[arrangement.list];
     ipc.send({
       kind: "Settings",
-      command: { type: "setBrowsing", payload: { preferences: { ...browsing, [field]: widths } } },
+      command: { type: "setBrowsing", payload: { preferences: { ...browsing, [field]: widths, columnOrders } } },
     });
   };
 
   return {
     widths: current,
-    drawn: scaledWidths(current, scale),
+    drawn: scaledWidths(inDrawnOrder(current, order), scale),
+    flexible: flexibleAt,
     containerRef: setContainer,
     onStart: (handle) => {
       dragScale.current = scale;
       // A list wider than its columns draws the flexible column wider than
       // its stored width. The drag starts from what is on screen, or the
-      // divider would jump by the difference.
-      const drawnFlexible = scale >= 1 ? drawnColumnWidth(handle, flexible) : null;
+      // divider would jump by the difference. The header's cells are in
+      // drawn order, so the flexible one is found at its drawn position.
+      const drawnFlexible = scale >= 1 ? drawnColumnWidth(handle, flexibleAt) : null;
       origin.current = drawnFlexible === null
         ? current
         : current.map((width, index) => (index === flexible ? Math.max(width, drawnFlexible) : width));
     },
     onDrag: (boundary, delta) => {
       const base = (origin.current ??= current);
-      setDragged(withBoundaryTraded(base, boundary, delta / dragScale.current, floorOf));
+      // The divider stands between two drawn neighbours, which need not be
+      // neighbours by design once columns have been moved.
+      const traded = withBoundaryTraded(
+        inDrawnOrder(base, order),
+        boundary,
+        delta / dragScale.current,
+        (position) => floorOf(order[position]),
+      );
+      setDragged(fromDrawnOrder(traded, order, base));
     },
     onCommit: () => {
       origin.current = null;
@@ -134,7 +161,7 @@ export function useColumnWidths(
     onReset: () => {
       origin.current = null;
       setDragged(null);
-      save([]);
+      save([], true);
     },
   };
 }

@@ -642,6 +642,7 @@ const INITIAL: AppState = {
       liveReplayColumns: [],
       coopBoardColumns: [],
       matchmakerRecentColumns: [],
+      columnOrders: {},
       modPresets: [],
       leaderboardRatingColumns: ["games", "updated"],
       replayVaultPlayer: "",

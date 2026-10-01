@@ -222,6 +222,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "common.unknown": "Неизвестно",
   "common.now": "Сейчас",
   "common.any": "Любой",
+  "common.moveColumnHint": "Перетащите на другой столбец, чтобы переместить его туда, или нажмите Alt+← или Alt+→. Двойной щелчок по разделителю возвращает исходные столбцы.",
   "common.pickDate": "Выбрать дату",
   "common.close": "Закрыть",
   "common.cancel": "Отмена",

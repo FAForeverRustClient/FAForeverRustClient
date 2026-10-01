@@ -11,6 +11,7 @@ import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
 import { useColumnWidths } from "../../shared/hooks/useColumnWidths";
+import { useColumnOrder } from "../../shared/hooks/useColumnOrder";
 import { useGeneratedMapPreview } from "../../shared/hooks/useGeneratedMapPreview";
 import { columnTemplate } from "../../shared/tableColumns";
 
@@ -205,8 +206,28 @@ function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string })
  * that builds the rows, so every `row` object keeps its identity across the
  * frames of one, and a real change to a row still replaces the object.
  */
-const ReplayListRowView = memo(function ReplayListRowView({ row }: { row: ReplayListRow }) {
+const ReplayListRowView = memo(function ReplayListRowView({
+  row,
+  order,
+}: {
+  row: ReplayListRow;
+  /** The designed column at each drawn position (#409). */
+  order: readonly number[];
+}) {
   const interactive = Boolean(row.onSelect || row.onActivate);
+  // In designed order; drawn in the order the header is in.
+  const cells = [
+    <div className="replay-list-cell replay-list-map-cell" role="cell" key="map">
+      <ReplayListThumbnail url={row.mapThumbnailUrl} mapName={row.mapName} />
+    </div>,
+    <ReplayListCellView cell={row.game} className="replay-list-game-cell" key="game" />,
+    <ReplayListCellView cell={row.mod} className="replay-list-mod-cell" key="mod" />,
+    <ReplayListCellView cell={row.played} className="replay-list-played-cell" key="played" />,
+    <ReplayListCellView cell={row.players} className="replay-list-number-cell" key="players" />,
+    <ReplayListCellView cell={row.rating} className="replay-list-number-cell" key="rating" />,
+    <ReplayListCellView cell={row.duration} className="replay-list-duration-cell" key="duration" />,
+    <ReplayListStatus cell={row.replay} action={row.action} iconActions={row.iconActions} key="replay" />,
+  ];
   return (
     <div
       className={`replay-list-row${row.selected ? " selected" : ""}${row.watched ? " watched" : ""}`}
@@ -229,16 +250,7 @@ const ReplayListRowView = memo(function ReplayListRowView({ row }: { row: Replay
         }
       }}
     >
-      <div className="replay-list-cell replay-list-map-cell" role="cell">
-        <ReplayListThumbnail url={row.mapThumbnailUrl} mapName={row.mapName} />
-      </div>
-      <ReplayListCellView cell={row.game} className="replay-list-game-cell" />
-      <ReplayListCellView cell={row.mod} className="replay-list-mod-cell" />
-      <ReplayListCellView cell={row.played} className="replay-list-played-cell" />
-      <ReplayListCellView cell={row.players} className="replay-list-number-cell" />
-      <ReplayListCellView cell={row.rating} className="replay-list-number-cell" />
-      <ReplayListCellView cell={row.duration} className="replay-list-duration-cell" />
-      <ReplayListStatus cell={row.replay} action={row.action} iconActions={row.iconActions} />
+      {order.map((column) => cells[column])}
     </div>
   );
 });
@@ -270,8 +282,13 @@ export function ReplayList({
   footer: ReactNode;
 }) {
   const { t } = useTranslation();
-  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN, "grid");
-  const template = columnTemplate(columns.drawn, FLEXIBLE_COLUMN);
+  const arrangement = useColumnOrder("replayList", COLUMNS.length);
+  const { order } = arrangement;
+  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN, "grid", 80, {
+    list: "replayList",
+    order,
+  });
+  const template = columnTemplate(columns.drawn, columns.flexible);
 
   return (
     <section
@@ -281,29 +298,46 @@ export function ReplayList({
       style={{ "--replay-list-columns": template } as CSSProperties}
     >
       <div className="replay-list-header" role="row" ref={columns.containerRef}>
-        {COLUMNS.map((column, index) => (
-          <span className={column.className} key={column.label} role="columnheader">
-            {/* One line in front of every column but the first, standing
-                where that column starts. It trades width between the two
-                columns it separates, so it lands under the cursor and no
-                other line moves. */}
-            {index > 0 && (
-              <ResizeHandle
-                className="replay-list-col-handle is-ruled"
-                label={t("lobby.browser.resizeColumn", {
-                  column: t(COLUMNS[index - 1 === FLEXIBLE_COLUMN ? index : index - 1].label),
-                })}
-                onStart={columns.onStart}
-                onDrag={(delta) => columns.onDrag(index, delta)}
-                onEnd={columns.onCommit}
-                onReset={columns.onReset}
-              />
-            )}
-            {/* The label clips itself rather than letting the header cell do
-                it: the cell has to let the divider hang outside its own box. */}
-            <span className="replay-list-head-label">{t(column.label)}</span>
-          </span>
-        ))}
+        {order.map((index, position) => {
+          const column = COLUMNS[index];
+          const before = position > 0 ? order[position - 1] : -1;
+          return (
+            <span
+              className={`${column.className}${arrangement.dropTarget === index ? " is-drop-target" : ""}`.trim()}
+              key={column.label}
+              role="columnheader"
+              {...arrangement.dropProps(index)}
+            >
+              {/* One line in front of every column but the first, standing
+                  where that column starts. It trades width between the two
+                  columns it separates, so it lands under the cursor and no
+                  other line moves. */}
+              {position > 0 && (
+                <ResizeHandle
+                  className="replay-list-col-handle is-ruled"
+                  label={t("lobby.browser.resizeColumn", {
+                    column: t(COLUMNS[before === FLEXIBLE_COLUMN ? index : before].label),
+                  })}
+                  onStart={columns.onStart}
+                  onDrag={(delta) => columns.onDrag(position, delta)}
+                  onEnd={columns.onCommit}
+                  onReset={columns.onReset}
+                />
+              )}
+              {/* The label clips itself rather than letting the header cell do
+                  it: the cell has to let the divider hang outside its own box.
+                  It is also what a column is picked up by (#409). */}
+              <span
+                className="replay-list-head-label is-movable"
+                tabIndex={0}
+                title={t("common.moveColumnHint")}
+                {...arrangement.grabProps(index)}
+              >
+                {t(column.label)}
+              </span>
+            </span>
+          );
+        })}
       </div>
       <div className="replay-list-body" role="rowgroup">
         {groups.map((group) => (
@@ -312,7 +346,7 @@ export function ReplayList({
               <span>{group.label}</span>
               <small>{group.rows.length} {group.rows.length === 1 ? "replay" : "replays"}</small>
             </div>
-            {group.rows.map((row) => <ReplayListRowView key={row.key} row={row} />)}
+            {group.rows.map((row) => <ReplayListRowView key={row.key} row={row} order={order} />)}
           </div>
         ))}
       </div>
