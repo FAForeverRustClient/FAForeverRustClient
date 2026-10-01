@@ -85,6 +85,15 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             // network at all, and an install that was patched once is a
             // playable install. Without one there is nothing to start, which
             // is the Java client's answer too.
+            // Java's `GameRunner.startOffline` answers a second press with
+            // "game is running"; here it would have replaced the game, online
+            // or not, because the game slot holds one process.
+            if ctx.ports.process.game_running() || ctx.running_game.id().is_some() {
+                out.emit(AuthEvent::LoginFailed {
+                    message: "Forged Alliance is already running.".into(),
+                });
+                return;
+            }
             if !ctx.ports.process.install_path_is_present(&game_path) {
                 out.emit(AuthEvent::LoginFailed {
                     message: "Forged Alliance with FAF's files was not found. Sign in once and \
