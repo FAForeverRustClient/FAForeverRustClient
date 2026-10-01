@@ -553,18 +553,58 @@ impl AppLoop {
             let ctx = ctx.clone();
             let sink = self.sink.clone();
             let permits = permits.clone();
+            let claimed = claim_generation(&queued.command, &ctx);
             tokio::spawn(async move {
                 // Acquired inside the task, so the loop keeps draining the
                 // queue while services are busy: the waiting happens here, not
                 // in front of the channel.
                 let _permit = permits.acquire_owned().await;
-                dispatch(queued.command, &ctx, &sink).await;
+                CLAIMED_GENERATION
+                    .scope(claimed, dispatch(queued.command, &ctx, &sink))
+                    .await;
                 if let Some(completion) = queued.completion {
                     let _ = completion.send(());
                 }
             });
         }
     }
+}
+
+tokio::task_local! {
+    /// The latest-request generation [`claim_generation`] took for the command
+    /// this task is running, if it took one.
+    static CLAIMED_GENERATION: Option<u64>;
+}
+
+/// Take a latest-request generation for a command in the order commands
+/// arrive, before its task is spawned.
+///
+/// Taken inside the task, the order was the scheduler's: tokio does not start
+/// two spawned tasks in the order they were spawned, and its slot for the
+/// newest task can even run it first. Two vault searches sent in one frame
+/// (#380: the remembered filters, then a mod's name) could then claim their
+/// generations the wrong way round, and the older question was the one
+/// allowed to answer.
+fn claim_generation(command: &AppCommand, ctx: &ServiceCtx) -> Option<u64> {
+    match command {
+        AppCommand::Maps(faf_domain::state::MapsCommand::SearchVault { .. }) => {
+            Some(ctx.maps_search_generation.begin())
+        }
+        AppCommand::Mods(faf_domain::state::ModsCommand::SearchVault { .. }) => {
+            Some(ctx.mods_search_generation.begin())
+        }
+        _ => None,
+    }
+}
+
+/// The generation [`claim_generation`] took for the running command, if any.
+/// `None` outside the command loop, as in a test that calls a service
+/// directly, where the caller's own order is the order.
+pub(crate) fn claimed_generation() -> Option<u64> {
+    CLAIMED_GENERATION
+        .try_with(|claimed| *claimed)
+        .ok()
+        .flatten()
 }
 
 /// See [`AppLoop::run`]. Not a tuning knob: it exists so a runaway dispatcher
