@@ -78,6 +78,23 @@ interface Props {
   onClose: () => void;
 }
 
+/**
+ * A pool's maps smallest first, then by name: the Java client's order
+ * (`MAP_VERSION_COMPARATOR`, area first and width on a tie). The server hands
+ * them over in the order they were added to the pool, which is the order a
+ * moderator happened to work in and nothing a player looks for (#403).
+ */
+export function sortPoolMaps<T extends { width: number; height: number; displayName: string }>(
+  maps: readonly T[],
+): T[] {
+  return [...maps].sort(
+    (left, right) =>
+      left.width * left.height - right.width * right.height ||
+      left.width - right.width ||
+      left.displayName.localeCompare(right.displayName, undefined, { sensitivity: "base" }),
+  );
+}
+
 export function MatchmakerMapPoolModal({
   queueTitle,
   pools,
@@ -233,7 +250,7 @@ export function MatchmakerMapPoolModal({
         ) : !activePool || activePool.maps.length === 0 ? (
           <p className="play-empty">{t("lobby.mapPool.empty")}</p>
         ) : (
-          activePool.maps.map((map) => {
+          sortPoolMaps(activePool.maps).map((map) => {
             const tokens = draftVetoes[`${activePool.id}:${map.assignmentId}`] ?? 0;
             const isVetoed = tokens > 0;
             const canVeto = tokenLimit > 0;
