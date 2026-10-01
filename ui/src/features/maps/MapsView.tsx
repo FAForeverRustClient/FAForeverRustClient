@@ -38,6 +38,7 @@ import "./maps.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DateInput } from "../../design-system/DateInput";
+import { useSessionState } from "../../shared/hooks/useSessionState";
 
 type SubView = "vault" | "installed";
 type VaultSort = "rating" | "newest" | "played" | "name" | "size";
@@ -179,21 +180,21 @@ function VaultView({ busy }: { busy: boolean }) {
   const initialSort: VaultSort =
     storedVaultSort(browsing.mapVaultSort) ?? presetSort(preset);
   const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
-  const { draft, setFilter, resetFilters } = useMapFilterDraft();
+  const { draft, setFilter, resetFilters } = useMapFilterDraft("maps.vault.draft");
   const { search, author, ranked, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
   const [sort, setSort] = useState<VaultSort>(initialSort);
-  const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
-  const [createdAfter, setCreatedAfter] = useState("");
-  const [createdBefore, setCreatedBefore] = useState("");
-  const [showHidden, setShowHidden] = useState(false);
+  const [installFilter, setInstallFilter] = useSessionState<InstallFilter>("maps.vault.installFilter", "all");
+  const [createdAfter, setCreatedAfter] = useSessionState("maps.vault.createdAfter", "");
+  const [createdBefore, setCreatedBefore] = useSessionState("maps.vault.createdBefore", "");
+  const [showHidden, setShowHidden] = useSessionState("maps.vault.showHidden", false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [page, setPage] = useState(1);
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [page, setPage] = useSessionState("maps.vault.page", 1);
+  const [selectedFolder, setSelectedFolder] = useSessionState<string | null>("maps.vault.selectedFolder", null);
   const [pendingUninstall, setPendingUninstall] = useState<VaultMap | null>(null);
   const [pendingHide, setPendingHide] = useState<VaultMap | null>(null);
   const [previewMap, setPreviewMap] = useState<VaultMap | null>(null);
 
-  const [applied, setApplied] = useState<MapFilterState>({
+  const [applied, setApplied] = useSessionState<MapFilterState>("maps.vault.applied", {
     search: "",
     author: "",
     sort: initialSort,
@@ -251,7 +252,7 @@ function VaultView({ busy }: { busy: boolean }) {
     const next = presetSort(preset);
     setSort(next);
     setApplied((prev) => ({ ...prev, sort: next }));
-  }, [preset]);
+  }, [preset, setApplied]);
 
   const applySearch = () => {
     setApplied({ ...draft, sort, installFilter, createdAfter, createdBefore, showHidden });
@@ -623,7 +624,7 @@ function InstalledView({ busy }: { busy: boolean }) {
   // looks at were stuck at thumbnail size, which is the complaint the Vault's
   // zoom answers.
   const [previewMap, setPreviewMap] = useState<InstalledMap | VaultMap | null>(null);
-  const { draft, setFilter, resetFilters } = useMapFilterDraft();
+  const { draft, setFilter, resetFilters } = useMapFilterDraft("maps.installed.draft");
   const { search, author, ranked, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
   const [preset, setPreset] = useState<InstalledPreset>("all");
   const [sort, setSort] = useState<InstalledSort>("name");
@@ -976,7 +977,7 @@ const cleanUpGeneratedMaps = () =>
 
 export function MapsView() {
   const { t } = useTranslation();
-  const [subView, setSubView] = useState<SubView>("vault");
+  const [subView, setSubView] = useSessionState<SubView>("maps.subView", "vault");
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
   const generatorStatus = useAppStore((state) => state.state.mapGenerator.status);
   const busy = installStatus.type === "installing";
