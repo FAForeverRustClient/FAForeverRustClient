@@ -351,14 +351,20 @@ export function mapThumbnailCandidates(
   const baseName = baseMapName(mapName);
   const officialKey = officialMapFor(mapName)?.folderName;
   const size = large ? "large" : "small";
+  // Built from the folder name, as Java builds every game tile's preview
+  // (`MapService.loadPreview` with the folder, escaped and lower-cased). A
+  // folder with spaces in it is an old vault map's, `Phenom Spartiate v2`
+  // being one, and the preview service has those too
+  // (`previews/small/phenom%20spartiate%20v2.png`): leaving them out left such
+  // a map with no art at all whenever the vault record was missing (#385).
   const canonicalPreviewUrls = [
     officialKey
       ? `https://content.faforever.com/maps/previews/${size}/${officialKey}.png`
       : undefined,
-    normalized && !normalized.includes(" ")
+    normalized
       ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(normalized)}.png`
       : undefined,
-    baseName !== normalized && !baseName.includes(" ")
+    baseName !== normalized && baseName
       ? `https://content.faforever.com/maps/previews/${size}/${encodeURIComponent(baseName)}.png`
       : undefined,
   ];

@@ -5586,6 +5586,31 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "the catalogue arriving after a folder lookup keeps the looked-up map",
+            vec![
+                MapsEvent::VaultLoading.into(),
+                MapsEvent::VaultFoldersResolved {
+                    maps: vec![conformance_vault_map(4, 44, "phenom spartiate v2")],
+                }
+                .into(),
+                MapsEvent::VaultLoaded {
+                    maps: vec![
+                        conformance_vault_map(1, 11, "scmp_009.v0001"),
+                        conformance_vault_map(4, 44, "phenom spartiate v2"),
+                    ],
+                }
+                .into(),
+                MapsEvent::VaultFoldersResolved {
+                    maps: vec![conformance_vault_map(5, 55, "old_map")],
+                }
+                .into(),
+                MapsEvent::VaultLoaded {
+                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")],
+                }
+                .into(),
+            ],
+        ),
+        case(
             "the profile search's account suggestions replace each other",
             vec![
                 PlayerCardEvent::AccountsFound {

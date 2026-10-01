@@ -392,7 +392,20 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
     match event {
         MapsEvent::VaultLoading => state.vault_status = MapListStatus::Loading,
         MapsEvent::VaultLoaded { maps } => {
-            state.vault = maps.clone();
+            // The catalogue arrives once, after a crawl of the whole vault
+            // that takes long enough for the Play tab to have looked up the
+            // folders of lobbies already on screen (`VaultFoldersResolved`).
+            // Those are exactly the records the catalogue leaves out, and
+            // replacing the list dropped them: the map lost its preview and
+            // read as unranked "after a while", which is the second half of
+            // #385, and nothing asked for the folder again. They are kept.
+            let mut vault = maps.clone();
+            for known in &state.vault {
+                if !vault.iter().any(|map| map.version_id == known.version_id) {
+                    vault.push(known.clone());
+                }
+            }
+            state.vault = vault;
             state.vault_status = MapListStatus::Ready;
         }
         MapsEvent::VaultSearching => {
@@ -868,6 +881,36 @@ mod tests {
                 .map(|map| map.folder_name.as_str())
                 .collect::<Vec<_>>(),
             ["scmp_009.v0001", "withdrawn.v0002"]
+        );
+    }
+
+    #[test]
+    fn the_catalogue_arriving_late_keeps_the_folders_already_resolved() {
+        // The Play tab looks a lobby's map up while the catalogue is still
+        // being crawled; the crawl finishing must not take that record away
+        // again (#385: the preview vanished and the map read as unranked).
+        let mut state = MapsState::default();
+        let mut old_map = vault_map("phenom spartiate v2");
+        old_map.version_id = 7;
+        reduce(
+            &mut state,
+            &MapsEvent::VaultFoldersResolved {
+                maps: vec![old_map],
+            },
+        );
+        reduce(
+            &mut state,
+            &MapsEvent::VaultLoaded {
+                maps: vec![vault_map("scmp_009.v0001")],
+            },
+        );
+        assert_eq!(
+            state
+                .vault
+                .iter()
+                .map(|map| map.folder_name.as_str())
+                .collect::<Vec<_>>(),
+            ["scmp_009.v0001", "phenom spartiate v2"]
         );
     }
 }
