@@ -9,6 +9,7 @@ import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/messages/chatFormat";
 import { playNotificationSound, soundForKind } from "./notificationSound";
 import { raisesOsNotification } from "./osNotifications";
+import { happensInView } from "./notificationGate";
 import "./notifications.css";
 import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
@@ -212,10 +213,20 @@ export function NotificationCenter() {
     processed.current = new Set(
       [...processed.current].filter((id) => currentIds.has(id)),
     );
-    const fresh = items.filter((item) => !item.read && !processed.current.has(item.id));
-    if (fresh.length === 0) return;
-    fresh.forEach((item) => processed.current.add(item.id));
+    const arrived = items.filter((item) => !item.read && !processed.current.has(item.id));
+    if (arrived.length === 0) return;
+    arrived.forEach((item) => processed.current.add(item.id));
     if (!preferences.enabled) return;
+    // A message in the conversation already on screen is read as it arrives,
+    // so it goes straight into the history as read and is not announced.
+    const { nav, chat } = useAppStore.getState().state;
+    const focused = document.hasFocus();
+    const fresh = arrived.filter((item) => {
+      if (!happensInView(item, nav.activeTab, chat.activeChannel, focused)) return true;
+      markRead(item.id);
+      return false;
+    });
+    if (fresh.length === 0) return;
     setToastIds((current) => [...fresh.map((item) => item.id), ...current].slice(0, 3));
 
     fresh.forEach((item) => {
