@@ -19,10 +19,11 @@ interface Props {
   weekStart: WeekStart;
   byDay: Map<string, CalendarEntry[]>;
   reminded: ReadonlySet<string>;
+  selected: string | null;
   onOpen: (entry: CalendarEntry) => void;
 }
 
-export function EventWeek({ anchor, now, weekStart, byDay, reminded, onOpen }: Props) {
+export function EventWeek({ anchor, now, weekStart, byDay, reminded, selected, onOpen }: Props) {
   const { t } = useTranslation();
   const days = weekDays(anchor, weekStart);
   const names = weekdayNames(weekStart);
@@ -32,11 +33,15 @@ export function EventWeek({ anchor, now, weekStart, byDay, reminded, onOpen }: P
       {days.map((day, index) => {
         const key = isoDay(day);
         const entries = byDay.get(key) ?? [];
-        const classes = ["event-week-day", sameDay(day, now) ? "is-today" : ""]
-          .filter(Boolean)
-          .join(" ");
+        const today = sameDay(day, now);
+        const classes = ["event-week-day", today ? "is-today" : ""].filter(Boolean).join(" ");
         return (
-          <section className={classes} key={key} aria-label={key}>
+          <section
+            className={classes}
+            key={key}
+            aria-label={key}
+            aria-current={today ? "date" : undefined}
+          >
             <header>
               <span className="event-week-weekday">{names[index]}</span>
               <span className="event-week-date">{day.getDate()}</span>
@@ -50,7 +55,9 @@ export function EventWeek({ anchor, now, weekStart, byDay, reminded, onOpen }: P
                     key={entry.id}
                     entry={entry}
                     reminded={reminded.has(entry.id)}
+                    selected={entry.id === selected}
                     onOpen={onOpen}
+                    stacked
                   />
                 ))
               )}

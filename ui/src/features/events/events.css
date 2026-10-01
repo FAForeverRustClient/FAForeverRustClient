@@ -1,4 +1,5 @@
-/* The community calendar. */
+/* The community calendar: the calendar on the left, the open entry in a panel
+   on the right, the way the vaults lay out a list beside its detail. */
 .events-view {
   display: flex;
   flex-direction: column;
@@ -11,6 +12,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+/* The subtitle gives way before the button does: a two-line "Suggest an
+   event" in German was the first thing to break at a narrow window. */
+.events-head > button {
+  flex: none;
+  white-space: nowrap;
 }
 
 .events-head-copy h2 {
@@ -46,6 +54,7 @@
   min-width: 168px;
   font-size: 14px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   text-align: center;
 }
 
@@ -74,6 +83,8 @@
   outline-offset: 1px;
 }
 
+/* ── filters: one row, one height ──────────────────────────────────── */
+
 .events-filters {
   display: flex;
   flex-wrap: wrap;
@@ -83,42 +94,52 @@
 
 .events-search {
   display: flex;
-  flex: 0 0 210px;
-  width: 210px;
-  max-width: 100%;
+  flex: 0 1 220px;
+  min-width: 160px;
   align-items: center;
   gap: var(--space-2);
-  min-height: 30px;
-  padding: 0 var(--space-2);
+  height: 32px;
+  padding: 0 10px;
   color: var(--color-muted);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   box-sizing: border-box;
+  transition: border-color 120ms ease;
+}
+
+.events-search:focus-within {
+  border-color: var(--color-border-strong);
 }
 
 .events-search input {
   width: 100%;
-  padding: 6px 0;
+  min-width: 0;
+  padding: 0;
   color: var(--color-text);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   background: none;
   border: none;
   outline: none;
 }
 
+.events-search input::placeholder {
+  color: var(--color-subtle);
+}
+
 .events-category-select {
   flex: 0 0 auto;
-  width: 156px;
+  width: 172px;
 }
 
 .events-category-select .select-trigger {
-  min-height: 30px;
-  padding: 5px 8px;
-  font-size: 12px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
   background: var(--color-surface);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 
 .events-category-select .select-popover {
@@ -127,28 +148,36 @@
 }
 
 .events-category-select .select-option {
-  padding: 5px 8px;
-  font-size: 12px;
+  padding: 6px 10px;
+  font-size: 13px;
 }
 
 .events-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
   color: var(--color-muted);
   font: inherit;
-  font-size: 12px;
-  line-height: 1.3;
-  background: var(--color-surface-raised);
+  font-size: 13px;
+  white-space: nowrap;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
   cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
 .events-chip:hover {
   color: var(--color-text);
   background: var(--color-surface-hover);
+}
+
+.events-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .events-chip.is-on {
@@ -164,222 +193,391 @@
   line-height: 1.5;
 }
 
+/* ── the two columns ───────────────────────────────────────────────── */
+
+/* The panel takes a quarter of the width and never less than it needs for a
+   title and the reminder row. At the default window that leaves each day of
+   the month about 75 px, which holds a start time and a short title. */
+.events-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(272px, 26%, 340px);
+  align-items: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.events-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.events-empty-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.events-empty-line p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.events-empty-line strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* ── category colour, in one place ─────────────────────────────────── */
+
+/* The dot on a chip and on the panel's category tag. The colour is the
+   category's own token; the tooltip and the panel say it in words. */
+.event-chip,
+.event-tag {
+  --event-color: var(--color-event-other);
+}
+
+.event-chip.is-tournament,
+.event-tag.is-tournament {
+  --event-color: var(--color-event-tournament);
+}
+
+.event-chip.is-cgn,
+.event-tag.is-cgn {
+  --event-color: var(--color-event-cgn);
+}
+
+.event-chip.is-meetup,
+.event-tag.is-meetup {
+  --event-color: var(--color-event-meetup);
+}
+
+.event-chip.is-patch,
+.event-tag.is-patch {
+  --event-color: var(--color-event-patch);
+}
+
+.event-chip.is-ladderPool,
+.event-tag.is-ladderPool {
+  --event-color: var(--color-event-ladderPool);
+}
+
+.event-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--event-color);
+  border-radius: 50%;
+}
+
 /* ── one entry ─────────────────────────────────────────────────────── */
 
+/* Named areas rather than source order, so an untimed entry still puts every
+   part where the timed ones put it. */
 .event-chip {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
+  display: grid;
+  grid-template-areas: "mark time title";
+  grid-template-columns: 11px auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
   width: 100%;
-  padding: 3px 6px;
+  min-width: 0;
+  padding: 4px 6px;
   color: var(--color-text);
   font: inherit;
   font-size: 12px;
   line-height: 1.35;
   text-align: left;
   background: var(--color-surface-raised);
-  border: none;
-  border-left: 3px solid var(--color-event-other);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
+  box-sizing: border-box;
   cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
 
 .event-chip:hover {
   background: var(--color-surface-hover);
 }
 
-.event-chip.is-tournament {
-  border-left-color: var(--color-event-tournament);
+.event-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
-.event-chip.is-cgn {
-  border-left-color: var(--color-event-cgn);
-}
-
-.event-chip.is-meetup {
-  border-left-color: var(--color-event-meetup);
-}
-
-.event-chip.is-patch {
-  border-left-color: var(--color-event-patch);
-}
-
-.event-chip.is-ladderPool {
-  border-left-color: var(--color-event-ladderPool);
+.event-chip.is-selected {
+  background: var(--color-accent-glow);
+  border-color: var(--color-accent);
 }
 
 .event-chip.is-past {
   opacity: 0.55;
 }
 
+.event-chip-mark {
+  display: grid;
+  grid-area: mark;
+  place-items: center;
+  height: 15px;
+}
+
+.event-chip-bell {
+  color: var(--event-color);
+}
+
 .event-chip-time {
-  flex: 0 0 auto;
+  grid-area: time;
+  overflow: hidden;
+  min-width: 0;
   color: var(--color-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .event-chip-title {
+  grid-area: title;
   overflow: hidden;
-  flex: 1 1 auto;
   min-width: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.event-chip-bell {
-  flex: 0 0 auto;
-  color: var(--color-accent);
+/* In a day square: the time beside the mark, the title under both on up to two
+   lines. A square is about 75 px wide at the default window, which cut a title
+   on one line down to three letters. Two lines, hyphenated where one word is
+   wider than the square, keep most titles readable; the tooltip and the panel
+   have the rest. */
+.event-chip.is-stacked {
+  grid-template-areas:
+    "mark time"
+    "title title";
+  grid-template-columns: 11px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 4px;
+  row-gap: 1px;
+  padding: 4px 5px;
+}
+
+.event-chip.is-stacked.is-untimed {
+  grid-template-areas: "mark title";
+}
+
+.event-chip.is-stacked .event-chip-title {
+  display: -webkit-box;
+  font-weight: 500;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* ── the month grid ────────────────────────────────────────────────── */
 
+/* One panel ruled into squares, rather than forty-two separate boxes: the
+   lines are the structure, and the eye reads weeks along them. */
 .event-month {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  overflow: hidden;
   min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 }
 
 .event-month-head,
 .event-month-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
+}
+
+.event-month-head {
+  border-bottom: 1px solid var(--color-border);
 }
 
 .event-month-head span {
-  padding: 0 4px;
+  overflow: hidden;
+  padding: 8px 8px 7px;
   color: var(--color-subtle);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.04em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.event-month-grid {
+  grid-auto-rows: minmax(96px, auto);
 }
 
 .event-day {
   display: flex;
-  overflow: hidden;
   flex-direction: column;
-  gap: 2px;
-  min-height: 92px;
+  gap: 4px;
+  min-width: 0;
   padding: 4px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.event-day:nth-child(7n) {
+  border-right: none;
+}
+
+.event-day:nth-last-child(-n + 7) {
+  border-bottom: none;
 }
 
 .event-day.is-outside {
-  background: none;
+  background: var(--color-bg);
 }
 
-.event-day.is-outside .event-day-number {
-  color: var(--color-subtle);
-}
-
+/* Inset, so the ring sits on the square's own rules and not over the
+   neighbours'. */
 .event-day.is-today {
-  border-color: var(--color-accent);
+  outline: 1px solid var(--color-accent);
+  outline-offset: -1px;
 }
 
 .event-day-number {
   align-self: flex-start;
-  padding: 1px 5px;
-  color: var(--color-muted);
+  min-width: 24px;
+  height: 22px;
+  padding: 0 5px;
+  color: var(--color-text);
   font: inherit;
   font-size: 12px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   background: none;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: background-color 120ms ease;
 }
 
 .event-day-number:hover {
-  color: var(--color-text);
   background: var(--color-surface-hover);
 }
 
+.event-day-number:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 0;
+}
+
+.event-day.is-outside .event-day-number {
+  color: var(--color-subtle);
+  font-weight: 400;
+}
+
 .event-day.is-today .event-day-number {
-  color: var(--color-text);
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .event-day-entries {
   display: flex;
-  overflow: hidden;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  min-width: 0;
 }
 
 .event-day-more {
   align-self: flex-start;
-  padding: 1px 5px;
+  padding: 1px 6px;
   color: var(--color-muted);
   font: inherit;
   font-size: 11px;
   background: none;
   border: none;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
 .event-day-more:hover {
   color: var(--color-text);
   text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.event-day-more:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 0;
 }
 
 /* ── the week columns ──────────────────────────────────────────────── */
 
 .event-week {
   display: grid;
+  overflow: hidden;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
   min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 }
 
 .event-week-day {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-height: 220px;
-  padding: var(--space-2);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  min-width: 0;
+  min-height: 320px;
+  padding: var(--space-2) 6px;
+  border-right: 1px solid var(--color-border);
+}
+
+.event-week-day:last-child {
+  border-right: none;
 }
 
 .event-week-day.is-today {
-  border-color: var(--color-accent);
+  outline: 1px solid var(--color-accent);
+  outline-offset: -1px;
 }
 
 .event-week-day > header {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 2px var(--space-2);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .event-week-weekday {
+  overflow: hidden;
   color: var(--color-subtle);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.04em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .event-week-date {
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 17px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 
 .event-week-entries {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .event-week-empty {
   margin: 0;
+  padding: 0 2px;
   color: var(--color-subtle);
   font-size: 11px;
 }
@@ -390,14 +588,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  width: min(100%, 720px);
+  min-width: 0;
 }
 
 .event-upcoming-day h3 {
   margin: 0 0 var(--space-2);
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -405,170 +603,176 @@
 .event-upcoming-entries {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 4px;
 }
 
+/* A fixed time column, so every title on the page starts on one line. Wide
+   enough for "6:00 PM - 10:59 PM", the longest a twelve-hour clock writes. */
 .event-upcoming .event-chip {
-  min-height: 34px;
-  padding: 7px 10px;
+  grid-template-columns: 11px 9.5em minmax(0, 1fr);
+  column-gap: 10px;
+  min-height: 36px;
+  padding: 6px 12px;
   font-size: 13px;
+}
+
+.event-upcoming .event-chip-time {
+  font-size: 12px;
 }
 
 /* ── one entry, opened ─────────────────────────────────────────────── */
 
-.event-detail-modal {
-  width: min(560px, 92vw);
+.event-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4);
 }
 
-.event-detail-head h2 {
+.event-panel.is-empty {
+  padding: var(--space-2);
+}
+
+.event-panel-head h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.3;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
-.event-detail-tags {
+.event-panel-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: 6px;
   margin-top: var(--space-2);
 }
 
-.event-tag,
-.event-origin {
-  padding: 2px 8px;
-  font-size: 11px;
-  line-height: 1.5;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-}
-
 .event-tag {
-  color: var(--color-text);
-  border-left: 3px solid var(--color-event-other);
-}
-
-.event-tag.is-tournament {
-  border-left-color: var(--color-event-tournament);
-}
-
-.event-tag.is-cgn {
-  border-left-color: var(--color-event-cgn);
-}
-
-.event-tag.is-meetup {
-  border-left-color: var(--color-event-meetup);
-}
-
-.event-tag.is-patch {
-  border-left-color: var(--color-event-patch);
-}
-
-.event-tag.is-ladderPool {
-  border-left-color: var(--color-event-ladderPool);
-}
-
-.event-origin.is-official {
-  color: var(--color-text);
-  background: var(--color-accent-glow);
-  border-color: var(--color-accent);
-}
-
-.event-origin.is-community {
-  color: var(--color-muted);
-  background: var(--color-surface-raised);
-}
-
-.event-detail-facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-1) var(--space-3);
-  margin: var(--space-4) 0 0;
-  font-size: 13px;
-}
-
-.event-detail-facts dt {
-  color: var(--color-muted);
-}
-
-.event-detail-facts dd {
-  margin: 0;
-  color: var(--color-text);
-}
-
-.event-detail-zone {
-  color: var(--color-subtle);
-  font-size: 12px;
-}
-
-.event-detail-summary {
-  margin: var(--space-3) 0 0;
-  color: var(--color-text);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.event-detail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
-
-.event-detail-reminder {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-  padding: var(--space-3);
+  gap: 6px;
+  padding: 2px 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
 }
 
-.event-detail-reminder-copy {
+.event-tag.is-official {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.event-panel-facts {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  list-style: none;
 }
 
-.event-detail-reminder-copy strong {
+.event-panel-facts li {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.event-panel-facts svg {
+  margin-top: 1px;
+  color: var(--color-muted);
+}
+
+.event-panel-zone {
+  color: var(--color-subtle);
+}
+
+.event-panel-label {
+  color: var(--color-muted);
+}
+
+.event-panel-summary {
+  margin: 0;
+  padding-top: var(--space-4);
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-top: 1px solid var(--color-border);
+}
+
+.event-panel-reminder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.event-panel-reminder-row {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.event-panel-reminder-row > svg {
+  margin-top: 2px;
+  color: var(--color-muted);
+}
+
+.event-panel-reminder-copy strong {
+  display: block;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.4;
 }
 
-.event-detail-reminder-copy small {
+.event-panel-reminder-copy small {
+  display: block;
   margin-top: 2px;
   color: var(--color-muted);
   font-size: 12px;
   line-height: 1.4;
 }
 
-.event-detail-reminder-controls {
+.event-lead-select {
+  width: 100%;
+}
+
+.event-panel-over {
+  margin: 0;
+  padding-top: var(--space-4);
+  color: var(--color-muted);
+  font-size: 13px;
+  border-top: 1px solid var(--color-border);
+}
+
+.event-panel-actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-2);
 }
 
-.event-lead-select {
-  min-width: 150px;
+.event-panel-actions > button {
+  justify-content: center;
+  width: 100%;
 }
 
-/* A narrow window cannot hold seven readable columns. The week becomes a
-   stack, which is the same information in one column, and the month grid keeps
-   its shape because a month is only legible as a grid. */
-@media (max-width: 900px) {
-  .event-week {
+/* Too narrow for a panel beside seven readable columns: the panel goes under
+   the calendar, which keeps every part of the tab and only changes the order. */
+@media (max-width: 760px) {
+  .events-layout {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .event-week-day {
-    min-height: 0;
-  }
-
-  .event-day {
-    min-height: 72px;
   }
 }
 

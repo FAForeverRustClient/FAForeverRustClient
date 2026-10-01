@@ -120,6 +120,21 @@ export function entryTime(entry: CalendarEntry): string {
   return `${start} - ${formatTime(entry.endsAt * 1000, "")}`;
 }
 
+/** The start time alone, or an empty string for an all-day entry. */
+export function entryStart(entry: CalendarEntry): string {
+  return entry.allDay ? "" : formatTime(entry.startsAt * 1000, "");
+}
+
+/** "Wednesday, 30 September 2026", for the detail panel. */
+export function fullDate(date: Date): string {
+  return date.toLocaleDateString(clientIntlTag(), {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 /** The reader's own zone, named, so the times above are unambiguous. */
 export function localZoneName(): string {
   try {
