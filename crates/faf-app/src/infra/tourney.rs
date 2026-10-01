@@ -170,15 +170,25 @@ impl TourneyClient {
             .await
     }
 
-    /// One write against a tournament. Every one of them is a `POST` to
-    /// `/api/t/{id}/{action}`, whatever it does.
     /// A vault preview as a `data:` URL, the only form `map_save` takes a
     /// picture in. `None` for anything that is not a picture of a sane size.
     async fn vault_preview_data_url(&self, url: &str) -> Option<String> {
         use base64::Engine as _;
         const MAX_PREVIEW_BYTES: usize = 4 * 1024 * 1024;
+        const VAULT_PREVIEW_HOST: &str = "content.faforever.com";
         let response = self.http.get(url).send().await.ok()?;
-        if !response.status().is_success() {
+        // Only the vault's own content host: the shared client follows
+        // redirects, and a picture fetched from wherever one pointed would be
+        // uploaded to the tournament under the organiser's name.
+        if !response.status().is_success() || response.url().host_str() != Some(VAULT_PREVIEW_HOST)
+        {
+            return None;
+        }
+        // Refused before the body is read, not after it has been.
+        if response
+            .content_length()
+            .is_some_and(|length| length > MAX_PREVIEW_BYTES as u64)
+        {
             return None;
         }
         let mime = response
@@ -198,6 +208,8 @@ impl TourneyClient {
         Some(format!("data:{mime};base64,{encoded}"))
     }
 
+    /// One write against a tournament. Every one of them is a `POST` to
+    /// `/api/t/{id}/{action}`, whatever it does.
     async fn act(
         &self,
         tournament_id: &str,
