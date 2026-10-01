@@ -2,14 +2,11 @@ import { useMemo, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
-import type { MapListStatus, MatchmakerMapPool, PlayerVeto, VaultMap } from "../../../ipc/bindings";
+import type { MapListStatus, MatchmakerMapPool, MatchmakerPoolMap, PlayerVeto, VaultMap } from "../../../ipc/bindings";
 import { GameMapImage } from "../GameMapImage";
-import { Icon } from "../../../design-system/Icon";
 import { t } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { coversMap } from "../../../shared/rules/trainingRules";
-import { EMPTY_TRAINING_QUERY } from "../../../shared/trainingQuery";
-import { useAppStore } from "../../../store/store";
+import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { kilometresLabel } from "../../../shared/mapPresentation";
 
 function formatMapSize(width: number, height: number) {
@@ -47,25 +44,6 @@ export function findMatchingBracket(
       return minOk && maxOk;
     }) ?? null
   );
-}
-
-/**
- * Open the training library, filtered to one map.
- *
- * Two commands rather than a link, because the destination is a tab and the
- * tab bar reads its state from the backend: setting the filter first means the
- * library is already the right list when it appears, instead of showing the
- * whole catalogue for a frame and then narrowing.
- */
-function showGuidesFor(mapName: string) {
-  ipc.send({
-    kind: "Training",
-    command: {
-      type: "setQuery",
-      payload: { query: { ...EMPTY_TRAINING_QUERY, map: mapName } },
-    },
-  });
-  ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "training" } } });
 }
 
 interface Props {
@@ -107,7 +85,12 @@ export function MatchmakerMapPoolModal({
   // The training catalogue, so a map can say whether anything is written about
   // it. Read rather than requested: the training tab loads it, and a map pool
   // is not a reason to fetch a document nobody has asked to see.
-  const trainingResources = useAppStore((store) => store.state.training.resources);
+  // Vetoes are placed in a mode of their own (#407): a card clicked to look at
+  // the map used to veto it on the spot, and looking at the map was the more
+  // common reason to click it. Outside the mode a click opens the large
+  // preview.
+  const [vetoing, setVetoing] = useState(false);
+  const [preview, setPreview] = useState<MatchmakerPoolMap | null>(null);
   const { t } = useTranslation();
   const sortedPools = useMemo(
     () =>
@@ -238,6 +221,14 @@ export function MatchmakerMapPoolModal({
               <i key={index} className={index < tokensUsed ? "used" : ""} />
             ))}
             <span>{tokensUsed} / {tokenLimit} {t("lobby.mapPool.vetoes")}</span>
+            <Button
+              className="matchmaker-veto-mode"
+              variant={vetoing ? "primary" : undefined}
+              aria-pressed={vetoing}
+              onClick={() => setVetoing((current) => !current)}
+            >
+              {t(vetoing ? "lobby.mapPool.doneVetoing" : "lobby.mapPool.assignVetoes")}
+            </Button>
           </div>
         )}
       </div>
@@ -255,29 +246,22 @@ export function MatchmakerMapPoolModal({
             const isVetoed = tokens > 0;
             const canVeto = tokenLimit > 0;
             const isMaxed = tokensUsed >= tokenLimit;
-            const cardTitle = !canVeto
-              ? t("lobby.mapPool.noVetoesAvailable")
+            const cardTitle = !vetoing || !canVeto
+              ? t("lobby.mapPool.previewHint")
               : isVetoed
               ? t("lobby.mapPool.removeVetoHint")
               : isMaxed
               ? t("lobby.mapPool.vetoLimitReached", { limit: tokenLimit })
               : t("lobby.mapPool.vetoMapHint");
 
-            // Only offered when the catalogue actually has something for this
-            // map. A button that leads to an empty list teaches a player that
-            // the feature does not work, which is worse than not offering it.
-            const guides = trainingResources.filter((resource) =>
-              coversMap(resource, map.folderName) || coversMap(resource, map.displayName),
-            ).length;
 
             return (
               <div className="map-pool-cell" key={map.assignmentId}>
               <button
                 type="button"
-                aria-pressed={isVetoed}
-                disabled={!canVeto}
-                className={`map-pool-card surface${canVeto ? " surface-interactive" : " is-disabled"}${isVetoed ? " vetoed" : ""}`}
-                onClick={canVeto ? () => toggleVeto(map.assignmentId) : undefined}
+                aria-pressed={vetoing ? isVetoed : undefined}
+                className={`map-pool-card surface surface-interactive${isVetoed ? " vetoed" : ""}`}
+                onClick={() => (vetoing && canVeto ? toggleVeto(map.assignmentId) : setPreview(map))}
                 title={cardTitle}
               >
                 <span className="map-pool-card-art">
@@ -297,19 +281,6 @@ export function MatchmakerMapPoolModal({
                   <small>{formatMapSize(map.width, map.height)} · {map.maxPlayers} players</small>
                 </span>
               </button>
-              {guides > 0 && (
-                // Its own button beside the card rather than inside it: the
-                // card is already a button, for vetoing, and nesting two is
-                // both invalid markup and ambiguous to click.
-                <button
-                  type="button"
-                  className="map-pool-card-guides"
-                  onClick={() => showGuidesFor(map.displayName)}
-                  title={t("lobby.mapPool.guidesHint", { map: map.displayName })}
-                >
-                  <Icon name="book" size={13} /> {t("lobby.mapPool.guides", { count: guides })}
-                </button>
-              )}
               </div>
             );
           })
@@ -332,6 +303,20 @@ export function MatchmakerMapPoolModal({
           </>
         )}
       </div>
+      {preview && (
+        <MapPreviewDialog
+          map={{ folderName: preview.folderName, displayName: preview.displayName }}
+          meta={`${formatMapSize(preview.width, preview.height)} · ${preview.maxPlayers} players`}
+          onClose={() => setPreview(null)}
+        >
+          <GameMapImage
+            mapName={preview.folderName}
+            vault={vault}
+            placeholderClassName="map-preview-placeholder"
+            large
+          />
+        </MapPreviewDialog>
+      )}
     </Modal>
   );
 }

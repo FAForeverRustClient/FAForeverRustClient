@@ -1675,6 +1675,9 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.vetoes": "vetos",
   "lobby.mapPool.noVetoesAvailable": "No hay vetos disponibles en este grupo",
   "lobby.mapPool.vetoMapHint": "Haz clic para vetar este mapa",
+  "lobby.mapPool.assignVetoes": "Asignar vetos",
+  "lobby.mapPool.doneVetoing": "Listo",
+  "lobby.mapPool.previewHint": "Pulsa para ver el mapa en grande",
   "lobby.mapPool.removeVetoHint": "Haz clic para quitar el veto",
   "lobby.mapPool.vetoLimitReached": "Límite de vetos alcanzado ({limit}/{limit})",
   "lobby.mapPool.anyRating": "Cualquier puntuación",
@@ -1682,7 +1685,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.noVetoes": "Sin vetos",
   "lobby.mapPool.applyVetoes": "Aplicar los vetos",
   "lobby.mapPool.noBracket": "Sin tramo de puntuación",
-  "lobby.mapPool.vetoHint": "Pulsa un mapa para poner o quitar un veto.",
+  "lobby.mapPool.vetoHint": "Pulsa un mapa para verlo en grande. Pulsa Asignar vetos y luego los mapas para poner o quitar un veto.",
   "lobby.mapPool.selectHint": "Selecciona un mapa para ver los detalles, o entra en modo veto para editarlos.",
 
   "lobby.party.invite.title": "Invitar a un jugador",

@@ -1745,6 +1745,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.vetoes": "вето",
   "lobby.mapPool.noVetoesAvailable": "В этой ступени вето недоступны",
   "lobby.mapPool.vetoMapHint": "Нажмите, чтобы наложить вето на эту карту",
+  "lobby.mapPool.assignVetoes": "Назначить вето",
+  "lobby.mapPool.doneVetoing": "Готово",
+  "lobby.mapPool.previewHint": "Нажмите, чтобы увидеть карту крупно",
   "lobby.mapPool.removeVetoHint": "Нажмите, чтобы снять вето",
   "lobby.mapPool.vetoLimitReached": "Лимит вето исчерпан ({limit}/{limit})",
   "lobby.mapPool.anyRating": "Любой рейтинг",
@@ -1752,7 +1755,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.noVetoes": "Без вето",
   "lobby.mapPool.applyVetoes": "Применить вето",
   "lobby.mapPool.noBracket": "Нет рейтинговой ступени",
-  "lobby.mapPool.vetoHint": "Нажмите на карту, чтобы поставить или снять вето.",
+  "lobby.mapPool.vetoHint": "Нажмите на карту, чтобы увидеть её крупно. Нажмите «Назначить вето», затем нажимайте на карты, чтобы поставить или снять вето.",
   "lobby.mapPool.selectHint": "Выберите карту для подробностей или перейдите в режим вето.",
 
   "lobby.party.invite.title": "Пригласить игрока",

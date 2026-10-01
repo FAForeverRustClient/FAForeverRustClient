@@ -736,6 +736,9 @@ export const en = {
   "lobby.mapPool.vetoes": "vetoes",
   "lobby.mapPool.noVetoesAvailable": "No vetoes available in this bracket",
   "lobby.mapPool.vetoMapHint": "Click to veto this map",
+  "lobby.mapPool.assignVetoes": "Assign vetoes",
+  "lobby.mapPool.doneVetoing": "Done",
+  "lobby.mapPool.previewHint": "Click to see the map large",
   "lobby.mapPool.removeVetoHint": "Click to remove veto",
   "lobby.mapPool.vetoLimitReached": "Veto limit reached ({limit}/{limit})",
 
@@ -1170,7 +1173,7 @@ export const en = {
   "lobby.mapPool.noVetoes": "No vetoes",
   "lobby.mapPool.applyVetoes": "Apply vetoes",
   "lobby.mapPool.noBracket": "No rating bracket",
-  "lobby.mapPool.vetoHint": "Click a map to add or remove vetoes.",
+  "lobby.mapPool.vetoHint": "Click a map to see it large. Press Assign vetoes, then click maps to add or remove vetoes.",
   "lobby.mapPool.selectHint": "Select a map for details, or enter veto mode to edit.",
   "lobby.browser.new": "New",
   "lobby.browser.any": "Any",

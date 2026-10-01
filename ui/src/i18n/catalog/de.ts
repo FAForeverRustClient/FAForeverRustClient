@@ -648,6 +648,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.vetoes": "Vetos",
   "lobby.mapPool.noVetoesAvailable": "Keine Vetos in dieser Einstufung verfügbar",
   "lobby.mapPool.vetoMapHint": "Klicken, um diese Karte zu verbieten",
+  "lobby.mapPool.assignVetoes": "Vetos vergeben",
+  "lobby.mapPool.doneVetoing": "Fertig",
+  "lobby.mapPool.previewHint": "Klicken, um die Karte groß zu sehen",
   "lobby.mapPool.removeVetoHint": "Klicken, um Veto aufzuheben",
   "lobby.mapPool.vetoLimitReached": "Veto-Limit erreicht ({limit}/{limit})",
 
@@ -1017,7 +1020,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.noVetoes": "Keine Vetos",
   "lobby.mapPool.applyVetoes": "Vetos anwenden",
   "lobby.mapPool.noBracket": "Keine Ratingstufe",
-  "lobby.mapPool.vetoHint": "Klicke eine Karte an, um Vetos zu setzen oder zu entfernen.",
+  "lobby.mapPool.vetoHint": "Klicke eine Karte an, um sie groß zu sehen. Drücke Vetos vergeben und klicke dann Karten an, um Vetos zu setzen oder zu entfernen.",
   "lobby.mapPool.selectHint": "Wähle eine Karte für Details, oder wechsle in den Veto-Modus.",
   "lobby.browser.new": "Neu",
   "lobby.browser.any": "Beliebig",
