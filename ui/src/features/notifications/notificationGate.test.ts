@@ -11,7 +11,7 @@ function message(kind: ClientNotification["kind"], channel: string): ClientNotif
     createdAt: "2026-10-01T12:00:00Z",
     read: false,
     action: { type: "openChat", payload: { channel } },
-  } as ClientNotification;
+  };
 }
 
 describe("a message in the conversation on screen (#381)", () => {
