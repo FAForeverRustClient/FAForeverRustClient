@@ -3503,6 +3503,7 @@ mod tests {
                     // the list does not have.
                     column_widths: vec![10, 5_000, 200, 200, 200, 200, 200],
                     detail_width: 40,
+                    detail_hidden: false,
                 },
                 matchmaker_unselected_queues: vec![
                     "  ladder_1v1  ".into(),
