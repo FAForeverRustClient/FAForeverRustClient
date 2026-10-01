@@ -770,6 +770,18 @@ async fn handle_update(
             // chat has connected, so this is the second half of that race.
             if names_us {
                 join_auto_channels(ctx, out);
+                // The other half of the avatar restore (#389): the server's
+                // avatar list can arrive before our own `player_info` does,
+                // and `restore_avatar` cannot tell what is worn until then.
+                let avatars_known = out.with_state(|state| {
+                    matches!(
+                        state.lobby.avatar_list_status,
+                        faf_domain::state::AvatarListStatus::Ready
+                    )
+                });
+                if avatars_known {
+                    restore_avatar(ctx, out).await;
+                }
             }
         }
         LobbyUpdate::PlayersRemoved(players) => {
@@ -860,25 +872,6 @@ fn join_auto_channels(ctx: &ServiceCtx, out: &EventSink) {
     }
 }
 
-/// Send the remembered matchmaker vetoes back to the server, once the lobby
-/// has authenticated.
-///
-/// The server keeps a player's vetoes on their session object and nowhere
-/// else: no table behind them, and no command to ask for them. Logging out
-/// discards them, and a client that only ever listens for `vetoes_info` starts
-/// every session with none, whatever the player saved last time. That is the
-/// whole of "not persistent after logging in and out even after saving".
-///
-/// Replaying them is safe rather than optimistic. `set_player_vetoes` is
-/// validated and capped against the current pools on arrival, exactly as a
-/// selection made by hand is, and the server answers with `vetoes_info` when
-/// it had to change anything, which is handled above and writes the corrected
-/// set back. A pool that shrank between sessions therefore corrects itself on
-/// the first login after it did.
-///
-/// Also emits `VetoesUpdated`, because `Disconnected` clears the lobby's copy:
-/// without it the Play tab would show an empty selection while the server held
-/// the real one.
 /// Record an avatar choice in the settings. See `SocialPreferences::avatar_history`.
 async fn remember_avatar(ctx: &ServiceCtx, out: &EventSink, url: Option<&str>) {
     let mut preferences = out.with_state(|state| state.settings.social.clone());
@@ -941,6 +934,25 @@ async fn restore_avatar(ctx: &ServiceCtx, out: &EventSink) {
     }
 }
 
+/// Send the remembered matchmaker vetoes back to the server, once the lobby
+/// has authenticated.
+///
+/// The server keeps a player's vetoes on their session object and nowhere
+/// else: no table behind them, and no command to ask for them. Logging out
+/// discards them, and a client that only ever listens for `vetoes_info` starts
+/// every session with none, whatever the player saved last time. That is the
+/// whole of "not persistent after logging in and out even after saving".
+///
+/// Replaying them is safe rather than optimistic. `set_player_vetoes` is
+/// validated and capped against the current pools on arrival, exactly as a
+/// selection made by hand is, and the server answers with `vetoes_info` when
+/// it had to change anything, which is handled above and writes the corrected
+/// set back. A pool that shrank between sessions therefore corrects itself on
+/// the first login after it did.
+///
+/// Also emits `VetoesUpdated`, because `Disconnected` clears the lobby's copy:
+/// without it the Play tab would show an empty selection while the server held
+/// the real one.
 fn restore_player_vetoes(ctx: &ServiceCtx, out: &EventSink) {
     let vetoes = out.with_state(|state| state.settings.matchmaker_vetoes.clone());
     if vetoes.is_empty() {
