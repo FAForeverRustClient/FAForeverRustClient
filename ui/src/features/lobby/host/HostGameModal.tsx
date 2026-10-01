@@ -89,6 +89,16 @@ const NO_PICKER_FILTERS: MapPickerFilters = {
   mapTab: "all",
 };
 
+/**
+ * The picker as the dialog was last left, for the next time it opens (#387).
+ *
+ * Kept for the session, in memory, rather than in the settings file: what was
+ * asked for is not having to narrow the list down again after hosting, and the
+ * next host of the evening is the one that wants it. A fresh start opening on
+ * last night's search would be a list that looks empty for no reason.
+ */
+let lastPicker: MapPickerFilters = NO_PICKER_FILTERS;
+
 interface FeaturedModOption {
   id: string;
   nameKey: MessageKey;
@@ -174,9 +184,12 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   const [selectedMap, setSelectedMap] = useState(remembered.map);
 
   // The map picker's own controls, as one value so a change or a reset is one
-  // update rather than seven. `mapTab` is not persisted: a dialog that opened
-  // on an empty Favourites tab would look like a client with no maps installed.
-  const [picker, setPicker] = useState<MapPickerFilters>(NO_PICKER_FILTERS);
+  // update rather than seven. They outlive the dialog for the session (see
+  // `lastPicker`); the filter popover does not reopen with them.
+  const [picker, setPicker] = useState<MapPickerFilters>(() => ({ ...lastPicker, filtersOpen: false }));
+  useEffect(() => {
+    lastPicker = picker;
+  }, [picker]);
   const { mapSearch, rankedFilter, widthKm, heightKm, playerCount, filtersOpen, mapTab } = picker;
   const filter = (patch: Partial<MapPickerFilters>) => setPicker((current) => ({ ...current, ...patch }));
 
