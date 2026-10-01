@@ -897,7 +897,8 @@
           "applyFilters": false,
           "rules": [],
           "columnWidths": [],
-          "detailWidth": 0
+          "detailWidth": 0,
+          "detailHidden": false
         },
         "matchmakerUnselectedQueues": [],
         "matchmakerFactions": [
@@ -2147,6 +2148,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -47822,6 +47824,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -48085,6 +48088,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -48357,6 +48361,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -48624,6 +48629,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -48891,6 +48897,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -49168,6 +49175,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -49451,6 +49459,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -49774,6 +49783,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -50073,6 +50083,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -50374,6 +50385,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -50680,7 +50692,8 @@
                       110,
                       80
                     ],
-                    "detailWidth": 360
+                    "detailWidth": 360,
+                    "detailHidden": false
                   },
                   "matchmakerUnselectedQueues": [
                     "  ladder_1v1 ",
@@ -50780,6 +50793,7 @@
                   110,
                   80
                 ],
+                "detailHidden": false,
                 "detailWidth": 360,
                 "hideFoes": false,
                 "hideModded": true,
