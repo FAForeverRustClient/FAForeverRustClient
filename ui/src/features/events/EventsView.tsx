@@ -8,7 +8,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
-import { EmptyState } from "../../design-system/EmptyState";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs, type SectionTab } from "../../design-system/SectionTabs";
 import { Select } from "../../design-system/Select";
@@ -129,6 +128,11 @@ export function EventsView() {
         : t("events.view.upcoming");
 
   const patch = (change: Partial<EventsQuery>) => setQuery({ ...events.query, ...change });
+  const filtered = Boolean(
+    events.query.text || events.query.category || events.query.origin || events.query.onlyReminders,
+  );
+  const clearFilters = () =>
+    setQuery({ ...events.query, text: "", category: null, origin: null, onlyReminders: false });
 
   return (
     <div className="events-view">
@@ -209,7 +213,7 @@ export function EventsView() {
           aria-pressed={events.query.origin === "official"}
           onClick={() => patch({ origin: events.query.origin === "official" ? null : "official" })}
         >
-          {t("events.origin.official")}
+          <Icon name="shield" size={13} /> {t("events.origin.official")}
         </button>
         <button
           type="button"
@@ -217,7 +221,7 @@ export function EventsView() {
           aria-pressed={events.query.origin === "community"}
           onClick={() => patch({ origin: events.query.origin === "community" ? null : "community" })}
         >
-          {t("events.origin.community")}
+          <Icon name="users" size={13} /> {t("events.origin.community")}
         </button>
         <button
           type="button"
@@ -225,7 +229,7 @@ export function EventsView() {
           aria-pressed={events.query.onlyReminders}
           onClick={() => patch({ onlyReminders: !events.query.onlyReminders })}
         >
-          <Icon name="bell" size={12} /> {t("events.filter.mine")}
+          <Icon name="bell" size={13} /> {t("events.filter.mine")}
         </button>
       </div>
 
@@ -235,60 +239,75 @@ export function EventsView() {
         </p>
       )}
 
-      {events.view === "month" && (
-        <EventMonth
-          anchor={anchor}
-          now={now}
-          weekStart={weekStart}
-          byDay={byDay}
-          reminded={reminded}
-          onOpen={(entry: CalendarEntry) => select(entry.id)}
-          onOpenDay={(day) => {
-            setAnchor(isoDay(day));
-            setView("week");
-          }}
-        />
-      )}
-      {events.view === "week" && (
-        <EventWeek
-          anchor={anchor}
-          now={now}
-          weekStart={weekStart}
-          byDay={byDay}
-          reminded={reminded}
-          onOpen={(entry: CalendarEntry) => select(entry.id)}
-        />
-      )}
-      {events.view === "upcoming" && (
-        <EventUpcoming
-          entries={entries}
-          now={now}
-          reminded={reminded}
-          onOpen={(entry: CalendarEntry) => select(entry.id)}
-        />
-      )}
+      <div className="events-layout">
+        <div className="events-main">
+          {/* A line over the grid rather than a block in place of it: the grid
+              stays drawn, so all that is missing is the reason it is blank.
+              Over, not under, because under six empty rows it is below the
+              fold of the default window and the blank grid goes unexplained. */}
+          {entries.length === 0 && events.view !== "upcoming" && (
+            <div className="events-empty-line" role="status">
+              {filtered ? (
+                <p>{t("events.emptyFiltered")}</p>
+              ) : (
+                <p>
+                  <strong>{t("events.emptyTitle")}</strong> {t("events.emptyHint")}
+                </p>
+              )}
+              {filtered && <Button onClick={clearFilters}>{t("events.filter.clear")}</Button>}
+            </div>
+          )}
 
-      {/* Under the calendar rather than over it: the bundled catalogue is not a
-          failure, and saying so where it is read is better than a banner. */}
-      {events.source === "bundled" && events.status.type !== "failed" && (
-        <p className="events-notice muted" role="status">
-          {t("events.bundled")}
-        </p>
-      )}
+          {events.view === "month" && (
+            <EventMonth
+              anchor={anchor}
+              now={now}
+              weekStart={weekStart}
+              byDay={byDay}
+              reminded={reminded}
+              selected={events.selected}
+              onOpen={(entry: CalendarEntry) => select(entry.id)}
+              onOpenDay={(day) => {
+                setAnchor(isoDay(day));
+                setView("week");
+              }}
+            />
+          )}
+          {events.view === "week" && (
+            <EventWeek
+              anchor={anchor}
+              now={now}
+              weekStart={weekStart}
+              byDay={byDay}
+              reminded={reminded}
+              selected={events.selected}
+              onOpen={(entry: CalendarEntry) => select(entry.id)}
+            />
+          )}
+          {events.view === "upcoming" && (
+            <EventUpcoming
+              entries={entries}
+              now={now}
+              reminded={reminded}
+              selected={events.selected}
+              filtered={filtered}
+              onClearFilters={clearFilters}
+              onOpen={(entry: CalendarEntry) => select(entry.id)}
+            />
+          )}
 
-      {entries.length === 0 && events.view !== "upcoming" && (
-        <EmptyState
-          icon="calendar"
-          title={t("events.emptyTitle")}
-          hint={events.query.text || events.query.category || events.query.origin || events.query.onlyReminders
-            ? t("events.emptyFiltered")
-            : t("events.emptyHint")}
-        />
-      )}
+          {/* Under the calendar rather than over it: the bundled catalogue is
+              not a failure, and saying so where it is read is better than a
+              banner. */}
+          {events.source === "bundled" && events.status.type !== "failed" && (
+            <p className="events-notice" role="status">
+              {t("events.bundled")}
+            </p>
+          )}
+        </div>
 
-      {open && (
-        <EventDetail entry={open} leadMinutes={openLead} onClose={() => select(null)} />
-      )}
+        <EventDetail entry={open} leadMinutes={openLead} now={now} />
+      </div>
 
       {submitting && (
         <EventSubmitDialog submitUrl={events.submitUrl} onClose={() => setSubmitting(false)} />

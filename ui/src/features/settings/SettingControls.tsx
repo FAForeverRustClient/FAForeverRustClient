@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 
+import { Switch } from "../../design-system/Switch";
 import { addSettingsIndexEntry, removeSettingsIndexEntry } from "./settingsSearch";
 
 /**
@@ -151,16 +152,5 @@ export function SettingsSwitch({
   label: string;
   disabled?: boolean;
 }) {
-  return (
-    <label className="settings-switch">
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
-        aria-label={label}
-      />
-      <span className="settings-switch-track" aria-hidden="true"><span /></span>
-    </label>
-  );
+  return <Switch checked={checked} onChange={onChange} label={label} disabled={disabled} />;
 }

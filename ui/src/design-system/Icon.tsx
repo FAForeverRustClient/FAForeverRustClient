@@ -61,7 +61,9 @@ export type IconName =
   // Local storage: the cache and the paths the client keeps on disk.
   | "drive"
   // The network: connectivity to other players.
-  | "globe";
+  | "globe"
+  // Something FAF itself runs: the official entries on the events calendar.
+  | "shield";
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -124,6 +126,7 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     user: <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>,
     drive: <><rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 12h.01M10 12h.01" /><path d="M14 12h4" /></>,
     globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18Z" /></>,
+    shield: <><path d="M12 3 5 6v5.5c0 4.2 2.9 7.8 7 9.5 4.1-1.7 7-5.3 7-9.5V6l-7-3Z" /><path d="m9 12 2.2 2.2L15.5 10" /></>,
     trash: (
       <>
         <polyline points="3 6 5 6 21 6" />
