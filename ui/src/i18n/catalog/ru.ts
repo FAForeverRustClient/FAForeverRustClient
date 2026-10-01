@@ -2043,6 +2043,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.host.error.titleAscii": "Название игры может содержать только стандартные символы ASCII.",
   "lobby.host.error.passwordAscii": "Пароль может содержать только стандартные символы ASCII.",
   "lobby.host.error.ratingOrder": "Минимальный рейтинг не может быть больше максимального.",
+  "lobby.host.error.ratingBounds": "Границы рейтинга должны быть от {min} до {max}.",
   "lobby.host.error.selectMap": "Выберите карту.",
 
   "settings.game.pipeLiveReplay": "Обходной путь для live-реплеев",

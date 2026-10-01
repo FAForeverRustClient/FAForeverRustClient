@@ -919,6 +919,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.host.error.titleAscii": "Partietitel dürfen nur Standard-ASCII-Zeichen enthalten.",
   "lobby.host.error.passwordAscii": "Passwörter dürfen nur Standard-ASCII-Zeichen enthalten.",
   "lobby.host.error.ratingOrder": "Das Mindestrating darf nicht über dem Höchstrating liegen.",
+  "lobby.host.error.ratingBounds": "Rating-Grenzen müssen zwischen {min} und {max} liegen.",
   "lobby.host.error.selectMap": "Wähle eine Karte.",
   "lobby.browser.private": "Privat",
 

@@ -1914,6 +1914,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.host.error.titleAscii": "Tytuł gry może zawierać tylko standardowe znaki ASCII.",
   "lobby.host.error.passwordAscii": "Hasło może zawierać tylko standardowe znaki ASCII.",
   "lobby.host.error.ratingOrder": "Ranking minimalny nie może być większy niż maksymalny.",
+  "lobby.host.error.ratingBounds": "Limity rankingu muszą mieścić się między {min} a {max}.",
   "lobby.host.error.selectMap": "Wybierz mapę.",
   "lobby.browser.private": "Prywatna",
   "lobby.mapPool.anyRating": "Dowolny ranking",

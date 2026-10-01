@@ -1054,6 +1054,7 @@ export const en = {
   "lobby.host.error.titleAscii": "Game titles can only contain standard ASCII characters.",
   "lobby.host.error.passwordAscii": "Passwords can only contain standard ASCII characters.",
   "lobby.host.error.ratingOrder": "Minimum rating cannot be greater than maximum rating.",
+  "lobby.host.error.ratingBounds": "Rating limits must be between {min} and {max}.",
   "lobby.host.error.selectMap": "Select a map.",
   "lobby.browser.private": "Private",
 

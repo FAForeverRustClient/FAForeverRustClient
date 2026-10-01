@@ -1939,6 +1939,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.host.error.titleAscii": "Los títulos de partida solo pueden contener caracteres ASCII estándar.",
   "lobby.host.error.passwordAscii": "Las contraseñas solo pueden contener caracteres ASCII estándar.",
   "lobby.host.error.ratingOrder": "La puntuación mínima no puede ser mayor que la máxima.",
+  "lobby.host.error.ratingBounds": "Los límites de rating deben estar entre {min} y {max}.",
   "lobby.host.error.selectMap": "Selecciona un mapa.",
 
   "settings.game.pipeLiveReplay": "Solución alternativa para repeticiones en vivo",

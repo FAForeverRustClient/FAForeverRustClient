@@ -8,6 +8,10 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import type { HostGamePreferences } from "../../../ipc/bindings";
 import { useAppStore } from "../../../store/store";
 
+/** The bounds `HostGameConfig::validated` accepts. */
+export const MIN_HOST_RATING = -9999;
+export const MAX_HOST_RATING = 9999;
+
 const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
 
 /** The part of a `Lobby::host` config this section decides. */
@@ -87,10 +91,19 @@ export function useHostLobbySettings(
   // Checked whether or not the range is enforced: a back-to-front range is a
   // mistake worth pointing out while it is being typed, not only once the
   // checkbox is ticked.
+  //
+  // Every rule the backend applies to the range is applied here as well, so a
+  // range it would refuse keeps the Host button disabled with the reason on
+  // screen. Refused after the dialog had closed, the player lost everything
+  // they had set up in it (#372). Either end may be left open.
+  const outOfBounds = (limit: number | null) =>
+    limit !== null && (limit < MIN_HOST_RATING || limit > MAX_HOST_RATING);
   const ratingError =
-    ratingMin !== null && ratingMax !== null && ratingMin > ratingMax
-      ? t("lobby.host.error.ratingOrder")
-      : "";
+    outOfBounds(ratingMin) || outOfBounds(ratingMax)
+      ? t("lobby.host.error.ratingBounds", { min: MIN_HOST_RATING, max: MAX_HOST_RATING })
+      : ratingMin !== null && ratingMax !== null && ratingMin > ratingMax
+        ? t("lobby.host.error.ratingOrder")
+        : "";
 
   return {
     title,

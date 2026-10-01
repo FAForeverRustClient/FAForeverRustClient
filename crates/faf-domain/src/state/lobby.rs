@@ -132,22 +132,25 @@ impl HostGameConfig {
         }
 
         if self.enforce_rating_range {
-            let (Some(minimum), Some(maximum)) = (self.rating_min, self.rating_max) else {
-                return Err(
-                    "Both rating limits are required when rating enforcement is enabled.".into(),
-                );
+            // Either end may be open (#372): "800 to any" is a range the
+            // server enforces as it is, because its `InclusiveRange` treats a
+            // missing bound as no bound. Demanding both only made somebody
+            // invent a maximum, and refused the game after the dialog had
+            // already closed on their choices.
+            let out_of_bounds = |limit: Option<i32>| {
+                limit.is_some_and(|value| !(Self::MIN_RATING..=Self::MAX_RATING).contains(&value))
             };
-            if !(Self::MIN_RATING..=Self::MAX_RATING).contains(&minimum)
-                || !(Self::MIN_RATING..=Self::MAX_RATING).contains(&maximum)
-            {
+            if out_of_bounds(self.rating_min) || out_of_bounds(self.rating_max) {
                 return Err(format!(
                     "Rating limits must be between {} and {}.",
                     Self::MIN_RATING,
                     Self::MAX_RATING
                 ));
             }
-            if minimum > maximum {
-                return Err("Minimum rating cannot be greater than maximum rating.".into());
+            if let (Some(minimum), Some(maximum)) = (self.rating_min, self.rating_max) {
+                if minimum > maximum {
+                    return Err("Minimum rating cannot be greater than maximum rating.".into());
+                }
             }
         } else {
             self.rating_min = None;
@@ -1799,6 +1802,20 @@ mod tests {
             .validated()
             .unwrap_err()
             .contains("printable ASCII"));
+    }
+
+    /// "800 to any" (#372): the server enforces an open end as no bound.
+    #[test]
+    fn an_enforced_range_may_leave_one_end_open() {
+        let mut floor = host_config();
+        floor.rating_max = None;
+        let floor = floor.validated().unwrap();
+        assert_eq!((floor.rating_min, floor.rating_max), (Some(800), None));
+
+        let mut out_of_bounds = host_config();
+        out_of_bounds.rating_max = None;
+        out_of_bounds.rating_min = Some(20_000);
+        assert!(out_of_bounds.validated().unwrap_err().contains("between"));
     }
 
     #[test]
