@@ -131,30 +131,32 @@ impl HostGameConfig {
             return Err("Visibility must be public or friends only.".into());
         }
 
-        if self.enforce_rating_range {
-            // Either end may be open (#372): "800 to any" is a range the
-            // server enforces as it is, because its `InclusiveRange` treats a
-            // missing bound as no bound. Demanding both only made somebody
-            // invent a maximum, and refused the game after the dialog had
-            // already closed on their choices.
-            let out_of_bounds = |limit: Option<i32>| {
-                limit.is_some_and(|value| !(Self::MIN_RATING..=Self::MAX_RATING).contains(&value))
-            };
-            if out_of_bounds(self.rating_min) || out_of_bounds(self.rating_max) {
-                return Err(format!(
-                    "Rating limits must be between {} and {}.",
-                    Self::MIN_RATING,
-                    Self::MAX_RATING
-                ));
+        // Either end may be open (#372): "800 to any" is a range the server
+        // takes as it is, because its `InclusiveRange` treats a missing bound
+        // as no bound. Demanding both only made somebody invent a maximum,
+        // and refused the game after the dialog had already closed on their
+        // choices.
+        //
+        // Checked and kept whether or not it is enforced. Unenforced, it is
+        // the range the lobby advertises (the server's
+        // `displayed_rating_range`), which Java sends either way
+        // (`CreateGameController.hostGame`) and which Java's join asks a
+        // player outside it to confirm. The host dialog has always offered
+        // the fields without the box ticked; the range was then dropped here.
+        let out_of_bounds = |limit: Option<i32>| {
+            limit.is_some_and(|value| !(Self::MIN_RATING..=Self::MAX_RATING).contains(&value))
+        };
+        if out_of_bounds(self.rating_min) || out_of_bounds(self.rating_max) {
+            return Err(format!(
+                "Rating limits must be between {} and {}.",
+                Self::MIN_RATING,
+                Self::MAX_RATING
+            ));
+        }
+        if let (Some(minimum), Some(maximum)) = (self.rating_min, self.rating_max) {
+            if minimum > maximum {
+                return Err("Minimum rating cannot be greater than maximum rating.".into());
             }
-            if let (Some(minimum), Some(maximum)) = (self.rating_min, self.rating_max) {
-                if minimum > maximum {
-                    return Err("Minimum rating cannot be greater than maximum rating.".into());
-                }
-            }
-        } else {
-            self.rating_min = None;
-            self.rating_max = None;
         }
 
         Ok(self)
@@ -1819,11 +1821,18 @@ mod tests {
     }
 
     #[test]
-    fn disabled_rating_enforcement_cannot_leak_stale_limits() {
+    fn an_unenforced_range_is_kept_as_the_advertised_one() {
+        // Java sends the range either way; unenforced, the server shows it
+        // and lets everybody in.
         let mut config = host_config();
         config.enforce_rating_range = false;
         let config = config.validated().unwrap();
-        assert_eq!(config.rating_min, None);
-        assert_eq!(config.rating_max, None);
+        assert_eq!(config.rating_min, Some(800));
+        assert_eq!(config.rating_max, Some(1_500));
+
+        let mut backwards = host_config();
+        backwards.enforce_rating_range = false;
+        backwards.rating_min = Some(1_600);
+        assert!(backwards.validated().is_err());
     }
 }
