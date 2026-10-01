@@ -15,7 +15,7 @@ import { GenerateMapModal } from "../../maps/GenerateMapModal";
 import { generatedMapDescriptionRows } from "../../../shared/generatedMapDescription";
 import { HostModsColumn } from "./HostModsColumn";
 import { useHostLobbySettings } from "./hostLobbySettings";
-import { FeaturedModIcon } from "./FeaturedModIcon";
+import { FeaturedModIcon } from "../../../shared/components/FeaturedModIcon";
 import { useTranslation } from "../../../i18n/useTranslation";
 import type { MessageKey } from "../../../i18n/catalog/en";
 import { OptionalNumberInput } from "../../../design-system/NumberInput";

@@ -113,7 +113,7 @@ export function JoinPreparationDialog() {
           aria-valuenow={percent ?? undefined}
           aria-valuetext={percent === null ? detail : `${detail}, ${percent}%`}
         >
-          <span style={percent === null ? undefined : { width: `${percent}%` }} />
+          <span style={percent === null ? undefined : { transform: `scaleX(${percent / 100})` }} />
         </div>
         <p className="muted join-preparing-percent">
           {percent === null

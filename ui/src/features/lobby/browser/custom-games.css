@@ -1,12 +1,14 @@
 .custom-games-layout {
   display: grid;
   flex: 1;
-  /* Three tracks now: list, divider, details. The inline style overrides the
-     last one; the divider keeps its own width so the gap either side of it
-     stays even whatever the panel is dragged to. */
-  grid-template-columns: minmax(360px, 1fr) 5px 270px;
+  /* Three tracks: list, divider, details. The inline style overrides the
+     last one. The divider's track is the gap itself, with no column gap
+     either side of it: a gap, a handle and a gap made the space beside the
+     detail panel twice the chat tab's beside its roster. */
+  grid-template-columns: minmax(360px, 1fr) var(--space-3) 270px;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
+  column-gap: 0;
+  row-gap: 12px;
   min-height: 0;
 }
 

@@ -624,7 +624,9 @@ export function LobbyView() {
   const detailDragOrigin = useRef<number | null>(null);
   const currentDetailWidth = draggedDetailWidth ?? detailWidth(savedDetailWidth);
   const detailStyle = useMemo(
-    () => ({ gridTemplateColumns: `minmax(360px, 1fr) 5px ${currentDetailWidth}px` }),
+    // The divider's track is the whole gap, as the chat roster's is, so the
+    // two tabs space their side panel the same.
+    () => ({ gridTemplateColumns: `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px` }),
     [currentDetailWidth],
   );
   const onDetailDrag = (delta: number) => {
