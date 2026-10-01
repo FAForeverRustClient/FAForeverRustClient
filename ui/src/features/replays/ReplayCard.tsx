@@ -243,36 +243,42 @@ export function ReplayLibraryCard({
         <ReplayMetaGrid replay={replay} />
       </div>
       <div className="replay-card-right">
-        <div className="replay-card-header">
-          <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
-          <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
+        <div className="replay-card-top">
+          <div className="replay-card-header">
+            <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
+            <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
+          </div>
+          {/* The way in, in the top-right corner beside the title it plays,
+              and under it the id that says which replay this is. */}
+          <div className="replay-card-corner">
+            {watch && (
+              <button
+                type="button"
+                className="replay-card-watch"
+                disabled={watch.disabled}
+                aria-label={watch.ariaLabel}
+                title={watch.ariaLabel}
+                // The card opens on a click and watches on a double click, and
+                // neither is what was asked for here.
+                onClick={(event) => {
+                  event.stopPropagation();
+                  watch.onClick();
+                }}
+                onDoubleClick={(event) => event.stopPropagation()}
+              >
+                <Icon name="play" size={13} />
+                <span>{watch.label}</span>
+              </button>
+            )}
+            <span className="muted">{replay.idLabel}</span>
+          </div>
         </div>
         <ReplayCardRoster teams={replay.teams} onPlayerMenu={onPlayerMenu} />
-        {/* The id and the way in, on one line in the corner: the label that
-            says which replay this is, and the button that plays it. */}
-        <div className="replay-card-footer">
-          {replay.footerNote && <span className="muted">{replay.footerNote}</span>}
-          <span className="muted">{replay.idLabel}</span>
-          {watch && (
-            <button
-              type="button"
-              className="replay-card-watch"
-              disabled={watch.disabled}
-              aria-label={watch.ariaLabel}
-              title={watch.ariaLabel}
-              // The card opens on a click and watches on a double click, and
-              // neither is what was asked for here.
-              onClick={(event) => {
-                event.stopPropagation();
-                watch.onClick();
-              }}
-              onDoubleClick={(event) => event.stopPropagation()}
-            >
-              <Icon name="play" size={13} />
-              <span>{watch.label}</span>
-            </button>
-          )}
-        </div>
+        {replay.footerNote && (
+          <div className="replay-card-footer">
+            <span className="muted">{replay.footerNote}</span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -343,6 +343,34 @@ button.vault-input {
   margin-bottom: var(--space-2);
 }
 
+/* The vault card's first row: title on the left, and in the top-right corner
+   the Watch button with the replay id under it. The live card keeps its own
+   footer and does not use this row. */
+.replay-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+  /* The corner column (Watch over the id) is taller than the title it sits
+     beside, so the gap to the teams is the row's, not the title's. */
+  margin-bottom: var(--space-3);
+}
+
+.replay-card-top > .replay-card-header {
+  flex: 1 1 auto;
+  margin-bottom: 0;
+}
+
+.replay-card-corner {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* The same size as the list view's title, so switching between the two views
    does not change how big the one thing both of them are named by is. */
 .replay-card-title {
@@ -453,9 +481,8 @@ button.vault-input {
   color: var(--color-muted);
 }
 
-/* The floor of the card: the replay id, and the button that plays it. Both in
-   the corner, the id to the left of the button, which is the order the two are
-   read in. */
+/* The floor of the card: a local file's note on the vault card, the host and
+   the way in on the live card. */
 .replay-card-footer {
   margin-top: auto;
   display: flex;
@@ -499,10 +526,12 @@ button.vault-input {
 }
 
 /* Replay detail modal */
+/* 880 rather than the 1180 the two-column card needed: the head, the facts
+   and two team panels all fit, and the dialog no longer spans a desktop. */
 .replay-detail-modal {
   box-sizing: border-box;
-  width: min(1180px, 96vw);
-  max-width: 1180px;
+  width: min(880px, 96vw);
+  max-width: 880px;
   /* The card is the tallest thing the client draws, and the rosters are what
      gets squeezed. Taking the margin down to 12px a side is around 24px of
      roster, which is most of a player row. */
@@ -522,23 +551,48 @@ button.vault-input {
   border-radius: 999px;
 }
 
+/* The head: map, what the replay is, and every action on it. The right-hand
+   padding keeps the action column clear of the dialog's close button. */
 .replay-detail-head {
   display: grid;
-  grid-template-columns: 144px minmax(0, 1fr) 280px;
+  grid-template-columns: 160px minmax(0, 1fr) 320px;
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-1) 28px var(--space-4) 0;
   border-bottom: 1px solid var(--color-border);
 }
 
-.replay-detail-thumb {
-  width: 144px;
-  height: 144px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
+/* Positioning context for the generate button over the thumbnail. */
+.replay-detail-thumb-frame {
+  position: relative;
+  width: 160px;
+}
+
+/* The thumbnail is the way into the enlarged preview, so it is a button that
+   looks like a picture until it is hovered. */
+.replay-detail-thumb-open {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
+  cursor: zoom-in;
+  transition: border-color 120ms ease;
+}
+
+.replay-detail-thumb-open:hover {
+  border-color: var(--color-border-strong);
+}
+
+.replay-detail-thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .replay-detail-thumb-empty {
@@ -547,12 +601,70 @@ button.vault-input {
   color: var(--color-muted);
 }
 
+.replay-detail-thumb-zoom {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.replay-detail-thumb-open:hover .replay-detail-thumb-zoom,
+.replay-detail-thumb-open:focus-visible .replay-detail-thumb-zoom {
+  opacity: 1;
+}
+
+/* "Generate map" as a "+" in the thumbnail's top-right corner, the way the
+   live list, the live cards and the chat game card offer it, so the control
+   is in the same place wherever a generated map's thumbnail appears. The
+   bottom-right corner is the zoom hint's. Token colours rather than a
+   translucent black, so it stays legible over any picture in either theme. */
+.replay-detail-thumb-generate {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+
+.replay-detail-thumb-generate:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.replay-detail-thumb-generate:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .replay-detail-headtext {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
 }
 
 .replay-detail-headtext h2 {
-  margin: 3px 0 var(--space-1);
+  margin: 0;
   font-size: 24px;
   line-height: 1.2;
   overflow-wrap: anywhere;
@@ -562,6 +674,7 @@ button.vault-input {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-height: 22px;
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 650;
@@ -569,10 +682,13 @@ button.vault-input {
   text-transform: uppercase;
 }
 
-.replay-copy-id-button {
-  min-height: 20px;
-  padding: 2px 6px;
-  font-size: 11px;
+/* The number itself is quoted, not read as a label, so it drops the
+   eyebrow's tracking and capitals. */
+.replay-detail-id {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   letter-spacing: normal;
   text-transform: none;
 }
@@ -580,28 +696,34 @@ button.vault-input {
 .replay-detail-map {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 0 0 4px;
+  flex-wrap: wrap;
+  gap: 6px var(--space-2);
+  min-width: 0;
   color: var(--color-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
-.replay-detail-seed {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  margin: 0 0 8px;
-  color: var(--color-muted);
-  font-size: 11px;
+.replay-detail-map > svg {
+  flex-shrink: 0;
 }
 
-.replay-detail-seed .replay-fact-seed-code {
-  flex: 1 1 auto;
+.replay-detail-map-name {
   min-width: 0;
-  max-width: none;
-  color: var(--color-text);
+  overflow-wrap: anywhere;
 }
+
+.replay-detail-map-action {
+  min-height: 26px;
+  padding: 2px 8px;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.replay-detail-map-action:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 
 .replay-generation-banner {
   display: flex;
@@ -653,11 +775,15 @@ button.vault-input {
   position: relative;
 }
 
+/* Full width and scaled to the fraction done, so progress animates a
+   transform rather than relaying the banner out on every step. */
 .replay-generation-progress-fill {
+  width: 100%;
   height: 100%;
   background: var(--color-accent);
   border-radius: var(--radius-pill);
-  transition: width 0.2s ease;
+  transform-origin: left center;
+  transition: transform 0.2s ease;
 }
 
 .replay-generation-progress-track.indeterminate .replay-generation-progress-fill {
@@ -672,40 +798,6 @@ button.vault-input {
   100% {
     transform: translateX(350%);
   }
-}
-
-.replay-fact-seed-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.replay-fact-seed-code {
-  font-family: var(--font-mono, monospace);
-  font-size: 11px;
-  max-width: calc(100% - 24px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.replay-fact-copy-seed-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 4px;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-xs, 3px);
-  color: var(--color-muted);
-  cursor: pointer;
-  line-height: 1;
-  transition: color 0.15s ease, background-color 0.15s ease;
-}
-
-.replay-fact-copy-seed-btn:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
 }
 
 .replay-availability {
@@ -736,16 +828,58 @@ button.vault-input {
 .replay-detail-badges {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   flex-wrap: wrap;
+  min-height: 24px;
 }
 
-/* Actions on top right */
+.replay-detail-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.replay-detail-stars {
+  display: inline-flex;
+  gap: 2px;
+  color: var(--color-subtle);
+}
+
+.replay-detail-stars .is-filled {
+  color: var(--color-rating);
+  fill: currentColor;
+}
+
+/* The stars as the way into the game's reviews: a button without a button's
+   chrome, lit on hover so it reads as something to press. */
+.replay-detail-stars-button {
+  padding: 2px 4px;
+  margin: -2px -4px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.replay-detail-stars-button:hover,
+.replay-detail-stars-button:focus-visible {
+  color: var(--color-muted);
+  background: var(--color-surface-hover);
+}
+
+.replay-detail-rating-value {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+/* Watch on top, the rest in a two-column grid under it. */
 .replay-detail-actions {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-width: 260px;
+  min-width: 0;
 }
 
 .replay-watch-button {
@@ -755,55 +889,64 @@ button.vault-input {
   gap: 7px;
   min-height: 40px;
   font-size: 14px;
+  font-weight: 600;
 }
 
 .replay-detail-actions-secondary {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
+/* An odd one out takes the whole last row rather than leaving a hole beside
+   it. Which button that is depends on the source: a local file has no
+   download, and a file with no replay id has no notes. */
+.replay-detail-actions-secondary > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .replay-secondary-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  height: 32px;
-  padding: 0 8px;
+  justify-content: flex-start;
+  gap: 6px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 10px;
   font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-/* On, meaning this replay carries the watched mark. The row in the list dims
-   itself when marked; a modal has no such neighbour to compare against, so the
-   button carries the state. */
-.replay-secondary-btn.is-on {
-  border-color: var(--color-text);
-  background: var(--color-surface-hover);
-}
-
-.replay-secondary-btn span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.replay-download-button:disabled {
+.replay-secondary-btn > svg {
+  flex-shrink: 0;
   color: var(--color-muted);
-  background: var(--color-surface-hover);
-  border-color: var(--color-border);
+}
+
+.replay-secondary-btn:disabled {
+  color: var(--color-muted);
+  background: transparent;
   cursor: default;
-  opacity: 0.72;
+  opacity: 0.6;
 }
 
-.replay-seed-label {
-  font-weight: 600;
-  color: var(--color-muted);
-  text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.05em;
+/* On: the replay carries the watched mark, or has a note. The row in the
+   list says so on its own; a modal has no neighbour to compare against, so
+   the button carries the state. */
+.replay-secondary-btn.is-on {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+.replay-secondary-btn.is-on > svg {
+  color: var(--color-text);
+}
+
+/* The clip is for the ellipsis, but it clips vertically too: at the 1.2 line
+   height buttons inherit, a 12px line box cut the descenders off "g" and
+   "y". A taller line box gives them room without changing the button. */
+.replay-secondary-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.5;
 }
 
 .replay-download-error {
@@ -811,15 +954,25 @@ button.vault-input {
   padding: var(--space-2) var(--space-3);
 }
 
-/* One dense row: five short values do not need six boxed cells and two rows of
-   modal height. Wraps rather than truncating on narrow widths. */
+/* Label over value, separated by hairlines rather than boxed: eight short
+   values do not need eight cards. Four to a row, so the two durations share a
+   column.
+
+   Each column is as wide as its widest label or value, with a floor, and the
+   strip is centred in the dialog. Stretched across it, a ten-character value
+   sat alone in a quarter of its width and the eye had to travel to find the
+   next one. The floor keeps the hairlines evenly spaced when the values are
+   all short; a long translated label widens its own column instead of
+   spilling into the next. */
 .replay-detail-facts {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(140px, max-content));
+  justify-content: center;
   row-gap: var(--space-3);
   column-gap: 0;
-  margin: var(--space-3) 0 var(--space-4);
-  padding: 0;
+  margin: 0;
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .replay-detail-facts > div {
@@ -833,8 +986,63 @@ button.vault-input {
   border-left: 0;
 }
 
+/* No outer padding on either end, so the centred strip is balanced. */
+.replay-detail-facts > div:nth-child(4n) {
+  padding-right: 0;
+}
+
+/* The replay panel's ten facts, five to a row; the live panel keeps four.
+   The four-column edges are put back before the five-column ones are drawn,
+   since some cells match both counts. */
+.replay-detail-facts-five {
+  grid-template-columns: repeat(5, minmax(120px, max-content));
+}
+
+.replay-detail-facts-five > div:nth-child(4n + 1) {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border);
+}
+
+.replay-detail-facts-five > div:nth-child(4n) {
+  padding-right: var(--space-4);
+}
+
+.replay-detail-facts-five > div:nth-child(5n + 1) {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.replay-detail-facts-five > div:nth-child(5n) {
+  padding-right: 0;
+}
+
+/* The stars and the score beside them, on the value's line. Not clipped like
+   the other values, since the button's hover background reaches past it. */
+.replay-detail-facts dd.replay-detail-rating {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow: visible;
+}
+
+.replay-detail-facts .replay-detail-rating-value {
+  font-size: 14px;
+}
+
+/* "Unrated" on its own, as the way into the reviews: the value's type, and
+   the stars' hover background without their dimming. */
+.replay-detail-facts button.replay-detail-rating-value {
+  font: inherit;
+  color: var(--color-text);
+}
+
+.replay-detail-facts button.replay-detail-rating-value:hover,
+.replay-detail-facts button.replay-detail-rating-value:focus-visible {
+  color: var(--color-text);
+}
+
 .replay-detail-facts dt {
-  margin-bottom: 2px;
+  margin-bottom: 3px;
   color: var(--color-subtle);
   font-size: 11px;
   font-weight: 650;
@@ -845,34 +1053,78 @@ button.vault-input {
 .replay-detail-facts dd {
   margin: 0;
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 550;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .replay-detail-lineup {
   min-width: 0;
+  padding-top: var(--space-3);
 }
 
 .replay-detail-section-head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
   min-height: 34px;
-  margin-bottom: var(--space-2);
-}
-
-.replay-detail-reveal-btn {
-  min-width: 124px;
-  justify-content: center;
-  text-align: center;
+  margin-bottom: var(--space-3);
 }
 
 .replay-detail-section-head h3 {
-  margin: 2px 0 0;
+  margin: 0;
   font-size: 15px;
+}
+
+/* The result switch and, in place of it or beside it, why there is none. */
+.replay-detail-result {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.replay-detail-result-reason {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.replay-detail-result-reason > svg {
+  flex-shrink: 0;
+}
+
+.replay-detail-reveal-btn {
+  min-width: 132px;
+  font-size: 12px;
+}
+
+.replay-detail-reveal-btn[aria-pressed="true"] {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+/* The floor of the dialog, under the lineup: the way into the file's own
+   contents, on the left where the lineup starts. */
+.replay-detail-foot {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--space-3);
+}
+
+.replay-detail-more-info {
+  min-width: 132px;
 }
 
 .replay-detail-teams {
@@ -1151,6 +1403,43 @@ button.vault-input {
   text-align: center;
 }
 
+/* Under about 960px the action column no longer fits beside the title, so it
+   drops to a full row under the head and its grid spreads out. */
+@media (max-width: 960px) {
+  .replay-detail-head {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+
+  /* Below the close button now, so it may take the width the head keeps
+     clear of it. */
+  .replay-detail-actions {
+    grid-column: 1 / -1;
+    margin-right: -28px;
+  }
+
+  .replay-detail-actions-secondary {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .replay-detail-actions-secondary > :last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  /* Five sized-to-content columns stop fitting here, in the longer
+     translations first, so the ten facts flow into as many even columns as
+     the width holds, without the hairlines that would not line up. */
+  .replay-detail-facts.replay-detail-facts-five {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    justify-content: stretch;
+    column-gap: var(--space-4);
+  }
+
+  .replay-detail-facts.replay-detail-facts-five > div:nth-child(n) {
+    padding: 0;
+    border-left: 0;
+  }
+}
+
 @media (max-width: 700px) {
   .replay-grid {
     grid-template-columns: 1fr;
@@ -1160,14 +1449,12 @@ button.vault-input {
     grid-template-columns: 96px minmax(0, 1fr);
   }
 
-  .replay-detail-thumb {
+  .replay-detail-thumb-frame {
     width: 96px;
-    height: 96px;
   }
 
   .replay-detail-actions {
     grid-column: 1 / -1;
-    min-width: 0;
   }
 
   .replay-detail-facts {
@@ -1261,10 +1548,24 @@ button.vault-input {
   overflow-y: auto;
 }
 
+/* A filter and a search side by side used to touch, and were two heights. */
 .replay-insights-toolbar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
+/* Every select in the analysis tabs, toolbar or heatmap row, at the height
+   and size of the search beside it. Native rather than the design system's
+   `Select`: the panel takes Escape in the capture phase to close itself, and
+   a native list is the one that still closes on its own first. */
+.replay-insights-filter select.vault-input {
+  height: 32px;
+  padding: 0 var(--space-2);
+  font-size: 12px;
+  cursor: pointer;
 }
 
 /* The panel while it waits for the file. */
@@ -1358,9 +1659,10 @@ button.vault-input {
   font-weight: 400;
 }
 
-.replay-options-filter {
-  width: min(180px, 48%);
-  height: 28px;
+input.replay-options-filter {
+  width: min(220px, 48%);
+  height: 32px;
+  line-height: 30px;
   font-size: 12px;
 }
 
@@ -1483,125 +1785,10 @@ button.vault-input {
   color: var(--color-muted);
 }
 
-/* The zoomable map in the replay detail, under the header.
-   The 144px thumbnail up there identifies the replay; this is the picture
-   somebody opened the replay to look at, so it gets the width of the dialog
-   and the same wheel-zoom and drag-pan as the Maps tab. */
-.replay-detail-map-zoom {
-  /* The viewport is a square of whatever width it is given, and this dialog is
-     1080px wide: unconstrained it would be a thousand pixels tall and push
-     everything else out of the scroll. 520 is the width the Maps tab's own
-     preview dialog uses, so the map is the same size in both places. */
-  max-width: min(520px, 100%);
-  margin: var(--space-4) auto 0;
-}
-
-.replay-detail-map-zoom-image,
-.replay-detail-map-zoom-empty {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.replay-detail-map-zoom-empty {
-  display: grid;
-  place-items: center;
-  color: var(--color-subtle);
-  background: var(--color-surface-raised);
-}
-
-/* ---------------------------------------------------------------------------
-   The replay card.
-
-   Two columns: a narrow rail holding what the replay *is* and what you can do
-   to the file, and a main column holding what happened in the game. The rail
-   is a fixed width because its three controls are full-width buttons and a
-   rail that grows with the dialog turns them into banners.
-   --------------------------------------------------------------------------- */
-
-.replay-card-layout {
-  display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  align-items: stretch;
-  gap: var(--space-4);
-}
-
-.replay-card-rail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 0;
-  padding-right: var(--space-4);
-  border-right: 1px solid var(--color-border);
-}
-
-/* The number people quote at each other in Discord, so it is set like one
-   rather than like a footnote. */
-.replay-card-idvalue {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--color-text);
-}
-
-/* Positioning context for the map action, and nothing else. */
-.replay-rail-thumb {
-  position: relative;
-}
-
-/* The preview at the size the Play tab's sidebar shows one. The zoom widget
-   that used to live here is a viewport plus a control row plus a hint line,
-   which at rail width is mostly furniture, and its wheel handler ate the
-   panel's own scrolling. It opens on a click instead. */
-.replay-rail-thumb-open {
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 1;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  cursor: zoom-in;
-}
-
-.replay-rail-thumb-open:hover {
-  border-color: var(--color-accent);
-}
-
-.replay-rail-thumb-zoom {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-
-.replay-rail-thumb-open:hover .replay-rail-thumb-zoom,
-.replay-rail-thumb-open:focus-visible .replay-rail-thumb-zoom {
-  opacity: 1;
-}
-
-.replay-rail-thumb-image,
-.replay-rail-thumb-empty {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Opened out of the rail. Above the modal's own backdrop (z-index 100), since
-   it is drawn from inside the modal and has to sit over it. */
+/* The enlarged map preview, opened from the detail thumbnail. Above the
+   modal's own backdrop (z-index 100), since it is drawn from inside the modal
+   and has to sit over it. The notes, insights and chart overlays share the
+   scrim. */
 .replay-preview-scrim {
   position: fixed;
   inset: 0;
@@ -1614,13 +1801,19 @@ button.vault-input {
   backdrop-filter: blur(4px);
 }
 
+/* Sized so the square map lands near the 512px the preview image actually
+   has: at 900px wide it was stretched by three quarters, which nearest-
+   neighbour scaling drew as stair-stepped coastlines, and the square alone was
+   taller than most windows. The height term keeps the whole frame, controls
+   and name included, inside a short window; the scroll is only a backstop. */
 .replay-preview-overlay {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   box-sizing: border-box;
-  width: min(900px, 94vw);
+  width: min(576px, calc(100vw - 48px), max(320px, calc(92vh - 180px)));
   max-height: 92vh;
+  overflow-y: auto;
   padding: var(--space-4);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
@@ -1664,130 +1857,6 @@ button.vault-input {
   object-fit: contain;
 }
 
-.replay-rail-thumb-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-subtle);
-}
-
-/* Over the image rather than beside it: the map action belongs to the map, and
-   the rail below is already three buttons tall. */
-.replay-rail-thumb-actions {
-  position: absolute;
-  right: 6px;
-  /* Top, not bottom: the bottom of this box is the zoom controls now, and a
-     button floating over them would cover the thing it sits next to. */
-  top: 6px;
-  display: flex;
-  gap: 4px;
-  z-index: 2;
-}
-
-/* Tokens rather than a translucent black, so the button stays legible in both
-   themes and over a light desert map as well as a dark one. The same shape the
-   map zoom controls use. */
-.replay-rail-thumb-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  color: var(--color-text);
-  cursor: pointer;
-  transition: background-color 100ms ease;
-}
-
-.replay-rail-thumb-btn:hover:not(:disabled) {
-  background: var(--color-surface-hover);
-}
-
-.replay-rail-thumb-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.replay-card-rating {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  min-height: 20px;
-}
-
-.replay-card-stars {
-  display: inline-flex;
-  gap: 2px;
-  color: var(--color-subtle);
-}
-
-.replay-card-stars .is-filled {
-  color: var(--color-rating);
-  fill: currentColor;
-}
-
-/* The stars as the way into the game's reviews: a button without a button's
-   chrome, lit on hover so it reads as something to press. */
-.replay-card-stars-button {
-  padding: 2px 4px;
-  margin: -2px -4px;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background-color 100ms ease, color 100ms ease;
-}
-
-.replay-card-stars-button:hover,
-.replay-card-stars-button:focus-visible {
-  color: var(--color-muted);
-  background: var(--color-surface-hover);
-}
-
-.replay-card-rating-value {
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text);
-}
-
-.replay-card-rail-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* Label left, icon right, full width: the rail reads as a list of verbs, and a
-   centred label would make three buttons of different word lengths look
-   ragged. */
-.replay-card-rail-btn {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  width: 100%;
-  min-height: 38px;
-  padding: 0 12px;
-  text-align: left;
-}
-
-.replay-card-rail-btn > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.replay-card-rail-btn.is-on {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
 .replay-card-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -1806,190 +1875,6 @@ button.vault-input {
 .replay-card-icon-btn:hover {
   background: var(--color-surface-hover);
   color: var(--color-text);
-}
-
-.replay-card-seed {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-size: 12px;
-}
-
-.replay-card-seed-label {
-  color: var(--color-muted);
-  flex-shrink: 0;
-}
-
-/* The full generated-map name under the map line (issue 288). It is three
-   times as long as the seed it replaced, and it is what the copy button puts
-   on the clipboard, so it wraps instead of being cut short with an ellipsis. */
-.replay-card-seed {
-  align-items: flex-start;
-}
-
-.replay-card-seed .replay-fact-seed-code {
-  max-width: none;
-  min-width: 0;
-  overflow: visible;
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-
-.replay-card-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-/* Room for the dialog's own close button, which sits in this column's corner. */
-.replay-card-heading {
-  padding-right: 32px;
-}
-
-/* Scoped to the dialog. Unscoped, this also hit the list card's title, which
-   is a `span` of the same name, and put a 26px heading on every row of the
-   vault. */
-.replay-card-layout .replay-card-title {
-  margin: 0;
-  font-size: 22px;
-  line-height: 1.15;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-.replay-card-onmap {
-  margin: 2px 0 0;
-  font-size: 14px;
-  color: var(--color-muted);
-}
-
-.replay-card-badges {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 12px;
-  color: var(--color-muted);
-}
-
-/* Eight facts as eight tiles rather than eight label-and-value lines.
-   The line put the caption and the value at opposite ends of a shared row, so
-   reading one fact meant crossing the gap between them, and with four of them
-   side by side the eye crossed the wrong gap as often as the right one. A tile
-   keeps the three parts of one fact together: the glyph on the left, the value
-   where the eye lands, and the caption under it for whoever needs to be told
-   what the number is.
-
-   Still four columns and two rows: the pair of durations that are routinely
-   minutes apart end up side by side, which is the point of giving them
-   distinct glyphs in the first place. */
-.replay-card-facts {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-}
-
-.replay-card-facts > div {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  /* Room for an 18px icon: at 14 the icons were a speck beside a 15px bold
-     value and read as bullet points rather than as pictures (issue 351). */
-  padding: var(--space-2) var(--space-3) var(--space-2) 42px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-/* Under the value it names, and quiet: the caption is what you read once to
-   learn the tile, and the value is what you read every time after that. */
-.replay-card-facts dt {
-  order: 2;
-  min-width: 0;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Taken out of the caption's line and centred on the whole tile, which is
-   where it reads as a mark for the fact rather than as part of the wording. */
-.replay-card-facts dt svg {
-  position: absolute;
-  top: 50%;
-  left: var(--space-3);
-  transform: translateY(-50%);
-  color: var(--color-subtle);
-}
-
-.replay-card-facts dd {
-  order: 1;
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Its own row, and half of it.
-
-   The tile takes the whole row so that no fact is pulled up beside it and
-   the eight below keep the four-by-two they were arranged as -- the pair of
-   durations four apart in the list stays in one column. What it draws is
-   capped at two of those columns: an id and two copy buttons do not need
-   the width of four, and a box that wide read as a banner over the facts
-   rather than as one of them. Two columns plus the gap between them is half
-   the row less half a gap, whatever the column count is. */
-.replay-card-fact-id {
-  grid-column: 1 / -1;
-  max-width: calc(50% - var(--space-2) / 2);
-}
-
-.replay-card-fact-id dd {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow: visible;
-}
-
-.replay-card-lineup {
-  min-width: 0;
-}
-
-/* The teams fill what is left, so the action row lands on the floor of the
-   card however tall the rosters are. */
-.replay-card-bottom {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  /* The two buttons line up on their bottom edge, so the reason stacked above
-     one of them lifts that line rather than stretching the other button. */
-  align-items: end;
-  gap: var(--space-3);
-  margin-top: auto;
-  padding-top: var(--space-1);
-}
-
-.replay-card-result-btn,
-.replay-card-watch-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-height: 42px;
-  font-size: 13px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
 }
 
 /* A team's colour is carried by a line across the top of its panel, not by its
@@ -2024,109 +1909,18 @@ button.vault-input {
 
 /* A team is one block, not a stack of pills, and not a ruled table either.
    Giving every player their own filled, fully rounded row turned a four-man
-   team into four cards inside a fifth; ruling between them then drew a line
-   whose ends stopped short of the panel, which reads as a rounded rule rather
-   than as a separator. The names stand on their own with nothing between them,
-   and only the panel around them is a surface. The hover still lights one row,
-   because the names are clickable. */
-.replay-card-layout .replay-detail-player {
+   team into four cards inside a fifth. The names stand on their own with
+   nothing between them, and only the panel around them is a surface. The
+   hover still lights one row, because the names are clickable. */
+.replay-detail-lineup .replay-detail-player {
   height: 30px;
   padding: 0 6px;
   border-radius: var(--radius-sm);
 }
 
-.replay-card-layout .replay-detail-player:hover {
-  background: var(--color-surface-hover);
-}
-
-.replay-card-layout .replay-detail-roster {
+.replay-detail-lineup .replay-detail-roster {
   gap: 0;
 }
-
-/* Under about 900px the rail and the main column stop fitting side by side,
-   and the facts strip stops fitting four across. */
-@media (max-width: 900px) {
-  .replay-card-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .replay-card-rail {
-    padding-right: 0;
-    border-right: none;
-    padding-bottom: var(--space-3);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .replay-card-thumb {
-    max-width: 320px;
-  }
-
-  .replay-card-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 560px) {
-  .replay-card-facts {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* Half of a single narrow column is not enough for an id and two buttons,
-     so here the tile is the row it already spans. */
-  .replay-card-fact-id {
-    max-width: none;
-  }
-
-  .replay-card-bottom {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* Scoped, like the rule it shrinks: unscoped it also caught the vault
-     card's title, which is a span of the same name, and put a 21px heading on
-     every tile in a narrow window. */
-  .replay-card-layout .replay-card-title {
-    font-size: 21px;
-  }
-}
-
-/* Why the result button is dead: a notice across the panel, above the row of
-   buttons it explains.
-
-   It used to be a caption stacked on the button itself, in half the panel's
-   width. A reason is a whole sentence -- "Game was not rated. Reason: Unknown
-   result." -- and half a panel wrapped it onto three lines, which lifted that
-   button off the baseline of the one beside it. Across the row it reads in one
-   line, and a bordered box says "this is about the whole panel" where a grey
-   caption under one control said "this labels that control". */
-.replay-card-result-reason {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-  margin: 0 0 var(--space-1);
-  padding: 10px var(--space-3);
-  color: var(--color-muted);
-  font-size: 13px;
-  line-height: 1.35;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.replay-card-result-reason > span {
-  min-width: 0;
-}
-
-.replay-card-result-reason .icon {
-  flex-shrink: 0;
-}
-
-/* The seed now sits under the line naming the generator that produced it. */
-.replay-card-heading .replay-card-seed {
-  margin-top: var(--space-2);
-}
-
 
 /* ── The analysis panels ────────────────────────────────────────────────
    The tabs behind "Load more info" that read the whole command stream: who

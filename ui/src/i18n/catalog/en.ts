@@ -2159,8 +2159,8 @@ export const en = {
   "replays.detail.players": "Players",
   "replays.detail.avgRating": "Avg rating",
   "replays.detail.featuredMod": "Featured mod",
-  // The redesigned replay card: a rail of file actions beside a column of
-  // what happened in the game.
+  // The replay detail dialog: a head with the map, title and actions, then
+  // the facts and the lineup.
   "replays.detail.onMap": "on {map}",
   "replays.detail.replayIdLabel": "Replay ID",
   "replays.detail.openChat": "Open chat",
@@ -2178,15 +2178,10 @@ export const en = {
   "replays.detail.noLineup": "No lineup was recorded for this replay.",
   "replays.detail.playerCount": { one: "{count} player", other: "{count} players" },
   "replays.detail.teamSummary": "{teams} teams · {players}",
-  "replays.detail.mapSeed": "Seed",
-  "replays.detail.copySeed": "Copy seed",
-  "replays.detail.copySeedShort": "Copy",
-  "replays.detail.seedCopied": "Seed copied",
   "replays.detail.resolvingMap": "Resolving map…",
   "replays.detail.preparingGenerator": "Preparing generator…",
   "replays.detail.downloadingGenerator": "Downloading generator v{version}…",
   "replays.detail.generationFailed": "Could not generate map: {error}",
-  "replays.detail.loadDetails": "Load more info",
   "replays.detail.loadDetailsShort": "More info",
   "replays.detail.downloadShort": "Download",
   "replays.detail.loadingDetails": "Loading replay details…",
