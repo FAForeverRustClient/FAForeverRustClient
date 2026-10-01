@@ -1121,3 +1121,10 @@
 .settings-multi-select .multi-select > .search-panel-label {
   display: none;
 }
+
+/* The element each section's search scope reads dropdown options from. It
+   takes no part in the layout: the page lays out the panels inside it as if
+   it were not there. */
+.settings-section-scope {
+  display: contents;
+}

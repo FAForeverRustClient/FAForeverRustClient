@@ -80,6 +80,53 @@
 }
 
 /* Keep the rating range and replay identifier in the compact search row. */
+/* The online replay search's first row: the fields, wrapping, and Search
+   held in the top-right corner beside them. A grid rather than the panel's
+   own wrapping flex row, which is what let Search fall to a line of its own. */
+.search-panel-primary.online-search-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.online-search-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Down by the height of a field's label, so the button lines up with the
+   inputs rather than with their captions. */
+.online-search-top > .vault-search-submit {
+  margin-top: 20px;
+}
+
+/* The second row: every range slider, side by side, always shown. Each
+   fills its column rather than stopping at the slider's own 240px cap, which
+   left a gap after every track on a wide window. */
+.online-search-sliders {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-4);
+}
+
+.online-search-sliders > .range-slider {
+  flex: 1 1 180px;
+  max-width: none;
+}
+
+/* The sort and its direction, as one block at the start of the row. */
+.online-search-sort {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
 .vault-search-rating {
   flex: 0 1 220px;
   width: 220px;
@@ -304,10 +351,14 @@ button.vault-input {
 /* Icon-paired facts, as in the Java card: the two durations are minutes apart
    in a normal game, and a trailing "game"/"real" word made the pair read as
    one value with a suffix. */
+/* The left column only as wide as its short values need (a count, a mod, a
+   duration such as "34m 41s"), so the right column starts a little further
+   left and the date in it has more room. A fixed width rather than sized to
+   content, so the right column lines up from one card to the next. */
 .replay-meta-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3px var(--space-2);
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 3px 10px;
   font-size: 11px;
   width: 100%;
 }
@@ -624,11 +675,13 @@ button.vault-input {
 }
 
 /* "Generate map" as a "+" in the thumbnail's top-right corner, the way the
-   live list, the live cards and the chat game card offer it, so the control
-   is in the same place wherever a generated map's thumbnail appears. The
-   bottom-right corner is the zoom hint's. Token colours rather than a
-   translucent black, so it stays legible over any picture in either theme. */
-.replay-detail-thumb-generate {
+   live list and the chat game card offer it, so the control is in the same
+   place wherever a generated map's thumbnail appears: the detail panel and
+   the replay cards share this rule. The detail panel's bottom-right corner
+   is the zoom hint's. Token colours rather than a translucent black, so it
+   stays legible over any picture in either theme. */
+.replay-detail-thumb-generate,
+.replay-card-thumb-generate {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -647,13 +700,22 @@ button.vault-input {
   transition: background-color 100ms ease;
 }
 
-.replay-detail-thumb-generate:hover:not(:disabled) {
+.replay-detail-thumb-generate:hover:not(:disabled),
+.replay-card-thumb-generate:hover:not(:disabled) {
   background: var(--color-surface-hover);
 }
 
-.replay-detail-thumb-generate:disabled {
+.replay-detail-thumb-generate:disabled,
+.replay-card-thumb-generate:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* Positioning context for the card's generate button. */
+.replay-card-thumb-wrap {
+  position: relative;
+  display: block;
+  flex: none;
 }
 
 .replay-detail-headtext {

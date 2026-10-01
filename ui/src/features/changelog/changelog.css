@@ -258,10 +258,13 @@
   text-wrap: balance;
 }
 
+/* At least one line tall: a branch entry has no kind and no date, and an
+   empty line collapsing to nothing moved the note up when one was picked. */
 .changelog-note-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  min-height: 18px;
   gap: 6px var(--space-3);
   margin: 6px 0 0;
   color: var(--color-muted);
@@ -279,6 +282,29 @@
 
 .changelog-kind-tag.is-patch {
   color: var(--color-event-patch);
+}
+
+/* The title line and the date line as bars of the same heights, and the
+   whole header at least the height the step buttons give the real one. */
+.changelog-head-skeleton {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: 49px;
+}
+
+.changelog-head-skeleton > span {
+  display: block;
+  width: 220px;
+  height: 25px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+
+.changelog-head-skeleton > span + span {
+  width: 140px;
+  height: 18px;
 }
 
 .changelog-note-actions {

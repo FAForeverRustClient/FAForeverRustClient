@@ -36,7 +36,7 @@ import {
   isRecentBound,
   isoDaysAgo,
 } from "../../../shared/replayQuery";
-import { AdvancedReplayFilters } from "./AdvancedReplayFilters";
+import { AdvancedReplayFilters, ReplaySearchSliders, ReplayTypeAndPageSize } from "./AdvancedReplayFilters";
 import { replayGameModes, selectedGameModes, withGameModes } from "./replayGameModes";
 import { activeReplayPreset } from "../replayPresets";
 import { FriendReplayPicker } from "./FriendReplayPicker";
@@ -223,7 +223,12 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
 
   return (
     <form className="vault-search online-vault-search search-panel surface-panel" onSubmit={submit}>
-      <div className="vault-search-primary search-panel-primary">
+      {/* The fields on the left, wrapping as the window narrows, and Search
+          in the top-right corner beside them whatever the width. As one more
+          item in a wrapping row it fell onto a line of its own once the row
+          filled, which is where nobody looks for it. */}
+      <div className="vault-search-primary search-panel-primary online-search-top">
+        <div className="online-search-fields">
         <label className="vault-field vault-field-grow search-panel-field search-panel-field-grow">
           <span className="vault-field-label search-panel-label">{t("replays.search.player")}</span>
           <input
@@ -299,6 +304,45 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
           </div>
         </div>
 
+        <ReplayTypeAndPageSize form={form} featuredMods={featuredMods} set={set} />
+        </div>
+
+        <Button type="submit" variant="primary" className="vault-search-submit search-panel-submit">
+          <Icon name="search" size={15} /> {t("replays.search.submit")}
+        </Button>
+      </div>
+
+      {/* The second row: the sort, then every range at once, so the sliders
+          are there from the start rather than behind "More filters". The sort
+          sits here rather than at the end of the first row, where on most
+          windows it was the one field that did not fit and took a whole line
+          to itself, pushing the sliders down to a third. */}
+      <div className="online-search-sliders">
+        <div className="online-search-sort">
+          <label className="vault-field vault-search-sort search-panel-field">
+            <span className="vault-field-label search-panel-label">{t("replays.search.sortBy")}</span>
+            <select
+              className="vault-input search-panel-control"
+              value={form.sortBy}
+              onChange={(e) => set("sortBy", e.target.value as ReplaySortField)}
+            >
+              {(Object.keys(SORT_LABELS) as ReplaySortField[]).map((field) => (
+                <option key={field} value={field}>
+                  {t(SORT_LABELS[field])}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="vault-input search-panel-control vault-sort-order"
+            aria-label={t(form.sortDescending ? "replays.search.descendingAria" : "replays.search.ascendingAria")}
+            title={t(form.sortDescending ? "replays.search.descending" : "replays.search.ascending")}
+            onClick={toggleSortDirection}
+          >
+            {form.sortDescending ? "↓" : "↑"}
+          </button>
+        </div>
         {/* The label says "any player's", because that is what the API can
             answer and therefore what this does: a 500 against a 2500 comes
             back from a search for either number. It is a different question
@@ -311,46 +355,16 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
             quietly answers a smaller question than the one asked is worse than
             one that answers a blunter question honestly, so it was withdrawn
             rather than explained. */}
-        <div className="vault-search-rating">
-          <RangeSlider
-            label={t("replays.search.ratingPerPlayer")}
-            min={MIN_RATING}
-            max={MAX_RATING}
-            step={50}
-            low={form.minRating}
-            high={form.maxRating}
-            onChange={(lo, hi) => setRange("minRating", "maxRating", lo, hi)}
-          />
-        </div>
-
-        <label className="vault-field vault-search-sort search-panel-field">
-          <span className="vault-field-label search-panel-label">{t("replays.search.sortBy")}</span>
-          <select
-            className="vault-input search-panel-control"
-            value={form.sortBy}
-            onChange={(e) => set("sortBy", e.target.value as ReplaySortField)}
-          >
-            {(Object.keys(SORT_LABELS) as ReplaySortField[]).map((field) => (
-              <option key={field} value={field}>
-                {t(SORT_LABELS[field])}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <button
-          type="button"
-          className="vault-input search-panel-control vault-sort-order"
-          aria-label={t(form.sortDescending ? "replays.search.descendingAria" : "replays.search.ascendingAria")}
-          title={t(form.sortDescending ? "replays.search.descending" : "replays.search.ascending")}
-          onClick={toggleSortDirection}
-        >
-          {form.sortDescending ? "↓" : "↑"}
-        </button>
-
-        <Button type="submit" variant="primary" className="vault-search-submit search-panel-submit">
-          <Icon name="search" size={15} /> {t("replays.search.submit")}
-        </Button>
+        <RangeSlider
+          label={t("replays.search.ratingPerPlayer")}
+          min={MIN_RATING}
+          max={MAX_RATING}
+          step={50}
+          low={form.minRating}
+          high={form.maxRating}
+          onChange={(lo, hi) => setRange("minRating", "maxRating", lo, hi)}
+        />
+        <ReplaySearchSliders form={form} setRange={setRange} />
       </div>
 
       <div className="vault-search-presets search-panel-secondary">
@@ -497,7 +511,6 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
       {advanced && (
         <AdvancedReplayFilters
           form={form}
-          featuredMods={featuredMods}
           set={set}
           setRange={setRange}
           tagOptions={tagOptions}

@@ -14,6 +14,7 @@ import type { InstalledMod, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { includesNormalized, isWithinNumberRange } from "../../shared/filterRanges";
 import { loadStatusNote } from "../../shared/loadStatusNote";
+import { formatShortDate } from "../../shared/format/dates";
 import { VaultDescription } from "../../shared/components/VaultDescription";
 import { useAppStore } from "../../store/store";
 import { Modal } from "../../design-system/Modal";
@@ -106,23 +107,33 @@ function InstalledModCard({
           </span>
         )}
         <span className="installed-mod-copy">
-          <span className="installed-mod-name">
+          <span className="installed-mod-name" title={mod.uid}>
             <strong>{mod.displayName}</strong>
           </span>
           <small>
             {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")} · v{mod.version}
             {mod.author ? ` \u00b7 ${mod.author}` : ""}
           </small>
-          <small title={mod.uid}>{mod.uid}</small>
+          {/* When the author last published it, from the vault's record of
+              the mod. That says more about an installed mod than its uid,
+              which stays on the name's tooltip; a mod the vault does not list
+              has no date to give, so it keeps the uid line. */}
+          {metadata ? (
+            <small className="installed-mod-updated">
+              {t("mods.vault.lastUpdated")} {formatShortDate(metadata.updatedAt || metadata.createdAt)}
+            </small>
+          ) : (
+            <small title={mod.uid}>{mod.uid}</small>
+          )}
         </span>
       </button>
+      {/* One row, every control the same height: the star, the switch, the
+          update when there is one, and remove. A state chip used to sit above
+          them on a row of its own, which made a two-tier cluster of five
+          shapes in the card's corner; the state is already the card's green
+          edge and tint, and the button beside it says which way it switches. */}
       <div className="installed-mod-side">
-        {/* The state, as a word and as a colour. It reads the same as it did
-            beside the name and it no longer competes with it for width: a mod
-            called "Advanced Strategic Icons for FAF" lost its last few words
-            to a chip that is the same six letters on every row. Top right,
-            over the buttons that act on it. */}
-        <div className="installed-mod-state-row">
+        <div className="installed-mod-actions">
           {/* The same star as the vault's, on the screen where it pays: these
               are the mods the player already has, and the set they star is the
               one "Enable favourites" turns on before a game. */}
@@ -136,13 +147,8 @@ function InstalledModCard({
             title={t(favorite ? "mods.vault.removeFavorite" : "mods.vault.addFavorite")}
             onClick={onToggleFavorite}
           >
-            <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
+            <Icon name="star" size={15} fill={favorite ? "currentColor" : "none"} />
           </button>
-          <em className={mod.enabled ? "installed-mod-state is-on" : "installed-mod-state is-off"}>
-            {t(mod.enabled ? "mods.installed.enabled" : "mods.installed.disabled")}
-          </em>
-        </div>
-        <div className="installed-mod-actions">
         <Button disabled={busy} onClick={onToggle}>
           {t(toggling ? "mods.installed.updating" : mod.enabled ? "mods.installed.disable" : "mods.installed.enable")}
         </Button>

@@ -189,9 +189,9 @@ export function ChangelogView() {
   const { t } = useTranslation();
   const changelog = useAppStore((state) => state.state.changelog);
   const [search, setSearch] = useState("");
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
+  /// The years the reader has flipped from their default, folded or open.
+  const [toggledGroups, setToggledGroups] = useState<Set<string>>(() => new Set());
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const defaultCollapseApplied = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const tocRef = useRef<HTMLElement>(null);
   const listRef = useRef<HTMLElement>(null);
@@ -207,22 +207,6 @@ export function ChangelogView() {
   useEffect(() => {
     ipc.send({ kind: "Changelog", command: { type: "load" } });
   }, []);
-
-  // Years more than two back start folded, so the list opens on what is
-  // current rather than on a decade of hotfixes.
-  useEffect(() => {
-    if (defaultCollapseApplied.current || changelog.releases.length === 0) return;
-    const cutoffYear = new Date().getFullYear() - 2;
-    setCollapsedGroups(new Set(
-      changelog.releases
-        .filter((release) => {
-          const year = Number.parseInt(release.year, 10);
-          return Number.isFinite(year) && year <= cutoffYear;
-        })
-        .map((release) => release.year),
-    ));
-    defaultCollapseApplied.current = true;
-  }, [changelog.releases]);
 
   const query = search.trim().toLocaleLowerCase();
   const filtered = useMemo(() => {
@@ -249,9 +233,19 @@ export function ChangelogView() {
     return [...byYear.entries()];
   }, [filtered]);
 
-  // A search looks through folded years too: a match hidden inside a closed
+  // Years more than two back start folded, so the list opens on what is
+  // current rather than on a decade of hotfixes. Decided while rendering, not
+  // in an effect after it: the effect let the list paint with every year
+  // open and fold a frame later, which was the list jumping on load. A
+  // search looks through folded years too: a match hidden inside a closed
   // group read as no match at all.
-  const isCollapsed = (groupKey: string) => !query && collapsedGroups.has(groupKey);
+  const cutoffYear = new Date().getFullYear() - 2;
+  const foldedByDefault = (groupKey: string) => {
+    const year = Number.parseInt(groupKey, 10);
+    return Number.isFinite(year) && year <= cutoffYear;
+  };
+  const isCollapsed = (groupKey: string) =>
+    !query && foldedByDefault(groupKey) !== toggledGroups.has(groupKey);
 
   // The rows the keyboard walks, in the order they are drawn.
   const visibleReleases = groups.flatMap(([year, releases]) =>
@@ -301,11 +295,19 @@ export function ChangelogView() {
   }, [sections]);
 
   // The selected row is kept in view, whichever way it was chosen: a click,
-  // the arrow keys, or the newer and older buttons over the note.
+  // the arrow keys, or the newer and older buttons over the note. By hand, on
+  // the list alone: `scrollIntoView` also scrolls every container around the
+  // list, and the first selection, which lands as the tab loads, could nudge
+  // the whole page. The top allowance keeps the row clear of the sticky year
+  // heading.
   useEffect(() => {
-    listRef.current
-      ?.querySelector<HTMLElement>(".changelog-release[aria-current='page']")
-      ?.scrollIntoView({ block: "nearest" });
+    const list = listRef.current;
+    const row = list?.querySelector<HTMLElement>(".changelog-release[aria-current='page']");
+    if (!list || !row) return;
+    const bounds = list.getBoundingClientRect();
+    const rect = row.getBoundingClientRect();
+    if (rect.top < bounds.top + 36) list.scrollTop -= bounds.top + 36 - rect.top;
+    else if (rect.bottom > bounds.bottom) list.scrollTop += rect.bottom - bounds.bottom;
   }, [changelog.selected]);
 
   const handleNoteScroll = () => {
@@ -362,7 +364,7 @@ export function ChangelogView() {
     ipc.send({ kind: "Changelog", command: { type: "select", payload: { id } } });
 
   const toggleGroup = (groupKey: string) => {
-    setCollapsedGroups((current) => {
+    setToggledGroups((current) => {
       const next = new Set(current);
       if (next.has(groupKey)) next.delete(groupKey);
       else next.add(groupKey);
@@ -547,6 +549,17 @@ export function ChangelogView() {
                 <Icon name="external" size={13} />
                 <span>{t("changelog.openOnSite")}</span>
               </Button>
+            </div>
+          </header>
+        )}
+        {/* The header's shape while the list is still loading and nothing is
+            selected yet. Without it the header appeared with the first patch
+            and pushed the reading area down by its own height. */}
+        {!selected && changelog.status.type !== "ready" && (
+          <header className="changelog-note-head" aria-hidden="true">
+            <div className="changelog-note-heading changelog-head-skeleton">
+              <span />
+              <span />
             </div>
           </header>
         )}

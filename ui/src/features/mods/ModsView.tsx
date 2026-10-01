@@ -146,6 +146,37 @@ function modVaultQuery(
   };
 }
 
+/**
+ * The filter form a query was built from, read back from the query.
+ *
+ * Tabs are unmounted when they lose focus, so a form kept only in this view
+ * was empty again every time the reader came back. The last query the backend
+ * ran (`state.mods.browseQuery`) outlives the view, as the replay tab's
+ * `vaultQuery` does, so the form is seeded from it. `null` when nothing has
+ * been searched this session, which leaves the defaults in place.
+ *
+ * The install filter is not part of the query (it is applied to the page in
+ * the client), so it starts at "all" again.
+ */
+function modFilterFromQuery(query: ModVaultQuery, preset: ModPreset): ModFilterState | null {
+  if (sameVaultSearch(query, EMPTY_MOD_QUERY) && query.page === EMPTY_MOD_QUERY.page) return null;
+  return {
+    search: query.search,
+    searchScope: query.exactName ? "exact" : query.searchDescriptions ? "description" : "name",
+    creator: query.author,
+    sort: query.sortBy,
+    // The `ui` preset is sent as a type filter; it is the preset's, not the form's.
+    modType: preset === "ui" || (query.modType !== "ui" && query.modType !== "sim") ? "all" : query.modType,
+    ranked: query.ranked === null ? "all" : query.ranked ? "ranked" : "unranked",
+    installFilter: "all",
+    dateField: query.dateFieldUpdated ? "updated" : "uploaded",
+    dateAfter: query.after,
+    dateBefore: query.before,
+    minimumRating: query.minRatingTenths === null ? null : query.minRatingTenths / 10,
+    maximumRating: query.maxRatingTenths === null ? null : query.maxRatingTenths / 10,
+  };
+}
+
 function VaultView({ busy }: { busy: boolean }) {
   // The Upload button opens this first. Pressing it used to put an OS
   // file browser on screen immediately, which for anyone streaming is
@@ -172,25 +203,28 @@ function VaultView({ busy }: { busy: boolean }) {
   // The sort survives leaving the tab. See the twin in MapsView for why.
   const initialSort: ModSort = storedModSort(browsing.modVaultSort) ?? presetSort(preset);
   const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
-  const [search, setSearch] = useState("");
-  const [searchScope, setSearchScope] = useState<ModSearchScope>("name");
-  const [sort, setSort] = useState<ModSort>(initialSort);
-  const [modType, setModType] = useState<ModTypeFilter>("all");
-  const [ranked, setRanked] = useState<RankedFilter>("all");
+  // What was last searched, read once as the tab mounts: the form starts from
+  // it, so coming back from another tab finds the search where it was left.
+  const [restored] = useState(() => modFilterFromQuery(browseQuery, preset));
+  const [search, setSearch] = useState(restored?.search ?? "");
+  const [searchScope, setSearchScope] = useState<ModSearchScope>(restored?.searchScope ?? "name");
+  const [sort, setSort] = useState<ModSort>(restored?.sort ?? initialSort);
+  const [modType, setModType] = useState<ModTypeFilter>(restored?.modType ?? "all");
+  const [ranked, setRanked] = useState<RankedFilter>(restored?.ranked ?? "all");
   const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
-  const [creator, setCreator] = useState("");
-  const [dateField, setDateField] = useState<DateField>("updated");
-  const [dateAfter, setDateAfter] = useState("");
-  const [dateBefore, setDateBefore] = useState("");
-  const [minimumRating, setMinimumRating] = useState<number | null>(null);
-  const [maximumRating, setMaximumRating] = useState<number | null>(null);
+  const [creator, setCreator] = useState(restored?.creator ?? "");
+  const [dateField, setDateField] = useState<DateField>(restored?.dateField ?? "updated");
+  const [dateAfter, setDateAfter] = useState(restored?.dateAfter ?? "");
+  const [dateBefore, setDateBefore] = useState(restored?.dateBefore ?? "");
+  const [minimumRating, setMinimumRating] = useState<number | null>(restored?.minimumRating ?? null);
+  const [maximumRating, setMaximumRating] = useState<number | null>(restored?.maximumRating ?? null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(restored ? browseQuery.page : 1);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
   const [renaming, setRenaming] = useState<VaultMod | null>(null);
 
-  const [applied, setApplied] = useState<ModFilterState>({
+  const [applied, setApplied] = useState<ModFilterState>(restored ?? {
     search: "",
     searchScope: "name",
     creator: "",

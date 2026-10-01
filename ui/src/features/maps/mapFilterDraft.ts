@@ -37,8 +37,9 @@ export const EMPTY_MAP_FILTER_DRAFT: MapFilterDraft = {
   height: 0,
 };
 
-export function useMapFilterDraft() {
-  const [draft, setDraft] = useState<MapFilterDraft>(EMPTY_MAP_FILTER_DRAFT);
+/** `initial` is read once, as the view mounts: the vault passes the search it last ran. */
+export function useMapFilterDraft(initial: MapFilterDraft = EMPTY_MAP_FILTER_DRAFT) {
+  const [draft, setDraft] = useState<MapFilterDraft>(initial);
   const setFilter = useCallback((patch: Partial<MapFilterDraft>) => {
     setDraft((current) => ({ ...current, ...patch }));
   }, []);

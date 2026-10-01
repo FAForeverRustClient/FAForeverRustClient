@@ -13,6 +13,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
+import { EmptyState } from "../../design-system/EmptyState";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
 import { FIRST_SECTION, SECTIONS, SECTION_ORDER, type SectionKey } from "./sections";
@@ -57,6 +58,8 @@ export function SettingsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [query, revision],
   );
+
+  const nothingFound = query !== "" && matches.size === 0;
 
   // A search that excludes the section you are looking at would leave you
   // reading a page the sidebar says has no matches, so move to the first one
@@ -140,10 +143,17 @@ export function SettingsView() {
       </nav>
 
       <div className="settings-page-scroll" ref={pageRef}>
+        {/* A search that finds nothing says so, in place of the page. The
+            section that was open used to stay on screen, which read as the
+            search having matched it. */}
+        {nothingFound && (
+          <EmptyState icon="search" title={t("settings.search.empty", { query })} />
+        )}
         {SECTION_ORDER.map((key) => {
           const section = SECTIONS[key];
+          // Hidden, never unmounted: the search reads the rows that rendered.
           return (
-            <div className="settings-page" key={key} hidden={active !== key}>
+            <div className="settings-page" key={key} hidden={nothingFound || active !== key}>
               <header className="settings-page-head">
                 <h3 className="settings-page-title">{t(section.title)}</h3>
                 <p className="muted">{t(section.description)}</p>

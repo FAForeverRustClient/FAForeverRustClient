@@ -150,6 +150,35 @@ function mapVaultQuery(
   };
 }
 
+/**
+ * The filter form a query was built from, read back from the query, so the
+ * vault comes back from another tab with its search where it was left. The
+ * twin of `modFilterFromQuery` in ModsView, which explains why. `null` when
+ * nothing has been searched this session. The install filter is applied in
+ * the client and not carried by the query, so it starts at "all" again.
+ */
+function mapFilterFromQuery(query: MapVaultQuery, preset: VaultPreset): MapFilterState | null {
+  if (sameVaultSearch(query, EMPTY_MAP_QUERY) && query.page === EMPTY_MAP_QUERY.page) return null;
+  return {
+    search: query.search,
+    author: query.author,
+    sort: query.sortBy,
+    ranked: query.ranked === null ? "all" : query.ranked ? "ranked" : "unranked",
+    installFilter: "all",
+    createdAfter: query.after,
+    createdBefore: query.before,
+    // "My maps" always asks for withdrawn versions; that is the preset's, not
+    // the "Withdrawn versions" box's.
+    showHidden: preset !== "mine" && query.includeHidden,
+    minimumRating: query.minRatingTenths === null ? null : query.minRatingTenths / 10,
+    maximumRating: query.maxRatingTenths === null ? null : query.maxRatingTenths / 10,
+    minimumPlayers: query.minPlayers,
+    maximumPlayers: query.maxPlayers,
+    width: query.width,
+    height: query.height,
+  };
+}
+
 function VaultView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
   // `vault` is the catalogue index, still loaded once and still what the
@@ -179,21 +208,24 @@ function VaultView({ busy }: { busy: boolean }) {
   const initialSort: VaultSort =
     storedVaultSort(browsing.mapVaultSort) ?? presetSort(preset);
   const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
-  const { draft, setFilter, resetFilters } = useMapFilterDraft();
+  // What was last searched, read once as the tab mounts: the form starts from
+  // it, so coming back from another tab finds the search where it was left.
+  const [restored] = useState(() => mapFilterFromQuery(browseQuery, preset));
+  const { draft, setFilter, resetFilters } = useMapFilterDraft(restored ?? undefined);
   const { search, author, ranked, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
-  const [sort, setSort] = useState<VaultSort>(initialSort);
+  const [sort, setSort] = useState<VaultSort>(restored?.sort ?? initialSort);
   const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
-  const [createdAfter, setCreatedAfter] = useState("");
-  const [createdBefore, setCreatedBefore] = useState("");
-  const [showHidden, setShowHidden] = useState(false);
+  const [createdAfter, setCreatedAfter] = useState(restored?.createdAfter ?? "");
+  const [createdBefore, setCreatedBefore] = useState(restored?.createdBefore ?? "");
+  const [showHidden, setShowHidden] = useState(restored?.showHidden ?? false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(restored ? browseQuery.page : 1);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<VaultMap | null>(null);
   const [pendingHide, setPendingHide] = useState<VaultMap | null>(null);
   const [previewMap, setPreviewMap] = useState<VaultMap | null>(null);
 
-  const [applied, setApplied] = useState<MapFilterState>({
+  const [applied, setApplied] = useState<MapFilterState>(restored ?? {
     search: "",
     author: "",
     sort: initialSort,

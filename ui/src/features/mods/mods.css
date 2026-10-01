@@ -372,20 +372,23 @@
   min-width: 0;
 }
 
+/* Wide enough that a card holds its name, its author and both buttons
+   without cutting any of them: at 360px the name lost its last words to the
+   Update button on most cards. */
 .installed-mod-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fill, minmax(410px, 1fr));
+  gap: var(--space-3);
 }
 
 .installed-mod-card {
   display: grid;
   min-width: 0;
-  min-height: 86px;
+  min-height: 96px;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-3);
-  padding: 7px;
+  gap: var(--space-4);
+  padding: 10px 12px 10px 10px;
 }
 
 /* The card body opens the mod's details. A button rather than a click handler
@@ -395,9 +398,9 @@
 .installed-mod-open {
   display: grid;
   min-width: 0;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 76px minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
   padding: 0;
   border: 0;
   background: none;
@@ -453,31 +456,8 @@
   white-space: nowrap;
 }
 
-.installed-mod-state {
-  flex: 0 0 auto;
-  padding: 1px 6px;
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-}
-
-.installed-mod-state.is-on {
-  color: var(--color-ok);
-  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
-}
-
-.installed-mod-state.is-off {
-  color: var(--color-subtle);
-  background: transparent;
-}
-
-/* The filter that selects them takes the same colour, so the chip and the rows
-   it produces are recognisably the same thing. Not while it is the active
+/* The filter that selects enabled mods takes their colour, so the filter and
+   the rows it produces are recognisably the same thing. Not while it is the active
    filter: an active chip is the accent on its own solid fill, and green text
    on that fill would be the one unreadable combination on the row. */
 .installed-mod-search-panel .installed-mod-preset-enabled:not(.active) {
@@ -485,8 +465,8 @@
 }
 
 .installed-mod-card .mod-vault-thumb {
-  width: 72px;
-  height: 72px;
+  width: 76px;
+  height: 76px;
   padding: 8px;
   border-radius: var(--radius-md);
 }
@@ -495,7 +475,7 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .installed-mod-copy > span {
@@ -513,7 +493,7 @@
 }
 
 .installed-mod-copy strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .installed-mod-copy small {
@@ -523,30 +503,30 @@
 
 
 
-/* The right-hand column: the state chip above the buttons that change it.
-   The chip used to sit beside the mod name and take its width, which a long
-   name paid for -- the chip is the same six letters on every row and the name
-   is the one thing that differs. A column rather than absolute positioning,
-   so it can never land on top of the buttons. */
+/* The right-hand side: one row of controls, all 30px tall, so the corner
+   reads as a toolbar rather than a pile of shapes. */
 .installed-mod-side {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: center;
 }
 
-/* The star and the state chip share the row above the buttons: the star is a
-   property of the mod, like its state, rather than one more action. */
-.installed-mod-state-row {
+.installed-mod-actions {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.installed-mod-state-row .mod-favorite-button {
+.installed-mod-actions button {
+  min-height: 30px;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* The star: a bare icon, square like the remove button at the other end. */
+.installed-mod-actions .mod-favorite-button {
   display: grid;
-  width: 22px;
-  height: 22px;
+  width: 30px;
   place-items: center;
   padding: 0;
   color: var(--color-muted);
@@ -556,30 +536,18 @@
   cursor: pointer;
 }
 
-.installed-mod-state-row .mod-favorite-button:hover {
+.installed-mod-actions .mod-favorite-button:hover {
   color: var(--color-text);
   background: var(--color-surface-hover);
 }
 
-.installed-mod-state-row .mod-favorite-button.active {
+.installed-mod-actions .mod-favorite-button.active {
   color: var(--color-accent);
 }
 
-.installed-mod-state-row .mod-favorite-button:focus-visible {
+.installed-mod-actions .mod-favorite-button:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: -2px;
-}
-
-.installed-mod-actions {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.installed-mod-actions button {
-  min-height: 30px;
-  padding: 0 9px;
-  font-size: 12px;
 }
 
 
