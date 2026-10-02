@@ -1852,17 +1852,25 @@ img.chat-game-map {
   font-size: 12px;
 }
 
+/* One grid for the whole list, three columns: leaderboard, rating, games.
+   Each row and its value cell join it through `subgrid`. A grid per row sized
+   every row's numbers to that row alone, so "2,087" and "1,948" started at
+   different places and the eye could not run down the ratings. Both number
+   columns align right, so the digits line up by place value. */
 .chat-player-card-ratings {
   display: grid;
-  gap: 3px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 3px;
   margin: 8px 0 0;
 }
 
 .chat-player-card-ratings > div {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  gap: var(--space-2);
 }
 
 .chat-player-card-ratings dt {
@@ -1873,15 +1881,23 @@ img.chat-game-map {
   white-space: nowrap;
 }
 
+/* The rating and the game count are two cells of the parent grid; a row with
+   no games leaves its third cell empty rather than shifting anything. */
 .chat-player-card-ratings dd {
-  display: flex;
+  display: grid;
+  grid-column: 2 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  gap: 6px;
   margin: 0;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
+.chat-player-card-ratings dd b {
+  text-align: right;
+}
+
 .chat-player-card-ratings dd span {
   font-size: 11px;
+  text-align: right;
 }

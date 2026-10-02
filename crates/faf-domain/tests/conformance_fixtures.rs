@@ -6386,6 +6386,7 @@ fn cases() -> Vec<Case> {
                                 },
                             ],
                             column_widths: vec![320, 180, 90, 110, 80],
+                            column_order: Vec::new(),
                             detail_width: 360,
                         },
                         matchmaker_unselected_queues: vec![
@@ -6436,6 +6437,7 @@ fn cases() -> Vec<Case> {
                         mod_vault_sort: "rating".into(),
                         vault_page_size: 48,
                         replay_list_columns: vec![64, 240, 150],
+                        replay_list_order: Vec::new(),
                         live_replay_columns: vec![120, 200],
                         coop_board_columns: Vec::new(),
                         matchmaker_recent_columns: Vec::new(),

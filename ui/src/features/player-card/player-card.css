@@ -28,9 +28,7 @@
 .player-history-toolbar,
 .player-history-paging,
 .player-achievement-body header,
-.player-clan-overview header,
-.player-stats-chart header,
-.player-chart-legend {
+.player-clan-overview header {
   display: flex;
   align-items: center;
 }
@@ -287,91 +285,6 @@
   padding: var(--space-4);
 }
 
-.own-avatar-picker {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0 20px 16px;
-  padding: var(--space-4);
-  background: var(--color-surface-raised);
-}
-
-.own-avatar-picker > header,
-.own-avatar-picker-status {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.own-avatar-picker h3,
-.own-avatar-picker p {
-  margin: 0;
-}
-
-.own-avatar-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-  gap: var(--space-2);
-  max-height: 250px;
-  padding: 2px;
-  overflow: auto;
-  scrollbar-gutter: stable;
-}
-
-.own-avatar-choice {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  justify-content: center;
-  gap: var(--space-2);
-  min-height: 104px;
-  padding: var(--space-2);
-  color: var(--color-muted);
-  background: var(--color-bg);
-  font-size: 11px;
-  text-align: center;
-}
-
-.own-avatar-choice:hover:not(:disabled) {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-}
-
-.own-avatar-choice.is-selected {
-  color: var(--color-text);
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 1px var(--color-accent-glow);
-}
-
-.own-avatar-choice:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-
-.own-avatar-choice img {
-  width: 40px;
-  height: 20px;
-  object-fit: contain;
-}
-
-.own-avatar-none {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-content: center;
-  font-size: 32px;
-}
-
-.own-avatar-picker-status.is-error {
-  color: var(--color-error);
-}
-
-.own-avatar-picker-status.is-success {
-  justify-content: flex-start;
-  color: var(--color-success);
-}
-
 .player-account-details {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -425,14 +338,65 @@
   border-color: var(--color-border-strong);
 }
 
+/* Your own avatars are buttons: the tile reacts like any other control, and
+   the one you wear is marked in the accent rather than a slightly lighter
+   border. */
+.player-avatar.is-selectable {
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.player-avatar.is-selectable:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.player-avatar.is-selectable:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.player-avatar.is-selectable.is-selected {
+  border-color: var(--color-accent);
+  cursor: default;
+}
+
+.player-avatar.is-selectable:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .player-avatar img {
   width: 40px;
   height: 20px;
   object-fit: contain;
 }
 
+/* The name takes the room under the image and sits in the middle of it, so a
+   one-line name and a two-line one share a midline while every image stays
+   on the same top line. Stacked from the top, "No avatar" sat a line higher
+   than its neighbours. */
+.player-avatar-name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.3;
+}
+
 .player-avatar small {
   color: var(--color-subtle);
+}
+
+/* "No avatar": the empty slot an avatar would fill. */
+.player-avatar-empty {
+  width: 40px;
+  height: 20px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
 }
 
 .player-card-section-heading {
@@ -898,87 +862,124 @@
   grid-column: 1 / -1;
 }
 
-.player-stats-chart header {
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
+.player-stats-chart > h3 {
+  margin-bottom: var(--space-3);
 }
 
-.player-chart-legend {
-  gap: 5px;
-  color: var(--color-muted);
-  font-size: 11px;
-}
-
-.player-chart-legend span {
-  width: 9px;
-  height: 9px;
-  margin-left: var(--space-2);
-  border-radius: 2px;
-}
-
-.player-chart-legend .is-first,
-.player-metric-bars .is-first {
-  background: var(--color-ok);
-}
-
-.player-chart-legend .is-second,
-.player-metric-bars .is-second {
-  background: var(--color-error);
-}
-
-/* One label column for the whole chart, as wide as its longest label, and the
-   bars starting straight after it. It was 35% of the card, which on the
-   full-width units chart left a gap wider than most bars between "Air" and
-   its numbers (issue 351). The rows are subgrids so every label shares the
-   one track. */
-.player-metric-list {
+/* A chart is a small table: the name, the bar, the two counts and the share.
+   One label column for the whole chart, as wide as its longest label, and the
+   bar starting straight after it (issue 351); the rows are subgrids so every
+   row shares the tracks. */
+.player-metric-table {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--space-3);
+  grid-template-columns: max-content minmax(60px, 1fr) repeat(3, max-content);
+  column-gap: var(--space-4);
 }
 
+.player-metric-head,
 .player-metric {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
   align-items: center;
+}
+
+.player-metric-head {
+  padding-bottom: 6px;
   color: var(--color-muted);
   font-size: 11px;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.player-metric-bars {
-  display: grid;
-  gap: 3px;
+/* The counts and the share right-aligned, so the digits line up. */
+.player-metric-head > span:nth-child(n + 3),
+.player-metric-count,
+.player-metric-rate {
+  justify-self: end;
+  text-align: right;
 }
 
-.player-metric-bars > div {
-  position: relative;
-  min-width: 2px;
-  height: 14px;
-  border-radius: 2px;
-}
-
-.player-metric-bars i {
-  /* As wide as the number, not as the bar: `MetricBar` measures it to decide
-     whether it fits inside. */
-  display: inline-block;
-  padding-left: var(--space-1);
-  color: var(--color-accent-contrast);
-  font-size: 11px;
-  font-style: normal;
-  line-height: 14px;
+.player-metric-head > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
 }
 
-/* A bar too short to hold its number with its padding (see `MetricBar`)
-   carries it just past its end, in the text colour, since there it stands on
-   the card and not on the bar. */
-.player-metric-bars .is-label-outside i {
-  position: absolute;
-  top: 0;
-  left: 100%;
+/* The key to the bar's two colours, beside the column it counts. */
+.player-metric-head i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.player-metric {
+  min-height: 36px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.player-metric:last-child {
+  border-bottom: 0;
+}
+
+.player-metric-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   color: var(--color-text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.player-metric-count,
+.player-metric-rate {
+  color: var(--color-text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-metric-rate {
+  min-width: 44px;
+  font-weight: 600;
+}
+
+/* One bar per row: its length is the row's total against the largest, and
+   the split inside it is the ratio. Softened, because the bar is the shape and
+   the numbers beside it are the reading; at full strength the two status
+   colours were the loudest thing on the card. */
+.player-metric-bar {
+  display: block;
+  min-width: 0;
+}
+
+.player-metric-bar > span {
+  display: flex;
+  min-width: 3px;
+  height: 8px;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.player-metric-bar > span > span {
+  flex-basis: 0;
+  min-width: 0;
+}
+
+.player-metric-head .is-first,
+.player-metric-bar .is-first {
+  background: color-mix(in srgb, var(--color-ok) 70%, var(--color-surface));
+}
+
+.player-metric-head .is-second,
+.player-metric-bar .is-second {
+  background: color-mix(in srgb, var(--color-error) 60%, var(--color-surface));
+}
+
+/* The games that were not wins, where nothing says whether they were losses
+   or draws: neutral, so the bar does not claim either. */
+.player-metric-bar .is-rest {
+  background: var(--color-border-strong);
 }
 
 .player-achievement-summary .player-recent-achievement {
@@ -1105,11 +1106,68 @@
   line-height: 1.5;
 }
 
+.player-clan-meta {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* Four facts in one row, two by two where the card is narrower, so no cell is
+   left over at the end of the grid either way. */
+.player-clan-facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .player-clan-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.player-clan-fact-note {
+  margin-left: var(--space-2);
+  color: var(--color-muted);
+}
+
+.player-clan-person {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.player-clan-person:hover {
+  text-decoration: underline;
+}
+
+.player-clan-person:active {
+  opacity: 0.8;
+}
+
+.player-clan-person:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .player-clan-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+
+.clan-leave-confirm {
+  color: var(--color-muted);
+  font-size: 12px;
 }
 
 .player-clan-members {
@@ -1129,6 +1187,32 @@
 .player-clan-members button:hover {
   background: var(--color-surface-hover);
   border-color: var(--color-border-strong);
+}
+
+/* The avatar and the name on one line, the avatar at the 40 by 20 every
+   avatar in the client is drawn at. */
+.player-clan-member-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.player-clan-member-avatar {
+  flex: none;
+  width: 40px;
+  height: 20px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* Tucked against the name rather than spaced like the avatar. */
+.player-clan-member-leader {
+  display: grid;
+  place-items: center;
+  margin-left: calc(var(--space-1) - var(--space-2));
+  color: var(--color-warn);
+  line-height: 0;
 }
 
 .player-clan-members strong {
@@ -1225,36 +1309,34 @@
   min-height: 0;
 }
 
-/* The four figures a host reads first, before scanning the table below. */
-/* Six figures rather than four: the ranked and unranked split is what makes
-   this panel comparable with faftracker's, which is what it is read against.
-   `auto-fit` rather than a fixed six, so a narrow card wraps them into two
-   rows instead of shrinking the W/L/D triple until it ellipsises. */
+/* The figures a host reads first, before scanning the table below. The
+   ranked and unranked split stays, in each figure's detail line: it is what
+   makes this panel comparable with faftracker's, which it is read against.
+   Two class selectors so they win over `.player-account-details dd`. */
 .player-maps-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-  padding: 12px;
-  border-radius: var(--radius-lg);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
 }
 
-.player-maps-figure {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+.player-maps-summary > div {
+  padding: var(--space-3);
 }
 
-.player-maps-value {
-  font-size: 18px;
+.player-maps-summary .player-maps-value {
+  margin-top: var(--space-1);
+  font-size: 20px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
-.player-maps-label {
-  font-size: 11px;
+.player-maps-summary .player-maps-detail {
+  overflow: hidden;
   color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .player-maps-note {
@@ -1363,9 +1445,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Stacked rather than two by two: three figures in a two-column grid leave a
+   cell over. */
 @media (max-width: 720px) {
   .player-maps-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1432,6 +1516,14 @@
 .clan-panel h4 {
   margin: 0;
   font-size: 13px;
+}
+
+/* A button set straight into a panel is as wide as its label, at the right,
+   where the confirmation row that replaces it puts its own buttons. The
+   panel is a flex column, which had stretched "Leave the clan" across the
+   whole card. */
+.clan-panel > button {
+  align-self: flex-end;
 }
 
 .clan-banner {

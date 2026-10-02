@@ -86,7 +86,6 @@ export function EventMonth({
                     reminded={reminded.has(entry.id)}
                     selected={entry.id === selected}
                     onOpen={onOpen}
-                    stacked
                   />
                 ))}
                 {hidden > 0 && (

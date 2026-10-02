@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs, type SectionTab } from "../../design-system/SectionTabs";
 import { Select } from "../../design-system/Select";
@@ -128,6 +129,9 @@ export function EventsView() {
         : t("events.view.upcoming");
 
   const patch = (change: Partial<EventsQuery>) => setQuery({ ...events.query, ...change });
+  // Whether the catalogue has answered, either way: only then can an empty
+  // period or an empty agenda be told apart from one still loading.
+  const settled = events.status.type === "ready" || events.status.type === "failed";
   const filtered = Boolean(
     events.query.text || events.query.category || events.query.origin || events.query.onlyReminders,
   );
@@ -234,9 +238,15 @@ export function EventsView() {
       </div>
 
       {events.status.type === "failed" && (
-        <p className="events-notice" role="status">
+        <StatusNotice
+          tone="error"
+          action={{
+            label: t("common.retry"),
+            onClick: () => ipc.send({ kind: "Events", command: { type: "load" } }),
+          }}
+        >
           {t("events.failed", { reason: events.status.payload.reason })}
-        </p>
+        </StatusNotice>
       )}
 
       <div className="events-layout">
@@ -245,7 +255,7 @@ export function EventsView() {
               stays drawn, so all that is missing is the reason it is blank.
               Over, not under, because under six empty rows it is below the
               fold of the default window and the blank grid goes unexplained. */}
-          {entries.length === 0 && events.view !== "upcoming" && (
+          {settled && entries.length === 0 && events.view !== "upcoming" && (
             <div className="events-empty-line" role="status">
               {filtered ? (
                 <p>{t("events.emptyFiltered")}</p>
@@ -292,6 +302,7 @@ export function EventsView() {
               selected={events.selected}
               filtered={filtered}
               onClearFilters={clearFilters}
+              settled={settled}
               onOpen={(entry: CalendarEntry) => select(entry.id)}
             />
           )}

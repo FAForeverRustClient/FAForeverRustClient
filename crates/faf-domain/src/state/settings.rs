@@ -1908,6 +1908,14 @@ pub struct CustomGameBrowserPreferences {
     /// column the user never dragged keeps its designed width rather than
     /// collapsing because a neighbour was resized.
     pub column_widths: Vec<u32>,
+    /// The list view's columns in the order they are drawn, as indexes into
+    /// the designed order (game, tags, map, players, rating, age).
+    ///
+    /// Empty means the designed order, which is the default and what a file
+    /// written before columns could be moved reads back as. Anything that is
+    /// not exactly one of each column is dropped to empty rather than
+    /// repaired: a half-valid order has no obvious meaning.
+    pub column_order: Vec<u32>,
     /// Pixel width of the detail panel beside the game list, or `0` for the
     /// designed default.
     ///
@@ -1934,6 +1942,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             apply_filters: bool,
             rules: Vec<CustomGameFilterRule>,
             column_widths: Vec<u32>,
+            column_order: Vec<u32>,
             detail_width: u32,
         }
 
@@ -1948,6 +1957,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             apply_filters: wire.apply_filters,
             rules: wire.rules,
             column_widths: wire.column_widths,
+            column_order: wire.column_order,
             detail_width: wire.detail_width,
         })
     }
@@ -1980,6 +1990,11 @@ impl CustomGameBrowserPreferences {
         // a `u32` that is not zero is already at least one pixel. Zero keeps
         // meaning "no width stored, use the designed one".
         self.column_widths.truncate(MAX_BROWSER_COLUMNS);
+        let mut sorted = self.column_order.clone();
+        sorted.sort_unstable();
+        if !sorted.iter().copied().eq(0..MAX_BROWSER_COLUMNS as u32) {
+            self.column_order.clear();
+        }
         if self.detail_width != 0 {
             self.detail_width = self.detail_width.clamp(MIN_DETAIL_PX, MAX_DETAIL_PX);
         }
@@ -2217,6 +2232,10 @@ pub struct BrowsingPreferences {
     /// those are differs per person. Stored rather than kept in the browser so
     /// it survives a reinstall, like every other browsing preference here.
     pub replay_list_columns: Vec<u32>,
+    /// The replay list's columns in the order they are drawn, as indexes into
+    /// the designed order. Empty is the designed order; anything that is not
+    /// exactly one of each column is dropped to empty.
+    pub replay_list_order: Vec<u32>,
     /// The same for the live-replay table, which is a different table with
     /// different columns and therefore a different set of widths. Sharing one
     /// list between them would have a drag in one tab move the other.
@@ -2280,6 +2299,7 @@ impl Default for BrowsingPreferences {
             mod_vault_sort: String::new(),
             vault_page_size: 0,
             replay_list_columns: Vec::new(),
+            replay_list_order: Vec::new(),
             live_replay_columns: Vec::new(),
             coop_board_columns: Vec::new(),
             matchmaker_recent_columns: Vec::new(),
@@ -2324,6 +2344,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             #[serde(default)]
             replay_list_columns: Vec<u32>,
             #[serde(default)]
+            replay_list_order: Vec<u32>,
+            #[serde(default)]
             live_replay_columns: Vec<u32>,
             #[serde(default)]
             coop_board_columns: Vec<u32>,
@@ -2356,6 +2378,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     mod_vault_sort: defaults.mod_vault_sort,
                     vault_page_size: defaults.vault_page_size,
                     replay_list_columns: defaults.replay_list_columns,
+                    replay_list_order: defaults.replay_list_order,
                     live_replay_columns: defaults.live_replay_columns,
                     coop_board_columns: defaults.coop_board_columns,
                     matchmaker_recent_columns: defaults.matchmaker_recent_columns,
@@ -2387,6 +2410,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             mod_vault_sort: wire.mod_vault_sort,
             vault_page_size: wire.vault_page_size,
             replay_list_columns: wire.replay_list_columns,
+            replay_list_order: wire.replay_list_order,
             live_replay_columns: wire.live_replay_columns,
             coop_board_columns: wire.coop_board_columns,
             matchmaker_recent_columns: wire.matchmaker_recent_columns,
@@ -2505,6 +2529,7 @@ impl BrowsingPreferences {
         };
         self.replay_vault_player = truncate_trimmed(self.replay_vault_player, 64);
         self.replay_list_columns = normalize_column_widths(self.replay_list_columns);
+        self.replay_list_order = normalize_column_order(self.replay_list_order);
         self.live_replay_columns = normalize_column_widths(self.live_replay_columns);
         self.coop_board_columns = normalize_column_widths(self.coop_board_columns);
         self.matchmaker_recent_columns = normalize_column_widths(self.matchmaker_recent_columns);
@@ -2521,6 +2546,19 @@ impl BrowsingPreferences {
 fn normalize_column_widths(mut widths: Vec<u32>) -> Vec<u32> {
     widths.truncate(MAX_TABLE_COLUMNS);
     widths
+}
+
+/// A table's column order as a settings file may hold it: exactly one of each
+/// column from zero up, or nothing. A half-valid order has no obvious meaning,
+/// so it is dropped to the designed one rather than repaired.
+fn normalize_column_order(order: Vec<u32>) -> Vec<u32> {
+    let mut sorted = order.clone();
+    sorted.sort_unstable();
+    if order.len() <= MAX_TABLE_COLUMNS && sorted.iter().copied().eq(0..order.len() as u32) {
+        order
+    } else {
+        Vec::new()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, Type)]
@@ -3495,6 +3533,8 @@ mod tests {
                     // Out of bounds in both directions, plus a seventh column
                     // the list does not have.
                     column_widths: vec![10, 5_000, 200, 200, 200, 200, 200],
+                    // A column twice and one missing: not an order.
+                    column_order: vec![0, 0, 2, 3, 4, 5],
                     detail_width: 40,
                 },
                 matchmaker_unselected_queues: vec![
@@ -3551,6 +3591,7 @@ mod tests {
                 // Out of bounds, and a zero, which is how a column says it
                 // keeps its designed width.
                 replay_list_columns: vec![10, 200, 0, 9_999],
+                replay_list_order: Vec::new(),
                 live_replay_columns: vec![1; 40],
                 coop_board_columns: Vec::new(),
                 matchmaker_recent_columns: Vec::new(),
@@ -3633,6 +3674,10 @@ mod tests {
             browser.column_widths,
             [10, 5_000, 200, 200, 200, 200],
             "six columns at whatever width they were dragged to, narrow or wide"
+        );
+        assert!(
+            browser.column_order.is_empty(),
+            "an order that is not one of each column is dropped"
         );
         assert_eq!(browser.detail_width, MIN_DETAIL_PX);
         assert_eq!(

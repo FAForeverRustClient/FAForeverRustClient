@@ -56,6 +56,10 @@ pub enum NotificationKind {
     /// Opt-in per queue, and off until then: see
     /// `NotificationPreferences::queue_opponent_queues`.
     QueueOpponent,
+    /// A map or mod publish finished after its dialog was hidden. Closing the
+    /// dialog does not stop a publish, so this is the only place its outcome
+    /// can still be read.
+    UploadFinished,
     Error,
 }
 
@@ -276,6 +280,7 @@ mod tests {
             NotificationKind::GameCacheAlert,
             NotificationKind::GameInstall,
             NotificationKind::ClientUpdate,
+            NotificationKind::UploadFinished,
             NotificationKind::PrivateMessage,
             NotificationKind::Mention,
             NotificationKind::FriendOnline,

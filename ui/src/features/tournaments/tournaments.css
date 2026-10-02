@@ -59,6 +59,22 @@
   gap: var(--space-3);
   overflow-y: auto;
   min-height: 0;
+  /* The scrollbar's room is kept from the start, so the rows do not narrow
+     when the list grows past the pane. */
+  scrollbar-gutter: stable;
+}
+
+/* The refresh button's two labels in one cell, sized to the longer. */
+.tournaments-refresh-label {
+  display: inline-grid;
+}
+
+.tournaments-refresh-label > span {
+  grid-area: 1 / 1;
+}
+
+.tournaments-refresh-label > .is-hidden {
+  visibility: hidden;
 }
 
 /* One group of the list: upcoming, ongoing, your own drafts, and the archive.

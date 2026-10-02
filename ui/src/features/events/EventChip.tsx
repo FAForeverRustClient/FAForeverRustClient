@@ -1,10 +1,10 @@
 // One entry, as it appears inside a day: a dot saying what kind of thing it
-// is, a time, and a title.
+// is, a start time, and the title under them.
 //
-// The same chip in the month grid, the week columns and the upcoming list, so a
-// tournament looks like a tournament wherever it is seen. The grid and the
-// columns are narrow, so there it stacks the title under the time; the list is
-// wide, so there the two share a line and the times form a column.
+// The same chip in the month grid and the week columns, so a tournament looks
+// like a tournament wherever it is seen. Both are narrow, so the title goes
+// under the time rather than beside it. The upcoming list has the width for a
+// row of its own; see `EventUpcoming`.
 
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -18,34 +18,17 @@ interface Props {
   /** Whether this is the entry open in the detail panel. */
   selected: boolean;
   onOpen: (entry: CalendarEntry) => void;
-  /** Title under the time, and the start alone: for the narrow grid squares. */
-  stacked?: boolean;
-  /** Dimmed rather than hidden: a day that has passed still happened. */
-  past?: boolean;
 }
 
-export function EventChip({
-  entry,
-  reminded,
-  selected,
-  onOpen,
-  stacked = false,
-  past = false,
-}: Props) {
+export function EventChip({ entry, reminded, selected, onOpen }: Props) {
   const { t } = useTranslation();
   // A month square is about seventy pixels wide at the default window size,
-  // which holds "18:00" and not "18:00 - 22:59". The panel has the end. The
-  // list has a time column, and a blank in it reads as missing data, so there
-  // a whole-day entry says so.
-  const time = stacked
-    ? entryStart(entry)
-    : entryTime(entry) || t("events.detail.allDay");
+  // which holds "18:00" and not "18:00 - 22:59". The panel has the end.
+  const time = entryStart(entry);
   const classes = [
     "event-chip",
     `is-${entry.category}`,
-    stacked ? "is-stacked" : "",
     time ? "" : "is-untimed",
-    past ? "is-past" : "",
     selected ? "is-selected" : "",
   ]
     .filter(Boolean)

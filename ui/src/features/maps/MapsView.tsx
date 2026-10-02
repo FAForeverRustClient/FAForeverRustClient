@@ -22,9 +22,9 @@ import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMap, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
-import { loadStatusNote } from "../../shared/loadStatusNote";
+import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
 import { isWithinNumberRange } from "../../shared/filterRanges";
-import { kilometresLabel } from "../../shared/mapPresentation";
+import { installNote, kilometresLabel } from "../../shared/mapPresentation";
 import { EMPTY_MAP_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
 import { useAppStore } from "../../store/store";
 import { MapPreview } from "../../shared/components/MapPreview";
@@ -242,7 +242,6 @@ function VaultView({ busy }: { busy: boolean }) {
     height: 0,
   });
 
-  const note = loadStatusNote(vaultStatus, t("maps.view.loadingVault"), t("maps.view.vaultFailed"));
   const installedFolders = useMemo(
     () => new Set(installed.map((map) => map.folderName.toLocaleLowerCase())),
     [installed],
@@ -534,7 +533,24 @@ function VaultView({ busy }: { busy: boolean }) {
         <SearchPanelSubmit />
       </SearchPanel>
 
-      {note && <p className="vault-note muted">{note}</p>}
+      <LoadStatusNotice
+        status={vaultStatus}
+        failed={t("maps.view.vaultFailed")}
+        onRetry={loadVault}
+      />
+      {/* The search this page shows. Silent before: a new filter kept the
+          previous cards on screen as though they matched it, and a failed
+          search left those cards, or a blank area, with nothing said. */}
+      {!localFavorites && (
+        <LoadStatusNotice
+          status={browseStatus}
+          failed={t("maps.view.searchFailed")}
+          onRetry={() => ipc.send({ kind: "Maps", command: { type: "searchVault", payload: { query } } })}
+        />
+      )}
+      {/* An install or uninstall that failed only turned its button back to
+          "Install"; the reason was in the store and nowhere on screen. */}
+      <FailureNotice status={installStatus} message={installNote(installStatus)} />
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("maps.view.detectionUnavailable")}</p>}
       {/* The refusal an author meets when they try to undo a hide: FAF allows
           only a map administrator to do that, so the reason has to be read. */}
@@ -556,7 +572,9 @@ function VaultView({ busy }: { busy: boolean }) {
             icon={vault.length === 0 ? "maps" : "search"}
             title={t(vault.length === 0 ? "maps.view.emptyVault" : "maps.view.noMatch")}
             hint={t(vault.length === 0 ? "maps.view.emptyVaultHint" : "maps.view.noMatchHint")}
-          />
+          >
+            {vault.length > 0 && <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>}
+          </EmptyState>
         )
       ) : pageMaps.length > 0 && (
         <>
@@ -564,7 +582,10 @@ function VaultView({ busy }: { busy: boolean }) {
             <span>{t("maps.view.resultCount", { count: pageMaps.length })}</span>
             <span>{t("maps.view.pageOf", { page: currentPage, total: totalPages })}</span>
           </div>
-          <div className="vault-layout">
+          <div
+            className={!localFavorites && browseStatus.type === "loading" ? "vault-layout is-stale-results" : "vault-layout"}
+            aria-busy={!localFavorites && browseStatus.type === "loading"}
+          >
             <section className="vault-browser">
               <div className="map-vault-grid">
                 {pageMaps.map((map) => {
@@ -670,7 +691,6 @@ function InstalledView({ busy }: { busy: boolean }) {
   const fittedPageSize = useGridPageSize(installedGrid, INSTALLED_MAP_CARD_PX, DEFAULT_VAULT_PAGE_SIZE);
   const pageSize = browsing.vaultPageSize || fittedPageSize;
 
-  const note = loadStatusNote(installedStatus, t("maps.view.scanning"), t("maps.view.scanFailed"));
   const vaultByFolder = useMemo(() => new Map(vault.map((map) => [map.folderName.toLocaleLowerCase(), map])), [vault]);
 
   useEffect(() => {
@@ -896,14 +916,24 @@ function InstalledView({ busy }: { busy: boolean }) {
         </SearchField>
       </SearchPanel>
 
-      {note && <p className="vault-note muted">{note}</p>}
+      <LoadStatusNotice
+        status={installedStatus}
+        failed={t("maps.view.scanFailed")}
+        onRetry={loadInstalled}
+      />
+      <FailureNotice status={installStatus} message={installNote(installStatus)} />
       {installedStatus.type === "ready" && filtered.length === 0 ? (
         <EmptyState
           bordered
           icon={installed.length === 0 ? "maps" : "search"}
           title={t(installed.length === 0 ? "maps.view.noneInstalled" : "maps.view.noInstalledMatch")}
           hint={t(installed.length === 0 ? "maps.view.noneInstalledHint" : "maps.view.noInstalledMatchHint")}
-        />
+        >
+          {/* The way out of "nothing matches", where the reason is a filter. */}
+          {installed.length > 0 && (
+            <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>
+          )}
+        </EmptyState>
       ) : filtered.length > 0 && (
         <section className="installed-map-library">
           <div className="vault-results-head">

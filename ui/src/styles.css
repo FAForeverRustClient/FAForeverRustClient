@@ -226,8 +226,17 @@ html[data-reduced-motion="true"] *::after {
   color: var(--color-text);
 }
 
-.btn-ghost:hover {
+.btn-ghost:hover:not(:disabled) {
   background: var(--color-surface-hover);
+}
+
+/* The default variant, so most buttons in the client: without this a
+   disabled one looked and hovered exactly like an enabled one, and a click
+   that did nothing read as a click that failed. */
+.btn-ghost:disabled {
+  color: var(--color-muted);
+  opacity: 0.55;
+  cursor: default;
 }
 
 .icon-button {

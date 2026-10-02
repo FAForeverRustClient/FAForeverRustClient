@@ -358,7 +358,7 @@ button.vault-input {
 .replay-meta-grid {
   display: grid;
   grid-template-columns: 66px minmax(0, 1fr);
-  gap: 3px 10px;
+  gap: 6px 10px;
   font-size: 11px;
   width: 100%;
 }
@@ -711,11 +711,14 @@ button.vault-input {
   cursor: default;
 }
 
-/* Positioning context for the card's generate button. */
+/* Positioning context for the card's generate button. Nudged 6px left of
+   centre, towards the facts' icon column, so it lines up with the grid under
+   it rather than with the column's empty middle. */
 .replay-card-thumb-wrap {
   position: relative;
   display: block;
   flex: none;
+  left: -6px;
 }
 
 .replay-detail-headtext {

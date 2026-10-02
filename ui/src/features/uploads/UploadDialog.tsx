@@ -367,7 +367,14 @@ export function UploadDialog() {
       )}
 
       <div className="upload-actions">
-        <Button onClick={close}>{t(done ? "uploads.close" : "uploads.cancel")}</Button>
+        {/* "Hide" while publishing, because that is all it can do: the
+            archive is already with the server, which finishes it. It said
+            "Cancel", and authors believed their upload had been stopped. The
+            status bar keeps the progress, and a notification brings the
+            result. */}
+        <Button onClick={close} title={busy ? t("uploads.hideHint") : undefined}>
+          {t(done ? "uploads.close" : busy ? "uploads.hide" : "uploads.cancel")}
+        </Button>
         {!done && (
           <Button
             variant="primary"

@@ -37,6 +37,8 @@ describe("browsing preferences", () => {
         hideFoes: true,
         applyFilters: true,
         columnWidths: [10, 5000, 200, 200, 200, 200, 200],
+        // A column twice and one missing: not an order.
+        columnOrder: [0, 0, 2, 3, 4, 5],
         detailWidth: 40,
         rules: [
           { field: "title", constraint: "contains", value: "  no rush  " },
@@ -90,6 +92,7 @@ describe("browsing preferences", () => {
       // that are not widths become zeros, which is how a column says it keeps
       // its designed width; dropping them would shift 9999 onto column three.
       replayListColumns: [10, 200, 0, -5, 9999],
+      replayListOrder: [],
       liveReplayColumns: [],
       coopBoardColumns: [],
       matchmakerRecentColumns: [],
@@ -164,6 +167,7 @@ describe("browsing preferences", () => {
       200,
       200,
     ]);
+    expect(normalized.customGamesBrowser.columnOrder).toEqual([]);
     expect(normalized.customGamesBrowser.detailWidth).toBe(MIN_DETAIL_PX);
     expect(normalized.leaderboardRatingColumns).toEqual(["mean", "deviation"]);
     expect(normalized.replayVaultPlayer).toBe("VindexNoob");

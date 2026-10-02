@@ -483,6 +483,12 @@ export type BrowsingPreferences = {
 	 */
 	replayListColumns: number[],
 	/**
+	 *  The replay list's columns in the order they are drawn, as indexes into
+	 *  the designed order. Empty is the designed order; anything that is not
+	 *  exactly one of each column is dropped to empty.
+	 */
+	replayListOrder: number[],
+	/**
 	 *  The same for the live-replay table, which is a different table with
 	 *  different columns and therefore a different set of widths. Sharing one
 	 *  list between them would have a drag in one tab move the other.
@@ -1335,6 +1341,12 @@ export type ClanMember = {
 	login: string,
 	joinedAt: string,
 	accountCreatedAt: string,
+	/**
+	 *  The avatar the member is wearing, empty when they wear none. Read from
+	 *  the API with the roster, so it is there for members who are offline
+	 *  too, which the chat directory's avatars are not.
+	 */
+	avatarUrl?: string,
 };
 
 export type ClanState = {
@@ -1738,6 +1750,16 @@ export type CustomGameBrowserPreferences = {
 	 *  collapsing because a neighbour was resized.
 	 */
 	columnWidths: number[],
+	/**
+	 *  The list view's columns in the order they are drawn, as indexes into
+	 *  the designed order (game, tags, map, players, rating, age).
+	 *
+	 *  Empty means the designed order, which is the default and what a file
+	 *  written before columns could be moved reads back as. Anything that is
+	 *  not exactly one of each column is dropped to empty rather than
+	 *  repaired: a half-valid order has no obvious meaning.
+	 */
+	columnOrder: number[],
 	/**
 	 *  Pixel width of the detail panel beside the game list, or `0` for the
 	 *  designed default.
@@ -4829,6 +4851,13 @@ export type ModsCommand =
 /**  Fetch the whole catalogue once. */
 { type: "loadVault" } |
 /**
+ *  Fetch the catalogue again even though it is loaded, for "Check for
+ *  updates". `LoadVault` refuses a second crawl, so the check used to
+ *  compare the installed mods against the catalogue from the start of the
+ *  session and report "up to date" without having looked.
+ */
+{ type: "reloadVault" } |
+/**
  *  Fetch one page of a vault search. Submit-driven, as in both reference
  *  clients.
  */
@@ -5099,7 +5128,13 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  *  Opt-in per queue, and off until then: see
  *  `NotificationPreferences::queue_opponent_queues`.
  */
-"queueOpponent" | "error";
+"queueOpponent" |
+/**
+ *  A map or mod publish finished after its dialog was hidden. Closing the
+ *  dialog does not stop a publish, so this is the only place its outcome
+ *  can still be read.
+ */
+"uploadFinished" | "error";
 
 export type NotificationPreferences = {
 	enabled: boolean,

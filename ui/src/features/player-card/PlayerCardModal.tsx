@@ -14,7 +14,6 @@ import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { PlayerAchievements } from "./PlayerAchievements";
 import { PlayerClanView } from "./PlayerClanView";
 import { PlayerOverview } from "./PlayerOverview";
-import { OwnAvatarPicker } from "./OwnAvatarPicker";
 import { PlayerResults } from "./PlayerResults";
 import { PlayerMapStatistics } from "./PlayerMapStatistics";
 import { PlayerStatistics } from "./PlayerStatistics";
@@ -390,7 +389,6 @@ export function PlayerCardModal() {
   const playerNotes = useAppStore((store) => store.state.settings.social.playerNotes);
   const [tab, setTab] = useState<PlayerCardTab>("overview");
   const [ratingId, setRatingId] = useState<number | null>(null);
-  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const profile = state.profile;
   const knownPlayer = profile
     ? social.players.find((candidate) => candidate.id === profile.playerId)
@@ -403,7 +401,6 @@ export function PlayerCardModal() {
     // Overview unless the click that opened the card asked for a tab (#361).
     setTab(takePlayerCardTab() ?? "overview");
     setRatingId(profile.ratings[0]?.leaderboardId ?? null);
-    setAvatarPickerOpen(false);
   }, [profile]);
 
   if (!state.open) return null;
@@ -414,8 +411,12 @@ export function PlayerCardModal() {
   const playerNote = profile ? noteForPlayer(playerNotes, profile.playerId) : "";
   const setRelation = (relation: "friend" | "foe", member: boolean) => profile && ipc.send({ kind: "Social", command: { type: "setRelation", payload: { playerId: profile.playerId, login: profile.login, relation, member } } });
   const openHistory = (next: PlayerRatingSummary) => { setRatingId(next.leaderboardId); setTab("ratings"); };
+  // Join, select, then switch tab: the order `usePlayerMenu` uses. Joining
+  // alone only made the conversation active when no channel was, so the
+  // player landed on whatever chat had been open before.
   const messagePlayer = async (login: string) => {
     await ipc.settle({ kind: "Chat", command: { type: "joinChannel", payload: { channel: login } } });
+    await ipc.settle({ kind: "Chat", command: { type: "selectChannel", payload: { channel: login } } });
     await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "chat" } } });
     closePlayerCard();
   };
@@ -452,19 +453,11 @@ export function PlayerCardModal() {
         {profile && <div className="player-card-actions">
           <Button onClick={() => void navigator.clipboard.writeText(profile.login)}>{t("playerCard.action.copyName")}</Button>
           <Button onClick={browseReplays}>{t("playerCard.action.replays")}</Button>
-          {isMe && <Button onClick={() => setAvatarPickerOpen((open) => !open)}>{t("playerCard.action.chooseAvatar")}</Button>}
           {!isMe && <Button onClick={() => void messagePlayer(profile.login)}>{t("playerCard.action.message")}</Button>}
           {!isMe && <Button onClick={() => setRelation("friend", !isFriend)}>{t(isFriend ? "playerCard.action.removeFriend" : "playerCard.action.addFriend")}</Button>}
           {!isMe && <Button onClick={() => setRelation("foe", !isFoe)}>{t(isFoe ? "playerCard.action.removeFoe" : "playerCard.action.markFoe")}</Button>}
         </div>}
       </div>
-
-      {profile && isMe && avatarPickerOpen && (
-        <OwnAvatarPicker
-          currentUrl={profile.avatars.find((avatar) => avatar.selected)?.url ?? ""}
-          onClose={() => setAvatarPickerOpen(false)}
-        />
-      )}
 
       {state.profileStatus === "loading" && <div className="player-card-loading muted">{t("playerCard.profileLoading")}</div>}
       {state.profileStatus === "failed" && <div className="player-card-error"><p>{state.profileError}</p><Button onClick={() => void openPlayerCard(null, state.requestedLogin)}>{t("playerCard.retry")}</Button></div>}
@@ -481,7 +474,7 @@ export function PlayerCardModal() {
             onChange={setTab}
           />
           <div className="player-card-content">
-            {tab === "overview" && <PlayerOverview profile={profile} note={playerNote} onOpenHistory={openHistory} />}
+            {tab === "overview" && <PlayerOverview profile={profile} country={country} note={playerNote} onOpenHistory={openHistory} avatarsSelectable={Boolean(isMe)} />}
             {tab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
             {tab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}
             {tab === "statistics" && <PlayerStatistics profile={profile} />}

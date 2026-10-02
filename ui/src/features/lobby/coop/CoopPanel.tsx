@@ -178,7 +178,7 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                widths. It used to be five bare spans here, so the co-op tab
                laid the identical five columns out differently from the tab
                next to it and none of them could be dragged. */
-            <div className="game-browser-list">
+            <div className="game-browser-list" style={columns.style}>
               {columns.header}
               {games.map((game) => (
                 <GameBrowserRow
@@ -188,7 +188,6 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                   vaultMods={vaultMods}
                   friendSet={friendSet}
                   foeSet={foeSet}
-                  columnStyle={columns.style}
                   selected={selectedGameId === game.id}
                   onSelect={() => setSelectedGameId(game.id)}
                   onJoin={() => onJoin(game)}

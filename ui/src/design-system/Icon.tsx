@@ -63,7 +63,9 @@ export type IconName =
   // The network: connectivity to other players.
   | "globe"
   // Something FAF itself runs: the official entries on the events calendar.
-  | "shield";
+  | "shield"
+  // Something failed: the icon errors carry, so the colour is not the only sign.
+  | "alert";
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -74,7 +76,11 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
   const paths: Record<IconName, ReactNode> = {
     home: <><path d="M3 10.5 12 3l9 7.5" /><path d="M5.5 9.5V21h13V9.5M9 21v-6h6v6" /></>,
     news: <><path d="M5 3h11a3 3 0 0 1 3 3v15H6a3 3 0 0 1-3-3V5" /><path d="M7 7h8M7 11h8M7 15h5" /></>,
-    chat: <><path d="M20 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3Z" /><path d="M7 8h10M7 12h7" /></>,
+    // The upper text line at 8.8 rather than 8: at the 15px the chat tabs draw
+    // this at, 8 fell on the boundary between two pixel rows and was smeared
+    // into a grey two-pixel band on a 1080p screen, while 8.8 and 12 both land
+    // on a row's centre and draw as clean one-pixel lines.
+    chat: <><path d="M20 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3Z" /><path d="M7 8.8h10M7 12h7" /></>,
     play: <><path d="m9 8 7 4-7 4Z" /><circle cx="12" cy="12" r="9" /></>,
     replays: <><path d="M4 12a8 8 0 1 0 2.34-5.66L4 8.68" /><path d="M4 4v4.68h4.68M10 8.5l5 3.5-5 3.5Z" /></>,
     maps: <><path d="m3 6 5-3 8 3 5-3v15l-5 3-8-3-5 3Z" /><path d="M8 3v15M16 6v15" /></>,
@@ -127,6 +133,7 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     drive: <><rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 12h.01M10 12h.01" /><path d="M14 12h4" /></>,
     globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18Z" /></>,
     shield: <><path d="M12 3 5 6v5.5c0 4.2 2.9 7.8 7 9.5 4.1-1.7 7-5.3 7-9.5V6l-7-3Z" /><path d="m9 12 2.2 2.2L15.5 10" /></>,
+    alert: <><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5" /><circle cx="12" cy="16.5" r=".8" fill="currentColor" stroke="none" /></>,
     trash: (
       <>
         <polyline points="3 6 5 6 21 6" />

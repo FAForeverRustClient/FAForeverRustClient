@@ -62,8 +62,11 @@
   min-height: 0;
 }
 
+/* Across both columns: the space above the records panel was empty, and the
+   toolbar confined to the games column wrapped its sort and view controls
+   onto a second row. */
 .coop-layout > .play-toolbar {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 1;
   margin-bottom: 0;
 }

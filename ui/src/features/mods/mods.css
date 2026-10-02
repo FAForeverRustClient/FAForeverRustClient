@@ -38,19 +38,17 @@
 }
 
 /* A mod that is switched on right now, in the vault as well as in the
-   installed list: the same green edge and tint both places, so the state looks
-   the same wherever a mod is drawn. The selected card still wins, because the
-   selection is what the next click acts on. */
+   installed list: the same green border and tint both places, so the state
+   looks the same wherever a mod is drawn. The selected card still wins,
+   because the selection is what the next click acts on. */
 .mod-vault-card.is-in-use {
   background: color-mix(in srgb, var(--color-ok) 7%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-ok) 22%, transparent);
-  border-left: 3px solid var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 55%, transparent);
 }
 
 .mod-vault-card.is-in-use:hover {
   background: color-mix(in srgb, var(--color-ok) 13%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-ok) 40%, transparent);
-  border-left-color: var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 75%, transparent);
 }
 
 .mod-vault-card.active {
@@ -424,23 +422,17 @@
 /* Enabled versus disabled, at a glance.
    The two used to differ only by the verb on the button at the far right of
    the row, so finding the four mods that are on out of forty-four meant
-   reading every row. An enabled card now carries the green edge and a tint of
+   reading every row. An enabled card now carries a green border and a tint of
    it; a disabled one stays the plain surface, because the ordinary state
    should not be the loud one. */
-.installed-mod-card {
-  border-left: 3px solid transparent;
-}
-
 .installed-mod-card.is-enabled {
   background: color-mix(in srgb, var(--color-ok) 7%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-ok) 22%, transparent);
-  border-left-color: var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 55%, transparent);
 }
 
 .installed-mod-card.is-enabled:hover {
   background: color-mix(in srgb, var(--color-ok) 13%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-ok) 40%, transparent);
-  border-left-color: var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 75%, transparent);
 }
 
 .installed-mod-name {

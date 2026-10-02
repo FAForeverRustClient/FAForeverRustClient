@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Icon, type IconName } from "../../design-system/Icon";
 import type { ReplayTeam, VaultReplay } from "../../ipc/bindings";
-import { formatAgeOrDate, formatShortDateTime } from "../../shared/format/dates";
+import { formatAgeOrDate, formatDate, formatShortDateTime } from "../../shared/format/dates";
 import { formatDuration } from "../../shared/format/durations";
 import { effectiveReplayMapName, extractGeneratedMapSeed } from "../../shared/mapPresentation";
 import { useNamedMapGeneration } from "../../shared/hooks/useNamedMapGeneration";
@@ -132,9 +132,20 @@ export function ReplayThumbGenerate({ mapName }: { mapName: string }) {
   );
 }
 
-export function ReplayMetaFact({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+export function ReplayMetaFact({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: IconName;
+  label: string;
+  value: string;
+  /** More than the cell has room for, shown in the tooltip after the label. */
+  detail?: string;
+}) {
   return (
-    <span className="replay-meta-fact" title={label}>
+    <span className="replay-meta-fact" title={detail ? `${label}: ${detail}` : label}>
       <Icon name={icon} size={13} />
       <span>{value || "N/A"}</span>
     </span>
@@ -145,18 +156,19 @@ function ReplayMetaGrid({ replay }: { replay: ReplayCardData }) {
   const { t } = useTranslation();
   return (
     <div className="replay-meta-grid muted">
-      {/* Date *and* time of day. The date alone answers "which day was this"
-          and not "which of that evening's games was this", which is the
-          question someone scanning their own recent replays is actually
-          asking: the list view has printed the clock time in its Played column
-          all along, and the card was the odd one out. The player count
-          leads the grid and the date sits beside it, in the right-hand
-          column. */}
+      {/* The date on the card, the date and time of day on hover. The cell
+          is too narrow for both, and with both in it the time was always cut
+          to an ellipsis after the date, which read as the date being cut
+          short. The time still answers "which of that evening's games was
+          this" for anyone who points at it, and the list view prints it in
+          its Played column. The player count leads the grid and the date
+          sits beside it, in the right-hand column. */}
       <ReplayMetaFact icon="users" label={t("replays.card.players")} value={`${playerCount(replay.teams)}`} />
       <ReplayMetaFact
         icon="calendar"
         label={t("replays.card.played")}
-        value={formatShortDateTime(replay.startTime, "")}
+        value={formatDate(replay.startTime, "")}
+        detail={formatShortDateTime(replay.startTime, "")}
       />
       <ReplayMetaFact icon="mods" label={t("replays.card.featuredMod")} value={replay.modName} />
       <ReplayMetaFact

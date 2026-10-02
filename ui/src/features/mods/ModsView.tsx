@@ -19,11 +19,13 @@ import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMod, ModVaultQuery, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { EMPTY_MOD_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
-import { loadStatusNote } from "../../shared/loadStatusNote";
+import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
 import { useAppStore } from "../../store/store";
 import {
+  installNote,
   ModCard,
   ModDetailPanel,
+  toggleNote,
   UninstallDialog,
 } from "./ModVaultComponents";
 import { InstalledModsView } from "./InstalledModsView";
@@ -254,7 +256,6 @@ function VaultView({ busy }: { busy: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const note = loadStatusNote(vaultStatus, t("mods.view.loadingVault"), t("mods.view.vaultFailed"));
   // A vault card is the mod's latest version and an installed copy may be an
   // older one, so the two are not matched by uid alone: see `modIdentity`.
   const { installedFor } = useMemo(() => modCounterparts(installed, vault), [installed, vault]);
@@ -533,7 +534,22 @@ function VaultView({ busy }: { busy: boolean }) {
         <SearchPanelSubmit />
       </SearchPanel>
 
-      {note && <p className="vault-note muted">{note}</p>}
+      <LoadStatusNotice
+        status={vaultStatus}
+        failed={t("mods.view.vaultFailed")}
+        onRetry={loadVault}
+      />
+      {/* The search this page shows, and what failed: see the same block in
+          the map vault for why each was missing. */}
+      {!localFavorites && (
+        <LoadStatusNotice
+          status={browseStatus}
+          failed={t("mods.view.searchFailed")}
+          onRetry={() => ipc.send({ kind: "Mods", command: { type: "searchVault", payload: { query } } })}
+        />
+      )}
+      <FailureNotice status={installStatus} message={installNote(installStatus)} />
+      <FailureNotice status={toggleStatus} message={toggleNote(toggleStatus)} />
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("mods.view.detectionUnavailable")}</p>}
       {(browseStatus.type === "ready" || localFavorites) && pageMods.length === 0 ? (
         // An empty "my mods" is the ordinary state for most players rather
@@ -552,7 +568,9 @@ function VaultView({ busy }: { busy: boolean }) {
             icon={vault.length === 0 ? "mods" : "search"}
             title={t(vault.length === 0 ? "mods.view.emptyVault" : "mods.view.noMatch")}
             hint={t(vault.length === 0 ? "mods.view.emptyVaultHint" : "mods.view.noMatchHint")}
-          />
+          >
+            {vault.length > 0 && <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>}
+          </EmptyState>
         )
       ) : pageMods.length > 0 ? (
         <>
@@ -560,7 +578,10 @@ function VaultView({ busy }: { busy: boolean }) {
             <span>{t("maps.view.resultCount", { count: pageMods.length })}</span>
             <span>{t("maps.view.pageOf", { page: currentPage, total: totalPages })}</span>
           </div>
-          <div className="vault-layout">
+          <div
+            className={!localFavorites && browseStatus.type === "loading" ? "vault-layout is-stale-results" : "vault-layout"}
+            aria-busy={!localFavorites && browseStatus.type === "loading"}
+          >
             <section className="vault-browser">
               <div className="mod-vault-grid">
                 {pageMods.map((mod) => {

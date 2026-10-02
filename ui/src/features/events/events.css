@@ -234,34 +234,41 @@
 
 /* ── category colour, in one place ─────────────────────────────────── */
 
-/* The dot on a chip and on the panel's category tag. The colour is the
-   category's own token; the tooltip and the panel say it in words. */
+/* The dot on a chip, an agenda row and the panel's category tag. The colour
+   is the category's own token; the tooltip, the row and the panel say it in
+   words. */
 .event-chip,
+.event-agenda-row,
 .event-tag {
   --event-color: var(--color-event-other);
 }
 
 .event-chip.is-tournament,
+.event-agenda-row.is-tournament,
 .event-tag.is-tournament {
   --event-color: var(--color-event-tournament);
 }
 
 .event-chip.is-cgn,
+.event-agenda-row.is-cgn,
 .event-tag.is-cgn {
   --event-color: var(--color-event-cgn);
 }
 
 .event-chip.is-meetup,
+.event-agenda-row.is-meetup,
 .event-tag.is-meetup {
   --event-color: var(--color-event-meetup);
 }
 
 .event-chip.is-patch,
+.event-agenda-row.is-patch,
 .event-tag.is-patch {
   --event-color: var(--color-event-patch);
 }
 
 .event-chip.is-ladderPool,
+.event-agenda-row.is-ladderPool,
 .event-tag.is-ladderPool {
   --event-color: var(--color-event-ladderPool);
 }
@@ -276,17 +283,24 @@
 
 /* ── one entry ─────────────────────────────────────────────────────── */
 
-/* Named areas rather than source order, so an untimed entry still puts every
-   part where the timed ones put it. */
+/* The start time beside the mark, the title under both on up to two lines. A
+   square is about 75 px wide at the default window, which cut a title on one
+   line down to three letters. Two lines, hyphenated where one word is wider
+   than the square, keep most titles readable; the tooltip and the panel have
+   the rest. Named areas rather than source order, so an untimed entry still
+   puts every part where the timed ones put it. */
 .event-chip {
   display: grid;
-  grid-template-areas: "mark time title";
-  grid-template-columns: 11px auto minmax(0, 1fr);
-  align-items: center;
-  column-gap: 6px;
+  grid-template-areas:
+    "mark time"
+    "title title";
+  grid-template-columns: 11px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 4px;
+  row-gap: 1px;
   width: 100%;
   min-width: 0;
-  padding: 4px 6px;
+  padding: 4px 5px;
   color: var(--color-text);
   font: inherit;
   font-size: 12px;
@@ -314,10 +328,6 @@
   border-color: var(--color-accent);
 }
 
-.event-chip.is-past {
-  opacity: 0.55;
-}
-
 .event-chip-mark {
   display: grid;
   grid-area: mark;
@@ -340,38 +350,16 @@
   white-space: nowrap;
 }
 
-.event-chip-title {
-  grid-area: title;
-  overflow: hidden;
-  min-width: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* In a day square: the time beside the mark, the title under both on up to two
-   lines. A square is about 75 px wide at the default window, which cut a title
-   on one line down to three letters. Two lines, hyphenated where one word is
-   wider than the square, keep most titles readable; the tooltip and the panel
-   have the rest. */
-.event-chip.is-stacked {
-  grid-template-areas:
-    "mark time"
-    "title title";
-  grid-template-columns: 11px minmax(0, 1fr);
-  align-items: start;
-  column-gap: 4px;
-  row-gap: 1px;
-  padding: 4px 5px;
-}
-
-.event-chip.is-stacked.is-untimed {
+.event-chip.is-untimed {
   grid-template-areas: "mark title";
 }
 
-.event-chip.is-stacked .event-chip-title {
+.event-chip-title {
   display: -webkit-box;
+  grid-area: title;
+  overflow: hidden;
+  min-width: 0;
   font-weight: 500;
-  white-space: normal;
   overflow-wrap: anywhere;
   hyphens: auto;
   -webkit-box-orient: vertical;
@@ -584,40 +572,202 @@
 
 /* ── the upcoming list ─────────────────────────────────────────────── */
 
-.event-upcoming {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+/* One ruled panel: the date in a column on the left, the day's rows beside it,
+   a hairline between days. A container, so the row drops its third column
+   when the list is narrow rather than when the window is. */
+.event-agenda {
+  container: event-agenda / inline-size;
+  overflow: hidden;
   min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 }
 
-.event-upcoming-day h3 {
-  margin: 0 0 var(--space-2);
+/* 112 px is "Tomorrow" beside a two-digit day, the widest of the six
+   languages' words for it. */
+.event-agenda-day {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  border-top: 1px solid var(--color-border);
+}
+
+.event-agenda-day:first-child {
+  border-top: none;
+}
+
+.event-agenda-date {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 11px 12px;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  border-right: 1px solid var(--color-border);
+}
+
+.event-agenda-daynum {
+  min-width: 2ch;
+  color: var(--color-text);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.event-agenda-daywords {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 1px;
+  line-height: 1.1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.event-upcoming-entries {
+.event-agenda-relative {
+  color: var(--color-text);
+}
+
+.event-agenda-day.is-today .event-agenda-daynum {
+  font-weight: 700;
+}
+
+.event-agenda-entries {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px;
 }
 
-/* A fixed time column, so every title on the page starts on one line. Wide
-   enough for "6:00 PM - 10:59 PM", the longest a twelve-hour clock writes. */
-.event-upcoming .event-chip {
-  grid-template-columns: 11px 9.5em minmax(0, 1fr);
-  column-gap: 10px;
+/* Time, title, then the category and host. The time column is fixed so every
+   title starts on one line down the whole list; wide enough for "6:00 PM -
+   10:59 PM", the longest a twelve-hour clock writes. */
+.event-agenda-row {
+  display: grid;
+  grid-template-areas: "time title meta bell";
+  grid-template-columns: 9.5em minmax(0, 1fr) minmax(0, 15em) 16px;
+  align-items: center;
+  column-gap: 14px;
+  width: 100%;
   min-height: 36px;
-  padding: 6px 12px;
+  padding: 0 10px;
+  color: var(--color-text);
+  font: inherit;
   font-size: 13px;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
 
-.event-upcoming .event-chip-time {
+.event-agenda-row:hover {
+  background: var(--color-surface-hover);
+}
+
+.event-agenda-row:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.event-agenda-row.is-selected {
+  background: var(--color-accent-glow);
+  border-color: var(--color-accent);
+}
+
+/* Dimmed rather than hidden: an entry earlier today still happened. */
+.event-agenda-row.is-past {
+  opacity: 0.55;
+}
+
+.event-agenda-time {
+  grid-area: time;
+  overflow: hidden;
+  color: var(--color-muted);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-agenda-title {
+  display: flex;
+  grid-area: title;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.event-agenda-name {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-agenda-meta {
+  grid-area: meta;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-agenda-bell {
+  display: inline-flex;
+  grid-area: bell;
+  justify-content: flex-end;
+  color: var(--color-muted);
+}
+
+.event-agenda-row.is-selected .event-agenda-bell {
+  color: var(--color-text);
+}
+
+/* The category and host go first when the list is narrow: the title is what
+   the row is for, and the dot still says the category. */
+@container event-agenda (max-width: 620px) {
+  .event-agenda-row {
+    grid-template-areas: "time title bell";
+    grid-template-columns: 8.5em minmax(0, 1fr) 16px;
+    column-gap: 10px;
+  }
+
+  .event-agenda-meta {
+    display: none;
+  }
+}
+
+/* Narrower still, the time goes above the title instead of beside it. */
+@container event-agenda (max-width: 420px) {
+  .event-agenda-day {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+
+  .event-agenda-date {
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+  }
+
+  .event-agenda-row {
+    grid-template-areas:
+      "time bell"
+      "title title";
+    grid-template-columns: minmax(0, 1fr) 16px;
+    row-gap: 2px;
+    padding: 6px 10px;
+  }
 }
 
 /* ── one entry, opened ─────────────────────────────────────────────── */

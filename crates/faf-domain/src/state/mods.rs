@@ -313,6 +313,11 @@ pub enum ModsEvent {
 pub enum ModsCommand {
     /// Fetch the whole catalogue once.
     LoadVault,
+    /// Fetch the catalogue again even though it is loaded, for "Check for
+    /// updates". `LoadVault` refuses a second crawl, so the check used to
+    /// compare the installed mods against the catalogue from the start of the
+    /// session and report "up to date" without having looked.
+    ReloadVault,
     /// Fetch one page of a vault search. Submit-driven, as in both reference
     /// clients.
     SearchVault { query: ModVaultQuery },

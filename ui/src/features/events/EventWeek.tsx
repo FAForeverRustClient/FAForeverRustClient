@@ -57,7 +57,6 @@ export function EventWeek({ anchor, now, weekStart, byDay, reminded, selected, o
                     reminded={reminded.has(entry.id)}
                     selected={entry.id === selected}
                     onOpen={onOpen}
-                    stacked
                   />
                 ))
               )}

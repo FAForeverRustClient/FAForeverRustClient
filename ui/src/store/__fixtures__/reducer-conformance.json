@@ -897,6 +897,7 @@
           "applyFilters": false,
           "rules": [],
           "columnWidths": [],
+          "columnOrder": [],
           "detailWidth": 0
         },
         "matchmakerUnselectedQueues": [],
@@ -948,6 +949,7 @@
         "modVaultSort": "",
         "vaultPageSize": 0,
         "replayListColumns": [],
+        "replayListOrder": [],
         "liveReplayColumns": [],
         "coopBoardColumns": [],
         "matchmakerRecentColumns": [],
@@ -2146,6 +2148,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -2214,6 +2217,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -47821,6 +47825,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -47889,6 +47894,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -48084,6 +48090,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -48152,6 +48159,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -48356,6 +48364,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -48424,6 +48433,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -48623,6 +48633,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -48691,6 +48702,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -48890,6 +48902,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -48958,6 +48971,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -49167,6 +49181,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -49235,6 +49250,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -49450,6 +49466,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -49518,6 +49535,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -49773,6 +49791,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -49841,6 +49860,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -50072,6 +50092,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -50140,6 +50161,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -50373,6 +50395,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -50441,6 +50464,7 @@
               "modVaultPreset": "recommended",
               "modVaultSort": "",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -50680,6 +50704,7 @@
                       110,
                       80
                     ],
+                    "columnOrder": [],
                     "detailWidth": 360
                   },
                   "matchmakerUnselectedQueues": [
@@ -50740,6 +50765,7 @@
                     240,
                     150
                   ],
+                  "replayListOrder": [],
                   "liveReplayColumns": [
                     120,
                     200
@@ -50773,6 +50799,7 @@
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": true,
+                "columnOrder": [],
                 "columnWidths": [
                   320,
                   180,
@@ -50863,6 +50890,7 @@
                 240,
                 150
               ],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "list",
               "vaultPageSize": 48
