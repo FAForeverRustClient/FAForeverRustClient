@@ -480,7 +480,7 @@ const INITIAL: AppState = {
       hoverCloseDelayMs: 160,
       replayFlags: false,
     },
-    social: { playerNotes: [], replayNotes: [] },
+    social: { playerNotes: [], replayNotes: [], avatarHistory: [] },
     notifications: {
       enabled: true,
       desktop: true,

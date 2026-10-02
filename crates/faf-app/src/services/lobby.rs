@@ -314,6 +314,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
 
             out.emit(LobbyEvent::AvatarSelectionSucceeded);
+            remember_avatar(ctx, out, url.as_deref()).await;
             if let Some(player) = player {
                 let tooltip = choice
                     .as_ref()
@@ -475,6 +476,9 @@ async fn handle_update(
             out.emit(LobbyEvent::Connected);
             restore_player_vetoes(ctx, out);
             restore_game_session(ctx);
+            // For `restore_avatar` below, which needs the server's list. The
+            // answer lands in the avatar picker's state as if it had asked.
+            ctx.ports.lobby.request_avatars();
         }
         // Back to the state the first attempt starts in. Deliberately not
         // `Disconnected`, which clears every list the lobby has sent: the
@@ -779,6 +783,18 @@ async fn handle_update(
             // chat has connected, so this is the second half of that race.
             if names_us {
                 join_auto_channels(ctx, out);
+                // The other half of the avatar restore (#389): the server's
+                // avatar list can arrive before our own `player_info` does,
+                // and `restore_avatar` cannot tell what is worn until then.
+                let avatars_known = out.with_state(|state| {
+                    matches!(
+                        state.lobby.avatar_list_status,
+                        faf_domain::state::AvatarListStatus::Ready
+                    )
+                });
+                if avatars_known {
+                    restore_avatar(ctx, out).await;
+                }
             }
         }
         LobbyUpdate::PlayersRemoved(players) => {
@@ -805,7 +821,10 @@ async fn handle_update(
                 logins: players.into_iter().map(|player| player.login).collect(),
             });
         }
-        LobbyUpdate::Avatars(avatars) => out.emit(LobbyEvent::AvatarsLoaded { avatars }),
+        LobbyUpdate::Avatars(avatars) => {
+            out.emit(LobbyEvent::AvatarsLoaded { avatars });
+            restore_avatar(ctx, out).await;
+        }
         LobbyUpdate::Notice { style, text } => {
             let (kind, title) = match style {
                 ServerNoticeStyle::Info => (NotificationKind::ServerNotice, "Message from server"),
@@ -863,6 +882,68 @@ fn join_auto_channels(ctx: &ServiceCtx, out: &EventSink) {
     });
     for channel in channels {
         ctx.ports.chat.join_channel(channel);
+    }
+}
+
+/// Record an avatar choice in the settings. See `SocialPreferences::avatar_history`.
+async fn remember_avatar(ctx: &ServiceCtx, out: &EventSink, url: Option<&str>) {
+    let mut preferences = out.with_state(|state| state.settings.social.clone());
+    let before = preferences.avatar_history.clone();
+    preferences.record_avatar(url);
+    if preferences.avatar_history == before {
+        return;
+    }
+    out.emit(SettingsEvent::SocialChanged { preferences });
+    crate::services::settings::persist(ctx, out).await;
+}
+
+/// Put an earlier avatar back on when the one being worn has gone (#389).
+///
+/// Runs whenever the server's list arrives, which the client asks for at every
+/// login. The avatar being worn is learned as well, so one chosen in another
+/// client is remembered too and can be returned to later. Nothing happens
+/// while the client does not yet know which avatar its own player wears.
+async fn restore_avatar(ctx: &ServiceCtx, out: &EventSink) {
+    let (current, offered, fallback) = out.with_state(|state| {
+        let own = state.auth.player.as_ref().and_then(|player| {
+            state
+                .social
+                .players
+                .iter()
+                .find(|profile| profile.id == player.id)
+        });
+        let Some(own) = own else {
+            return (None, Vec::new(), None);
+        };
+        let offered: Vec<String> = state
+            .lobby
+            .available_avatars
+            .iter()
+            .map(|avatar| avatar.url.clone())
+            .collect();
+        let offered_refs: Vec<&str> = offered.iter().map(String::as_str).collect();
+        let fallback = state
+            .settings
+            .social
+            .avatar_fallback(&own.avatar_url, &offered_refs)
+            .map(str::to_owned);
+        (Some(own.avatar_url.clone()), offered, fallback)
+    });
+    let Some(current) = current else {
+        return;
+    };
+    if !current.is_empty() && offered.contains(&current) {
+        remember_avatar(ctx, out, Some(&current)).await;
+        return;
+    }
+    if let Some(url) = fallback {
+        tracing::info!(url, "the avatar worn is gone; putting the last one back on");
+        Box::pin(handle(
+            LobbyCommand::SelectAvatar { url: Some(url) },
+            ctx,
+            out,
+        ))
+        .await;
     }
 }
 

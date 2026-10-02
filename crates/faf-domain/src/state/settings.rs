@@ -207,13 +207,25 @@ pub struct ReplayNote {
     pub tags: Vec<String>,
 }
 
-/// The player's own annotations: notes on players and on replays.
+/// The player's own annotations: notes on players and on replays, and the
+/// avatars they have worn.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SocialPreferences {
     pub player_notes: Vec<PlayerNote>,
     pub replay_notes: Vec<ReplayNote>,
+    /// The avatars this account wore, newest first, by URL (#389).
+    ///
+    /// A tournament avatar is lent for a season and taken back by the server,
+    /// which leaves the player with none. The next one in this list that the
+    /// server still offers is put back on at login, which is the "last
+    /// selected one" the request asked for. Choosing no avatar empties it, so
+    /// a player who wants none keeps none.
+    pub avatar_history: Vec<String>,
 }
+
+/// How many earlier avatars are remembered. More than anybody owns at once.
+pub const AVATAR_HISTORY_LIMIT: usize = 8;
 
 // Through a defaulting twin, so a settings file from before replay notes
 // loads, while the generated TypeScript keeps both fields required.
@@ -227,11 +239,13 @@ impl<'de> Deserialize<'de> for SocialPreferences {
         struct Wire {
             player_notes: Vec<PlayerNote>,
             replay_notes: Vec<ReplayNote>,
+            avatar_history: Vec<String>,
         }
         let wire = Wire::deserialize(deserializer)?;
         Ok(Self {
             player_notes: wire.player_notes,
             replay_notes: wire.replay_notes,
+            avatar_history: wire.avatar_history,
         })
     }
 }
@@ -269,6 +283,29 @@ impl SocialPreferences {
             });
         }
         *self = std::mem::take(self).normalized();
+    }
+
+    /// Remember an avatar being put on, or forget them all when it is none.
+    pub fn record_avatar(&mut self, url: Option<&str>) {
+        let Some(url) = url.map(str::trim).filter(|url| !url.is_empty()) else {
+            self.avatar_history.clear();
+            return;
+        };
+        self.avatar_history.retain(|known| known != url);
+        self.avatar_history.insert(0, url.to_owned());
+        self.avatar_history.truncate(AVATAR_HISTORY_LIMIT);
+    }
+
+    /// The avatar to fall back to when the one being worn is gone: the newest
+    /// remembered one the server still offers, other than `current`.
+    pub fn avatar_fallback<'a>(&'a self, current: &str, offered: &[&str]) -> Option<&'a str> {
+        if !current.is_empty() && offered.contains(&current) {
+            return None;
+        }
+        self.avatar_history
+            .iter()
+            .map(String::as_str)
+            .find(|url| *url != current && offered.contains(url))
     }
 
     pub fn replay_note_for(&self, replay_id: i32) -> Option<&ReplayNote> {
@@ -3884,6 +3921,7 @@ mod tests {
         let settings = SettingsState {
             social: SocialPreferences {
                 replay_notes: Vec::new(),
+                avatar_history: Vec::new(),
                 player_notes: vec![
                     PlayerNote {
                         player_id: -1,
@@ -4010,5 +4048,33 @@ mod tests {
             vec!["ladder1v1".to_string()]
         );
         assert!(changed_map_pools(&[], &now).is_empty());
+    }
+
+    /// #389: a lent tournament avatar taken back leaves the last own one.
+    #[test]
+    fn an_avatar_taken_back_falls_back_to_the_last_one_worn() {
+        let mut social = SocialPreferences::default();
+        social.record_avatar(Some("own.png"));
+        social.record_avatar(Some("champion.png"));
+        assert_eq!(social.avatar_history, vec!["champion.png", "own.png"]);
+
+        // Still worn and still offered: nothing to do.
+        assert_eq!(
+            social.avatar_fallback("champion.png", &["champion.png", "own.png"]),
+            None
+        );
+        // Taken back: the server dropped it from the list and from the player.
+        assert_eq!(social.avatar_fallback("", &["own.png"]), Some("own.png"));
+        assert_eq!(
+            social.avatar_fallback("champion.png", &["own.png"]),
+            Some("own.png")
+        );
+        // Nothing remembered is offered any more.
+        assert_eq!(social.avatar_fallback("", &["other.png"]), None);
+
+        // Choosing no avatar is a choice, and it is kept.
+        social.record_avatar(None);
+        assert!(social.avatar_history.is_empty());
+        assert_eq!(social.avatar_fallback("", &["own.png"]), None);
     }
 }

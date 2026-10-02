@@ -1,15 +1,13 @@
 import { useMemo, useState } from "react";
+import { isGeneratedMap } from "../../../shared/mapPresentation";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
-import type { MapListStatus, MatchmakerMapPool, PlayerVeto, VaultMap } from "../../../ipc/bindings";
+import type { MapListStatus, MatchmakerMapPool, MatchmakerPoolMap, PlayerVeto, VaultMap } from "../../../ipc/bindings";
 import { GameMapImage } from "../GameMapImage";
-import { Icon } from "../../../design-system/Icon";
 import { t } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { coversMap } from "../../../shared/rules/trainingRules";
-import { EMPTY_TRAINING_QUERY } from "../../../shared/trainingQuery";
-import { useAppStore } from "../../../store/store";
+import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { kilometresLabel } from "../../../shared/mapPresentation";
 
 function formatMapSize(width: number, height: number) {
@@ -49,25 +47,6 @@ export function findMatchingBracket(
   );
 }
 
-/**
- * Open the training library, filtered to one map.
- *
- * Two commands rather than a link, because the destination is a tab and the
- * tab bar reads its state from the backend: setting the filter first means the
- * library is already the right list when it appears, instead of showing the
- * whole catalogue for a frame and then narrowing.
- */
-function showGuidesFor(mapName: string) {
-  ipc.send({
-    kind: "Training",
-    command: {
-      type: "setQuery",
-      payload: { query: { ...EMPTY_TRAINING_QUERY, map: mapName } },
-    },
-  });
-  ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "training" } } });
-}
-
 interface Props {
   queueTitle: string;
   pools: MatchmakerMapPool[];
@@ -76,6 +55,23 @@ interface Props {
   serverVetoes: PlayerVeto[];
   playerRating: number | null;
   onClose: () => void;
+}
+
+/**
+ * A pool's maps smallest first, then by name: the Java client's order
+ * (`MAP_VERSION_COMPARATOR`, area first and width on a tie). The server hands
+ * them over in the order they were added to the pool, which is the order a
+ * moderator happened to work in and nothing a player looks for (#403).
+ */
+export function sortPoolMaps<T extends { width: number; height: number; displayName: string }>(
+  maps: readonly T[],
+): T[] {
+  return [...maps].sort(
+    (left, right) =>
+      left.width * left.height - right.width * right.height ||
+      left.width - right.width ||
+      left.displayName.localeCompare(right.displayName, undefined, { sensitivity: "base" }),
+  );
 }
 
 export function MatchmakerMapPoolModal({
@@ -87,10 +83,12 @@ export function MatchmakerMapPoolModal({
   playerRating,
   onClose,
 }: Props) {
-  // The training catalogue, so a map can say whether anything is written about
-  // it. Read rather than requested: the training tab loads it, and a map pool
-  // is not a reason to fetch a document nobody has asked to see.
-  const trainingResources = useAppStore((store) => store.state.training.resources);
+  // Vetoes are placed in a mode of their own (#407), as in the Java client's
+  // map list (`vetoModeEnabled`): a card clicked to look at the map used to
+  // veto it on the spot, and looking at the map was the more common reason to
+  // click it. Outside the mode a click opens the large preview.
+  const [vetoing, setVetoing] = useState(false);
+  const [preview, setPreview] = useState<MatchmakerPoolMap | null>(null);
   const { t } = useTranslation();
   const sortedPools = useMemo(
     () =>
@@ -111,13 +109,20 @@ export function MatchmakerMapPoolModal({
     () => matchedBracket?.id ?? sortedPools[0]?.id ?? null,
   );
 
-  const [draftVetoes, setDraftVetoes] = useState<Record<string, number>>(() =>
-    Object.fromEntries(
-      serverVetoes.map((veto) => [
-        `${veto.matchmakerQueueMapPoolId}:${veto.mapPoolMapVersionId}`,
-        veto.vetoTokensApplied,
-      ]),
-    ),
+  // What the server holds, which the backend updates the moment a veto is
+  // sent (`VetoesUpdated`) and again whenever the server adjusts it. There is
+  // no draft: Java sends every change as it is made (`setTokensForMap`), and a
+  // draft that only a Save button sent was lost to every other way out of
+  // the dialog.
+  const vetoes = useMemo<Record<string, number>>(
+    () =>
+      Object.fromEntries(
+        serverVetoes.map((veto) => [
+          `${veto.matchmakerQueueMapPoolId}:${veto.mapPoolMapVersionId}`,
+          veto.vetoTokensApplied,
+        ]),
+      ),
+    [serverVetoes],
   );
 
   const activePool =
@@ -126,44 +131,19 @@ export function MatchmakerMapPoolModal({
     sortedPools[0];
 
   const tokensUsed = activePool
-    ? Object.entries(draftVetoes)
+    ? Object.entries(vetoes)
         .filter(([key]) => key.startsWith(`${activePool.id}:`))
         .reduce((total, [, tokens]) => total + tokens, 0)
     : 0;
 
   const tokenLimit = activePool?.vetoTokensPerPlayer ?? 0;
 
-  const toggleVeto = (assignmentId: number) => {
-    if (!activePool || tokenLimit <= 0) return;
-    const key = `${activePool.id}:${assignmentId}`;
-    setDraftVetoes((current) => {
-      const existing = current[key] ?? 0;
-      const used = Object.entries(current)
-        .filter(([entry]) => entry.startsWith(`${activePool.id}:`))
-        .reduce((total, [, tokens]) => total + tokens, 0);
-      const mapLimit = Math.max(1, activePool.maxTokensPerMap || tokenLimit);
-      if (existing > 0) {
-        const next = existing >= mapLimit ? 0 : (used < tokenLimit ? existing + 1 : 0);
-        return { ...current, [key]: next };
-      }
-      if (used < tokenLimit) {
-        return { ...current, [key]: 1 };
-      }
-      return current;
-    });
-  };
+  // A pool with no cap per map lets every token go on one map: Java's
+  // `isMaxPerMapDynamic`, which is `max_tokens_per_map == 0` on the server.
+  const perMapCap = activePool && activePool.maxTokensPerMap > 0 ? activePool.maxTokensPerMap : null;
 
-  const resetVetoes = () => {
-    if (!activePool) return;
-    setDraftVetoes((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(([key]) => !key.startsWith(`${activePool.id}:`)),
-      ),
-    );
-  };
-
-  const save = () => {
-    const vetoes: PlayerVeto[] = Object.entries(draftVetoes)
+  const send = (next: Record<string, number>) => {
+    const list: PlayerVeto[] = Object.entries(next)
       .filter(([, tokens]) => tokens > 0)
       .map(([key, tokens]) => {
         const [poolId, assignmentId] = key.split(":").map(Number);
@@ -173,8 +153,30 @@ export function MatchmakerMapPoolModal({
           vetoTokensApplied: tokens,
         };
       });
-    ipc.send({ kind: "Lobby", command: { type: "setPlayerVetoes", payload: { vetoes } } });
-    onClose();
+    ipc.send({ kind: "Lobby", command: { type: "setPlayerVetoes", payload: { vetoes: list } } });
+  };
+
+  // Java's plus and minus (`TeamMatchmakingMapTileController`): one token on,
+  // as long as the map's cap and the bracket's tokens allow, or one off.
+  const addVeto = (assignmentId: number) => {
+    if (!activePool || tokenLimit <= 0 || tokensUsed >= tokenLimit) return;
+    const key = `${activePool.id}:${assignmentId}`;
+    const current = vetoes[key] ?? 0;
+    if (perMapCap !== null && current >= perMapCap) return;
+    send({ ...vetoes, [key]: current + 1 });
+  };
+
+  const removeVeto = (assignmentId: number) => {
+    if (!activePool) return;
+    const key = `${activePool.id}:${assignmentId}`;
+    const current = vetoes[key] ?? 0;
+    if (current <= 0) return;
+    send({ ...vetoes, [key]: current - 1 });
+  };
+
+  const resetVetoes = () => {
+    if (!activePool) return;
+    send(Object.fromEntries(Object.entries(vetoes).filter(([key]) => !key.startsWith(`${activePool.id}:`))));
   };
 
   return (
@@ -212,15 +214,25 @@ export function MatchmakerMapPoolModal({
         ) : (
           <div
             className="matchmaker-token-wallet"
-            aria-label={t("lobby.mapPool.vetoesUsedAria", {
+            aria-label={vetoing ? t("lobby.mapPool.vetoesUsedAria", {
               used: tokensUsed,
               limit: tokenLimit,
-            })}
+            }) : undefined}
           >
-            {Array.from({ length: tokenLimit }, (_, index) => (
+            {/* The wallet only while vetoing, as Java shows it
+                (`showVetoWallet`); outside the mode the button is all. */}
+            {vetoing && Array.from({ length: tokenLimit }, (_, index) => (
               <i key={index} className={index < tokensUsed ? "used" : ""} />
             ))}
-            <span>{tokensUsed} / {tokenLimit} {t("lobby.mapPool.vetoes")}</span>
+            {vetoing && <span>{tokensUsed} / {tokenLimit} {t("lobby.mapPool.vetoes")}</span>}
+            <Button
+              className="matchmaker-veto-mode"
+              variant={vetoing ? "primary" : undefined}
+              aria-pressed={vetoing}
+              onClick={() => setVetoing((current) => !current)}
+            >
+              {t(vetoing ? "lobby.mapPool.doneVetoing" : "lobby.mapPool.assignVetoes")}
+            </Button>
           </div>
         )}
       </div>
@@ -233,35 +245,25 @@ export function MatchmakerMapPoolModal({
         ) : !activePool || activePool.maps.length === 0 ? (
           <p className="play-empty">{t("lobby.mapPool.empty")}</p>
         ) : (
-          activePool.maps.map((map) => {
-            const tokens = draftVetoes[`${activePool.id}:${map.assignmentId}`] ?? 0;
-            const isVetoed = tokens > 0;
-            const canVeto = tokenLimit > 0;
-            const isMaxed = tokensUsed >= tokenLimit;
-            const cardTitle = !canVeto
-              ? t("lobby.mapPool.noVetoesAvailable")
-              : isVetoed
-              ? t("lobby.mapPool.removeVetoHint")
-              : isMaxed
-              ? t("lobby.mapPool.vetoLimitReached", { limit: tokenLimit })
-              : t("lobby.mapPool.vetoMapHint");
-
-            // Only offered when the catalogue actually has something for this
-            // map. A button that leads to an empty list teaches a player that
-            // the feature does not work, which is worse than not offering it.
-            const guides = trainingResources.filter((resource) =>
-              coversMap(resource, map.folderName) || coversMap(resource, map.displayName),
-            ).length;
+          sortPoolMaps(activePool.maps).map((map) => {
+            const tokens = vetoes[`${activePool.id}:${map.assignmentId}`] ?? 0;
+            // Java's two stripes (`updateBannedState`): a map at its cap is
+            // banned and loses its colour; one with fewer tokens is only
+            // partly banned. Without a cap no map is ever fully banned.
+            const fullBan = perMapCap !== null && tokens >= perMapCap;
+            const canAdd = vetoing && tokensUsed < tokenLimit && (perMapCap === null || tokens < perMapCap);
+            // A generated map has no picture of its own to enlarge, so Java
+            // opens nothing for it either.
+            const previewable = !vetoing && !isGeneratedMap(map.folderName);
 
             return (
               <div className="map-pool-cell" key={map.assignmentId}>
               <button
                 type="button"
-                aria-pressed={isVetoed}
-                disabled={!canVeto}
-                className={`map-pool-card surface${canVeto ? " surface-interactive" : " is-disabled"}${isVetoed ? " vetoed" : ""}`}
-                onClick={canVeto ? () => toggleVeto(map.assignmentId) : undefined}
-                title={cardTitle}
+                className={`map-pool-card surface surface-interactive${fullBan ? " vetoed" : tokens > 0 ? " partly-vetoed" : ""}${previewable ? "" : " is-disabled"}`}
+                onClick={() => previewable && setPreview(map)}
+                aria-disabled={!previewable}
+                title={previewable ? t("lobby.mapPool.previewHint") : undefined}
               >
                 <span className="map-pool-card-art">
                   <GameMapImage
@@ -269,9 +271,9 @@ export function MatchmakerMapPoolModal({
                     vault={vault}
                     placeholderClassName="map-preview-placeholder"
                   />
-                  {isVetoed && (
+                  {tokens > 0 && (
                     <span className="map-pool-banned">
-                      {t("lobby.mapPool.banned")}{tokens > 1 ? ` ×${tokens}` : ""}
+                      {t(fullBan ? "lobby.mapPool.banned" : "lobby.mapPool.partlyBanned")}
                     </span>
                   )}
                 </span>
@@ -280,18 +282,30 @@ export function MatchmakerMapPoolModal({
                   <small>{formatMapSize(map.width, map.height)} · {map.maxPlayers} players</small>
                 </span>
               </button>
-              {guides > 0 && (
-                // Its own button beside the card rather than inside it: the
-                // card is already a button, for vetoing, and nesting two is
-                // both invalid markup and ambiguous to click.
-                <button
-                  type="button"
-                  className="map-pool-card-guides"
-                  onClick={() => showGuidesFor(map.displayName)}
-                  title={t("lobby.mapPool.guidesHint", { map: map.displayName })}
-                >
-                  <Icon name="book" size={13} /> {t("lobby.mapPool.guides", { count: guides })}
-                </button>
+              {/* Shown while vetoing, and on a map that has tokens on it, as
+                  Java's `vetoesBox`; usable only while vetoing. */}
+              {(vetoing || tokens > 0) && tokenLimit > 0 && (
+                <div className="map-pool-veto-stepper">
+                  <Button
+                    disabled={!vetoing || tokens === 0}
+                    aria-label={t("lobby.mapPool.removeVeto", { map: map.displayName })}
+                    title={t("lobby.mapPool.removeVetoHint")}
+                    onClick={() => removeVeto(map.assignmentId)}
+                  >
+                    −
+                  </Button>
+                  <span aria-label={t("lobby.mapPool.tokensOnMap", { count: tokens })}>{tokens}</span>
+                  <Button
+                    disabled={!canAdd}
+                    aria-label={t("lobby.mapPool.addVeto", { map: map.displayName })}
+                    title={tokensUsed >= tokenLimit
+                      ? t("lobby.mapPool.vetoLimitReached", { limit: tokenLimit })
+                      : t("lobby.mapPool.vetoMapHint")}
+                    onClick={() => addVeto(map.assignmentId)}
+                  >
+                    +
+                  </Button>
+                </div>
               )}
               </div>
             );
@@ -303,18 +317,27 @@ export function MatchmakerMapPoolModal({
         <span className="muted">
           {tokenLimit > 0 ? t("lobby.mapPool.vetoHint") : t("lobby.mapPool.noVetoesAvailable")}
         </span>
-        {tokenLimit === 0 ? (
-          <Button variant="primary" onClick={onClose}>{t("common.close")}</Button>
-        ) : (
-          <>
-            <Button disabled={tokensUsed === 0} onClick={resetVetoes}>
-              {t("lobby.mapPool.reset")}
-            </Button>
-            <Button onClick={onClose}>{t("lobby.mapPool.cancel")}</Button>
-            <Button variant="primary" disabled={!activePool} onClick={save}>{t("lobby.mapPool.save")}</Button>
-          </>
+        {tokenLimit > 0 && (
+          <Button disabled={tokensUsed === 0} onClick={resetVetoes}>
+            {t("lobby.mapPool.reset")}
+          </Button>
         )}
+        <Button variant="primary" onClick={onClose}>{t("common.close")}</Button>
       </div>
+      {preview && (
+        <MapPreviewDialog
+          map={{ folderName: preview.folderName, displayName: preview.displayName }}
+          meta={`${formatMapSize(preview.width, preview.height)} · ${preview.maxPlayers} players`}
+          onClose={() => setPreview(null)}
+        >
+          <GameMapImage
+            mapName={preview.folderName}
+            vault={vault}
+            placeholderClassName="map-preview-placeholder"
+            large
+          />
+        </MapPreviewDialog>
+      )}
     </Modal>
   );
 }

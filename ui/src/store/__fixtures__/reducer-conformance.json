@@ -783,7 +783,8 @@
       },
       "social": {
         "playerNotes": [],
-        "replayNotes": []
+        "replayNotes": [],
+        "avatarHistory": []
       },
       "notifications": {
         "enabled": true,
@@ -2389,6 +2390,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -40381,6 +40383,661 @@
       ]
     },
     {
+      "name": "the catalogue arriving after a folder lookup keeps the looked-up map",
+      "steps": [
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultLoading"
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "loading"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultFoldersResolved",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 4,
+                    "versionId": 44,
+                    "displayName": "phenom spartiate v2",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "phenom spartiate v2",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "phenom spartiate v2",
+                "downloadUrl": "",
+                "folderName": "phenom spartiate v2",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 4,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 44,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "loading"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultLoaded",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 1,
+                    "versionId": 11,
+                    "displayName": "scmp_009.v0001",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "scmp_009.v0001",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  },
+                  {
+                    "mapId": 4,
+                    "versionId": 44,
+                    "displayName": "phenom spartiate v2",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "phenom spartiate v2",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "scmp_009.v0001",
+                "downloadUrl": "",
+                "folderName": "scmp_009.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "phenom spartiate v2",
+                "downloadUrl": "",
+                "folderName": "phenom spartiate v2",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 4,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 44,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultFoldersResolved",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 5,
+                    "versionId": 55,
+                    "displayName": "old_map",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "old_map",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "scmp_009.v0001",
+                "downloadUrl": "",
+                "folderName": "scmp_009.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "phenom spartiate v2",
+                "downloadUrl": "",
+                "folderName": "phenom spartiate v2",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 4,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 44,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "old_map",
+                "downloadUrl": "",
+                "folderName": "old_map",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 5,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 55,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultLoaded",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 1,
+                    "versionId": 11,
+                    "displayName": "scmp_009.v0001",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "scmp_009.v0001",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "scmp_009.v0001",
+                "downloadUrl": "",
+                "folderName": "scmp_009.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "phenom spartiate v2",
+                "downloadUrl": "",
+                "folderName": "phenom spartiate v2",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 4,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 44,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "old_map",
+                "downloadUrl": "",
+                "folderName": "old_map",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 5,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 55,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "the profile search's account suggestions replace each other",
       "steps": [
         {
@@ -48060,6 +48717,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -48327,6 +48985,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -48603,6 +49262,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -48876,6 +49536,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -49148,6 +49809,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -49440,6 +50102,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -50013,6 +50676,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -50079,7 +50743,8 @@
                       "comment": " ",
                       "tags": []
                     }
-                  ]
+                  ],
+                  "avatarHistory": []
                 }
               }
             }
@@ -50348,6 +51013,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [
                 {
                   "login": "Ada",
@@ -50659,6 +51325,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [
                 {
                   "login": "Ada",
@@ -50972,6 +51639,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [
                 {
                   "login": "Ada",
@@ -51407,6 +52075,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [
                 {
                   "login": "Ada",

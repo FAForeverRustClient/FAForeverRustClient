@@ -3,7 +3,7 @@
 
 import { Icon, type IconName } from "../../design-system/Icon";
 import type { ReplayTeam, VaultReplay } from "../../ipc/bindings";
-import { formatAgeOrDate, formatShortDateTime } from "../../shared/format/dates";
+import { formatAgeOrDate, formatDate, formatTime } from "../../shared/format/dates";
 import { formatDuration } from "../../shared/format/durations";
 import { effectiveReplayMapName } from "../../shared/mapPresentation";
 import { MapThumbnail } from "../../shared/components/MapThumbnail";
@@ -108,12 +108,14 @@ function ReplayMetaGrid({ replay }: { replay: ReplayCardData }) {
       {/* Date *and* time of day. The date alone answers "which day was this"
           and not "which of that evening's games was this", which is the
           question someone scanning their own recent replays is actually
-          asking: the list view has printed the clock time in its Played column
-          all along, and the card was the odd one out. */}
+          asking. Two facts rather than one: together in one half of the grid
+          they were cut off at the date on a narrow card, and the time is what
+          people opened the details for (#401). It takes the place of the
+          real duration, which the details still show. */}
       <ReplayMetaFact
         icon="calendar"
         label={t("replays.card.played")}
-        value={formatShortDateTime(replay.startTime, "")}
+        value={formatDate(replay.startTime, "")}
       />
       <ReplayMetaFact icon="users" label={t("replays.card.players")} value={`${playerCount(replay.teams)}`} />
       <ReplayMetaFact icon="mods" label={t("replays.card.featuredMod")} value={replay.modName} />
@@ -122,9 +124,7 @@ function ReplayMetaGrid({ replay }: { replay: ReplayCardData }) {
         label={t("replays.card.averageRating")}
         value={replay.averageRating !== null ? `~${replay.averageRating}` : ""}
       />
-      {/* The two durations are routinely minutes apart, so each carries its own
-          glyph rather than a trailing "game"/"real" word: the pairing the Java
-          card uses (`game-duration-icon` / `world-duration-icon`). */}
+      {/* The game's own duration, with the hourglass the Java card gives it. */}
       <ReplayMetaFact
         icon="hourglass"
         label={t("replays.card.gameTime")}
@@ -132,8 +132,8 @@ function ReplayMetaGrid({ replay }: { replay: ReplayCardData }) {
       />
       <ReplayMetaFact
         icon="clock"
-        label={t("replays.card.realTime")}
-        value={replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : ""}
+        label={t("replays.detail.time")}
+        value={formatTime(replay.startTime, "")}
       />
     </div>
   );

@@ -251,7 +251,14 @@ export type AuthCommand =
 /**  Try a previously remembered refresh token. No-op when none is stored. */
 { type: "restore" } |
 /**  Open the client without signing in, on local files only. */
-{ type: "playOffline" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
+{ type: "playOffline" } |
+/**
+ *  Start Forged Alliance on its own, into its own menu, without signing
+ *  in: the Java client's "Play Offline" (#397). Skirmish against the AI
+ *  needs no server. A failure is reported as a failed login, which is what
+ *  the login screen it is started from shows.
+ */
+{ type: "launchOfflineGame" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
 
 /**  The only way [`AuthState`] changes. */
 export type AuthEvent = { type: "loginStarted" } | { type: "loggedIn"; payload: {
@@ -3925,6 +3932,10 @@ export type MapDraft = {
 	/**
 	 *  A new picture of the event's own, as a `data:` URL, or `None` to keep
 	 *  the one it has. The service stores it under a file name of its own.
+	 *
+	 *  The client may also put FAF's own vault preview here, as its
+	 *  `https://content.faforever.com/` address: the port fetches that and
+	 *  sends the picture. See [`vault_preview_for_new_picture`].
 	 */
 	image?: string | null,
 	/**  Delete the stored picture. Ignored when a new one is sent. */
@@ -8043,10 +8054,23 @@ export type SocialEvent =
 /**  The lobby connection went away; relations are no longer authoritative. */
 { type: "cleared" };
 
-/**  The player's own annotations: notes on players and on replays. */
+/**
+ *  The player's own annotations: notes on players and on replays, and the
+ *  avatars they have worn.
+ */
 export type SocialPreferences = {
 	playerNotes: PlayerNote[],
 	replayNotes: ReplayNote[],
+	/**
+	 *  The avatars this account wore, newest first, by URL (#389).
+	 *
+	 *  A tournament avatar is lent for a season and taken back by the server,
+	 *  which leaves the player with none. The next one in this list that the
+	 *  server still offers is put back on at login, which is the "last
+	 *  selected one" the request asked for. Choosing no avatar empties it, so
+	 *  a player who wants none keeps none.
+	 */
+	avatarHistory: string[],
 };
 
 export type SocialState = {

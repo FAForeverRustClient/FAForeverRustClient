@@ -40,7 +40,12 @@ export function CustomGamesBrowser({
 }: Props) {
   useLocale();
   const [now, setNow] = useState(() => Date.now());
-  const [internalPreviewGame, setInternalPreviewGame] = useState<Game | null>(null);
+  const [previewSnapshot, setInternalPreviewGame] = useState<Game | null>(null);
+  // Followed through the list while open, so a map the host changes shows
+  // (#384); the snapshot only stands in once the game has left the list.
+  const internalPreviewGame = previewSnapshot
+    ? games.find((game) => game.id === previewSnapshot.id) ?? previewSnapshot
+    : null;
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
 
   // Column widths live in settings, but a drag has to be visible before it is

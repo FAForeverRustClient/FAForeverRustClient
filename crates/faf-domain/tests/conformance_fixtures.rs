@@ -3254,6 +3254,7 @@ fn helper_fixture() -> HelperFixture {
                 expected: SocialPreferences {
                     player_notes: notes.clone(),
                     replay_notes: Vec::new(),
+                    avatar_history: Vec::new(),
                 }
                 .note_for(player_id)
                 .map_or_else(String::new, |entry| entry.note.clone()),
@@ -5585,6 +5586,31 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "the catalogue arriving after a folder lookup keeps the looked-up map",
+            vec![
+                MapsEvent::VaultLoading.into(),
+                MapsEvent::VaultFoldersResolved {
+                    maps: vec![conformance_vault_map(4, 44, "phenom spartiate v2")],
+                }
+                .into(),
+                MapsEvent::VaultLoaded {
+                    maps: vec![
+                        conformance_vault_map(1, 11, "scmp_009.v0001"),
+                        conformance_vault_map(4, 44, "phenom spartiate v2"),
+                    ],
+                }
+                .into(),
+                MapsEvent::VaultFoldersResolved {
+                    maps: vec![conformance_vault_map(5, 55, "old_map")],
+                }
+                .into(),
+                MapsEvent::VaultLoaded {
+                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")],
+                }
+                .into(),
+            ],
+        ),
+        case(
             "the profile search's account suggestions replace each other",
             vec![
                 PlayerCardEvent::AccountsFound {
@@ -6301,6 +6327,7 @@ fn cases() -> Vec<Case> {
                 .into(),
                 SettingsEvent::SocialChanged {
                     preferences: SocialPreferences {
+                        avatar_history: Vec::new(),
                         player_notes: vec![
                             PlayerNote {
                                 player_id: 42,

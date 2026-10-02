@@ -1316,6 +1316,32 @@ fn is_vault_map_folder(map_folder: &str) -> bool {
     }
 }
 
+/// A map that ships inside Forged Alliance itself: `SCMP_001` to `SCMP_040`
+/// and the `X1MP_` ones. Twin of `isOfficialMap` in `shared/mapPresentation.ts`.
+///
+/// The suffix rule above is not the whole vault (#385). Maps uploaded before
+/// the vault versioned its folders kept the name their author gave them,
+/// spaces and all: `Phenom Spartiate v2` is a vault map, served as
+/// `phenom spartiate v2.zip`, with no `.vNNNN` anywhere. Taking every name
+/// without a suffix for a base-game map skipped the download for all of them,
+/// and the player was put into a lobby on a map they did not have. So a name
+/// without a suffix is only skipped when it is one of these.
+fn is_base_game_map(map_folder: &str) -> bool {
+    let lower = map_folder.to_ascii_lowercase();
+    let Some((prefix, digits)) = lower.split_once('_') else {
+        return false;
+    };
+    if digits.len() != 3 || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return false;
+    }
+    let number: u32 = digits.parse().unwrap_or(0);
+    match prefix {
+        "scmp" => (1..=40).contains(&number),
+        "x1mp" => (1..=12).contains(&number) || number == 14 || number == 17,
+        _ => false,
+    }
+}
+
 /// Makes sure `map_folder` (e.g. `adaptive_gadostb.v0002`) is present in
 /// every directory FA's replay mode searches: downloading the map's zip
 /// from the public vault CDN and extracting it into each if it's missing
@@ -1447,7 +1473,8 @@ async fn stage_map(
     dirs: &[PathBuf],
     map_folder: &str,
 ) -> Result<(), String> {
-    if !is_vault_map_folder(map_folder) {
+    let versioned = is_vault_map_folder(map_folder);
+    if !versioned && is_base_game_map(map_folder) {
         return Ok(()); // base/official map: ships with FA, not the vault
     }
 
@@ -1467,6 +1494,13 @@ async fn stage_map(
         .await
         .map_err(|e| format!("could not download map {map_folder}: {e}"))?;
     validate_url(resp.url().as_str(), content_base, "maps")?;
+    // An unversioned name the vault does not have is most likely a scenario
+    // that ships with the game under a name `is_base_game_map` does not know,
+    // which is how every unversioned name used to be treated. A versioned one
+    // is a vault map that failed to arrive, and that stays an error.
+    if !versioned && resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(());
+    }
     if !resp.status().is_success() {
         return Err(format!(
             "could not download map {map_folder}: {}",
@@ -2840,6 +2874,23 @@ mod tests {
         assert!(!is_vault_map_folder("X1MP_002"));
         assert!(!is_vault_map_folder("no_version_suffix"));
         assert!(!is_vault_map_folder("trailing_dot_v"));
+    }
+
+    /// #385: an old vault map has no version suffix, and is not a base map.
+    #[test]
+    fn only_the_shipped_maps_are_skipped_without_a_suffix() {
+        assert!(is_base_game_map("scmp_009"));
+        assert!(is_base_game_map("SCMP_040"));
+        assert!(is_base_game_map("X1MP_017"));
+        assert!(!is_base_game_map("scmp_041"));
+        assert!(!is_base_game_map("x1mp_013"));
+        assert!(!is_base_game_map("scmp_09"));
+        assert!(!is_base_game_map("Phenom Spartiate v2"));
+        assert!(!is_base_game_map("no_version_suffix"));
+        assert_eq!(
+            vault_map_url("https://content.faforever.com", "Phenom Spartiate v2"),
+            "https://content.faforever.com/maps/phenom spartiate v2.zip"
+        );
     }
 
     #[test]
