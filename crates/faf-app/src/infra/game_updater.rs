@@ -119,6 +119,7 @@ pub async fn ensure_game_version(
     featured_mod: &str,
     version: i32,
     exe_name: &str,
+    progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<(), String> {
     install_featured_mod(
         http,
@@ -130,7 +131,7 @@ pub async fn ensure_game_version(
         Some(version),
         exe_name,
         false,
-        &|_| {},
+        progress,
     )
     .await?;
 
@@ -1658,6 +1659,7 @@ pub async fn resolve_and_stage_replay_version(
     target_dir: &Path,
     replay_info: &ReplayVersionInfo,
     exe_name: &str,
+    progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<Option<String>, String> {
     let mod_name = &replay_info.mod_name;
     let is_rolling = mod_name == "fafdevelop" || mod_name == "fafbeta";
@@ -1719,15 +1721,7 @@ pub async fn resolve_and_stage_replay_version(
 
         // Rolling mod has no working cache snapshot: update from server latest
         ensure_latest_game_version(
-            http,
-            token,
-            api_base,
-            cache_dir,
-            target_dir,
-            mod_name,
-            exe_name,
-            true,
-            &|_| {},
+            http, token, api_base, cache_dir, target_dir, mod_name, exe_name, true, progress,
         )
         .await?;
 
@@ -1756,7 +1750,7 @@ pub async fn resolve_and_stage_replay_version(
 
         // Cache miss: download from server API
         ensure_game_version(
-            http, token, api_base, cache_dir, target_dir, mod_name, version, exe_name,
+            http, token, api_base, cache_dir, target_dir, mod_name, version, exe_name, progress,
         )
         .await?;
         return Ok(None);
@@ -1764,15 +1758,7 @@ pub async fn resolve_and_stage_replay_version(
 
     // Fallback if version was unknown
     ensure_latest_game_version(
-        http,
-        token,
-        api_base,
-        cache_dir,
-        target_dir,
-        mod_name,
-        exe_name,
-        false,
-        &|_| {},
+        http, token, api_base, cache_dir, target_dir, mod_name, exe_name, false, progress,
     )
     .await?;
     Ok(None)
@@ -3177,6 +3163,7 @@ mod tests {
             &target_dir,
             &replay_info_sha,
             "ForgedAlliance.exe",
+            &|_| {},
         )
         .await
         .unwrap();
@@ -3208,6 +3195,7 @@ mod tests {
             &target_dir,
             &replay_info_time,
             "ForgedAlliance.exe",
+            &|_| {},
         )
         .await
         .unwrap();

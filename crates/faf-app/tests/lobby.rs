@@ -593,3 +593,100 @@ async fn join_emits_joining_then_launching() {
         other => panic!("expected Launched, got {other:?}"),
     }
 }
+
+async fn search_started(
+    app: &App,
+    events: &mut tokio::sync::broadcast::Receiver<AppEvent>,
+) -> Vec<MatchmakingState> {
+    app.dispatch(
+        LobbyCommand::StartSearch {
+            queue_names: vec!["ladder1v1".into()],
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    let mut seen = Vec::new();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let AppEvent::Lobby(LobbyEvent::MatchmakingUpdated { state }) =
+                events.recv().await.unwrap()
+            {
+                let searching = matches!(state, MatchmakingState::Searching { .. });
+                seen.push(state);
+                if searching {
+                    break;
+                }
+            }
+        }
+    })
+    .await
+    .expect("the search never started");
+    seen
+}
+
+#[tokio::test]
+async fn a_search_is_prepared_before_the_server_is_asked_for_it() {
+    // Java's order: get ready, then queue. The bar shows the first half.
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        lobby: Arc::new(lobby.clone()),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    wait_for_initial_games(&mut events).await;
+
+    let seen = search_started(&app, &mut events).await;
+
+    assert_eq!(
+        seen.first(),
+        Some(&MatchmakingState::Preparing {
+            queue_names: vec!["ladder1v1".into()],
+        })
+    );
+    assert_eq!(
+        app.snapshot().lobby.matchmaking,
+        MatchmakingState::Searching {
+            queue_names: vec!["ladder1v1".into()],
+        }
+    );
+}
+
+#[tokio::test]
+async fn a_party_invite_cannot_be_accepted_while_searching() {
+    // The server would move the player into the party and leave their own
+    // search running, which as a member they could not stop.
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        lobby: Arc::new(lobby.clone()),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    wait_for_initial_games(&mut events).await;
+    search_started(&app, &mut events).await;
+
+    app.dispatch(LobbyCommand::AcceptPartyInvite { player_id: 5 }.into())
+        .await
+        .unwrap();
+
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let AppEvent::Notifications(NotificationEvent::Added { notification }) =
+                events.recv().await.unwrap()
+            {
+                if notification.title == "Cannot join the party" {
+                    assert!(notification.body.contains("Stop your search"));
+                    break;
+                }
+            }
+        }
+    })
+    .await
+    .expect("the refusal was never shown");
+}

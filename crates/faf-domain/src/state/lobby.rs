@@ -257,6 +257,20 @@ pub struct MatchmakerQueue {
     pub team_size: i32,
     pub num_players: i32,
     pub queue_pop_time_seconds: i32,
+    /// When the queue pops next, as an RFC 3339 instant on this machine's clock.
+    ///
+    /// The Java client counts down to the server's absolute `queue_pop_time`
+    /// (`MatchmakingQueueItemController`). This is the same instant, but taken
+    /// from `queue_pop_time_delta` at the moment the message arrived, so a
+    /// clock that is a minute off does not move the countdown by a minute.
+    /// Empty when the server sent no delta.
+    ///
+    /// The countdown used to be anchored in the Play tab instead, at whatever
+    /// moment the tab rendered the queue. A delta that had arrived while the
+    /// tab was closed then started counting from the moment it was opened, so
+    /// the timer ran late, and reached zero long after the pop it was counting
+    /// down to.
+    pub queue_pops_at: String,
     /// The rating windows of the searches queued right now, at roughly 80%
     /// match quality. One entry per search, not per player.
     ///
@@ -274,6 +288,17 @@ pub struct MatchmakerQueue {
 pub enum MatchmakingState {
     #[default]
     Idle,
+    /// The search was asked for and the client is getting ready for it: the
+    /// featured mod is being brought up to date and the queues' pool maps
+    /// downloaded, before the server is asked to queue anybody.
+    ///
+    /// That is the Java client's order (`TeamMatchmakingService.joinQueues`):
+    /// a match can be made the moment the search starts, and the host then has
+    /// sixty seconds to start the game. A patch or a map download that begins
+    /// only at that point can take longer than that, and the server then
+    /// cancels the match for all of its players.
+    #[serde(rename_all = "camelCase")]
+    Preparing { queue_names: Vec<String> },
     #[serde(rename_all = "camelCase")]
     Searching { queue_names: Vec<String> },
     #[serde(rename_all = "camelCase")]
@@ -320,6 +345,11 @@ impl MatchmakingState {
             Self::Searching { queue_names }
         };
         *self != before
+    }
+
+    /// Asked for a match and not yet given one: preparing or searching.
+    pub fn is_looking(&self) -> bool {
+        matches!(self, Self::Preparing { .. } | Self::Searching { .. })
     }
 
     pub fn searching_queues(&self) -> &[String] {
@@ -753,6 +783,13 @@ pub enum LobbyCommand {
         queue_name: String,
         start: bool,
     },
+    /// Start a search in these queues: prepare the install and the pool maps,
+    /// then ask the server to queue the party. See
+    /// [`MatchmakingState::Preparing`].
+    #[serde(rename_all = "camelCase")]
+    StartSearch {
+        queue_names: Vec<String>,
+    },
     LeaveParty,
     #[serde(rename_all = "camelCase")]
     KickPartyMember {
@@ -825,7 +862,26 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
             // finish. The lists are deliberately left alone: the server
             // resends them, and clearing them would make a two-second blip
             // look like a disconnection.
-            state.join = JoinState::Idle;
+            //
+            // A game that is already running is not a join, though. Forged
+            // Alliance outlives the socket, the client asks the server to
+            // restore its session on the next `welcome`, and the process exit
+            // still ends it with `GameTerminated`. Forgetting it here made the
+            // Play tab offer a new game while the old one was on screen.
+            if !matches!(state.join, JoinState::Launched { .. } | JoinState::InGame) {
+                state.join = JoinState::Idle;
+            }
+            // The same goes for a search. The server ends a player's search
+            // when their connection goes (`LadderService.on_connection_lost`)
+            // and says nothing about it on the next one, so a client that
+            // kept `Searching` showed a search that no longer existed, and its
+            // Stop sent a `stop` the server ignores: the panel could only be
+            // freed by a restart. A match found on the old connection is gone
+            // with it too. Only a launch that is already under way survives,
+            // for the same reason the game does above.
+            if !matches!(state.matchmaking, MatchmakingState::Launching { .. }) {
+                state.matchmaking = MatchmakingState::Idle;
+            }
         }
         LobbyEvent::Connected => state.status = LobbyStatus::Connected,
         LobbyEvent::HostPrepared { title } => state.host_prefill = Some(title.clone()),
@@ -909,19 +965,33 @@ pub fn reduce(state: &mut LobbyState, event: &LobbyEvent) {
             }
         }
         LobbyEvent::JoinCancelled => {
-            if matches!(
+            let preparing = matches!(
                 state.join,
-                JoinState::Joining { .. }
-                    | JoinState::Preparing { .. }
-                    | JoinState::NeedsModReplacement { .. }
-            ) {
+                JoinState::Joining { .. } | JoinState::Preparing { .. }
+            );
+            if preparing || matches!(state.join, JoinState::NeedsModReplacement { .. }) {
                 state.join = JoinState::Idle;
+            }
+            // A matchmaker launch called off while its files were coming down
+            // is over as a match: no process was started, so no exit will
+            // ever clear it, and the panel stayed on "Starting your match".
+            if preparing && matches!(state.matchmaking, MatchmakingState::Launching { .. }) {
+                state.matchmaking = MatchmakingState::Idle;
             }
         }
         LobbyEvent::InGame => state.join = JoinState::InGame,
         LobbyEvent::LaunchFailed { reason } => {
             state.join = JoinState::LaunchFailed {
                 reason: reason.clone(),
+            };
+            // The same for a launch that failed: there is no process whose
+            // exit would release the panel, which then waited for the server
+            // to cancel the match a minute or two later.
+            if matches!(
+                state.matchmaking,
+                MatchmakingState::Launching { .. } | MatchmakingState::MatchFound { .. }
+            ) {
+                state.matchmaking = MatchmakingState::Idle;
             }
         }
         LobbyEvent::GameTerminated => {
@@ -1191,6 +1261,7 @@ mod tests {
             team_size,
             num_players,
             queue_pop_time_seconds: 60,
+            queue_pops_at: String::new(),
             boundary_80s: Vec::new(),
             boundary_75s: Vec::new(),
         }
@@ -1470,6 +1541,112 @@ mod tests {
             state.matchmaking,
             MatchmakingState::Searching {
                 queue_names: vec!["ladder_1v1".into()],
+            }
+        );
+    }
+
+    #[test]
+    fn a_reconnect_ends_the_search_the_server_dropped_with_the_connection() {
+        for before in [
+            MatchmakingState::Preparing {
+                queue_names: vec!["ladder_1v1".into()],
+            },
+            MatchmakingState::Searching {
+                queue_names: vec!["ladder_1v1".into()],
+            },
+            MatchmakingState::MatchFound {
+                queue_name: "ladder_1v1".into(),
+            },
+            MatchmakingState::Cancelled { queue_name: None },
+        ] {
+            let mut state = LobbyState {
+                matchmaking: before.clone(),
+                ..LobbyState::default()
+            };
+            reduce(&mut state, &LobbyEvent::Connecting);
+            assert_eq!(state.matchmaking, MatchmakingState::Idle, "from {before:?}");
+        }
+    }
+
+    #[test]
+    fn a_reconnect_keeps_a_game_that_is_already_running() {
+        let mut state = LobbyState {
+            join: JoinState::InGame,
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "tmm_2v2".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::Connecting);
+
+        assert_eq!(state.join, JoinState::InGame);
+        assert_eq!(
+            state.matchmaking,
+            MatchmakingState::Launching {
+                queue_name: "tmm_2v2".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn a_failed_matchmaker_launch_frees_the_panel() {
+        let mut state = LobbyState {
+            join: JoinState::Launched { launch: launch(5) },
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "ladder_1v1".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(
+            &mut state,
+            &LobbyEvent::LaunchFailed {
+                reason: "ice adapter: no port".into(),
+            },
+        );
+
+        assert_eq!(state.matchmaking, MatchmakingState::Idle);
+    }
+
+    #[test]
+    fn a_matchmaker_launch_cancelled_during_preparation_frees_the_panel() {
+        let mut state = LobbyState {
+            join: JoinState::Preparing {
+                phase: PreparationPhase::Downloading,
+                detail: String::new(),
+                progress: None,
+            },
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "ladder_1v1".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::JoinCancelled);
+
+        assert_eq!(state.join, JoinState::Idle);
+        assert_eq!(state.matchmaking, MatchmakingState::Idle);
+    }
+
+    #[test]
+    fn cancelling_nothing_leaves_a_running_matchmaker_game_alone() {
+        // `Disconnect` emits `JoinCancelled` as well; with the game up, the
+        // match is the process's to end.
+        let mut state = LobbyState {
+            join: JoinState::InGame,
+            matchmaking: MatchmakingState::Launching {
+                queue_name: "ladder_1v1".into(),
+            },
+            ..LobbyState::default()
+        };
+
+        reduce(&mut state, &LobbyEvent::JoinCancelled);
+
+        assert_eq!(
+            state.matchmaking,
+            MatchmakingState::Launching {
+                queue_name: "ladder_1v1".into(),
             }
         );
     }

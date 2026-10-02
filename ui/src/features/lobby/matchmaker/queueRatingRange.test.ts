@@ -8,6 +8,7 @@ function queue(overrides: Partial<MatchmakerQueue> = {}): MatchmakerQueue {
     teamSize: 1,
     numPlayers: 3,
     queuePopTimeSeconds: 60,
+    queuePopsAt: "",
     boundary80s: [
       { min: 800, max: 1200 },
       { min: 1100, max: 1500 },

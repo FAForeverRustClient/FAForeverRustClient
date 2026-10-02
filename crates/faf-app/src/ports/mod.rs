@@ -57,7 +57,7 @@ pub use player_card::PlayerCardPort;
 pub use process::{
     DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort, ReplayMetadata,
 };
-pub use replay::{ReplayPort, VaultSearchResult, DEFAULT_LOCAL_REPLAY_LIMIT};
+pub use replay::{PreparationSink, ReplayPort, VaultSearchResult, DEFAULT_LOCAL_REPLAY_LIMIT};
 pub use reporting::{GameParticipation, ReportPlayerRequest, ReportingPort};
 pub use reviews::{ReviewPage, ReviewsPort};
 pub use settings::SettingsPort;
