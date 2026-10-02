@@ -64,6 +64,7 @@ import {
 import { busyMatchId, mayReport, openEvent, signupNeedsRating } from "../../shared/rules/tourneyRules";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
+import { plainError } from "../../shared/plainError";
 
 /** Every command this tab sends is a tourney command; this is the only wrapper. */
 const send = (command: TourneyCommand) =>
@@ -414,8 +415,8 @@ export function TournamentsView() {
       />
 
       {state.status.type === "failed" && (
-        <StatusNotice tone="error" action={{ label: t("common.retry"), onClick: load }}>
-          {t("tournaments.loadFailed", { reason: state.status.payload.reason })}
+        <StatusNotice tone="error" action={{ label: t("common.retry"), onClick: load }} detail={state.status.payload.reason}>
+          {t("tournaments.loadFailed", { reason: plainError(state.status.payload.reason) })}
         </StatusNotice>
       )}
 

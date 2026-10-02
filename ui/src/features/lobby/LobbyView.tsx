@@ -51,6 +51,7 @@ import "./game-dialogs.css";
 import "./play.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame } from "../../shared/joinGame";
+import { plainError } from "../../shared/plainError";
 
 /// How often the Galactic War player count is re-asked while the Play tab is
 /// open. A minute: often enough that the number is not stale advice about
@@ -184,7 +185,7 @@ function GameDetails({
   // A join this game refused, said here, beside the button that tries again.
   // It was an 11 px line in the status bar, in English, with no way out.
   const failedHere = lobby.join.type === "failed" && lobby.join.payload.id === game.id
-    ? lobby.join.payload.reason.replace(/_/g, " ")
+    ? plainError(lobby.join.payload.reason)
     : null;
 
   let joinLabel = failedHere ? t("lobby.details.joinAgain") : t("lobby.details.joinGame");
@@ -399,7 +400,7 @@ function GameDetails({
       </div>
       <div className="game-detail-footer">
         {failedHere && (
-          <StatusNotice tone="error">{t("lobby.details.joinFailed", { reason: failedHere })}</StatusNotice>
+          <StatusNotice tone="error" detail={lobby.join.type === "failed" ? lobby.join.payload.reason : undefined}>{t("lobby.details.joinFailed", { reason: failedHere })}</StatusNotice>
         )}
         <Button className="game-detail-join" variant="primary" disabled={joinDisabled} title={joinTitle} onClick={onJoin}>{joinLabel}</Button>
       </div>
@@ -780,6 +781,13 @@ export function LobbyView() {
       ) : inCoop ? (
         <CoopPanel
           games={filteredCoopGames}
+          // The search box is this view's own state, which the panel cannot
+          // reach: without this its Clear filters left the typed text in place.
+          // No ranked filter here, as the co-op toolbar has none to show.
+          onClearFilters={() => {
+            setSearch("");
+            updateGameBrowser({ hidePrivate: false, hideModded: false, hideFoes: false, applyFilters: false });
+          }}
           viewMode={gameView}
           toolbar={(
             <CustomGamesToolbar
@@ -870,8 +878,8 @@ export function LobbyView() {
                   (the host left, it launched): the panel is where the reader
                   looks after pressing Join, so the reason is said here too. */}
               {lobby.join.type === "failed" ? (
-                <StatusNotice tone="error">
-                  {t("lobby.details.joinFailed", { reason: lobby.join.payload.reason.replace(/_/g, " ") })}
+                <StatusNotice tone="error" detail={lobby.join.payload.reason}>
+                  {t("lobby.details.joinFailed", { reason: plainError(lobby.join.payload.reason) })}
                 </StatusNotice>
               ) : (
                 <>

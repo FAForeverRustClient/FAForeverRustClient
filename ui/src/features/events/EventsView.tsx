@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { Icon } from "../../design-system/Icon";
-import { SectionTabs, type SectionTab } from "../../design-system/SectionTabs";
+import { SectionTabs, sectionPanelProps, type SectionTab } from "../../design-system/SectionTabs";
 import { Select } from "../../design-system/Select";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
@@ -25,6 +25,7 @@ import { EventUpcoming } from "./EventUpcoming";
 import { EventWeek } from "./EventWeek";
 import { CATEGORIES, categoryLabel, monthTitle, weekTitle } from "./eventPresentation";
 import "./events.css";
+import { plainError } from "../../shared/plainError";
 
 const setView = (view: CalendarView) =>
   ipc.send({ kind: "Events", command: { type: "setView", payload: { view } } });
@@ -162,6 +163,7 @@ export function EventsView() {
           className="events-view-tabs"
           items={views}
           onChange={setView}
+          idPrefix="events-view"
         />
         {events.view !== "upcoming" && (
           <div className="events-period" role="group" aria-label={t("events.period.aria")}>
@@ -244,12 +246,13 @@ export function EventsView() {
             label: t("common.retry"),
             onClick: () => ipc.send({ kind: "Events", command: { type: "load" } }),
           }}
+          detail={events.status.payload.reason}
         >
-          {t("events.failed", { reason: events.status.payload.reason })}
+          {t("events.failed", { reason: plainError(events.status.payload.reason) })}
         </StatusNotice>
       )}
 
-      <div className="events-layout">
+      <div className="events-layout" {...sectionPanelProps("events-view", events.view)}>
         <div className="events-main">
           {/* A line over the grid rather than a block in place of it: the grid
               stays drawn, so all that is missing is the reason it is blank.

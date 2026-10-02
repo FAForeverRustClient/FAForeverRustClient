@@ -112,6 +112,35 @@
   flex: 1;
 }
 
+/* The selected game and its Join button, under the list rather than in a side
+   panel: the co-op tab's right column is the record board. */
+.coop-join-bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.coop-join-bar-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.coop-join-bar button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
 .coop-mission-picker {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -3,8 +3,9 @@
 // The shape every desktop client uses for this, because a settings tab is a
 // place people come to do one thing and leave: find the row, change it, go
 // back to the game. So the sidebar lists plain names with an icon, the tab
-// opens on the first section rather than on a table of contents, and the page
-// is a heading and its panels, nothing above the heading.
+// opens on a section rather than on a table of contents (the one last open,
+// which is the first on a fresh start), and the page is a heading and its
+// panels, nothing above the heading.
 //
 // Every section stays mounted and all but one are hidden, which is not a
 // detail: it is what lets the search read the rows that rendered rather than
@@ -16,7 +17,9 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { EmptyState } from "../../design-system/EmptyState";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
-import { FIRST_SECTION, SECTIONS, SECTION_ORDER, type SectionKey } from "./sections";
+import { ipc } from "../../ipc/client";
+import { useAppStore } from "../../store/store";
+import { SECTIONS, SECTION_ORDER, type SectionKey } from "./sections";
 import { SettingsSectionScope, useSettingsIndexEntry } from "./SettingControls";
 import {
   clearSettingsRequest,
@@ -42,9 +45,17 @@ function SectionKeywords({ text }: { text: string }) {
   return null;
 }
 
+/**
+ * The open section is the backend's, like the Play tab's mode, so it survives
+ * the tab unmounting: someone going back and forth between a game setting and
+ * the lobby returns to the page they were on, not to General every time.
+ */
+const setActive = (section: SectionKey) =>
+  ipc.send({ kind: "Nav", command: { type: "selectSettingsSection", payload: { section } } });
+
 export function SettingsView() {
   const { t } = useTranslation();
-  const [active, setActive] = useState<SectionKey>(FIRST_SECTION);
+  const active = useAppStore((state) => state.state.nav.settingsSection);
   const [search, setSearch] = useState("");
   const query = search.trim();
   const pageRef = useRef<HTMLDivElement>(null);

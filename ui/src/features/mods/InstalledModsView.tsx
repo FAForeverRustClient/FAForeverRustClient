@@ -18,7 +18,7 @@ import { formatShortDate } from "../../shared/format/dates";
 import { VaultDescription } from "../../shared/components/VaultDescription";
 import { useAppStore } from "../../store/store";
 import { Modal } from "../../design-system/Modal";
-import { ModPreview, UninstallDialog, cleanDescription, installNote, toggleNote } from "./ModVaultComponents";
+import { ModPreview, UninstallDialog, bestDescription, installNote, toggleNote } from "./ModVaultComponents";
 import { favoriteModKeys, isFavoriteMod, toggleFavoriteMod } from "./favoriteMods";
 import { modUpdateAvailable } from "./modVersions";
 import { modCounterparts } from "./modIdentity";
@@ -206,7 +206,7 @@ function InstalledModDetail({
   const { t } = useTranslation();
   // The vault copy is the maintained one; `mod_info.lua` is what a mod that
   // was never published, or was taken down, still has.
-  const description = cleanDescription(metadata?.description || mod.description);
+  const description = bestDescription(metadata?.description, mod.description);
   const updateAvailable = Boolean(metadata && modUpdateAvailable(mod.version, metadata.version));
   return (
     <Modal className="installed-mod-modal" onClose={onClose} ariaLabel={mod.displayName}>

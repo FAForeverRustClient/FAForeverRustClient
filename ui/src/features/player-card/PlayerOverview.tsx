@@ -183,6 +183,12 @@ export function PlayerOverview({ profile, country, note, onOpenHistory, avatarsS
               );
             })}
           </div>
+          {/* Said where avatars are chosen, because the fallback acts without
+              asking: the request came from a player who could not tell whether
+              it already existed. Own card only; nobody else's choice is kept. */}
+          {avatarsSelectable && profile.avatars.length > 0 && (
+            <p className="player-avatar-hint muted">{t("playerCard.avatar.fallbackHint")}</p>
+          )}
         </div>
       </section>
 

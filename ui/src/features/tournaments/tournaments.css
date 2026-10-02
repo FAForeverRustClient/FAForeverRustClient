@@ -44,10 +44,13 @@
 }
 
 /* The Java client's split pane: list left, detail right. Collapses to a single
-   column at narrow widths rather than squeezing both. */
+   column at narrow widths rather than squeezing both. The list takes a
+   quarter of the width, 200 to 300 px: always reaching 300 left the detail
+   pane about 470 px at the default window, under the organiser furniture, so
+   the bracket had almost nothing. */
 .tournaments-body {
   display: grid;
-  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  grid-template-columns: clamp(200px, 26%, 300px) minmax(0, 1fr);
   gap: var(--space-4);
   min-height: 0;
   flex: 1;

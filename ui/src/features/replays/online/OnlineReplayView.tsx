@@ -16,6 +16,7 @@ import { subscribeReplaySearch, takeReplaySearch } from "../../../shared/replayS
 import { VaultSearch } from "./VaultSearch";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
 
 /**
  * The selector's answer when nothing has been resolved yet. A literal `{}` in
@@ -107,7 +108,15 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     if (!runRequestedSearch() && !handedOver.current) {
       const status = state.replays.vaultStatus.type;
       if (status === "idle") {
-        if (playerToSearch) searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
+        if (playerToSearch) {
+          // The landing search is this visit's fresh one, so it counts as the
+          // re-run. Unarmed, the first search of a session (the vault player
+          // was not remembered yet, so it changes) re-ran the landing query
+          // over the reader's own: "Skip short replays" did nothing on the
+          // first press and switched itself back off.
+          refreshed.current = true;
+          searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
+        }
       } else if (status !== "loading" && !refreshed.current) {
         refreshed.current = true;
         // Every later visit runs the search that is on screen again, rather
@@ -239,8 +248,12 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
           It was a muted fragment after "0 shown · 1 pages", which read as an
           empty result rather than a failure. */}
       {vaultStatus.type === "failed" && (
-        <StatusNotice tone="error" action={{ label: t("common.retry"), onClick: () => searchVault(query) }}>
-          {t("replays.vault.loadFailed")}: {vaultStatus.payload.reason}
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: () => searchVault(query) }}
+          detail={vaultStatus.payload.reason}
+        >
+          {t("replays.vault.loadFailed")}: {plainError(vaultStatus.payload.reason)}
         </StatusNotice>
       )}
       {vaultStatus.type === "ready" && vault.length === 0 && (

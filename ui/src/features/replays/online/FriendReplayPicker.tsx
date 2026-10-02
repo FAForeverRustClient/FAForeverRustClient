@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { useTranslation } from "../../../i18n/useTranslation";
 import "../../../design-system/multi-select.css";
 
@@ -33,22 +34,22 @@ export function FriendReplayPicker({ friends, current, onPick }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Same dismissal rules as `MultiSelect`, which is the other popover in this
-  // bar: a pointer anywhere outside, or Escape.
+  // bar: a pointer anywhere outside, or Escape, which goes through the overlay
+  // stack so it closes this list and nothing under it.
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
     window.addEventListener("pointerdown", onPointerDown, true);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", onPointerDown, true);
-      window.removeEventListener("keydown", onKeyDown);
-    };
+    return () => window.removeEventListener("pointerdown", onPointerDown, true);
   }, [open]);
+  useOverlayLayer(open, () => {
+    setOpen(false);
+    // Back to the trigger, the first button in the root: the filter field
+    // that may have had focus is about to be unmounted.
+    rootRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+  });
 
   // Sorted here rather than trusted from the state: the list is a set of
   // logins and the order it arrives in is the server's, which is not an order

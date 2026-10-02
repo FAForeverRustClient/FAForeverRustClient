@@ -107,6 +107,8 @@ describe("browsing preferences", () => {
       ],
       leaderboardRatingColumns: ["deviation", "MEAN", "invalid_column"],
       replayVaultPlayer: "  VindexNoob  ",
+      replayChatChannel: "  ALLIES  ",
+      replayChatTransfers: "hide",
       legacyStorageMigrated: true,
     });
 
@@ -171,6 +173,13 @@ describe("browsing preferences", () => {
     expect(normalized.customGamesBrowser.detailWidth).toBe(MIN_DETAIL_PX);
     expect(normalized.leaderboardRatingColumns).toEqual(["mean", "deviation"]);
     expect(normalized.replayVaultPlayer).toBe("VindexNoob");
+    expect(normalized.replayChatChannel).toBe("allies");
+    expect(normalized.replayChatTransfers).toBe("hide");
+  });
+
+  it("does not remember a whisper's channel, whose army number means someone else next game", () => {
+    const normalized = normalizeBrowsingPreferences({ ...DEFAULT_BROWSING_PREFERENCES, replayChatChannel: "3" });
+    expect(normalized.replayChatChannel).toBe("");
   });
 
   it("keeps the my-maps preset, and still rejects anything unknown", () => {

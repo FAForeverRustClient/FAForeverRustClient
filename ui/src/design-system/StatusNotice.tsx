@@ -20,6 +20,11 @@ interface Props {
   action?: Action;
   /** A second, quieter way out, usually Dismiss. */
   secondary?: Action;
+  /**
+   * The text as the system wrote it, when `children` says it more plainly:
+   * shown on hover, so a bug report can still quote the original.
+   */
+  detail?: string;
   className?: string;
 }
 
@@ -32,7 +37,7 @@ interface Props {
  * most often left unsaid. One primitive, so a failure always reads as one, and
  * always carries its action.
  */
-export function StatusNotice({ tone, children, action, secondary, className }: Props) {
+export function StatusNotice({ tone, children, action, secondary, detail, className }: Props) {
   const classes = ["status-notice", `is-${tone}`, className ?? ""].filter(Boolean).join(" ");
   return (
     <div
@@ -41,7 +46,7 @@ export function StatusNotice({ tone, children, action, secondary, className }: P
       aria-live={tone === "error" ? "assertive" : "polite"}
     >
       <Icon name={tone === "error" ? "alert" : tone === "busy" ? "refresh" : "info"} size={15} />
-      <span className="status-notice-text">{children}</span>
+      <span className="status-notice-text" title={detail}>{children}</span>
       {(action || secondary) && (
         <span className="status-notice-actions">
           {action && <Button onClick={action.onClick}>{action.label}</Button>}

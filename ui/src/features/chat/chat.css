@@ -314,7 +314,10 @@ html.is-resizing-chat-roster * {
   gap: 1px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px 20px;
+  /* 12 px at the sides, not 20: at the default window the message column is
+     about 250 px after the avatar, name and time columns, and every pixel of
+     padding is a character of the line people read for hours. */
+  padding: 14px 12px;
   scrollbar-gutter: stable;
 }
 
@@ -677,13 +680,22 @@ html.is-resizing-chat-roster * {
   white-space: nowrap;
 }
 
-/* Floating action toolbar revealed on hover / focus. */
+/* Floating action toolbar revealed on hover / focus.
+ *
+ * Hidden with opacity rather than `display: none`, which took its buttons out
+ * of the tab order: the toolbar only appeared once focus was already inside
+ * it, and focus could never get there, so replying and reacting were
+ * pointer-only. Now the buttons stay focusable and the toolbar shows whenever
+ * focus is anywhere in its line. `pointer-events` keeps the invisible toolbar
+ * from catching clicks meant for the message above. */
 .chat-message-actions {
   position: absolute;
   right: 6px;
   top: -8px;
   z-index: 10;
-  display: none;
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
   align-items: center;
   gap: 2px;
   padding: 2px;
@@ -694,8 +706,15 @@ html.is-resizing-chat-roster * {
 }
 
 .chat-message:hover .chat-message-actions,
-.chat-message-actions:focus-within {
-  display: flex;
+.chat-message:focus-within .chat-message-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* A line being worked from the keyboard reads as the hovered one does. Keyed
+   on `:focus-visible` so a mouse click on a name does not leave its line lit. */
+.chat-message:has(:focus-visible) {
+  background: var(--color-surface-hover);
 }
 
 .chat-action-btn {
@@ -814,6 +833,7 @@ html.is-resizing-chat-roster * {
 }
 
 .chat-message:hover .chat-reaction-trigger,
+.chat-message:focus-within .chat-reaction-trigger,
 .chat-reaction-trigger:focus-visible,
 .chat-reaction-trigger[aria-expanded="true"] {
   border-color: var(--color-border);

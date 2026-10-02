@@ -84,6 +84,16 @@
   min-height: 0;
 }
 
+/* The chosen league's panel under its tabs: the same column the section is,
+   so the table inside still takes the remaining height. */
+.leaderboard-league-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* What the table is ranked by, and what that board is. One line, since the
    tabs that used to say the first half are gone. */
 .leaderboard-description {
@@ -962,7 +972,11 @@
   flex: 1 1 240px;
 }
 
-@media (max-width: 1100px) {
+/* 900, where the sidebar folds to icons, and not 1100: 1100 is the client's
+   default window, so the detail panel dropped under the table in exactly the
+   size every layout has to hold, and a click on a row changed something the
+   reader could not see. The 230 px panel leaves the table about 578 px. */
+@media (max-width: 900px) {
   .leaderboard-header {
     grid-template-columns: 1fr;
   }

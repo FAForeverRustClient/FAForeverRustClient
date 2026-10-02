@@ -401,8 +401,12 @@
   white-space: nowrap;
 }
 
+/* 78 px squares, not 96: six weeks of 96 plus the header, toolbar and
+   filters were taller than the default 720 px window, so the last week sat
+   below the fold of a view whose point is seeing the whole month. A day with
+   entries still grows to fit them. */
 .event-month-grid {
-  grid-auto-rows: minmax(96px, auto);
+  grid-auto-rows: minmax(78px, auto);
 }
 
 .event-day {

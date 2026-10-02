@@ -1837,6 +1837,18 @@ pub enum CustomGameView {
     List,
 }
 
+/// What a replay's chat log shows of the lines the game writes when somebody
+/// shares: "Sent 1.2k energy to …", "sent 1 unit to …" and the request
+/// button's "Can you give me some energy, …?".
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ReplayChatTransfers {
+    #[default]
+    Show,
+    Hide,
+    Only,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum CustomGameSort {
@@ -2254,6 +2266,15 @@ pub struct BrowsingPreferences {
     /// Last searched player username in the replay vault. When empty, defaults
     /// to the currently authenticated player name.
     pub replay_vault_player: String,
+    /// The channel a replay's chat log is filtered to: `all`, `allies`, or
+    /// empty for every channel.
+    ///
+    /// Remembered across replays because it is a way of reading chat, not a
+    /// fact about one game. A whisper is not kept: its channel is an army
+    /// number, which names a different player in every game.
+    pub replay_chat_channel: String,
+    /// What a replay's chat log shows of the sharing lines.
+    pub replay_chat_transfers: ReplayChatTransfers,
     /// Set after the webview has offered its pre-0.2 browser-storage values to
     /// the backend. Kept in the settings file so the compatibility read really
     /// is one-time and the old keys can be removed on a later confirmed load.
@@ -2278,7 +2299,10 @@ pub const VALID_LEADERBOARD_RATING_COLUMNS: [&str; 4] = ["mean", "deviation", "g
 impl Default for BrowsingPreferences {
     fn default() -> Self {
         Self {
-            custom_games_view: CustomGameView::Tiles,
+            // The list for a fresh install: at the default 1100x720 window
+            // about three tiles fit against a dozen list rows, and finding the
+            // right game quickly is what the tab is for. A saved choice wins.
+            custom_games_view: CustomGameView::List,
             replays_view: CustomGameView::Tiles,
             live_replay_view: CustomGameView::Tiles,
             custom_games_browser: CustomGameBrowserPreferences::default(),
@@ -2309,6 +2333,8 @@ impl Default for BrowsingPreferences {
                 .map(|col| (*col).to_owned())
                 .collect(),
             replay_vault_player: String::new(),
+            replay_chat_channel: String::new(),
+            replay_chat_transfers: ReplayChatTransfers::Show,
             legacy_storage_migrated: false,
         }
     }
@@ -2353,6 +2379,10 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
             replay_vault_player: String,
+            #[serde(default)]
+            replay_chat_channel: String,
+            #[serde(default)]
+            replay_chat_transfers: ReplayChatTransfers,
             legacy_storage_migrated: bool,
         }
 
@@ -2385,6 +2415,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     replay_vault_player: defaults.replay_vault_player,
+                    replay_chat_channel: defaults.replay_chat_channel,
+                    replay_chat_transfers: defaults.replay_chat_transfers,
                     legacy_storage_migrated: defaults.legacy_storage_migrated,
                 }
             }
@@ -2417,6 +2449,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             replay_vault_player: wire.replay_vault_player,
+            replay_chat_channel: wire.replay_chat_channel,
+            replay_chat_transfers: wire.replay_chat_transfers,
             legacy_storage_migrated: wire.legacy_storage_migrated,
         })
     }
@@ -2528,6 +2562,16 @@ impl BrowsingPreferences {
             selected_columns
         };
         self.replay_vault_player = truncate_trimmed(self.replay_vault_player, 64);
+        self.replay_chat_channel = match self
+            .replay_chat_channel
+            .trim()
+            .to_ascii_lowercase()
+            .as_str()
+        {
+            "all" => "all".into(),
+            "allies" => "allies".into(),
+            _ => String::new(),
+        };
         self.replay_list_columns = normalize_column_widths(self.replay_list_columns);
         self.replay_list_order = normalize_column_order(self.replay_list_order);
         self.live_replay_columns = normalize_column_widths(self.live_replay_columns);
@@ -2632,6 +2676,12 @@ pub struct SettingsState {
     /// itself rather than being replayed wrong forever.
     #[serde(default)]
     pub matchmaker_vetoes: Vec<PlayerVeto>,
+    /// The avatars this account was seen choosing, newest first; an empty
+    /// string is a choice of none. When the newest stops being allowed (a
+    /// tournament avatar rotating to the next winner), the client selects the
+    /// most recent one that still is. See `lobby::reconcile_avatar`.
+    #[serde(default)]
+    pub avatar_history: Vec<String>,
     #[serde(default)]
     pub cache_info: GameCacheInfo,
 }
@@ -2667,6 +2717,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             kept_generated_maps: Vec<String>,
             map_generator: GeneratorOptions,
             matchmaker_vetoes: Vec<PlayerVeto>,
+            avatar_history: Vec<String>,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -2690,6 +2741,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             kept_generated_maps: wire.kept_generated_maps,
             map_generator: wire.map_generator,
             matchmaker_vetoes: wire.matchmaker_vetoes,
+            avatar_history: wire.avatar_history,
             cache_info: GameCacheInfo::default(),
         })
     }
@@ -2812,6 +2864,11 @@ pub enum SettingsEvent {
     MatchmakerVetoesChanged {
         vetoes: Vec<PlayerVeto>,
     },
+    /// The remembered avatar choices, replaced whole; see
+    /// [`SettingsState::avatar_history`].
+    AvatarHistoryChanged {
+        history: Vec<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -2925,6 +2982,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::MatchmakerVetoesChanged { vetoes } => {
             state.matchmaker_vetoes = vetoes.clone()
         }
+        SettingsEvent::AvatarHistoryChanged { history } => state.avatar_history = history.clone(),
         SettingsEvent::GeneralChanged { preferences } => state.general = preferences.clone(),
         SettingsEvent::AppearanceChanged { preferences } => {
             state.appearance = preferences.clone().normalized()
@@ -3110,7 +3168,7 @@ mod tests {
         assert!(settings.notifications.match_found);
         assert!(settings.notifications.sound);
         assert_eq!(settings.notifications.volume, 70);
-        assert_eq!(settings.browsing.custom_games_view, CustomGameView::Tiles);
+        assert_eq!(settings.browsing.custom_games_view, CustomGameView::List);
         assert_eq!(
             settings.browsing.matchmaker_factions,
             ["UEF", "Aeon", "Cybran", "Seraphim"]
@@ -3603,6 +3661,8 @@ mod tests {
                     "invalid_col".into(),
                 ],
                 replay_vault_player: "  VindexNoob  ".into(),
+                replay_chat_channel: "  ALLIES  ".into(),
+                replay_chat_transfers: ReplayChatTransfers::Hide,
                 legacy_storage_migrated: true,
             },
             ..SettingsState::default()
@@ -3686,7 +3746,31 @@ mod tests {
             "kept in the order the table draws them, whatever order the file listed"
         );
         assert_eq!(settings.browsing.replay_vault_player, "VindexNoob");
+        assert_eq!(settings.browsing.replay_chat_channel, "allies");
+        assert_eq!(
+            settings.browsing.replay_chat_transfers,
+            ReplayChatTransfers::Hide
+        );
         assert!(settings.browsing.legacy_storage_migrated);
+    }
+
+    #[test]
+    fn a_whispers_channel_is_not_remembered_across_replays() {
+        // An army number names a different player in every game.
+        let mut settings = SettingsState::default();
+        settings.browsing.replay_chat_channel = "3".into();
+        assert!(settings
+            .normalized()
+            .browsing
+            .replay_chat_channel
+            .is_empty());
+    }
+
+    #[test]
+    fn a_settings_file_from_before_the_chat_filters_reads_as_show_everything() {
+        let browsing: BrowsingPreferences = serde_json::from_str("{}").unwrap();
+        assert!(browsing.replay_chat_channel.is_empty());
+        assert_eq!(browsing.replay_chat_transfers, ReplayChatTransfers::Show);
     }
 
     #[test]

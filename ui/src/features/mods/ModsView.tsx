@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
-import { SectionTabs } from "../../design-system/SectionTabs";
+import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
@@ -16,7 +16,7 @@ import {
   SearchPanelToggle,
 } from "../../design-system/SearchPanel";
 import { Pagination } from "../../design-system/Pagination";
-import type { InstalledMod, ModVaultQuery, VaultMod } from "../../ipc/bindings";
+import type { InstalledMod, ModsSection, ModVaultQuery, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { EMPTY_MOD_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
 import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
@@ -34,20 +34,22 @@ import { InstalledModsView } from "./InstalledModsView";
 // off the filesystem, which is what an author has after building one.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { ModRenameDialog } from "./ModRenameDialog";
-import { requestModVaultFocus, takeModVaultFocus } from "../../shared/modVaultFocus";
-import { modUpdateAvailable } from "./modVersions";
+import { hasModVaultFocus, requestModVaultFocus, takeModVaultFocus } from "../../shared/modVaultFocus";
+import { type ModInstallFilter, modsMatchingQuery, modsPassingInstallFilter } from "./modVaultResults";
 import { modCounterparts } from "./modIdentity";
+import { StatusNotice } from "../../design-system/StatusNotice";
+import { localPage, vaultPageOutcome } from "../../shared/vaultResults";
 import { favoriteModKeys, toggleFavoriteMod } from "./favoriteMods";
 import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
 import { DateInput } from "../../design-system/DateInput";
 
-type SubView = "vault" | "installed";
+type SubView = ModsSection;
 type ModSort = "rating" | "newest" | "updated" | "name";
 type ModTypeFilter = "all" | "ui" | "sim";
 type RankedFilter = "all" | "ranked" | "unranked";
-type InstallFilter = "all" | "installed" | "available" | "updates";
+type InstallFilter = ModInstallFilter;
 type ModPreset = "recommended" | "favorites" | "mine" | "rating" | "ui" | "newest" | "all";
 type DateField = "updated" | "uploaded";
 
@@ -388,35 +390,41 @@ function VaultView({ busy }: { busy: boolean }) {
     ipc.send({ kind: "Mods", command: { type: "searchVault", payload: { query } } });
   }, [localFavorites, query]);
 
+  // The query the server would have been sent, answered from the index: the
+  // search, creator, type, ranking, ratings, dates and sort apply here too,
+  // where they used to be shown and then ignored.
   const favorites = useMemo(
     () => (localFavorites
-      ? vault.filter((mod) => favoriteUids.has(mod.uid.toLocaleLowerCase()))
+      ? modsMatchingQuery(vault.filter((mod) => favoriteUids.has(mod.uid.toLocaleLowerCase())), query)
       : []),
-    [localFavorites, vault, favoriteUids],
+    [localFavorites, vault, favoriteUids, query],
   );
 
-  const results = useMemo(() => {
-    const source = localFavorites ? favorites : browse;
-    if (applied.installFilter === "all") return source;
-    return source.filter((mod) => {
-      const installedMod = installedFor(mod);
-      if (applied.installFilter === "installed") return Boolean(installedMod);
-      if (applied.installFilter === "updates") {
-        return Boolean(installedMod && modUpdateAvailable(installedMod.version, mod.version));
-      }
-      return !installedMod;
-    });
-  }, [applied.installFilter, browse, favorites, installedFor, localFavorites]);
+  // The install filter is local knowledge, so it is applied here: to one
+  // server page, or to the whole favourites list before that is paged.
+  const results = useMemo(
+    () => modsPassingInstallFilter(localFavorites ? favorites : browse, applied.installFilter, installedFor),
+    [applied.installFilter, browse, favorites, installedFor, localFavorites],
+  );
 
   // Same rule as the Maps tab: the count in state describes the search it came
-  // back with, not the one whose results are still on their way.
+  // back with, not the one whose results are still on their way. Favourites
+  // count what is left after every filter, not the starred total.
+  const favoritePage = localPage(results, page, pageSize);
   const totalPages = localFavorites
-    ? Math.max(1, Math.ceil(favorites.length / pageSize))
+    ? favoritePage.totalPages
     : (sameVaultSearch(browseQuery, query) ? browseTotalPages ?? 1 : 1);
-  const currentPage = Math.min(page, totalPages);
-  const pageMods = localFavorites
-    ? results.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-    : results;
+  const currentPage = localFavorites ? favoritePage.currentPage : Math.min(page, totalPages);
+  const pageMods = localFavorites ? favoritePage.items : results;
+  // A page the install filter emptied is not a search that found nothing:
+  // see `vaultPageOutcome`.
+  const outcome = vaultPageOutcome({
+    settled: localFavorites ? vaultStatus.type === "ready" : browseStatus.type === "ready",
+    received: localFavorites ? results.length : browse.length,
+    shown: pageMods.length,
+    currentPage,
+    totalPages,
+  });
   const selected = pageMods.find((mod) => mod.uid === selectedUid) ?? pageMods[0] ?? null;
   const hiddenFilterCount = Number(installFilter !== "all")
     + Number(dateAfter !== "" || dateBefore !== "");
@@ -523,7 +531,14 @@ function VaultView({ busy }: { busy: boolean }) {
           onChange={(low, high) => { setMinimumRating(low); setMaximumRating(high); }}
         />
         <SearchField label={t("mods.view.type")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={modType} onChange={(event) => { setModType(event.target.value as ModTypeFilter); choosePreset("all"); }}><option value="all">{t("mods.view.any")}</option><option value="ui">{t("mods.view.uiMods")}</option><option value="sim">{t("mods.view.simMods")}</option></select>
+          <select className="search-panel-control" value={modType} onChange={(event) => {
+            setModType(event.target.value as ModTypeFilter);
+            // Leaving the preset is what stops the `ui` preset, itself a type
+            // filter, from overriding the choice. Favourites answer the type
+            // locally, so a type chosen there narrows them instead of
+            // leaving them.
+            if (preset !== "favorites") choosePreset("all");
+          }}><option value="all">{t("mods.view.any")}</option><option value="ui">{t("mods.view.uiMods")}</option><option value="sim">{t("mods.view.simMods")}</option></select>
         </SearchField>
         <SearchField label={t("mods.view.ranking")} className="search-panel-field-compact">
           <select className="search-panel-control" value={ranked} onChange={(event) => setRanked(event.target.value as RankedFilter)}><option value="all">{t("mods.view.any")}</option><option value="ranked">{t("mods.view.rankedSafe")}</option><option value="unranked">{t("mods.view.unranked")}</option></select>
@@ -551,7 +566,7 @@ function VaultView({ busy }: { busy: boolean }) {
       <FailureNotice status={installStatus} message={installNote(installStatus)} />
       <FailureNotice status={toggleStatus} message={toggleNote(toggleStatus)} />
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("mods.view.detectionUnavailable")}</p>}
-      {(browseStatus.type === "ready" || localFavorites) && pageMods.length === 0 ? (
+      {outcome.kind === "noMatch" ? (
         // An empty "my mods" is the ordinary state for most players rather
         // than a failed search, so it says so instead of suggesting the
         // filters be widened.
@@ -572,7 +587,7 @@ function VaultView({ busy }: { busy: boolean }) {
             {vault.length > 0 && <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>}
           </EmptyState>
         )
-      ) : pageMods.length > 0 ? (
+      ) : outcome.kind !== "waiting" ? (
         <>
           <div className="vault-results-head">
             <span>{t("maps.view.resultCount", { count: pageMods.length })}</span>
@@ -583,6 +598,20 @@ function VaultView({ busy }: { busy: boolean }) {
             aria-busy={!localFavorites && browseStatus.type === "loading"}
           >
             <section className="vault-browser">
+              {/* Every mod on this page fell to the install filter, which only
+                  sees this page; the next one may well have some, so the pager
+                  stays and the note points there. */}
+              {outcome.kind !== "results" ? (
+                <StatusNotice
+                  tone="info"
+                  action={outcome.nextPage === null ? undefined : {
+                    label: t("mods.view.nextPage"),
+                    onClick: () => setPage(outcome.nextPage ?? currentPage),
+                  }}
+                >
+                  {t(outcome.kind === "filteredOnPage" ? "mods.view.pageFilteredOut" : "mods.view.pageEmpty")}
+                </StatusNotice>
+              ) : (
               <div className="mod-vault-grid">
                 {pageMods.map((mod) => {
                   const installedMod = installedFor(mod);
@@ -608,7 +637,8 @@ function VaultView({ busy }: { busy: boolean }) {
                   );
                 })}
               </div>
-              {totalPages > 1 && (
+              )}
+              {outcome.showPager && (
                 <div className="vault-pagination">
                   <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
                 </div>
@@ -665,19 +695,38 @@ const SUB_VIEW_LABELS: Record<SubView, MessageKey> = {
   installed: "mods.view.tab.installed",
 };
 
+/**
+ * The sub-view is the backend's, like the Play tab's mode, so it survives the
+ * tab unmounting: coming back to Mods lands on the list that was left, not on
+ * the vault every time.
+ */
+const selectSubView = (section: SubView) =>
+  ipc.send({ kind: "Nav", command: { type: "selectModsSection", payload: { section } } });
+
 export function ModsView() {
   const { t } = useTranslation();
-  const [subView, setSubView] = useState<SubView>("vault");
+  const subView = useAppStore((state) => state.state.nav.modsSection);
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
   const busy = installStatus.type === "installing" || toggleStatus.type === "toggling";
+
+  // A mod clicked in another tab is a request to see it in the vault, but a
+  // remembered sub-view may be Installed, where nothing reads the request. So
+  // on arrival, switch to the vault if one is waiting. Only looked at, not
+  // taken: the vault view is what consumes it, once it has mounted. When the
+  // vault is already showing, its own mount effect ran first (children's
+  // effects run before their parent's) and there is nothing left to find here.
+  useEffect(() => {
+    if (useAppStore.getState().state.nav.modsSection === "vault") return;
+    if (hasModVaultFocus()) selectSubView("vault");
+  }, []);
 
   // Switching sub-views remounts the one being shown, so the vault view picks
   // the request up in the same mount effect it uses for a jump from another
   // tab: one mechanism, not two.
   const openInVault = (modName: string) => {
     requestModVaultFocus(modName);
-    setSubView("vault");
+    selectSubView("vault");
   };
   return (
     <div className="mods-workspace">
@@ -686,16 +735,19 @@ export function ModsView() {
           active={subView}
           ariaLabel={t("mods.view.modLibraryViews")}
           items={(Object.keys(SUB_VIEW_LABELS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEW_LABELS[key]) }))}
-          onChange={setSubView}
+          onChange={selectSubView}
+          idPrefix="mods-section"
         />
         {/* No publish button here. Uploading a mod is one action with one
             entry point, which is "Upload mod" in the vault's own toolbar. */}
       </div>
-      {subView === "vault" ? (
-        <VaultView busy={busy} />
-      ) : (
-        <InstalledModsView busy={busy} onOpenInVault={openInVault} />
-      )}
+      <div {...sectionPanelProps("mods-section", subView)}>
+        {subView === "vault" ? (
+          <VaultView busy={busy} />
+        ) : (
+          <InstalledModsView busy={busy} onOpenInVault={openInVault} />
+        )}
+      </div>
     </div>
   );
 }

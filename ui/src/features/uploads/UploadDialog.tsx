@@ -26,6 +26,7 @@ import { useAppStore } from "../../store/store";
 import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import { formatBytes } from "../../shared/format/formatBytes";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { plainError } from "../../shared/plainError";
 import { uploadDescription, uploadFacts, vaultPresence } from "./uploadSubject";
 import "./uploads.css";
 import { t } from "../../i18n";
@@ -129,7 +130,7 @@ function statusLine(status: UploadsState["status"]): string | null {
     case "succeeded":
       return null;
     case "failed":
-      return status.payload.reason;
+      return plainError(status.payload.reason);
   }
 }
 
@@ -360,7 +361,10 @@ export function UploadDialog() {
 
       {done && <p className="upload-status is-ok">{t("uploads.published")}</p>}
       {line && (
-        <p className={status.type === "failed" ? "upload-status is-error" : "upload-status muted"}>
+        <p
+          className={status.type === "failed" ? "upload-status is-error" : "upload-status muted"}
+          title={status.type === "failed" ? status.payload.reason : undefined}
+        >
           {line}
           {percent !== null && ` ${percent}%`}
         </p>

@@ -399,6 +399,13 @@
   border-radius: var(--radius-sm);
 }
 
+/* The avatar fallback, said once under the list it acts on. */
+.player-avatar-hint {
+  margin: var(--space-2) 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .player-card-section-heading {
   justify-content: space-between;
   gap: var(--space-3);

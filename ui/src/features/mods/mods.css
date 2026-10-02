@@ -618,10 +618,16 @@
   align-items: start;
 }
 
-.installed-mod-detail-preview .mod-vault-thumb {
+/* Whatever the slot holds: the picture, or the placeholder in its large or its
+   small form. The rule named only the small one, and a mod the vault knows
+   gets the large one, so with no picture the square collapsed to the height
+   of its icon and the dialog opened on a thin dark strip. */
+.installed-mod-detail-preview > .mod-vault-thumb,
+.installed-mod-detail-preview > .mod-vault-preview {
   width: 100%;
   height: auto;
   aspect-ratio: 1;
+  border-radius: var(--radius-md);
 }
 
 .installed-mod-detail-body {

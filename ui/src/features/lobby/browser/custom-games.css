@@ -17,8 +17,12 @@
   grid-row: 2;
 }
 
+/* Across the whole width, list and detail columns both. Confined to the list
+   column it wrapped to three rows at the default window (Host, search, four
+   checkboxes, Apply, Filters, sort, view switch in ~540 px), which pushed
+   the games down by a hundred pixels before the first one. */
 .custom-games-layout > .play-toolbar {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 1;
   margin-bottom: 0;
 }
@@ -256,12 +260,15 @@
   overflow: auto;
 }
 
+/* 48 px, not 62: at the client's default 1100x720 window the list showed
+   about six games, and the reason most veterans open this tab is to scan
+   many of them. The title and host still get a line each. */
 .game-browser-row {
   width: 100%;
-  min-height: 62px;
+  min-height: 48px;
   content-visibility: auto;
-  contain-intrinsic-size: auto 62px;
-  padding: 9px 16px;
+  contain-intrinsic-size: auto 48px;
+  padding: 5px 12px;
   color: var(--color-text);
   background: transparent;
   border: 0;
@@ -289,9 +296,9 @@
 
 .game-browser-thumb-wrapper {
   position: relative;
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--color-border);

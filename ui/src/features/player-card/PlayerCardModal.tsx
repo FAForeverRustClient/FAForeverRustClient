@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { Icon } from "../../design-system/Icon";
-import { SectionTabs } from "../../design-system/SectionTabs";
+import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { ipc } from "../../ipc/client";
 import type { PlayerProfile, PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -163,7 +163,10 @@ function PlayerLookupSearch({
       } else if (query.trim()) {
         handleSelect(null, query.trim());
       }
-    } else if (e.key === "Escape") {
+    } else if (e.key === "Escape" && isOpen) {
+      // An open suggestion list is the first thing Escape closes; only a
+      // second press, with the list already gone, reaches the card itself.
+      e.stopPropagation();
       setIsOpen(false);
     }
   };
@@ -428,7 +431,14 @@ export function PlayerCardModal() {
   };
 
   return (
-    <Modal className="player-card-modal" onClose={() => void closePlayerCard()}>
+    <Modal
+      className="player-card-modal"
+      // The player's name, as the heading shows it: "Dialog" named nothing.
+      ariaLabel={t("playerCard.dialogAria", {
+        name: profile?.login || state.requestedLogin || t("playerCard.fallbackName"),
+      })}
+      onClose={() => void closePlayerCard()}
+    >
       <div className="player-card-header">
         <div className="player-card-identity">
           {country && (
@@ -472,8 +482,9 @@ export function PlayerCardModal() {
             className="player-card-tabs"
             items={TABS.map((item) => ({ id: item.id, label: t(item.label) }))}
             onChange={setTab}
+            idPrefix="player-card"
           />
-          <div className="player-card-content">
+          <div className="player-card-content" {...sectionPanelProps("player-card", tab)}>
             {tab === "overview" && <PlayerOverview profile={profile} country={country} note={playerNote} onOpenHistory={openHistory} avatarsSelectable={Boolean(isMe)} />}
             {tab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
             {tab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}

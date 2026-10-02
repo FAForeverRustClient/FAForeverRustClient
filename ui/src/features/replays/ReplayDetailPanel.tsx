@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
+import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import type { CoopMission, LocalReplay, LocalReplayPlayer, LocalReplayTeam, VaultMap, VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { formatDate, formatTime } from "../../shared/format/dates";
@@ -321,21 +322,10 @@ export function ReplayDetailPanel({
   const notRated = isLocal
     ? localRatingNote(replay.uid, onlineLookup, detailTeams)
     : resultNote(validity, detailTeams);
-  // `Modal` closes on Escape from a bubble-phase listener on the document, so
-  // an overlay that wants Escape first has to take it in the capture phase:
-  // stopping propagation there means the modal's listener never runs, and one
-  // press steps back out of the preview instead of shutting the whole panel.
-  useEffect(() => {
-    if (!enlarged) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      setEnlarged(false);
-    };
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [enlarged]);
+  // The enlarged preview is a layer of the overlay stack above this panel's
+  // `Modal`, so one press steps back out of the preview instead of shutting
+  // the whole panel.
+  useOverlayLayer(enlarged, () => setEnlarged(false));
 
   const copyLink = () =>
     ipc.run(
@@ -797,10 +787,8 @@ export function ReplayDetailPanel({
       </div>
 
       {/* The enlarged preview, in this dialog's own markup rather than in a
-          second `Modal`: `Modal` closes on Escape from a document listener, so
-          two stacked would close both at once. It covers the viewport the way
-          a dialog would, and leaves the same three ways out -- the button, the
-          scrim, and Escape. */}
+          second `Modal`. It covers the viewport the way a dialog would, and
+          leaves the same three ways out: the button, the scrim, and Escape. */}
       {enlarged && (
         <div
           className="replay-preview-scrim"

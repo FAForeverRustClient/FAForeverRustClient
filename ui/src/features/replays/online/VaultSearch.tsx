@@ -38,7 +38,7 @@ import {
 } from "../../../shared/replayQuery";
 import { AdvancedReplayFilters, ReplaySearchSliders, ReplayTypeAndPageSize } from "./AdvancedReplayFilters";
 import { replayGameModes, selectedGameModes, withGameModes } from "./replayGameModes";
-import { activeReplayPreset } from "../replayPresets";
+import { activeReplayPreset, SHORT_GAME_MINUTES } from "../replayPresets";
 import { FriendReplayPicker } from "./FriendReplayPicker";
 import { MultiSelect } from "../../../design-system/MultiSelect";
 import { useAppStore } from "../../../store/store";
@@ -47,16 +47,6 @@ import "../../../design-system/search-panel.css";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { DateInput } from "../../../design-system/DateInput";
-
-/**
- * What counts as a game too short to be worth watching.
- *
- * Five minutes rather than one: a game that ended in the first minute is a
- * lobby somebody left, and one that ended in the fourth is a rush that went
- * wrong, which is a game. The thread suggested both numbers; this is the one
- * that removes the noise without removing content.
- */
-const SHORT_GAME_MINUTES = 5;
 
 const MIN_RATING = -1000;
 const MAX_RATING = 4000;

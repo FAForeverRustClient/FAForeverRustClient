@@ -135,7 +135,8 @@ pub struct ChatChannel {
     /// Roster, sorted case-insensitively by name for stable rendering. Always
     /// empty for a private conversation.
     pub users: Vec<ChatUser>,
-    /// Messages received while this channel was not the active one.
+    /// Messages received since this channel was last read: selected, or
+    /// looked at while the Chat tab was on screen and the window had focus.
     pub unread: u32,
     /// Of those, how many named us (or arrived in a private conversation),
     /// the Python client's "important" tab state, which deserves a louder badge.
@@ -870,7 +871,6 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
         }
         ChatEvent::MessageReceived { channel, message }
         | ChatEvent::MessageReceivedQuietly { channel, message } => {
-            let is_active = &state.active_channel == channel;
             let username = state.username.clone();
             let c = state.ensure_channel(channel);
             let is_private = c.is_private();
@@ -888,9 +888,16 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
                 .retain(|notice| !notice.nickname.eq_ignore_ascii_case(&message.sender));
 
             // Our own lines and client-side commentary never count as unread.
+            //
+            // The active channel counts too. It used to be exempt, on the
+            // assumption that the active channel is the one being read, but it
+            // is only on screen while the Chat tab is open and the window has
+            // focus: a player back from a forty-minute game came back to a
+            // busy channel with nothing to say what was new. The chat view
+            // clears the count by re-selecting the channel while it is
+            // actually looked at.
             let from_self = message.sender == username;
             let counts = matches!(event, ChatEvent::MessageReceived { .. })
-                && !is_active
                 && !from_self
                 && !matches!(message.kind, ChatMessageKind::Info | ChatMessageKind::Error);
             if counts {
@@ -1228,6 +1235,35 @@ mod tests {
         let c = s.channel("#newbie").unwrap();
         assert_eq!(c.unread, 2);
         assert_eq!(c.unread_mentions, 1);
+    }
+
+    #[test]
+    fn the_active_channel_counts_until_it_is_read() {
+        // Active is not the same as read: the channel stays active while the
+        // player is in a game or on another tab. Selecting it again is the
+        // read, which is what the chat view sends while it is on screen.
+        let mut s = connected("Aurora");
+        let active = s.active_channel.clone();
+        let mut mention = message("1");
+        mention.content = "aurora: gg".into();
+        reduce(
+            &mut s,
+            &ChatEvent::MessageReceived {
+                channel: active.clone(),
+                message: mention,
+            },
+        );
+        let c = s.channel(&active).unwrap();
+        assert_eq!((c.unread, c.unread_mentions), (1, 1));
+
+        reduce(
+            &mut s,
+            &ChatEvent::ChannelSelected {
+                channel: active.clone(),
+            },
+        );
+        let c = s.channel(&active).unwrap();
+        assert_eq!((c.unread, c.unread_mentions), (0, 0));
     }
 
     #[test]

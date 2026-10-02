@@ -4,11 +4,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type RankedFilter, useMapFilterDraft } from "./mapFilterDraft";
-import { type InstallFilter, visibleVaultMaps } from "./mapVaultResults";
+import { type InstallFilter, mapsMatchingQuery, visibleVaultMaps } from "./mapVaultResults";
+import { StatusNotice } from "../../design-system/StatusNotice";
+import { localPage, vaultPageOutcome } from "../../shared/vaultResults";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { EmptyState } from "../../design-system/EmptyState";
-import { SectionTabs } from "../../design-system/SectionTabs";
+import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { RangeSlider } from "../../design-system/RangeSlider";
 import {
   SearchField,
@@ -20,7 +22,7 @@ import {
 // modal on this branch, so `openUpload` is no longer called from here.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { Pagination } from "../../design-system/Pagination";
-import type { InstalledMap, MapVaultQuery, VaultMap } from "../../ipc/bindings";
+import type { InstalledMap, MapsSection, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
 import { isWithinNumberRange } from "../../shared/filterRanges";
@@ -39,7 +41,7 @@ import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DateInput } from "../../design-system/DateInput";
 
-type SubView = "vault" | "installed";
+type SubView = MapsSection;
 type VaultSort = "rating" | "newest" | "played" | "name" | "size";
 type VaultPreset = "recommended" | "favorites" | "mine" | "rating" | "newest" | "played" | "all";
 
@@ -377,17 +379,21 @@ function VaultView({ busy }: { busy: boolean }) {
     ipc.send({ kind: "Maps", command: { type: "searchVault", payload: { query } } });
   }, [localFavorites, query]);
 
+  // The same query the server would have been sent, answered locally: the
+  // search, author, ratings, slots, sizes, dates and sort all apply here too,
+  // where they used to be shown and then ignored.
   const favorites = useMemo(
     () => (localFavorites
-      ? vault.filter((map) => favoriteFolders.has(map.folderName.toLocaleLowerCase()))
+      ? mapsMatchingQuery(vault.filter((map) => favoriteFolders.has(map.folderName.toLocaleLowerCase())), query)
       : []),
-    [localFavorites, vault, favoriteFolders],
+    [localFavorites, vault, favoriteFolders, query],
   );
 
   // The filters the server cannot answer for this tab, applied to the page
   // that came back. `MapsView`'s result count says "on this page" for exactly
   // this reason. See `mapVaultResults.ts` for why withdrawn versions are among
-  // them even though the query asks about them.
+  // them even though the query asks about them. For favourites the list is
+  // whole, so they apply to all of it before it is paged.
   const results = useMemo(
     () => visibleVaultMaps(localFavorites ? favorites : browse, {
       showHidden: applied.showHidden,
@@ -401,13 +407,22 @@ function VaultView({ busy }: { busy: boolean }) {
   // A page count belongs to the search that produced it. While a new filter's
   // results are still on their way, the count in state still describes the old
   // one, and a pager built from it offers pages this search does not have.
+  // Favourites count what is left after every filter, not the starred total.
+  const favoritePage = localPage(results, page, pageSize);
   const totalPages = localFavorites
-    ? Math.max(1, Math.ceil(favorites.length / pageSize))
+    ? favoritePage.totalPages
     : (sameVaultSearch(browseQuery, query) ? browseTotalPages ?? 1 : 1);
-  const currentPage = Math.min(page, totalPages);
-  const pageMaps = localFavorites
-    ? results.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-    : results;
+  const currentPage = localFavorites ? favoritePage.currentPage : Math.min(page, totalPages);
+  const pageMaps = localFavorites ? favoritePage.items : results;
+  // The install filter only ever sees one server page, so a page it empties
+  // says so and keeps the pager, rather than claiming the search found nothing.
+  const outcome = vaultPageOutcome({
+    settled: localFavorites ? vaultStatus.type === "ready" : browseStatus.type === "ready",
+    received: localFavorites ? results.length : browse.length,
+    shown: pageMaps.length,
+    currentPage,
+    totalPages,
+  });
   const selected = pageMaps.find((map) => map.folderName === selectedFolder) ?? pageMaps[0] ?? null;
   const hiddenFilterCount = Number(installFilter !== "all")
     + Number(createdAfter !== "" || createdBefore !== "")
@@ -491,7 +506,10 @@ function VaultView({ busy }: { busy: boolean }) {
               setFilter({ search: value });
               if (value.trim() && preset === "recommended") choosePreset("all");
             }}
-            placeholder={t("maps.view.nameDescriptionFolder")}
+            // The name and nothing else, because that is all the vault's map
+            // search looks at (`displayName` in `vault_query.rs`); it used to
+            // promise the description and the folder as well.
+            placeholder={t("maps.view.searchByName")}
           />
         </SearchField>
         <SearchField label={t("maps.view.author")} className="search-panel-field-grow map-search-author">
@@ -555,7 +573,7 @@ function VaultView({ busy }: { busy: boolean }) {
       {/* The refusal an author meets when they try to undo a hide: FAF allows
           only a map administrator to do that, so the reason has to be read. */}
       {visibilityStatus.type === "failed" && <p className="vault-note is-warn">{visibilityStatus.payload.reason}</p>}
-      {browseStatus.type === "ready" && pageMaps.length === 0 ? (
+      {outcome.kind === "noMatch" ? (
         // An empty "my maps" is the ordinary state for most players rather
         // than a failed search, so it says so instead of suggesting the
         // filters be widened.
@@ -576,7 +594,7 @@ function VaultView({ busy }: { busy: boolean }) {
             {vault.length > 0 && <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>}
           </EmptyState>
         )
-      ) : pageMaps.length > 0 && (
+      ) : outcome.kind !== "waiting" && (
         <>
           <div className="vault-results-head">
             <span>{t("maps.view.resultCount", { count: pageMaps.length })}</span>
@@ -587,6 +605,20 @@ function VaultView({ busy }: { busy: boolean }) {
             aria-busy={!localFavorites && browseStatus.type === "loading"}
           >
             <section className="vault-browser">
+              {/* Every map on this page fell to the install filter, which only
+                  sees this page; the next one may well have some, so the pager
+                  stays and the note points there. */}
+              {outcome.kind !== "results" ? (
+                <StatusNotice
+                  tone="info"
+                  action={outcome.nextPage === null ? undefined : {
+                    label: t("maps.view.nextPage"),
+                    onClick: () => setPage(outcome.nextPage ?? currentPage),
+                  }}
+                >
+                  {t(outcome.kind === "filteredOnPage" ? "maps.view.pageFilteredOut" : "maps.view.pageEmpty")}
+                </StatusNotice>
+              ) : (
               <div className="map-vault-grid">
                 {pageMaps.map((map) => {
                   const isInstalled = mapInstalled(map, installedFolders);
@@ -608,7 +640,8 @@ function VaultView({ busy }: { busy: boolean }) {
                   );
                 })}
               </div>
-              {totalPages > 1 && (
+              )}
+              {outcome.showPager && (
                 <div className="vault-pagination">
                   <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
                 </div>
@@ -1036,9 +1069,17 @@ const SUB_VIEWS: Record<SubView, { label: MessageKey; Component: (props: { busy:
 const cleanUpGeneratedMaps = () =>
   ipc.send({ kind: "MapGenerator", command: { type: "cleanUp" } });
 
+/**
+ * The sub-view is the backend's, like the Play tab's mode, so it survives the
+ * tab unmounting: coming back to Maps lands on the list that was left, not on
+ * the vault every time.
+ */
+const selectSubView = (section: SubView) =>
+  ipc.send({ kind: "Nav", command: { type: "selectMapsSection", payload: { section } } });
+
 export function MapsView() {
   const { t } = useTranslation();
-  const [subView, setSubView] = useState<SubView>("vault");
+  const subView = useAppStore((state) => state.state.nav.mapsSection);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
   const generatorStatus = useAppStore((state) => state.state.mapGenerator.status);
   const busy = installStatus.type === "installing";
@@ -1051,7 +1092,8 @@ export function MapsView() {
           active={subView}
           ariaLabel={t("maps.view.mapLibraryViews")}
           items={(Object.keys(SUB_VIEWS) as SubView[]).map((key) => ({ id: key, label: t(SUB_VIEWS[key].label) }))}
-          onChange={setSubView}
+          onChange={selectSubView}
+          idPrefix="maps-section"
         />
         {/* Nothing sits beside the tabs any more. Uploading a map has one
             entry point, "Upload map" in the vault's own toolbar; clearing
@@ -1062,7 +1104,9 @@ export function MapsView() {
             the tab underline read as tabs, which is how this row was
             reported. */}
       </div>
-      <Component busy={busy} />
+      <div {...sectionPanelProps("maps-section", subView)}>
+        <Component busy={busy} />
+      </div>
       {/* The generator is started from the host dialog now, but this is still
           where its output lands, and a run is slow enough that the user will
           have walked away from the dialog long before it finishes. */}

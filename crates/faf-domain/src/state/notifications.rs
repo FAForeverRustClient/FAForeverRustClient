@@ -60,6 +60,10 @@ pub enum NotificationKind {
     /// dialog does not stop a publish, so this is the only place its outcome
     /// can still be read.
     UploadFinished,
+    /// The avatar the player chose last stopped being theirs (a rotational
+    /// tournament avatar went to the next winner) and the client put the one
+    /// before it back. Said once, so the change is not a mystery.
+    AvatarRestored,
     Error,
 }
 
@@ -281,6 +285,7 @@ mod tests {
             NotificationKind::GameInstall,
             NotificationKind::ClientUpdate,
             NotificationKind::UploadFinished,
+            NotificationKind::AvatarRestored,
             NotificationKind::PrivateMessage,
             NotificationKind::Mention,
             NotificationKind::FriendOnline,

@@ -140,7 +140,9 @@ export const MAX_VAULT_PAGE_SIZE = 200;
 export const DEFAULT_VAULT_PAGE_SIZE = 36;
 
 export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
-  customGamesView: "tiles",
+  // The list: about three tiles fit the default window against a dozen rows.
+  // Mirrors `BrowsingPreferences::default` in the Rust settings.
+  customGamesView: "list",
   replaysView: "tiles",
   liveReplayView: "tiles",
   customGamesBrowser: {
@@ -177,6 +179,8 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   replayVaultPlayer: "",
+  replayChatChannel: "",
+  replayChatTransfers: "show",
   legacyStorageMigrated: false,
 };
 
@@ -242,7 +246,22 @@ export function normalizeBrowsingPreferences(
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
     replayVaultPlayer: truncateTrimmed(preferences.replayVaultPlayer ?? "", 64),
+    replayChatChannel: normalizeReplayChatChannel(preferences.replayChatChannel),
+    replayChatTransfers:
+      preferences.replayChatTransfers === "hide" || preferences.replayChatTransfers === "only"
+        ? preferences.replayChatTransfers
+        : "show",
   };
+}
+
+/**
+ * `all`, `allies` or every channel. Twin of the `replay_chat_channel` match in
+ * `BrowsingPreferences::normalized`: a whisper's channel is an army number,
+ * which names somebody else in the next replay, so it is not kept.
+ */
+function normalizeReplayChatChannel(channel: string | undefined): string {
+  const normalized = asciiLower((channel ?? "").trim());
+  return normalized === "all" || normalized === "allies" ? normalized : "";
 }
 
 /**

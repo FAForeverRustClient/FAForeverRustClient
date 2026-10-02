@@ -25,6 +25,7 @@ import type { Game, LiveReplayTracking } from "../../../ipc/bindings";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { ipc } from "../../../ipc/client";
 import { isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { useAppStore } from "../../../store/store";
@@ -74,20 +75,9 @@ export function LiveReplayDetail({
     ipc.send({ kind: "Replays", command: { type: "lookUpOnline", payload: { uid: game.id } } });
   }, [game.id, lookup]);
 
-  // `Modal` closes on Escape from a bubble-phase listener on the document, so
-  // the preview has to take Escape in the capture phase: one press steps back
-  // out of the picture instead of shutting the whole panel.
-  useEffect(() => {
-    if (!enlarged) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      setEnlarged(false);
-    };
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [enlarged]);
+  // The preview is a layer of the overlay stack above this panel's `Modal`:
+  // one press steps back out of the picture instead of shutting the panel.
+  useOverlayLayer(enlarged, () => setEnlarged(false));
 
   // A generated map's size is in its name, and decoding the name is one
   // command for the one game this panel shows, as the lobby's own panel does.
@@ -313,10 +303,8 @@ export function LiveReplayDetail({
         </section>
       )}
 
-      {/* In this dialog's own markup rather than a second `Modal`: `Modal`
-          closes on Escape from a document listener, so two stacked would close
-          both at once. Three ways out, as next door: the button, the scrim and
-          Escape. */}
+      {/* In this dialog's own markup rather than a second `Modal`. Three ways
+          out, as next door: the button, the scrim and Escape. */}
       {enlarged && (
         <div
           className="replay-preview-scrim"

@@ -10,7 +10,7 @@ use faf_app::{App, Ports};
 use faf_domain::state::{
     BrowsingPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
     CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView,
-    HostGamePreferences, LiveReplayFilters, SettingsCommand, SettingsState,
+    HostGamePreferences, LiveReplayFilters, ReplayChatTransfers, SettingsCommand, SettingsState,
 };
 
 #[derive(Default)]
@@ -111,6 +111,8 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                     "invalid".into(),
                 ],
                 replay_vault_player: "VindexNoob".into(),
+                replay_chat_channel: "Allies".into(),
+                replay_chat_transfers: ReplayChatTransfers::Only,
                 legacy_storage_migrated: true,
             }),
         }
@@ -142,6 +144,8 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
     assert_eq!(state.mod_vault_preset, "rating");
     assert_eq!(state.leaderboard_rating_columns, ["deviation", "games"]);
     assert_eq!(state.replay_vault_player, "VindexNoob");
+    assert_eq!(state.replay_chat_channel, "allies");
+    assert_eq!(state.replay_chat_transfers, ReplayChatTransfers::Only);
     assert!(state.legacy_storage_migrated);
     assert_eq!(saved.lock().unwrap().last().unwrap().browsing, state);
 }
