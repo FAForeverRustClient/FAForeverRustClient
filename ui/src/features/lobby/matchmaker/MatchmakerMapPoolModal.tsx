@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { isGeneratedMap } from "../../../shared/mapPresentation";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
@@ -156,22 +155,20 @@ export function MatchmakerMapPoolModal({
     ipc.send({ kind: "Lobby", command: { type: "setPlayerVetoes", payload: { vetoes: list } } });
   };
 
-  // Java's plus and minus (`TeamMatchmakingMapTileController`): one token on,
-  // as long as the map's cap and the bracket's tokens allow, or one off.
-  const addVeto = (assignmentId: number) => {
-    if (!activePool || tokenLimit <= 0 || tokensUsed >= tokenLimit) return;
+  // A click in veto mode turns a map's veto on or off, rather than counting
+  // tokens up and down: vetoed maps lose it, others get as many tokens as
+  // the map may carry, up to what is left. A pool with no cap per map gives
+  // a map one token at a time. Sent at once, as Java's `setTokensForMap`.
+  const toggleVeto = (assignmentId: number) => {
+    if (!activePool || tokenLimit <= 0) return;
     const key = `${activePool.id}:${assignmentId}`;
     const current = vetoes[key] ?? 0;
-    if (perMapCap !== null && current >= perMapCap) return;
-    send({ ...vetoes, [key]: current + 1 });
-  };
-
-  const removeVeto = (assignmentId: number) => {
-    if (!activePool) return;
-    const key = `${activePool.id}:${assignmentId}`;
-    const current = vetoes[key] ?? 0;
-    if (current <= 0) return;
-    send({ ...vetoes, [key]: current - 1 });
+    if (current > 0) {
+      send({ ...vetoes, [key]: 0 });
+      return;
+    }
+    const tokens = Math.min(perMapCap ?? 1, tokenLimit - tokensUsed);
+    if (tokens > 0) send({ ...vetoes, [key]: tokens });
   };
 
   const resetVetoes = () => {
@@ -251,19 +248,25 @@ export function MatchmakerMapPoolModal({
             // banned and loses its colour; one with fewer tokens is only
             // partly banned. Without a cap no map is ever fully banned.
             const fullBan = perMapCap !== null && tokens >= perMapCap;
-            const canAdd = vetoing && tokensUsed < tokenLimit && (perMapCap === null || tokens < perMapCap);
-            // A generated map has no picture of its own to enlarge, so Java
-            // opens nothing for it either.
-            const previewable = !vetoing && !isGeneratedMap(map.folderName);
+            const canVeto = tokenLimit > 0;
+            const cardTitle = !vetoing || !canVeto
+              ? t("lobby.mapPool.previewHint")
+              : tokens > 0
+                ? t("lobby.mapPool.removeVetoHint")
+                : tokensUsed >= tokenLimit
+                  ? t("lobby.mapPool.vetoLimitReached", { limit: tokenLimit })
+                  : t("lobby.mapPool.vetoMapHint");
 
             return (
               <div className="map-pool-cell" key={map.assignmentId}>
+              {/* Outside veto mode a click always opens the large preview;
+                  inside it, it turns the map's veto on or off. */}
               <button
                 type="button"
-                className={`map-pool-card surface surface-interactive${fullBan ? " vetoed" : tokens > 0 ? " partly-vetoed" : ""}${previewable ? "" : " is-disabled"}`}
-                onClick={() => previewable && setPreview(map)}
-                aria-disabled={!previewable}
-                title={previewable ? t("lobby.mapPool.previewHint") : undefined}
+                aria-pressed={vetoing ? tokens > 0 : undefined}
+                className={`map-pool-card surface surface-interactive${fullBan ? " vetoed" : tokens > 0 ? " partly-vetoed" : ""}`}
+                onClick={() => (vetoing && canVeto ? toggleVeto(map.assignmentId) : setPreview(map))}
+                title={cardTitle}
               >
                 <span className="map-pool-card-art">
                   <GameMapImage
@@ -282,31 +285,6 @@ export function MatchmakerMapPoolModal({
                   <small>{formatMapSize(map.width, map.height)} · {map.maxPlayers} players</small>
                 </span>
               </button>
-              {/* Shown while vetoing, and on a map that has tokens on it, as
-                  Java's `vetoesBox`; usable only while vetoing. */}
-              {(vetoing || tokens > 0) && tokenLimit > 0 && (
-                <div className="map-pool-veto-stepper">
-                  <Button
-                    disabled={!vetoing || tokens === 0}
-                    aria-label={t("lobby.mapPool.removeVeto", { map: map.displayName })}
-                    title={t("lobby.mapPool.removeVetoHint")}
-                    onClick={() => removeVeto(map.assignmentId)}
-                  >
-                    −
-                  </Button>
-                  <span aria-label={t("lobby.mapPool.tokensOnMap", { count: tokens })}>{tokens}</span>
-                  <Button
-                    disabled={!canAdd}
-                    aria-label={t("lobby.mapPool.addVeto", { map: map.displayName })}
-                    title={tokensUsed >= tokenLimit
-                      ? t("lobby.mapPool.vetoLimitReached", { limit: tokenLimit })
-                      : t("lobby.mapPool.vetoMapHint")}
-                    onClick={() => addVeto(map.assignmentId)}
-                  >
-                    +
-                  </Button>
-                </div>
-              )}
               </div>
             );
           })
