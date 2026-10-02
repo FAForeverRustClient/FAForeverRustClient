@@ -51322,6 +51322,7 @@
               "uiScale": 100
             },
             "browsing": {
+              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -51565,6 +51566,7 @@
             },
             "replayGamePath": "",
             "social": {
+              "avatarHistory": [],
               "playerNotes": [],
               "replayNotes": []
             },
@@ -51611,6 +51613,7 @@
               "customGamesBrowser": {
                 "applyFilters": false,
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
