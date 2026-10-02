@@ -22,6 +22,7 @@ import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { Pagination } from "../../design-system/Pagination";
 import type { InstalledMap, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
+import { toggleFavoriteMap } from "../../shared/favoriteMaps";
 import { loadStatusNote } from "../../shared/loadStatusNote";
 import { isWithinNumberRange } from "../../shared/filterRanges";
 import { kilometresLabel } from "../../shared/mapPresentation";
@@ -220,16 +221,10 @@ function VaultView({ busy }: { busy: boolean }) {
     () => new Set(browsing.favoriteMaps.map((folder) => folder.toLocaleLowerCase())),
     [browsing.favoriteMaps],
   );
-  const toggleFavorite = (folderName: string) => {
-    const key = folderName.trim().toLocaleLowerCase();
-    const favoriteMaps = favoriteFolders.has(key)
-      ? browsing.favoriteMaps.filter((favorite) => favorite.toLocaleLowerCase() !== key)
-      : [...browsing.favoriteMaps, key];
-    ipc.send({
-      kind: "Settings",
-      command: { type: "setBrowsing", payload: { preferences: { ...browsing, favoriteMaps } } },
-    });
-  };
+  // The shared toggle, which also downloads a starred map that is not on
+  // disk: the host dialog's favourites are the maps it can host.
+  const toggleFavorite = (folderName: string, downloadUrl?: string) =>
+    toggleFavoriteMap(folderName, downloadUrl);
 
   // The vault once per session (the service refuses a repeat); the installed
   // list on every visit, because the folder changes under the client.
@@ -551,7 +546,7 @@ function VaultView({ busy }: { busy: boolean }) {
                       onSelect={() => setSelectedFolder(map.folderName)}
                       onInstall={() => installMap(map.folderName, map.downloadUrl)}
                       onUninstall={() => setPendingUninstall(map)}
-                      onToggleFavorite={() => toggleFavorite(map.folderName)}
+                      onToggleFavorite={() => toggleFavorite(map.folderName, map.downloadUrl)}
                     />
                   );
                 })}
@@ -575,7 +570,7 @@ function VaultView({ busy }: { busy: boolean }) {
                 onHide={() => setPendingHide(selected)}
                 onUnhide={() => setMapVersionHidden(selected.versionId, false)}
                 onPreview={() => setPreviewMap(selected)}
-                onToggleFavorite={() => toggleFavorite(selected.folderName)}
+                onToggleFavorite={() => toggleFavorite(selected.folderName, selected.downloadUrl)}
               />
             )}
           </div>
