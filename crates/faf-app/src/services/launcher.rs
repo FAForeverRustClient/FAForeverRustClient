@@ -610,7 +610,10 @@ fn preparation_phase(phase: PreparationPhase) -> DomainPreparationPhase {
 /// Stop the adapter and emit `LaunchFailed`. Always returns `None` so call sites
 /// can `return fail(..)`.
 pub(crate) fn report_failure(ctx: &ServiceCtx, out: &EventSink, reason: String) {
-    tracing::warn!("game launch failed; details were sent to the client");
+    // The reason too: "details were sent to the client" left a log that could
+    // not say why any launch had failed, and the reason is an error message,
+    // nothing private.
+    tracing::warn!(%reason, "game launch failed");
     ctx.ports.ice.stop();
     notifications::add_required(
         out,
