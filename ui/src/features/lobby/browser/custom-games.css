@@ -364,15 +364,11 @@
 .game-browser-tags-col {
   justify-content: flex-start;
   align-content: center;
-  /* Two lines of chips at most (issue 379): a list too long for the column
-     breaks onto a second line instead of being cut off at the first, and
-     anything beyond two lines is still cut rather than stacking into a tower
-     that makes the row taller. A chip is 11px text on a normal line height
-     plus 1px padding and a 1px border either side, 17 to 19px depending on
-     the font, so two of them and the 4px gap fit in 44px and a third does
-     not. */
-  max-height: 44px;
-  overflow: hidden;
+  /* A list too long for the column breaks onto further lines (issue 379),
+     and the row grows to hold them. It was capped at two lines once, and a
+     third line was then cut through the middle of its chips: a row a little
+     taller is better than tags nobody can read. Most rows still fit in one
+     line, or two, inside the row's own 62px. */
 }
 
 .game-browser-tags i {
