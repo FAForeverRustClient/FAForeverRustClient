@@ -436,77 +436,77 @@ export function LeagueLeaderboardPanel() {
         className="leaderboard-league-body"
         {...(state.selectedLeagueId === null ? {} : sectionPanelProps("leaderboard-league", state.selectedLeagueId))}
       >
-      {state.seasonsStatus.type === "loading" && <div className="leaderboard-state muted">{t("leaderboard.leagues.loadingSeasons")}</div>}
-      {state.seasonsStatus.type === "failed" && (
-        <div className="leaderboard-state leaderboard-error" title={state.seasonsStatus.payload.reason}>
-          {plainError(state.seasonsStatus.payload.reason)}
-        </div>
-      )}
-      {state.seasonsStatus.type === "ready" && state.seasons.length === 0 && <div className="leaderboard-state muted">{t("leaderboard.leagues.noSeasons")}</div>}
-
-      {currentSeason && (
-        <>
-          <div className="leaderboard-overview-grid">
-            <MyLeagueCard entry={ownEntry} placementGames={ownEntry?.returningPlayer
-              ? currentSeason.placementGamesReturningPlayer
-              : currentSeason.placementGames} />
-            <DivisionDistribution
-              tiers={state.tiers}
-              entries={state.seasonEntries}
-              ownDivision={ownEntry?.division ?? null}
-            />
+        {state.seasonsStatus.type === "loading" && <div className="leaderboard-state muted">{t("leaderboard.leagues.loadingSeasons")}</div>}
+        {state.seasonsStatus.type === "failed" && (
+          <div className="leaderboard-state leaderboard-error" title={state.seasonsStatus.payload.reason}>
+            {plainError(state.seasonsStatus.payload.reason)}
           </div>
+        )}
+        {state.seasonsStatus.type === "ready" && state.seasons.length === 0 && <div className="leaderboard-state muted">{t("leaderboard.leagues.noSeasons")}</div>}
 
-          <div className="leaderboard-table-toolbar leaderboard-league-filters">
-            <label className="leaderboard-field leaderboard-field-grow">
-              <span>{t("leaderboard.leagues.findPlayer")}</span>
-              <input value={search} placeholder={t("leaderboard.leagues.searchLoadedSeason")} onChange={(event) => setSearch(event.target.value)} />
-            </label>
-            <label className="leaderboard-field">
-              <span>{t("leaderboard.leagues.division")}</span>
-              <select value={division} onChange={(event) => { setDivision(event.target.value); setSubdivision("all"); }}>
-                <option value="all">{t("leaderboard.leagues.allDivisions")}</option>
-                {divisions.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
-            </label>
-            <label className="leaderboard-field">
-              <span>{t("leaderboard.leagues.subdivision")}</span>
-              <select
-                value={subdivision}
-                disabled={subdivisions.length === 0}
-                onChange={(event) => setSubdivision(event.target.value)}
-              >
-                <option value="all">{t("leaderboard.leagues.all")}</option>
-                {subdivisions.map((tier) => (
-                  <option key={tier.name} value={tier.name}>{tier.subdivision || tier.name}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="leaderboard-main-grid">
-            <div className={`leaderboard-results surface-panel${state.seasonStatus.type === "loading" ? " is-loading" : ""}`}>
-              {state.seasonStatus.type === "failed" ? (
-                <div className="leaderboard-state leaderboard-error" title={state.seasonStatus.payload.reason}>
-                  {plainError(state.seasonStatus.payload.reason)}
-                </div>
-              ) : filtered.length === 0 && state.seasonStatus.type === "loading" ? (
-                <div className="leaderboard-state muted">{t("leaderboard.leagues.loadingRankings")}</div>
-              ) : (
-                <LeaderboardTable
-                  entries={filtered}
-                  rowBatch={LEAGUE_ROW_BATCH}
-                  columns={["rank", "player", "league", "division", "score", "games"]}
-                  selectedPlayerId={selected?.playerId ?? null}
-                  onSelect={setSelected}
-                  emptyMessage={t("leaderboard.leagues.empty")}
-                />
-              )}
+        {currentSeason && (
+          <>
+            <div className="leaderboard-overview-grid">
+              <MyLeagueCard entry={ownEntry} placementGames={ownEntry?.returningPlayer
+                ? currentSeason.placementGamesReturningPlayer
+                : currentSeason.placementGames} />
+              <DivisionDistribution
+                tiers={state.tiers}
+                entries={state.seasonEntries}
+                ownDivision={ownEntry?.division ?? null}
+              />
             </div>
-            <PlayerDetailsPanel entry={selected} heading={t("leaderboard.leagues.leaguePlayer")} />
-          </div>
-        </>
-      )}
+
+            <div className="leaderboard-table-toolbar leaderboard-league-filters">
+              <label className="leaderboard-field leaderboard-field-grow">
+                <span>{t("leaderboard.leagues.findPlayer")}</span>
+                <input value={search} placeholder={t("leaderboard.leagues.searchLoadedSeason")} onChange={(event) => setSearch(event.target.value)} />
+              </label>
+              <label className="leaderboard-field">
+                <span>{t("leaderboard.leagues.division")}</span>
+                <select value={division} onChange={(event) => { setDivision(event.target.value); setSubdivision("all"); }}>
+                  <option value="all">{t("leaderboard.leagues.allDivisions")}</option>
+                  {divisions.map((name) => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </label>
+              <label className="leaderboard-field">
+                <span>{t("leaderboard.leagues.subdivision")}</span>
+                <select
+                  value={subdivision}
+                  disabled={subdivisions.length === 0}
+                  onChange={(event) => setSubdivision(event.target.value)}
+                >
+                  <option value="all">{t("leaderboard.leagues.all")}</option>
+                  {subdivisions.map((tier) => (
+                    <option key={tier.name} value={tier.name}>{tier.subdivision || tier.name}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="leaderboard-main-grid">
+              <div className={`leaderboard-results surface-panel${state.seasonStatus.type === "loading" ? " is-loading" : ""}`}>
+                {state.seasonStatus.type === "failed" ? (
+                  <div className="leaderboard-state leaderboard-error" title={state.seasonStatus.payload.reason}>
+                    {plainError(state.seasonStatus.payload.reason)}
+                  </div>
+                ) : filtered.length === 0 && state.seasonStatus.type === "loading" ? (
+                  <div className="leaderboard-state muted">{t("leaderboard.leagues.loadingRankings")}</div>
+                ) : (
+                  <LeaderboardTable
+                    entries={filtered}
+                    rowBatch={LEAGUE_ROW_BATCH}
+                    columns={["rank", "player", "league", "division", "score", "games"]}
+                    selectedPlayerId={selected?.playerId ?? null}
+                    onSelect={setSelected}
+                    emptyMessage={t("leaderboard.leagues.empty")}
+                  />
+                )}
+              </div>
+              <PlayerDetailsPanel entry={selected} heading={t("leaderboard.leagues.leaguePlayer")} />
+            </div>
+          </>
+        )}
       </div>
     </section>
   );
