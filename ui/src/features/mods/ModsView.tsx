@@ -40,6 +40,7 @@ import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
 import { DateInput } from "../../design-system/DateInput";
+import { useSessionState } from "../../shared/hooks/useSessionState";
 
 type SubView = "vault" | "installed";
 type ModSort = "rating" | "newest" | "updated" | "name";
@@ -172,25 +173,25 @@ function VaultView({ busy }: { busy: boolean }) {
   // The sort survives leaving the tab. See the twin in MapsView for why.
   const initialSort: ModSort = storedModSort(browsing.modVaultSort) ?? presetSort(preset);
   const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
-  const [search, setSearch] = useState("");
-  const [searchScope, setSearchScope] = useState<ModSearchScope>("name");
+  const [search, setSearch] = useSessionState("mods.vault.search", "");
+  const [searchScope, setSearchScope] = useSessionState<ModSearchScope>("mods.vault.searchScope", "name");
   const [sort, setSort] = useState<ModSort>(initialSort);
-  const [modType, setModType] = useState<ModTypeFilter>("all");
-  const [ranked, setRanked] = useState<RankedFilter>("all");
-  const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
-  const [creator, setCreator] = useState("");
-  const [dateField, setDateField] = useState<DateField>("updated");
-  const [dateAfter, setDateAfter] = useState("");
-  const [dateBefore, setDateBefore] = useState("");
-  const [minimumRating, setMinimumRating] = useState<number | null>(null);
-  const [maximumRating, setMaximumRating] = useState<number | null>(null);
+  const [modType, setModType] = useSessionState<ModTypeFilter>("mods.vault.modType", "all");
+  const [ranked, setRanked] = useSessionState<RankedFilter>("mods.vault.ranked", "all");
+  const [installFilter, setInstallFilter] = useSessionState<InstallFilter>("mods.vault.installFilter", "all");
+  const [creator, setCreator] = useSessionState("mods.vault.creator", "");
+  const [dateField, setDateField] = useSessionState<DateField>("mods.vault.dateField", "updated");
+  const [dateAfter, setDateAfter] = useSessionState("mods.vault.dateAfter", "");
+  const [dateBefore, setDateBefore] = useSessionState("mods.vault.dateBefore", "");
+  const [minimumRating, setMinimumRating] = useSessionState<number | null>("mods.vault.minimumRating", null);
+  const [maximumRating, setMaximumRating] = useSessionState<number | null>("mods.vault.maximumRating", null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [page, setPage] = useState(1);
-  const [selectedUid, setSelectedUid] = useState<string | null>(null);
+  const [page, setPage] = useSessionState("mods.vault.page", 1);
+  const [selectedUid, setSelectedUid] = useSessionState<string | null>("mods.vault.selectedUid", null);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);
   const [renaming, setRenaming] = useState<VaultMod | null>(null);
 
-  const [applied, setApplied] = useState<ModFilterState>({
+  const [applied, setApplied] = useSessionState<ModFilterState>("mods.vault.applied", {
     search: "",
     searchScope: "name",
     creator: "",
@@ -249,7 +250,7 @@ function VaultView({ busy }: { busy: boolean }) {
     const next = presetSort(preset);
     setSort(next);
     setApplied((prev) => ({ ...prev, sort: next }));
-  }, [preset]);
+  }, [preset, setApplied]);
 
   const applySearch = () => {
     setApplied({
@@ -613,7 +614,7 @@ const SUB_VIEW_LABELS: Record<SubView, MessageKey> = {
 
 export function ModsView() {
   const { t } = useTranslation();
-  const [subView, setSubView] = useState<SubView>("vault");
+  const [subView, setSubView] = useSessionState<SubView>("mods.subView", "vault");
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
   const busy = installStatus.type === "installing" || toggleStatus.type === "toggling";

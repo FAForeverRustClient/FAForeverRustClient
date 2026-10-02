@@ -549,6 +549,19 @@ async fn handle_update(
             out.emit(LobbyEvent::LiveGamesChanged { upserted, removed });
         }
         LobbyUpdate::MatchmakerQueues(queues) => {
+            if !ctx
+                .map_pools_checked
+                .swap(true, std::sync::atomic::Ordering::AcqRel)
+            {
+                announce_new_map_pools(
+                    ctx,
+                    out,
+                    queues
+                        .iter()
+                        .map(|queue| queue.queue_name.clone())
+                        .collect(),
+                );
+            }
             let (watched, ratings, searching) = out.with_state(|state| {
                 let own_ratings = state
                     .auth
@@ -872,6 +885,87 @@ fn join_auto_channels(ctx: &ServiceCtx, out: &EventSink) {
 /// Also emits `VetoesUpdated`, because `Disconnected` clears the lobby's copy:
 /// without it the Play tab would show an empty selection while the server held
 /// the real one.
+/// Compare every queue's map pools with the ones seen last time, announce the
+/// queues that changed, and remember what was seen (#406).
+///
+/// Off the lobby loop: it is one API request per queue, and the lists the
+/// server sends at login should not wait on them. Nothing is written before
+/// the settings file has been read, for the reason `settings::persist` gives.
+fn announce_new_map_pools(ctx: &ServiceCtx, out: &EventSink, queue_names: Vec<String>) {
+    let maps = ctx.ports.maps.clone();
+    let settings = ctx.ports.settings.clone();
+    let serial = ctx.settings_persist.clone();
+    let loaded = ctx.settings_loaded.has_loaded();
+    let out = out.clone();
+    tokio::spawn(async move {
+        let mut current = Vec::new();
+        for queue_name in queue_names {
+            // A queue that cannot be read this time is left as it was seen, so
+            // a failed request is never mistaken for a new pool next time.
+            let Ok(pools) = maps.list_matchmaker_pools(queue_name.clone()).await else {
+                continue;
+            };
+            let mut assignments: Vec<i32> = pools
+                .iter()
+                .flat_map(|pool| pool.maps.iter().map(|map| map.assignment_id))
+                .collect();
+            if assignments.is_empty() {
+                continue;
+            }
+            assignments.sort_unstable();
+            assignments.dedup();
+            current.push(faf_domain::state::settings::MapPoolsSeen {
+                queue_name,
+                assignments,
+            });
+        }
+        if current.is_empty() {
+            return;
+        }
+        let (seen, muted) = out.with_state(|state| {
+            (
+                state.settings.map_pools_seen.clone(),
+                state.settings.notifications.map_pool_muted_queues.clone(),
+            )
+        });
+        for queue_name in faf_domain::state::settings::changed_map_pools(&seen, &current) {
+            if muted.contains(&queue_name) {
+                continue;
+            }
+            let label = queue_display_name(&queue_name);
+            notifications::add(
+                &out,
+                NotificationKind::MapPoolReleased,
+                "New map pool",
+                format!("{label} has a new map pool."),
+                Some(NotificationAction::OpenMatchmaking),
+            );
+        }
+        let mut remembered = seen;
+        for entry in current {
+            remembered.retain(|old| old.queue_name != entry.queue_name);
+            remembered.push(entry);
+        }
+        out.emit(SettingsEvent::MapPoolsSeen { seen: remembered });
+        if loaded {
+            let _guard = serial.acquire().await;
+            let snapshot = out.with_state(|state| state.settings.clone());
+            settings.save(&snapshot).await;
+        }
+    });
+}
+
+/// `ladder1v1` and `tmm2v2` as players say them, for a notification's text.
+fn queue_display_name(queue_name: &str) -> String {
+    match queue_name {
+        "ladder1v1" => "1v1".into(),
+        other => other
+            .strip_prefix("tmm")
+            .map(|rest| rest.split('_').next().unwrap_or(rest).to_string())
+            .unwrap_or_else(|| other.to_string()),
+    }
+}
+
 fn restore_player_vetoes(ctx: &ServiceCtx, out: &EventSink) {
     let vetoes = out.with_state(|state| state.settings.matchmaker_vetoes.clone());
     if vetoes.is_empty() {
@@ -934,6 +1028,28 @@ struct GameNotificationTracker {
     live: Option<HashMap<i32, Game>>,
     suppress_until: Option<Instant>,
     queue_opponents: QueueOpponentTracker,
+    /// When each game was last announced as full, so a lobby that fills,
+    /// loses a player to the observers and fills again is announced once
+    /// rather than on every move (#382).
+    full_announced: HashMap<i32, Instant>,
+}
+
+/// How long a game stays announced as full. People move between the slots
+/// and the observers for the whole of a lobby's setup.
+const GAME_FULL_COOLDOWN: Duration = Duration::from_secs(5 * 60);
+
+/// Whether a game that just filled up should be announced, and if so, record
+/// that it was. See [`GameNotificationTracker::full_announced`].
+fn announce_full(announced: &mut HashMap<i32, Instant>, game_id: i32) -> bool {
+    let now = Instant::now();
+    if announced
+        .get(&game_id)
+        .is_some_and(|at| now.duration_since(*at) < GAME_FULL_COOLDOWN)
+    {
+        return false;
+    }
+    announced.insert(game_id, now);
+    true
 }
 
 /// How long a queue keeps quiet after announcing an opponent.
@@ -1144,7 +1260,9 @@ impl GameNotificationTracker {
                 None => signals.push(GameNotificationSignal::NewGame(game.clone())),
                 Some(old) => {
                     if let Some(player_name) = player_name {
-                        if filled_up(&old, game, player_name) {
+                        if filled_up(&old, game, player_name)
+                            && announce_full(&mut self.full_announced, game.id)
+                        {
                             signals.push(GameNotificationSignal::GameFull(game.clone()));
                         }
                     }
@@ -1153,6 +1271,7 @@ impl GameNotificationTracker {
         }
         for id in removed {
             index.remove(id);
+            self.full_announced.remove(id);
         }
         signals
     }
@@ -1230,7 +1349,9 @@ impl GameNotificationTracker {
                 signals.push(GameNotificationSignal::NewGame(game.clone()));
             }
             if let (Some(player_name), Some(old)) = (player_name, previous.get(&game.id)) {
-                if filled_up(old, game, player_name) {
+                if filled_up(old, game, player_name)
+                    && announce_full(&mut self.full_announced, game.id)
+                {
                     signals.push(GameNotificationSignal::GameFull(game.clone()));
                 }
             }
@@ -1545,6 +1666,24 @@ mod tests {
         assert!(signals.iter().any(
             |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
         ));
+    }
+
+    /// The report in #382: people going to the observers and back made the
+    /// lobby full again, and every time was a toast and a sound.
+    #[test]
+    fn a_lobby_that_fills_again_is_announced_once() {
+        let mut tracker = GameNotificationTracker::default();
+        tracker.observe_open(&[game(1, "Me", &["Me"], 1, 2)], Some("me"));
+        let full = |tracker: &mut GameNotificationTracker| {
+            tracker
+                .observe_open(&[game(1, "Me", &["Me", "Other"], 2, 2)], Some("me"))
+                .iter()
+                .filter(|signal| matches!(signal, GameNotificationSignal::GameFull(_)))
+                .count()
+        };
+        assert_eq!(full(&mut tracker), 1);
+        tracker.observe_open(&[game(1, "Me", &["Me"], 1, 2)], Some("me"));
+        assert_eq!(full(&mut tracker), 0);
     }
 
     #[test]

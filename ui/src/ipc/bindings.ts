@@ -4150,6 +4150,16 @@ export type MapPool = {
 };
 
 /**
+ *  One queue's map pools as last seen: the pool-map assignment ids of all its
+ *  brackets, sorted. A new release changes them whether it reuses the pool or
+ *  brings a new one.
+ */
+export type MapPoolsSeen = {
+	queueName: string,
+	assignments: number[],
+};
+
+/**
  *  Sort orders offered for the map vault. Every property is one the Java
  *  client sorts by, so all of them are known-sortable server side.
  */
@@ -5106,7 +5116,13 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  *  Opt-in per queue, and off until then: see
  *  `NotificationPreferences::queue_opponent_queues`.
  */
-"queueOpponent" | "error";
+"queueOpponent" |
+/**
+ *  A matchmaker queue was given a new map pool since the last login
+ *  (#406). On for every queue unless one is switched off: see
+ *  `NotificationPreferences::map_pool_muted_queues`.
+ */
+"mapPoolReleased" | "error";
 
 export type NotificationPreferences = {
 	enabled: boolean,
@@ -5188,6 +5204,20 @@ export type NotificationPreferences = {
 	queueOpponentQueues: string[],
 	/**  Sound volume from 0 to 100. */
 	volume: number,
+	/**
+	 *  Seconds after one notification of a kind before another of the same
+	 *  kind toasts, sounds or reaches the desktop again (#382). Zero announces
+	 *  every one. The later ones still land in the notification history.
+	 */
+	repeatCooldownSeconds: number,
+	/**
+	 *  The matchmaker queues whose new map pools are not announced (#406).
+	 *
+	 *  The ones switched off rather than the ones switched on, so every queue
+	 *  is announced by default, a queue added later included, which is what
+	 *  the request asked for: a new pool is a reason to queue again.
+	 */
+	mapPoolMutedQueues: string[],
 };
 
 /**
@@ -7737,6 +7767,13 @@ export type SettingsEvent = { type: "loaded"; payload: {
  */
 { type: "matchmakerVetoesChanged"; payload: {
 	vetoes: PlayerVeto[],
+} } |
+/**
+ *  The map pools seen this session, replacing the remembered ones. See
+ *  [`SettingsState::map_pools_seen`].
+ */
+{ type: "mapPoolsSeen"; payload: {
+	seen: MapPoolsSeen[],
 } };
 
 /**
@@ -7795,6 +7832,12 @@ export type SettingsState = {
 	 *  itself rather than being replayed wrong forever.
 	 */
 	matchmakerVetoes?: PlayerVeto[],
+	/**
+	 *  The map pools each matchmaker queue had when the client last looked,
+	 *  so a new one can be announced (#406). Nothing else in FAF says that a
+	 *  pool changed: the client compares what it is served with this.
+	 */
+	mapPoolsSeen?: MapPoolsSeen[],
 	cacheInfo?: GameCacheInfo,
 };
 

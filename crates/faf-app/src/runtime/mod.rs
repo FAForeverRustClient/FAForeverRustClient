@@ -104,6 +104,10 @@ pub struct ServiceCtx {
     /// was often the first question (#380).
     pub maps_search_generation: LatestRequest,
     pub mods_search_generation: LatestRequest,
+    /// Whether this session has compared the matchmaker map pools with the
+    /// ones last seen (#406). Once per run: pools change between releases,
+    /// not between reconnects.
+    pub map_pools_checked: std::sync::atomic::AtomicBool,
     pub replay_vault_generation: LatestRequest,
     pub replay_local_generation: LatestRequest,
     /// The in-flight replay launch, so the overlay's Cancel button has
@@ -357,6 +361,7 @@ impl App {
             reporting_generation: LatestRequest::default(),
             maps_search_generation: LatestRequest::default(),
             mods_search_generation: LatestRequest::default(),
+            map_pools_checked: std::sync::atomic::AtomicBool::new(false),
             replay_vault_generation: LatestRequest::default(),
             replay_local_generation: LatestRequest::default(),
             replay_cancellation: std::sync::Mutex::new(None),
