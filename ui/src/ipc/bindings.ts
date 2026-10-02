@@ -500,6 +500,18 @@ export type BrowsingPreferences = {
 	/**  And for the matchmaker tab's recent games (#301). */
 	matchmakerRecentColumns: number[],
 	/**
+	 *  The order the columns of each list are drawn in, by list (#409):
+	 *  `gameBrowser`, `replayList`, `liveReplays`, `matchmakerRecent`. Each is
+	 *  the designed column at each drawn position, so `[2, 0, 1]` draws the
+	 *  third column first. A list with no entry, or with one that is not an
+	 *  arrangement of its columns, is drawn as designed.
+	 *
+	 *  The widths above stay by column, not by position, so a column keeps
+	 *  its width wherever it is moved. Java's tables let a column be dragged
+	 *  to another place too (JavaFX `TableView`).
+	 */
+	columnOrders: { [key in string]: number[] },
+	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
 	 *  Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -3994,6 +4006,21 @@ export type MapGeneratorCommand =
 } } |
 /**  Decode generated map names into their parameters, without any IO. */
 { type: "decodeNames"; payload: {
+	mapNames: string[],
+} } |
+/**
+ *  Read the previews of these installed generated maps from disk, for the
+ *  tiles that are showing them.
+ *
+ *  Asked for by a tile, one map at a time, instead of every preview in the
+ *  maps folder arriving with each scan of it. That push sent the whole
+ *  folder's pictures as base64 in one event, at least twice for every map
+ *  generated from the host dialog, and an event is a script the webview
+ *  has to parse: past a few dozen generated maps that is what ran the page
+ *  out of memory (#402). Java reads each preview from disk when a tile
+ *  shows it (`MapService.getGeneratedMapPreview`).
+ */
+{ type: "loadPreviews"; payload: {
 	mapNames: string[],
 } } |
 /**  Fetch the generator's `--help` text. */

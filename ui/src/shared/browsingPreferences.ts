@@ -173,6 +173,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   liveReplayColumns: [],
   coopBoardColumns: [],
   matchmakerRecentColumns: [],
+  columnOrders: {},
   modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   replayVaultPlayer: "",
@@ -236,6 +237,7 @@ export function normalizeBrowsingPreferences(
     liveReplayColumns: normalizeColumnWidths(preferences.liveReplayColumns),
     coopBoardColumns: normalizeColumnWidths(preferences.coopBoardColumns),
     matchmakerRecentColumns: normalizeColumnWidths(preferences.matchmakerRecentColumns),
+    columnOrders: { ...(preferences.columnOrders ?? {}) },
     modPresets: normalizeModPresets(preferences.modPresets ?? []),
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],

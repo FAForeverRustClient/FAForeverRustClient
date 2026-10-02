@@ -191,7 +191,10 @@ export function ReplayDetailPanel({
     });
   };
 
-  const effectiveMap = effectiveReplayMapName(replay.map, localMatch?.map);
+  // The vault names a generated map only generically, so the technical name,
+  // seed and all, comes from the replay's own header: the downloaded file's,
+  // or the first bytes of it read without saving anything (`resolveMaps`).
+  const effectiveMap = effectiveReplayMapName(replay.map, localMatch?.map ?? resolvedMap);
   const isGenerated = isGeneratedMap(effectiveMap);
   const seed = extractGeneratedMapSeed(effectiveMap);
   // The picture of a generated map, once the generator has built one. Keyed
@@ -273,17 +276,16 @@ export function ReplayDetailPanel({
   const [showNotes, setShowNotes] = useState(false);
   const hasNote = useHasReplayNote(replay.uid);
 
+  // The header alone, not the replay (#395). This used to download the whole
+  // file into the local replay folder, so opening any online game on a
+  // generated map put it in the player's own library as if they had played
+  // it. Java's local list is the replays folder, which only the client's own
+  // recordings go into (`ReplayFileWriterImpl`).
+  const resolvingMap = isGenerated && !seed && replay.replayAvailable && !localMatch && resolvedMap === undefined;
   useEffect(() => {
-    if (isGenerated && !seed && replay.replayAvailable && !localMatch && downloadState === "idle") {
-      ipc.send({
-        kind: "Replays",
-        command: {
-          type: "downloadVault",
-          payload: { uid: replay.uid },
-        },
-      });
-    }
-  }, [isGenerated, seed, replay.replayAvailable, replay.uid, localMatch, downloadState]);
+    if (!resolvingMap || replay.uid <= 0) return;
+    ipc.send({ kind: "Replays", command: { type: "resolveMaps", payload: { uids: [replay.uid] } } });
+  }, [resolvingMap, replay.uid]);
 
   const totalPlayers = playerCount(detailTeams);
   // Java gates the whole result display on the game having been rated: its
@@ -369,15 +371,15 @@ export function ReplayDetailPanel({
         icon: isGeneratingThisMap ? "refresh" : "plus",
         label: isGeneratingThisMap
           ? t("lobby.details.generatingMap")
-          : !seed && downloadState === "downloading"
+          : resolvingMap
             ? t("replays.detail.resolvingMap")
             : t("lobby.details.generateMap"),
-        disabled: isGeneratingThisMap || (!seed && downloadState === "downloading"),
+        // Without a seed there is nothing to generate from; the header lookup
+        // above is what finds one, and a failed lookup leaves nothing to try.
+        disabled: isGeneratingThisMap || !seed,
         run: () => {
           if (seed) {
             ipc.send({ kind: "MapGenerator", command: { type: "generateNamed", payload: { mapName: effectiveMap } } });
-          } else if (replay.replayAvailable) {
-            ipc.send({ kind: "Replays", command: { type: "downloadVault", payload: { uid: replay.uid } } });
           }
         },
       }

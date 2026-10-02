@@ -10,6 +10,7 @@ import {
   normalizeMapName,
 } from "../mapPresentation";
 import { firstLiveCandidate, markThumbnailMissing } from "../thumbnailCache";
+import { useGeneratedMapPreview } from "../hooks/useGeneratedMapPreview";
 import { useLocalMapPreview } from "../hooks/useLocalMapPreview";
 import { useVaultFolderLookup } from "../hooks/useVaultFolderLookup";
 import "./map-thumbnail.css";
@@ -65,6 +66,7 @@ export function MapThumbnail({
         state.state.mapGenerator.previews?.[mapName.toLowerCase()]
       : undefined,
   );
+  useGeneratedMapPreview(mapName, isGenerated, Boolean(generatedPreview));
   const candidates = useMemo(
     () => mapThumbnailCandidates(vault, mapName, large, missions, generatedPreview, ownUrl || undefined, preferCanonicalPreview),
     [generatedPreview, large, mapName, missions, ownUrl, preferCanonicalPreview, vault],

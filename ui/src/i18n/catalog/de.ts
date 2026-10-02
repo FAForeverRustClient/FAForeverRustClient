@@ -2629,6 +2629,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "common.unknown": "Unbekannt",
   "common.now": "Jetzt",
   "common.any": "Beliebig",
+  "common.moveColumnHint": "Auf eine andere Spalte ziehen, um sie dorthin zu verschieben, oder Alt+← bzw. Alt+→ drücken. Doppelklick auf einen Trenner stellt die ursprünglichen Spalten wieder her.",
   "common.pickDate": "Datum wählen",
   "common.close": "Schließen",
   "common.cancel": "Abbrechen",
