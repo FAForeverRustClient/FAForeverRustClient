@@ -1,5 +1,6 @@
 import type { CoopFaction, CoopMission, MapInstallStatus, VaultMap } from "../ipc/bindings";
 import { t } from "../i18n";
+import { plainError } from "./plainError";
 import { useAppStore } from "../store/store";
 
 /** Preview used when a generated map has no rendered map image yet. */
@@ -582,7 +583,7 @@ export function installNote(status: MapInstallStatus): string | null {
     case "installing":
       return t("maps.vault.working", { folder: status.payload.folderName });
     case "failed":
-      return t("maps.vault.operationFailed", { reason: status.payload.reason });
+      return t("maps.vault.operationFailed", { reason: plainError(status.payload.reason) });
   }
 }
 

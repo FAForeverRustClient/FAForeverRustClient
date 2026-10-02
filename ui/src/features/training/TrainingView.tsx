@@ -38,6 +38,7 @@ import { SectionTabs, type SectionTab } from "../../design-system/SectionTabs";
 import type { AppCommand, TrainingCommand, TrainingResource } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { plainError } from "../../shared/plainError";
 import { recommendedResources } from "../../shared/rules/trainingRules";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -232,7 +233,7 @@ export function TrainingView() {
 
       {failed && (
         <p className="surface training-state muted">
-          <span>{t("training.loadFailed", { reason: failed })}</span>
+          <span title={failed}>{t("training.loadFailed", { reason: plainError(failed) })}</span>
           <Button onClick={() => send({ type: "load" })}>
             <Icon name="refresh" size={15} /> {t("training.tryAgain")}
           </Button>
@@ -382,6 +383,7 @@ export function TrainingView() {
             post={state.contributionPost}
             guides={guides}
             onCompose={(draft) => send({ type: "composeContribution", payload: { draft } })}
+            onKeep={(draft) => send({ type: "changeContribution", payload: { draft } })}
             onSubmit={
               // Only offered when the client can actually open the issue.
               // Everybody else gets the same submission prefilled in a browser,

@@ -21,11 +21,15 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }) {
                 return;
             }
-            out.emit(ModsEvent::VaultLoading);
-            match ctx.ports.mods.list_vault().await {
-                Ok(mods) => out.emit(ModsEvent::VaultLoaded { mods }),
-                Err(reason) => out.emit(ModsEvent::VaultLoadFailed { reason }),
+            crawl_vault(ctx, out).await;
+        }
+        ModsCommand::ReloadVault => {
+            // Asked for by a person, so a loaded catalogue is not a reason to
+            // refuse. A crawl already running is: it is the answer they want.
+            if out.with_state(|state| state.mods.vault_status == ModListStatus::Loading) {
+                return;
             }
+            crawl_vault(ctx, out).await;
         }
         ModsCommand::SearchVault { query } => {
             out.emit(ModsEvent::VaultSearching);
@@ -112,5 +116,15 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ModsEvent::ToggleFailed { reason }),
             }
         }
+    }
+}
+
+/// Read the whole catalogue and report it. The caller decides whether a crawl
+/// is wanted; the data already loaded stays on screen until this replaces it.
+async fn crawl_vault(ctx: &ServiceCtx, out: &EventSink) {
+    out.emit(ModsEvent::VaultLoading);
+    match ctx.ports.mods.list_vault().await {
+        Ok(mods) => out.emit(ModsEvent::VaultLoaded { mods }),
+        Err(reason) => out.emit(ModsEvent::VaultLoadFailed { reason }),
     }
 }

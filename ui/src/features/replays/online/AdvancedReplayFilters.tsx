@@ -42,12 +42,73 @@ interface Props {
   onTags: (tags: string[]) => void;
 }
 
-export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOptions, selectedTags, onTags }: Props) {
+/**
+ * The four ranges that sit in the search panel's always-visible second row,
+ * beside the rating: how long the game ran, how many played it, how big the
+ * map is, and what the community thought of it. They lived behind "More
+ * filters", where a filter nobody could see was a filter nobody set.
+ */
+export function ReplaySearchSliders({ form, setRange }: Pick<Props, "form" | "setRange">) {
   const { t } = useTranslation();
-  // Built per render so the captions follow the selected language.
-  const VICTORY_OPTIONS: MultiSelectOption[] = VICTORY_OPTION_KEYS.map(
-    (option) => ({ value: option.value, label: t(option.label) }),
+  return (
+    <>
+      <RangeSlider
+        label={t("replays.filters.duration")}
+        min={0}
+        max={MAX_DURATION_MINUTES}
+        step={1}
+        low={form.minDurationMinutes}
+        high={form.maxDurationMinutes}
+        format={(v) => `${v} min`}
+        onChange={(lo, hi) =>
+          setRange("minDurationMinutes", "maxDurationMinutes", lo, hi)
+        }
+      />
+      {/* Not the same filter as the map's slot count in "More filters", and
+          the difference is the request: a search for a map comes back full of
+          two-player test lobbies hosted on a sixteen-slot map, and the slot
+          count cannot tell those from the sixteen-player game somebody
+          wanted. */}
+      <RangeSlider
+        label={t("replays.filters.playerCount")}
+        min={1}
+        max={MAX_MAP_PLAYERS}
+        step={1}
+        low={form.minPlayers}
+        high={form.maxPlayers}
+        onChange={(lo, hi) => setRange("minPlayers", "maxPlayers", lo, hi)}
+      />
+      <RangeSlider
+        label={t("replays.filters.mapSize")}
+        min={0}
+        max={MAX_MAP_SIZE_KM}
+        step={1}
+        low={form.mapMinSizeKm}
+        high={form.mapMaxSizeKm}
+        format={(v) => `${v} km`}
+        onChange={(lo, hi) => setRange("mapMinSizeKm", "mapMaxSizeKm", lo, hi)}
+      />
+      <RangeSlider
+        label={t("replays.filters.reviewScore")}
+        min={0}
+        max={5}
+        step={0.5}
+        low={form.minReviewScore}
+        high={form.maxReviewScore}
+        format={(v) => `${v}★`}
+        onChange={(lo, hi) => setRange("minReviewScore", "maxReviewScore", lo, hi)}
+      />
+    </>
   );
+}
+
+/**
+ * Game type and results per page, for the search panel's first row: both are
+ * asked often enough that hiding them behind "More filters" cost a click
+ * every time.
+ */
+export function ReplayTypeAndPageSize({ form, featuredMods, set }: Pick<Props, "form" | "featuredMods" | "set">) {
+  const { t } = useTranslation();
   // The host dialog's four, in its order, less any the vault does not list:
   // a type the vault has no games of is a filter that can only come back
   // empty. Until the list has loaded all four are offered.
@@ -55,38 +116,65 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
     .filter((type) => featuredMods.length === 0 || featuredMods.includes(type.id))
     .map((type) => ({ value: type.id, label: t(type.label) }));
   // The picker writes the one `featuredMods` list the query carries, keeping
-  // what else is in it: the game-mode picker above puts co-op there.
-  const pickFeatured = (within: MultiSelectOption[], picked: string[]) => {
-    const own = new Set(within.map((option) => option.value));
+  // what else is in it: the game-mode picker beside it puts co-op there.
+  const pickFeatured = (picked: string[]) => {
+    const own = new Set(gameTypeOptions.map((option) => option.value));
     set("featuredMods", [...form.featuredMods.filter((mod) => !own.has(mod)), ...picked]);
   };
-  const pickedFrom = (within: MultiSelectOption[]) =>
-    form.featuredMods.filter((mod) => within.some((option) => option.value === mod));
+  const picked = form.featuredMods.filter((mod) => gameTypeOptions.some((option) => option.value === mod));
+  return (
+    <>
+      {/* "Game type" is what a game is, and the host dialog's four are all
+          there are: FAF, its beta and develop balances, and Nomads (#343).
+          The vault's other featured mods (Phantom-X, Murderparty and the
+          like) are not offered: searching for them turned up no replays, and
+          a filter that only comes back empty is worse than none. Sim mods
+          such as Total Mayhem cannot be filtered on at all: the vault does
+          not record which ones a game ran with. */}
+      <div className="vault-field vault-search-mode search-panel-field">
+        <MultiSelect
+          label={t("lobby.host.gameType")}
+          options={gameTypeOptions}
+          selected={picked}
+          onChange={pickFeatured}
+        />
+      </div>
+
+      <label className="vault-field vault-search-page-size search-panel-field">
+        <span className="vault-field-label search-panel-label">{t("replays.filters.resultsPerPage")}</span>
+        <select
+          className="vault-input search-panel-control"
+          value={form.pageSize}
+          onChange={(e) => set("pageSize", Number(e.target.value))}
+        >
+          {/* 100 is the ceiling because it is the API's: a larger
+              `page[size]` is rewritten server side without a word about it,
+              so "200 per page" returned 100 rows and made the second half of
+              every result set unreachable, the pager still counting in
+              200s. */}
+          {[25, 50, 100].map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </select>
+      </label>
+    </>
+  );
+}
+
+export function AdvancedReplayFilters({ form, set, setRange, tagOptions, selectedTags, onTags }: Omit<Props, "featuredMods">) {
+  const { t } = useTranslation();
+  // Built per render so the captions follow the selected language.
+  const VICTORY_OPTIONS: MultiSelectOption[] = VICTORY_OPTION_KEYS.map(
+    (option) => ({ value: option.value, label: t(option.label) }),
+  );
   return (
     <div className="vault-search-advanced search-panel-advanced">
+      {/* The rest of the ranges are in the always-visible row: see
+          `ReplaySearchSliders`. The map's slot count stays here, as the rarer
+          question. */}
       <div className="vault-search-sliders">
-        <RangeSlider
-          label={t("replays.filters.duration")}
-          min={0}
-          max={MAX_DURATION_MINUTES}
-          step={1}
-          low={form.minDurationMinutes}
-          high={form.maxDurationMinutes}
-          format={(v) => `${v} min`}
-          onChange={(lo, hi) =>
-            setRange("minDurationMinutes", "maxDurationMinutes", lo, hi)
-          }
-        />
-        <RangeSlider
-          label={t("replays.filters.reviewScore")}
-          min={0}
-          max={5}
-          step={0.5}
-          low={form.minReviewScore}
-          high={form.maxReviewScore}
-          format={(v) => `${v}★`}
-          onChange={(lo, hi) => setRange("minReviewScore", "maxReviewScore", lo, hi)}
-        />
         <RangeSlider
           label={t("replays.filters.mapSlots")}
           min={2}
@@ -95,29 +183,6 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
           low={form.mapMinPlayers}
           high={form.mapMaxPlayers}
           onChange={(lo, hi) => setRange("mapMinPlayers", "mapMaxPlayers", lo, hi)}
-        />
-        {/* Not the same filter as the one above, and the difference is the
-            request: a search for a map comes back full of two-player test
-            lobbies hosted on a sixteen-slot map, and the slot count cannot
-            tell those from the sixteen-player game somebody wanted. */}
-        <RangeSlider
-          label={t("replays.filters.playerCount")}
-          min={1}
-          max={MAX_MAP_PLAYERS}
-          step={1}
-          low={form.minPlayers}
-          high={form.maxPlayers}
-          onChange={(lo, hi) => setRange("minPlayers", "maxPlayers", lo, hi)}
-        />
-        <RangeSlider
-          label={t("replays.filters.mapSize")}
-          min={0}
-          max={MAX_MAP_SIZE_KM}
-          step={1}
-          low={form.mapMinSizeKm}
-          high={form.mapMaxSizeKm}
-          format={(v) => `${v} km`}
-          onChange={(lo, hi) => setRange("mapMinSizeKm", "mapMaxSizeKm", lo, hi)}
         />
       </div>
 
@@ -177,46 +242,6 @@ export function AdvancedReplayFilters({ form, featuredMods, set, setRange, tagOp
           />
         </div>
 
-        {/* Down here, where the date range used to be, and for the reason the
-            thread gave: the featured mod is how somebody finds a `fafbeta` or
-            `fafdevelop` game, which is a real search and a rare one, while the
-            date is the bound half the searches in this vault want. The two
-            swapped rows. */}
-        {/* "Game type" is what a game is, and the host dialog's four are all
-            there are: FAF, its beta and develop balances, and Nomads (#343).
-            The vault's other featured mods (Phantom-X, Murderparty and the
-            like) are not offered: searching for them turned up no replays,
-            and a filter that only comes back empty is worse than none. Sim mods such as
-            Total Mayhem cannot be filtered on at all: the vault does not
-            record which ones a game ran with. */}
-        <div className="vault-field">
-          <MultiSelect
-            label={t("lobby.host.gameType")}
-            options={gameTypeOptions}
-            selected={pickedFrom(gameTypeOptions)}
-            onChange={(picked) => pickFeatured(gameTypeOptions, picked)}
-          />
-        </div>
-
-        <label className="vault-field">
-          <span className="vault-field-label">{t("replays.filters.resultsPerPage")}</span>
-          <select
-            className="vault-input"
-            value={form.pageSize}
-            onChange={(e) => set("pageSize", Number(e.target.value))}
-          >
-            {/* 100 is the ceiling because it is the API's: a larger
-                `page[size]` is rewritten server side without a word about it,
-                so "200 per page" returned 100 rows and made the second half of
-                every result set unreachable, the pager still counting in
-                200s. */}
-            {[25, 50, 100].map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
 
       <div className="vault-search-checks">

@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { AppErrorBoundary } from "./shared/components/ErrorBoundary";
 import { FAF_LOGO_URL } from "./shared/branding";
 import { installDesktopContextMenuPolicy } from "./shared/contextMenuPolicy";
 import { loadSystemDatePattern } from "./shared/format/systemDate";
@@ -28,7 +29,9 @@ window.addEventListener("scroll", () => {
 void loadSystemDatePattern().then(() => {
   createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
-      <App />
+      <AppErrorBoundary>
+        <App />
+      </AppErrorBoundary>
     </React.StrictMode>,
   );
 });

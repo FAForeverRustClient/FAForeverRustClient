@@ -3737,6 +3737,29 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "nav remembers each destination's section across tab changes",
+            vec![
+                NavEvent::TabSelected { tab: Tab::Maps }.into(),
+                NavEvent::MapsSectionSelected {
+                    section: MapsSection::Installed,
+                }
+                .into(),
+                NavEvent::ModsSectionSelected {
+                    section: ModsSection::Installed,
+                }
+                .into(),
+                NavEvent::ReplaysSectionSelected {
+                    section: ReplaysSection::Live,
+                }
+                .into(),
+                NavEvent::SettingsSectionSelected {
+                    section: SettingsSection::Connectivity,
+                }
+                .into(),
+                NavEvent::TabSelected { tab: Tab::Chat }.into(),
+            ],
+        ),
+        case(
             "install check flips both flags and reports where paths resolve",
             vec![InstallEvent::Checked {
                 game_ready: true,
@@ -6292,6 +6315,17 @@ fn cases() -> Vec<Case> {
                     }],
                 }
                 .into(),
+                // Replaced whole as well: the service works out the order and
+                // the cap, the reducer only stores the result. The empty
+                // string is a deliberate choice of no avatar.
+                SettingsEvent::AvatarHistoryChanged {
+                    history: vec![
+                        "https://example.test/cup.png".into(),
+                        "https://example.test/veteran.png".into(),
+                        String::new(),
+                    ],
+                }
+                .into(),
                 SettingsEvent::SocialChanged {
                     preferences: SocialPreferences {
                         player_notes: vec![
@@ -6386,6 +6420,7 @@ fn cases() -> Vec<Case> {
                                 },
                             ],
                             column_widths: vec![320, 180, 90, 110, 80],
+                            column_order: Vec::new(),
                             detail_width: 360,
                         },
                         matchmaker_unselected_queues: vec![
@@ -6436,6 +6471,7 @@ fn cases() -> Vec<Case> {
                         mod_vault_sort: "rating".into(),
                         vault_page_size: 48,
                         replay_list_columns: vec![64, 240, 150],
+                        replay_list_order: Vec::new(),
                         live_replay_columns: vec![120, 200],
                         coop_board_columns: Vec::new(),
                         matchmaker_recent_columns: Vec::new(),
@@ -6443,6 +6479,8 @@ fn cases() -> Vec<Case> {
                         mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec!["games".into(), "updated".into()],
                         replay_vault_player: String::new(),
+                        replay_chat_channel: String::new(),
+                        replay_chat_transfers: Default::default(),
                         legacy_storage_migrated: true,
                     }),
                 }

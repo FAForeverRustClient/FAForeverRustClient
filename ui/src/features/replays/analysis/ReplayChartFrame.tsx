@@ -11,9 +11,10 @@
 // heatmap draws onto a canvas it holds a ref to, and two live copies of that
 // would leave the ref pointing at whichever mounted last.
 
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../../../design-system/Icon";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { useTranslation } from "../../../i18n/useTranslation";
 
 export function ReplayChartFrame({
@@ -36,26 +37,10 @@ export function ReplayChartFrame({
 }) {
   const { t } = useTranslation();
 
-  // On `window`, in the capture phase, and only while this chart is open.
-  //
-  // The panel around this one closes itself on Escape from a capture-phase
-  // listener on `document`. Capture runs outwards in, so a listener on
-  // `window` is reached first and can stop the event before the panel behind
-  // sees it: one press steps out of the enlarged chart, the next closes the
-  // panel. A second `document` listener could not do that -- two listeners on
-  // the same target run in the order they were added, and the panel was there
-  // first.
-  useEffect(() => {
-    if (!zoomed) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      onZoom(false);
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [onZoom, zoomed]);
+  // One layer of the overlay stack while enlarged, above the panel it was
+  // opened from: one press steps out of the enlarged chart, the next closes
+  // the panel.
+  useOverlayLayer(zoomed, () => onZoom(false));
 
   const body = (
     <>

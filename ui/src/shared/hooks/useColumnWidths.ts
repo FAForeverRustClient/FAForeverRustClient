@@ -53,12 +53,17 @@ export interface ColumnWidths {
   onCommit: () => void;
   /** Back to the designed widths, and stay there across a restart. */
   onReset: () => void;
+  /** Drop any local widths, for a reset that saves the designed ones itself. */
+  clear: () => void;
 }
 
 /**
  * @param field which browsing preference holds this table's widths
  * @param defaults the designed widths, in the order the columns are drawn
  * @param flexible which column has no width of its own and takes what is left
+ * @param order for a table whose columns can be moved: the column drawn at
+ *   each position. A divider's `boundary` is then a drawn position, and the
+ *   two columns it trades between are the ones either side of it on screen.
  */
 export function useColumnWidths(
   field: ColumnField,
@@ -66,11 +71,16 @@ export function useColumnWidths(
   flexible: number,
   layout: "grid" | "table" = "table",
   flexibleFloor = 80,
+  order?: readonly number[],
 ): ColumnWidths {
   const stored = useAppStore((state) => state.state.settings.browsing[field]);
   // Local until the pointer is released: persisting per frame would write a
-  // settings file on every mouse move.
+  // settings file on every mouse move. And local until the saved widths come
+  // back after that: dropped at release, the old widths showed for the length
+  // of the round trip and a released divider flickered back before landing.
   const [dragged, setDragged] = useState<number[] | null>(null);
+  const storedKey = (stored ?? []).join(",");
+  useEffect(() => setDragged(null), [storedKey]);
   // The widths the drag started from. `ResizeHandle` reports the distance from
   // where the pointer went down, so every move has to be measured against the
   // same widths; adding each report to the last one instead makes a column run
@@ -120,12 +130,30 @@ export function useColumnWidths(
     },
     onDrag: (boundary, delta) => {
       const base = (origin.current ??= current);
-      setDragged(withBoundaryTraded(base, boundary, delta / dragScale.current, floorOf));
+      if (!order) {
+        setDragged(withBoundaryTraded(base, boundary, delta / dragScale.current, floorOf));
+        return;
+      }
+      // Traded in drawn order, stored in designed order.
+      const traded = withBoundaryTraded(
+        order.map((column) => base[column]),
+        boundary,
+        delta / dragScale.current,
+        (position) => floorOf(order[position]),
+      );
+      const next = [...base];
+      order.forEach((column, position) => {
+        next[column] = traded[position];
+      });
+      setDragged(next);
     },
     onCommit: () => {
       origin.current = null;
       dragScale.current = 1;
       if (dragged) save(dragged);
+    },
+    clear: () => {
+      origin.current = null;
       setDragged(null);
     },
     // An empty array is the reset: the backend keeps it and the resolve above

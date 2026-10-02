@@ -80,6 +80,12 @@ pub async fn handle(cmd: TrainingCommand, ctx: &ServiceCtx, out: &EventSink) {
                 draft: Box::new(ContributionDraft::default()),
             });
         }
+        // Only the draft: the last submission's result is left alone, because
+        // nothing was composed. The reducer drops a composed post on any
+        // change, so a post for an older text cannot outlive the edit.
+        TrainingCommand::ChangeContribution { draft } => {
+            out.emit(TrainingEvent::ContributionChanged { draft });
+        }
         TrainingCommand::ComposeContribution { draft } => {
             // A post that has just been composed has not been submitted, and
             // the last submission's result is about a different guide. Said

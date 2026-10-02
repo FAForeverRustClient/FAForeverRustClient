@@ -5,6 +5,7 @@
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { ipc } from "../../ipc/client";
+import { ViewErrorBoundary } from "../../shared/components/ErrorBoundary";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
 import { ProfileAvatar } from "../../shared/components/ProfileAvatar";
@@ -63,7 +64,22 @@ export function AppShell() {
   const activeTab = useAppStore((s) => s.state.nav.activeTab);
   const auth = useAppStore((s) => s.state.auth);
   const chatStatus = useAppStore((s) => s.state.chat.status);
+  const lobbyStatus = useAppStore((s) => s.state.lobby.status);
   const party = useAppStore((s) => s.state.lobby.party);
+  // What the profile line says, from the lobby connection rather than the
+  // account. It said "Online" with a green dot whenever an account was signed
+  // in, so it contradicted the status bar every time FAF was unreachable.
+  const presence =
+    auth.mode === "offline" || lobbyStatus === "disconnected"
+      ? "offline"
+      : lobbyStatus === "connecting"
+        ? "connecting"
+        : "online";
+  const presenceLabel = {
+    offline: t("shell.sidebar.offline"),
+    connecting: t("shell.sidebar.connecting"),
+    online: t("shell.sidebar.online"),
+  }[presence];
   // The party message carries ids, not names: the room name needs the owner's
   // real login, which only the live directory has. See `partyChatChannel`.
   const social = useAppStore((s) => s.state.social);
@@ -219,8 +235,8 @@ export function AppShell() {
                   ? <PlayerName name={player.name} />
                   : t(auth.mode === "offline" ? "shell.sidebar.noAccount" : "shell.sidebar.player")}
               </span>
-              <span className="profile-status">
-                <i /> {t(auth.mode === "offline" ? "shell.sidebar.offline" : "shell.sidebar.online")}
+              <span className={`profile-status is-${presence}`}>
+                <i /> {presenceLabel}
               </span>
             </span>
           </button>
@@ -256,9 +272,11 @@ export function AppShell() {
           aria-label={t("nav.content.aria", { tab: t(TABS[openTab].label) })}
         >
           <div className={`content-inner content-${openTab}`}>
-            <Suspense fallback={<div className="muted" role="status">{t("shell.loadingSection")}</div>}>
-              <ActiveView />
-            </Suspense>
+            <ViewErrorBoundary resetKey={openTab}>
+              <Suspense fallback={<div className="muted" role="status">{t("shell.loadingSection")}</div>}>
+                <ActiveView />
+              </Suspense>
+            </ViewErrorBoundary>
           </div>
         </section>
 
