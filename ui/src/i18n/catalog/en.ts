@@ -2005,6 +2005,7 @@ export const en = {
   "playerCard.avatar.title": "Choose your active avatar",
   "playerCard.avatar.done": "Done",
   "playerCard.avatar.hint": "Only avatars assigned to your FAF account by the server can be selected.",
+  "playerCard.avatar.fallbackHint": "If an avatar you wear stops being yours, such as a tournament avatar passing to the next winner, the client switches back to the one you chose before it.",
   "playerCard.avatar.loading": "Loading available avatars…",
   "playerCard.avatar.retry": "Retry",
   "playerCard.avatar.none": "No avatar",

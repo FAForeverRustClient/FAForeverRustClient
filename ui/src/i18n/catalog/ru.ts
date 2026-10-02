@@ -911,6 +911,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "playerCard.avatar.title": "Выберите активный аватар",
   "playerCard.avatar.done": "Готово",
   "playerCard.avatar.hint": "Выбрать можно только аватары, назначенные вашей учётной записи FAF сервером.",
+  "playerCard.avatar.fallbackHint": "Если аватар, который вы носите, перестаёт быть вашим, например турнирный аватар переходит к следующему победителю, клиент возвращает тот, что вы выбрали до него.",
   "playerCard.avatar.loading": "Загрузка доступных аватаров…",
   "playerCard.avatar.retry": "Повторить",
   "playerCard.avatar.none": "Без аватара",

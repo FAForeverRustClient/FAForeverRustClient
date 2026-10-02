@@ -466,6 +466,7 @@ const INITIAL: AppState = {
     },
     keptGeneratedMaps: [],
     matchmakerVetoes: [],
+    avatarHistory: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
     general: { startPage: "news", autoLogin: true, rememberTypedEntries: false },
     appearance: {

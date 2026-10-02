@@ -2594,6 +2594,12 @@ pub struct SettingsState {
     /// itself rather than being replayed wrong forever.
     #[serde(default)]
     pub matchmaker_vetoes: Vec<PlayerVeto>,
+    /// The avatars this account was seen choosing, newest first; an empty
+    /// string is a choice of none. When the newest stops being allowed (a
+    /// tournament avatar rotating to the next winner), the client selects the
+    /// most recent one that still is. See `lobby::reconcile_avatar`.
+    #[serde(default)]
+    pub avatar_history: Vec<String>,
     #[serde(default)]
     pub cache_info: GameCacheInfo,
 }
@@ -2629,6 +2635,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             kept_generated_maps: Vec<String>,
             map_generator: GeneratorOptions,
             matchmaker_vetoes: Vec<PlayerVeto>,
+            avatar_history: Vec<String>,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -2652,6 +2659,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             kept_generated_maps: wire.kept_generated_maps,
             map_generator: wire.map_generator,
             matchmaker_vetoes: wire.matchmaker_vetoes,
+            avatar_history: wire.avatar_history,
             cache_info: GameCacheInfo::default(),
         })
     }
@@ -2774,6 +2782,11 @@ pub enum SettingsEvent {
     MatchmakerVetoesChanged {
         vetoes: Vec<PlayerVeto>,
     },
+    /// The remembered avatar choices, replaced whole; see
+    /// [`SettingsState::avatar_history`].
+    AvatarHistoryChanged {
+        history: Vec<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -2887,6 +2900,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::MatchmakerVetoesChanged { vetoes } => {
             state.matchmaker_vetoes = vetoes.clone()
         }
+        SettingsEvent::AvatarHistoryChanged { history } => state.avatar_history = history.clone(),
         SettingsEvent::GeneralChanged { preferences } => state.general = preferences.clone(),
         SettingsEvent::AppearanceChanged { preferences } => {
             state.appearance = preferences.clone().normalized()

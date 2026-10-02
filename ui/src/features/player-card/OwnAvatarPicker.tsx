@@ -33,6 +33,9 @@ export function OwnAvatarPicker({ currentUrl, onClose }: OwnAvatarPickerProps) {
         <Button onClick={onClose}>{t("playerCard.avatar.done")}</Button>
       </header>
       <p className="muted">{t("playerCard.avatar.hint")}</p>
+      {/* Said here because it acts without asking: the request came from a
+          player who could not tell whether it already existed. */}
+      <p className="muted">{t("playerCard.avatar.fallbackHint")}</p>
 
       {lobby.avatarListStatus === "loading" && (
         <div className="own-avatar-picker-status muted">{t("playerCard.avatar.loading")}</div>

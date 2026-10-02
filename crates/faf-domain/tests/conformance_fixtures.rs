@@ -6292,6 +6292,17 @@ fn cases() -> Vec<Case> {
                     }],
                 }
                 .into(),
+                // Replaced whole as well: the service works out the order and
+                // the cap, the reducer only stores the result. The empty
+                // string is a deliberate choice of no avatar.
+                SettingsEvent::AvatarHistoryChanged {
+                    history: vec![
+                        "https://example.test/cup.png".into(),
+                        "https://example.test/veteran.png".into(),
+                        String::new(),
+                    ],
+                }
+                .into(),
                 SettingsEvent::SocialChanged {
                     preferences: SocialPreferences {
                         player_notes: vec![

@@ -5099,7 +5099,13 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  *  Opt-in per queue, and off until then: see
  *  `NotificationPreferences::queue_opponent_queues`.
  */
-"queueOpponent" | "error";
+"queueOpponent" |
+/**
+ *  The avatar the player chose last stopped being theirs (a rotational
+ *  tournament avatar went to the next winner) and the client put the one
+ *  before it back. Said once, so the change is not a mystery.
+ */
+"avatarRestored" | "error";
 
 export type NotificationPreferences = {
 	enabled: boolean,
@@ -7730,6 +7736,13 @@ export type SettingsEvent = { type: "loaded"; payload: {
  */
 { type: "matchmakerVetoesChanged"; payload: {
 	vetoes: PlayerVeto[],
+} } |
+/**
+ *  The remembered avatar choices, replaced whole; see
+ *  [`SettingsState::avatar_history`].
+ */
+{ type: "avatarHistoryChanged"; payload: {
+	history: string[],
 } };
 
 /**
@@ -7788,6 +7801,13 @@ export type SettingsState = {
 	 *  itself rather than being replayed wrong forever.
 	 */
 	matchmakerVetoes?: PlayerVeto[],
+	/**
+	 *  The avatars this account was seen choosing, newest first; an empty
+	 *  string is a choice of none. When the newest stops being allowed (a
+	 *  tournament avatar rotating to the next winner), the client selects the
+	 *  most recent one that still is. See `lobby::reconcile_avatar`.
+	 */
+	avatarHistory?: string[],
 	cacheInfo?: GameCacheInfo,
 };
 

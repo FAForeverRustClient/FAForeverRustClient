@@ -889,6 +889,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "playerCard.avatar.title": "Choisissez votre avatar actif",
   "playerCard.avatar.done": "Terminé",
   "playerCard.avatar.hint": "Seuls les avatars attribués à votre compte FAF par le serveur peuvent être sélectionnés.",
+  "playerCard.avatar.fallbackHint": "Si un avatar que vous portez cesse d'être le vôtre, comme un avatar de tournoi qui passe au vainqueur suivant, le client revient à celui que vous aviez choisi avant.",
   "playerCard.avatar.loading": "Chargement des avatars disponibles…",
   "playerCard.avatar.retry": "Réessayer",
   "playerCard.avatar.none": "Aucun avatar",

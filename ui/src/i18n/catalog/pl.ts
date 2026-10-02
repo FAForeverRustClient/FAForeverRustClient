@@ -905,6 +905,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "playerCard.avatar.title": "Wybierz aktywny awatar",
   "playerCard.avatar.done": "Gotowe",
   "playerCard.avatar.hint": "Wybrać można tylko awatary przyznane twojemu kontu FAF przez serwer.",
+  "playerCard.avatar.fallbackHint": "Jeśli awatar, którego używasz, przestanie być twój, na przykład awatar turniejowy przechodzący na kolejnego zwycięzcę, klient wróci do tego, który wybrałeś wcześniej.",
   "playerCard.avatar.loading": "Wczytywanie dostępnych awatarów…",
   "playerCard.avatar.retry": "Spróbuj ponownie",
   "playerCard.avatar.none": "Bez awatara",
