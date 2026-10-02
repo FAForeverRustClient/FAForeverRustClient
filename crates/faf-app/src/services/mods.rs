@@ -28,8 +28,16 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         ModsCommand::SearchVault { query } => {
+            // Claimed in arrival order: see `runtime::claim_generation`.
+            let generation = crate::runtime::claimed_generation()
+                .unwrap_or_else(|| ctx.mods_search_generation.begin());
             out.emit(ModsEvent::VaultSearching);
-            match ctx.ports.mods.search_vault(query.clone()).await {
+            let result = ctx.ports.mods.search_vault(query.clone()).await;
+            // Only the newest search may answer: see `mods_search_generation`.
+            if !ctx.mods_search_generation.is_current(generation) {
+                return;
+            }
+            match result {
                 Ok(page) => out.emit(ModsEvent::VaultSearched {
                     mods: page.mods,
                     query,

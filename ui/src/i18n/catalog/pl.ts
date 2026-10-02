@@ -2396,6 +2396,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.sortAscending": "rosnąco",
   "lobby.browser.sortDescending": "malejąco",
   "lobby.browser.resizeDetails": "Zmień szerokość panelu szczegółów",
+  "lobby.browser.hideDetails": "Ukryj panel szczegółów",
+  "lobby.browser.showDetails": "Pokaż panel szczegółów",
   "lobby.matchmaker.resizeChat": "Zmień szerokość czatu drużyny",
   "lobby.browser.openProfile": "Otwórz profil gracza {name}",
   "lobby.browser.tileAria": "{title}, założona przez {host}. Kliknij dwukrotnie, aby dołączyć.",

@@ -272,6 +272,13 @@ async fn rapid_channel_selection_batches_read_marker_persistence() {
     };
     let (app, app_loop) = App::new("test", ports);
     tokio::spawn(app_loop.run());
+    // Nothing is written back before the settings file has been read, the
+    // read markers included, so the startup load comes first as it does in
+    // the client. See `crates/faf-app/tests/settings_startup.rs`.
+    app.dispatch_and_wait(faf_domain::state::SettingsCommand::Load.into())
+        .await
+        .unwrap();
+    saved.lock().unwrap().clear();
     app.dispatch(
         ChatCommand::Connect {
             username: "Aurora".into(),

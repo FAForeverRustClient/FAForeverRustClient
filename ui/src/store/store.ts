@@ -594,6 +594,7 @@ const INITIAL: AppState = {
         rules: [],
         columnWidths: [],
         detailWidth: 0,
+        detailHidden: false,
       },
       matchmakerUnselectedQueues: [],
       matchmakerFactions: ["UEF", "Aeon", "Cybran", "Seraphim"],

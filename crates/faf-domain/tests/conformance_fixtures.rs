@@ -6387,6 +6387,7 @@ fn cases() -> Vec<Case> {
                             ],
                             column_widths: vec![320, 180, 90, 110, 80],
                             detail_width: 360,
+                            detail_hidden: false,
                         },
                         matchmaker_unselected_queues: vec![
                             "  ladder_1v1 ".into(),
