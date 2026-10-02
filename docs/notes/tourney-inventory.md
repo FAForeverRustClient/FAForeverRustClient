@@ -102,6 +102,87 @@ These come first because each one is a defect in what already ships.
 | 1.9 | Fixed, with a service test |
 | 1.10 | Fixed, together with 1.8 |
 
+### Status on `tourney/batch-2` (PR 373), re-measured against `2b6be08`
+
+Re-run on 2026-09-28 against the website at `2b6be08` (21:37 +0200), which
+added one feature since `d2cac09`: the **3rd place match** (a `3p` bracket
+side, `third_place`, `plan.thirdPlace`, the Rounds/Bracket tab name once
+playoffs exist). The client read a `3p` match as a second final; it is its
+own side now.
+
+Two more defects of the kind section 1 lists, found on the way:
+
+| # | Finding | Status |
+|---|---|---|
+| 1.11 | **"Which rating counts" could not be changed from the client.** The settings form showed the select, and `edit_info` never sent `ratingType`. | Fixed |
+| 1.12 | **A `3p` match was read as a winners match** with the final's round and index, so it was drawn on top of the final and ranked the semi-final losers level with the beaten finalist. | Fixed |
+
+What batch 2 covers of section 3:
+
+| Area | Done in batch 2 |
+|---|---|
+| 3.5 Chat | Layout, day dividers, replies with quote and jump, @ completion, ping the organisers, match chat as a popup |
+| 3.8 Bracket / Rounds | Swiss rounds as a list with record chips, the 3rd place match, per-round best-of on the drawn bracket (`set_round_bo`) |
+| 3.9 Matches | The tab, with per-match best-of in the details (`set_match_bo`) |
+| 3.10 Vetoes | The tab, faction vetoes, the map veto run as the website runs it |
+| 3.11 Maps | The public tab; secret maps, one or all (`map_secret`) |
+| 3.14 Admin | Organisers remove and leave, bans, FAF renames, re-pull ratings, ending early (stop-at, finish, reopen), qualifier seed block, attached images, organiser notes, veto rules (Team A, reveal on ban) with their own save, multi-day events, check-in deadline, which rating counts |
+
+**Actions still not called** (of 105 `sub` branches and the `phase` steps),
+after taking out the browser's OAuth round trip (`login`, `logout`,
+`callback`), an alias (`generate`), a dead one (`claim_organizer` answers
+410) and two the client covers another way (`edit_date` through
+`edit_info`, `faf_lookup` through FAF's own account search):
+
+- Swiss and playoffs: `pick_opponent`, `undo_pick_opponent`, `playoff_setup`
+- Teams: `org_create_team`, `signup_team`, `join_team`, `set_team_name`, `swap_team`, `set_match_team`, `replace_player`, `set_captain_mode`
+- Maps: `copy_maps`, `pool_copy_sequence`, `set_maps`, `set_plan_round_bo`
+- Vetoes: `fveto_reset`
+- Players: `player_ratings` (issue 158's second half), `check_rating`, `cancel_invite`, `decline_invite`
+- Decide: `secrets` (share links)
+- Site administration: `set_category`, `stand_down`, `restore`
+
+**Still open on screen**, checked on 2026-09-29 against every render
+function of `public/app*.js` at `2b6be08` and the client's panels. Not
+applicable and left out: whole-team registration (`signup_team`, off with FAF
+login), instant team join (`join_team`, removed), organiser links
+(`claim_organizer`, 410).
+
+Every item is done on `tourney/batch-3` (2026-09-29, PR 375). What the client
+does differently from the website, on purpose:
+
+- Two actions the website's service takes and its pages never offer have a
+  control of the client's own: a pool for one match (match details) and
+  resetting one side's faction choices (`fveto_reset`); setting a match's
+  sides by hand (`set_match_team`) is offered too, before the first game and
+  to teams of the match's division only.
+- The pending bar says each item in the reader's language, with the count
+  the service put in its English sentence; an unknown kind keeps the
+  service's words.
+- A solo team's name opens the FAF player card rather than the website's
+  one-row team popup; teams of several open the roster.
+- Replays on a card play in the client instead of linking to the vault page.
+- The pool view's "how the veto will run" footer reads `veto.mode`; the
+  website reads a field the service never sends and always says "before
+  game 1".
+- A director is not offered Restore on archived tournaments, which the
+  service refuses them although the website shows it.
+- For a site admin the Manage button that archives says it deletes
+  permanently, which is what the service does for that role.
+- "Fill from this" does not copy the rating date (the website does, while
+  saying it copies no dates) and does copy the free-for-all settings (the
+  website forgets them).
+- `copy_maps` copies no spawn information: a website fault the client does
+  not work around.
+- Linking an account as site admin with the master password stays on the
+  website (the maintainer's call, 2026-09-29); site admins are added in the
+  console.
+
+**Fields still not read**: `archived`, `cfg`, `challongeDate`, `chatLockAt`,
+`createdByName`, `hasOrganizer`, `rounds`, `source`, `unreadByRoom` (the
+recorded-document tripwire in `crates/faf-domain/tests/recorded_tourney.rs`
+is the list's authority).
+
 ---
 
 ## 2. The two open issues, item by item

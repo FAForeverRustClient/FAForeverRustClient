@@ -85,6 +85,14 @@ export function PlayerTable({
                         {t("tournaments.entrants.manualShort")}
                       </span>
                     )}
+                    {/* Sent only to organisers and to people signed up here, so
+                        a match can be arranged without a round trip through the
+                        chat. */}
+                    {player.discord !== "" && (
+                      <span className="tournament-discord muted" title={t("tournaments.entrants.discord")}>
+                        {"\u{1F4AC}"} {player.discord}
+                      </span>
+                    )}
                   </span>
                 </td>
                 {/* The tournament's own rating, not the account's: it is taken
@@ -110,22 +118,27 @@ export function PlayerTable({
                   <td className="muted">{team === null ? NO_RATING : teamName(team)}</td>
                 )}
                 {showStanding && (
-                  <td className="tournament-entrant-standing">
-                    {team !== null && team.seed > 0 && (
-                      <span className="muted">
-                        {t("tournaments.entrants.seed", { seed: team.seed })}
-                      </span>
-                    )}
-                    {team !== null && team.checkedIn && (
-                      <span className="tournament-badge is-running">
-                        {t("tournaments.entrants.checkedIn")}
-                      </span>
-                    )}
-                    {team !== null && team.finalRank !== null && (
-                      <span className="tournament-badge">
-                        {t("tournaments.entrants.finalRank", { rank: team.finalRank })}
-                      </span>
-                    )}
+                  <td>
+                    {/* The flex row lives inside the cell. On the cell itself
+                        it stopped being a table cell, so its height and its
+                        bottom border no longer lined up with the rest. */}
+                    <span className="tournament-entrant-standing">
+                      {team !== null && team.seed > 0 && (
+                        <span className="muted">
+                          {t("tournaments.entrants.seed", { seed: team.seed })}
+                        </span>
+                      )}
+                      {team !== null && team.checkedIn && (
+                        <span className="tournament-badge is-running">
+                          {t("tournaments.entrants.checkedIn")}
+                        </span>
+                      )}
+                      {team !== null && team.finalRank !== null && (
+                        <span className="tournament-badge">
+                          {t("tournaments.entrants.finalRank", { rank: team.finalRank })}
+                        </span>
+                      )}
+                    </span>
                   </td>
                 )}
               </tr>

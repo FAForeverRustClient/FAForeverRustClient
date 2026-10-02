@@ -26,6 +26,9 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
+use faf_domain::state::{SiteDocument, SiteRead, SiteWrite};
 use serde_json::{json, Value};
 
 use crate::infra::env_or;
@@ -330,10 +333,89 @@ impl TourneyPort for TourneyClient {
             .ok_or_else(|| RequestError::not_found("That tournament no longer exists."))
     }
 
-    async fn sign_up(&self, tournament_id: &str) -> Result<(), RequestError> {
-        // No body: with FAF login on, the server takes the entrant's name and
-        // account from the session and refuses anything the caller claims.
-        self.act(tournament_id, "signup", json!({})).await
+    async fn sign_up(&self, tournament_id: &str, rating: Option<i32>) -> Result<(), RequestError> {
+        self.act(tournament_id, "signup", tourney::signup_body(rating))
+            .await
+    }
+
+    async fn decline_invite(&self, tournament_id: &str) -> Result<(), RequestError> {
+        self.act(tournament_id, "decline_invite", json!({})).await
+    }
+
+    async fn check_rating(&self, tournament_id: &str) -> Result<RatingCheck, RequestError> {
+        // A `POST` that writes nothing, as `check_renames` is: it reads FAF on
+        // the player's own token.
+        let document = self
+            .send(
+                reqwest::Method::POST,
+                &format!("t/{}/check_rating", encode(tournament_id)),
+                &[],
+                Some(json!({})),
+            )
+            .await?;
+        Ok(tourney::parse_rating_check(&document))
+    }
+
+    async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
+        let document = self.get("my_tournaments", &[]).await?;
+        Ok(tourney::parse_copy_sources(&document))
+    }
+
+    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError> {
+        let (path, post) = tourney::site_read_path(read);
+        let document = if post {
+            self.post(path, json!({})).await?
+        } else {
+            self.get(path, &[]).await?
+        };
+        Ok(tourney::parse_site_document(read, &document))
+    }
+
+    async fn site_write(
+        &self,
+        write: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError> {
+        let (path, body) = tourney::site_request(write);
+        let document = self.post(&path, body).await?;
+        Ok(tourney::parse_site_answer(write, &document))
+    }
+
+    async fn upload_desc_image(
+        &self,
+        tournament_id: &str,
+        data_url: &str,
+    ) -> Result<String, RequestError> {
+        let document = self
+            .post(
+                &format!("t/{}/add_desc_image", encode(tournament_id)),
+                json!({ "image": data_url }),
+            )
+            .await?;
+        Ok(tourney::parse_uploaded_image(&document))
+    }
+
+    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
+        let document = self.get("presets", &[]).await?;
+        Ok(tourney::parse_presets(&document))
+    }
+
+    async fn player_ratings(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        refresh: bool,
+    ) -> Result<EntrantRatings, RequestError> {
+        let mut query = vec![("playerId", player_id)];
+        if refresh {
+            query.push(("refresh", "1"));
+        }
+        let document = self
+            .get(
+                &format!("t/{}/player_ratings", encode(tournament_id)),
+                &query,
+            )
+            .await?;
+        Ok(tourney::parse_player_ratings(&document))
     }
 
     async fn withdraw(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError> {
@@ -519,6 +601,7 @@ impl TourneyPort for TourneyClient {
     async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError> {
         let body = match order {
             SeedOrder::Randomise => json!({ "randomize": true }),
+            SeedOrder::InviteOrder => json!({ "inviteOrder": 1 }),
             SeedOrder::Explicit { team_ids } => json!({ "order": team_ids }),
         };
         self.act(tournament_id, "reseed", body).await
@@ -570,11 +653,15 @@ impl TourneyPort for TourneyClient {
             .await
     }
 
-    async fn check_in(&self, tournament_id: &str) -> Result<(), RequestError> {
+    async fn check_in(&self, tournament_id: &str, checked_in: bool) -> Result<(), RequestError> {
         // The team is resolved from the session server-side; any member may
         // check the team in, which is the point of not naming one here.
-        self.act(tournament_id, "checkin_team", json!({ "value": true }))
-            .await
+        self.act(
+            tournament_id,
+            "checkin_team",
+            json!({ "value": checked_in }),
+        )
+        .await
     }
 
     async fn confirm_report(
@@ -666,11 +753,12 @@ impl TourneyPort for TourneyClient {
         tournament_id: &str,
         room_id: &str,
         body: &str,
+        reply_to: Option<&str>,
     ) -> Result<(), RequestError> {
         self.act(
             tournament_id,
             "chat_post",
-            json!({ "room": room_id, "text": body }),
+            tourney::chat_post_body(room_id, body, reply_to),
         )
         .await
     }
@@ -776,6 +864,57 @@ impl TourneyPort for TourneyClient {
             .await
     }
 
+    async fn faction_veto(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        game: i32,
+        faction: TourneyFaction,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "fveto_action",
+            tourney::faction_veto_body(match_id, game, faction),
+        )
+        .await
+    }
+
+    async fn set_faction_veto(
+        &self,
+        tournament_id: &str,
+        config: &FactionVetoConfig,
+    ) -> Result<(), RequestError> {
+        self.act(
+            tournament_id,
+            "fveto_config",
+            tourney::faction_veto_config_body(config),
+        )
+        .await
+    }
+
+    async fn check_renames(&self, tournament_id: &str) -> Result<RenameCheck, RequestError> {
+        // A `POST` that writes nothing: the service reads FAF on the
+        // organiser's token, and keeps it off `GET` for that reason.
+        let document = self
+            .send(
+                reqwest::Method::POST,
+                &format!("t/{}/check_renames", encode(tournament_id)),
+                &[],
+                Some(json!({})),
+            )
+            .await?;
+        Ok(tourney::parse_rename_check(&document))
+    }
+
+    async fn administer(
+        &self,
+        tournament_id: &str,
+        change: &TourneyAdmin,
+    ) -> Result<(), RequestError> {
+        let (action, body) = tourney::admin_request(change);
+        self.act(tournament_id, action, body).await
+    }
+
     async fn save_map(&self, tournament_id: &str, map: &MapDraft) -> Result<(), RequestError> {
         let mut body = json!({
             "name": map.name.trim(),
@@ -790,6 +929,13 @@ impl TourneyPort for TourneyClient {
         // for a map called "" and refuse.
         if !map.id.is_empty() {
             body["id"] = json!(map.id);
+        }
+        // A picture only as a data URL: the service ignores any other string
+        // and keeps what it has, which is also what leaving it out does.
+        match map.image.as_deref() {
+            Some(image) if image.starts_with("data:") => body["image"] = json!(image),
+            _ if map.remove_image => body["removeImage"] = json!(1),
+            _ => {}
         }
         self.act(tournament_id, "map_save", body).await
     }
@@ -846,6 +992,10 @@ impl TourneyPort for TourneyClient {
                 .iter()
                 .map(|step| json!({ "action": step.action.as_wire(), "team": step.team.as_wire() }))
                 .collect::<Vec<_>>(),
+            // Always sent, as the website does: `null` clears a schedule and a
+            // moment sets one. The editor carries the stored value, so an edit
+            // that did not touch it keeps it.
+            "publishAt": tourney::iso_moment(pool.publish_at),
         });
         // An empty id creates; the server distinguishes on the key being
         // present at all, so it is left out rather than sent blank.

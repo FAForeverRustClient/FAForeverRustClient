@@ -8,8 +8,8 @@
 //! response. Any local simulation of it would drift within one round.
 
 use faf_domain::state::{
-    MatchReport, PoolDraft, SeedOrder, SeriesDraft, TourneyAction, TourneyActionFailure,
-    TourneyCommand, TourneyDraft, TourneyEvent,
+    AccessKind, CopySourceMaps, MatchReport, PoolDraft, SeedOrder, SeriesDraft, SiteRead,
+    TourneyAction, TourneyActionFailure, TourneyAdmin, TourneyCommand, TourneyDraft, TourneyEvent,
 };
 
 use crate::ports::RequestError;
@@ -28,10 +28,176 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             load_detail(&tournament_id, ctx, out).await;
         }
 
-        TourneyCommand::SignUp { tournament_id } => {
+        TourneyCommand::RefreshDetail { tournament_id } => {
+            let generation = ctx.tourney_detail_generation.begin();
+            match ctx.ports.tourney.detail(&tournament_id).await {
+                Ok(event) if ctx.tourney_detail_generation.is_current(generation) => {
+                    out.emit(TourneyEvent::DetailLoaded {
+                        event: Box::new(event),
+                    });
+                }
+                Ok(_) => {}
+                Err(error) => tracing::debug!(%error, "a silent tournament refresh failed"),
+            }
+        }
+
+        TourneyCommand::SignUp {
+            tournament_id,
+            rating,
+        } => {
             write(TourneyAction::SigningUp, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.sign_up(&tournament_id).await }
+                async move { ctx.ports.tourney.sign_up(&tournament_id, rating).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::DeclineInvite { tournament_id } => {
+            write(TourneyAction::DecliningInvite, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.decline_invite(&tournament_id).await }
+            })
+            .await;
+        }
+
+        TourneyCommand::CheckRating { tournament_id } => {
+            out.emit(TourneyEvent::RatingChecking);
+            match ctx.ports.tourney.check_rating(&tournament_id).await {
+                Ok(check) => out.emit(TourneyEvent::RatingChecked { check }),
+                Err(error) => out.emit(TourneyEvent::RatingCheckFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        TourneyCommand::LoadPlayerRatings {
+            tournament_id,
+            player_id,
+            refresh,
+        } => {
+            out.emit(TourneyEvent::PlayerRatingsLoading);
+            match ctx
+                .ports
+                .tourney
+                .player_ratings(&tournament_id, &player_id, refresh)
+                .await
+            {
+                Ok(ratings) => out.emit(TourneyEvent::PlayerRatingsLoaded { ratings }),
+                Err(error) => out.emit(TourneyEvent::PlayerRatingsFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        TourneyCommand::LoadCopySources => {
+            out.emit(TourneyEvent::CopySourcesLoading);
+            match ctx.ports.tourney.copy_sources().await {
+                Ok(sources) => out.emit(TourneyEvent::CopySourcesLoaded { sources }),
+                Err(error) => out.emit(TourneyEvent::CopySourcesFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        TourneyCommand::LoadSite { read } => load_site(read, ctx, out).await,
+
+        TourneyCommand::SiteWrite { write } => {
+            // An import names the tournament it made, which then opens; a
+            // picture upload names its path, which the editor inserts.
+            let answer = std::sync::Arc::new(std::sync::Mutex::new(None::<String>));
+            let held = answer.clone();
+            let sent = write.clone();
+            write_selecting(TourneyAction::SiteWriting, ctx, out, async move {
+                let (opened, image) = ctx.ports.tourney.site_write(&sent).await?;
+                if let Ok(mut slot) = held.lock() {
+                    *slot = image;
+                }
+                Ok(opened)
+            })
+            .await;
+            let image = answer.lock().ok().and_then(|mut slot| slot.take());
+            if let Some(url) = image {
+                out.emit(TourneyEvent::ArticleImageUploaded { url });
+            }
+            if write.touches_console() {
+                reload_site(ctx, out).await;
+            }
+        }
+
+        TourneyCommand::LoadPresets => match ctx.ports.tourney.presets().await {
+            Ok(presets) => out.emit(TourneyEvent::PresetsLoaded { presets }),
+            // Silent, like the rules pages: without them the form is the
+            // form, only without the shortcut.
+            Err(error) => tracing::warn!(%error, "could not load the tournament presets"),
+        },
+
+        // Read like a map source, without opening it: the form fills from it
+        // while whatever event is open stays open.
+        TourneyCommand::LoadTemplate { tournament_id } => {
+            out.emit(TourneyEvent::TemplateLoading);
+            match ctx.ports.tourney.detail(&tournament_id).await {
+                Ok(event) => out.emit(TourneyEvent::TemplateLoaded {
+                    event: Box::new(event),
+                }),
+                Err(error) => out.emit(TourneyEvent::TemplateFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        // The source's own detail, read without opening it: the open event
+        // stays the one the maps are imported into.
+        TourneyCommand::LoadCopySource { tournament_id } => {
+            out.emit(TourneyEvent::CopySourceLoading);
+            match ctx.ports.tourney.detail(&tournament_id).await {
+                Ok(event) => out.emit(TourneyEvent::CopySourceLoaded {
+                    source: CopySourceMaps {
+                        tournament_id,
+                        maps: event.map_db,
+                        pools: event.map_pools,
+                    },
+                }),
+                Err(error) => out.emit(TourneyEvent::CopySourceFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        TourneyCommand::BanPlayer {
+            tournament_id,
+            player_id,
+            faf_id,
+            name,
+            reason,
+            expires,
+            remove,
+        } => {
+            let action = TourneyAction::BanningPlayer {
+                player_id: player_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    let ban = TourneyAdmin::Ban {
+                        faf_id,
+                        name,
+                        reason,
+                        expires,
+                    };
+                    ctx.ports.tourney.administer(&tournament_id, &ban).await?;
+                    if remove {
+                        ctx.ports
+                            .tourney
+                            .withdraw(&tournament_id, &player_id)
+                            .await?;
+                    }
+                    Ok(())
+                }
             })
             .await;
         }
@@ -57,10 +223,13 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::CheckIn { tournament_id } => {
+        TourneyCommand::CheckIn {
+            tournament_id,
+            checked_in,
+        } => {
             write(TourneyAction::CheckingIn, ctx, out, {
                 let tournament_id = tournament_id.clone();
-                async move { ctx.ports.tourney.check_in(&tournament_id).await }
+                async move { ctx.ports.tourney.check_in(&tournament_id, checked_in).await }
             })
             .await;
         }
@@ -143,6 +312,25 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             read_room(&tournament_id, &room_id, ctx, out).await;
         }
 
+        TourneyCommand::PinRoom {
+            tournament_id,
+            room_id,
+        } => {
+            out.emit(TourneyEvent::RoomPinned {
+                room_id: room_id.clone(),
+            });
+            // Read straight away and silently: the open room's loading state
+            // is not this room's to change.
+            if let Some(room_id) = room_id {
+                match ctx.ports.tourney.chat_read(&tournament_id, &room_id).await {
+                    Ok(posts) => out.emit(TourneyEvent::ChatLoaded { room_id, posts }),
+                    Err(error) => {
+                        tracing::debug!(%error, "a pinned tournament chat could not be read");
+                    }
+                }
+            }
+        }
+
         TourneyCommand::RefreshChat {
             tournament_id,
             room_id,
@@ -171,6 +359,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             tournament_id,
             room_id,
             body,
+            reply_to,
         } => {
             if body.trim().is_empty() {
                 return;
@@ -188,7 +377,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             match ctx
                 .ports
                 .tourney
-                .chat_post(&tournament_id, &room_id, body.trim())
+                .chat_post(&tournament_id, &room_id, body.trim(), reply_to.as_deref())
                 .await
             {
                 Ok(()) => {
@@ -210,13 +399,18 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             Err(error) => tracing::warn!(%error, "could not read the hosting status"),
         },
 
-        TourneyCommand::LoadProfile => match ctx.ports.tourney.profile().await {
-            Ok(discord) => out.emit(TourneyEvent::DiscordLoaded { discord }),
-            // Silent, like the hosting status: not knowing the handle only means
-            // the signup dialog opens on an empty field, and saying so would be
-            // an error banner about something nobody asked for.
-            Err(error) => tracing::warn!(%error, "could not read the tournament profile"),
-        },
+        TourneyCommand::LoadProfile => {
+            // The whole account now, not the handle alone: its roles decide
+            // which of the site's pages and consoles are offered.
+            load_site(SiteRead::Account, ctx, out).await;
+            match ctx.ports.tourney.profile().await {
+                Ok(discord) => out.emit(TourneyEvent::DiscordLoaded { discord }),
+                // Silent, like the hosting status: not knowing the handle only means
+                // the signup dialog opens on an empty field, and saying so would be
+                // an error banner about something nobody asked for.
+                Err(error) => tracing::warn!(%error, "could not read the tournament profile"),
+            }
+        }
 
         TourneyCommand::SetDiscord { handle } => {
             match ctx.ports.tourney.set_discord(&handle).await {
@@ -239,9 +433,58 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         TourneyCommand::Create { draft } => {
             write_selecting(TourneyAction::Creating, ctx, out, {
                 let draft = trimmed_draft(draft);
-                async move { ctx.ports.tourney.create(&draft).await.map(Some) }
+                async move {
+                    let id = ctx.ports.tourney.create(&draft).await?;
+                    // Pictures pasted before the event existed go up now, and
+                    // the text is saved again with their paths in place of
+                    // the tokens. A failure leaves the event created, as the
+                    // website does, with the token where the picture was.
+                    if !draft.pending_images.is_empty() {
+                        let mut placed = Vec::new();
+                        for image in &draft.pending_images {
+                            match ctx.ports.tourney.upload_desc_image(&id, &image.data_url).await {
+                                Ok(url) if !url.is_empty() => placed.push((image.token.clone(), url)),
+                                Ok(_) => {}
+                                Err(error) => tracing::warn!(%error, "a pasted picture could not be stored"),
+                            }
+                        }
+                        if !placed.is_empty() {
+                            let swapped = draft.with_images_placed(&placed);
+                            if let Err(error) = ctx.ports.tourney.edit_info(&id, &swapped).await {
+                                tracing::warn!(%error, "the text with the pasted pictures could not be saved");
+                            }
+                        }
+                    }
+                    Ok(Some(id))
+                }
             })
             .await;
+        }
+
+        TourneyCommand::UploadDescImage {
+            tournament_id,
+            data_url,
+        } => {
+            let stored = std::sync::Arc::new(std::sync::Mutex::new(None::<String>));
+            let held = stored.clone();
+            write(TourneyAction::Editing, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    let url = ctx
+                        .ports
+                        .tourney
+                        .upload_desc_image(&tournament_id, &data_url)
+                        .await?;
+                    if let Ok(mut slot) = held.lock() {
+                        *slot = Some(url);
+                    }
+                    Ok(())
+                }
+            })
+            .await;
+            if let Some(url) = stored.lock().ok().and_then(|mut slot| slot.take()) {
+                out.emit(TourneyEvent::DescImageUploaded { url });
+            }
         }
 
         TourneyCommand::EditInfo {
@@ -831,6 +1074,67 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
+        TourneyCommand::FactionVeto {
+            tournament_id,
+            match_id,
+            game,
+            faction,
+        } => {
+            let action = TourneyAction::Vetoing {
+                match_id: match_id.clone(),
+            };
+            write(action, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .faction_veto(&tournament_id, &match_id, game, faction)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::SetFactionVeto {
+            tournament_id,
+            config,
+        } => {
+            write(TourneyAction::SavingFactionVeto, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move {
+                    ctx.ports
+                        .tourney
+                        .set_faction_veto(&tournament_id, &config)
+                        .await
+                }
+            })
+            .await;
+        }
+
+        TourneyCommand::CheckRenames { tournament_id } => {
+            out.emit(TourneyEvent::RenamesChecking);
+            match ctx.ports.tourney.check_renames(&tournament_id).await {
+                Ok(check) => out.emit(TourneyEvent::RenamesChecked { check }),
+                // Shown where the button is: the service's own sentence says
+                // when the organiser has to sign in again.
+                Err(error) => out.emit(TourneyEvent::RenamesCheckFailed {
+                    reason: error.to_string(),
+                    kind: error.kind(),
+                }),
+            }
+        }
+
+        TourneyCommand::Administer {
+            tournament_id,
+            change,
+        } => {
+            write(TourneyAction::Administering, ctx, out, {
+                let tournament_id = tournament_id.clone();
+                async move { ctx.ports.tourney.administer(&tournament_id, &change).await }
+            })
+            .await;
+        }
+
         TourneyCommand::SaveMap { tournament_id, map } => {
             write(TourneyAction::SavingMap, ctx, out, {
                 let tournament_id = tournament_id.clone();
@@ -1255,6 +1559,7 @@ fn trimmed_draft(draft: TourneyDraft) -> TourneyDraft {
 fn tidy_order(order: SeedOrder) -> SeedOrder {
     match order {
         SeedOrder::Randomise => SeedOrder::Randomise,
+        SeedOrder::InviteOrder => SeedOrder::InviteOrder,
         SeedOrder::Explicit { team_ids } => SeedOrder::Explicit {
             team_ids: team_ids
                 .into_iter()
@@ -1629,6 +1934,54 @@ async fn write_series(
             }
         }
         Err(error) => out.emit(failed(action, &error)),
+    }
+}
+
+/// Read one of the site's documents. The account and the pending bar load
+/// silently, like the hosting status; the pages say when they could not.
+async fn load_site(read: SiteRead, ctx: &ServiceCtx, out: &EventSink) {
+    out.emit(TourneyEvent::SiteLoading { read });
+    match ctx.ports.tourney.site_read(read).await {
+        Ok(document) => out.emit(TourneyEvent::SiteLoaded { document }),
+        Err(error) => {
+            tracing::warn!(%error, ?read, "could not read the tournament site");
+            out.emit(TourneyEvent::SiteLoadFailed {
+                read,
+                reason: error.to_string(),
+                kind: error.kind(),
+            });
+        }
+    }
+}
+
+/// After a site write: the account and the pending bar always, the hosting
+/// status, and the console and the open series where they are on screen.
+async fn reload_site(ctx: &ServiceCtx, out: &EventSink) {
+    load_site(SiteRead::Account, ctx, out).await;
+    load_site(SiteRead::Pending, ctx, out).await;
+    load_site(
+        SiteRead::Access {
+            kind: AccessKind::Host,
+        },
+        ctx,
+        out,
+    )
+    .await;
+    let (console, series) = out.with_state(|state| {
+        (
+            state.tourney.site.console.is_some(),
+            state
+                .tourney
+                .open_series
+                .as_ref()
+                .map(|series| series.id.clone()),
+        )
+    });
+    if console {
+        load_site(SiteRead::Console, ctx, out).await;
+    }
+    if let Some(series) = series {
+        open_series(&series, ctx, out).await;
     }
 }
 

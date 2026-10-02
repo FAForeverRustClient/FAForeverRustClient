@@ -46,7 +46,7 @@ import type {
   UploadsState,
   VaultMap,
 } from "../ipc/bindings";
-import type { BracketKind, MatchPlan, SwissCuts } from "../ipc/bindings";
+import type { BracketKind, FactionVetoConfig, MatchPlan, SwissCuts } from "../ipc/bindings";
 import fixture from "./__fixtures__/reducer-conformance.json";
 import { canLaunch, installTarget, updateAvailable } from "../shared/rules/galacticWarActions";
 import { noteForPlayer } from "../shared/rules/playerNotes";
@@ -68,6 +68,26 @@ import {
   isSubmittable,
   isPlayerSubmittable,
   swissCutRounds,
+  factionVetoOn,
+  mayAddThirdPlace,
+  mayCheckIn,
+  mayCheckRating,
+  mayConfigureFactionVeto,
+  mayUndoCheckIn,
+  teamLineup,
+  type TeamLineup,
+  mayDeclineInvite,
+  mayEditVeto,
+  maySignUp,
+  signupNeedsRating,
+  mayEndEarly,
+  mayRemoveOrganiser,
+  mayRemoveThirdPlace,
+  mayReopenEarly,
+  mayRepullRatings,
+  maySetMatchBestOf,
+  thirdPlaceOn,
+  factionConfigIsSubmittable,
   mapKey,
   matchVaultMap,
   mayEditFormat,
@@ -146,6 +166,25 @@ interface HelperFixture {
     mayRename: boolean;
     reportableMatchIds: string[];
     submittableMatchIds: string[];
+    factionVetoOn: boolean;
+    mayConfigureFactionVeto: boolean;
+    thirdPlaceOn: boolean;
+    mayAddThirdPlace: boolean;
+    mayRemoveThirdPlace: boolean;
+    bestOfMatchIds: string[];
+    removableOrganiserIds: number[];
+    mayEndEarly: boolean;
+    mayReopenEarly: boolean;
+    mayRepullRatings: boolean;
+    mayEditVeto: boolean;
+    maySignUp: boolean;
+    mayDeclineInvite: boolean;
+    mayCheckRating: boolean;
+    signupNeedsRating: boolean;
+    checkInNow: number;
+    mayCheckIn: boolean;
+    mayUndoCheckIn: boolean;
+    teamLineup: TeamLineup;
     name: string;
     event: Tourney;
     teamId: string | null;
@@ -164,6 +203,10 @@ interface HelperFixture {
   tourneyBusyMatches: Array<{
     pending: TourneyAction | null;
     busyMatchId: string | null;
+  }>;
+  tourneyFactionConfigs: Array<{
+    config: FactionVetoConfig;
+    submittable: boolean;
   }>;
   tourneySwissCuts: Array<{
     cuts: SwissCuts;
@@ -444,6 +487,28 @@ describe("tournament rule twins match Rust", () => {
       submittableMatchIds: event.matches
         .filter((entry) => maySubmit(event, entry))
         .map((entry) => entry.id),
+      factionVetoOn: factionVetoOn(event),
+      mayConfigureFactionVeto: mayConfigureFactionVeto(event),
+      thirdPlaceOn: thirdPlaceOn(event),
+      mayAddThirdPlace: mayAddThirdPlace(event),
+      mayRemoveThirdPlace: mayRemoveThirdPlace(event),
+      bestOfMatchIds: event.matches
+        .filter((entry) => maySetMatchBestOf(event, entry))
+        .map((entry) => entry.id),
+      removableOrganiserIds: event.organiserAccounts
+        .filter((organiser) => mayRemoveOrganiser(event, organiser.fafId))
+        .map((organiser) => organiser.fafId),
+      mayEndEarly: mayEndEarly(event),
+      mayReopenEarly: mayReopenEarly(event),
+      mayRepullRatings: mayRepullRatings(event),
+      mayEditVeto: mayEditVeto(event),
+      maySignUp: maySignUp(event),
+      mayDeclineInvite: mayDeclineInvite(event),
+      mayCheckRating: mayCheckRating(event),
+      signupNeedsRating: signupNeedsRating(event),
+      mayCheckIn: mayCheckIn(event, recorded.checkInNow),
+      mayUndoCheckIn: mayUndoCheckIn(event),
+      teamLineup: teamLineup(event),
     }).toEqual({
       teamRating: recorded.teamRating,
       wouldExceedTeamCap: recorded.wouldExceedTeamCap,
@@ -459,6 +524,24 @@ describe("tournament rule twins match Rust", () => {
       mayRename: recorded.mayRename,
       reportableMatchIds: recorded.reportableMatchIds,
       submittableMatchIds: recorded.submittableMatchIds,
+      factionVetoOn: recorded.factionVetoOn,
+      mayConfigureFactionVeto: recorded.mayConfigureFactionVeto,
+      thirdPlaceOn: recorded.thirdPlaceOn,
+      mayAddThirdPlace: recorded.mayAddThirdPlace,
+      mayRemoveThirdPlace: recorded.mayRemoveThirdPlace,
+      bestOfMatchIds: recorded.bestOfMatchIds,
+      removableOrganiserIds: recorded.removableOrganiserIds,
+      mayEndEarly: recorded.mayEndEarly,
+      mayReopenEarly: recorded.mayReopenEarly,
+      mayRepullRatings: recorded.mayRepullRatings,
+      mayEditVeto: recorded.mayEditVeto,
+      maySignUp: recorded.maySignUp,
+      mayDeclineInvite: recorded.mayDeclineInvite,
+      mayCheckRating: recorded.mayCheckRating,
+      signupNeedsRating: recorded.signupNeedsRating,
+      mayCheckIn: recorded.mayCheckIn,
+      mayUndoCheckIn: recorded.mayUndoCheckIn,
+      teamLineup: recorded.teamLineup,
     });
   });
 
@@ -466,6 +549,13 @@ describe("tournament rule twins match Rust", () => {
     "narrows the pending write $pending.type to match $busyMatchId",
     ({ pending, busyMatchId: expected }) => {
       expect(busyMatchId(pending)).toBe(expected);
+    },
+  );
+
+  it.each(helpers.tourneyFactionConfigs)(
+    "judges a faction veto setting $config.bans / $config.picks",
+    ({ config, submittable }) => {
+      expect(factionConfigIsSubmittable(config)).toBe(submittable);
     },
   );
 
@@ -523,6 +613,7 @@ describe("tournament rule twins match Rust", () => {
       drawReplayIds: [],
       forfeit: null,
       veto: null,
+      factionVeto: null,
       entrants: [],
       winners: [],
       points: [],
@@ -703,6 +794,8 @@ describe("tournament rule twins match Rust", () => {
         description: "",
         published: true,
         spec: null,
+        secret: false,
+        masked: false,
       } satisfies TourneyMap;
       expect({
         key: mapKey(typed),

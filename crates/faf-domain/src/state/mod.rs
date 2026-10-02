@@ -161,15 +161,30 @@ pub use tourney::{
     TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 pub use tourney::{
+    AccessKind, AccessRequest, AccessStatus, AdminArticle, ArchivedTourney, ConsoleRole,
+    HallOfFame, HallPlayer, HallTeam, ListedAccount, PendingItem, PendingSummary, SiteAdminData,
+    SiteDocument, SiteLogEntry, SiteRead, SiteWrite, TourneyAccount, TourneySite,
+};
+pub use tourney::{BanScope, EntrantBoardRating, EntrantRatings, OwnBan, RatingCheck};
+pub use tourney::{
     BracketConfig, Caster, Currency, FeedsInto, FormatDraft, MatchPlan, Prize, Qualifier,
     QualifierKind, QualifierRejection, QualifierRule, RoomBadge, RoundKey, RoundPlan, SeriesColour,
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries, BEST_OF_CHOICES,
 };
+pub use tourney::{CaptainMode, Replacement, TeamLineup, TeamSeed};
+pub use tourney::{
+    ChatQuote, FactionChoices, FactionResult, FactionStep, FactionVetoConfig, FactionVetoGame,
+    MapSpec, MatchFactionVeto, RoundMaps, SwissCuts, SwissTiebreak, TourneyAdmin, TourneyFaction,
+};
+pub use tourney::{CopySource, CopySourceMaps, MapPick, PickMode, PlanList};
 pub use tourney::{
     Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
-    VetoDecider, VetoMode, VetoTurn,
+    VetoDecider, VetoMode, VetoTeamA, VetoTurn,
 };
-pub use tourney::{MapSpec, SwissCuts, SwissTiebreak};
+pub use tourney::{EarlyFinish, Rename, RenameCheck, Survivors, TourneyBan};
+pub use tourney::{ImportedGroup, ImportedPlacing, ImportedRow};
+pub use tourney::{PendingImage, PickSettings, PlanLists, SwissExtras, TourneyPreset};
+pub use tourney::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
 pub use training::{
     compose_contribution, compose_review_request, compose_url, contribution_problem, derive_level,
     derive_topics, filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label,

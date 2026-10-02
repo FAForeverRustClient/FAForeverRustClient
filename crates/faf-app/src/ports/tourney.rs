@@ -21,10 +21,11 @@
 //!   the vetoes, the draft, the series it belongs to and the qualifiers that
 //!   feed it
 //!
-//! What stays on the website is site administration: the article pages, the
-//! hosting approvals, the category tags. Those are the site team's, not an
-//! organiser's, and a second surface for them would be a worse copy of a
-//! maintained one. The client links there instead.
+//! The site around the events is here too, since the client replaces the
+//! website: this account's roles, the pending bar, the Hall of Fame, access
+//! requests and the site administration and director console, through
+//! [`TourneyPort::site_read`] and [`TourneyPort::site_write`]. Nothing here
+//! decides who may do what: every role is the server's answer.
 
 use async_trait::async_trait;
 use faf_domain::state::{
@@ -32,6 +33,9 @@ use faf_domain::state::{
     MatchReport, PoolDraft, QualifierRule, SeedOrder, SeriesDetail, SeriesDraft, Tourney,
     TourneyDraft, TourneyPhase, TourneySeries,
 };
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
+use faf_domain::state::{SiteDocument, SiteRead, SiteWrite};
 
 use super::RequestError;
 
@@ -112,7 +116,47 @@ pub trait TourneyPort: Send + Sync {
     /// The client's best reason to exist for a player: they are already
     /// authenticated here, so entering is one click instead of a browser and a
     /// second login.
-    async fn sign_up(&self, tournament_id: &str) -> Result<(), RequestError>;
+    async fn sign_up(&self, tournament_id: &str, rating: Option<i32>) -> Result<(), RequestError>;
+
+    /// Decline this account's invitation.
+    async fn decline_invite(&self, tournament_id: &str) -> Result<(), RequestError>;
+
+    /// The verdict the signup gate would reach, without signing up.
+    async fn check_rating(&self, tournament_id: &str) -> Result<RatingCheck, RequestError>;
+
+    /// Every leaderboard rating of one entrant; fetched from FAF again on
+    /// `refresh`. Organiser only.
+    async fn player_ratings(
+        &self,
+        tournament_id: &str,
+        player_id: &str,
+        refresh: bool,
+    ) -> Result<EntrantRatings, RequestError>;
+
+    /// The events this account organises, as places to import maps from.
+    async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError>;
+
+    /// Attach a picture to an event's text, answering the path it is served
+    /// at (`add_desc_image`).
+    async fn upload_desc_image(
+        &self,
+        tournament_id: &str,
+        data_url: &str,
+    ) -> Result<String, RequestError>;
+
+    /// The named formats, and whether this account may host each.
+    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError>;
+
+    /// One of the site's documents: this account, the pending bar, the Hall
+    /// of Fame, the administration console, an access status.
+    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError>;
+
+    /// One write to the site. Answers the tournament an import created and
+    /// the path of an uploaded article picture, where the write made one.
+    async fn site_write(
+        &self,
+        write: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError>;
 
     /// Withdraw from the tournament.
     ///
@@ -272,7 +316,7 @@ pub trait TourneyPort: Send + Sync {
     ///
     /// Checks in the whole team: any member may do it, since the captain may be
     /// the one running late.
-    async fn check_in(&self, tournament_id: &str) -> Result<(), RequestError>;
+    async fn check_in(&self, tournament_id: &str, checked_in: bool) -> Result<(), RequestError>;
 
     /// Answer a result raised against this account's match, or, as an
     /// organiser, against either side's.
@@ -311,12 +355,13 @@ pub trait TourneyPort: Send + Sync {
         room_id: &str,
     ) -> Result<Vec<ChatPost>, RequestError>;
 
-    /// Post to one room.
+    /// Post to one room, optionally as a reply to one of its posts.
     async fn chat_post(
         &self,
         tournament_id: &str,
         room_id: &str,
         body: &str,
+        reply_to: Option<&str>,
     ) -> Result<(), RequestError>;
 
     /// The rules and FAQ pages, shown alongside official tournaments.
@@ -389,6 +434,33 @@ pub trait TourneyPort: Send + Sync {
 
     /// Take back the last step. Organiser only.
     async fn veto_undo(&self, tournament_id: &str, match_id: &str) -> Result<(), RequestError>;
+
+    /// Make the faction ban or pick that is due for one game. The players' own.
+    async fn faction_veto(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        game: i32,
+        faction: TourneyFaction,
+    ) -> Result<(), RequestError>;
+
+    /// Switch faction vetoes on or off, or change their numbers. Organiser only.
+    async fn set_faction_veto(
+        &self,
+        tournament_id: &str,
+        config: &FactionVetoConfig,
+    ) -> Result<(), RequestError>;
+
+    /// Ask FAF for every entrant's current name. Writes nothing. Organiser
+    /// only, and it needs the organiser's own FAF login on the service.
+    async fn check_renames(&self, tournament_id: &str) -> Result<RenameCheck, RequestError>;
+
+    /// One of the organiser's single-call changes. Organiser only, every one.
+    async fn administer(
+        &self,
+        tournament_id: &str,
+        change: &TourneyAdmin,
+    ) -> Result<(), RequestError>;
 
     /// Add a map to the event's own database, or edit one already there.
     ///

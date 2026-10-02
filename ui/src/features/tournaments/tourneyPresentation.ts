@@ -22,6 +22,7 @@ import type {
   TourneyPlayer,
   TourneyStatus,
 } from "../../ipc/bindings";
+import { thirdPlaceOn } from "../../shared/rules/tourneyRules";
 
 export const STATUS_LABELS: Record<TourneyStatus, MessageKey> = {
   draft: "tournaments.status.draft",
@@ -49,6 +50,7 @@ export const BRACKET_LABELS: Record<BracketSide, MessageKey> = {
   winners: "tournaments.bracket.winners",
   losers: "tournaments.bracket.losers",
   grandFinal: "tournaments.bracket.grandFinal",
+  thirdPlace: "tournaments.bracket.thirdPlace",
   swiss: "tournaments.bracket.swiss",
   freeForAll: "tournaments.bracket.freeForAll",
 };
@@ -223,7 +225,14 @@ export function typeLine(
   event: Tourney,
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
 ): string {
-  if (event.imported) return t("tournaments.overview.imported");
+  if (event.imported) {
+    // What the source called its format, and whether only its table came over:
+    // the two facts an import does carry.
+    const parts = [t("tournaments.overview.imported")];
+    if (event.importedType.trim() !== "") parts.push(event.importedType.trim());
+    if (event.standingsOnly) parts.push(t("tournaments.overview.resultsOnly"));
+    return parts.join(" · ");
+  }
 
   const cap =
     event.maxTeams > 0
@@ -305,11 +314,12 @@ export function planSummary(
   const plan = event.plan;
   if (plan === null) return "";
   if (plan.type === "single") {
-    return t("tournaments.overview.planSingle", {
+    const line = t("tournaments.overview.planSingle", {
       early: plan.payload.early,
       semi: plan.payload.semi,
       final: plan.payload.finalBo,
     });
+    return thirdPlaceOn(event) ? `${line} · ${t("tournaments.bracket.thirdPlace")}` : line;
   }
   if (plan.type === "double") {
     const line = t("tournaments.overview.planDouble", {

@@ -13,22 +13,40 @@
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
-import type { MapDraft, MapListStatus, Tourney, VaultMap } from "../../../ipc/bindings";
+import type {
+  MapDraft,
+  MapListStatus,
+  Tourney,
+  TourneyAdmin,
+  VaultMap,
+} from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { mapIsSubmittable, matchVaultMap } from "../../../shared/rules/tourneyRules";
+import {
+  mapIsSubmittable,
+  matchVaultMap,
+  tourneyMapImage,
+} from "../../../shared/rules/tourneyRules";
+import { MapSpec } from "../detail/MapsPanel";
+import { MapEditor } from "./MapEditor";
 import { MapVaultPicker } from "./MapVaultPicker";
+import { MapImportDialog, type MapImport } from "./MapImportDialog";
 
 interface MapDbPanelProps {
   event: Tourney;
   vault: VaultMap[];
   vaultStatus: MapListStatus;
+  /** Where the service lives, for the organisers' uploaded map pictures. */
+  assetBase: string;
   busy: boolean;
   onSave: (map: MapDraft) => void;
   onPublish: (mapId: string, published: boolean) => void;
   onDelete: (mapId: string) => void;
+  /** Secret maps: one at a time, or the whole database at once. */
+  onAdmin: (change: TourneyAdmin) => void;
+  /** Taking maps and pools over from another event this account runs. */
+  imports: MapImport;
 }
 
-const BLANK: MapDraft = { id: "", name: "", description: "", published: false, spec: null };
 
 export function MapDbPanel(props: MapDbPanelProps) {
   const { event, vault, busy } = props;
@@ -36,6 +54,7 @@ export function MapDbPanel(props: MapDbPanelProps) {
   /** The row being edited, or a blank draft while adding by hand. */
   const [draft, setDraft] = useState<MapDraft | null>(null);
   const [picking, setPicking] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const submit = () => {
     if (draft === null || !mapIsSubmittable(draft)) return;
@@ -43,71 +62,72 @@ export function MapDbPanel(props: MapDbPanelProps) {
     setDraft(null);
   };
 
-  const editor = (
-    <form
-      className="tournament-map-editor surface"
-      onSubmit={(submitted) => {
-        submitted.preventDefault();
-        submit();
-      }}
-    >
-      <label className="tournament-field">
-        <span>{t("tournaments.maps.name")}</span>
-        <input
-          value={draft?.name ?? ""}
-          autoFocus
-          placeholder={t("tournaments.maps.namePlaceholder")}
-          onChange={(changed) =>
-            setDraft((held) => ({ ...(held ?? BLANK), name: changed.target.value }))
-          }
-        />
-      </label>
-      <label className="tournament-field">
-        <span>{t("tournaments.maps.description")}</span>
-        <input
-          value={draft?.description ?? ""}
-          onChange={(changed) =>
-            setDraft((held) => ({ ...(held ?? BLANK), description: changed.target.value }))
-          }
-        />
-      </label>
-      <label className="tournament-checkbox">
-        <input
-          type="checkbox"
-          checked={draft?.published ?? false}
-          onChange={(changed) =>
-            setDraft((held) => ({ ...(held ?? BLANK), published: changed.target.checked }))
-          }
-        />
-        <span>{t("tournaments.maps.publishedLabel")}</span>
-      </label>
-      <div className="tournament-detail-actions">
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={busy || draft === null || !mapIsSubmittable(draft)}
-        >
-          {t("tournaments.maps.save")}
-        </Button>
-        <Button type="button" disabled={busy} onClick={() => setDraft(null)}>
-          {t("tournaments.maps.cancel")}
-        </Button>
-      </div>
-    </form>
-  );
+  const editing = draft === null ? undefined : event.mapDb.find((held) => held.id === draft.id);
+  const editor =
+    draft === null ? null : (
+      <MapEditor
+        draft={draft}
+        // The event's own upload only: a vault preview is not this map's
+        // picture to remove.
+        currentImage={editing === undefined ? "" : tourneyMapImage(editing, props.assetBase, [])}
+        busy={busy}
+        onChange={setDraft}
+        onSubmit={submit}
+        onCancel={() => setDraft(null)}
+      />
+    );
 
   return (
     <section className="tournament-map-db">
-      <h5>{t("tournaments.maps.heading")}</h5>
+      <div className="tournament-map-db-head">
+        <h5>{t("tournaments.maps.heading")}</h5>
+        <Button disabled={busy} onClick={() => setImporting(true)}>
+          {t("tournaments.maps.importOpen")}
+        </Button>
+      </div>
+      {importing && (
+        <MapImportDialog
+          event={event}
+          imports={props.imports}
+          busy={busy}
+          onImport={(sourceId, picked) => {
+            props.onAdmin({ type: "copyMaps", payload: { sourceId, picked } });
+            setImporting(false);
+          }}
+          onClose={() => setImporting(false)}
+        />
+      )}
 
       {event.mapDb.length === 0 && <p className="muted">{t("tournaments.maps.none")}</p>}
+
+      {/* Secret is not hidden. A hidden map is one players cannot see at all;
+          a secret one they can see exists, as "Hidden Map 3" with a blank tile,
+          and the service withholds its name until it is going to be played.
+          The veto grid still works on it, because every id is intact. */}
+      {event.mapDb.length > 0 && (
+        <div className="tournament-detail-actions">
+          <span className="muted">{t("tournaments.maps.secretHint")}</span>
+          <Button
+            disabled={busy}
+            onClick={() => props.onAdmin({ type: "mapSecret", payload: { mapId: null, secret: true } })}
+          >
+            {t("tournaments.maps.secretAll")}
+          </Button>
+          <Button
+            disabled={busy}
+            onClick={() => props.onAdmin({ type: "mapSecret", payload: { mapId: null, secret: false } })}
+          >
+            {t("tournaments.maps.revealAll")}
+          </Button>
+        </div>
+      )}
 
       <ul className="tournament-map-list">
         {event.mapDb.map((held) => {
           const vaultMap = matchVaultMap(held, vault);
           // FAF's own preview first: it is the picture players already know
           // from the maps tab. The event's own copy is for maps never uploaded.
-          const preview = vaultMap?.thumbnailUrl || held.imageUrl;
+          const preview = tourneyMapImage(held, props.assetBase, vault);
                   return (
             <li className="tournament-map-row" key={held.id}>
               {preview ? (
@@ -117,6 +137,7 @@ export function MapDbPanel(props: MapDbPanelProps) {
               )}
               <div className="tournament-map-names">
                 <span>{vaultMap?.displayName ?? held.name}</span>
+                <MapSpec map={held} />
                 {held.description !== "" && <span className="muted">{held.description}</span>}
                 {vaultMap === null && (
                   <span className="muted" title={t("tournaments.pools.notInVaultHint")}>
@@ -129,7 +150,23 @@ export function MapDbPanel(props: MapDbPanelProps) {
                   {t("tournaments.maps.hidden")}
                 </span>
               )}
+              {held.secret && (
+                <span className="tournament-hidden-mark" title={t("tournaments.maps.secretHint")}>
+                  {t("tournaments.maps.secret")}
+                </span>
+              )}
               <div className="tournament-detail-actions">
+                <Button
+                  disabled={busy}
+                  onClick={() =>
+                    props.onAdmin({
+                      type: "mapSecret",
+                      payload: { mapId: held.id, secret: !held.secret },
+                    })
+                  }
+                >
+                  {t(held.secret ? "tournaments.maps.reveal" : "tournaments.maps.makeSecret")}
+                </Button>
                 <Button
                   disabled={busy}
                   onClick={() => props.onPublish(held.id, !held.published)}
@@ -147,6 +184,8 @@ export function MapDbPanel(props: MapDbPanelProps) {
                       // Carried unchanged: the service replaces the stored
                       // spawn information with whatever the save sends.
                       spec: held.spec,
+                      image: null,
+                      removeImage: false,
                     })
                   }
                 >
@@ -178,7 +217,15 @@ export function MapDbPanel(props: MapDbPanelProps) {
             // name and no image is refused only for want of organiser rights,
             // and that refuses all of them, so the last error still stands.
             for (const name of names) {
-              props.onSave({ id: "", name, description: "", published: true, spec: null });
+              props.onSave({
+                id: "",
+                name,
+                description: "",
+                published: true,
+                spec: null,
+                image: null,
+                removeImage: false,
+              });
             }
             setPicking(false);
           }}
@@ -186,7 +233,7 @@ export function MapDbPanel(props: MapDbPanelProps) {
         />
       )}
 
-      {draft !== null && editor}
+      {editor}
 
       {/* One way in: FAF's own vault. Typing a name by hand was the second
           button, and it produced the one kind of entry that cannot show a

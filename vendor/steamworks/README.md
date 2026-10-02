@@ -28,7 +28,19 @@ workshop. See `crates/faf-app/src/infra/steam_presence.rs`.
 
 The library talks only to the Steam client already running on the player's
 machine. What Steam learns is what it learns from any game: which account is
-playing which app, from when to when.
+playing which app, from when to when. FAF is a separate client, so with the
+setting off Steam does not learn when someone plays on FAF at all; turning it
+on is what tells it.
+
+## What we cannot vouch for
+
+The library is **closed source**. This repository controls which of its
+functions are called, and the list above is complete, but nobody here can see
+or verify what the library itself does inside those calls, or what it or the
+Steam client then sends to Valve. Turning the setting on means trusting Valve
+with that, exactly as with any game started from Steam. For that reason the
+setting is marked experimental, stays off unless the player turns it on, and
+asks once before it does, saying the same in the client's own words.
 
 On Linux it is the native library talking to the native Steam client, while
 the game itself runs through Wine or Proton. It finds Steam through

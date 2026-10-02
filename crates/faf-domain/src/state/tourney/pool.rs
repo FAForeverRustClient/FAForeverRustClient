@@ -9,11 +9,12 @@ use super::*;
 pub struct TourneyMap {
     pub id: String,
     pub name: String,
-    /// Preview image served by the tournament server, when it has one.
+    /// The organiser's uploaded picture, as the service sends it: a bare file
+    /// name under `/map-images/` on the tournament server, or empty.
     ///
-    /// Usually empty, and that is fine: the client prefers FAF's own vault
-    /// preview anyway (see [`match_vault_map`]). The tournament server's copy
-    /// exists for maps that are not in the vault at all.
+    /// The only picture the website shows. The frontend resolves it against
+    /// the service's base and falls back to FAF's vault (see
+    /// [`match_vault_map`]) only where nobody uploaded one.
     pub image_url: String,
     /// The organiser's note about it: a spawn count, a mod requirement, why it
     /// is in the pool at all.
@@ -31,6 +32,12 @@ pub struct TourneyMap {
     /// stored spec with whatever the save names, and a save that named none
     /// wiped it.
     pub spec: Option<MapSpec>,
+    /// A secret map: one players see only as "Hidden Map N" until it is
+    /// played (`secret`). Organisers and casters get its real name.
+    pub secret: bool,
+    /// Whether this copy is the masked one (`masked`): the service sent the
+    /// placeholder name and no picture, because the viewer may not see it yet.
+    pub masked: bool,
 }
 
 /// Where the teams start on a map, which spawns are closed, and its size.
@@ -103,6 +110,29 @@ pub fn match_vault_map<'a, M>(
         })
 }
 
+/// One of this account's events, as a place to import maps from
+/// (`GET /api/my_tournaments`).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CopySource {
+    pub id: String,
+    pub name: String,
+    pub map_count: i32,
+    pub pool_count: i32,
+    /// Whether this account may take its maps (`canCopyMaps`): a named
+    /// organiser of it. The service sends zero counts where it may not.
+    pub may_copy: bool,
+}
+
+/// The maps and pools of an event being imported from, to choose among.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CopySourceMaps {
+    pub tournament_id: String,
+    pub maps: Vec<TourneyMap>,
+    pub pools: Vec<MapPool>,
+}
+
 /// A named set of maps, with the ban/pick order it is played in.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -122,6 +152,16 @@ pub struct MapPool {
     /// A scheduled reveal, in Unix seconds. Cleared once it fires, and ignored
     /// outright for a pool that is already out.
     pub publish_at: Option<u32>,
+}
+
+/// Maps an organiser pinned to a round directly, without a veto (`maps`):
+/// `{"sw:1": [mapId, ...]}`, flattened.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RoundMaps {
+    /// The server's own key for the round, `{bracket}:{round}`.
+    pub round: String,
+    pub map_ids: Vec<String>,
 }
 
 /// One step of a pool's ban/pick order.
@@ -205,6 +245,11 @@ pub struct PoolDraft {
     /// count with `best_of - 1` picks among them: the service refuses anything
     /// else, naming the numbers it wanted.
     pub sequence: Vec<PoolStep>,
+    /// When the pool goes public on its own, in Unix seconds; `None` for no
+    /// schedule. Always sent: the service treats a missing value as "keep",
+    /// but an empty one as "clear", and the editor carries the stored one.
+    #[serde(default)]
+    pub publish_at: Option<u32>,
 }
 
 /// A map being added to or edited in a tournament's own map database.
@@ -221,6 +266,13 @@ pub struct MapDraft {
     /// not "unchanged" but "delete it".
     #[serde(default)]
     pub spec: Option<MapSpec>,
+    /// A new picture of the event's own, as a `data:` URL, or `None` to keep
+    /// the one it has. The service stores it under a file name of its own.
+    #[serde(default)]
+    pub image: Option<String>,
+    /// Delete the stored picture. Ignored when a new one is sent.
+    #[serde(default)]
+    pub remove_image: bool,
 }
 
 impl MapDraft {

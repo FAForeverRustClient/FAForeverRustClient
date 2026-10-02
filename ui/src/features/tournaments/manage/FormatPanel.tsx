@@ -19,6 +19,7 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { isStructural, mayEditTeamSetup } from "../../../shared/rules/tourneyRules";
 import { NumberInput } from "../../../design-system/NumberInput";
+import { defaultFfa, FfaFields, PickFields, SwissExtrasFields } from "./FormatExtras";
 
 interface FormatPanelProps {
   event: Tourney;
@@ -33,6 +34,10 @@ function currentOf(event: Tourney): FormatDraft {
     formation: event.formation,
     bracketKind: event.bracketKind,
     draftSnakes: event.draftSnakes,
+    swiss: { cuts: event.swissCuts, decidingBestOf: event.decidingBestOf, stageTwo: event.stageTwoPlan },
+    picks: { on: event.pickOpponents, minutes: event.pickMinutes, mode: event.pickMode },
+    tiebreak: event.swissTiebreak,
+    ffa: event.ffa,
   };
 }
 
@@ -129,6 +134,29 @@ export function FormatPanel({ event, busy, onSave }: FormatPanelProps) {
           </select>
         </label>
       </div>
+
+      {draft.competition === "team" && draft.bracketKind === "swiss" && (
+        <SwissExtrasFields value={draft.swiss} busy={busy} onChange={(swiss) => change({ swiss })} />
+      )}
+      {draft.competition === "team" && (
+        <PickFields
+          picks={draft.picks}
+          tiebreak={draft.tiebreak}
+          swiss={draft.bracketKind === "swiss"}
+          stageTwo={draft.swiss.stageTwo !== null}
+          cuts={draft.swiss.cuts}
+          busy={busy}
+          onChange={(picks, tiebreak) => change({ picks, tiebreak })}
+        />
+      )}
+      {draft.competition === "freeForAll" && (
+        <FfaFields
+          value={draft.ffa ?? defaultFfa(draft.teamSize)}
+          teamSize={draft.teamSize}
+          busy={busy}
+          onChange={(ffa) => change({ ffa })}
+        />
+      )}
 
       {blocked && <p className="tournament-refusal">{t("tournaments.format.reopenFirst")}</p>}
 

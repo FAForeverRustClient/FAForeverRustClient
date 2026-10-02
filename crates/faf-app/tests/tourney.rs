@@ -17,6 +17,9 @@ use faf_domain::state::{
     SeriesDraft, Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent,
     TourneyLoadStatus, TourneyPhase, TourneySeries, TourneyStatus,
 };
+use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
+use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
+use faf_domain::state::{SiteDocument, SiteRead, SiteWrite};
 use faf_domain::AppEvent;
 
 fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {
@@ -85,7 +88,7 @@ impl TourneyPort for RefusingTourney {
     async fn archive(&self, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
-    async fn sign_up(&self, _: &str) -> Result<(), RequestError> {
+    async fn sign_up(&self, _: &str, _: Option<i32>) -> Result<(), RequestError> {
         self.refused()
     }
     async fn withdraw(&self, _: &str, _: &str) -> Result<(), RequestError> {
@@ -160,7 +163,7 @@ impl TourneyPort for RefusingTourney {
     async fn rename_team(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
-    async fn check_in(&self, _: &str) -> Result<(), RequestError> {
+    async fn check_in(&self, _: &str, _: bool) -> Result<(), RequestError> {
         self.refused()
     }
     async fn confirm_report(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
@@ -172,13 +175,69 @@ impl TourneyPort for RefusingTourney {
     async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
         self.refused()
     }
+    async fn faction_veto(
+        &self,
+        _: &str,
+        _: &str,
+        _: i32,
+        _: TourneyFaction,
+    ) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn decline_invite(&self, _: &str) -> Result<(), RequestError> {
+        self.refused()
+    }
+    async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
+        self.refused()
+    }
+    async fn player_ratings(
+        &self,
+        _: &str,
+        _: &str,
+        _: bool,
+    ) -> Result<EntrantRatings, RequestError> {
+        self.refused()
+    }
+    async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
+        self.refused()
+    }
+    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
+        self.refused()
+    }
+    async fn upload_desc_image(&self, _: &str, _: &str) -> Result<String, RequestError> {
+        self.refused()
+    }
+    async fn site_read(&self, _: SiteRead) -> Result<SiteDocument, RequestError> {
+        self.refused()
+    }
+    async fn site_write(
+        &self,
+        _: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError> {
+        self.refused()
+    }
+    async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
+        self.refused()
+    }
+    async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
+        self.refused()
+    }
     async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
         self.inner.chat_rooms(tournament_id).await
     }
     async fn chat_read(&self, t: &str, room: &str) -> Result<Vec<ChatPost>, RequestError> {
         self.inner.chat_read(t, room).await
     }
-    async fn chat_post(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+    async fn chat_post(
+        &self,
+        _: &str,
+        _: &str,
+        _: &str,
+        _: Option<&str>,
+    ) -> Result<(), RequestError> {
         self.refused()
     }
     async fn articles(&self) -> Result<Vec<Article>, RequestError> {
@@ -435,6 +494,7 @@ async fn entering_a_tournament_reloads_both_the_row_and_the_detail() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e1a2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -464,6 +524,7 @@ async fn withdrawing_uses_the_player_id_the_server_handed_out() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e1a2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -629,6 +690,7 @@ async fn the_map_database_takes_maps_and_hides_them_until_published() {
                 description: "8 spawns".into(),
                 published: false,
                 spec: None,
+                ..MapDraft::default()
             },
         }
         .into(),
@@ -704,6 +766,7 @@ async fn publishing_a_pool_publishes_the_maps_in_it() {
                 description: String::new(),
                 published: false,
                 spec: None,
+                ..MapDraft::default()
             },
         }
         .into(),
@@ -731,6 +794,7 @@ async fn publishing_a_pool_publishes_the_maps_in_it() {
                 map_ids: vec![hidden.clone()],
                 best_of: Some(1),
                 sequence: Vec::new(),
+                publish_at: None,
             },
         }
         .into(),
@@ -1234,6 +1298,7 @@ async fn a_refused_write_keeps_the_servers_sentence_and_clears_the_spinner() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e1a2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -1311,6 +1376,7 @@ async fn posting_reloads_the_room_and_not_the_whole_tournament() {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "  on my way  ".into(),
+            reply_to: None,
         }
         .into(),
     )
@@ -1328,6 +1394,7 @@ async fn posting_reloads_the_room_and_not_the_whole_tournament() {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "   ".into(),
+            reply_to: None,
         }
         .into(),
     )
@@ -1509,6 +1576,7 @@ async fn assigning_a_pool_to_a_round_survives_the_reload() {
                 map_ids: vec!["map1".into(), "map2".into()],
                 best_of: Some(3),
                 sequence: Vec::new(),
+                publish_at: None,
             },
         }
         .into(),
@@ -1625,7 +1693,7 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         async fn archive(&self, _: &str) -> Result<(), RequestError> {
             unreachable!()
         }
-        async fn sign_up(&self, _: &str) -> Result<(), RequestError> {
+        async fn sign_up(&self, _: &str, _: Option<i32>) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn withdraw(&self, _: &str, _: &str) -> Result<(), RequestError> {
@@ -1691,7 +1759,7 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         async fn rename_team(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
             unreachable!()
         }
-        async fn check_in(&self, _: &str) -> Result<(), RequestError> {
+        async fn check_in(&self, _: &str, _: bool) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn confirm_report(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
@@ -1703,13 +1771,73 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
             unreachable!()
         }
+        async fn faction_veto(
+            &self,
+            _: &str,
+            _: &str,
+            _: i32,
+            _: TourneyFaction,
+        ) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn set_faction_veto(
+            &self,
+            _: &str,
+            _: &FactionVetoConfig,
+        ) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn decline_invite(&self, _: &str) -> Result<(), RequestError> {
+            unreachable!()
+        }
+        async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
+            unreachable!()
+        }
+        async fn player_ratings(
+            &self,
+            _: &str,
+            _: &str,
+            _: bool,
+        ) -> Result<EntrantRatings, RequestError> {
+            unreachable!()
+        }
+        async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
+            unreachable!()
+        }
+        async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
+            unreachable!()
+        }
+        async fn upload_desc_image(&self, _: &str, _: &str) -> Result<String, RequestError> {
+            unreachable!()
+        }
+        async fn site_read(&self, _: SiteRead) -> Result<SiteDocument, RequestError> {
+            unreachable!()
+        }
+        async fn site_write(
+            &self,
+            _: &SiteWrite,
+        ) -> Result<(Option<String>, Option<String>), RequestError> {
+            unreachable!()
+        }
+        async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
+            unreachable!()
+        }
+        async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
+            unreachable!()
+        }
         async fn chat_rooms(&self, _: &str) -> Result<Vec<ChatRoom>, RequestError> {
             unreachable!()
         }
         async fn chat_read(&self, _: &str, _: &str) -> Result<Vec<ChatPost>, RequestError> {
             unreachable!()
         }
-        async fn chat_post(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
+        async fn chat_post(
+            &self,
+            _: &str,
+            _: &str,
+            _: &str,
+            _: Option<&str>,
+        ) -> Result<(), RequestError> {
             unreachable!()
         }
         async fn articles(&self) -> Result<Vec<Article>, RequestError> {
@@ -1844,6 +1972,7 @@ async fn entering_one_tournament_never_enters_another() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e1a2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -2174,6 +2303,7 @@ async fn team_event(app: &App) -> String {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: id.clone(),
+            rating: None,
         }
         .into(),
     )
@@ -2268,6 +2398,7 @@ async fn a_captain_can_invite_an_entrant_who_has_no_team() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e2v2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -2321,6 +2452,7 @@ async fn asking_a_team_for_a_place_shows_up_on_that_team() {
     app.dispatch(
         TourneyCommand::SignUp {
             tournament_id: "e2v2b".into(),
+            rating: None,
         }
         .into(),
     )
@@ -3642,6 +3774,7 @@ async fn refreshing_a_room_brings_in_what_somebody_else_wrote() {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "on my way".into(),
+            reply_to: None,
         }
         .into(),
     )
@@ -3777,7 +3910,10 @@ async fn a_plan_with_the_wrong_number_of_rounds_is_caught_here() {
     let event = app.snapshot().tourney.detail.expect("a drawn event");
     let teams = event.teams.len() as i32;
 
-    let short = BracketConfig::Single { rounds: vec![3] };
+    let short = BracketConfig::Single {
+        rounds: vec![3],
+        third_place: false,
+    };
     assert!(!short.is_submittable(teams), "one round for four teams");
     assert!(BracketConfig::of(&event).is_submittable(teams));
 }
