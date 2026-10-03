@@ -959,8 +959,10 @@
         "replayListColumns": [],
         "replayListOrder": [],
         "liveReplayColumns": [],
+        "liveReplayOrder": [],
         "coopBoardColumns": [],
         "matchmakerRecentColumns": [],
+        "matchmakerRecentOrder": [],
         "modPresets": [],
         "leaderboardRatingColumns": [
           "games",
@@ -2215,6 +2217,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -2226,6 +2229,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -49846,6 +49850,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -49857,6 +49862,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -50118,6 +50124,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -50129,6 +50136,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -50399,6 +50407,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -50410,6 +50419,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -50675,6 +50685,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -50686,6 +50697,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -50951,6 +50963,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -50962,6 +50975,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -51237,6 +51251,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -51248,6 +51263,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -51529,6 +51545,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -51540,6 +51557,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -51818,6 +51836,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -51829,6 +51848,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -52115,6 +52135,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -52126,6 +52147,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -52459,6 +52481,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -52470,6 +52493,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -52779,6 +52803,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -52790,6 +52815,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -53101,6 +53127,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -53112,6 +53139,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -53437,8 +53465,10 @@
                     120,
                     200
                   ],
+                  "liveReplayOrder": [],
                   "coopBoardColumns": [],
                   "matchmakerRecentColumns": [],
+                  "matchmakerRecentOrder": [],
                   "modPresets": [],
                   "leaderboardRatingColumns": [
                     "games",
@@ -53546,6 +53576,7 @@
                 "maxPlayers": "",
                 "search": "tournament"
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "newest",
@@ -53554,6 +53585,7 @@
                 "Cybran"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [
                 "ladder_1v1"
               ],
