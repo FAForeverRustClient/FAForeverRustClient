@@ -151,7 +151,6 @@ pub fn run() {
             commands::import_notification_sound,
             commands::list_notification_sounds,
             commands::read_notification_sound,
-            commands::remove_notification_sound,
             commands::open_version_folder,
             commands::reveal_replay,
             commands::read_latest_log,

@@ -19,10 +19,11 @@
 // and per-round best-of overrides, which cannot be asked about before the rounds
 // exist. Both stay on the website, and the map database is its own section.
 
-import { useEffect, useRef, useState, type ClipboardEvent } from "react";
+import { useState, type ClipboardEvent, type ReactNode } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import type {
+  DescImageAnswer,
   CopySource,
   Prize,
   Tourney,
@@ -38,6 +39,8 @@ import { defaultPlanFor, rejectionOf, type DraftRejection } from "../../../share
 import { PlanFields } from "./PlanFields";
 import { defaultFfa, FfaFields, PickFields, StopAtField, SwissExtrasFields } from "./FormatExtras";
 import { formatDay, formatPrize } from "../tourneyPresentation";
+import { imageMarkdown, insertAt, type PasteField } from "./pastedImages";
+import { usePastedImages } from "./usePastedImages";
 
 const REJECTION_LABELS: Record<DraftRejection, MessageKey> = {
   nameRequired: "tournaments.form.nameRequired",
@@ -301,12 +304,37 @@ interface TournamentFormProps {
   templateStatus?: TourneyLoadStatus;
   onLoadTemplate?: (tournamentId: string) => void;
   /** Store a picture pasted into an existing event's text. */
-  onUploadImage?: (dataUrl: string) => void;
+  onUploadImage?: (dataUrl: string, requestId: number) => void;
   /** The last stored picture's path, to insert where it was pasted. */
-  pastedImage?: string | null;
+  pastedImage?: DescImageAnswer | null;
 }
 
-type TextField = "description" | "lobbyOptions" | "rewards" | "sponsors";
+/**
+ * One body, two frames: a dialog to create, the section itself to edit.
+ *
+ * Declared here rather than inside the form so it is one component for the
+ * form's whole life. Built per render, each keystroke gave React a new
+ * component type, which unmounted and remounted every field: focus jumped to
+ * the name field's `autoFocus`, and every child's own state started over.
+ */
+export function FormFrame({
+  inline,
+  title,
+  onClose,
+  children,
+}: {
+  inline: boolean;
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (inline) return <div className="tournament-form is-inline">{children}</div>;
+  return (
+    <Modal onClose={onClose} className="tournament-form" ariaLabel={title}>
+      {children}
+    </Modal>
+  );
+}
 
 export function TournamentForm({
   event,
@@ -332,21 +360,15 @@ export function TournamentForm({
   // Pictures pasted into the text, as on the website: uploaded at once to an
   // event that exists, and held behind a token until one that is being
   // created does (the service uploads them and swaps the tokens after).
-  const waiting = useRef<{ field: TextField; at: number } | null>(null);
-  const lastImage = useRef(pastedImage);
-  useEffect(() => {
-    if (pastedImage === null || pastedImage === lastImage.current) return;
-    lastImage.current = pastedImage;
-    const target = waiting.current;
-    if (target === null) return;
-    waiting.current = null;
-    const url = pastedImage;
-    setDraft((held) => {
-      const text = held[target.field];
-      return { ...held, [target.field]: `${text.slice(0, target.at)}\n![image](${url})\n${text.slice(target.at)}` };
-    });
-  }, [pastedImage]);
-  const pasteInto = (field: TextField) => (pasted: ClipboardEvent<HTMLTextAreaElement>) => {
+  // Each upload remembers its own field and position, so several pasted in
+  // a row each land where they were pasted.
+  const images = usePastedImages(pastedImage, onUploadImage, (insertion) =>
+    setDraft((held) => ({
+      ...held,
+      [insertion.field]: insertAt(held[insertion.field], insertion.at, insertion.markdown),
+    })),
+  );
+  const pasteInto = (field: PasteField) => (pasted: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = [...pasted.clipboardData.files].find((held) => held.type.startsWith("image/"));
     if (file === undefined) return;
     pasted.preventDefault();
@@ -356,19 +378,16 @@ export function TournamentForm({
       if (typeof reader.result !== "string") return;
       const dataUrl = reader.result;
       if (editing) {
-        if (onUploadImage === undefined) return;
-        waiting.current = { field, at };
-        onUploadImage(dataUrl);
+        images.paste(field, at, dataUrl);
         return;
       }
       setDraft((held) => {
         const pending = held.pendingImages ?? [];
         const token = `pending-image-${pending.length}`;
-        const text = held[field];
         return {
           ...held,
           pendingImages: [...pending, { token, dataUrl }],
-          [field]: `${text.slice(0, at)}\n![image](${token})\n${text.slice(at)}`,
+          [field]: insertAt(held[field], at, imageMarkdown(token)),
         };
       });
     };
@@ -384,19 +403,9 @@ export function TournamentForm({
   const asBound = (value: string) => (value.trim() === "" ? null : Number(value));
 
   const title = t(editing ? "tournaments.form.editTitle" : "tournaments.form.createTitle");
-  // One body, two frames. Everything below is the same in both.
-  const Frame = inline
-    ? ({ children }: { children: React.ReactNode }) => (
-        <div className="tournament-form is-inline">{children}</div>
-      )
-    : ({ children }: { children: React.ReactNode }) => (
-        <Modal onClose={onClose} className="tournament-form" ariaLabel={title}>
-          {children}
-        </Modal>
-      );
 
   return (
-    <Frame>
+    <FormFrame inline={inline} title={title} onClose={onClose}>
       {!inline && <h3>{title}</h3>}
 
       {!editing && onLoadTemplate !== undefined && (
@@ -439,6 +448,19 @@ export function TournamentForm({
       <p className="tournament-form-hint muted">
         {t("tournaments.form.markdownHint")} {t("tournaments.form.pasteHint")}
       </p>
+      {/* Uploads land a moment after the paste, so the wait is said rather
+          than left looking like the paste did nothing. */}
+      {images.active > 0 && (
+        <p className="tournament-form-hint muted" role="status">
+          {t("tournaments.form.imagesUploading", { count: images.active })}
+        </p>
+      )}
+      {images.failed > 0 && (
+        <p className="tournament-form-hint is-error" role="alert">
+          {t("tournaments.form.imagesFailed", { count: images.failed })}{" "}
+          <Button onClick={images.dismissFailures}>{t("common.dismiss")}</Button>
+        </p>
+      )}
 
       <label className="tournament-field">
         <span>{t("tournaments.form.lobbyOptions")}</span>
@@ -1011,6 +1033,6 @@ export function TournamentForm({
           )}
         </Button>
       </div>
-    </Frame>
+    </FormFrame>
   );
 }

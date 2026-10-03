@@ -34,6 +34,16 @@ function replay(overrides: Partial<LocalReplay> = {}): LocalReplay {
   };
 }
 
+describe("skipping short local games", () => {
+  it("leaves out games under the floor and keeps files that do not say how long they were", () => {
+    const short = replay({ path: "a", durationSeconds: 120 });
+    const long = replay({ path: "b", durationSeconds: 1_530 });
+    const unknown = replay({ path: "c", durationSeconds: null });
+    const query = { ...EMPTY_LOCAL_REPLAY_QUERY, exactPlayer: false, minDurationMinutes: 5 };
+    expect(filterLocalReplays([short, long, unknown], query).map((r) => r.path)).toEqual(["b", "c"]);
+  });
+});
+
 describe("local replay query", () => {
   it("applies the same player, map, replay id, and mod fields as online search", () => {
     const candidate = replay();

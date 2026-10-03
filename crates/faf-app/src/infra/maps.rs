@@ -488,17 +488,7 @@ fn folder_lookup_filter(folder_names: &[String]) -> Option<String> {
     Some(format!("versions.folderName=in=({})", quoted.join(",")))
 }
 
-pub(crate) fn base_folder_name(folder_name: &str) -> String {
-    let lower = folder_name.trim().to_lowercase();
-    match lower.rsplit_once(".v") {
-        Some((base, version))
-            if !version.is_empty() && version.chars().all(|c| c.is_ascii_digit()) =>
-        {
-            base.to_string()
-        }
-        _ => lower,
-    }
-}
+pub(crate) use faf_domain::state::maps::base_folder_name;
 
 /// Reads preview art out of installed map folders: the testable body of
 /// [`MapsClient::local_previews`].
@@ -1289,14 +1279,6 @@ mod tests {
             Some(r#"versions.folderName=in=("waters_of_isis.v0003")"#)
         );
         assert_eq!(folder_lookup_filter(&["a\"b".into()]), None);
-    }
-
-    #[test]
-    fn base_folder_name_strips_only_a_real_version_suffix() {
-        assert_eq!(base_folder_name("SCCA_Coop_A01.v0017"), "scca_coop_a01");
-        assert_eq!(base_folder_name("scca_coop_a01"), "scca_coop_a01");
-        // Not a version: the map is called that.
-        assert_eq!(base_folder_name("some_map.version"), "some_map.version");
     }
 
     #[tokio::test]

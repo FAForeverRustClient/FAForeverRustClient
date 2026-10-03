@@ -3,8 +3,9 @@
 // The shape every desktop client uses for this, because a settings tab is a
 // place people come to do one thing and leave: find the row, change it, go
 // back to the game. So the sidebar lists plain names with an icon, the tab
-// opens on the first section rather than on a table of contents, and the page
-// is a heading and its panels, nothing above the heading.
+// opens on a section rather than on a table of contents (the one last open,
+// which is the first on a fresh start), and the page is a heading and its
+// panels, nothing above the heading.
 //
 // Every section stays mounted and all but one are hidden, which is not a
 // detail: it is what lets the search read the rows that rendered rather than
@@ -13,9 +14,12 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
+import { EmptyState } from "../../design-system/EmptyState";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
-import { FIRST_SECTION, SECTIONS, SECTION_ORDER, type SectionKey } from "./sections";
+import { ipc } from "../../ipc/client";
+import { useAppStore } from "../../store/store";
+import { SECTIONS, SECTION_ORDER, type SectionKey } from "./sections";
 import { SettingsSectionScope, useSettingsIndexEntry } from "./SettingControls";
 import {
   clearSettingsRequest,
@@ -41,9 +45,17 @@ function SectionKeywords({ text }: { text: string }) {
   return null;
 }
 
+/**
+ * The open section is the backend's, like the Play tab's mode, so it survives
+ * the tab unmounting: someone going back and forth between a game setting and
+ * the lobby returns to the page they were on, not to General every time.
+ */
+const setActive = (section: SectionKey) =>
+  ipc.send({ kind: "Nav", command: { type: "selectSettingsSection", payload: { section } } });
+
 export function SettingsView() {
   const { t } = useTranslation();
-  const [active, setActive] = useState<SectionKey>(FIRST_SECTION);
+  const active = useAppStore((state) => state.state.nav.settingsSection);
   const [search, setSearch] = useState("");
   const query = search.trim();
   const pageRef = useRef<HTMLDivElement>(null);
@@ -57,6 +69,8 @@ export function SettingsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [query, revision],
   );
+
+  const nothingFound = query !== "" && matches.size === 0;
 
   // A search that excludes the section you are looking at would leave you
   // reading a page the sidebar says has no matches, so move to the first one
@@ -140,10 +154,17 @@ export function SettingsView() {
       </nav>
 
       <div className="settings-page-scroll" ref={pageRef}>
+        {/* A search that finds nothing says so, in place of the page. The
+            section that was open used to stay on screen, which read as the
+            search having matched it. */}
+        {nothingFound && (
+          <EmptyState icon="search" title={t("settings.search.empty", { query })} />
+        )}
         {SECTION_ORDER.map((key) => {
           const section = SECTIONS[key];
+          // Hidden, never unmounted: the search reads the rows that rendered.
           return (
-            <div className="settings-page" key={key} hidden={active !== key}>
+            <div className="settings-page" key={key} hidden={nothingFound || active !== key}>
               <header className="settings-page-head">
                 <h3 className="settings-page-title">{t(section.title)}</h3>
                 <p className="muted">{t(section.description)}</p>

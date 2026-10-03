@@ -172,7 +172,7 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
       if (JSON.stringify(browsing.hostCoop) === JSON.stringify(hostCoop)) return;
       ipc.send({
         kind: "Settings",
-        command: { type: "setBrowsing", payload: { preferences: { ...browsing, hostCoop } } },
+        command: { type: "patchBrowsing", payload: { patch: { hostCoop } } },
       });
     },
     [],

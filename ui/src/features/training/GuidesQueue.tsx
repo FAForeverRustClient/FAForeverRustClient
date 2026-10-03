@@ -22,6 +22,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { Markdown } from "./markdown";
 import { RejectDialog } from "./RejectDialog";
+import { levelLabel, topicLabel } from "./trainingPresentation";
 
 const dispatch = (command: GuidesCommand) => ipc.send({ kind: "Guides", command });
 
@@ -308,14 +309,26 @@ function EntryFacts({ entry }: { entry: NonNullable<GuideSubmission["entry"]> })
   const { t } = useTranslation();
   const facts: Array<[string, string]> = [];
   facts.push([t("training.queue.entryId"), entry.id]);
-  if (entry.level) facts.push([t("training.detail.level"), entry.level]);
+  if (entry.level) facts.push([t("training.detail.level"), t(levelLabel(entry.level))]);
   if (entry.gameModes.length > 0) facts.push([t("training.detail.modes"), entry.gameModes.join(", ")]);
   if (entry.maps.length > 0) facts.push([t("training.detail.maps"), entry.maps.join(", ")]);
-  if (entry.topics.length > 0) facts.push([t("training.contribute.topics"), entry.topics.join(", ")]);
-  if (entry.ratingMin !== null || entry.ratingMax !== null) {
+  if (entry.topics.length > 0) {
+    facts.push([
+      t("training.contribute.topics"),
+      entry.topics.map((topic) => t(topicLabel(topic))).join(", "),
+    ]);
+  }
+  // The numbers the author typed, worded the way the library words a band:
+  // the " to " this used to glue in was English in every language.
+  const { ratingMin: min, ratingMax: max } = entry;
+  if (min !== null || max !== null) {
     facts.push([
       t("training.detail.rating"),
-      `${entry.ratingMin ?? ""}${entry.ratingMin !== null && entry.ratingMax !== null ? " to " : ""}${entry.ratingMax ?? ""}`,
+      min === null
+        ? t("training.band.upTo", { max: max as number })
+        : max === null
+          ? t("training.band.from", { min })
+          : t("training.band.between", { min, max }),
     ]);
   }
 

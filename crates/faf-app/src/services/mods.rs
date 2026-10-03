@@ -21,20 +21,25 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }) {
                 return;
             }
-            out.emit(ModsEvent::VaultLoading);
-            match ctx.ports.mods.list_vault().await {
-                Ok(mods) => out.emit(ModsEvent::VaultLoaded { mods }),
-                Err(reason) => out.emit(ModsEvent::VaultLoadFailed { reason }),
+            crawl_vault(ctx, out).await;
+        }
+        ModsCommand::ReloadVault => {
+            // Asked for by a person, so a loaded catalogue is not a reason to
+            // refuse. A crawl already running is: it is the answer they want.
+            if out.with_state(|state| state.mods.vault_status == ModListStatus::Loading) {
+                return;
             }
+            crawl_vault(ctx, out).await;
         }
         ModsCommand::SearchVault { query } => {
-            // Claimed in arrival order: see `runtime::claim_generation`.
-            let generation = crate::runtime::claimed_generation()
-                .unwrap_or_else(|| ctx.mods_search_generation.begin());
+            // Same newest-wins rule as `services::maps`: an older query that
+            // answers late must not replace the newer one's page, totals or
+            // error. Separate from the catalogue crawl, which is single-flight
+            // and has no newer request to lose to.
+            let generation = ctx.mod_search_generation.begin();
             out.emit(ModsEvent::VaultSearching);
             let result = ctx.ports.mods.search_vault(query.clone()).await;
-            // Only the newest search may answer: see `mods_search_generation`.
-            if !ctx.mods_search_generation.is_current(generation) {
+            if !ctx.mod_search_generation.is_current(generation) {
                 return;
             }
             match result {
@@ -120,5 +125,15 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 Err(reason) => out.emit(ModsEvent::ToggleFailed { reason }),
             }
         }
+    }
+}
+
+/// Read the whole catalogue and report it. The caller decides whether a crawl
+/// is wanted; the data already loaded stays on screen until this replaces it.
+async fn crawl_vault(ctx: &ServiceCtx, out: &EventSink) {
+    out.emit(ModsEvent::VaultLoading);
+    match ctx.ports.mods.list_vault().await {
+        Ok(mods) => out.emit(ModsEvent::VaultLoaded { mods }),
+        Err(reason) => out.emit(ModsEvent::VaultLoadFailed { reason }),
     }
 }

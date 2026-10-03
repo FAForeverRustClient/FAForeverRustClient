@@ -34,6 +34,10 @@ use serde_json::Value;
 use tokio::io::AsyncReadExt as _;
 use tokio::sync::mpsc;
 
+use crate::infra::http::{
+    describe_transport_error, UploadWatch, REQUEST_DEADLINE, TRANSFER_STALL_TIMEOUT,
+    UPLOAD_RESPONSE_DEADLINE,
+};
 use crate::infra::jsonapi::api_error_detail;
 use crate::infra::session::TokenStore;
 use crate::infra::{cache_dir, env_or};
@@ -70,7 +74,9 @@ impl UploadsClient {
         Self {
             config,
             tokens,
-            http: super::http::shared_http_client(),
+            // Not the shared client: see `upload_http_client` for why an
+            // upload cannot use its read timeout.
+            http: super::http::upload_http_client(),
         }
     }
 
@@ -600,12 +606,35 @@ fn clamp(bytes: u64) -> u32 {
 /// than loaded, so a 300 MB map is never held in memory, and every read moves
 /// the progress bar. The stream yields exactly `total_bytes`, which is what
 /// lets both callers declare a `Content-Length`.
+///
+/// Each chunk the transport takes is reported to `watch`, which is what lets
+/// a stalled upload be told apart from a slow one.
 fn counting_body(
     file: tokio::fs::File,
     total_bytes: u64,
     tx: mpsc::Sender<UploadStatus>,
+    watch: UploadWatch,
 ) -> reqwest::Body {
-    reqwest::Body::wrap_stream(counting_stream(file, total_bytes, tx))
+    use futures_util::StreamExt as _;
+
+    if total_bytes == 0 {
+        watch.body_sent();
+    }
+    let mut sent = 0_u64;
+    let stream = counting_stream(file, total_bytes, tx).inspect(move |chunk| {
+        if let Ok(chunk) = chunk {
+            sent += chunk.len() as u64;
+        }
+        // Counted rather than waiting for the stream to end: with a declared
+        // length the transport need not poll past the last byte, and the
+        // server's processing time must not count as a stall.
+        if sent >= total_bytes {
+            watch.body_sent();
+        } else {
+            watch.progressed();
+        }
+    });
+    reqwest::Body::wrap_stream(stream)
 }
 
 /// The chunks `counting_body` sends, separated out so a test can drain them
@@ -681,8 +710,9 @@ async fn upload_map(
 
     // The length is declared so the whole multipart body gets a
     // `Content-Length`: the vault's gateway will not take a chunked upload.
+    let watch = UploadWatch::new();
     let part = reqwest::multipart::Part::stream_with_length(
-        counting_body(file, total_bytes, tx.clone()),
+        counting_body(file, total_bytes, tx.clone(), watch.clone()),
         total_bytes,
     )
     // The server reads the extension off this name and only accepts `.zip`.
@@ -700,15 +730,21 @@ async fn upload_map(
         .part("file", part)
         .part("metadata", metadata);
 
-    let response = http
-        .post(format!("{}/maps/upload", config.api_base))
-        .bearer_auth(token)
-        .header(reqwest::header::ACCEPT, "application/json")
-        .multipart(form)
-        .send()
+    let upload = async {
+        let response = http
+            .post(format!("{}/maps/upload", config.api_base))
+            .bearer_auth(token)
+            .header(reqwest::header::ACCEPT, "application/json")
+            .multipart(form)
+            .send()
+            .await
+            .map_err(|error| format!("upload failed: {}", describe_transport_error(&error)))?;
+        check_upload(response, "the map upload", total_bytes).await
+    };
+    watch
+        .guard(TRANSFER_STALL_TIMEOUT, UPLOAD_RESPONSE_DEADLINE, upload)
         .await
-        .map_err(|error| format!("upload failed: {error}"))?;
-    check_upload(response, "the map upload", total_bytes).await
+        .map_err(|stalled| stalled.to_string())?
 }
 
 async fn upload_mod(
@@ -724,9 +760,15 @@ async fn upload_mod(
         .get(format!("{}/mods/upload/start", config.api_base))
         .bearer_auth(token)
         .header(reqwest::header::ACCEPT, "application/json")
+        .timeout(REQUEST_DEADLINE)
         .send()
         .await
-        .map_err(|error| format!("could not start the upload: {error}"))?;
+        .map_err(|error| {
+            format!(
+                "could not start the upload: {}",
+                describe_transport_error(&error)
+            )
+        })?;
     let body = check_body(response, "starting the mod upload").await?;
     let start: Value =
         serde_json::from_str(&body).map_err(|error| format!("invalid response: {error}"))?;
@@ -745,18 +787,30 @@ async fn upload_mod(
     let file = tokio::fs::File::open(archive)
         .await
         .map_err(|error| format!("could not read the archive: {error}"))?;
-    let stored = http
-        .put(upload_url)
-        .header(reqwest::header::ACCEPT, "application/json")
-        .header(reqwest::header::CONTENT_TYPE, "application/zip")
-        // Set by hand because the body is a stream: object storage rejects a
-        // chunked PUT, and the signature covers the declared length.
-        .header(reqwest::header::CONTENT_LENGTH, total_bytes)
-        .body(counting_body(file, total_bytes, tx.clone()))
-        .send()
+    let watch = UploadWatch::new();
+    let store = async {
+        let stored = http
+            .put(upload_url)
+            .header(reqwest::header::ACCEPT, "application/json")
+            .header(reqwest::header::CONTENT_TYPE, "application/zip")
+            // Set by hand because the body is a stream: object storage rejects
+            // a chunked PUT, and the signature covers the declared length.
+            .header(reqwest::header::CONTENT_LENGTH, total_bytes)
+            .body(counting_body(file, total_bytes, tx.clone(), watch.clone()))
+            .send()
+            .await
+            .map_err(|error| {
+                format!(
+                    "could not upload the archive: {}",
+                    describe_transport_error(&error)
+                )
+            })?;
+        check_upload(stored, "the archive upload", total_bytes).await
+    };
+    watch
+        .guard(TRANSFER_STALL_TIMEOUT, UPLOAD_RESPONSE_DEADLINE, store)
         .await
-        .map_err(|error| format!("could not upload the archive: {error}"))?;
-    check_upload(stored, "the archive upload", total_bytes).await?;
+        .map_err(|stalled| stalled.to_string())??;
 
     // 3. Tell FAF it landed. Until this, the upload does not exist as far as
     //    the vault is concerned.
@@ -772,9 +826,15 @@ async fn upload_mod(
             "licenseId": Value::Null,
             "repositoryUrl": Value::Null,
         }))
+        .timeout(REQUEST_DEADLINE)
         .send()
         .await
-        .map_err(|error| format!("could not complete the upload: {error}"))?;
+        .map_err(|error| {
+            format!(
+                "could not complete the upload: {}",
+                describe_transport_error(&error)
+            )
+        })?;
     check(completed, "completing the mod upload").await
 }
 

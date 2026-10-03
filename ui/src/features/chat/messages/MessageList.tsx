@@ -52,6 +52,8 @@ interface Props {
   onReply?: (message: ChatMessage) => void;
   /** Resolve a `msgid` to the message it names, for the quoted line. */
   findByMsgid?: (msgid: string) => ChatMessage | undefined;
+  /** The conversation as a person reads it, for the log's accessible name. */
+  conversationLabel?: string;
 }
 
 /** `msgid -> reactions`, so a row looks its own up without scanning a list. */
@@ -71,6 +73,27 @@ const noReact = () => {};
  * button either. A line with no `msgid` cannot be referenced by a reply, so it
  * is not offered as one.
  */
+/** How long the log stays quiet after older history is revealed above it. */
+const REVEAL_QUIET_MS = 1_000;
+
+/**
+ * Whether the scrollback should announce what is added to it.
+ *
+ * The list is a live log, so a screen reader hears new lines as they arrive.
+ * Two things add rows that are not new, though, and reading them out would
+ * bury the conversation under its own history: a search filter swapping the
+ * whole list for its matches, and "load older" prepending a page of the past.
+ * The log falls silent for those. Opening a channel needs no rule of its own:
+ * the list is remounted per channel, and a live region announces changes, not
+ * the content it was created with.
+ */
+export function messageLogLiveness(
+  filtered: boolean,
+  revealingOlder: boolean,
+): "polite" | "off" {
+  return filtered || revealingOlder ? "off" : "polite";
+}
+
 export function repliesOnRightClick(
   kind: ChatMessage["kind"],
   msgid: string | undefined,
@@ -98,6 +121,7 @@ export const MessageList = memo(function MessageList({
   onUnreact = noReact,
   onReply,
   findByMsgid,
+  conversationLabel,
 }: Props) {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -147,10 +171,24 @@ export const MessageList = memo(function MessageList({
     : messages.slice(Math.max(0, messages.length - visibleLimit));
   const hasOlder = !isFiltered && displayedMessages.length < messages.length;
 
+  // Set in the same update that prepends the older rows, so the log is already
+  // silent when they reach the DOM, and lifted again once a screen reader has
+  // had time to see the change go by unannounced. Counted rather than a flag,
+  // so a second page loaded inside the quiet window restarts it.
+  const [reveals, setReveals] = useState(0);
+  const [settledReveals, setSettledReveals] = useState(0);
+  const revealingOlder = reveals !== settledReveals;
+  useEffect(() => {
+    if (reveals === settledReveals) return;
+    const timeout = window.setTimeout(() => setSettledReveals(reveals), REVEAL_QUIET_MS);
+    return () => window.clearTimeout(timeout);
+  }, [reveals, settledReveals]);
+
   const loadOlder = useCallback(() => {
     if (scrollRef.current) {
       prevScrollHeightRef.current = scrollRef.current.scrollHeight;
       prevScrollTopRef.current = scrollRef.current.scrollTop;
+      setReveals((count) => count + 1);
       setVisibleLimit((current) => Math.min(messages.length, current + PREPEND_CHUNK_SIZE));
     }
   }, [messages.length]);
@@ -270,7 +308,22 @@ export const MessageList = memo(function MessageList({
           </button>
         </div>
       )}
-      <div className="chat-messages surface-panel" ref={scrollRef} onScroll={onScroll}>
+      {/* A log: new lines are read out politely as they arrive. Additions
+          only, so a reaction count ticking up or the "load older" label
+          changing is not announced as if it were a message. */}
+      <div
+        className="chat-messages surface-panel"
+        ref={scrollRef}
+        onScroll={onScroll}
+        role="log"
+        aria-live={messageLogLiveness(isFiltered, revealingOlder)}
+        aria-relevant="additions"
+        aria-label={
+          conversationLabel
+            ? t("chat.messages.logNamed", { channel: conversationLabel })
+            : t("chat.messages.log")
+        }
+      >
         {hasOlder && (
           <div className="chat-older-messages">
             <button type="button" className="chat-older-btn" onClick={loadOlder}>
@@ -497,7 +550,14 @@ const Line = memo(function Line({
       <span className="chat-message-time">{time}</span>
       {message.kind !== "info" && message.kind !== "error" ? (
         <>
-          <div className="chat-message-actions">
+          {/* Always in the tab order, right after the sender's name: the
+              keyboard reaches a line's actions by tabbing into the line, and
+              the toolbar shows while focus is anywhere inside it (chat.css). */}
+          <div
+            className="chat-message-actions"
+            role="group"
+            aria-label={t("chat.message.actions", { name: message.sender })}
+          >
             {message.msgid && (
               <button
                 type="button"

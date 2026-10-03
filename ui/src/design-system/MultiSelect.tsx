@@ -14,11 +14,14 @@ import { Icon } from "./Icon";
 import "./multi-select.css";
 import "./search-panel.css";
 import { useTranslation } from "../i18n/useTranslation";
+import { useOverlayLayer } from "./useOverlayLayer";
 
 export interface MultiSelectOption {
   /** The value sent to the backend. */
   value: string;
   label: string;
+  /** A quiet fact beside the label, such as how many there are of it. */
+  detail?: string;
 }
 
 interface Props {
@@ -36,6 +39,11 @@ interface Props {
    * apart from the checkboxes below, and choosing it closes the popover.
    */
   action?: { label: string; onSelect: () => void };
+  /**
+   * `inline` puts the label beside the trigger rather than above it, for a
+   * toolbar row whose other controls are labelled that way.
+   */
+  layout?: "stacked" | "inline";
 }
 
 export function MultiSelect({
@@ -46,24 +54,30 @@ export function MultiSelect({
   anyLabel,
   loading = false,
   action,
+  layout = "stacked",
 }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("pointerdown", onPointerDown, true);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", onPointerDown, true);
-      window.removeEventListener("keydown", onKeyDown);
-    };
+    return () => window.removeEventListener("pointerdown", onPointerDown, true);
   }, [open]);
+
+  // Escape closes the list and nothing else: while open, the list is the top
+  // of the overlay stack, so a dialog it sits in waits for the next press.
+  // Focus goes back to the trigger, since a checkbox that had it is about to
+  // be unmounted and would otherwise drop the caret onto the page.
+  useOverlayLayer(open, () => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  });
 
   const toggle = (value: string) =>
     onChange(
@@ -79,12 +93,13 @@ export function MultiSelect({
         : anyLabel ?? t("common.any")
       : selected.length === 1
         ? (options.find((o) => o.value === selected[0])?.label ?? selected[0])
-        : `${selected.length} selected`;
+        : t("designSystem.multiSelect.count", { count: selected.length });
 
   return (
-    <div className="multi-select" ref={rootRef}>
+    <div className={layout === "inline" ? "multi-select is-inline" : "multi-select"} ref={rootRef}>
       <span className="search-panel-label">{label}</span>
       <button
+        ref={triggerRef}
         type="button"
         className={`search-panel-control multi-select-trigger${selected.length > 0 ? " is-active" : ""}`}
         aria-expanded={open}
@@ -121,7 +136,8 @@ export function MultiSelect({
                   checked={selected.includes(option.value)}
                   onChange={() => toggle(option.value)}
                 />
-                {option.label}
+                <span className="multi-select-option-label">{option.label}</span>
+                {option.detail && <span className="multi-select-option-detail">{option.detail}</span>}
               </label>
             ))
           )}

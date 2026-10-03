@@ -1,4 +1,4 @@
-import type { EventsPreferences, GeneralPreferences, Tab, WeekStart } from "../../ipc/bindings";
+import type { Tab, WeekStart, GeneralPreferencesPatch, EventsPreferencesPatch } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
@@ -22,8 +22,8 @@ const START_PAGES: Tab[] = [
   "training",
 ];
 
-const save = (preferences: GeneralPreferences) =>
-  ipc.send({ kind: "Settings", command: { type: "setGeneral", payload: { preferences } } });
+const save = (patch: GeneralPreferencesPatch) =>
+  ipc.send({ kind: "Settings", command: { type: "patchGeneral", payload: { patch } } });
 
 /**
  * The calendar's two preferences.
@@ -32,8 +32,8 @@ const save = (preferences: GeneralPreferences) =>
  * is a list somebody manages from the Events tab, and a section holding two
  * rows would be another tab to look through for them.
  */
-const saveEvents = (preferences: EventsPreferences) =>
-  ipc.send({ kind: "Settings", command: { type: "setEvents", payload: { preferences } } });
+const saveEvents = (patch: EventsPreferencesPatch) =>
+  ipc.send({ kind: "Settings", command: { type: "patchEvents", payload: { patch } } });
 
 export function GeneralSettingsSection() {
   const preferences = useAppStore((state) => state.state.settings.general);
@@ -49,7 +49,7 @@ export function GeneralSettingsSection() {
         <select
           className="settings-select"
           value={preferences.startPage}
-          onChange={(event) => void save({ ...preferences, startPage: event.target.value as Tab })}
+          onChange={(event) => void save({ startPage: event.target.value as Tab })}
           aria-label={t("settings.general.startPage.label")}
         >
           {START_PAGES.map((page) => (
@@ -64,7 +64,7 @@ export function GeneralSettingsSection() {
       >
         <SettingsSwitch
           checked={preferences.autoLogin ?? true}
-          onChange={(checked) => void save({ ...preferences, autoLogin: checked })}
+          onChange={(checked) => void save({ autoLogin: checked })}
           label={t("settings.general.autoLogin.label")}
         />
       </SettingRow>
@@ -75,7 +75,7 @@ export function GeneralSettingsSection() {
       >
         <SettingsSwitch
           checked={preferences.rememberTypedEntries ?? false}
-          onChange={(checked) => void save({ ...preferences, rememberTypedEntries: checked })}
+          onChange={(checked) => void save({ rememberTypedEntries: checked })}
           label={t("settings.general.rememberTypedEntries.label")}
         />
       </SettingRow>
@@ -88,7 +88,7 @@ export function GeneralSettingsSection() {
           className="settings-select"
           value={events.weekStart}
           onChange={(event) =>
-            void saveEvents({ ...events, weekStart: event.target.value as WeekStart })
+            void saveEvents({ weekStart: event.target.value as WeekStart })
           }
           aria-label={t("settings.events.weekStart.label")}
         >
@@ -108,7 +108,7 @@ export function GeneralSettingsSection() {
             <span className="muted">
               {t("settings.events.reminders.count", { count: events.reminders.length })}
             </span>
-            <Button onClick={() => void saveEvents({ ...events, reminders: [] })}>
+            <Button onClick={() => void saveEvents({ reminders: [] })}>
               {t("settings.events.reminders.clear")}
             </Button>
           </div>

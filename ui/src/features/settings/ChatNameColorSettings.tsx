@@ -1,6 +1,6 @@
 import { ColorInput } from "../../design-system/ColorInput";
 import { useMemo, useState } from "react";
-import type { ChatNameColors, ChatPreferences } from "../../ipc/bindings";
+import type { ChatNameColorsPatch, ChatPreferences, ChatPreferencesPatch } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import {
@@ -30,7 +30,8 @@ export function ChatNameColorSettings({
   onSave,
 }: {
   preferences: ChatPreferences;
-  onSave: (preferences: ChatPreferences) => void;
+  /** Only what changed: see `preference_patch!` in the domain. */
+  onSave: (patch: ChatPreferencesPatch) => void;
 }) {
   const { t } = useTranslation();
   const [player, setPlayer] = useState("");
@@ -41,19 +42,15 @@ export function ChatNameColorSettings({
     [preferences.nameColors.players],
   );
 
-  const saveColors = (nameColors: ChatNameColors) => onSave({ ...preferences, nameColors });
+  const saveColors = (nameColors: ChatNameColorsPatch) => onSave({ nameColors });
   const setCategoryColor = (key: CategoryKey, color: string) => {
-    saveColors({ ...preferences.nameColors, [key]: color });
+    saveColors({ [key]: color });
   };
   const resetToStandardColors = () => {
-    saveColors({
-      ...preferences.nameColors,
-      ...STANDARD_CATEGORY_COLORS,
-    });
+    saveColors({ ...STANDARD_CATEGORY_COLORS });
   };
   const removePlayer = (nickname: string) => {
     saveColors({
-      ...preferences.nameColors,
       players: Object.fromEntries(
         assignedPlayers.filter(([candidate]) => candidate !== nickname),
       ),
@@ -68,7 +65,7 @@ export function ChatNameColorSettings({
       ),
     );
     players[nickname] = playerColor;
-    saveColors({ ...preferences.nameColors, players });
+    saveColors({ players });
     setPlayer("");
   };
 
@@ -177,7 +174,6 @@ export function ChatNameColorSettings({
                   value={color}
                   aria-label={t("settings.nameColors.changePlayerAria", { name: nickname })}
                   onChange={(next) => saveColors({
-                    ...preferences.nameColors,
                     players: { ...preferences.nameColors.players, [nickname]: next },
                   })}
                 />

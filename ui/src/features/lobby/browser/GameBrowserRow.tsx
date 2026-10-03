@@ -24,7 +24,6 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   friendSet,
   foeSet = EMPTY_SET,
   now,
-  columnStyle,
   selected,
   onSelect,
   onJoin,
@@ -39,8 +38,6 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   /** The foe list, lower-cased once for the whole list. */
   foeSet?: ReadonlySet<string>;
   now?: number;
-  /** The column template, built once by the browser and shared by every row. */
-  columnStyle?: React.CSSProperties;
   selected: boolean;
   onSelect: () => void;
   onJoin: () => void;
@@ -74,7 +71,6 @@ export const GameBrowserRow = memo(function GameBrowserRow({
         className={
           `game-browser-row${friends.length > 0 ? " has-friend" : ""}${foes.length > 0 ? " has-foe" : ""}${selected ? " active" : ""}`
         }
-        style={columnStyle}
         onClick={onSelect}
         onDoubleClick={onJoin}
         onContextMenu={(event) => {

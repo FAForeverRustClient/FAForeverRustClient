@@ -3,7 +3,7 @@ import { Icon } from "../../../design-system/Icon";
 import type { MatchmakerQueue, PlayerLeaguePlacement, PlayerRatingSummary } from "../../../ipc/bindings";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 import { formatClockDuration } from "../../../shared/format/durations";
-import { matchReaches, QUEUE_POP_INTERVAL_SECONDS, queueRatingBuckets } from "./queueRatingRange";
+import { queueRatingBuckets } from "./queueRatingRange";
 import { t } from "../../../i18n";
 
 export type QueueDisplayState = "idle" | "searching" | "found" | "launching" | "cancelled";
@@ -77,7 +77,9 @@ export function MatchmakerQueueCard({
   // question both leave open is whether the queue is empty around your rating
   // or empty everywhere, which decides whether waiting is worth it.
   const buckets = queueRatingBuckets(queue, rating, ownSearches);
-  const reaches = inRange !== null && rating ? matchReaches(rating) : null;
+  // Only when a band is marked as yours, which is when the rating is certain
+  // enough to place you at all.
+  const myMean = buckets.some((bucket) => bucket.mine) ? (rating?.mean ?? null) : null;
   return (
     <article
       className={
@@ -157,50 +159,48 @@ export function MatchmakerQueueCard({
               // own button and a focusable popover in there would be a control
               // inside a control.
               <span className="matchmaker-queue-breakdown" aria-hidden>
-                <b>{t("lobby.matchmaker.queueByRating")}</b>
+                <span className="matchmaker-queue-breakdown-head">
+                  <b>{t("lobby.matchmaker.queueByRating")}</b>
+                  {/* The bands are the server's search windows, centred on
+                      each player's mean, so the arrow follows your mean too
+                      and not the conservative rating on the card. Saying the
+                      number is what keeps the arrow from looking misplaced. */}
+                  {myMean !== null && (
+                    <span>{t("lobby.matchmaker.yourMatchmakingRating", {
+                      rating: Math.round(myMean).toLocaleString("en-US"),
+                    })}</span>
+                  )}
+                </span>
+                {/* Green is the count of a band holding somebody who would
+                    take this search: whether waiting here can produce a game.
+                    Your own band is marked by the arrow in the first column
+                    rather than by a colour, so the two never read as one
+                    signal. Neither needed a line of explanation under the
+                    list, so there is none. */}
                 {buckets.map((bucket) => (
                   <span
                     key={bucket.min}
                     className={[
+                      "matchmaker-queue-band",
                       bucket.inRange > 0 ? "is-in-range" : "",
                       bucket.mine ? "is-mine" : "",
                     ].filter(Boolean).join(" ")}
                   >
+                    <span className="matchmaker-queue-band-marker">
+                      {bucket.mine && <Icon name="arrowRight" size={12} />}
+                    </span>
                     <em>{bucket.min} – {bucket.max}</em>
-                    {/* Which of the band is a fair match, whenever that
-                        differs from how many are in it -- *including* when
-                        none of them are.
-
-                        "0 of 5" was the one case this left out, and it is the
-                        case the whole breakdown exists for: a band printed as
-                        a bare "5" next to a headline of "0 in your range" is
-                        the same contradiction the per-band figure was added to
-                        settle, and it is the band nearest your own rating that
-                        hits it. A band is bucketed by the middle of each
-                        search's window, so five searches can sit in the band
-                        your rating is in and none of their windows reach you.
+                    {/* How many are waiting in the band, always. Whether any of
+                        them would match you is the green, so a band nobody in
+                        which reaches you reads as its plain count rather than
+                        "0 of 1", which read as an empty band. Only a band
+                        where some but not all would match says how many do.
                         See `RatingBucket.inRange`. */}
-                    <i>{bucket.inRange === bucket.count
-                      ? bucket.count
-                      : t("lobby.matchmaker.someOfBand", { inRange: bucket.inRange, count: bucket.count })}</i>
+                    <i>{bucket.inRange > 0 && bucket.inRange < bucket.count
+                      ? t("lobby.matchmaker.someOfBand", { inRange: bucket.inRange, count: bucket.count })
+                      : bucket.count}</i>
                   </span>
                 ))}
-                {buckets.some((bucket) => bucket.mine) && (
-                  <small>{t("lobby.matchmaker.yourBand")}</small>
-                )}
-                {/* How "in range" is counted, because the ranges the server
-                    publishes are not the ones it matches on (#303). */}
-                {reaches && queue.teamSize === 1 ? (
-                  <small className="matchmaker-queue-breakdown-note">
-                    {t("lobby.matchmaker.reachNote", {
-                      now: Math.round(reaches.now),
-                      step: Math.round(reaches.perPop),
-                      interval: formatClockDuration(QUEUE_POP_INTERVAL_SECONDS),
-                    })}
-                  </small>
-                ) : queue.teamSize > 1 ? (
-                  <small className="matchmaker-queue-breakdown-note">{t("lobby.matchmaker.teamReachNote")}</small>
-                ) : null}
               </span>
             )}
           </span>

@@ -32,102 +32,7 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
             // Armed before the guard, so asking for a connection while one
             // is already in flight still re-arms the watchdog.
             ctx.chat_auto_reconnect.arm();
-            // Single-flight: only one connection may be active at a time,
-            // same guard shape as the lobby service.
-            if !ctx.chat_active.try_start() {
-                return; // a connection is already active/connecting
-            }
-
-            out.emit(ChatEvent::Connecting);
-            let mut updates = ctx.ports.chat.connect(username).await;
-
-            while let Some(update) = updates.recv().await {
-                let connected = matches!(&update, ChatUpdate::Status(ChatStatus::Connected, _));
-                let mut quiet_history = false;
-                if let ChatUpdate::Message { channel, message } = &update {
-                    let (
-                        is_quiet_history,
-                        muted,
-                        username,
-                        hide_foe_messages,
-                        is_foe,
-                        private_messages,
-                        mentions_enabled,
-                    ) = out.with_state(|state| {
-                        let key = read_marker_key(&state.chat.username, channel);
-                        let quiet_history =
-                            state
-                                .settings
-                                .chat
-                                .read_markers
-                                .get(&key)
-                                .is_some_and(|marker| {
-                                    timestamp_at_or_before(&message.timestamp, marker)
-                                });
-                        (
-                            quiet_history,
-                            state
-                                .settings
-                                .chat
-                                .muted_players
-                                .iter()
-                                .any(|login| login.eq_ignore_ascii_case(&message.sender)),
-                            state.chat.username.clone(),
-                            state.settings.chat.hide_foe_messages,
-                            state.social.is_foe(&message.sender),
-                            state.settings.notifications.private_messages,
-                            state.settings.notifications.mentions,
-                        )
-                    });
-                    quiet_history = is_quiet_history;
-                    if muted {
-                        continue;
-                    }
-                    let incoming = !message.sender.is_empty()
-                        && !message.sender.eq_ignore_ascii_case(&username)
-                        && matches!(
-                            message.kind,
-                            ChatMessageKind::Message | ChatMessageKind::Action
-                        );
-                    if incoming && !quiet_history {
-                        let private = !channel.starts_with('#');
-                        let mentioned = !private && mentions(&message.content, &username);
-                        let hidden_foe = hide_foe_messages && is_foe;
-                        let notify = !hidden_foe
-                            && ((private && private_messages) || (mentioned && mentions_enabled));
-                        if notify {
-                            notifications::add(
-                                out,
-                                if private {
-                                    NotificationKind::PrivateMessage
-                                } else {
-                                    NotificationKind::Mention
-                                },
-                                if private {
-                                    format!("Message from {}", message.sender)
-                                } else {
-                                    format!("{} mentioned you", message.sender)
-                                },
-                                summarize(&message.content),
-                                Some(NotificationAction::OpenChat {
-                                    channel: channel.clone(),
-                                }),
-                            );
-                        }
-                    }
-                }
-                out.emit(to_event(update, quiet_history));
-                if connected {
-                    let channels =
-                        out.with_state(|state| auto_join_channels(state, &ctx.ports.os_language));
-                    for channel in channels {
-                        ctx.ports.chat.join_channel(channel);
-                    }
-                }
-            }
-
-            ctx.chat_active.finish();
-            out.emit(ChatEvent::Disconnected);
+            connect(username, ctx, out, false).await;
         }
         ChatCommand::SendMessage {
             channel,
@@ -204,6 +109,116 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
             crate::services::settings::persist(ctx, out).await;
         }
     }
+}
+
+/// The watchdog's retry. Unlike `ChatCommand::Connect` it does not arm
+/// auto-reconnect: a retry spawned just before the user pressed Disconnect
+/// would otherwise re-arm it, and chat would come back against their wishes.
+/// The same shape as `lobby::reconnect`.
+pub async fn reconnect(username: String, ctx: &ServiceCtx, out: &EventSink) {
+    connect(username, ctx, out, true).await;
+}
+
+async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
+    // Single-flight: only one connection may be active at a time,
+    // same guard shape as the lobby service.
+    if !ctx.chat_active.try_start() {
+        return; // a connection is already active/connecting
+    }
+    // Read once the guard is held, the last moment a Disconnect could have
+    // landed between the watchdog's tick and this retry.
+    if only_if_armed && !ctx.chat_auto_reconnect.armed() {
+        ctx.chat_active.finish();
+        return;
+    }
+
+    out.emit(ChatEvent::Connecting);
+    let mut updates = ctx.ports.chat.connect(username).await;
+
+    while let Some(update) = updates.recv().await {
+        let connected = matches!(&update, ChatUpdate::Status(ChatStatus::Connected, _));
+        let mut quiet_history = false;
+        if let ChatUpdate::Message { channel, message } = &update {
+            let (
+                is_quiet_history,
+                muted,
+                username,
+                hide_foe_messages,
+                is_foe,
+                private_messages,
+                mentions_enabled,
+            ) = out.with_state(|state| {
+                let key = read_marker_key(&state.chat.username, channel);
+                let quiet_history = state
+                    .settings
+                    .chat
+                    .read_markers
+                    .get(&key)
+                    .is_some_and(|marker| timestamp_at_or_before(&message.timestamp, marker));
+                (
+                    quiet_history,
+                    state
+                        .settings
+                        .chat
+                        .muted_players
+                        .iter()
+                        .any(|login| login.eq_ignore_ascii_case(&message.sender)),
+                    state.chat.username.clone(),
+                    state.settings.chat.hide_foe_messages,
+                    state.social.is_foe(&message.sender),
+                    state.settings.notifications.private_messages,
+                    state.settings.notifications.mentions,
+                )
+            });
+            quiet_history = is_quiet_history;
+            if muted {
+                continue;
+            }
+            let incoming = !message.sender.is_empty()
+                && !message.sender.eq_ignore_ascii_case(&username)
+                && matches!(
+                    message.kind,
+                    ChatMessageKind::Message | ChatMessageKind::Action
+                );
+            if incoming && !quiet_history {
+                let private = !channel.starts_with('#');
+                let mentioned = !private && mentions(&message.content, &username);
+                let hidden_foe = hide_foe_messages && is_foe;
+                let notify = !hidden_foe
+                    && ((private && private_messages) || (mentioned && mentions_enabled));
+                if notify {
+                    notifications::add(
+                        out,
+                        if private {
+                            NotificationKind::PrivateMessage
+                        } else {
+                            NotificationKind::Mention
+                        },
+                        if private {
+                            format!("Message from {}", message.sender)
+                        } else {
+                            format!("{} mentioned you", message.sender)
+                        },
+                        summarize(&message.content),
+                        Some(NotificationAction::OpenChat {
+                            channel: channel.clone(),
+                        }),
+                    );
+                }
+            }
+        }
+        out.emit(to_event(update, quiet_history));
+        if connected {
+            let channels =
+                out.with_state(|state| auto_join_channels(state, &ctx.ports.os_language));
+            for channel in channels {
+                ctx.ports.chat.join_channel(channel);
+            }
+        }
+    }
+
+    ctx.chat_active.finish();
+    out.emit(ChatEvent::Disconnected);
 }
 
 /// How often a still-composing notice is refreshed.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ReplayPlayer, ReplayTeam } from "../../../ipc/bindings";
-import { activityRows, formatChatTime } from "./ReplayInsights";
+import { activityRows, chatSenders, formatChatTime, isTransferMessage } from "./ReplayInsights";
 
 function player(name: string, extra: Partial<ReplayPlayer> = {}): ReplayPlayer {
   return {
@@ -59,6 +59,51 @@ describe("joining command counts to the lineup", () => {
       60,
     );
     expect(rows.map((row) => row.player)).toEqual(["Nuggets", "Vindex"]);
+  });
+});
+
+describe("who wrote in the chat", () => {
+  const line = (sender: string) => ({ sender, message: "gg", timeSeconds: 0, to: "all" });
+
+  it("lists each sender once with their line count, alphabetically whatever the case", () => {
+    const senders = chatSenders([line("Sainse"), line("rewer"), line("Sainse"), line("Nory")]);
+    expect(senders).toEqual([
+      { name: "Nory", lines: 1 },
+      { name: "rewer", lines: 1 },
+      { name: "Sainse", lines: 2 },
+    ]);
+  });
+
+  it("counts only what the other filters leave, and keeps a name they leave nothing of", () => {
+    const all = [line("Sainse"), line("Sainse"), line("Nory")];
+    const left = [all[0]];
+    expect(chatSenders(all, left)).toEqual([
+      { name: "Nory", lines: 0 },
+      { name: "Sainse", lines: 1 },
+    ]);
+  });
+});
+
+describe("telling transfers from talk", () => {
+  it("recognises the lines the game writes when someone shares or asks", () => {
+    for (const line of [
+      "Sent 1.5k energy to Rewer",
+      "Sent 4.5k Energy to Rewer",
+      "Sent 252 energy to GMULO",
+      "Sent 300 mass to Nory",
+      "sent 1 unit to Seraphim-Noob",
+      "Sent 12 units to Nory",
+      "Can you give me some energy, WhocaresbruhXD?",
+      "Can you give me some mass, Sainse?",
+    ]) {
+      expect(isTransferMessage(line), line).toBe(true);
+    }
+  });
+
+  it("leaves what people typed alone, even about energy", () => {
+    for (const line of ["gg", "sent it to mid", "need energy", "can you give me some time", "Paused the game"]) {
+      expect(isTransferMessage(line), line).toBe(false);
+    }
   });
 });
 

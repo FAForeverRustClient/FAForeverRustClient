@@ -67,6 +67,7 @@ pub mod events;
 pub(crate) mod faf_content;
 pub mod galactic_war;
 pub mod game;
+pub mod game_cache;
 pub mod game_logs;
 pub mod game_updater;
 pub mod guides;
@@ -566,6 +567,8 @@ pub fn fake_ports() -> Ports {
         uploads: Arc::new(FakeUploads),
         client_update: Arc::new(FakeClientUpdates),
         galactic_war: Arc::new(FakeGalacticWar),
+        game_cache: Arc::new(game_cache::NoGameCache),
+        notification_sounds: Arc::new(notification_sounds::NoStoredSounds),
         offline_auth: true,
         // Deliberately not read from the environment: a test must not depend on
         // the locale of the machine running it. The same applies to the roles
@@ -748,6 +751,8 @@ pub fn real_ports() -> Ports {
         uploads,
         client_update,
         galactic_war,
+        game_cache: Arc::new(game_cache::DiskGameCache),
+        notification_sounds: Arc::new(notification_sounds::StoredSounds),
         offline_auth: false,
         os_language: os_language(),
         test_login_roles: oauth::roles_from_env(),
@@ -784,6 +789,9 @@ pub fn ports_from_env() -> Ports {
         let mut ports = fake_ports();
         ports.settings = Arc::new(FileSettings::faf());
         ports.process = Arc::new(GameProcess::faf());
+        // The cache and the added sounds are local too, for the same reason.
+        ports.game_cache = Arc::new(game_cache::DiskGameCache);
+        ports.notification_sounds = Arc::new(notification_sounds::StoredSounds);
         // Same reason the real provider honours it: role-gated UI has to be
         // reachable offline, and the roles authorise nothing on their own.
         let roles = oauth::roles_from_env();

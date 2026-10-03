@@ -16,6 +16,7 @@ import { formatNumber, type MessageKey } from "../../i18n";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DateInput } from "../../design-system/DateInput";
+import { plainError } from "../../shared/plainError";
 
 /**
  * The columns beside the boards.
@@ -75,10 +76,9 @@ export function RatingLeaderboardPanel() {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: {
-            ...browsing,
+          patch: {
             leaderboardRatingColumns: updated,
           },
         },
@@ -265,9 +265,11 @@ export function RatingLeaderboardPanel() {
       <div className="leaderboard-main-grid">
         <div className={`leaderboard-results surface-panel${state.ratingsStatus.type === "loading" ? " is-loading" : ""}`}>
           {state.ratingsStatus.type === "failed" ? (
-            <div className="leaderboard-state leaderboard-error">{state.ratingsStatus.payload.reason}</div>
+            <div className="leaderboard-state leaderboard-error" title={state.ratingsStatus.payload.reason}>
+              {plainError(state.ratingsStatus.payload.reason)}
+            </div>
           ) : entries.length === 0 && state.ratingsStatus.type === "loading" ? (
-            <div className="leaderboard-state muted">Loading rankings…</div>
+            <div className="leaderboard-state muted">{t("leaderboard.ratings.loadingRankings")}</div>
           ) : (
             <LeaderboardTable
               entries={entries}
