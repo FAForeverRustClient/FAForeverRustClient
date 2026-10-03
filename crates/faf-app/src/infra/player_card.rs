@@ -235,6 +235,37 @@ impl PlayerCardClient {
         }
     }
 
+    /// Accounts whose login starts with `prefix` (already quoted), most global
+    /// games first. Failure is an empty list: the name search still answers.
+    async fn most_active_accounts(&self, prefix: &str, token: &str) -> Vec<AccountLookupMatch> {
+        let Ok(mut url) = self.url("leaderboardRating") else {
+            return Vec::new();
+        };
+        url.query_pairs_mut()
+            .append_pair(
+                "filter",
+                &format!("leaderboard.technicalName==\"{GLOBAL_BOARD}\";player.login=={prefix}"),
+            )
+            .append_pair("include", "player")
+            .append_pair("sort", "-totalGames")
+            .append_pair("page[size]", &ACTIVE_CANDIDATES.to_string());
+        let Ok(doc) = self.get(url, token).await else {
+            return Vec::new();
+        };
+        let index = index(&doc);
+        doc.data
+            .iter()
+            .filter_map(|entry| {
+                let player = related(entry, "player", &index)?;
+                Some(AccountLookupMatch {
+                    player_id: player.id.parse().ok()?,
+                    login: text(player, "login"),
+                    former_name: None,
+                })
+            })
+            .collect()
+    }
+
     async fn ratings(&self, player_id: i32, token: &str) -> Result<JsonApiDoc, String> {
         let mut url = self.url("leaderboardRating")?;
         url.query_pairs_mut()
@@ -362,8 +393,17 @@ impl PlayerCardPort for PlayerCardClient {
             .append_pair("include", "names")
             .append_pair("sort", "login")
             .append_pair("page[size]", &LOOKUP_CANDIDATES.to_string());
-        let doc = fetch_document_typed(&self.http, url, &token).await?;
-        let mut matches = account_matches(&doc, trimmed);
+        // Alongside it, the most active accounts with the same start. A start
+        // like `fatal` is shared by far more accounts than one page holds, and
+        // in name order `fatal_potatoe` comes after every `fatal` followed by a
+        // letter or a digit, so the player being looked for was routinely not
+        // among the hundred at all. Somebody being looked up has usually
+        // played; ranking by global games puts them first.
+        let (doc, active) = tokio::join!(
+            fetch_document_typed(&self.http, url, &token),
+            self.most_active_accounts(&prefix, &token),
+        );
+        let mut matches = merged_account_matches(account_matches(&doc?, trimmed), active, trimmed);
         matches.truncate(limit.max(1));
         Ok(matches)
     }
@@ -1306,6 +1346,43 @@ fn period_cutoff(period: RatingHistoryPeriod) -> Option<String> {
 /// hands out in one page.
 const LOOKUP_CANDIDATES: usize = 100;
 
+/// How many of the most active matching accounts a lookup asks for. More than
+/// are shown, so an exact match or a former name can still take a place.
+const ACTIVE_CANDIDATES: usize = 20;
+
+/// One list out of the two lookups: an account whose login is the query
+/// itself first, then the most active accounts, then the rest of the name
+/// search in its own order (current logins, then former names). Each account
+/// once.
+fn merged_account_matches(
+    by_name: Vec<AccountLookupMatch>,
+    active: Vec<AccountLookupMatch>,
+    query: &str,
+) -> Vec<AccountLookupMatch> {
+    let wanted = query.trim();
+    let mut merged: Vec<AccountLookupMatch> = Vec::with_capacity(by_name.len() + active.len());
+    let push = |candidate: AccountLookupMatch, merged: &mut Vec<AccountLookupMatch>| {
+        if !merged
+            .iter()
+            .any(|held| held.player_id == candidate.player_id)
+        {
+            merged.push(candidate);
+        }
+    };
+    for candidate in by_name.iter().chain(active.iter()) {
+        if candidate.former_name.is_none() && candidate.login.eq_ignore_ascii_case(wanted) {
+            push(candidate.clone(), &mut merged);
+        }
+    }
+    for candidate in active {
+        push(candidate, &mut merged);
+    }
+    for candidate in by_name {
+        push(candidate, &mut merged);
+    }
+    merged
+}
+
 /// Which accounts matched a login-or-former-name prefix, and how (#315).
 ///
 /// A current login that starts with the query is a plain match. Otherwise the
@@ -1798,6 +1875,33 @@ mod tests {
     /// went unnoticed because `search_players` had no caller and no test ever
     /// built the string. Asserting the string is the only thing that would have
     /// caught it short of a live request.
+    #[test]
+    fn the_most_active_matches_come_before_the_rest_of_the_name_search() {
+        // #393: in name order `fatal_potatoe` sorts behind every other
+        // `fatal...`, so the activity ranking is what puts it in the list.
+        let account = |player_id: i32, login: &str, former: Option<&str>| AccountLookupMatch {
+            player_id,
+            login: login.into(),
+            former_name: former.map(str::to_string),
+        };
+        let by_name = vec![
+            account(1, "fatal1", None),
+            account(2, "Fatal", None),
+            account(3, "fatalx", None),
+            account(4, "renamed", Some("fatalold")),
+        ];
+        let active = vec![
+            account(9, "fatal_potatoe", None),
+            account(3, "fatalx", None),
+        ];
+
+        let merged = merged_account_matches(by_name, active, "fatal");
+
+        let order: Vec<i32> = merged.iter().map(|found| found.player_id).collect();
+        // The exact login first, then by activity, then the rest, each once.
+        assert_eq!(order, vec![2, 9, 3, 1, 4]);
+    }
+
     #[test]
     fn the_account_lookup_lists_every_holder_of_a_former_name() {
         let doc: JsonApiDoc = serde_json::from_value(serde_json::json!({

@@ -423,28 +423,6 @@
    client, where only a full ban turns the tile grey. */
 .map-pool-card.partly-vetoed { border-color: color-mix(in srgb, var(--color-error) 55%, var(--color-border)); }
 
-/* Java's plus and minus under a tile (`vetoesBox`): visible while vetoing and
-   on any map that has tokens on it, usable only while vetoing. */
-.map-pool-veto-stepper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.map-pool-veto-stepper > span {
-  min-width: 2ch;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  text-align: center;
-}
-
-.map-pool-veto-stepper button {
-  min-width: 32px;
-  min-height: 26px;
-  padding: 0 8px;
-}
-
 .map-pool-card.is-disabled {
   cursor: default;
 }
