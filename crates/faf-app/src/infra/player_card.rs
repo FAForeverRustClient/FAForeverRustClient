@@ -1346,9 +1346,10 @@ fn period_cutoff(period: RatingHistoryPeriod) -> Option<String> {
 /// hands out in one page.
 const LOOKUP_CANDIDATES: usize = 100;
 
-/// How many of the most active matching accounts a lookup asks for. More than
-/// are shown, so an exact match or a former name can still take a place.
-const ACTIVE_CANDIDATES: usize = 20;
+/// How many of the most active matching accounts a lookup asks for: as many as
+/// are shown, so the whole list can be the active ones when a start is common,
+/// and an exact match or a former name still takes its place at the top.
+const ACTIVE_CANDIDATES: usize = 50;
 
 /// One list out of the two lookups: an account whose login is the query
 /// itself first, then the most active accounts, then the rest of the name

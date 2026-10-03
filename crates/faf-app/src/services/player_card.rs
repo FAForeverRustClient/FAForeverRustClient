@@ -2,8 +2,10 @@
 
 use faf_domain::state::{AccountLookup, PlayerCardCommand, PlayerCardEvent};
 
-/// How many accounts the profile search suggests from the API.
-const ACCOUNT_LOOKUP_LIMIT: usize = 10;
+/// How many accounts the profile search suggests from the API. Ten was too
+/// few for a common start: the player being looked for was routinely the
+/// eleventh. The list scrolls, so fifty costs nothing on screen.
+const ACCOUNT_LOOKUP_LIMIT: usize = 50;
 
 use crate::runtime::{EventSink, ServiceCtx};
 
