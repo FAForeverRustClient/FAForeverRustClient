@@ -4876,4 +4876,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "leaderboard.leagues.loadingSeasons": "Wczytywanie sezonów…",
   "leaderboard.leagues.loadingRankings": "Wczytywanie rankingu sezonu…",
   "leaderboard.ratings.loadingRankings": "Wczytywanie rankingu…",
+  "tournaments.form.imagesUploading": { one: "Przesyłanie {count} obrazu…", few: "Przesyłanie {count} obrazów…", many: "Przesyłanie {count} obrazów…", other: "Przesyłanie {count} obrazu…" },
+  "tournaments.form.imagesFailed": { one: "Nie udało się przesłać {count} wklejonego obrazu. Wklej go ponownie, aby spróbować jeszcze raz.", few: "Nie udało się przesłać {count} wklejonych obrazów. Wklej je ponownie, aby spróbować jeszcze raz.", many: "Nie udało się przesłać {count} wklejonych obrazów. Wklej je ponownie, aby spróbować jeszcze raz.", other: "Nie udało się przesłać {count} wklejonego obrazu. Wklej go ponownie, aby spróbować jeszcze raz." },
 };

@@ -252,10 +252,9 @@ export function ReplayInsights({
   const [chatTransfers, setChatTransfers] = useState<ReplayChatTransfers>(savedTransfers);
 
   const rememberChat = (patch: Pick<BrowsingPreferences, "replayChatChannel"> | Pick<BrowsingPreferences, "replayChatTransfers">) => {
-    const browsing = useAppStore.getState().state.settings.browsing;
     void ipc.send({
       kind: "Settings",
-      command: { type: "setBrowsing", payload: { preferences: { ...browsing, ...patch } } },
+      command: { type: "patchBrowsing", payload: { patch } },
     });
   };
 

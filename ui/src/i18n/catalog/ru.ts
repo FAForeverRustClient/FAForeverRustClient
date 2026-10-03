@@ -4919,4 +4919,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "leaderboard.leagues.loadingSeasons": "Загрузка сезонов…",
   "leaderboard.leagues.loadingRankings": "Загрузка рейтинга сезона…",
   "leaderboard.ratings.loadingRankings": "Загрузка рейтинга…",
+  "tournaments.form.imagesUploading": { one: "Загружаем {count} изображение…", few: "Загружаем {count} изображения…", many: "Загружаем {count} изображений…", other: "Загружаем {count} изображения…" },
+  "tournaments.form.imagesFailed": { one: "Не удалось загрузить {count} вставленное изображение. Вставьте его снова, чтобы повторить.", few: "Не удалось загрузить {count} вставленных изображения. Вставьте их снова, чтобы повторить.", many: "Не удалось загрузить {count} вставленных изображений. Вставьте их снова, чтобы повторить.", other: "Не удалось загрузить {count} вставленного изображения. Вставьте их снова, чтобы повторить." },
 };

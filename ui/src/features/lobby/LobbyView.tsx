@@ -480,11 +480,10 @@ export function LobbyView() {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setChat",
+        type: "patchChat",
         payload: {
-          preferences: {
-            ...preferences,
-            nameColors: { ...preferences.nameColors, players },
+          patch: {
+            nameColors: { players },
           },
         },
       },
@@ -499,10 +498,9 @@ export function LobbyView() {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setChat",
+        type: "patchChat",
         payload: {
-          preferences: {
-            ...preferences,
+          patch: {
             mutedPlayers: muted ? [...withoutPlayer, nickname] : withoutPlayer,
           },
         },
@@ -618,22 +616,20 @@ export function LobbyView() {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, customGamesView: view } },
+        type: "patchBrowsing",
+        payload: { patch: { customGamesView: view } },
       },
     });
   };
 
   const updateGameBrowser = (changes: Partial<typeof gameBrowser>) => {
-    const current = useAppStore.getState().state.settings.browsing;
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: {
-            ...current,
-            customGamesBrowser: { ...current.customGamesBrowser, ...changes },
+          patch: {
+            customGamesBrowser: changes,
           },
         },
       },

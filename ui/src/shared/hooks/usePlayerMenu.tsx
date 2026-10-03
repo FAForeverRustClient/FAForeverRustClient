@@ -112,11 +112,10 @@ export function usePlayerMenu(): {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setChat",
+        type: "patchChat",
         payload: {
-          preferences: {
-            ...preferences,
-            nameColors: { ...preferences.nameColors, players },
+          patch: {
+            nameColors: { players },
           },
         },
       },
@@ -131,10 +130,9 @@ export function usePlayerMenu(): {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setChat",
+        type: "patchChat",
         payload: {
-          preferences: {
-            ...preferences,
+          patch: {
             mutedPlayers: muted ? [...withoutPlayer, nickname] : withoutPlayer,
           },
         },

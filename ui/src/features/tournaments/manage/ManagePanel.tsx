@@ -32,6 +32,7 @@
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type {
+  DescImageAnswer,
   AccountSearch,
   EntrantRatings,
   RenameCheck,
@@ -172,8 +173,8 @@ interface ManagePanelProps {
   onAdvance: (phase: TourneyPhase, config?: BracketConfig) => void;
   onArchive: () => void;
   /** Store a picture pasted into the event's text, and the last one stored. */
-  onUploadImage?: (dataUrl: string) => void;
-  pastedImage?: string | null;
+  onUploadImage?: (dataUrl: string, requestId: number) => void;
+  pastedImage?: DescImageAnswer | null;
   /** A site admin, for whom archiving is deleting and the category is open. */
   siteAdmin?: boolean;
   onAssignPool: (roundKey: string, poolId: string) => void;

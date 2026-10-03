@@ -4698,15 +4698,45 @@ fn cases() -> Vec<Case> {
         case(
             "a player checks their rating, and an organiser opens two players' ratings",
             vec![
+                // The verdict belongs to the open event.
+                TourneyEvent::Selected {
+                    tournament_id: "t1".into(),
+                }
+                .into(),
                 // A refusal keeps its sentence: it says to sign in again.
-                TourneyEvent::RatingChecking.into(),
+                TourneyEvent::RatingChecking {
+                    tournament_id: "t1".into(),
+                }
+                .into(),
                 TourneyEvent::RatingCheckFailed {
+                    tournament_id: "t1".into(),
                     reason: "Checking your rating needs your FAF login.".into(),
                     kind: RequestFailureKind::Rejected,
                 }
                 .into(),
-                TourneyEvent::RatingChecking.into(),
+                TourneyEvent::RatingChecking {
+                    tournament_id: "t1".into(),
+                }
+                .into(),
+                // An answer about an event that is no longer open is dropped,
+                // on both sides, rather than drawn under the open one.
                 TourneyEvent::RatingChecked {
+                    tournament_id: "t0".into(),
+                    check: RatingCheck {
+                        rated: true,
+                        eligible: Some(true),
+                        ..RatingCheck::default()
+                    },
+                }
+                .into(),
+                TourneyEvent::RatingCheckFailed {
+                    tournament_id: "t0".into(),
+                    reason: "stale".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+                TourneyEvent::RatingChecked {
+                    tournament_id: "t1".into(),
                     check: RatingCheck {
                         rated: true,
                         rating: Some(1480),
@@ -4835,9 +4865,11 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 TourneyEvent::DescImageUploaded {
+                    request_id: 7,
                     url: "/desc-images/d.png".into(),
                 }
                 .into(),
+                TourneyEvent::DescImageUploadFailed { request_id: 8 }.into(),
             ],
         ),
         case(

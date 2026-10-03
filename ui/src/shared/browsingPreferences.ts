@@ -1,5 +1,6 @@
 import type {
   BrowsingPreferences,
+  BrowsingPreferencesPatch,
   CustomGameBrowserPreferences,
   CustomGameFilterRule,
   HostGamePreferences,
@@ -384,10 +385,28 @@ export function parseLiveReplayFilters(value: unknown): LiveReplayFilters {
   return parseLegacyLiveReplayFilters(value, DEFAULT_LIVE_REPLAY_FILTERS);
 }
 
+/**
+ * What the one-time browser-storage migration writes: the four values it read
+ * and the marker, and nothing else. A patch rather than the whole group, so a
+ * preference changed while the migration's command is in flight is not
+ * overwritten with the value it had when the migration started.
+ */
+export type LegacyBrowsingMigration = Required<
+  Pick<
+    BrowsingPreferences,
+    | "customGamesView"
+    | "matchmakerUnselectedQueues"
+    | "matchmakerFactions"
+    | "liveReplayFilters"
+    | "legacyStorageMigrated"
+  >
+> &
+  BrowsingPreferencesPatch;
+
 export function migrateLegacyBrowsingPreferences(
   current: BrowsingPreferences,
   storage: LegacyStorage,
-): BrowsingPreferences {
+): LegacyBrowsingMigration {
   let customGamesView = current.customGamesView;
   let matchmakerUnselectedQueues = current.matchmakerUnselectedQueues;
   let matchmakerFactions = current.matchmakerFactions;
@@ -413,7 +432,7 @@ export function migrateLegacyBrowsingPreferences(
     // migration complete prevents every feature from falling back to it.
   }
 
-  return normalizeBrowsingPreferences({
+  const normalized = normalizeBrowsingPreferences({
     ...current,
     customGamesView,
     matchmakerUnselectedQueues,
@@ -421,6 +440,13 @@ export function migrateLegacyBrowsingPreferences(
     liveReplayFilters,
     legacyStorageMigrated: true,
   });
+  return {
+    customGamesView: normalized.customGamesView,
+    matchmakerUnselectedQueues: normalized.matchmakerUnselectedQueues,
+    matchmakerFactions: normalized.matchmakerFactions,
+    liveReplayFilters: normalized.liveReplayFilters,
+    legacyStorageMigrated: true,
+  };
 }
 
 export function clearLegacyBrowsingPreferences(storage: LegacyStorage): void {

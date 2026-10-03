@@ -28,10 +28,18 @@ function report(path, message) {
 }
 
 // Application services depend on ports and domain types, never concrete IO.
+//
+// Both spellings count: importing infra, and calling into it by its full path.
+// Only the first was checked once, and the settings and maps services had
+// grown `crate::infra::...` calls the check could not see, so a clean result
+// promised a boundary that was not there. Comments are left out, so a doc link
+// to an adapter is still allowed.
 for (const path of await sourceFiles(resolve(root, "crates/faf-app/src/services"), new Set([".rs"]))) {
   const source = await readFile(path, "utf8");
-  if (/\b(?:pub\s+)?use\s+crate::infra\b/.test(source)) {
-    report(path, "service imports a concrete infra adapter; depend on a port instead");
+  const code = source.replace(/\/\/.*$/gm, "");
+  const match = /\bcrate::infra\b/.exec(code);
+  if (match) {
+    report(path, `line ${lineNumber(code, match.index)} reaches a concrete infra adapter; depend on a port instead`);
   }
 }
 

@@ -44,8 +44,8 @@ export function LoginView() {
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setGeneral",
-          payload: { preferences: { ...generalPreferences, autoLogin: remember } },
+          type: "patchGeneral",
+          payload: { patch: { autoLogin: remember } },
         },
       });
     }
@@ -115,8 +115,8 @@ export function LoginView() {
               ipc.send({
                 kind: "Settings",
                 command: {
-                  type: "setGeneral",
-                  payload: { preferences: { ...generalPreferences, autoLogin: checked } },
+                  type: "patchGeneral",
+                  payload: { patch: { autoLogin: checked } },
                 },
               });
             }}

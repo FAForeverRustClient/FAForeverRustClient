@@ -68,9 +68,9 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: { ...useAppStore.getState().state.settings.browsing, liveReplayView: mode },
+          patch: { liveReplayView: mode },
         },
       },
     });
@@ -96,13 +96,12 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   useEffect(() => {
     if (!filtersDirty.current) return;
     const timer = window.setTimeout(() => {
-      const current = useAppStore.getState().state.settings.browsing;
       filtersDirty.current = false;
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...current, liveReplayFilters: filters } },
+          type: "patchBrowsing",
+          payload: { patch: { liveReplayFilters: filters } },
         },
       });
     }, 200);

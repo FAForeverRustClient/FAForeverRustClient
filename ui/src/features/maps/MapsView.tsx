@@ -259,7 +259,7 @@ function VaultView({ busy }: { busy: boolean }) {
       : [...browsing.favoriteMaps, key];
     ipc.send({
       kind: "Settings",
-      command: { type: "setBrowsing", payload: { preferences: { ...browsing, favoriteMaps } } },
+      command: { type: "patchBrowsing", payload: { patch: { favoriteMaps } } },
     });
   };
 
@@ -306,8 +306,8 @@ function VaultView({ busy }: { busy: boolean }) {
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...browsing, mapVaultSort: nextSort } },
+          type: "patchBrowsing",
+          payload: { patch: { mapVaultSort: nextSort } },
         },
       });
     }
@@ -326,10 +326,10 @@ function VaultView({ busy }: { busy: boolean }) {
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
+          type: "patchBrowsing",
           // The preset brings its own order, so choosing one clears the
           // remembered sort rather than fighting it on the next load.
-          payload: { preferences: { ...browsing, mapVaultPreset: next, mapVaultSort: "" } },
+          payload: { patch: { mapVaultPreset: next, mapVaultSort: "" } },
         },
       });
     }

@@ -24,12 +24,15 @@
 //! A disconnect the user asked for is left alone. `Disconnect` disarms the
 //! socket's [`AutoReconnect`](crate::runtime::AutoReconnect) and `Connect`
 //! arms it again, so hanging up from the status bar stays hung up until the
-//! user says otherwise.
+//! user says otherwise. Both services do this; for a while only chat did, and
+//! the lobby flag this reads was never armed, so a lobby whose adapter had
+//! used up its own retries was never brought back. A lobby kick disarms it
+//! too: the server ending a session on purpose is not a drop.
 
 use std::sync::Arc;
 use std::time::Duration;
 
-use faf_domain::state::{AuthMode, AuthStatus, ChatCommand, ChatStatus, LobbyCommand, LobbyStatus};
+use faf_domain::state::{AuthMode, AuthStatus, ChatStatus, LobbyStatus};
 
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services;
@@ -138,16 +141,19 @@ async fn run(ctx: Arc<ServiceCtx>, sink: EventSink) {
         if lobby.tick(watch.lobby, ctx.lobby_auto_reconnect.armed()) == Step::Connect {
             tracing::info!(attempt = lobby.attempts, "reconnecting to the lobby");
             let (ctx, sink) = (ctx.clone(), sink.clone());
+            // Not `LobbyCommand::Connect`, which arms the flag this just
+            // read: a retry racing a Disconnect would re-arm it.
             tokio::spawn(async move {
-                services::lobby::handle(LobbyCommand::Connect, &ctx, &sink).await;
+                services::lobby::reconnect(&ctx, &sink).await;
             });
         }
 
         if chat.tick(watch.chat, ctx.chat_auto_reconnect.armed()) == Step::Connect {
             tracing::info!(attempt = chat.attempts, "reconnecting to chat");
             let (ctx, sink, username) = (ctx.clone(), sink.clone(), watch.username);
+            // Not `ChatCommand::Connect`, for the same reason as the lobby's.
             tokio::spawn(async move {
-                services::chat::handle(ChatCommand::Connect { username }, &ctx, &sink).await;
+                services::chat::reconnect(username, &ctx, &sink).await;
             });
         }
     }

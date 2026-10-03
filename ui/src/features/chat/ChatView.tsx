@@ -244,7 +244,7 @@ export function ChatView() {
     if (preferences.rosterWidth === width) return;
     ipc.send({
       kind: "Settings",
-      command: { type: "setChat", payload: { preferences: { ...preferences, rosterWidth: width } } },
+      command: { type: "patchChat", payload: { patch: { rosterWidth: width } } },
     });
   }, []);
 
@@ -300,9 +300,9 @@ export function ChatView() {
               onChange={(event) => ipc.send({
                 kind: "Settings",
                 command: {
-                  type: "setChat",
+                  type: "patchChat",
                   payload: {
-                    preferences: { ...chatPreferences, showJoinsParts: event.target.checked },
+                    patch: { showJoinsParts: event.target.checked },
                   },
                 },
               })}

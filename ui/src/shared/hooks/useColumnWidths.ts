@@ -107,10 +107,9 @@ export function useColumnWidths(
   const scale = fitScale(space, current);
 
   const save = (widths: number[]) => {
-    const browsing = useAppStore.getState().state.settings.browsing;
     ipc.send({
       kind: "Settings",
-      command: { type: "setBrowsing", payload: { preferences: { ...browsing, [field]: widths } } },
+      command: { type: "patchBrowsing", payload: { patch: { [field]: widths } } },
     });
   };
 

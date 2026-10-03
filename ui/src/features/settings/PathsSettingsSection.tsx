@@ -17,7 +17,7 @@ import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import type { MessageKey } from "../../i18n/catalog/en";
 import { useTranslation } from "../../i18n/useTranslation";
-import type { PathPreferences } from "../../ipc/bindings";
+import type { PathPreferences, PathPreferencesPatch } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { GamePathsSection } from "./GamePathsSection";
 import { gameNeedsALaunchWrapper } from "../../shared/platform";
@@ -59,8 +59,8 @@ const HINT = {
   winePrefix: "settings.paths.winePrefixHint",
 } as const satisfies Record<DirectoryField | FileField | WrapperField, MessageKey>;
 
-const setPaths = (preferences: PathPreferences) =>
-  ipc.send({ kind: "Settings", command: { type: "setPaths", payload: { preferences } } });
+const setPaths = (patch: PathPreferencesPatch) =>
+  ipc.send({ kind: "Settings", command: { type: "patchPaths", payload: { patch } } });
 
 function ContentPathRow({
   field,
@@ -79,7 +79,7 @@ function ContentPathRow({
   const choose = () =>
     ipc.run(
       pick().then((picked) => {
-        if (picked) setPaths({ ...paths, [field]: picked });
+        if (picked) setPaths({ [field]: picked });
       }),
     );
 
@@ -100,7 +100,7 @@ function ContentPathRow({
         <Button onClick={choose}>{t("settings.paths.browse")}</Button>
         <Button
           disabled={!configured}
-          onClick={() => setPaths({ ...paths, [field]: "" })}
+          onClick={() => setPaths({ [field]: "" })}
           title={t("settings.paths.resetHint")}
         >
           {t("settings.paths.reset")}

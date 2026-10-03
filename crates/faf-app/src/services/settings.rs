@@ -116,7 +116,7 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             out.emit(NavEvent::TabSelected { tab: start_page });
             sync_runtime_preferences(ctx, out);
-            expire_and_measure_game_cache(out).await;
+            expire_and_measure_game_cache(ctx, out).await;
             // Last, and deliberately here rather than in the session handshake:
             // the release channel is a preference, so a check that ran any
             // earlier would always use the stable default no matter what the
@@ -141,11 +141,16 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             persist(ctx, out).await;
             sync_installs(ctx, out);
         }
-        SettingsCommand::SetPaths { preferences } => {
-            let mut next = out.with_state(|state| state.settings.clone());
-            next.paths = preferences;
-            out.emit(SettingsEvent::PathsChanged {
-                preferences: next.normalized().paths,
+        // Every `Patch*` arm below merges into the group as state holds it
+        // *now*, not as the webview last saw it, and normalises after the
+        // merge. That is the whole fix for two quick changes reverting each
+        // other; see `preference_patch!` in the domain.
+        SettingsCommand::PatchPaths { patch } => {
+            merge(ctx, out, |settings| {
+                let mut next = settings.clone();
+                next.paths = patch.apply_to(next.paths);
+                let preferences = next.normalized().paths;
+                (SettingsEvent::PathsChanged { preferences }, ())
             });
             persist(ctx, out).await;
             // Before anything else can look one up. The maps list in
@@ -162,19 +167,31 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             sync_launch_preferences(ctx, out);
             refresh_content_after_path_change(ctx, out).await;
         }
-        SettingsCommand::SetGeneral { preferences } => {
-            out.emit(SettingsEvent::GeneralChanged { preferences });
+        SettingsCommand::PatchGeneral { patch } => {
+            merge(ctx, out, |settings| {
+                let preferences = patch.apply_to(settings.general.clone());
+                (SettingsEvent::GeneralChanged { preferences }, ())
+            });
             persist(ctx, out).await;
         }
         // The calendar's own writes go through `services::events`, which is
         // where the reminder list is understood. This arm is the settings tab's
-        // half of the same preferences: the week start.
-        SettingsCommand::SetEvents { preferences } => {
-            out.emit(SettingsEvent::EventsChanged { preferences });
+        // half of the same preferences: the week start. A patch that names only
+        // that cannot carry a stale copy of the reminders, which a whole group
+        // from the settings tab used to.
+        SettingsCommand::PatchEvents { patch } => {
+            merge(ctx, out, |settings| {
+                let preferences = Box::new(patch.apply_to(settings.events.clone()));
+                (SettingsEvent::EventsChanged { preferences }, ())
+            });
             persist(ctx, out).await;
         }
-        SettingsCommand::SetAppearance { preferences } => {
-            out.emit(SettingsEvent::AppearanceChanged { preferences });
+        SettingsCommand::PatchAppearance { patch } => {
+            // The reducer normalises appearance itself.
+            merge(ctx, out, |settings| {
+                let preferences = patch.apply_to(settings.appearance.clone());
+                (SettingsEvent::AppearanceChanged { preferences }, ())
+            });
             persist(ctx, out).await;
         }
         SettingsCommand::SetPlayerNote {
@@ -182,9 +199,11 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             login,
             note,
         } => {
-            let mut preferences = out.with_state(|state| state.settings.social.clone());
-            preferences.set_player_note(player_id, login, note);
-            out.emit(SettingsEvent::SocialChanged { preferences });
+            merge(ctx, out, |settings| {
+                let mut preferences = settings.social.clone();
+                preferences.set_player_note(player_id, login, note);
+                (SettingsEvent::SocialChanged { preferences }, ())
+            });
             persist(ctx, out).await;
         }
         SettingsCommand::SetReplayNote {
@@ -192,110 +211,155 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             comment,
             tags,
         } => {
-            let mut preferences = out.with_state(|state| state.settings.social.clone());
-            preferences.set_replay_note(replay_id, comment, tags);
-            out.emit(SettingsEvent::SocialChanged { preferences });
-            persist(ctx, out).await;
-        }
-        SettingsCommand::RenameReplayTag { from, to } => {
-            let mut preferences = out.with_state(|state| state.settings.social.clone());
-            preferences.rename_replay_tag(&from, &to);
-            out.emit(SettingsEvent::SocialChanged { preferences });
-            persist(ctx, out).await;
-        }
-        SettingsCommand::SetNotifications { preferences } => {
-            let mut next = out.with_state(|state| state.settings.clone());
-            next.notifications = preferences;
-            out.emit(SettingsEvent::NotificationsChanged {
-                preferences: next.normalized().notifications,
+            merge(ctx, out, |settings| {
+                let mut preferences = settings.social.clone();
+                preferences.set_replay_note(replay_id, comment, tags);
+                (SettingsEvent::SocialChanged { preferences }, ())
             });
             persist(ctx, out).await;
         }
-        SettingsCommand::SetChat { preferences } => {
-            let mut next = out.with_state(|state| state.settings.clone());
-            next.chat = *preferences;
-            let preferences = next.normalized().chat;
-            let show_joins_parts = preferences.show_joins_parts;
-            out.emit(SettingsEvent::ChatChanged {
-                preferences: Box::new(preferences),
+        SettingsCommand::RenameReplayTag { from, to } => {
+            merge(ctx, out, |settings| {
+                let mut preferences = settings.social.clone();
+                preferences.rename_replay_tag(&from, &to);
+                (SettingsEvent::SocialChanged { preferences }, ())
+            });
+            persist(ctx, out).await;
+        }
+        SettingsCommand::PatchNotifications { patch } => {
+            merge(ctx, out, |settings| {
+                let mut next = settings.clone();
+                next.notifications = patch.apply_to(next.notifications);
+                let preferences = next.normalized().notifications;
+                (SettingsEvent::NotificationsChanged { preferences }, ())
+            });
+            persist(ctx, out).await;
+        }
+        SettingsCommand::RemoveNotificationSound { name } => {
+            remove_notification_sound(&name, ctx, out).await;
+        }
+        SettingsCommand::PatchChat { patch } => {
+            let show_joins_parts = merge(ctx, out, |settings| {
+                let mut next = settings.clone();
+                next.chat = patch.apply_to(next.chat);
+                let preferences = next.normalized().chat;
+                let show_joins_parts = preferences.show_joins_parts;
+                (
+                    SettingsEvent::ChatChanged {
+                        preferences: Box::new(preferences),
+                    },
+                    show_joins_parts,
+                )
             });
             out.emit(ChatEvent::JoinsPartsToggled {
                 enabled: show_joins_parts,
             });
             persist(ctx, out).await;
         }
-        SettingsCommand::SetConnectivity { preferences } => {
-            out.emit(SettingsEvent::ConnectivityChanged { preferences });
+        SettingsCommand::PatchConnectivity { patch } => {
+            merge(ctx, out, |settings| {
+                let preferences = patch.apply_to(settings.connectivity);
+                (SettingsEvent::ConnectivityChanged { preferences }, ())
+            });
             persist(ctx, out).await;
             sync_connectivity(ctx, out);
         }
-        SettingsCommand::SetDebug { preferences } => {
-            out.emit(SettingsEvent::DebugChanged { preferences });
+        SettingsCommand::PatchDebug { patch } => {
+            merge(ctx, out, |settings| {
+                let preferences = patch.apply_to(settings.debug);
+                (SettingsEvent::DebugChanged { preferences }, ())
+            });
             persist(ctx, out).await;
             sync_debug_windows(ctx, out);
         }
-        SettingsCommand::SetUpdates { preferences } => {
+        SettingsCommand::PatchUpdates { patch } => {
             // No re-check on change: switching to the prerelease channel should
             // not fire a network request the user did not ask for. The Settings
             // section has an explicit "Check now" for that.
-            out.emit(SettingsEvent::UpdatesChanged { preferences });
-            persist(ctx, out).await;
-        }
-        SettingsCommand::SetBrowsing { preferences } => {
-            let mut next = out.with_state(|state| state.settings.clone());
-            next.browsing = *preferences;
-            out.emit(SettingsEvent::BrowsingChanged {
-                preferences: Box::new(next.normalized().browsing),
+            merge(ctx, out, |settings| {
+                let preferences = patch.apply_to(settings.updates);
+                (SettingsEvent::UpdatesChanged { preferences }, ())
             });
             persist(ctx, out).await;
         }
-        SettingsCommand::SetDiscord { preferences } => {
+        SettingsCommand::PatchBrowsing { patch } => {
+            merge(ctx, out, |settings| {
+                let mut next = settings.clone();
+                next.browsing = patch.apply_to(next.browsing);
+                let preferences = Box::new(next.normalized().browsing);
+                (SettingsEvent::BrowsingChanged { preferences }, ())
+            });
+            persist(ctx, out).await;
+        }
+        SettingsCommand::PatchDiscord { patch } => {
             // No `sync_*` call: the presence watcher observes this event like
             // any other and republishes (or clears) from the new state, so
             // turning presence off takes the status down immediately.
-            out.emit(SettingsEvent::DiscordChanged { preferences });
+            merge(ctx, out, |settings| {
+                let preferences = patch.apply_to(settings.discord);
+                (SettingsEvent::DiscordChanged { preferences }, ())
+            });
             persist(ctx, out).await;
         }
         SettingsCommand::SetMapGenerator { preferences } => {
             out.emit(SettingsEvent::MapGeneratorChanged { preferences });
             persist(ctx, out).await;
         }
-        SettingsCommand::SetGame { preferences } => {
-            let mut next = out.with_state(|state| state.settings.clone());
-            let old_lifetime = next.game.cache_lifetime_days;
-            next.game = preferences;
-            let next_game = next.normalized().game;
-            let new_lifetime = next_game.cache_lifetime_days;
-            out.emit(SettingsEvent::GameChanged {
-                preferences: next_game,
+        SettingsCommand::PatchGame { patch } => {
+            let (old_lifetime, new_lifetime) = merge(ctx, out, |settings| {
+                let mut next = settings.clone();
+                let old_lifetime = next.game.cache_lifetime_days;
+                next.game = patch.apply_to(next.game);
+                let next_game = next.normalized().game;
+                let new_lifetime = next_game.cache_lifetime_days;
+                (
+                    SettingsEvent::GameChanged {
+                        preferences: next_game,
+                    },
+                    (old_lifetime, new_lifetime),
+                )
             });
             persist(ctx, out).await;
             sync_launch_preferences(ctx, out);
             if old_lifetime != new_lifetime {
                 if let Some(days) = new_lifetime {
-                    if let Ok(cache_root) = crate::infra::cache_dir() {
-                        let _ = crate::infra::game_updater::clean_expired_cache_files(
-                            &cache_root.join("game_files"),
-                            days,
-                        )
-                        .await;
-                        sync_game_cache(out).await;
-                    }
+                    ctx.ports.game_cache.expire(days).await;
+                    sync_game_cache(ctx, out).await;
                 }
             }
         }
         // Re-stat without changing anything: for the banner's "Check again"
         // after the user installs or restores the game outside the client.
         SettingsCommand::CheckInstalls => sync_installs(ctx, out),
-        SettingsCommand::RefreshGameCache => sync_game_cache(out).await,
+        SettingsCommand::RefreshGameCache => sync_game_cache(ctx, out).await,
         SettingsCommand::ClearGameCache => {
-            if let Ok(cache_root) = crate::infra::cache_dir() {
-                let game_files_cache = cache_root.join("game_files");
-                let _ = crate::infra::game_updater::clear_game_cache(&game_files_cache).await;
-            }
-            sync_game_cache(out).await;
+            ctx.ports.game_cache.clear().await;
+            sync_game_cache(ctx, out).await;
         }
     }
+}
+
+/// Read the settings, work out the change, and emit it, as one step against
+/// every other settings command.
+///
+/// Patching against the backend's state rather than the webview's copy is
+/// only half the fix for two quick changes reverting each other: commands run
+/// on their own tasks, so two patches could still both read the group before
+/// either emitted, and the second would carry the first's field back. The lock
+/// (`ServiceCtx::settings_merge`) closes that window. It is held only across
+/// the read and the emit, which never await, and released before persisting.
+fn merge<R>(
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    change: impl FnOnce(&faf_domain::state::SettingsState) -> (SettingsEvent, R),
+) -> R {
+    let _merging = ctx
+        .settings_merge
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (event, result) = out.with_state(|state| change(&state.settings));
+    out.emit(event);
+    result
 }
 
 /// Write the whole settings document back, once there is one to write.
@@ -313,16 +377,86 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// Skipping the write rather than queueing it loses the early change itself,
 /// which `Loaded` is about to overwrite in state anyway. Losing one deliberate
 /// click beats erasing everything the player ever configured.
-pub(crate) async fn persist(ctx: &ServiceCtx, out: &EventSink) {
+///
+/// Returns whether a write was attempted, for the one caller that must not go
+/// on unless it was: [`remove_notification_sound`]. Attempted, not succeeded,
+/// because [`crate::ports::SettingsPort::save`] is best-effort and reports
+/// nothing back.
+pub(crate) async fn persist(ctx: &ServiceCtx, out: &EventSink) -> bool {
     if !ctx.settings_loaded.has_loaded() {
         tracing::warn!(
             "a settings change arrived before the settings file was read; not writing defaults over it"
         );
-        return;
+        return false;
     }
     let _guard = ctx.settings_persist.acquire().await;
     let settings = out.with_state(|state| state.settings.clone());
     ctx.ports.settings.save(&settings).await;
+    true
+}
+
+/// Clear every reference to one added sound, write that down, and only then
+/// delete the file.
+///
+/// The order is the point, and is why this is one backend operation rather
+/// than two webview calls. A file deleted while a saved setting still names it
+/// leaves that row playing nothing under a "(missing)" label, with no way back
+/// from the dropdown. So the file stays whenever the settings could not be
+/// written first, and every failure is said out loud: the webview awaits this
+/// command and reloads its list afterwards, but a list that still shows the
+/// sound does not explain why.
+async fn remove_notification_sound(name: &str, ctx: &ServiceCtx, out: &EventSink) {
+    // Refuse a name that is not one stored file before touching any setting:
+    // it cannot be one of ours, and nothing should change on its behalf.
+    if !ctx.ports.notification_sounds.accepts(name) {
+        notifications::add_required(
+            out,
+            NotificationKind::Error,
+            "Could not remove the sound",
+            format!("'{name}' is not a sound this client stored."),
+            None,
+        );
+        return;
+    }
+    let cleared = out.with_state(|state| {
+        let current = &state.settings.notifications;
+        faf_domain::state::settings::without_custom_sound(&current.sounds, name).map(|sounds| {
+            faf_domain::state::NotificationPreferences {
+                sounds,
+                ..current.clone()
+            }
+        })
+    });
+    if let Some(preferences) = cleared {
+        out.emit(SettingsEvent::NotificationsChanged { preferences });
+        if !persist(ctx, out).await {
+            notifications::add_required(
+                out,
+                NotificationKind::Error,
+                "Could not remove the sound",
+                format!(
+                    "{name} is still in use by a saved notification setting, and the settings \
+                     could not be written yet. The file was kept; try again in a moment."
+                ),
+                None,
+            );
+            return;
+        }
+    }
+    // A name that is already gone is not an error, so the only failure left
+    // is the filesystem refusing.
+    if let Err(reason) = ctx.ports.notification_sounds.remove(name) {
+        notifications::add_required(
+            out,
+            NotificationKind::Error,
+            "Could not remove the sound",
+            format!(
+                "No notification plays {name} any more, but the file itself could not be \
+                 deleted: {reason}"
+            ),
+            None,
+        );
+    }
 }
 
 fn sync_runtime_preferences(ctx: &ServiceCtx, out: &EventSink) {
@@ -545,40 +679,34 @@ fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
 /// Runs after `Loaded` rather than before it. Both halves walk directory trees
 /// and stat every file they find, and doing that in front of the emit is what
 /// made startup settings a several-second race rather than a file read.
-async fn expire_and_measure_game_cache(out: &EventSink) {
+async fn expire_and_measure_game_cache(ctx: &ServiceCtx, out: &EventSink) {
     let lifetime_days = out.with_state(|state| state.settings.game.cache_lifetime_days);
-    if let (Some(days), Ok(cache_root)) = (lifetime_days, crate::infra::cache_dir()) {
-        let _ = crate::infra::game_updater::clean_expired_cache_files(
-            &cache_root.join("game_files"),
-            days,
-        )
-        .await;
+    if let Some(days) = lifetime_days {
+        ctx.ports.game_cache.expire(days).await;
     }
-    sync_game_cache(out).await;
+    sync_game_cache(ctx, out).await;
 }
 
-async fn sync_game_cache(out: &EventSink) {
-    if let Ok(cache_root) = crate::infra::cache_dir() {
-        let game_files_cache = cache_root.join("game_files");
-        let (game_path, replay_path, alert_gb) = out.with_state(|state| {
-            (
-                std::path::PathBuf::from(&state.settings.game_path),
-                std::path::PathBuf::from(&state.settings.replay_game_path),
-                state.settings.game.cache_size_alert_gb,
-            )
-        });
-        let mut install_dirs = Vec::new();
-        if !game_path.as_os_str().is_empty() {
-            install_dirs.push(game_path);
-        }
-        if !replay_path.as_os_str().is_empty() && Some(&replay_path) != install_dirs.first() {
-            install_dirs.push(replay_path);
-        }
-        let info =
-            crate::infra::game_updater::inspect_game_cache(&game_files_cache, &install_dirs).await;
-        check_cache_size_alert(out, &info, alert_gb);
-        out.emit(SettingsEvent::CacheInfoUpdated { info });
+async fn sync_game_cache(ctx: &ServiceCtx, out: &EventSink) {
+    let (game_path, replay_path, alert_gb) = out.with_state(|state| {
+        (
+            std::path::PathBuf::from(&state.settings.game_path),
+            std::path::PathBuf::from(&state.settings.replay_game_path),
+            state.settings.game.cache_size_alert_gb,
+        )
+    });
+    let mut install_dirs = Vec::new();
+    if !game_path.as_os_str().is_empty() {
+        install_dirs.push(game_path);
     }
+    if !replay_path.as_os_str().is_empty() && Some(&replay_path) != install_dirs.first() {
+        install_dirs.push(replay_path);
+    }
+    let Some(info) = ctx.ports.game_cache.inspect(&install_dirs).await else {
+        return;
+    };
+    check_cache_size_alert(out, &info, alert_gb);
+    out.emit(SettingsEvent::CacheInfoUpdated { info });
 }
 
 fn check_cache_size_alert(
