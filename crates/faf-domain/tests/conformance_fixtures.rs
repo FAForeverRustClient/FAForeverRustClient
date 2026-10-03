@@ -6347,6 +6347,13 @@ fn cases() -> Vec<Case> {
                     }],
                 }
                 .into(),
+                SettingsEvent::MapPoolsSeen {
+                    seen: vec![faf_domain::state::settings::MapPoolsSeen {
+                        queue_name: "ladder1v1".into(),
+                        assignments: vec![91, 92],
+                    }],
+                }
+                .into(),
                 // Replaced whole as well: the service works out the order and
                 // the cap, the reducer only stores the result. The empty
                 // string is a deliberate choice of no avatar.

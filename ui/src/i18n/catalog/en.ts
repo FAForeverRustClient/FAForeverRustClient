@@ -862,6 +862,8 @@ export const en = {
   "lobby.browser.host": "Host:",
   "lobby.browser.hostedBy": "Hosted by",
   "lobby.browser.mapPreview": "Map preview",
+  "lobby.browser.addFavoriteMap": "Add to favourites",
+  "lobby.browser.removeFavoriteMap": "Remove from favourites",
   "lobby.browser.gameDetails": "Game details",
   "lobby.browser.players": "Players",
   "lobby.browser.averageRating": "Average rating",
@@ -1062,6 +1064,7 @@ export const en = {
   "lobby.host.error.titleAscii": "Game titles can only contain standard ASCII characters.",
   "lobby.host.error.passwordAscii": "Passwords can only contain standard ASCII characters.",
   "lobby.host.error.ratingOrder": "Minimum rating cannot be greater than maximum rating.",
+  "lobby.host.error.ratingBounds": "Rating limits must be between {min} and {max}.",
   "lobby.host.error.selectMap": "Select a map.",
   "lobby.browser.private": "Private",
 
@@ -1302,6 +1305,10 @@ export const en = {
   "settings.notifications.volume": "Sound volume",
   "settings.notifications.volumeHint": "Adjust alert volume without changing game audio.",
   "settings.notifications.volumeAria": "Notification sound volume",
+  "settings.notifications.repeatCooldown": "Repeat after (seconds)",
+  "settings.notifications.repeatCooldownHint": "Another notification of the same kind within this time stays in the list but does not pop up or play a sound. 0 announces every one.",
+  "settings.notifications.mapPool": "New map pools",
+  "settings.notifications.mapPoolHint": "Announced at login when a matchmaker queue has a new map pool. Untick a queue to stop hearing about it.",
   // The shipped tones, quietest first. Synthesised rather than sampled, so
   // "shipped" costs no files: see notificationSound.ts.
   "settings.notifications.sound.silent": "Silent",

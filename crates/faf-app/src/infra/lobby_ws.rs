@@ -2236,19 +2236,19 @@ fn host_frame(config: HostGameConfig) -> Value {
             None => Value::Null,
         },
     });
-    if config.enforce_rating_range {
-        // The flag, not just the bounds. The server reads all three
-        // (`lobbyconnection.on_game_host`) and only its `enforce_rating_range`
-        // makes `Game.is_visible_to_player` consult the range at all: sending
-        // the bounds alone produced a lobby that advertised a rating window
-        // and admitted anybody, which is what the report described.
-        frame["enforce_rating_range"] = json!(true);
-        if let Some(min) = config.rating_min {
-            frame["rating_min"] = json!(min);
-        }
-        if let Some(max) = config.rating_max {
-            frame["rating_max"] = json!(max);
-        }
+    // The flag, not just the bounds. The server reads all three
+    // (`lobbyconnection.on_game_host`) and only its `enforce_rating_range`
+    // makes `Game.is_visible_to_player` consult the range at all: sending the
+    // bounds alone produced a lobby that advertised a rating window and
+    // admitted anybody, which is what the report described. Sent either way,
+    // as Java does (`NewGameInfo`), so an unenforced range is still the one
+    // the lobby advertises.
+    frame["enforce_rating_range"] = json!(config.enforce_rating_range);
+    if let Some(min) = config.rating_min {
+        frame["rating_min"] = json!(min);
+    }
+    if let Some(max) = config.rating_max {
+        frame["rating_max"] = json!(max);
     }
     frame
 }

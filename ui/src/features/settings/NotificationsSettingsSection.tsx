@@ -19,6 +19,7 @@ import {
   soundOptionValue,
 } from "../notifications/notificationSound";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { NumberInput } from "../../design-system/NumberInput";
 import { MultiSelect } from "../../design-system/MultiSelect";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -134,6 +135,12 @@ export function NotificationsSettingsSection() {
   const queueOpponentOptions = [
     ...queues.map((queue) => ({ value: queue.queueName, label: `${queue.teamSize} vs ${queue.teamSize}` })),
     ...preferences.queueOpponentQueues
+      .filter((name) => !queues.some((queue) => queue.queueName === name))
+      .map((name) => ({ value: name, label: name })),
+  ];
+  const mapPoolOptions = [
+    ...queues.map((queue) => ({ value: queue.queueName, label: `${queue.teamSize} vs ${queue.teamSize}` })),
+    ...(preferences.mapPoolMutedQueues ?? [])
       .filter((name) => !queues.some((queue) => queue.queueName === name))
       .map((name) => ({ value: name, label: name })),
   ];
@@ -272,6 +279,21 @@ export function NotificationsSettingsSection() {
           <span>{preferences.volume}%</span>
         </label>
       </SettingRow>
+      <SettingRow
+        label={t("settings.notifications.repeatCooldown")}
+        hint={t("settings.notifications.repeatCooldownHint")}
+      >
+        <NumberInput
+          className="number-input"
+          value={preferences.repeatCooldownSeconds ?? 0}
+          min={0}
+          max={600}
+          disabled={!preferences.enabled}
+          aria-label={t("settings.notifications.repeatCooldown")}
+          onChange={(seconds) =>
+            update({ repeatCooldownSeconds: Math.min(600, Math.max(0, Math.round(seconds))) })}
+        />
+      </SettingRow>
       {/* The added files, once there are any. Adding one is a row in every
           dropdown, but removing one cannot be: a dropdown sets a value and
           this deletes a file twelve of them may be pointing at. So it lives
@@ -377,6 +399,26 @@ export function NotificationsSettingsSection() {
             options={queueOpponentOptions}
             selected={preferences.queueOpponentQueues}
             onChange={(queueOpponentQueues) => update({ queueOpponentQueues })}
+          />
+        </div>
+      </SettingRow>
+      {/* New map pools (#406): every queue on by default, so the setting
+          stores the ones switched off and the list shows the ones on. */}
+      <SettingRow label={t("settings.notifications.mapPool")} hint={t("settings.notifications.mapPoolHint")}>
+        <div className="settings-multi-select">
+          <MultiSelect
+            label={t("settings.notifications.mapPool")}
+            anyLabel={t("settings.notifications.queueOpponentOff")}
+            options={mapPoolOptions}
+            selected={mapPoolOptions
+              .map((option) => option.value)
+              .filter((name) => !(preferences.mapPoolMutedQueues ?? []).includes(name))}
+            onChange={(announced) =>
+              update({
+                mapPoolMutedQueues: mapPoolOptions
+                  .map((option) => option.value)
+                  .filter((name) => !announced.includes(name)),
+              })}
           />
         </div>
       </SettingRow>
