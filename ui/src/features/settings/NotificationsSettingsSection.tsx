@@ -1,7 +1,7 @@
 import type {
-  NotificationPreferences,
+  NotificationPreferencesPatch,
   NotificationSound,
-  NotificationSoundChoices,
+  NotificationSoundChoicesPatch,
   ToastPosition,
 } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -33,10 +33,10 @@ const TOAST_POSITIONS: Record<ToastPosition, MessageKey> = {
   topRight: "settings.notifications.toastPosition.topRight",
 };
 
-const save = (preferences: NotificationPreferences) =>
+const save = (patch: NotificationPreferencesPatch) =>
   ipc.send({
     kind: "Settings",
-    command: { type: "setNotifications", payload: { preferences } },
+    command: { type: "patchNotifications", payload: { patch } },
   });
 
 /* Quietest first, so the list itself says what the choice is about. */
@@ -144,10 +144,10 @@ export function NotificationsSettingsSection() {
       .filter((name) => !queues.some((queue) => queue.queueName === name))
       .map((name) => ({ value: name, label: name })),
   ];
-  const update = (patch: Partial<NotificationPreferences>) =>
-    void save({ ...preferences, ...patch });
-  const setSound = (patch: Partial<NotificationSoundChoices>) =>
-    update({ sounds: { ...preferences.sounds, ...patch } });
+  const update = (patch: NotificationPreferencesPatch) => void save(patch);
+  // One row's tone, nested: the other eleven are not sent at all, so a quick
+  // change to two rows cannot have the second put the first one back.
+  const setSound = (sounds: NotificationSoundChoicesPatch) => update({ sounds });
   // A tone is only reachable when notifications and sound are both on.
   const mute = !preferences.enabled || !preferences.sound;
 
@@ -193,21 +193,27 @@ export function NotificationsSettingsSection() {
   /**
    * Delete one added sound, and put every row that used it back on a tone.
    *
-   * The settings are rewritten before the file goes, so a row can never be
-   * left naming a file that is not there: that state is silence with a
-   * "(missing)" label and no way back to it from the dropdown.
+   * One backend command does both, in that order, and keeps the file unless
+   * the settings were written first: a row left naming a file that is not
+   * there is silence with a "(missing)" label and no way back to it from the
+   * dropdown. Firing the settings write and the delete from here could not
+   * promise that, because nothing here knows when, or whether, the write
+   * landed. A failure arrives as a notification saying which half failed; the
+   * list is read again either way, so it shows what is really on disk.
    */
+  const [removing, setRemoving] = useState<string | null>(null);
   const removeSound = useCallback((name: string) => {
-    const sounds = { ...preferences.sounds };
-    for (const [kind, sound] of recordEntries(sounds)) {
-      if (customSoundName(sound) === name) sounds[kind] = "chime";
-    }
-    void save({ ...preferences, sounds });
-    ipc.run(native.removeNotificationSound(name).then(() => {
-      forgetCustomSounds();
-      reloadSounds();
-    }));
-  }, [preferences, reloadSounds]);
+    setRemoving(name);
+    ipc.run(
+      ipc
+        .settle({ kind: "Settings", command: { type: "removeNotificationSound", payload: { name } } })
+        .finally(() => {
+          setRemoving(null);
+          forgetCustomSounds();
+          reloadSounds();
+        }),
+    );
+  }, [reloadSounds]);
 
   return (
     <>
@@ -311,6 +317,7 @@ export function NotificationsSettingsSection() {
                 <button
                   type="button"
                   className="btn-ghost settings-sound-remove"
+                  disabled={removing !== null}
                   onClick={() => removeSound(name)}
                   title={t("settings.notifications.sound.remove", { name })}
                   aria-label={t("settings.notifications.sound.remove", { name })}

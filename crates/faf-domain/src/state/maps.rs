@@ -541,9 +541,37 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
     }
 }
 
+/// A map folder's name without its version suffix, lower-cased:
+/// `SCCA_Coop_A01.v0017` is `scca_coop_a01`. Only a real `.v<digits>` is
+/// removed; `some_map.version` is a map called that.
+///
+/// A naming rule, not an adapter detail, so it lives here where both the maps
+/// service and the infra that reads folders off disk can use it. It used to be
+/// reached by the service from infra by its full path, which the architecture
+/// check did not catch.
+pub fn base_folder_name(folder_name: &str) -> String {
+    let lower = folder_name.trim().to_lowercase();
+    match lower.rsplit_once(".v") {
+        Some((base, version))
+            if !version.is_empty() && version.chars().all(|c| c.is_ascii_digit()) =>
+        {
+            base.to_string()
+        }
+        _ => lower,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn base_folder_name_strips_only_a_real_version_suffix() {
+        assert_eq!(base_folder_name("SCCA_Coop_A01.v0017"), "scca_coop_a01");
+        assert_eq!(base_folder_name("scca_coop_a01"), "scca_coop_a01");
+        // Not a version: the map is called that.
+        assert_eq!(base_folder_name("some_map.version"), "some_map.version");
+    }
 
     fn vault_map(folder_name: &str) -> VaultMap {
         VaultMap {

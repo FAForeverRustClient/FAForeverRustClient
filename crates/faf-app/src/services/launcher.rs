@@ -75,7 +75,7 @@ pub async fn start(
     // A launch order is new work: whatever an earlier join did, this one has
     // not been cancelled. Without this a cancelled custom join would silence
     // the progress of the next matchmaker or hosted game as well.
-    ctx.lobby_join_cancelled.clear();
+    ctx.lobby_operations.clear();
 
     // 0. Reproduce a generated map before anything else.
     //
@@ -109,7 +109,7 @@ pub async fn start(
         // asked it not to. No `fail`: the join state was already cleared by
         // the cancel, and a launch failure on top of it would be a second,
         // wrong explanation for something the user did on purpose.
-        if ctx.lobby_join_cancelled.is_cancelled() {
+        if ctx.lobby_operations.is_cancelled() {
             tracing::info!("launcher: the join was cancelled during preparation; not starting");
             ctx.ports.ice.stop();
             return None;
@@ -439,7 +439,7 @@ async fn prepare_request(
         // The stream is drained rather than dropped, so the updater finishes
         // the file it is on and nothing is left half-written in the content
         // store. It is just no longer anybody's business on screen.
-        if ctx.lobby_join_cancelled.is_cancelled() {
+        if ctx.lobby_operations.is_cancelled() {
             continue;
         }
         match update {
@@ -454,7 +454,7 @@ async fn prepare_request(
     // A cancelled preparation has no outcome worth reporting: the caller checks
     // the same flag and returns without touching the join state, and an error
     // here would be shown to somebody who asked for this.
-    if ctx.lobby_join_cancelled.is_cancelled() {
+    if ctx.lobby_operations.is_cancelled() {
         return Ok(());
     }
     outcome

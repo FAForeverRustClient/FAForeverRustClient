@@ -55,12 +55,17 @@
   border: 0;
   border-radius: 0;
   object-fit: contain;
-  /* Nearest-neighbour past 1:1. A map preview is a small PNG of a heightmap,
-     and the browser's smoothing turns a mex cluster into a smear exactly when
-     somebody has zoomed in to count them. */
-  image-rendering: pixelated;
   -webkit-user-drag: none;
   user-select: none;
+}
+
+/* Nearest-neighbour once zoomed in. A map preview is a small PNG of a
+   heightmap, and the browser's smoothing turns a mex cluster into a smear
+   exactly when somebody has zoomed in to count them. Not before: at the
+   fitted size the picture is only a little larger than its pixels, and
+   nearest-neighbour there drew every coastline as a staircase. */
+.map-preview-viewport.is-zoomed .map-preview-canvas img {
+  image-rendering: pixelated;
 }
 
 .map-preview-controls {

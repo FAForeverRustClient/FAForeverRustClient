@@ -15,6 +15,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import type {
   AppCommand,
   SiteWrite,
@@ -63,6 +64,7 @@ import {
 import { busyMatchId, mayReport, openEvent, signupNeedsRating } from "../../shared/rules/tourneyRules";
 import "./tournaments.css";
 import { useTranslation } from "../../i18n/useTranslation";
+import { plainError } from "../../shared/plainError";
 
 /** Every command this tab sends is a tourney command; this is the only wrapper. */
 const send = (command: TourneyCommand) =>
@@ -200,6 +202,8 @@ export function TournamentsView() {
   // for the detail that belongs to the row that is open.
   const open = openEvent(state.detail, state.selectedId);
   const loading = state.status.type === "loading";
+  /** Nothing has answered yet: idle until the mount effect asks, then loading. */
+  const firstLoad = state.status.type === "idle" || loading;
   const busy = state.pending !== null;
   // One match's spinner must not disable the rest of the bracket, so the
   // pending write is narrowed to the match it names, if it names one.
@@ -382,14 +386,20 @@ export function TournamentsView() {
               the tab is actually talking to, so this cannot point somewhere
               else after a deployment move, and it is absent until the first
               load answers. */}
-          {state.assetBase !== "" && (
-            <Button onClick={() => void openHttpsUrl(state.assetBase)}>
-              <Icon name="external" size={16} /> {t("tournaments.viewOnline")}
-            </Button>
-          )}
+          {/* Drawn from the start and disabled until it has somewhere to go,
+              rather than appearing once the first load answers and pushing
+              the buttons beside it along. */}
+          <Button disabled={state.assetBase === ""} onClick={() => void openHttpsUrl(state.assetBase)}>
+            <Icon name="external" size={16} /> {t("tournaments.viewOnline")}
+          </Button>
           <Button onClick={load} disabled={loading}>
             <Icon name="refresh" size={16} />{" "}
-            {t(loading ? "tournaments.refreshing" : "tournaments.refresh")}
+            {/* Both labels share one cell, so the button is as wide as the
+                longer one in either state and nothing beside it moves. */}
+            <span className="tournaments-refresh-label">
+              <span className={loading ? "is-hidden" : undefined} aria-hidden={loading}>{t("tournaments.refresh")}</span>
+              <span className={loading ? undefined : "is-hidden"} aria-hidden={!loading}>{t("tournaments.refreshing")}</span>
+            </span>
           </Button>
         </div>
       </header>
@@ -405,12 +415,9 @@ export function TournamentsView() {
       />
 
       {state.status.type === "failed" && (
-        <div className="surface-error tournaments-error">
-          <span>{state.status.payload.reason}</span>
-          <Button onClick={load}>
-            <Icon name="refresh" size={16} /> {t("common.retry")}
-          </Button>
-        </div>
+        <StatusNotice tone="error" action={{ label: t("common.retry"), onClick: load }} detail={state.status.payload.reason}>
+          {t("tournaments.loadFailed", { reason: plainError(state.status.payload.reason) })}
+        </StatusNotice>
       )}
 
       {/* The server's own sentence, kept until it is dismissed. It is the one
@@ -424,10 +431,6 @@ export function TournamentsView() {
             <Icon name="close" size={16} /> {t("common.close")}
           </Button>
         </div>
-      )}
-
-      {page.kind === "events" && loading && state.events.length === 0 && (
-        <div className="surface tournaments-state muted">{t("tournaments.loading")}</div>
       )}
 
       {page.kind === "events" && state.status.type === "ready" && state.events.length === 0 && (
@@ -504,9 +507,16 @@ export function TournamentsView() {
           />
         ))}
 
-      {page.kind === "events" && state.events.length > 0 && (
+      {/* The list and the detail are laid out before the first load answers,
+          with the loading line in the list's own column. A loading box in
+          their place was swapped for the two columns on arrival, and the
+          whole tab jumped. */}
+      {page.kind === "events" && (state.events.length > 0 || firstLoad) && (
         <div className="tournaments-body">
           <div className="tournaments-list">
+            {state.events.length === 0 && (
+              <div className="surface tournaments-state muted">{t("tournaments.loading")}</div>
+            )}
             {LIVE_GROUPS.map(([group, heading]) =>
               groups[group].length === 0 ? null : (
                 <section className="tournaments-group" key={group}>
@@ -574,8 +584,8 @@ export function TournamentsView() {
               jump={jump}
               siteAdmin={site.account.siteAdmin}
               pastedImage={state.descImage}
-              onUploadImage={(dataUrl) =>
-                act({ type: "uploadDescImage", payload: { tournamentId: open.id, dataUrl } })
+              onUploadImage={(dataUrl, requestId) =>
+                act({ type: "uploadDescImage", payload: { tournamentId: open.id, dataUrl, requestId } })
               }
               detailLoading={state.detailStatus.type === "loading"}
               series={state.series}

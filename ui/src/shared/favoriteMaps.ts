@@ -19,9 +19,9 @@ export function useIsFavoriteMap(folderName: string): boolean {
 /**
  * Star or unstar a map by folder name.
  *
- * Reads the newest copy of the preferences, because `setBrowsing` replaces the
- * whole block and a copy captured at render time would put back whatever
- * changed since.
+ * Reads the newest copy of the list, so the toggle starts from what is stored
+ * rather than from a copy captured at render time, and sends only the list:
+ * a patch, so a change made elsewhere in the meantime is not put back.
  */
 export function toggleFavoriteMap(folderName: string, downloadUrl?: string) {
   const key = folderName.trim().toLocaleLowerCase();
@@ -32,7 +32,7 @@ export function toggleFavoriteMap(folderName: string, downloadUrl?: string) {
     : [...current.favoriteMaps, key];
   ipc.send({
     kind: "Settings",
-    command: { type: "setBrowsing", payload: { preferences: { ...current, favoriteMaps } } },
+    command: { type: "patchBrowsing", payload: { patch: { favoriteMaps } } },
   });
   if (!starred) installFavorite(folderName.trim(), downloadUrl);
 }

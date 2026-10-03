@@ -72,10 +72,9 @@ export const native = {
     return invoke<number[]>("read_notification_sound", { name });
   },
 
-  /** Forget one stored sound. */
-  removeNotificationSound(name: string): Promise<void> {
-    return invoke("remove_notification_sound", { name });
-  },
+  // No "remove a sound" here: removal is the backend's
+  // `RemoveNotificationSound`, which clears every setting that plays the sound
+  // and saves before the file goes. A native delete would skip that.
 
   /**
    * Where a client folder is, for a file dialog to start in.

@@ -1,0 +1,28 @@
+/* The embed's load state. The frame and the strip above it are styled in
+   styles.css; this adds the right-hand group of the strip and the notice a
+   slow load puts between the strip and the frame. */
+.embed-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.embed-toolbar-status {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.embed-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Part of the strip rather than a card floating over someone else's page. */
+.status-notice.embed-slow {
+  flex: none;
+  margin: 0;
+  border-width: 0 0 1px;
+  border-radius: 0;
+}

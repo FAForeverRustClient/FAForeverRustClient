@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pagination } from "../../../design-system/Pagination";
+import { StatusNotice } from "../../../design-system/StatusNotice";
 import type { ReplayQuery } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
-import { loadStatusNote } from "../../../shared/loadStatusNote";
 import { isUnknownVaultMap } from "../../../shared/mapPresentation";
 import { isoDaysAgo, personalReplayQuery } from "../../../shared/replayQuery";
 import { loadStoredSet, saveStoredSet } from "../../../shared/storage";
@@ -16,6 +16,7 @@ import { subscribeReplaySearch, takeReplaySearch } from "../../../shared/replayS
 import { VaultSearch } from "./VaultSearch";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
 
 /**
  * The selector's answer when nothing has been resolved yet. A literal `{}` in
@@ -56,15 +57,14 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   // state, which the store keeps sorted and replaces wholesale, so the
   // identity check upstream is enough and nothing needs memoising here.
   const friends = useAppStore((s) => s.state.social.friends);
-  const note = loadStatusNote(vaultStatus, t("replays.vault.searching"), t("replays.vault.loadFailed"));
   const browsing = useAppStore((s) => s.state.settings.browsing);
   const viewMode: ReplayViewMode = browsing.replaysView;
   const setViewMode = (mode: ReplayViewMode) => {
     void ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, replaysView: mode } },
+        type: "patchBrowsing",
+        payload: { patch: { replaysView: mode } },
       },
     });
   };
@@ -108,7 +108,15 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     if (!runRequestedSearch() && !handedOver.current) {
       const status = state.replays.vaultStatus.type;
       if (status === "idle") {
-        if (playerToSearch) searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
+        if (playerToSearch) {
+          // The landing search is this visit's fresh one, so it counts as the
+          // re-run. Unarmed, the first search of a session (the vault player
+          // was not remembered yet, so it changes) re-ran the landing query
+          // over the reader's own: "Skip short replays" did nothing on the
+          // first press and switched itself back off.
+          refreshed.current = true;
+          searchVault(personalReplayQuery(playerToSearch, isoDaysAgo(365)));
+        }
       } else if (status !== "loading" && !refreshed.current) {
         refreshed.current = true;
         // Every later visit runs the search that is on screen again, rather
@@ -148,8 +156,8 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
       void ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...browsing, replayVaultPlayer: newQuery.player } },
+          type: "patchBrowsing",
+          payload: { patch: { replayVaultPlayer: newQuery.player } },
         },
       });
     }
@@ -233,10 +241,21 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
                   pages: totalPages ?? 1,
                 })}
           </span>
-          {note && <span className="online-replay-status-note muted">· {note}</span>}
         </div>
         <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
       </div>
+      {/* A failed search as a line of its own with the way to run it again.
+          It was a muted fragment after "0 shown · 1 pages", which read as an
+          empty result rather than a failure. */}
+      {vaultStatus.type === "failed" && (
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: () => searchVault(query) }}
+          detail={vaultStatus.payload.reason}
+        >
+          {t("replays.vault.loadFailed")}: {plainError(vaultStatus.payload.reason)}
+        </StatusNotice>
+      )}
       {vaultStatus.type === "ready" && vault.length === 0 && (
         /* Past the end is not the same as no matches. Landing on an empty page
            after paging forward means the search worked and this page is beyond

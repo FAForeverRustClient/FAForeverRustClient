@@ -15,16 +15,17 @@
 use std::collections::HashMap;
 
 use faf_domain::state::{
-    with_go_adapter_tag, ChatEvent, ChatStatus, Game, HostGameConfig, HostGamePreferences,
-    IceAdapter, JoinState, LobbyCommand, LobbyEvent, MatchmakerQueue, MatchmakingState,
-    NotificationAction, NotificationKind, NotificationPreferences, PartyState, PlayerCardEvent,
-    PlayerLobbyRating, SettingsEvent, SocialEvent,
+    reconcile_avatar, remember_avatar, with_go_adapter_tag, AvatarListStatus, AvatarReconciliation,
+    ChatEvent, ChatStatus, Game, HostGameConfig, HostGamePreferences, IceAdapter, JoinState,
+    LobbyCommand, LobbyEvent, MatchmakerQueue, MatchmakingState, NotificationAction,
+    NotificationKind, NotificationPreferences, PartyState, PlayerCardEvent, PlayerLobbyRating,
+    SettingsEvent, SocialEvent,
 };
 
 use crate::ports::LobbyUpdate;
 use crate::ports::ModPrepFailure;
 use crate::ports::ServerNoticeStyle;
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
 use crate::services::launcher::{self, LaunchSession};
 use crate::services::notifications;
 
@@ -46,17 +47,27 @@ const MATCH_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(
 
 pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
-        LobbyCommand::Connect => connect(ctx, out).await,
+        LobbyCommand::Connect => {
+            // An explicit Connect is what asks for the lobby to be kept up,
+            // so it is what arms the watchdog in `services::reconnect`; until
+            // it did, a connection whose adapter had given up stayed down for
+            // good. Armed before the guard, so asking while a connection is
+            // already in flight still re-arms it. The same shape as chat.
+            ctx.lobby_auto_reconnect.arm();
+            connect(ctx, out).await
+        }
         LobbyCommand::Join {
             id,
             password,
             replace_mods,
         } => {
-            if !ctx.lobby_join_active.try_start() {
+            // A new join starts uncancelled, whatever the last one did, under
+            // an id of its own: a cancelled join still draining its
+            // preparation keeps reading "cancelled" for its own id.
+            let operations = &ctx.lobby_operations;
+            let Some(operation) = operations.try_begin_join() else {
                 return;
-            }
-            // A new join starts uncancelled, whatever the last one did.
-            ctx.lobby_join_cancelled.clear();
+            };
 
             if !out.with_state(|state| {
                 matches!(
@@ -64,7 +75,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                     faf_domain::state::LobbyStatus::Connected
                 )
             }) {
-                ctx.lobby_join_active.finish();
+                operations.release_join(operation);
                 out.emit(LobbyEvent::JoinFailed {
                     id,
                     reason: "not connected to the lobby".into(),
@@ -78,7 +89,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // gets this far, and preparing a join for minutes before the
             // server refuses it is the worst of both.
             if let Some(reason) = out.with_state(|state| rating_gate_refusal(state, id)) {
-                ctx.lobby_join_active.finish();
+                operations.release_join(operation);
                 out.emit(LobbyEvent::JoinFailed { id, reason });
                 return;
             }
@@ -92,48 +103,62 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                     state.lobby.games.iter().find(|game| game.id == id).cloned()
                 });
                 let Some(game) = game else {
-                    ctx.lobby_join_active.finish();
+                    operations.release_join(operation);
                     out.emit(LobbyEvent::JoinFailed {
                         id,
                         reason: "the game is no longer available".into(),
                     });
                     return;
                 };
-                match launcher::prepare_custom_join(&game, ctx, out, replace_mods).await {
+                let prepared = operations
+                    .run(
+                        operation,
+                        launcher::prepare_custom_join(&game, ctx, out, replace_mods),
+                    )
+                    .await;
+                // Preparation can take minutes, which is long enough for the
+                // user to give up on it, and for them to start another join
+                // after that. Nothing below may run for a join that was
+                // called off or replaced while its files came down: not its
+                // outcome, not its progress, not its request. No event
+                // either: `CancelJoin` already said so, and the join state
+                // now belongs to whatever replaced this one.
+                if !operations.is_live(operation) {
+                    tracing::info!(
+                        game_id = id,
+                        "lobby: the join was called off during preparation; not joining"
+                    );
+                    operations.release_join(operation);
+                    return;
+                }
+                match prepared {
                     Ok(()) => {}
                     // Nothing was installed or deleted: the user has to say
                     // whether the versions already on disk may be replaced,
                     // and the answer comes back as another `Join`.
                     Err(ModPrepFailure::Conflicts(conflicts)) => {
-                        ctx.lobby_join_active.finish();
+                        operations.release_join(operation);
                         out.emit(LobbyEvent::JoinNeedsModReplacement { id, conflicts });
                         return;
                     }
                     Err(ModPrepFailure::Failed(reason)) => {
-                        ctx.lobby_join_active.finish();
+                        operations.release_join(operation);
                         launcher::report_failure(ctx, out, reason);
                         return;
                     }
-                }
-                // Preparation can take minutes, which is long enough for the
-                // user to give up on it. Nothing below this point should run
-                // for a join that was called off while its files came down.
-                if ctx.lobby_join_cancelled.is_cancelled() {
-                    ctx.lobby_join_active.finish();
-                    out.emit(LobbyEvent::JoinCancelled);
-                    return;
                 }
                 // Return to an explicit joining state while waiting for the
                 // server's accept/reject response.
                 out.emit(LobbyEvent::Joining { id, prepared: true });
             }
-            if ctx.lobby_join_cancelled.is_cancelled() {
-                ctx.lobby_join_active.finish();
-                out.emit(LobbyEvent::JoinCancelled);
+            // Checked again right before the request: the boundary above is
+            // only reached on the live-launch path.
+            if !operations.is_live(operation) {
+                operations.release_join(operation);
                 return;
             }
             if !ctx.ports.lobby.join(id, password) {
-                ctx.lobby_join_active.finish();
+                operations.release_join(operation);
                 out.emit(LobbyEvent::JoinFailed {
                     id,
                     reason: "the join request could not be sent".into(),
@@ -153,28 +178,34 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
         LobbyCommand::ClearHostPrefill => out.emit(LobbyEvent::HostPrefillCleared),
         LobbyCommand::Host { config } => match config.validated() {
             Ok(config) => {
-                // A new host starts uncancelled, whatever the last join did.
-                ctx.lobby_join_cancelled.clear();
+                // A new host starts uncancelled, whatever the last join did,
+                // under an id of its own; see the same note on `Join`.
+                let operations = &ctx.lobby_operations;
+                let operation = operations.begin();
                 // The map has to be on disk before the server is asked for a
                 // lobby, because its reply will not mention one: see
                 // `launcher::prepare_host`. Guarded the way the join path is,
                 // so an offline shell still exercises the request itself.
                 if ctx.ports.process.supports_live_launch() {
-                    if let Err(reason) = launcher::prepare_host(&config, ctx, out).await {
-                        launcher::report_failure(ctx, out, reason);
+                    let prepared = operations
+                        .run(operation, launcher::prepare_host(&config, ctx, out))
+                        .await;
+                    // Cancelled while the files came down, which for a co-op
+                    // mission is a long download, or replaced by a newer join
+                    // or host. The join path has always stopped here; the host
+                    // path sent its request anyway, the server answered with a
+                    // launch order, and the game Cancel had just been pressed
+                    // on started regardless. The dialog already closed on
+                    // `CancelJoin`, so there is nothing to emit, not even a
+                    // failure: that would land on the newer operation's state.
+                    if !operations.is_live(operation) {
+                        tracing::info!(
+                            "lobby: the host was called off during preparation; not hosting"
+                        );
                         return;
                     }
-                    // Cancelled while the files came down, which for a co-op
-                    // mission is a long download. The join path has always
-                    // stopped here; the host path sent its request anyway, the
-                    // server answered with a launch order, and the game Cancel
-                    // had just been pressed on started regardless. The dialog
-                    // already closed on `CancelJoin`, so there is nothing to
-                    // emit, only a request not to send.
-                    if ctx.lobby_join_cancelled.is_cancelled() {
-                        tracing::info!(
-                            "lobby: the host was cancelled during preparation; not hosting"
-                        );
+                    if let Err(reason) = prepared {
+                        launcher::report_failure(ctx, out, reason);
                         return;
                     }
                 }
@@ -262,76 +293,10 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             ctx.ports.lobby.set_player_vetoes(vetoes);
             crate::services::settings::persist(ctx, out).await;
         }
-        LobbyCommand::LoadAvatars => {
-            out.emit(LobbyEvent::AvatarsLoading);
-            if !ctx.ports.lobby.request_avatars() {
-                out.emit(LobbyEvent::AvatarsLoadFailed {
-                    reason: "Connect to the FAF lobby before loading avatars.".into(),
-                });
-            }
-        }
+        LobbyCommand::LoadAvatars => load_avatars(ctx, out),
         LobbyCommand::SelectAvatar { url } => {
-            out.emit(LobbyEvent::AvatarSelectionStarted);
-            let (available, player, profile) = out.with_state(|state| {
-                let available = url.as_deref().and_then(|url| {
-                    state
-                        .lobby
-                        .available_avatars
-                        .iter()
-                        .find(|avatar| avatar.url == url)
-                        .cloned()
-                });
-                let player = state.auth.player.clone();
-                let profile = player.as_ref().and_then(|player| {
-                    state
-                        .social
-                        .players
-                        .iter()
-                        .find(|profile| profile.id == player.id)
-                        .cloned()
-                });
-                (available, player, profile)
-            });
-            let choice = match url.as_deref() {
-                Some(_) => match available {
-                    Some(avatar) => Some(avatar),
-                    None => {
-                        out.emit(LobbyEvent::AvatarSelectionFailed {
-                            reason: "That avatar is not in the server-provided list.".into(),
-                        });
-                        return;
-                    }
-                },
-                None => None,
-            };
-
-            if !ctx.ports.lobby.select_avatar(url.clone()) {
-                out.emit(LobbyEvent::AvatarSelectionFailed {
-                    reason: "The avatar could not be sent because the lobby is disconnected."
-                        .into(),
-                });
-                return;
-            }
-
-            out.emit(LobbyEvent::AvatarSelectionSucceeded);
-            if let Some(player) = player {
-                let tooltip = choice
-                    .as_ref()
-                    .map(|avatar| avatar.tooltip.clone())
-                    .unwrap_or_default();
-                out.emit(PlayerCardEvent::AvatarSelected {
-                    player_id: player.id,
-                    url: url.clone(),
-                    tooltip: tooltip.clone(),
-                });
-
-                if let Some(mut profile) = profile {
-                    profile.avatar_url = url.unwrap_or_default();
-                    profile.avatar_tooltip = tooltip;
-                    out.emit(SocialEvent::PlayersSeen {
-                        players: vec![profile],
-                    });
-                }
+            if select_avatar(ctx, out, url.clone()) {
+                remember_own_avatar(ctx, out, url.as_deref().unwrap_or_default()).await;
             }
         }
         LobbyCommand::DeclineModReplacement => {
@@ -357,27 +322,54 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 terminate_game(ctx, out);
                 return;
             }
-            // Before that, the flag is what stops the work: preparation reads
-            // it at its next step boundary, and the join request is not sent.
-            ctx.lobby_join_cancelled.cancel();
-            ctx.lobby_join_active.finish();
+            // Before that, calling the operation off is what stops the work:
+            // preparation checks its own operation at its next step boundary,
+            // and the join request is not sent. The slot is freed now, so the
+            // user can pick another game while the cancelled preparation
+            // finishes the file it is on; that preparation can no longer
+            // touch the new join, because it is checking a different id.
+            ctx.lobby_operations.cancel();
+            ctx.lobby_operations.release_any_join();
             out.emit(LobbyEvent::JoinCancelled);
         }
         LobbyCommand::TerminateGame => {
             terminate_game(ctx, out);
         }
         LobbyCommand::Disconnect => {
+            // The user hung up, so the reconnect watchdog leaves it hung up.
+            // Disarmed before the socket closes: the watchdog reads the flag
+            // when it sees `Disconnected`, which this is about to cause.
+            ctx.lobby_auto_reconnect.disarm();
             // Cancels the active connection; the `Connect` task above then sees the
             // stream close and emits `Disconnected`.
             out.emit(LobbyEvent::JoinCancelled);
             ctx.ports.lobby.disconnect();
-            ctx.lobby_join_active.finish();
+            ctx.lobby_operations.release_any_join();
         }
     }
 }
 
+/// Bring the lobby back for the reconnect watchdog.
+///
+/// Not `handle(LobbyCommand::Connect)`, because that arms the watchdog: a
+/// retry the watchdog spawned just before the user pressed Disconnect would
+/// then re-arm it, and the client would reconnect against the user's wishes.
+/// The flag is read once the connection guard is held, which is the last
+/// moment a Disconnect could have landed in between.
+pub async fn reconnect(ctx: &ServiceCtx, out: &EventSink) {
+    connect_with(ctx, out, true).await;
+}
+
 async fn connect(ctx: &ServiceCtx, out: &EventSink) {
+    connect_with(ctx, out, false).await;
+}
+
+async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     if !ctx.lobby_active.try_start() {
+        return;
+    }
+    if only_if_armed && !ctx.lobby_auto_reconnect.armed() {
+        ctx.lobby_active.finish();
         return;
     }
 
@@ -406,7 +398,7 @@ async fn connect(ctx: &ServiceCtx, out: &EventSink) {
     }
 
     ctx.lobby_active.finish();
-    ctx.lobby_join_active.finish();
+    ctx.lobby_operations.release_any_join();
     out.emit(LobbyEvent::Disconnected);
     out.emit(SocialEvent::Cleared);
 }
@@ -420,19 +412,24 @@ async fn connect(ctx: &ServiceCtx, out: &EventSink) {
 /// Checking the state rather than cancelling a handle keeps every one of those
 /// exits working without any of them having to know this exists.
 ///
+/// The state alone cannot tell two matches on the same queue apart, though:
+/// match A cancelled, a requeue, and match B found on that queue looks exactly
+/// like A still waiting, and A's timer called B off long before B's own two
+/// minutes were up. So each match found also takes a generation, and only the
+/// timer armed for the newest one may act.
+///
 /// It reports the same [`MatchmakingState::Cancelled`] the server sends when
 /// it cancels a match itself, so the rest of the client needs no new case: the
 /// difference is only who noticed.
-fn watch_for_match_start(queue_name: String, out: &EventSink) {
+fn watch_for_match_start(queue_name: String, ctx: &ServiceCtx, out: &EventSink) {
+    let matches = ctx.lobby_match_generation.clone();
+    let generation = matches.begin();
     let out = out.clone();
     tokio::spawn(async move {
         tokio::time::sleep(MATCH_START_TIMEOUT).await;
 
         let still_waiting = out.with_state(|state| {
-            matches!(
-                &state.lobby.matchmaking,
-                MatchmakingState::MatchFound { queue_name: found } if *found == queue_name
-            )
+            match_still_waiting(&matches, generation, &state.lobby.matchmaking, &queue_name)
         });
         if !still_waiting {
             return;
@@ -461,6 +458,22 @@ fn watch_for_match_start(queue_name: String, out: &EventSink) {
     });
 }
 
+/// Whether the match a [`watch_for_match_start`] timer was armed for is still
+/// sitting at `MatchFound`: the newest match found, and its queue still the
+/// one on screen.
+fn match_still_waiting(
+    matches: &LatestRequest,
+    generation: u64,
+    matchmaking: &MatchmakingState,
+    queue_name: &str,
+) -> bool {
+    matches.is_current(generation)
+        && matches!(
+            matchmaking,
+            MatchmakingState::MatchFound { queue_name: found } if found == queue_name
+        )
+}
+
 async fn handle_update(
     update: LobbyUpdate,
     ctx: &ServiceCtx,
@@ -475,6 +488,7 @@ async fn handle_update(
             out.emit(LobbyEvent::Connected);
             restore_player_vetoes(ctx, out);
             restore_game_session(ctx);
+            load_avatars(ctx, out);
         }
         // Back to the state the first attempt starts in. Deliberately not
         // `Disconnected`, which clears every list the lobby has sent: the
@@ -651,7 +665,7 @@ async fn handle_update(
                         Some(NotificationAction::OpenMatchmaking),
                     );
                 }
-                watch_for_match_start(queue.to_string(), out);
+                watch_for_match_start(queue.to_string(), ctx, out);
             }
             out.emit(LobbyEvent::MatchmakingUpdated { state });
             if terminate_cancelled_game {
@@ -713,7 +727,17 @@ async fn handle_update(
                 launch: launch.clone(),
             });
             if launch_enabled {
-                *session = launcher::start(&launch, ctx, out, already_prepared).await;
+                // A launch order is new work, with an id of its own: whatever
+                // an earlier join did, this one has not been cancelled, and a
+                // `CancelJoin` pressed while it prepares reaches it.
+                let operations = &ctx.lobby_operations;
+                let operation = operations.begin();
+                *session = operations
+                    .run(
+                        operation,
+                        launcher::start(&launch, ctx, out, already_prepared),
+                    )
+                    .await;
                 if session.is_some()
                     && out.with_state(|state| state.settings.notifications.game_launched)
                 {
@@ -726,10 +750,12 @@ async fn handle_update(
                     );
                 }
             }
-            ctx.lobby_join_active.finish();
+            // The server answered the join, so whichever join was waiting on
+            // that answer is done with the slot.
+            ctx.lobby_operations.release_any_join();
         }
         LobbyUpdate::JoinFailed { id, reason } => {
-            ctx.lobby_join_active.finish();
+            ctx.lobby_operations.release_any_join();
             out.emit(LobbyEvent::JoinFailed { id, reason })
         }
         LobbyUpdate::Relations { friends, foes } => {
@@ -779,6 +805,9 @@ async fn handle_update(
             // chat has connected, so this is the second half of that race.
             if names_us {
                 join_auto_channels(ctx, out);
+                // The other half of the avatar fallback's input; the list is
+                // the first half, asked for at login.
+                reconcile_own_avatar(ctx, out).await;
             }
         }
         LobbyUpdate::PlayersRemoved(players) => {
@@ -805,7 +834,10 @@ async fn handle_update(
                 logins: players.into_iter().map(|player| player.login).collect(),
             });
         }
-        LobbyUpdate::Avatars(avatars) => out.emit(LobbyEvent::AvatarsLoaded { avatars }),
+        LobbyUpdate::Avatars(avatars) => {
+            out.emit(LobbyEvent::AvatarsLoaded { avatars });
+            reconcile_own_avatar(ctx, out).await;
+        }
         LobbyUpdate::Notice { style, text } => {
             let (kind, title) = match style {
                 ServerNoticeStyle::Info => (NotificationKind::ServerNotice, "Message from server"),
@@ -821,6 +853,12 @@ async fn handle_update(
                 terminate_game(ctx, out);
                 *session = None;
             } else if style == ServerNoticeStyle::Kick {
+                // The server ended this session on purpose, which is not a
+                // drop to recover from. Reconnecting would also fight
+                // whatever caused the kick: signed in from another client,
+                // the two would take the session from each other every few
+                // seconds. A later explicit Connect arms the watchdog again.
+                ctx.lobby_auto_reconnect.disarm();
                 ctx.ports.lobby.disconnect();
             }
         }
@@ -866,25 +904,6 @@ fn join_auto_channels(ctx: &ServiceCtx, out: &EventSink) {
     }
 }
 
-/// Send the remembered matchmaker vetoes back to the server, once the lobby
-/// has authenticated.
-///
-/// The server keeps a player's vetoes on their session object and nowhere
-/// else: no table behind them, and no command to ask for them. Logging out
-/// discards them, and a client that only ever listens for `vetoes_info` starts
-/// every session with none, whatever the player saved last time. That is the
-/// whole of "not persistent after logging in and out even after saving".
-///
-/// Replaying them is safe rather than optimistic. `set_player_vetoes` is
-/// validated and capped against the current pools on arrival, exactly as a
-/// selection made by hand is, and the server answers with `vetoes_info` when
-/// it had to change anything, which is handled above and writes the corrected
-/// set back. A pool that shrank between sessions therefore corrects itself on
-/// the first login after it did.
-///
-/// Also emits `VetoesUpdated`, because `Disconnected` clears the lobby's copy:
-/// without it the Play tab would show an empty selection while the server held
-/// the real one.
 /// Compare every queue's map pools with the ones seen last time, announce the
 /// queues that changed, and remember what was seen (#406).
 ///
@@ -966,6 +985,25 @@ fn queue_display_name(queue_name: &str) -> String {
     }
 }
 
+/// Send the remembered matchmaker vetoes back to the server, once the lobby
+/// has authenticated.
+///
+/// The server keeps a player's vetoes on their session object and nowhere
+/// else: no table behind them, and no command to ask for them. Logging out
+/// discards them, and a client that only ever listens for `vetoes_info` starts
+/// every session with none, whatever the player saved last time. That is the
+/// whole of "not persistent after logging in and out even after saving".
+///
+/// Replaying them is safe rather than optimistic. `set_player_vetoes` is
+/// validated and capped against the current pools on arrival, exactly as a
+/// selection made by hand is, and the server answers with `vetoes_info` when
+/// it had to change anything, which is handled above and writes the corrected
+/// set back. A pool that shrank between sessions therefore corrects itself on
+/// the first login after it did.
+///
+/// Also emits `VetoesUpdated`, because `Disconnected` clears the lobby's copy:
+/// without it the Play tab would show an empty selection while the server held
+/// the real one.
 fn restore_player_vetoes(ctx: &ServiceCtx, out: &EventSink) {
     let vetoes = out.with_state(|state| state.settings.matchmaker_vetoes.clone());
     if vetoes.is_empty() {
@@ -975,6 +1013,156 @@ fn restore_player_vetoes(ctx: &ServiceCtx, out: &EventSink) {
         vetoes: vetoes.clone(),
     });
     ctx.ports.lobby.set_player_vetoes(vetoes);
+}
+
+/// Ask the server which avatars this account may wear.
+///
+/// The picker asks when it opens. Login asks too, because the avatar fallback
+/// below cannot tell a lapsed avatar from a cleared one without the list.
+fn load_avatars(ctx: &ServiceCtx, out: &EventSink) {
+    out.emit(LobbyEvent::AvatarsLoading);
+    if !ctx.ports.lobby.request_avatars() {
+        out.emit(LobbyEvent::AvatarsLoadFailed {
+            reason: "Connect to the FAF lobby before loading avatars.".into(),
+        });
+    }
+}
+
+/// Send an avatar choice, `None` for no avatar, and mirror it into the player
+/// card and the player directory.
+///
+/// Shared by the picker and the fallback. Returns whether the choice was sent;
+/// a refusal has already been reported on the selection status.
+fn select_avatar(ctx: &ServiceCtx, out: &EventSink, url: Option<String>) -> bool {
+    out.emit(LobbyEvent::AvatarSelectionStarted);
+    let (available, player, profile) = out.with_state(|state| {
+        let available = url.as_deref().and_then(|url| {
+            state
+                .lobby
+                .available_avatars
+                .iter()
+                .find(|avatar| avatar.url == url)
+                .cloned()
+        });
+        let player = state.auth.player.clone();
+        let profile = player.as_ref().and_then(|player| {
+            state
+                .social
+                .players
+                .iter()
+                .find(|profile| profile.id == player.id)
+                .cloned()
+        });
+        (available, player, profile)
+    });
+    let choice = match url.as_deref() {
+        Some(_) => match available {
+            Some(avatar) => Some(avatar),
+            None => {
+                out.emit(LobbyEvent::AvatarSelectionFailed {
+                    reason: "That avatar is not in the server-provided list.".into(),
+                });
+                return false;
+            }
+        },
+        None => None,
+    };
+
+    if !ctx.ports.lobby.select_avatar(url.clone()) {
+        out.emit(LobbyEvent::AvatarSelectionFailed {
+            reason: "The avatar could not be sent because the lobby is disconnected.".into(),
+        });
+        return false;
+    }
+
+    out.emit(LobbyEvent::AvatarSelectionSucceeded);
+    if let Some(player) = player {
+        let tooltip = choice
+            .as_ref()
+            .map(|avatar| avatar.tooltip.clone())
+            .unwrap_or_default();
+        out.emit(PlayerCardEvent::AvatarSelected {
+            player_id: player.id,
+            url: url.clone(),
+            tooltip: tooltip.clone(),
+        });
+
+        if let Some(mut profile) = profile {
+            profile.avatar_url = url.unwrap_or_default();
+            profile.avatar_tooltip = tooltip;
+            out.emit(SocialEvent::PlayersSeen {
+                players: vec![profile],
+            });
+        }
+    }
+    true
+}
+
+/// Record `url` (empty for no avatar) as the newest avatar choice, and save it
+/// when that changed anything.
+async fn remember_own_avatar(ctx: &ServiceCtx, out: &EventSink, url: &str) {
+    let history = out.with_state(|state| state.settings.avatar_history.clone());
+    let next = remember_avatar(&history, url);
+    if next == history {
+        return;
+    }
+    out.emit(SettingsEvent::AvatarHistoryChanged { history: next });
+    crate::services::settings::persist(ctx, out).await;
+}
+
+/// Put the previous avatar back when the one chosen last has stopped being
+/// the player's, typically a rotational tournament avatar that went to the
+/// next winner; see `faf_domain::state::reconcile_avatar` for the rules.
+///
+/// Needs two things the server sends separately and in no fixed order, the
+/// list of avatars this account may wear and our own `player_info`, so it is
+/// called when either arrives and does nothing until both have. Running it
+/// again is harmless: once the choice is remembered, the next pass keeps it.
+async fn reconcile_own_avatar(ctx: &ServiceCtx, out: &EventSink) {
+    let inputs = out.with_state(|state| {
+        if state.lobby.avatar_list_status != AvatarListStatus::Ready {
+            return None;
+        }
+        let me = state.auth.player.as_ref()?;
+        let current = state
+            .social
+            .players
+            .iter()
+            .find(|profile| profile.id == me.id)?
+            .avatar_url
+            .clone();
+        Some((
+            state.settings.avatar_history.clone(),
+            current,
+            state.lobby.available_avatars.clone(),
+        ))
+    });
+    let Some((history, current, available)) = inputs else {
+        return;
+    };
+    match reconcile_avatar(&history, &current, &available) {
+        AvatarReconciliation::Keep => {}
+        AvatarReconciliation::Remember(url) => remember_own_avatar(ctx, out, &url).await,
+        AvatarReconciliation::Restore(url) => {
+            if !select_avatar(ctx, out, Some(url.clone())) {
+                return;
+            }
+            remember_own_avatar(ctx, out, &url).await;
+            let name = available
+                .iter()
+                .find(|avatar| avatar.url == url)
+                .map(|avatar| avatar.tooltip.trim().to_string())
+                .filter(|tooltip| !tooltip.is_empty())
+                .unwrap_or_else(|| "the one you wore before".into());
+            notifications::add(
+                out,
+                NotificationKind::AvatarRestored,
+                "Avatar restored",
+                format!("Your last avatar is no longer available. Switched back to {name}."),
+                None,
+            );
+        }
+    }
 }
 
 /// Put the server's game connection back after the socket that held it went.
@@ -1004,7 +1192,7 @@ fn restore_game_session(ctx: &ServiceCtx) {
 fn terminate_game(ctx: &ServiceCtx, out: &EventSink) {
     ctx.ports.process.kill();
     ctx.ports.ice.stop();
-    ctx.lobby_join_active.finish();
+    ctx.lobby_operations.release_any_join();
     ctx.running_game.clear();
     out.emit(LobbyEvent::GameTerminated);
 }
@@ -1597,6 +1785,37 @@ mod tests {
             )]),
             sim_mods: BTreeMap::new(),
         }
+    }
+
+    /// Match A found, cancelled, a requeue, match B found on the same queue.
+    /// When A's two minutes are up the state is `MatchFound` on that queue
+    /// again, which on its own reads as A still waiting: A's timer must not
+    /// call B off. B's own timer still can.
+    #[test]
+    fn an_older_match_timer_does_not_cancel_a_newer_match_on_the_same_queue() {
+        let matches = LatestRequest::default();
+        let found = MatchmakingState::MatchFound {
+            queue_name: "ladder1v1".into(),
+        };
+
+        let first = matches.begin();
+        assert!(match_still_waiting(&matches, first, &found, "ladder1v1"));
+
+        let second = matches.begin();
+        assert!(!match_still_waiting(&matches, first, &found, "ladder1v1"));
+        assert!(match_still_waiting(&matches, second, &found, "ladder1v1"));
+
+        // The state checks that were always there still hold for the newest.
+        let launching = MatchmakingState::Launching {
+            queue_name: "ladder1v1".into(),
+        };
+        assert!(!match_still_waiting(
+            &matches,
+            second,
+            &launching,
+            "ladder1v1"
+        ));
+        assert!(!match_still_waiting(&matches, second, &found, "tmm2v2"));
     }
 
     #[test]

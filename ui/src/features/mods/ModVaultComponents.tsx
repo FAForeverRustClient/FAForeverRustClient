@@ -6,6 +6,7 @@ import { Icon } from "../../design-system/Icon";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
 import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
 import { openReviews } from "../../shared/openReviews";
+import { plainError } from "../../shared/plainError";
 import type {
   InstalledMod,
   ModInstallStatus,
@@ -22,7 +23,7 @@ export function installNote(status: ModInstallStatus): string | null {
   switch (status.type) {
     case "idle": return null;
     case "installing": return t("mods.vault.working", { uid: status.payload.uid });
-    case "failed": return t("mods.vault.installFailed", { reason: status.payload.reason });
+    case "failed": return t("mods.vault.installFailed", { reason: plainError(status.payload.reason) });
   }
 }
 
@@ -30,12 +31,30 @@ export function toggleNote(status: ModToggleStatus): string | null {
   switch (status.type) {
     case "idle": return null;
     case "toggling": return t("mods.vault.updating", { uid: status.payload.uid });
-    case "failed": return t("mods.vault.toggleFailed", { reason: status.payload.reason });
+    case "failed": return t("mods.vault.toggleFailed", { reason: plainError(status.payload.reason) });
   }
 }
 
 export function cleanDescription(value: string): string {
-  return value.replace(/^<LOC\s+[^>]+>/i, "").trim();
+  return value
+    .replace(/^<LOC\s+[^>]+>/i, "")
+    .trim()
+    // Lua long-string brackets left on the text. `mod_info.lua` writes a long
+    // description as `[[ ... ]]`, and a parser that reads it a line at a time
+    // keeps only the opening `[[`: the vault itself serves "[[" as the whole
+    // description of some mods, which the details dialog printed as is.
+    .replace(/^\[=*\[/, "")
+    .replace(/\]=*\]$/, "")
+    .trim();
+}
+
+/**
+ * The description worth showing: the vault's when it says anything once
+ * cleaned, otherwise the one in the installed `mod_info.lua`, which the
+ * client parses itself and may have read whole where the vault did not.
+ */
+export function bestDescription(vault: string | undefined, local: string): string {
+  return cleanDescription(vault ?? "") || cleanDescription(local);
 }
 
 function ratingLabel(mod: VaultMod): string {

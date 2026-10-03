@@ -254,6 +254,11 @@ async fn connect_streams_game_snapshots() {
         events.recv().await.unwrap(),
         AppEvent::Lobby(faf_domain::state::LobbyEvent::Connected)
     ));
+    // Login asks for the avatar list, which the avatar fallback needs.
+    assert!(matches!(
+        events.recv().await.unwrap(),
+        AppEvent::Lobby(faf_domain::state::LobbyEvent::AvatarsLoading)
+    ));
 
     // The fake sends an immediate first snapshot: no waiting on the tick.
     match events.recv().await.unwrap() {
@@ -527,6 +532,10 @@ async fn duplicate_connect_is_dropped_single_flight() {
     ));
     assert!(matches!(
         events.recv().await.unwrap(),
+        AppEvent::Lobby(faf_domain::state::LobbyEvent::AvatarsLoading)
+    ));
+    assert!(matches!(
+        events.recv().await.unwrap(),
         AppEvent::Lobby(faf_domain::state::LobbyEvent::GamesUpdated { .. })
     ));
 
@@ -592,4 +601,108 @@ async fn join_emits_joining_then_launching() {
         JoinState::Launched { launch } => assert_eq!(launch.uid, 2),
         other => panic!("expected Launched, got {other:?}"),
     }
+}
+
+/// The fake lobby's avatar list holds the two Galactic War avatars; the
+/// tournament one below is in neither, which is what a lapsed one looks like.
+const AEON_AVATAR: &str = "https://content.faforever.com/faf/avatars/GW_Aeon.png";
+const CUP_AVATAR: &str = "https://content.faforever.com/faf/avatars/cup_winner.png";
+
+struct AvatarHistorySettings {
+    history: Vec<String>,
+    saved: Arc<Mutex<Vec<SettingsState>>>,
+}
+
+#[async_trait]
+impl SettingsPort for AvatarHistorySettings {
+    async fn load(&self) -> SettingsState {
+        SettingsState {
+            game: faf_domain::state::GamePreferences {
+                cache_lifetime_days: None,
+                ..faf_domain::state::GamePreferences::default()
+            },
+            avatar_history: self.history.clone(),
+            ..SettingsState::default()
+        }
+    }
+
+    async fn save(&self, settings: &SettingsState) {
+        self.saved.lock().unwrap().push(settings.clone());
+    }
+}
+
+#[tokio::test]
+async fn a_lapsed_tournament_avatar_is_replaced_by_the_one_chosen_before_it() {
+    let lobby = FakeLobby::default();
+    let saved = Arc::new(Mutex::new(Vec::new()));
+    let ports = Ports {
+        lobby: Arc::new(lobby.clone()),
+        settings: Arc::new(AvatarHistorySettings {
+            history: vec![CUP_AVATAR.into(), AEON_AVATAR.into()],
+            saved: saved.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+
+    app.dispatch_and_wait(faf_domain::state::SettingsCommand::Load.into())
+        .await
+        .unwrap();
+    app.dispatch_and_wait(faf_domain::state::AuthCommand::LoginTest.into())
+        .await
+        .unwrap();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    wait_for_initial_games(&mut events).await;
+
+    // Login asked for the avatar list; our own `player_info` is the other half,
+    // and it names no avatar: the server stopped sending the lapsed one.
+    assert!(
+        lobby.push_update(LobbyUpdate::PlayersSeen(vec![PlayerProfile {
+            id: 42,
+            login: "TestCommander".into(),
+            ..PlayerProfile::default()
+        }]))
+    );
+
+    let mut notified = false;
+    for _ in 0..200 {
+        if app
+            .snapshot()
+            .settings
+            .avatar_history
+            .first()
+            .map(String::as_str)
+            == Some(AEON_AVATAR)
+            && notified
+        {
+            break;
+        }
+        while let Ok(event) = events.try_recv() {
+            if let AppEvent::Notifications(NotificationEvent::Added { notification }) = event {
+                notified |= notification.kind == NotificationKind::AvatarRestored;
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
+    let snapshot = app.snapshot();
+    assert_eq!(
+        snapshot.settings.avatar_history,
+        vec![AEON_AVATAR.to_string(), CUP_AVATAR.to_string()]
+    );
+    let me = snapshot
+        .social
+        .players
+        .iter()
+        .find(|player| player.id == 42)
+        .unwrap();
+    assert_eq!(me.avatar_url, AEON_AVATAR);
+    assert!(notified, "the switch is announced once");
+    assert_eq!(
+        saved.lock().unwrap().last().unwrap().avatar_history,
+        snapshot.settings.avatar_history,
+        "the new order is saved, so the next login does not fall back again"
+    );
 }

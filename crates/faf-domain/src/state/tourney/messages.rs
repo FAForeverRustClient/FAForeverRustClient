@@ -284,6 +284,8 @@ pub enum TourneyCommand {
     UploadDescImage {
         tournament_id: String,
         data_url: String,
+        /// The form's id for this paste, handed back with the answer.
+        request_id: u32,
     },
     /// Read one of the site's documents: the account, the pending bar, the
     /// Hall of Fame, the console, or an access status.
@@ -946,11 +948,22 @@ pub enum TourneyEvent {
     },
     /// The organiser picked somebody, or left the field: drop the list.
     AccountSearchCleared,
-    RatingChecking,
+    /// The eligibility check for one event started. Each of the three carries
+    /// the event it is about, because the answer can arrive after the reader
+    /// has moved to another one, and a verdict is only true of the event it
+    /// was asked for.
+    #[serde(rename_all = "camelCase")]
+    RatingChecking {
+        tournament_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
     RatingChecked {
+        tournament_id: String,
         check: RatingCheck,
     },
+    #[serde(rename_all = "camelCase")]
     RatingCheckFailed {
+        tournament_id: String,
         reason: String,
         kind: RequestFailureKind,
     },
@@ -988,9 +1001,18 @@ pub enum TourneyEvent {
     ArticleImageUploaded {
         url: String,
     },
-    /// A picture pasted into an event's text was stored; its path.
+    /// A picture pasted into an event's text was stored; its path, and the
+    /// paste it answers.
+    #[serde(rename_all = "camelCase")]
     DescImageUploaded {
+        request_id: u32,
         url: String,
+    },
+    /// A pasted picture could not be stored. Its own event, so the form can
+    /// say which one failed rather than waiting for an answer that never comes.
+    #[serde(rename_all = "camelCase")]
+    DescImageUploadFailed {
+        request_id: u32,
     },
     TemplateLoading,
     TemplateLoaded {

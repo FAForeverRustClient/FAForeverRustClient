@@ -520,11 +520,12 @@ async fn the_opt_out_is_a_preference_the_settings_page_can_change() {
     let h = harness("0.2.0", Ok(None), Ok("x".into()));
     h.app
         .dispatch(
-            SettingsCommand::SetUpdates {
-                preferences: UpdatePreferences {
+            SettingsCommand::PatchUpdates {
+                patch: UpdatePreferences {
                     automatic: false,
                     pre_release: false,
-                },
+                }
+                .into(),
             }
             .into(),
         )
@@ -547,11 +548,12 @@ async fn the_prerelease_preference_selects_the_channel_the_port_is_asked_for() {
     let h = harness("0.2.0", Ok(None), Ok("x".into()));
     h.app
         .dispatch(
-            SettingsCommand::SetUpdates {
-                preferences: UpdatePreferences {
+            SettingsCommand::PatchUpdates {
+                patch: UpdatePreferences {
                     automatic: true,
                     pre_release: true,
-                },
+                }
+                .into(),
             }
             .into(),
         )
