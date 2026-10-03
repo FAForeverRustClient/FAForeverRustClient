@@ -13,7 +13,8 @@
 use faf_app::infra::fake_ports;
 use faf_app::App;
 use faf_domain::protocol::map_generator::GeneratorOptions;
-use faf_domain::state::{GamePreferences, MapGeneratorCommand, SettingsCommand};
+use faf_domain::state::settings::GamePreferencesPatch;
+use faf_domain::state::{MapGeneratorCommand, SettingsCommand};
 
 /// What `FakeMapGenerator` reports a successful run produced.
 const OFFLINE_MAP: &str = "neroxis_map_generator_1.7.7_offline";
@@ -37,11 +38,11 @@ async fn generate(app: &App) {
 
 async fn set_keep(app: &App, keep: bool) {
     app.dispatch_and_wait(
-        SettingsCommand::SetGame {
-            preferences: GamePreferences {
-                keep_generated_maps: keep,
-                ..GamePreferences::default()
-            },
+        SettingsCommand::PatchGame {
+            patch: Box::new(GamePreferencesPatch {
+                keep_generated_maps: Some(keep),
+                ..GamePreferencesPatch::default()
+            }),
         }
         .into(),
     )

@@ -4845,4 +4845,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "leaderboard.leagues.loadingSeasons": "Cargando temporadas…",
   "leaderboard.leagues.loadingRankings": "Cargando la clasificación de la temporada…",
   "leaderboard.ratings.loadingRankings": "Cargando la clasificación…",
+  "tournaments.form.imagesUploading": { one: "Subiendo {count} imagen…", other: "Subiendo {count} imágenes…" },
+  "tournaments.form.imagesFailed": { one: "No se pudo subir {count} imagen pegada. Pégala de nuevo para reintentarlo.", other: "No se pudieron subir {count} imágenes pegadas. Pégalas de nuevo para reintentarlo." },
 };

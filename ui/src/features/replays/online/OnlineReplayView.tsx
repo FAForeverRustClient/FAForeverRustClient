@@ -63,8 +63,8 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     void ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, replaysView: mode } },
+        type: "patchBrowsing",
+        payload: { patch: { replaysView: mode } },
       },
     });
   };
@@ -156,8 +156,8 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
       void ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...browsing, replayVaultPlayer: newQuery.player } },
+          type: "patchBrowsing",
+          payload: { patch: { replayVaultPlayer: newQuery.player } },
         },
       });
     }

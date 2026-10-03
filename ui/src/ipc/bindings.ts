@@ -190,6 +190,19 @@ export type AppearancePreferences = {
 	replayFlags: boolean,
 };
 
+/**  A change to [`AppearancePreferences`]. */
+export type AppearancePreferencesPatch = {
+	density?: UiDensity,
+	reduceMotion?: boolean,
+	uiScale?: number,
+	gameTileColumns?: number,
+	sidebarWidth?: number,
+	hoverPanels?: boolean,
+	hoverOpenDelayMs?: number,
+	hoverCloseDelayMs?: number,
+	replayFlags?: boolean,
+};
+
 /**  An archived tournament, hidden from everyone until restored. */
 export type ArchivedTourney = {
 	id: string,
@@ -537,6 +550,43 @@ export type BrowsingPreferences = {
 	 *  is one-time and the old keys can be removed on a later confirmed load.
 	 */
 	legacyStorageMigrated: boolean,
+};
+
+/**
+ *  A change to [`BrowsingPreferences`], the group with the most writers:
+ *  nearly every list, vault and lobby view remembers something here.
+ */
+export type BrowsingPreferencesPatch = {
+	customGamesView?: CustomGameView,
+	replaysView?: CustomGameView,
+	liveReplayView?: CustomGameView,
+	matchmakerUnselectedQueues?: string[],
+	matchmakerFactions?: string[],
+	matchmakerChatWidth?: number,
+	favoriteMaps?: string[],
+	favoriteMods?: string[],
+	mapVaultPreset?: string,
+	modVaultPreset?: string,
+	mapVaultSort?: string,
+	modVaultSort?: string,
+	vaultPageSize?: number,
+	replayListColumns?: number[],
+	replayListOrder?: number[],
+	liveReplayColumns?: number[],
+	liveReplayOrder?: number[],
+	coopBoardColumns?: number[],
+	matchmakerRecentColumns?: number[],
+	matchmakerRecentOrder?: number[],
+	modPresets?: ModPreset[],
+	leaderboardRatingColumns?: string[],
+	replayVaultPlayer?: string,
+	replayChatChannel?: string,
+	replayChatTransfers?: ReplayChatTransfers,
+	legacyStorageMigrated?: boolean,
+	customGamesBrowser?: CustomGameBrowserPreferencesPatch,
+	liveReplayFilters?: LiveReplayFiltersPatch,
+	hostGame?: HostGamePreferencesPatch,
+	hostCoop?: HostGamePreferencesPatch,
 };
 
 export type CachedGameVersion = {
@@ -1041,6 +1091,17 @@ export type ChatNameColors = {
 	players: { [key in string]: string },
 };
 
+/**  A change to some of the colours in [`ChatNameColors`]. */
+export type ChatNameColorsPatch = {
+	selfColor?: string,
+	friends?: string,
+	foes?: string,
+	moderators?: string,
+	admins?: string,
+	pings?: string,
+	players?: { [key in string]: string },
+};
+
 /**  One post in a tournament chat room. */
 export type ChatPost = {
 	id: string,
@@ -1132,6 +1193,27 @@ export type ChatPreferences = {
 	 *  without moving this field, by widening the value to a map.
 	 */
 	hiddenRosterCategories: string[],
+};
+
+/**  A change to [`ChatPreferences`]. */
+export type ChatPreferencesPatch = {
+	showJoinsParts?: boolean,
+	showTimestamps?: boolean,
+	use24HourTime?: boolean,
+	coloredNames?: boolean,
+	rosterWidth?: number,
+	fontSize?: number,
+	senderWidth?: number,
+	hideFoeMessages?: boolean,
+	visibleMessageLimit?: number,
+	autoJoinChannels?: string[],
+	autoJoinLanguageChannel?: boolean,
+	autoJoinNewbieChannel?: boolean,
+	newbieChannelGameThreshold?: number,
+	mutedPlayers?: string[],
+	readMarkers?: { [key in string]: string },
+	hiddenRosterCategories?: string[],
+	nameColors?: ChatNameColorsPatch,
 };
 
 /**  The quoted post above a reply. */
@@ -1569,6 +1651,13 @@ export type ConnectivityPreferences = {
 	selectionVersion: number,
 };
 
+/**  A change to [`ConnectivityPreferences`]. */
+export type ConnectivityPreferencesPatch = {
+	adapter?: IceAdapter,
+	hostAdapter?: IceAdapter,
+	selectionVersion?: number,
+};
+
 /**  Which parts of the console the server lets this account use. */
 export type ConsoleRole = "admin" | "director" | "editor";
 
@@ -1793,6 +1882,21 @@ export type CustomGameBrowserPreferences = {
 	detailWidth: number,
 };
 
+/**  A change to [`CustomGameBrowserPreferences`]. */
+export type CustomGameBrowserPreferencesPatch = {
+	sort?: CustomGameSort,
+	sortReversed?: boolean,
+	hidePrivate?: boolean,
+	hideModded?: boolean,
+	hideUnranked?: boolean,
+	hideFoes?: boolean,
+	applyFilters?: boolean,
+	rules?: CustomGameFilterRule[],
+	columnWidths?: number[],
+	columnOrder?: number[],
+	detailWidth?: number,
+};
+
 export type CustomGameFilterConstraint = "contains" | "starts" | "ends" | "equals" | "notEquals" | "above" | "below";
 
 export type CustomGameFilterField = "titleOrMap" | "title" | "host" | "map" | "mod" | "rating";
@@ -1844,6 +1948,14 @@ export type DebugPreferences = {
 	mapGeneratorWindow: boolean,
 };
 
+/**  A change to [`DebugPreferences`]. */
+export type DebugPreferencesPatch = {
+	iceAdapterDebugWindow?: boolean,
+	iceAdapterInfoWindow?: boolean,
+	iceAdapterConsoleWindow?: boolean,
+	mapGeneratorWindow?: boolean,
+};
+
 /**  Everything a generated map name reveals about how it was made. */
 export type DecodedMapName = {
 	/**  Generator release that produced it, e.g. `1.22.1`. */
@@ -1888,6 +2000,15 @@ export type DecodedStyle =
 { kind: "custom"; terrainStyle: string | null; textureStyle: string | null; resourceStyle: string | null; propStyle: string | null; reclaimDensity: number | null; resourceDensity: number | null };
 
 /**
+ *  What became of one pasted picture: its stored path, or `None` when it
+ *  could not be stored.
+ */
+export type DescImageAnswer = {
+	requestId: number,
+	url: string | null,
+};
+
+/**
  *  A device-flow login in progress.
  *
  *  The user code and the URL are both shown: the code has to be readable and
@@ -1921,6 +2042,12 @@ export type DiscordPreferences = {
 	 *  refused even if someone still holds one.
 	 */
 	disallowJoins: boolean,
+};
+
+/**  A change to [`DiscordPreferences`]. */
+export type DiscordPreferencesPatch = {
+	enabled?: boolean,
+	disallowJoins?: boolean,
 };
 
 /**
@@ -2150,6 +2277,15 @@ export type EventsEvent = { type: "loading" } | { type: "loaded"; payload: {
 export type EventsPreferences = {
 	weekStart: WeekStart,
 	reminders: EventReminder[],
+};
+
+/**
+ *  A change to [`EventsPreferences`]. The settings tab only ever names the
+ *  week start; the reminder list belongs to the Events tab's own commands.
+ */
+export type EventsPreferencesPatch = {
+	weekStart?: WeekStart,
+	reminders?: EventReminder[],
 };
 
 /**
@@ -2734,6 +2870,24 @@ export type GamePreferences = {
 	steamPresence?: boolean,
 };
 
+/**
+ *  A change to [`GamePreferences`]. The two cache limits are optional
+ *  preferences, so `null` for either is "no limit", not "unchanged".
+ */
+export type GamePreferencesPatch = {
+	additionalArguments?: string[],
+	launchWrapper?: string,
+	autoGenerateMaps?: boolean,
+	confirmDownloadsBeforeJoining?: boolean,
+	cacheLifetimeDays?: number | null,
+	cacheSizeAlertGb?: number | null,
+	cacheRollingBranches?: boolean,
+	pipeLiveReplay?: boolean,
+	keepGeneratedMaps?: boolean,
+	keepGeneratedMapsLimit?: number,
+	steamPresence?: boolean,
+};
+
 export type GeneralPreferences = {
 	/**  Destination selected when the persisted settings are loaded. */
 	startPage: Tab,
@@ -2752,6 +2906,13 @@ export type GeneralPreferences = {
 	 *  asked for one, and because somebody who hosts under half a dozen
 	 *  rotating titles is served by it.
 	 */
+	rememberTypedEntries?: boolean,
+};
+
+/**  A change to [`GeneralPreferences`]; see `preference_patch!`. */
+export type GeneralPreferencesPatch = {
+	startPage?: Tab,
+	autoLogin?: boolean,
 	rememberTypedEntries?: boolean,
 };
 
@@ -3199,6 +3360,22 @@ export type HostGamePreferences = {
 };
 
 /**
+ *  A change to [`HostGamePreferences`]. Either rating bound may be `null`,
+ *  which is an open end rather than "unchanged".
+ */
+export type HostGamePreferencesPatch = {
+	title?: string,
+	featuredMod?: string,
+	visibility?: string,
+	map?: string,
+	passwordEnabled?: boolean,
+	password?: string,
+	enforceRatingRange?: boolean,
+	ratingMin?: number | null,
+	ratingMax?: number | null,
+};
+
+/**
  *  Whether this account may host a tournament at all.
  *
  *  Hosting is approval-only: the site admin grants it per account. Asked for
@@ -3579,6 +3756,19 @@ export type LiveReplayFilters = {
 	 */
 	hideUnranked?: boolean,
 	friendsOnly: boolean,
+};
+
+/**  A change to [`LiveReplayFilters`]. */
+export type LiveReplayFiltersPatch = {
+	search?: string,
+	gameType?: string,
+	featuredMod?: string,
+	activePlayers?: string,
+	maxPlayers?: string,
+	hideModded?: boolean,
+	hideSinglePlayer?: boolean,
+	hideUnranked?: boolean,
+	friendsOnly?: boolean,
 };
 
 /**
@@ -5289,6 +5479,34 @@ export type NotificationPreferences = {
 	volume: number,
 };
 
+/**  A change to [`NotificationPreferences`]. */
+export type NotificationPreferencesPatch = {
+	enabled?: boolean,
+	desktop?: boolean,
+	desktopAllKinds?: boolean,
+	sound?: boolean,
+	soundChoiceVersion?: number,
+	notifyWhenFocused?: boolean,
+	toastPosition?: ToastPosition,
+	matchFound?: boolean,
+	privateMessages?: boolean,
+	mentions?: boolean,
+	friendOnline?: boolean,
+	friendOffline?: boolean,
+	friendPlaying?: boolean,
+	newCustomGames?: boolean,
+	newCustomGamesFriendsOnly?: boolean,
+	gameFull?: boolean,
+	gameLaunched?: boolean,
+	reviewReminder?: boolean,
+	partyInvites?: boolean,
+	streamLive?: boolean,
+	mapGenerated?: boolean,
+	queueOpponentQueues?: string[],
+	volume?: number,
+	sounds?: NotificationSoundChoicesPatch,
+};
+
 /**
  *  One of the tones the client ships with.
  *
@@ -5395,6 +5613,22 @@ export type NotificationSoundChoices = {
 	other: NotificationSound,
 };
 
+/**  A change to some of the per-kind tones in [`NotificationSoundChoices`]. */
+export type NotificationSoundChoicesPatch = {
+	matchFound?: NotificationSound,
+	privateMessage?: NotificationSound,
+	mention?: NotificationSound,
+	friendOnline?: NotificationSound,
+	friendOffline?: NotificationSound,
+	friendPlaying?: NotificationSound,
+	newCustomGame?: NotificationSound,
+	gameFull?: NotificationSound,
+	gameLaunched?: NotificationSound,
+	reviewReminder?: NotificationSound,
+	partyInvite?: NotificationSound,
+	other?: NotificationSound,
+};
+
 export type NotificationState = {
 	items: ClientNotification[],
 };
@@ -5491,6 +5725,18 @@ export type PathPreferences = {
 	 *  Empty falls back to `$WINEPREFIX` and then to `~/.wine`, which is where
 	 *  a default `winecfg` prefix is.
 	 */
+	winePrefix?: string,
+};
+
+/**  A change to [`PathPreferences`]. */
+export type PathPreferencesPatch = {
+	vaultDir?: string,
+	mapsDir?: string,
+	modsDir?: string,
+	replaysDir?: string,
+	gamePrefsPath?: string,
+	mapGeneratorDir?: string,
+	javaPath?: string,
 	winePrefix?: string,
 };
 
@@ -7746,12 +7992,12 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	path: string,
 } } | { type: "setReplayGamePath"; payload: {
 	path: string,
-} } | { type: "setPaths"; payload: {
-	preferences: PathPreferences,
-} } | { type: "setGeneral"; payload: {
-	preferences: GeneralPreferences,
-} } | { type: "setAppearance"; payload: {
-	preferences: AppearancePreferences,
+} } | { type: "patchPaths"; payload: {
+	patch: PathPreferencesPatch,
+} } | { type: "patchGeneral"; payload: {
+	patch: GeneralPreferencesPatch,
+} } | { type: "patchAppearance"; payload: {
+	patch: AppearancePreferencesPatch,
 } } | { type: "setPlayerNote"; payload: {
 	player_id: number,
 	login: string,
@@ -7767,28 +8013,47 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 { type: "renameReplayTag"; payload: {
 	from: string,
 	to: string,
-} } | { type: "setNotifications"; payload: {
-	preferences: NotificationPreferences,
+} } | { type: "patchNotifications"; payload: {
+	patch: NotificationPreferencesPatch,
+} } |
+/**
+ *  Delete one sound the player added, after pointing every notification
+ *  that plays it back at a shipped tone.
+ *
+ *  One command rather than a settings write followed by a file delete in
+ *  the webview, because the order is the whole point: the file may only go
+ *  once no saved setting names it, and a webview firing both cannot know
+ *  when, or whether, the first one landed. Failure is reported as a
+ *  notification; the file is kept whenever the settings could not be
+ *  written first.
+ */
+{ type: "removeNotificationSound"; payload: {
+	name: string,
 } } |
 /**  Boxed, like the event it produces. */
-{ type: "setChat"; payload: {
-	preferences: ChatPreferences,
-} } | { type: "setGame"; payload: {
-	preferences: GamePreferences,
-} } | { type: "setDiscord"; payload: {
-	preferences: DiscordPreferences,
-} } | { type: "setConnectivity"; payload: {
-	preferences: ConnectivityPreferences,
-} } | { type: "setDebug"; payload: {
-	preferences: DebugPreferences,
-} } | { type: "setUpdates"; payload: {
-	preferences: UpdatePreferences,
-} } | { type: "setMapGenerator"; payload: {
+{ type: "patchChat"; payload: {
+	patch: ChatPreferencesPatch,
+} } | { type: "patchGame"; payload: {
+	patch: GamePreferencesPatch,
+} } | { type: "patchDiscord"; payload: {
+	patch: DiscordPreferencesPatch,
+} } | { type: "patchConnectivity"; payload: {
+	patch: ConnectivityPreferencesPatch,
+} } | { type: "patchDebug"; payload: {
+	patch: DebugPreferencesPatch,
+} } | { type: "patchUpdates"; payload: {
+	patch: UpdatePreferencesPatch,
+} } |
+/**
+ *  Whole, unlike the groups above: the generator options are one recipe
+ *  the dialog edits as a unit and saves as a unit.
+ */
+{ type: "setMapGenerator"; payload: {
 	preferences: GeneratorOptions,
-} } | { type: "setBrowsing"; payload: {
-	preferences: BrowsingPreferences,
-} } | { type: "setEvents"; payload: {
-	preferences: EventsPreferences,
+} } | { type: "patchBrowsing"; payload: {
+	patch: BrowsingPreferencesPatch,
+} } | { type: "patchEvents"; payload: {
+	patch: EventsPreferencesPatch,
 } } | { type: "checkInstalls" } | { type: "refreshGameCache" } | { type: "clearGameCache" };
 
 export type SettingsEvent = { type: "loaded"; payload: {
@@ -9284,6 +9549,8 @@ export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
 { type: "uploadDescImage"; payload: {
 	tournamentId: string,
 	dataUrl: string,
+	/**  The form's id for this paste, handed back with the answer. */
+	requestId: number,
 } } |
 /**
  *  Read one of the site's documents: the account, the pending bar, the
@@ -10011,9 +10278,20 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	kind: RequestFailureKind,
 } } |
 /**  The organiser picked somebody, or left the field: drop the list. */
-{ type: "accountSearchCleared" } | { type: "ratingChecking" } | { type: "ratingChecked"; payload: {
+{ type: "accountSearchCleared" } |
+/**
+ *  The eligibility check for one event started. Each of the three carries
+ *  the event it is about, because the answer can arrive after the reader
+ *  has moved to another one, and a verdict is only true of the event it
+ *  was asked for.
+ */
+{ type: "ratingChecking"; payload: {
+	tournamentId: string,
+} } | { type: "ratingChecked"; payload: {
+	tournamentId: string,
 	check: RatingCheck,
 } } | { type: "ratingCheckFailed"; payload: {
+	tournamentId: string,
 	reason: string,
 	kind: RequestFailureKind,
 } } | { type: "playerRatingsLoading" } | { type: "playerRatingsLoaded"; payload: {
@@ -10041,9 +10319,20 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 { type: "articleImageUploaded"; payload: {
 	url: string,
 } } |
-/**  A picture pasted into an event's text was stored; its path. */
+/**
+ *  A picture pasted into an event's text was stored; its path, and the
+ *  paste it answers.
+ */
 { type: "descImageUploaded"; payload: {
+	requestId: number,
 	url: string,
+} } |
+/**
+ *  A pasted picture could not be stored. Its own event, so the form can
+ *  say which one failed rather than waiting for an answer that never comes.
+ */
+{ type: "descImageUploadFailed"; payload: {
+	requestId: number,
 } } | { type: "templateLoading" } | { type: "templateLoaded"; payload: {
 	event: Tourney,
 } } | { type: "templateFailed"; payload: {
@@ -10470,10 +10759,12 @@ export type TourneyState = {
 	 */
 	site: TourneySite,
 	/**
-	 *  The last picture pasted into an event's text and stored, for the form
-	 *  to insert.
+	 *  The last answer to a picture pasted into an event's text, for the form
+	 *  to insert or report. It names the request it answers: the form sends one
+	 *  at a time and gives up on one that takes too long, and an answer that
+	 *  carried only the path was then credited to the next picture.
 	 */
-	descImage: string | null,
+	descImage: DescImageAnswer | null,
 	/**  The event the create form is being filled from, once read. */
 	template: Tourney | null,
 	templateStatus: TourneyLoadStatus,
@@ -11169,6 +11460,12 @@ export type UpdatePreferences = {
 	 *  between two entirely separate check tasks.
 	 */
 	preRelease: boolean,
+};
+
+/**  A change to [`UpdatePreferences`]. */
+export type UpdatePreferencesPatch = {
+	automatic?: boolean,
+	preRelease?: boolean,
 };
 
 export type UploadKind = "map" | "mod";

@@ -20,7 +20,11 @@ pub struct SingleFlight(AtomicBool);
 
 impl SingleFlight {
     pub fn try_acquire(&self) -> Option<SingleFlightGuard<'_>> {
-        self.try_start().then_some(SingleFlightGuard(self))
+        // `then`, never `then_some`: `then_some` builds its argument whether
+        // or not it is used, so a refused caller made a guard anyway, dropped
+        // it, and its `Drop` released the flight the owner still held. The
+        // next caller then started alongside the first.
+        self.try_start().then(|| SingleFlightGuard(self))
     }
 
     pub fn try_start(&self) -> bool {
@@ -98,34 +102,152 @@ impl AutoReconnect {
     }
 }
 
-/// Whether the join in flight has been called off.
+/// One piece of lobby work that owns the join state while it runs: a custom
+/// join, a host request, or the launch a server order starts.
 ///
-/// Cleared when a join starts, set by `CancelJoin`, and read at the points
-/// where a join can still be stopped without leaving something half done: after
-/// preparation returns, and before the join request goes to the server.
+/// Issued by [`LobbyOperations`] and never reused, so a preparation that is
+/// still draining after it was called off can always tell that the operation
+/// now on screen is somebody else's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LobbyOperation(u64);
+
+tokio::task_local! {
+    /// The operation the code running on this task is doing the work of.
+    ///
+    /// Set by [`LobbyOperations::run`] around the launcher's preparation, so
+    /// that the launcher's own checks (`is_cancelled`, `clear`) answer for the
+    /// operation it is preparing rather than for whichever one is newest.
+    static SCOPED_OPERATION: LobbyOperation;
+}
+
+/// Low bit of [`LobbyOperations::current`]: the current operation was called
+/// off. The rest of the word is the operation's id.
+const OPERATION_CANCELLED: u64 = 1;
+
+/// Which lobby operation is current, whether it was called off, and which one
+/// holds the join slot.
 ///
-/// A flag checked at boundaries rather than a cancellation token that aborts
-/// mid-work, because the work in question is the file loop inside the updater
-/// and stopping that mid-write is how a corrupt entry gets into the content
-/// store. Preparation therefore finishes the step it is on. That is the
-/// difference between this and clearing the join state on its own, which is
-/// what the note on `DeclineModReplacement` warned against: the state and the
-/// work now agree about whether the join is still happening.
+/// This replaced a single shared "cancelled" flag, and the difference is the
+/// bug it fixes. `CancelJoin` set the flag and released the join guard while
+/// the cancelled preparation was still running, because the updater has to
+/// finish the step it is on. The next `Join` or `Host` then cleared that same
+/// flag, so the old preparation saw "not cancelled" at its next boundary: it
+/// narrated progress again, sent its original `game_join`, and its cleanup
+/// released the guard the newer join was holding. Every operation now has its
+/// own id, the work checks that id against the current one at each boundary,
+/// and a cleanup can only release the slot it took itself.
+///
+/// Still a check at boundaries rather than a token that aborts mid-work: the
+/// work in question is the file loop inside the updater, and stopping that
+/// mid-write is how a corrupt entry gets into the content store. Preparation
+/// therefore finishes the step it is on and is no longer narrated, which is
+/// the difference between this and clearing the join state on its own (the
+/// note on `DeclineModReplacement`): the state and the work agree about
+/// whether the join is still happening.
 #[derive(Debug, Default)]
-pub struct CancelledJoin(AtomicBool);
+pub struct LobbyOperations {
+    /// Source of ids. Starts at one, so zero always means "none".
+    issued: AtomicU64,
+    /// The current operation's id shifted left by one, with
+    /// [`OPERATION_CANCELLED`] set once it is called off. One word, so that
+    /// "is this mine and still wanted" is a single load.
+    current: AtomicU64,
+    /// The operation holding the join slot, or zero when it is free.
+    ///
+    /// A custom join stays single-flight from the first click until the
+    /// server accepts or rejects it. Preparation can take minutes, so a local
+    /// component disabled-state alone is not a concurrency boundary.
+    join_slot: AtomicU64,
+}
 
-impl CancelledJoin {
-    /// A new join is starting: nothing has been cancelled yet.
-    pub fn clear(&self) {
-        self.0.store(false, Ordering::Release);
+impl LobbyOperations {
+    fn issue(&self) -> LobbyOperation {
+        LobbyOperation(self.issued.fetch_add(1, Ordering::AcqRel).wrapping_add(1))
     }
 
+    fn make_current(&self, operation: LobbyOperation) {
+        self.current.store(operation.0 << 1, Ordering::Release);
+    }
+
+    /// Start an operation that does not take the join slot (a host request,
+    /// a launch order). It supersedes whatever was current.
+    pub fn begin(&self) -> LobbyOperation {
+        let operation = self.issue();
+        self.make_current(operation);
+        operation
+    }
+
+    /// Start a custom join, or `None` when another join holds the slot.
+    ///
+    /// The slot is taken before the operation becomes current, so a refused
+    /// duplicate click cannot supersede the join it was refused for.
+    pub fn try_begin_join(&self) -> Option<LobbyOperation> {
+        let operation = self.issue();
+        self.join_slot
+            .compare_exchange(0, operation.0, Ordering::AcqRel, Ordering::Acquire)
+            .ok()?;
+        self.make_current(operation);
+        Some(operation)
+    }
+
+    /// Call off the current operation, whichever it is.
     pub fn cancel(&self) {
-        self.0.store(true, Ordering::Release);
+        self.current.fetch_or(OPERATION_CANCELLED, Ordering::AcqRel);
     }
 
+    /// Whether `operation` is still the current one and nobody called it off.
+    /// Every boundary where its work could still touch the join state, or
+    /// reach the server, asks this first.
+    pub fn is_live(&self, operation: LobbyOperation) -> bool {
+        self.current.load(Ordering::Acquire) == operation.0 << 1
+    }
+
+    /// Release the join slot if, and only if, `operation` holds it. A
+    /// cancelled join's cleanup runs after the next join may have started,
+    /// and must leave that one's slot alone.
+    pub fn release_join(&self, operation: LobbyOperation) {
+        let _ =
+            self.join_slot
+                .compare_exchange(operation.0, 0, Ordering::AcqRel, Ordering::Acquire);
+    }
+
+    /// Release the join slot whoever holds it: the server answered the join,
+    /// the user called it off, or the connection it was sent on is gone.
+    pub fn release_any_join(&self) {
+        self.join_slot.store(0, Ordering::Release);
+    }
+
+    /// Run `work` as `operation`, so the launcher's checks inside it answer
+    /// for this operation. See [`Self::is_cancelled`].
+    pub async fn run<F: std::future::Future>(
+        &self,
+        operation: LobbyOperation,
+        work: F,
+    ) -> F::Output {
+        SCOPED_OPERATION.scope(operation, work).await
+    }
+
+    /// The launcher's "new work starts uncancelled".
+    ///
+    /// Inside [`Self::run`] there is nothing to do: the operation was begun
+    /// fresh by whoever started it, and beginning another here would
+    /// supersede the very work that is about to check it. Outside one, this
+    /// begins an operation so the old behaviour holds for any caller that
+    /// does not name its operation.
+    pub fn clear(&self) {
+        if SCOPED_OPERATION.try_with(|_| ()).is_err() {
+            self.begin();
+        }
+    }
+
+    /// Whether the work running here should stop: its operation was called
+    /// off or superseded. Outside [`Self::run`], whether the current
+    /// operation was called off.
     pub fn is_cancelled(&self) -> bool {
-        self.0.load(Ordering::Acquire)
+        match SCOPED_OPERATION.try_with(|operation| *operation) {
+            Ok(operation) => !self.is_live(operation),
+            Err(_) => self.current.load(Ordering::Acquire) & OPERATION_CANCELLED != 0,
+        }
     }
 }
 
@@ -237,6 +359,79 @@ mod tests {
         drop(first);
         assert!(!flight.is_active());
         assert!(flight.try_acquire().is_some());
+    }
+
+    /// The case the eager guard got wrong: a refused second caller must leave
+    /// the first one's ownership alone, so a third is refused as well.
+    #[test]
+    fn a_refused_caller_does_not_release_the_owners_flight() {
+        let flight = SingleFlight::default();
+        let first = flight.try_acquire().expect("first caller owns the flight");
+        assert!(flight.try_acquire().is_none(), "second caller is refused");
+        assert!(flight.is_active(), "the refusal left the owner in place");
+        assert!(
+            flight.try_acquire().is_none(),
+            "third caller is refused too"
+        );
+        drop(first);
+        assert!(!flight.is_active());
+    }
+
+    /// The reported interleaving at the policy level: join A is called off,
+    /// join B starts while A's preparation is still draining. A must stay
+    /// stopped, and A's cleanup must not free B's slot.
+    #[tokio::test]
+    async fn a_cancelled_join_stays_cancelled_after_the_next_one_starts() {
+        let operations = LobbyOperations::default();
+        let first = operations.try_begin_join().expect("the slot is free");
+        assert!(operations.try_begin_join().is_none(), "one join at a time");
+        assert!(operations.is_live(first));
+
+        operations.cancel();
+        operations.release_any_join();
+        let second = operations.try_begin_join().expect("cancel frees the slot");
+
+        assert!(
+            !operations.is_live(first),
+            "the next join revived the first"
+        );
+        assert!(operations.is_live(second));
+        // The launcher's own check, made from inside each operation's work.
+        assert!(
+            operations
+                .run(first, async { operations.is_cancelled() })
+                .await
+        );
+        assert!(
+            !operations
+                .run(second, async { operations.is_cancelled() })
+                .await
+        );
+
+        // The first join's cleanup runs late and must leave the slot alone.
+        operations.release_join(first);
+        assert!(
+            operations.try_begin_join().is_none(),
+            "the slot is still held"
+        );
+        operations.release_join(second);
+        assert!(operations.try_begin_join().is_some());
+    }
+
+    /// The launcher's `clear` inside a named operation must not supersede the
+    /// operation that is about to check it.
+    #[tokio::test]
+    async fn clear_inside_an_operation_keeps_it_current() {
+        let operations = LobbyOperations::default();
+        let launch = operations.begin();
+        let cancelled = operations
+            .run(launch, async {
+                operations.clear();
+                operations.is_cancelled()
+            })
+            .await;
+        assert!(!cancelled);
+        assert!(operations.is_live(launch));
     }
 
     #[test]

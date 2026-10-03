@@ -5,11 +5,11 @@
 //! [`faf_domain::protocol::gpgnet`] and pushed on `from_adapter`; messages on
 //! `to_adapter` are encoded and written back. The launcher bridges these channels
 //! to the lobby relay. Only one adapter connection is expected per game; when it
-//! drops, the relay ends.
+//! drops, or sends framing that can never parse, the relay ends.
 
 use std::sync::{Arc, Mutex};
 
-use faf_domain::protocol::gpgnet::{decode, encode, GpgMessage};
+use faf_domain::protocol::gpgnet::{self, encode, GpgMessage};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, oneshot};
@@ -160,7 +160,8 @@ async fn run_relay(
                     }
                 };
                 buffer.extend_from_slice(&chunk[..n]);
-                for message in decode(&mut buffer) {
+                let (messages, failure) = take_messages(&mut buffer, MAX_BUFFERED_BYTES);
+                for message in messages {
                     tracing::trace!(
                         command = %message.command,
                         args = ?message.args,
@@ -171,10 +172,42 @@ async fn run_relay(
                         return;
                     }
                 }
+                if let Some(failure) = failure {
+                    tracing::warn!(
+                        reason = failure,
+                        buffered = buffer.len(),
+                        "GPGNet relay received a stream it cannot parse; dropping the adapter connection"
+                    );
+                    close_reason = "adapter sent invalid GPGNet framing";
+                    break;
+                }
             }
         }
     }
     tracing::info!(reason = close_reason, "GPGNet relay closed");
+}
+
+/// The most the relay holds for a message that has not finished arriving.
+///
+/// The decoder already refuses any frame longer than this, so an honest stream
+/// never gets near it; the check here is what keeps that a guarantee about
+/// memory rather than an assumption about the decoder.
+const MAX_BUFFERED_BYTES: usize = gpgnet::MAX_FRAME_BYTES;
+
+/// Take every complete message off `buffer`, and say whether the stream must
+/// be dropped.
+///
+/// GPGNet has no outer frame, so after a corrupt length or type there is no
+/// way to find where the next message starts. Waiting for more bytes would
+/// only grow the buffer towards a message that will never complete, and the
+/// game would sit in its lobby with no word of why. Dropping the connection
+/// ends the session where the logs can say so.
+fn take_messages(buffer: &mut Vec<u8>, cap: usize) -> (Vec<GpgMessage>, Option<&'static str>) {
+    let drained = gpgnet::drain(buffer);
+    let failure = drained
+        .invalid
+        .or_else(|| (buffer.len() > cap).then_some("incomplete message exceeds the buffer cap"));
+    (drained.messages, failure)
 }
 
 #[cfg(test)]
@@ -207,6 +240,72 @@ mod tests {
         let first = relay.start().await.expect("bind").port;
         let second = relay.start().await.expect("rebind").port;
         assert_ne!(first, second, "each run gets its own socket");
+        relay.stop();
+    }
+
+    #[test]
+    fn an_incomplete_message_past_the_cap_ends_the_stream() {
+        use faf_domain::protocol::gpgnet::GpgArg;
+
+        let message = GpgMessage::new("GameState", vec![GpgArg::Str("Lobby".into())]);
+        let bytes = encode(&message);
+
+        // Under the cap, a partial frame is simply kept for the next read.
+        let mut buffer = bytes[..bytes.len() - 1].to_vec();
+        let (messages, failure) = take_messages(&mut buffer, 64);
+        assert!(messages.is_empty());
+        assert_eq!(failure, None);
+        assert_eq!(buffer.len(), bytes.len() - 1);
+
+        // The same partial frame over a smaller cap is a reason to hang up.
+        let (_, failure) = take_messages(&mut buffer, 8);
+        assert_eq!(failure, Some("incomplete message exceeds the buffer cap"));
+
+        // Complete messages leave nothing behind, so they never trip it.
+        let mut buffer = bytes.repeat(4);
+        let (messages, failure) = take_messages(&mut buffer, 8);
+        assert_eq!(messages, vec![message; 4]);
+        assert_eq!(failure, None);
+    }
+
+    /// A corrupt frame from the adapter drops the connection after delivering
+    /// what arrived intact before it, instead of buffering forever.
+    #[tokio::test]
+    async fn invalid_framing_from_the_adapter_tears_the_connection_down() {
+        use faf_domain::protocol::gpgnet::GpgArg;
+        use std::time::Duration;
+
+        let relay = GpgRelayServer::default();
+        let mut channels = relay.start().await.expect("bind");
+        let mut adapter = tokio::net::TcpStream::connect(("127.0.0.1", channels.port))
+            .await
+            .expect("connect to the relay");
+
+        let intact = GpgMessage::new("GameState", vec![GpgArg::Str("Idle".into())]);
+        let mut bytes = encode(&intact);
+        // A string length of -1: nothing after it can be parsed.
+        bytes.extend_from_slice(&(-1_i32).to_le_bytes());
+        adapter.write_all(&bytes).await.expect("send to the relay");
+
+        let limit = Duration::from_secs(5);
+        assert_eq!(
+            tokio::time::timeout(limit, channels.from_adapter.recv())
+                .await
+                .expect("delivered"),
+            Some(intact)
+        );
+        assert_eq!(
+            tokio::time::timeout(limit, channels.from_adapter.recv())
+                .await
+                .expect("closed"),
+            None,
+            "the relay ends after invalid framing"
+        );
+        let mut rest = [0_u8; 16];
+        let read = tokio::time::timeout(limit, adapter.read(&mut rest))
+            .await
+            .expect("the socket is closed rather than left hanging");
+        assert!(matches!(read, Ok(0) | Err(_)));
         relay.stop();
     }
 
