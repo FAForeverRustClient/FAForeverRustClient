@@ -309,6 +309,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   presentation,
   mapSize,
   tracking,
+  order,
 }: {
   busy: boolean;
   game: Game;
@@ -321,12 +322,55 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   /** "10 km", or null when nothing knows it. */
   mapSize: string | null;
   tracking: LiveReplayTracking | null;
+  /** The designed column drawn at each position, as the header draws them. */
+  order: readonly number[];
 }) {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const mapLabel = mapSize ? `${presentation.displayName} (${mapSize})` : presentation.displayName;
   const started = gameStartedAt(game);
   const simMods = Object.values(game.simMods);
+  // The cells in designed order, drawn in the stored one, as the header
+  // draws its own.
+  const cells = [
+    <td key={0}><LiveMapThumbnail mapName={game.map} presentation={presentation} /></td>,
+    <td key={1} className="live-start-cell">
+      <strong>{started ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" }) : "N/A"}</strong>
+      <LiveReplayAge game={game} now={ageNow} />
+    </td>,
+    <td key={2}>
+      {/* Opens the same window a card in the grid opens, which is the
+          vault's detail window: one place for everything about a game,
+          whichever way the tab is being read. */}
+      <button className="live-game-title" onClick={() => onOpen(game.id)} aria-haspopup="dialog">
+        <strong>{game.title || presentation.displayName}</strong>
+        <small>{mapLabel} · {prettyGameType(game.gameType)}</small>
+      </button>
+    </td>,
+    <td key={3} className="live-number-cell"><strong>{game.players}</strong><small>/ {game.maxPlayers}</small></td>,
+    <td key={4} className="live-rating-cell">{game.averageRating > 0 ? game.averageRating : "N/A"}</td>,
+    <td key={5} className="live-host-cell"><LivePlayerName name={game.host} onMenu={onPlayerMenu} /></td>,
+    <td key={6} className="live-mods-cell">
+      <span>{game.modName || "faf"}</span>
+      <small title={simMods.join(", ")}>
+        {simMods.length === 0
+          ? t("replays.live.noSimMods")
+          : simMods.length === 1
+            ? simMods[0]
+            : t("replays.live.moreSimMods", { first: simMods[0], count: simMods.length - 1 })}
+      </small>
+    </td>,
+    <td key={7} className="live-watch-column-cell">
+      <LiveWatchButton
+        busy={busy}
+        game={game}
+        tracking={tracking}
+        waitSeconds={waitSeconds}
+        onMenuToggle={setMenuOpen}
+      />
+    </td>,
+  ];
+
   return (
       <tr
         className={`live-replay-row${menuOpen ? " is-menu-open" : ""}`}
@@ -346,42 +390,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
           }
         }}
       >
-        <td><LiveMapThumbnail mapName={game.map} presentation={presentation} /></td>
-        <td className="live-start-cell">
-          <strong>{started ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" }) : "N/A"}</strong>
-          <LiveReplayAge game={game} now={ageNow} />
-        </td>
-        <td>
-          {/* Opens the same window a card in the grid opens, which is the
-              vault's detail window: one place for everything about a game,
-              whichever way the tab is being read. */}
-          <button className="live-game-title" onClick={() => onOpen(game.id)} aria-haspopup="dialog">
-            <strong>{game.title || presentation.displayName}</strong>
-            <small>{mapLabel} · {prettyGameType(game.gameType)}</small>
-          </button>
-        </td>
-        <td className="live-number-cell"><strong>{game.players}</strong><small>/ {game.maxPlayers}</small></td>
-        <td className="live-rating-cell">{game.averageRating > 0 ? game.averageRating : "N/A"}</td>
-        <td className="live-host-cell"><LivePlayerName name={game.host} onMenu={onPlayerMenu} /></td>
-        <td className="live-mods-cell">
-          <span>{game.modName || "faf"}</span>
-          <small title={simMods.join(", ")}>
-            {simMods.length === 0
-              ? t("replays.live.noSimMods")
-              : simMods.length === 1
-                ? simMods[0]
-                : t("replays.live.moreSimMods", { first: simMods[0], count: simMods.length - 1 })}
-          </small>
-        </td>
-        <td className="live-watch-column-cell">
-          <LiveWatchButton
-            busy={busy}
-            game={game}
-            tracking={tracking}
-            waitSeconds={waitSeconds}
-            onMenuToggle={setMenuOpen}
-          />
-        </td>
+        {order.map((column) => cells[column])}
       </tr>
   );
 });

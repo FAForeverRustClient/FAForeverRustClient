@@ -141,19 +141,6 @@
   min-width: 0;
 }
 
-/* The column being moved: a quiet lift under the pointer, and the grabbing
-   cursor across the whole header while it is held. */
-.game-browser-head > span.is-moving {
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm, 4px);
-  box-shadow: 0 0 0 6px var(--color-surface-raised);
-}
-
-.game-browser-head.is-moving,
-.game-browser-head.is-moving * {
-  cursor: grabbing;
-}
-
 /* While a divider or a column is held, the rows stop reacting to the pointer:
    their hover tint and its transition flashed as the drag crossed them. */
 .game-browser-list:has(> .game-browser-head.is-resizing) .game-browser-row,
@@ -273,19 +260,13 @@
    same width: with the header outside the scroller, a scrollbar appearing
    narrowed the rows and left every right-hand column a scrollbar's width off
    its own label. Sticky, so it still stays put as the list scrolls. */
+/* Colour and type are the shared list header's (`list-head.css`). */
 .game-browser-head {
   position: sticky;
   top: 0;
   z-index: 2;
   min-height: 36px;
   padding: 0 16px;
-  color: var(--color-subtle);
-  background: var(--color-sidebar);
-  border-bottom: 1px solid var(--color-border);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .07em;
-  text-transform: uppercase;
 }
 
 /* Every label against the leading edge of its own column, where its divider
