@@ -435,19 +435,44 @@ async fn prepare_install(
 /// files matching by MD5 are skipped.
 static PREPARATION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+/// How often a preparation that holds [`PREPARATION`] looks whether it was
+/// called off while its updater is quiet.
+const CANCEL_POLL: std::time::Duration = std::time::Duration::from_millis(100);
+
 async fn prepare_request(
     request: GamePreparation,
     ctx: &ServiceCtx,
     out: &EventSink,
 ) -> Result<(), String> {
-    let _one_at_a_time = PREPARATION.lock().await;
+    // Held while this preparation is wanted, and let go the moment it is
+    // called off: a cancelled join drains its updater below, which can take as
+    // long as the file it is on, and the join that replaced it must not wait
+    // behind that. The cancelled run no longer narrates anything, so the two
+    // never compete for the screen; that they may briefly share the disk is
+    // what the client did before preparations were serialized at all.
+    let mut one_at_a_time = Some(PREPARATION.lock().await);
     let mut updates = ctx.ports.updater.prepare(request).await;
 
     // The port always ends with `Finished`; treating a stream that closes
     // without one as a failure keeps a panicked adapter task from looking like
     // a successful update.
     let mut outcome = Err("the game updater stopped without finishing".to_string());
-    while let Some(update) = updates.recv().await {
+    loop {
+        let update = tokio::select! {
+            update = updates.recv() => update,
+            // A cancellation is a flag rather than an event, so while the lock
+            // is still held it is looked at between updates as well: an
+            // updater stuck on a slow download sends nothing for a while.
+            () = tokio::time::sleep(CANCEL_POLL), if one_at_a_time.is_some() => {
+                if ctx.lobby_operations.is_cancelled() {
+                    one_at_a_time = None;
+                }
+                continue;
+            }
+        };
+        let Some(update) = update else {
+            break;
+        };
         // The step boundary where a cancelled join stops being narrated.
         //
         // This is the check, and it has to be here rather than after the loop:
@@ -461,6 +486,7 @@ async fn prepare_request(
         // the file it is on and nothing is left half-written in the content
         // store. It is just no longer anybody's business on screen.
         if ctx.lobby_operations.is_cancelled() {
+            one_at_a_time = None;
             continue;
         }
         match update {
