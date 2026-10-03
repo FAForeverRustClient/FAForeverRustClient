@@ -26,6 +26,12 @@ export interface LocalReplayQuery {
   simMod: string;
   minRating: number | null;
   maxRating: number | null;
+  /**
+   * Leave out games that lasted less than this, or `null` for no floor. A
+   * file that does not say how long its game lasted is kept: it cannot be
+   * told apart from a long one, and hiding it would lose real games.
+   */
+  minDurationMinutes: number | null;
   after: string;
   before: string;
   status: LocalReplayStatusFilter;
@@ -50,6 +56,7 @@ export const EMPTY_LOCAL_REPLAY_QUERY: LocalReplayQuery = {
   simMod: "",
   minRating: null,
   maxRating: null,
+  minDurationMinutes: null,
   after: "",
   before: "",
   status: "all",
@@ -112,6 +119,9 @@ export function filterLocalReplays(
       && (!query.simMod || replay.simMods.some((mod) => contains(mod, query.simMod)))
       && (query.minRating === null || replay.averageRating !== null && replay.averageRating >= query.minRating)
       && (query.maxRating === null || replay.averageRating !== null && replay.averageRating <= query.maxRating)
+      && (query.minDurationMinutes === null
+        || replay.durationSeconds === null
+        || replay.durationSeconds >= query.minDurationMinutes * 60)
       && (query.status === "all" || replay.status === query.status)
       && (!query.onlyWatchable || replay.watchable)
       && (after === null || timestamp >= after)

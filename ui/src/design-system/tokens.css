@@ -26,7 +26,11 @@
   --color-border-strong: rgba(255, 255, 255, 0.16);
   --color-text: #ffffff;
   --color-muted: #a1a1aa;
-  --color-subtle: #71717a;
+  /* The quietest text, which is mostly small metadata, so it still has to clear
+     4.5:1: 5.5 on the page, 5.1 on a surface, 4.5 on a raised one. #71717a was
+     3.4 on a surface. One step under muted (1.27:1 between the two) so the
+     hierarchy survives. */
+  --color-subtle: #8e8e96;
   --color-accent: #ffffff;
   --color-accent-contrast: #121214;
   --color-accent-glow: rgba(255, 255, 255, 0.12);
@@ -114,6 +118,11 @@
      counts, the vault badges and the upload chips all had square corners. */
   --radius-pill: 999px;
 
+  /* The state-change duration the design rules give (100 to 150 ms). Five
+     transitions referenced this name before it existed, so they were dropped
+     as invalid and snapped instead of easing. */
+  --transition-fast: 120ms ease;
+
   /* Elevation. Three steps, deliberately: a hairline lift for a control that
      sits on a surface, a lift for something floating over the workspace, and
      the popover. Features used to write their own `rgba(0, 0, 0, …)` shadows,
@@ -153,8 +162,12 @@
   --color-border: rgba(0, 0, 0, 0.09);
   --color-border-strong: rgba(0, 0, 0, 0.17);
   --color-text: #1b1b1b;
-  --color-muted: #6f6f6f;
-  --color-subtle: #919191;
+  /* Both darkened together. Subtle has to clear 4.5:1 (4.8 on the page, 5.2 on
+     a surface, 4.5 on a raised one; #919191 was 3.2 on a surface), which leaves
+     no room under the old muted (#6f6f6f, itself only 4.4 on a raised surface)
+     for the step between them, so muted moved down to keep it (1.37:1). */
+  --color-muted: #585858;
+  --color-subtle: #6d6d6d;
   --color-accent: #1b1b1b;
   --color-accent-contrast: #ffffff;
   --color-accent-glow: rgba(0, 0, 0, 0.12);

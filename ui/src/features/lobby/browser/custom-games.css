@@ -1,12 +1,14 @@
 .custom-games-layout {
   display: grid;
   flex: 1;
-  /* Three tracks now: list, divider, details. The inline style overrides the
-     last one; the divider keeps its own width so the gap either side of it
-     stays even whatever the panel is dragged to. */
-  grid-template-columns: minmax(360px, 1fr) 5px 270px;
+  /* Three tracks: list, divider, details. The inline style overrides the
+     last one. The divider's track is the gap itself, with no column gap
+     either side of it: a gap, a handle and a gap made the space beside the
+     detail panel twice the chat tab's beside its roster. */
+  grid-template-columns: minmax(360px, 1fr) var(--space-3) 270px;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
+  column-gap: 0;
+  row-gap: 12px;
   min-height: 0;
 }
 
@@ -15,8 +17,12 @@
   grid-row: 2;
 }
 
+/* Across the whole width, list and detail columns both. Confined to the list
+   column it wrapped to three rows at the default window (Host, search, four
+   checkboxes, Apply, Filters, sort, view switch in ~540 px), which pushed
+   the games down by a hundred pixels before the first one. */
 .custom-games-layout > .play-toolbar {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 1;
   margin-bottom: 0;
 }
@@ -66,14 +72,51 @@
   /* The fallback for the moment before the saved widths arrive, in the shape
      the saved ones have: four columns at a fixed width and the game column
      taking the rest. */
-  grid-template-columns: minmax(0, 1fr) 190px 170px 80px 100px 75px;
+  grid-template-columns: var(--game-browser-columns, minmax(0, 1fr) 190px 170px 80px 100px 75px);
   align-items: center;
   gap: 16px;
 }
 
+/* Where each column is drawn, from the order the list sets: the markup keeps
+   the designed order and `order` places each cell, so a moved column takes
+   its contents with it in every row without the rows rendering again. */
+.game-browser-head > :nth-child(1),
+.game-browser-row > :nth-child(1) { order: var(--game-browser-order-0, 0); }
+.game-browser-head > :nth-child(2),
+.game-browser-row > :nth-child(2) { order: var(--game-browser-order-1, 1); }
+.game-browser-head > :nth-child(3),
+.game-browser-row > :nth-child(3) { order: var(--game-browser-order-2, 2); }
+.game-browser-head > :nth-child(4),
+.game-browser-row > :nth-child(4) { order: var(--game-browser-order-3, 3); }
+.game-browser-head > :nth-child(5),
+.game-browser-row > :nth-child(5) { order: var(--game-browser-order-4, 4); }
+.game-browser-head > :nth-child(6),
+.game-browser-row > :nth-child(6) { order: var(--game-browser-order-5, 5); }
+
 .game-browser-head > span {
   position: relative;
   min-width: 0;
+}
+
+/* The column being moved: a quiet lift under the pointer, and the grabbing
+   cursor across the whole header while it is held. */
+.game-browser-head > span.is-moving {
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm, 4px);
+  box-shadow: 0 0 0 6px var(--color-surface-raised);
+}
+
+.game-browser-head.is-moving,
+.game-browser-head.is-moving * {
+  cursor: grabbing;
+}
+
+/* While a divider or a column is held, the rows stop reacting to the pointer:
+   their hover tint and its transition flashed as the drag crossed them. */
+.game-browser-list:has(> .game-browser-head.is-resizing) .game-browser-row,
+.game-browser-list:has(> .game-browser-head.is-moving) .game-browser-row {
+  pointer-events: none;
+  transition: none;
 }
 
 /* The header cell is a button now: the whole label, plus the arrow that says
@@ -153,6 +196,29 @@
   width: 12px;
 }
 
+/* The divider itself: a short hairline tick at rest, the full height in the
+   text colour when reached for or held. No filled grab area: the 12px target
+   painted as a grey bar on hover, and it flashed on and off as a drag outran
+   it. */
+.game-browser-head > span > .game-browser-col-handle,
+.game-browser-head > span > .game-browser-col-handle:hover,
+.game-browser-head > span > .game-browser-col-handle:focus-visible {
+  background: transparent;
+  transition: none;
+}
+
+.game-browser-head > span > .game-browser-col-handle::after {
+  inset-block: 30%;
+  background: var(--color-border);
+}
+
+.game-browser-head > span > .game-browser-col-handle:hover::after,
+.game-browser-head > span > .game-browser-col-handle:focus-visible::after,
+.game-browser-head > span > .game-browser-col-handle:active::after {
+  inset-block: 8px;
+  background: var(--color-muted);
+}
+
 .game-browser-map-version {
   margin-left: 6px;
   color: var(--color-subtle);
@@ -194,12 +260,15 @@
   overflow: auto;
 }
 
+/* 48 px, not 62: at the client's default 1100x720 window the list showed
+   about six games, and the reason most veterans open this tab is to scan
+   many of them. The title and host still get a line each. */
 .game-browser-row {
   width: 100%;
-  min-height: 62px;
+  min-height: 48px;
   content-visibility: auto;
-  contain-intrinsic-size: auto 62px;
-  padding: 9px 16px;
+  contain-intrinsic-size: auto 48px;
+  padding: 5px 12px;
   color: var(--color-text);
   background: transparent;
   border: 0;
@@ -227,9 +296,9 @@
 
 .game-browser-thumb-wrapper {
   position: relative;
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--color-border);

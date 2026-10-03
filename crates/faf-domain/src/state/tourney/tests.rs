@@ -13,6 +13,8 @@ fn player(id: &str, name: &str, faf_id: Option<i32>) -> TourneyPlayer {
         pending: false,
         note: String::new(),
         signed_at: None,
+        discord: String::new(),
+        team_name: String::new(),
     }
 }
 
@@ -54,11 +56,14 @@ fn playable_match() -> TourneyMatch {
         loser_to: None,
         pending_report: None,
         veto: None,
+        faction_veto: None,
         entrants: Vec::new(),
         winners: Vec::new(),
         points: Vec::new(),
         is_final: false,
         replay_ids: Vec::new(),
+        draw_replay_ids: Vec::new(),
+        forfeit: None,
     }
 }
 
@@ -218,6 +223,7 @@ fn only_the_other_side_confirms_a_submitted_score() {
             by_name: "Nuggets".into(),
             replay_ids: vec!["22334455".into()],
             at: None,
+            draw_replay_ids: Vec::new(),
         }),
         ..playable_match()
     };
@@ -266,6 +272,9 @@ fn a_pool_is_found_through_its_round_assignment() {
                 image_url: String::new(),
                 description: String::new(),
                 published: true,
+                spec: None,
+                secret: false,
+                masked: false,
             },
             TourneyMap {
                 id: "m2".into(),
@@ -273,6 +282,9 @@ fn a_pool_is_found_through_its_round_assignment() {
                 image_url: String::new(),
                 description: String::new(),
                 published: true,
+                spec: None,
+                secret: false,
+                masked: false,
             },
         ],
         map_pools: vec![MapPool {
@@ -329,6 +341,9 @@ fn resolve(name: &str) -> Option<&'static str> {
         image_url: String::new(),
         description: String::new(),
         published: true,
+        spec: None,
+        secret: false,
+        masked: false,
     };
     match_vault_map(&map, &VAULT, |v| v.display, |v| v.folder).map(|v| v.display)
 }
@@ -529,6 +544,8 @@ fn switching_events_drops_the_previous_ones_conversation_at_once() {
                     body: "gl hf".into(),
                     at: None,
                     system: false,
+                    reply_to: None,
+                    everyone: false,
                 }],
             },
             TourneyEvent::Selected {
@@ -599,6 +616,8 @@ fn posts_for_a_room_that_is_no_longer_open_are_ignored() {
                     body: "wrong room".into(),
                     at: None,
                     system: false,
+                    reply_to: None,
+                    everyone: false,
                 }],
             },
         ],
@@ -787,6 +806,88 @@ fn a_swiss_table_counts_wins_then_game_difference() {
     );
 }
 
+/// A decided Swiss match, `winner` over `loser` by `high` games to `low`.
+fn swiss_result(id: &str, winner: &str, loser: &str, high: i32, low: i32) -> TourneyMatch {
+    TourneyMatch {
+        id: id.into(),
+        bracket: BracketSide::Swiss,
+        status: MatchStatus::Done,
+        team1: Some(winner.into()),
+        team2: Some(loser.into()),
+        score1: Some(high),
+        score2: Some(low),
+        winner: Some(winner.into()),
+        loser: Some(loser.into()),
+        ..playable_match()
+    }
+}
+
+/// t1 went 2-0 winning both 1-0 (+2); t2 went 2-1 winning both 2-0 and
+/// losing 0-1 (+3). The server ranks the unbeaten one first.
+fn two_wins_apart_by_a_loss() -> Tourney {
+    let mut event = bracket_event(
+        BracketKind::Swiss,
+        vec![
+            ranked_team("t1", 1, None),
+            ranked_team("t2", 2, None),
+            ranked_team("t3", 3, None),
+            ranked_team("t4", 4, None),
+            ranked_team("t5", 5, None),
+        ],
+    );
+    event.matches = vec![
+        swiss_result("m1", "t1", "t3", 1, 0),
+        swiss_result("m2", "t1", "t4", 1, 0),
+        swiss_result("m3", "t2", "t3", 2, 0),
+        swiss_result("m4", "t2", "t4", 2, 0),
+        swiss_result("m5", "t5", "t2", 1, 0),
+    ];
+    event
+}
+
+#[test]
+fn fewer_losses_rank_above_a_better_game_difference() {
+    let rows = two_wins_apart_by_a_loss().standings();
+    assert_eq!(rows[0].team_id, "t1", "2-0 on +2 is above 2-1 on +3");
+    assert_eq!((rows[0].wins, rows[0].losses, rows[0].game_diff), (2, 0, 2));
+    assert_eq!(rows[1].team_id, "t2");
+    assert_eq!((rows[1].wins, rows[1].losses, rows[1].game_diff), (2, 1, 3));
+    assert!(
+        rows.iter().all(|row| row.beaten.is_none()),
+        "no beaten column by default"
+    );
+}
+
+#[test]
+fn the_servers_own_swiss_order_is_the_order_shown() {
+    // The server's order can differ from anything the client works out: the
+    // beaten tiebreak ends in a coin flip seeded from a value it never sends.
+    let mut event = two_wins_apart_by_a_loss();
+    event.swiss_order = vec![
+        "t2".into(),
+        "t1".into(),
+        "t5".into(),
+        "t3".into(),
+        "t4".into(),
+    ];
+    event.swiss_tiebreak = SwissTiebreak::Beaten;
+    event.swiss_beaten = [("t1".to_string(), 0), ("t2".to_string(), 1)]
+        .into_iter()
+        .collect();
+
+    let rows = event.standings();
+    let order: Vec<&str> = rows.iter().map(|row| row.team_id.as_str()).collect();
+    assert_eq!(order, vec!["t2", "t1", "t5", "t3", "t4"]);
+    assert_eq!(rows[0].beaten, Some(1));
+    assert_eq!(rows[1].beaten, Some(0));
+    assert_eq!(
+        rows[2].beaten,
+        Some(0),
+        "a team that beat nobody sums to nothing"
+    );
+    assert_eq!(rows[0].place, Some(1));
+}
+
 #[test]
 fn an_imported_event_uses_the_placings_it_arrived_with() {
     // No matches at all, which is the case the elimination table cannot
@@ -890,4 +991,33 @@ fn unknown_wire_values_fall_back_without_inventing_meaning() {
     assert_eq!(Formation::from_wire("premade"), Formation::Open);
     assert_eq!(BracketKind::from_wire("Double"), BracketKind::Double);
     assert_eq!(Competition::from_wire("FFA"), Competition::FreeForAll);
+}
+
+#[test]
+fn pasted_pictures_take_their_paths_once_the_event_exists() {
+    let draft = TourneyDraft {
+        description: "Intro\n![image](pending-image-0)\nMore".into(),
+        rewards: "![image](pending-image-1)".into(),
+        pending_images: vec![
+            PendingImage {
+                token: "pending-image-0".into(),
+                data_url: "data:image/png;base64,AA==".into(),
+            },
+            PendingImage {
+                token: "pending-image-1".into(),
+                data_url: "data:image/png;base64,AA==".into(),
+            },
+        ],
+        ..TourneyDraft::default()
+    };
+    let placed = draft.with_images_placed(&[
+        ("pending-image-0".into(), "/desc-images/a.png".into()),
+        ("pending-image-1".into(), "/desc-images/b.png".into()),
+    ]);
+    assert_eq!(
+        placed.description,
+        "Intro\n![image](/desc-images/a.png)\nMore"
+    );
+    assert_eq!(placed.rewards, "![image](/desc-images/b.png)");
+    assert!(placed.pending_images.is_empty());
 }

@@ -60,9 +60,11 @@ export function OnlineReplayList({
           primary: replay.title || presentation.displayName || map,
           secondary: presentation.displayName || map || t("replays.list.mapUnavailable"),
         },
+        // The time alone when the rows sit under their day's heading: the
+        // date under it repeated that heading on every row.
         played: {
           primary: formatReplayListTime(replay.startTime),
-          secondary: replayAge(replay.startTime) || "N/A",
+          secondary: groupByDate ? undefined : replayAge(replay.startTime) || "N/A",
         },
         players: { primary: String(playerCount(replay.teams)) },
         rating: { primary: replay.averageRating === null ? "N/A" : String(replay.averageRating) },

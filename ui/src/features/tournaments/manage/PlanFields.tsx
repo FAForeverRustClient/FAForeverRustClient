@@ -46,17 +46,32 @@ export function PlanFields({ plan, onChange }: PlanFieldsProps) {
   if (plan.type === "single") {
     const held = plan.payload;
     return (
-      <div className="tournament-form-row">
-        {select(t("tournaments.form.planEarly"), held.early, (early) =>
-          onChange({ type: "single", payload: { ...held, early } }),
-        )}
-        {select(t("tournaments.form.planSemi"), held.semi, (semi) =>
-          onChange({ type: "single", payload: { ...held, semi } }),
-        )}
-        {select(t("tournaments.form.planFinal"), held.finalBo, (finalBo) =>
-          onChange({ type: "single", payload: { ...held, finalBo } }),
-        )}
-      </div>
+      <>
+        <div className="tournament-form-row">
+          {select(t("tournaments.form.planEarly"), held.early, (early) =>
+            onChange({ type: "single", payload: { ...held, early } }),
+          )}
+          {select(t("tournaments.form.planSemi"), held.semi, (semi) =>
+            onChange({ type: "single", payload: { ...held, semi } }),
+          )}
+          {select(t("tournaments.form.planFinal"), held.finalBo, (finalBo) =>
+            onChange({ type: "single", payload: { ...held, finalBo } }),
+          )}
+        </div>
+        {/* As long as the semi-finals unless the bracket gives it its own
+            length. The service builds it only with four entrants or more and
+            no divisions, which is why the draw can still end up without it. */}
+        <label className="tournament-checkbox">
+          <input
+            type="checkbox"
+            checked={held.thirdPlace}
+            onChange={(changed) =>
+              onChange({ type: "single", payload: { ...held, thirdPlace: changed.target.checked } })
+            }
+          />
+          <span>{t("tournaments.form.planThirdPlace")}</span>
+        </label>
+      </>
     );
   }
 

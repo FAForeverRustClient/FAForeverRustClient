@@ -29,6 +29,9 @@ describe("matchTitle", () => {
     expect(matchTitle(event, match({ bracket: "losers", round: 2 }))).toContain("LR2");
     expect(matchTitle(event, match({ bracket: "grandFinal", round: 3 }))).toContain("GF:");
     expect(matchTitle(event, match({ bracket: "swiss", round: 4 }))).toContain("SR4");
+    // It carries the final's round number, so the number alone would name it
+    // as a second final.
+    expect(matchTitle(event, match({ bracket: "thirdPlace", round: 3 }))).toContain("3rd:");
   });
 
   it("falls back to the first player when a team never named itself", () => {

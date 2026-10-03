@@ -17,6 +17,17 @@ import type { ReplayQuery } from "../../ipc/bindings";
 import type { LocalReplayQuery } from "./local/localReplayQuery";
 import { isRecentBound } from "../../shared/replayQuery";
 
+/**
+ * What counts as a game too short to be worth watching, for the "Skip short
+ * games" button in both the online vault and the local archive.
+ *
+ * Five minutes rather than one: a game that ended in the first minute is a
+ * lobby somebody left, and one that ended in the fourth is a rush that went
+ * wrong, which is a game. The thread suggested both numbers; this is the one
+ * that removes the noise without removing content.
+ */
+export const SHORT_GAME_MINUTES = 5;
+
 /** The scope buttons the online vault offers, left to right. */
 export type ReplayPreset = "newest" | "highestRated" | "own";
 

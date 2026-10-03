@@ -21,10 +21,10 @@ import { Button } from "../../../design-system/Button";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
 import { mapPresentation, type MapPresentation } from "../../../shared/mapPresentation";
-import { ReplayMapThumb, ReplayMetaFact, replayCardTitle } from "../ReplayCard";
+import { ReplayMapThumb, ReplayMetaFact, ReplayThumbGenerate, replayCardTitle } from "../ReplayCard";
 import { ReplayCardRoster } from "../ReplayRoster";
 import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
-import { LiveMapGenerateButton, LiveReplayAge, LiveWatchButton } from "./LiveReplayRow";
+import { LiveReplayAge, LiveWatchButton } from "./LiveReplayRow";
 import { prettyGameType, replayDelayRemaining } from "../../../shared/liveReplayModel";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -193,7 +193,7 @@ const LiveReplayCard = memo(function LiveReplayCard({
       }}
     >
       <div className="replay-card-left">
-        <span className="live-map-thumb-wrap">
+        <span className="replay-card-thumb-wrap">
           <ReplayMapThumb
             url=""
             mapName={game.map}
@@ -201,7 +201,7 @@ const LiveReplayCard = memo(function LiveReplayCard({
             emptyClassName="replay-card-thumb-empty"
             iconSize={32}
           />
-          <LiveMapGenerateButton mapName={game.map} large />
+          <ReplayThumbGenerate mapName={game.map} />
         </span>
         {/* The slot the vault card spends on review stars. A running game has
             none and will have none while it is running, so it holds the one

@@ -5,12 +5,13 @@
 // last. Everything here reads `event.draft`.
 //
 // Two states, and they are different screens rather than the same one greyed
-// out: before the draft, an organiser marks captains; during it, whoever is on
-// the clock picks from the pool.
+// out: before the draft, an organiser chooses the captains, by hand or as the
+// top so many by rating; during it, whoever is on the clock picks from the
+// pool.
 
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
-import type { PlayerSummary, Tourney, TourneyPlayer } from "../../../ipc/bindings";
+import type { CaptainMode, PlayerSummary, Tourney, TourneyAdmin, TourneyPlayer } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { PlayerChip } from "../PlayerChip";
 import {
@@ -30,12 +31,15 @@ interface DraftPanelProps {
   onUndo: () => void;
   onSetCaptains: (playerIds: string[]) => void;
   onStart: () => void;
+  onAdmin: (change: TourneyAdmin) => void;
 }
 
 export function DraftPanel(props: DraftPanelProps) {
   const { event, busy } = props;
   const { t } = useTranslation();
   const [captains, setCaptains] = useState<string[]>(event.pendingCaptains);
+  const [mode, setMode] = useState<CaptainMode>(event.captainMode);
+  const [count, setCount] = useState(event.captainCount >= 2 ? String(event.captainCount) : "");
 
   const nameOf = (player: TourneyPlayer) => {
     const profile = profileOf(props.profiles, player);
@@ -54,39 +58,117 @@ export function DraftPanel(props: DraftPanelProps) {
   if (event.draft === null) {
     if (!event.viewer.organiser || !isLegalFrom("startDraft", event.status)) return null;
     const eligible = event.players.filter((player) => !player.pending);
+    // Worked out by the service at the moment the draft starts, so this is a
+    // preview: late signups and rating corrections still move it.
+    const ranked = [...eligible].sort((left, right) => (right.rating ?? 0) - (left.rating ?? 0));
+    const wanted = Number.parseInt(count, 10);
+    const validCount = Number.isInteger(wanted) && wanted >= 2 && wanted <= 64;
+    const teams = mode === "rating" ? (validCount ? wanted : 0) : captains.length;
+    const ready = mode === "rating" ? validCount && ranked.length >= wanted : captains.length >= 2;
+    const saveMode = (next: CaptainMode, typed: string) => {
+      const parsed = Number.parseInt(typed, 10);
+      props.onAdmin({
+        type: "setCaptainMode",
+        payload: { mode: next, count: Number.isInteger(parsed) ? parsed : 0 },
+      });
+    };
     return (
       <section className="tournament-draft">
         <h5>{t("tournaments.draft.captainsHeading")}</h5>
-        <p className="muted">{t("tournaments.draft.captainsHint")}</p>
-        <ul className="tournament-entrant-list">
-          {eligible.map((player) => (
-            <li className="tournament-entrant" key={player.id}>
-              <label className="tournament-checkbox">
-                <input
-                  type="checkbox"
-                  checked={captains.includes(player.id)}
-                  onChange={() =>
-                    setCaptains((held) =>
-                      held.includes(player.id)
-                        ? held.filter((id) => id !== player.id)
-                        : [...held, player.id],
-                    )
-                  }
-                />
-                <span>{nameOf(player)}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
+        <p className="muted">
+          {t("tournaments.draft.captainsAreTeams")}{" "}
+          {t(event.draftSnakes ? "tournaments.draft.orderSnake" : "tournaments.draft.orderLinear")}{" "}
+          {t("tournaments.draft.teamOf", { size: event.teamSize })}
+        </p>
+        <label className="tournament-field">
+          <span>{t("tournaments.draft.howChosen")}</span>
+          <select
+            value={mode}
+            disabled={busy}
+            onChange={(changed) => {
+              const next = changed.target.value as CaptainMode;
+              setMode(next);
+              saveMode(next, count);
+            }}
+          >
+            <option value="manual">{t("tournaments.draft.modeManual")}</option>
+            <option value="rating">{t("tournaments.draft.modeRating")}</option>
+          </select>
+        </label>
+        {mode === "rating" ? (
+          <>
+            <label className="tournament-field">
+              <span>{t("tournaments.draft.howMany")}</span>
+              <input
+                type="number"
+                min={2}
+                max={64}
+                value={count}
+                placeholder="8"
+                onChange={(changed) => setCount(changed.target.value)}
+                onBlur={() => {
+                  if (validCount && wanted !== event.captainCount) saveMode(mode, count);
+                }}
+              />
+              <small className="muted">{t("tournaments.draft.howManyHint")}</small>
+            </label>
+            <p className="muted">
+              {!validCount
+                ? t("tournaments.draft.previewEnter")
+                : ranked.length < wanted
+                  ? t("tournaments.draft.previewShort", { have: ranked.length, more: wanted - ranked.length })
+                  : t("tournaments.draft.previewWould", {
+                      names: ranked
+                        .slice(0, wanted)
+                        .map((player) => `${player.name} (${player.rating ?? "–"})`)
+                        .join(", "),
+                    })}
+            </p>
+          </>
+        ) : (
+          <p className="muted">{t("tournaments.draft.captainsHint")}</p>
+        )}
+        {mode === "manual" && (
+          <ul className="tournament-entrant-list">
+            {eligible.map((player) => (
+              <li className="tournament-entrant" key={player.id}>
+                <label className="tournament-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={captains.includes(player.id)}
+                    onChange={() =>
+                      setCaptains((held) =>
+                        held.includes(player.id)
+                          ? held.filter((id) => id !== player.id)
+                          : [...held, player.id],
+                      )
+                    }
+                  />
+                  <span>{nameOf(player)}</span>
+                </label>
+                {player.rating !== null && <span className="muted">{player.rating}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {teams >= 2 && (
+          <p className="muted">
+            {t("tournaments.draft.bracketPreview", { teams, size: event.teamSize, needed: teams * event.teamSize })}
+            {eligible.length < teams * event.teamSize &&
+              ` ${t("tournaments.draft.moreNeeded", { have: eligible.length, more: teams * event.teamSize - eligible.length })}`}
+          </p>
+        )}
         <div className="tournament-detail-actions">
-          <Button disabled={busy} onClick={() => props.onSetCaptains(captains)}>
-            {t("tournaments.draft.saveCaptains")}
-          </Button>
+          {mode === "manual" && (
+            <Button disabled={busy} onClick={() => props.onSetCaptains(captains)}>
+              {t("tournaments.draft.saveCaptains")}
+            </Button>
+          )}
           {/* The service wants at least two, and says so. Checking here keeps
               the refusal off a button that looks ready. */}
           <Button
             variant="primary"
-            disabled={busy || captains.length < 2}
+            disabled={busy || !ready}
             onClick={() => props.onStart()}
           >
             {t("tournaments.draft.start")}

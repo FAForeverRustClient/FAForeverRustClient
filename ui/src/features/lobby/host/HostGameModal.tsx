@@ -3,6 +3,7 @@ import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import { RangeSlider } from "../../../design-system/RangeSlider";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
 import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNavigation";
@@ -15,7 +16,7 @@ import { GenerateMapModal } from "../../maps/GenerateMapModal";
 import { generatedMapDescriptionRows } from "../../../shared/generatedMapDescription";
 import { HostModsColumn } from "./HostModsColumn";
 import { useHostLobbySettings } from "./hostLobbySettings";
-import { FeaturedModIcon } from "./FeaturedModIcon";
+import { FeaturedModIcon } from "../../../shared/components/FeaturedModIcon";
 import { useTranslation } from "../../../i18n/useTranslation";
 import type { MessageKey } from "../../../i18n/catalog/en";
 import { OptionalNumberInput } from "../../../design-system/NumberInput";
@@ -194,16 +195,12 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
         filter({ filtersOpen: false });
       }
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") filter({ filtersOpen: false });
-    };
     document.addEventListener("mousedown", closeOnOutsideClick);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("mousedown", closeOnOutsideClick);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
   }, [filtersOpen]);
+  // Escape closes the filter popover first and the dialog on the next press:
+  // while open, the popover is the top of the overlay stack.
+  useOverlayLayer(filtersOpen, () => filter({ filtersOpen: false }));
 
   // The vault is loaded once per session and the service ignores a repeat;
   // the installed lists are rescanned on every open.

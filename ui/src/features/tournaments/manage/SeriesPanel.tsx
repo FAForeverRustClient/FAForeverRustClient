@@ -10,7 +10,7 @@
 // changes nothing but how it is listed; adding a qualifier sends invitations
 // the moment the child finishes.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import type {
   QualifierKind,
@@ -36,6 +36,8 @@ interface SeriesPanelProps {
   onSaveSeries: (draft: SeriesDraft) => void;
   onAddQualifier: (qualifierId: string, rule: QualifierRule) => void;
   onRemoveQualifier: (linkId: string) => void;
+  /** Keep a block of seeds for one link's arrivals, from this seed down. */
+  onSeedFrom: (linkId: string, seedFrom: number) => void;
 }
 
 const BLANK: SeriesDraft = {
@@ -189,6 +191,11 @@ export function SeriesPanel(props: SeriesPanelProps) {
                     })}
                   </p>
                 )}
+                <SeedBlock
+                  seedFrom={link.seedFrom}
+                  busy={busy}
+                  onSave={(seedFrom) => props.onSeedFrom(link.id, seedFrom)}
+                />
                 <Button type="button" disabled={busy} onClick={() => props.onRemoveQualifier(link.id)}>
                   {t("tournaments.qualifiers.remove")}
                 </Button>
@@ -257,6 +264,46 @@ export function SeriesPanel(props: SeriesPanelProps) {
           </p>
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * A link's seed block: the seed its arrivals start from, or 0 to seed them
+ * with everyone else.
+ *
+ * LotS wants its qualifiers at a fixed block (5 to 8, say) whatever their
+ * ratings, which ordinary seeding cannot promise. Changing it keeps the link
+ * and the invitations already sent; it takes effect when the teams are formed.
+ */
+function SeedBlock({
+  seedFrom,
+  busy,
+  onSave,
+}: {
+  seedFrom: number;
+  busy: boolean;
+  onSave: (seedFrom: number) => void;
+}) {
+  const { t } = useTranslation();
+  const [value, setValue] = useState(seedFrom);
+  useEffect(() => setValue(seedFrom), [seedFrom]);
+  return (
+    <div className="tournament-detail-actions">
+      <label className="tournament-field tournament-inline-field">
+        <span>{t("tournaments.qualifiers.seedBlock")}</span>
+        <NumberInput min={0} max={128} value={value} disabled={busy} onChange={setValue} />
+      </label>
+      {value !== seedFrom && (
+        <Button type="button" disabled={busy} onClick={() => onSave(value)}>
+          {t("tournaments.qualifiers.seedSave")}
+        </Button>
+      )}
+      <small className="muted">
+        {seedFrom > 0
+          ? t("tournaments.qualifiers.seedFrom", { seed: seedFrom })
+          : t("tournaments.qualifiers.seedNormal")}
+      </small>
     </div>
   );
 }

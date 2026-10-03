@@ -268,21 +268,18 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
             ? selectedFactions
             : member.factions;
           return (
-            <div className={`party-seat${kickable ? " has-kick" : ""}`} key={member.playerId}>
+            // The leader's seat is outlined rather than badged: a crown after
+            // the name competed with it for width, one floating above the
+            // seat looked detached, and a label read as clutter.
+            <div
+              className={`party-seat${kickable ? " has-kick" : ""}${leader ? " is-leader" : ""}`}
+              key={member.playerId}
+              title={leader ? t("lobby.party.leader") : undefined}
+            >
               <PartyLeague placements={placements[member.playerId]} />
               <span className="party-seat-text">
                 <span className="party-seat-name-row">
                   <strong><PlayerName name={nameFor(member)} /></strong>
-                  {leader && (
-                    <span
-                      className="party-seat-leader"
-                      role="img"
-                      title={t("lobby.party.leader")}
-                      aria-label={t("lobby.party.leader")}
-                    >
-                      <Icon name="crown" size={13} />
-                    </span>
-                  )}
                 </span>
                 <span className="party-seat-meta">
                   <PartyFactions factions={factions} />

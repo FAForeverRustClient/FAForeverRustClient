@@ -48,11 +48,13 @@ export function UpdatesSettingsSection() {
         hint={t("settings.updates.updateStatusHint")}
         className="setting-row-update-status"
       >
+        {/* The status first and the button at the row's edge, where every
+            other row in Settings keeps its control. */}
         <div className="update-settings-status">
+          <UpdateStatus update={update} />
           <Button onClick={() => void checkNow()} disabled={isUpdateBusy(update.status)}>
-            {t(update.status.type === "checking" ? "settings.updates.checking" : "settings.updates.checkNow")}
+            {t("settings.updates.checkNow")}
           </Button>
-          <span>{describe(update)}</span>
         </div>
       </SettingRow>
     </>
@@ -60,42 +62,54 @@ export function UpdatesSettingsSection() {
 }
 
 /**
- * The status line, and when we last found it out.
+ * The status in two lines: what the check found, then the version running and
+ * when we last found it out.
  *
- * The second half is the whole point. Two checks in a row settle on the same
- * status, so the line said exactly the same thing after the second click as
- * after the first, and "Check now" read as a button that does nothing. The
- * timestamp changes every time, which is the visible answer to "did that do
- * anything".
+ * The timestamp is the whole point of the second line. Two checks in a row
+ * settle on the same status, so the line said exactly the same thing after
+ * the second click as after the first, and "Check now" read as a button that
+ * does nothing. The timestamp changes every time, which is the visible answer
+ * to "did that do anything". Split from the status because one long sentence
+ * beside the button wrapped wherever the window put its edge.
  */
-function describe(update: ClientUpdateState): string {
-  const status = describeStatus(update);
-  const checked = formatChecked(update.lastChecked);
-  return checked ? `${status} · ${t("settings.updates.lastChecked", { time: checked })}` : status;
-}
-
-function describeStatus(update: ClientUpdateState): string {
+function UpdateStatus({ update }: { update: ClientUpdateState }) {
+  const { headline, tone } = describeStatus(update);
   const running = update.currentVersion
     ? t("settings.updates.running", { version: update.currentVersion })
     : t("settings.updates.versionUnknown");
+  const checked = formatChecked(update.lastChecked);
+  return (
+    <span className="update-settings-text">
+      <span className={`update-settings-headline${tone ? ` is-${tone}` : ""}`}>{headline}</span>
+      <span className="update-settings-meta">
+        {checked ? `${running} · ${t("settings.updates.lastChecked", { time: checked })}` : running}
+      </span>
+    </span>
+  );
+}
+
+function describeStatus(update: ClientUpdateState): { headline: string; tone: "ok" | "warn" | "error" | null } {
   switch (update.status.type) {
     case "idle":
-      return `${running}: ${t("settings.updates.notCheckedYet")}`;
+      return { headline: t("settings.updates.notCheckedYet"), tone: null };
     case "checking":
-      return running;
+      return { headline: t("settings.updates.checking"), tone: null };
     case "upToDate":
-      return `${running}: ${t("settings.updates.upToDate")}`;
+      return { headline: t("settings.updates.upToDate"), tone: "ok" };
     case "available":
     case "downloading":
     case "ready":
     case "installing":
-      return `${running}: ${t("settings.updates.newerAvailable", {
-        version: update.release?.version ?? t("settings.updates.aNewerVersion"),
-      })}`;
+      return {
+        headline: t("settings.updates.newerAvailable", {
+          version: update.release?.version ?? t("settings.updates.aNewerVersion"),
+        }),
+        tone: "warn",
+      };
     case "failed":
       // Shown here even when the banner stays hidden: a background check that
       // keeps failing should be discoverable somewhere rather than nowhere.
-      return `${running}: ${update.status.payload.reason}`;
+      return { headline: update.status.payload.reason, tone: "error" };
   }
 }
 

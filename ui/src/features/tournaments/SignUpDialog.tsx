@@ -20,15 +20,31 @@ interface SignUpDialogProps {
   name: string;
   /** The handle the service already has, or empty. */
   discord: string;
+  /**
+   * Whether the event takes a rating typed by the player. An unrated event
+   * does, and the service refuses a signup without one; everywhere else the
+   * rating comes from FAF and the field is not shown.
+   */
+  needsRating: boolean;
   busy: boolean;
   /** Enter, having saved the handle when it changed. */
-  onConfirm: (discord: string | null) => void;
+  onConfirm: (discord: string | null, rating: number | null) => void;
   onClose: () => void;
 }
 
-export function SignUpDialog({ name, discord, busy, onConfirm, onClose }: SignUpDialogProps) {
+/** The ratings the service accepts from a player. */
+const RATING_MIN = 0;
+const RATING_MAX = 4000;
+
+export function SignUpDialog({ name, discord, needsRating, busy, onConfirm, onClose }: SignUpDialogProps) {
   const { t } = useTranslation();
   const [handle, setHandle] = useState(discord);
+  const [rating, setRating] = useState("");
+  const typed = Number(rating);
+  const ratingOk =
+    !needsRating ||
+    (rating.trim() !== "" && Number.isInteger(typed) && typed >= RATING_MIN && typed <= RATING_MAX);
+  const ratingValue = needsRating && ratingOk ? typed : null;
 
   // Only write when it changed. Sending the same value back would be a write
   // nobody asked for, and sending an untouched empty field would clear a handle
@@ -41,7 +57,7 @@ export function SignUpDialog({ name, discord, busy, onConfirm, onClose }: SignUp
         className="tournament-signup-dialog"
         onSubmit={(submitted) => {
           submitted.preventDefault();
-          onConfirm(changed ? handle.trim() : null);
+          if (ratingOk) onConfirm(changed ? handle.trim() : null, ratingValue);
         }}
       >
         <h4>{t("tournaments.signup.title")}</h4>
@@ -62,13 +78,28 @@ export function SignUpDialog({ name, discord, busy, onConfirm, onClose }: SignUp
             cannot be searched for in Discord. */}
         <p className="muted tournament-form-hint">{t("tournaments.signup.discordHint")}</p>
 
+        {needsRating && (
+          <label className="tournament-field">
+            <span>{t("tournaments.signup.rating")}</span>
+            <input
+              type="number"
+              min={RATING_MIN}
+              max={RATING_MAX}
+              value={rating}
+              placeholder={t("tournaments.signup.ratingPlaceholder")}
+              onChange={(changedField) => setRating(changedField.target.value)}
+            />
+            <small className="muted">{t("tournaments.signup.ratingHint")}</small>
+          </label>
+        )}
+
         <div className="tournament-match-actions">
-          <Button type="submit" variant="primary" disabled={busy}>
+          <Button type="submit" variant="primary" disabled={busy || !ratingOk}>
             {t(changed ? "tournaments.signup.saveAndEnter" : "tournaments.signup.enter")}
           </Button>
           {/* Skip is not cancel: it enters the tournament without answering.
               Cancel is the modal's own close, which enters nothing. */}
-          <Button disabled={busy} onClick={() => onConfirm(null)}>
+          <Button disabled={busy || !ratingOk} onClick={() => onConfirm(null, ratingValue)}>
             {t("tournaments.signup.skip")}
           </Button>
           <Button disabled={busy} onClick={onClose}>
