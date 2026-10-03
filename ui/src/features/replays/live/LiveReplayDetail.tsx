@@ -5,10 +5,10 @@
 // read its header, look up its rating changes, show its review - and a game
 // still being played has no file. What it has is a lineup, a map, and a way in.
 //
-// So this borrows the layout and every class name from that panel (the head
-// with the map, title and Watch, then the facts, then the lineup), which is
-// what makes the two read as one tab, and shows only the facts a live game
-// actually carries. A fact with no value is left out rather than printed as
+// So this borrows the layout and every class name from that panel (the hero
+// with the map behind it, the whole preview, the title and Watch, then the
+// facts, then the lineup under its team headings), which is what makes the two
+// read as one tab, and shows only the facts a live game actually carries. A fact with no value is left out rather than printed as
 // "unknown": there is no game length yet, and saying so in eight places is
 // noise rather than information.
 //
@@ -159,6 +159,28 @@ export function LiveReplayDetail({
     label: t("replays.column.host"),
     value: game.host,
   });
+  // Who may join, which only the table's expanded row used to say.
+  facts.push({
+    label: t("lobby.details.visibility"),
+    value: [
+      t(game.visibility === "friends"
+        ? "lobby.host.visibility.friends"
+        : "lobby.host.visibility.public"),
+      game.passwordProtected ? t("lobby.host.passwordProtected") : "",
+    ].filter(Boolean).join(" \u00b7 "),
+  });
+  // Only where the host set one, worded the way the Play tab words the same
+  // pair, open ends included.
+  if (game.ratingMin !== null || game.ratingMax !== null) {
+    const range = t("lobby.details.ratingRangeValue", {
+      from: game.ratingMin ?? t("lobby.details.any"),
+      to: game.ratingMax ?? t("lobby.details.any"),
+    });
+    facts.push({
+      label: t("lobby.details.ratingRange"),
+      value: game.enforceRatingRange ? `${range} \u00b7 ${t("replays.live.ratingEnforced")}` : range,
+    });
+  }
   // Left out, like every other fact here, when nothing knows it (#327).
   if (size) {
     facts.push({
@@ -169,11 +191,23 @@ export function LiveReplayDetail({
 
   return (
     <Modal
-      className="replay-detail-modal"
+      className="replay-detail-modal replay-detail-modal-wide"
       ariaLabel={t("replays.detail.aria", { name: title })}
       onClose={onClose}
     >
-      <header className="replay-detail-head">
+      {/* The vault panel's hero: the map dimmed behind everything, and in
+          front of it the whole preview, what the game is, and the way in. */}
+      <header className="replay-detail-hero">
+        <div className="replay-detail-hero-backdrop" aria-hidden>
+          <ReplayMapThumb
+            url=""
+            mapName={game.map}
+            className="replay-detail-hero-image"
+            emptyClassName="replay-detail-hero-image-empty"
+            iconSize={16}
+            large
+          />
+        </div>
         {/* The same preview the vault's panel has, and the same way in:
             press it and the map opens in the zoom frame the Maps and Play
             tabs use. A live game is the one where the map matters most. */}
@@ -252,8 +286,9 @@ export function LiveReplayDetail({
           </div>
         </div>
 
-        {/* The way in, where the vault's panel puts its own Watch. */}
-        <div className="replay-detail-actions live-replay-detail-actions">
+        {/* The way in, on the right of the hero where the vault's panel puts
+            its own Watch. */}
+        <div className="live-replay-detail-actions">
           <LiveWatchButton
             busy={busy}
             game={game}
@@ -272,10 +307,9 @@ export function LiveReplayDetail({
         ))}
       </dl>
 
+      {/* No "2 teams, 8 players" heading, as next door: the team headings
+          and the facts say it, and the section keeps it as its name. */}
       <section className="replay-detail-lineup" aria-label={lineupSummary}>
-        <div className="replay-detail-section-head">
-          <h3>{lineupSummary}</h3>
-        </div>
         {teams.length > 0 ? (
           // `showResults` off, and not a choice here: nobody has won yet.
           <ReplayDetailRoster
@@ -283,6 +317,7 @@ export function LiveReplayDetail({
             showResults={false}
             avatarByLogin={avatarByLogin}
             onPlayerMenu={onPlayerMenu}
+            titlesAbove
           />
         ) : (
           <p className="replay-detail-empty muted">{t("replays.live.lineupUnavailable")}</p>
