@@ -1808,6 +1808,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranked": "Clasificatorio",
   "lobby.browser.unranked": "No clasificatorio",
   "lobby.browser.goAdapter": "Adaptador Go",
+  "lobby.browser.moreTags": "+{count} más",
   "lobby.browser.goAdapterTitle": "Alojada con el adaptador Go (faf-pioneer). En Dinámico te unes con Go automáticamente; si no, elige Go en los ajustes de conexión.",
   "lobby.browser.mapSize": "Tamaño del mapa",
   "lobby.browser.unrated": "Sin puntuación",

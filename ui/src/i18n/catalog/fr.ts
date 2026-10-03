@@ -1810,6 +1810,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranked": "Classé",
   "lobby.browser.unranked": "Non classé",
   "lobby.browser.goAdapter": "Adaptateur Go",
+  "lobby.browser.moreTags": "+{count} de plus",
   "lobby.browser.goAdapterTitle": "Hébergée avec l'adaptateur Go (faf-pioneer). En Dynamique, vous rejoignez automatiquement avec Go ; sinon choisissez Go dans les paramètres de connexion.",
   "lobby.browser.mapSize": "Taille de la carte",
   "lobby.browser.unrated": "Non classée",

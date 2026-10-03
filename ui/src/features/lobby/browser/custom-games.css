@@ -438,11 +438,23 @@
 .game-browser-tags-col {
   justify-content: flex-start;
   align-content: center;
-  /* A list too long for the column breaks onto further lines (issue 379),
-     and the row grows to hold them. It was capped at two lines once, and a
-     third line was then cut through the middle of its chips: a row a little
-     taller is better than tags nobody can read. Most rows still fit in one
-     line, or two, inside the row's own 62px. */
+  /* One line, always (issue 379). Wrapping made a row taller for one long
+     lobby, and a cap on the lines cut a chip through the middle; what does
+     not fit is folded into a "+N more" chip by `FittingChips`, which lists
+     every tag on hover. The clip is only a backstop for the moment before
+     the measurement. */
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.game-browser-tags-col > [data-chip] {
+  display: flex;
+  flex: none;
+}
+
+.game-browser-tags-col > i.more {
+  flex: none;
+  cursor: default;
 }
 
 .game-browser-tags i {
