@@ -23,6 +23,11 @@ use crate::ports::GeneratorUpdate;
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services;
 
+/// How many previews one `LoadPreviews` reads. Tiles ask one map at a time;
+/// this only keeps a burst of them well under the state's own ceiling,
+/// `MAX_KEPT_PREVIEWS` in `faf_domain::state::map_generator`.
+const MAX_PREVIEWS_PER_REQUEST: usize = 16;
+
 pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         MapGeneratorCommand::GenerateNamed { map_name } => {
@@ -161,6 +166,26 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                         None,
                     );
                 }
+            }
+        }
+        MapGeneratorCommand::LoadPreviews { map_names } => {
+            let wanted: Vec<String> = out.with_state(|state| {
+                map_names
+                    .iter()
+                    .filter(|name| {
+                        faf_domain::protocol::map_generator::is_generated_map(name)
+                            && !state.map_generator.previews.contains_key(*name)
+                    })
+                    .take(MAX_PREVIEWS_PER_REQUEST)
+                    .cloned()
+                    .collect()
+            });
+            if wanted.is_empty() {
+                return;
+            }
+            let previews = ctx.ports.map_generator.map_previews(&wanted).await;
+            if !previews.is_empty() {
+                out.emit(MapGeneratorEvent::PreviewsLoaded { previews });
             }
         }
         MapGeneratorCommand::DecodeNames { map_names } => {
