@@ -16,6 +16,7 @@ import { hideGlobalLineup, useGameLineupPosition, useGameSocialPosition } from "
 import { GameLineup } from "./GameLineup";
 import { GameSocialPopover, foesHere, friendsHere } from "./GameSocialPopover";
 import { EMPTY_SET } from "./GameTile";
+import { FittingChips } from "../../../shared/components/FittingChips";
 
 export const GameBrowserRow = memo(function GameBrowserRow({
   game,
@@ -119,8 +120,10 @@ export const GameBrowserRow = memo(function GameBrowserRow({
 
         {/* The tags in a column of their own (#341). In the game cell they
             began wherever each host's name happened to end, so the same chip
-            stood at a different place in every row. */}
-          <div className="game-browser-tags-col game-browser-tags">
+            stood at a different place in every row. On one line: what does
+            not fit the column's width becomes "+N more", which lists every
+            tag on hover (#379). */}
+          <FittingChips className="game-browser-tags-col game-browser-tags" moreClassName="more">
             {otherMod && <i title={featuredModLabel(otherMod)}>{featuredModLabel(otherMod)}</i>}
             {goAdapter && <i className="go-adapter" title={t("lobby.browser.goAdapterTitle")}>{t("lobby.browser.goAdapter")}</i>}
             {simModCount > 0 && (
@@ -183,7 +186,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
             {(game.ratingMin !== null || game.ratingMax !== null) && (
               <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
             )}
-          </div>
+          </FittingChips>
 
         <div className="game-browser-map-col">
           <strong title={presentation.displayName}>{presentation.displayName}</strong>

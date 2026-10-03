@@ -1890,6 +1890,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranked": "Рейтинговая",
   "lobby.browser.unranked": "Без рейтинга",
   "lobby.browser.goAdapter": "Go-адаптер",
+  "lobby.browser.moreTags": "+{count} ещё",
   "lobby.browser.goAdapterTitle": "Хост использует Go-адаптер (faf-pioneer). В динамическом режиме вы подключитесь через Go автоматически; иначе выберите Go в настройках подключения.",
   "lobby.browser.mapSize": "Размер карты",
   "lobby.browser.unrated": "Без рейтинга",

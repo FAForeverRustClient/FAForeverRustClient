@@ -1819,6 +1819,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranked": "Rankingowa",
   "lobby.browser.unranked": "Poza rankingiem",
   "lobby.browser.goAdapter": "Adapter Go",
+  "lobby.browser.moreTags": "+{count} więcej",
   "lobby.browser.goAdapterTitle": "Hostowane z adapterem Go (faf-pioneer). W trybie Dynamiczny dołączasz z Go automatycznie; w przeciwnym razie wybierz Go w ustawieniach połączenia.",
   "lobby.browser.mapSize": "Rozmiar mapy",
   "lobby.browser.unrated": "Bez rankingu",

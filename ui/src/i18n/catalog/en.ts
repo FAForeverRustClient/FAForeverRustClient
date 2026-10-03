@@ -880,6 +880,7 @@ export const en = {
   "lobby.browser.ranked": "Ranked",
   "lobby.browser.unranked": "Unranked",
   "lobby.browser.goAdapter": "Go adapter",
+  "lobby.browser.moreTags": "+{count} more",
   "lobby.browser.goAdapterTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
   // The sim-mod tag says how many, and its tooltip says the thing the count
   // does not: whether those mods cost the game its rating. Plural because

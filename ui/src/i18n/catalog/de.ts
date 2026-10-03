@@ -782,6 +782,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranked": "Gewertet",
   "lobby.browser.unranked": "Ungewertet",
   "lobby.browser.goAdapter": "Go-Adapter",
+  "lobby.browser.moreTags": "+{count} weitere",
   "lobby.browser.goAdapterTitle": "Mit dem Go-Adapter (faf-pioneer) gehostet. Mit Dynamisch trittst du automatisch mit Go bei, sonst in den Verbindungseinstellungen Go wählen.",
   "lobby.browser.simModsRanked": {
     one: "{count} Sim-Mod, gewertet: das Spiel zählt weiterhin",
