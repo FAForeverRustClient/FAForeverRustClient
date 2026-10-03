@@ -10,7 +10,7 @@ use faf_app::{App, Ports};
 use faf_domain::state::{
     BrowsingPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
     CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView,
-    HostGamePreferences, LiveReplayFilters, SettingsCommand, SettingsState,
+    HostGamePreferences, LiveReplayFilters, ReplayChatTransfers, SettingsCommand, SettingsState,
 };
 
 #[derive(Default)]
@@ -60,57 +60,64 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
     saved.lock().unwrap().clear();
 
     app.dispatch(
-        SettingsCommand::SetBrowsing {
-            preferences: Box::new(BrowsingPreferences {
-                custom_games_view: CustomGameView::List,
-                replays_view: CustomGameView::List,
-                live_replay_view: CustomGameView::List,
-                custom_games_browser: CustomGameBrowserPreferences {
-                    sort: CustomGameSort::Age,
-                    sort_reversed: false,
-                    hide_private: true,
-                    hide_modded: false,
-                    hide_unranked: false,
-                    hide_foes: false,
-                    apply_filters: true,
-                    rules: vec![CustomGameFilterRule {
-                        field: CustomGameFilterField::Map,
-                        constraint: CustomGameFilterConstraint::Contains,
-                        value: "  gap  ".into(),
-                    }],
-                    column_widths: Vec::new(),
-                    detail_width: 0,
-                },
-                matchmaker_unselected_queues: vec!["  ladder_1v1 ".into()],
-                matchmaker_factions: vec!["cybran".into()],
-                matchmaker_chat_width: 0,
-                live_replay_filters: LiveReplayFilters {
-                    search: "  tournament  ".into(),
-                    active_players: "04".into(),
-                    ..LiveReplayFilters::default()
-                },
-                host_game: HostGamePreferences::default(),
-                host_coop: HostGamePreferences::default(),
-                favorite_maps: vec!["adaptive_tabula.v0006".into()],
-                favorite_mods: vec!["eco_graph".into()],
-                map_vault_preset: "newest".into(),
-                map_vault_sort: String::new(),
-                mod_vault_sort: String::new(),
-                vault_page_size: 0,
-                replay_list_columns: Vec::new(),
-                live_replay_columns: Vec::new(),
-                coop_board_columns: Vec::new(),
-                matchmaker_recent_columns: Vec::new(),
-                mod_vault_preset: "rating".into(),
-                mod_presets: Vec::new(),
-                leaderboard_rating_columns: vec![
-                    "deviation".into(),
-                    "GAMES".into(),
-                    "invalid".into(),
-                ],
-                replay_vault_player: "VindexNoob".into(),
-                legacy_storage_migrated: true,
-            }),
+        SettingsCommand::PatchBrowsing {
+            patch: Box::new(
+                BrowsingPreferences {
+                    custom_games_view: CustomGameView::List,
+                    replays_view: CustomGameView::List,
+                    live_replay_view: CustomGameView::List,
+                    custom_games_browser: CustomGameBrowserPreferences {
+                        sort: CustomGameSort::Age,
+                        sort_reversed: false,
+                        hide_private: true,
+                        hide_modded: false,
+                        hide_unranked: false,
+                        hide_foes: false,
+                        apply_filters: true,
+                        rules: vec![CustomGameFilterRule {
+                            field: CustomGameFilterField::Map,
+                            constraint: CustomGameFilterConstraint::Contains,
+                            value: "  gap  ".into(),
+                        }],
+                        column_widths: Vec::new(),
+                        column_order: Vec::new(),
+                        detail_width: 0,
+                    },
+                    matchmaker_unselected_queues: vec!["  ladder_1v1 ".into()],
+                    matchmaker_factions: vec!["cybran".into()],
+                    matchmaker_chat_width: 0,
+                    live_replay_filters: LiveReplayFilters {
+                        search: "  tournament  ".into(),
+                        active_players: "04".into(),
+                        ..LiveReplayFilters::default()
+                    },
+                    host_game: HostGamePreferences::default(),
+                    host_coop: HostGamePreferences::default(),
+                    favorite_maps: vec!["adaptive_tabula.v0006".into()],
+                    favorite_mods: vec!["eco_graph".into()],
+                    map_vault_preset: "newest".into(),
+                    map_vault_sort: String::new(),
+                    mod_vault_sort: String::new(),
+                    vault_page_size: 0,
+                    replay_list_columns: Vec::new(),
+                    replay_list_order: Vec::new(),
+                    live_replay_columns: Vec::new(),
+                    coop_board_columns: Vec::new(),
+                    matchmaker_recent_columns: Vec::new(),
+                    mod_vault_preset: "rating".into(),
+                    mod_presets: Vec::new(),
+                    leaderboard_rating_columns: vec![
+                        "deviation".into(),
+                        "GAMES".into(),
+                        "invalid".into(),
+                    ],
+                    replay_vault_player: "VindexNoob".into(),
+                    replay_chat_channel: "Allies".into(),
+                    replay_chat_transfers: ReplayChatTransfers::Only,
+                    legacy_storage_migrated: true,
+                }
+                .into(),
+            ),
         }
         .into(),
     )
@@ -140,6 +147,8 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
     assert_eq!(state.mod_vault_preset, "rating");
     assert_eq!(state.leaderboard_rating_columns, ["deviation", "games"]);
     assert_eq!(state.replay_vault_player, "VindexNoob");
+    assert_eq!(state.replay_chat_channel, "allies");
+    assert_eq!(state.replay_chat_transfers, ReplayChatTransfers::Only);
     assert!(state.legacy_storage_migrated);
     assert_eq!(saved.lock().unwrap().last().unwrap().browsing, state);
 }

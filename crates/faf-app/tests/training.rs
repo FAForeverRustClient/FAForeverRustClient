@@ -456,6 +456,45 @@ async fn composing_records_the_draft_before_writing_the_post_from_it() {
     panic!("the post was never composed");
 }
 
+#[tokio::test]
+async fn a_kept_contribution_draft_survives_without_composing_anything() {
+    // The form sends the draft as it is written so that leaving the form, for
+    // the library or another tab, does not throw away what was typed. Keeping
+    // it must not compose a post: that is still the author's own step.
+    let h = harness(Vec::new());
+    h.app
+        .dispatch(TrainingCommand::OpenContribution.into())
+        .await
+        .unwrap();
+    let draft = faf_domain::state::ContributionDraft {
+        title: "Half a guide".into(),
+        body: "Still being written".into(),
+        ..faf_domain::state::ContributionDraft::default()
+    };
+    h.app
+        .dispatch(
+            TrainingCommand::ChangeContribution {
+                draft: Box::new(draft.clone()),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+
+    for _ in 0..300 {
+        let training = h.app.snapshot().training;
+        if training.contribution.as_ref() == Some(&draft) {
+            assert!(
+                training.contribution_post.is_none(),
+                "keeping a draft composes nothing"
+            );
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    panic!("the draft was never kept");
+}
+
 async fn wait_for_review(h: &Harness) -> faf_domain::state::ReviewRequestDraft {
     for _ in 0..300 {
         if let Some(draft) = h.app.snapshot().training.review {

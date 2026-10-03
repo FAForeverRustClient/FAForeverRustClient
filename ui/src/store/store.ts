@@ -13,7 +13,13 @@ import { applyEvent } from "./reducer";
 const INITIAL: AppState = {
   session: { backendVersion: "", status: "disconnected", offlineAuth: false },
   auth: { status: "loggedOut", player: null, error: null, mode: "account" },
-  nav: { activeTab: "news" },
+  nav: {
+    activeTab: "news",
+    mapsSection: "vault",
+    modsSection: "vault",
+    replaysSection: "online",
+    settingsSection: "general",
+  },
   notifications: { items: [] },
   chat: {
     status: "disconnected",
@@ -467,6 +473,7 @@ const INITIAL: AppState = {
     },
     keptGeneratedMaps: [],
     matchmakerVetoes: [],
+    avatarHistory: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
     general: { startPage: "news", autoLogin: true, rememberTypedEntries: false },
     appearance: {
@@ -581,7 +588,7 @@ const INITIAL: AppState = {
     },
     updates: { automatic: true, preRelease: false },
     browsing: {
-      customGamesView: "tiles",
+      customGamesView: "list",
       replaysView: "tiles",
       liveReplayView: "tiles",
       customGamesBrowser: {
@@ -594,6 +601,7 @@ const INITIAL: AppState = {
         applyFilters: false,
         rules: [],
         columnWidths: [],
+        columnOrder: [],
         detailWidth: 0,
       },
       matchmakerUnselectedQueues: [],
@@ -640,12 +648,15 @@ const INITIAL: AppState = {
       modVaultSort: "",
       vaultPageSize: 0,
       replayListColumns: [],
+      replayListOrder: [],
       liveReplayColumns: [],
       coopBoardColumns: [],
       matchmakerRecentColumns: [],
       modPresets: [],
       leaderboardRatingColumns: ["games", "updated"],
       replayVaultPlayer: "",
+      replayChatChannel: "",
+      replayChatTransfers: "show",
       legacyStorageMigrated: false,
     },
     events: { weekStart: "monday", reminders: [] },

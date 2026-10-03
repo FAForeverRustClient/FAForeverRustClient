@@ -3,6 +3,7 @@ import { ipc } from "../../../ipc/client";
 import type { Game, PartyState, Reaction } from "../../../ipc/bindings";
 import { useAppStore } from "../../../store/store";
 import { Composer } from "../../chat/messages/Composer";
+import { partyDraftKey } from "../../chat/messages/composerDrafts";
 import { MessageList, type MessageReactionsMap } from "../../chat/messages/MessageList";
 import type { ChatGameLink } from "../../chat/messages/chatFormat";
 import { visibleChatMessages } from "../../chat/messages/messageFilters";
@@ -122,6 +123,7 @@ export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: 
         key={room?.name ?? roomName ?? "party-chat"}
         messages={messages}
         self={self}
+        conversationLabel={partyChannelLabel(roomName)}
         emptyLabel={t(room ? "lobby.party.noMessages" : "lobby.party.joiningChannel")}
         onNickClick={openConversation}
         onNickContextMenu={(nickname, event) => {
@@ -140,6 +142,7 @@ export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: 
       />
       <Composer
         channel={roomName ?? "party chat"}
+        draftKey={partyDraftKey(roomName)}
         nicknames={room?.users.map((user) => user.name) ?? []}
         disabled={chat.status !== "connected" || !room || !roomName}
         onSend={(content) => {

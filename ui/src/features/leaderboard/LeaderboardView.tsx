@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import { ipc } from "../../ipc/client";
 import type { LeaderboardMode } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
@@ -9,6 +10,7 @@ import { RatingLeaderboardPanel } from "./RatingLeaderboardPanel";
 import { RatingExplainerPanel } from "./RatingExplainer";
 import "./leaderboard.css";
 import { useTranslation } from "../../i18n/useTranslation";
+import { plainError } from "../../shared/plainError";
 
 const setMode = (mode: LeaderboardMode) => ipc.send({
   kind: "Leaderboard",
@@ -73,12 +75,16 @@ export function LeaderboardView() {
         )}
       </header>
 
-      {showTable && state.catalogStatus.type === "loading" && <div className="leaderboard-state muted">Loading leaderboard catalog…</div>}
+      {/* Loading is said in the status bar, the one place for it; a failure
+          is said here, with the way to try again. */}
       {showTable && state.catalogStatus.type === "failed" && (
-        <div className="leaderboard-catalog-error surface-error">
-          <span>{state.catalogStatus.payload.reason}</span>
-          <Button onClick={() => void loadCatalog()}><Icon name="refresh" size={16} /> {t("leaderboard.view.retry")}</Button>
-        </div>
+        <StatusNotice
+          tone="error"
+          action={{ label: t("leaderboard.view.retry"), onClick: () => void loadCatalog() }}
+          detail={state.catalogStatus.payload.reason}
+        >
+          {t("leaderboard.view.catalogFailed", { reason: plainError(state.catalogStatus.payload.reason) })}
+        </StatusNotice>
       )}
       {explaining && <RatingExplainerPanel />}
       {showTable && state.catalogStatus.type === "ready" && state.mode === "ratings" && <RatingLeaderboardPanel />}

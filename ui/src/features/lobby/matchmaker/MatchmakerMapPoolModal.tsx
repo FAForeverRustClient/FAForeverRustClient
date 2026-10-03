@@ -21,6 +21,26 @@ function formatMapSize(width: number, height: number) {
   return `${normalize(width)}×${normalize(height)} km`;
 }
 
+type PoolMap = MatchmakerMapPool["maps"][number];
+
+/**
+ * Smallest maps first, the order the Java client uses: by area, then width,
+ * then name. The server hands maps over in the order a moderator added them,
+ * which says nothing to a player choosing what to veto.
+ */
+export function sortMapsBySize(maps: PoolMap[]): PoolMap[] {
+  // Same units-or-kilometres rule as the label, so a pool mixing the two
+  // still compares like with like.
+  const km = (value: number) => (value > 64 ? value / 51.2 : value);
+  return [...maps].sort((left, right) => {
+    const area = km(left.width) * km(left.height) - km(right.width) * km(right.height);
+    if (area !== 0) return area;
+    const width = km(left.width) - km(right.width);
+    if (width !== 0) return width;
+    return left.displayName.localeCompare(right.displayName, undefined, { sensitivity: "base" });
+  });
+}
+
 function bracketTitle(pool: MatchmakerMapPool) {
   if (pool.minRating === null && pool.maxRating === null) return t("lobby.mapPool.anyRating");
   if (pool.minRating === null) {
@@ -124,6 +144,11 @@ export function MatchmakerMapPoolModal({
     sortedPools.find((pool) => pool.id === activePoolId) ??
     matchedBracket ??
     sortedPools[0];
+
+  const activeMaps = useMemo(
+    () => (activePool ? sortMapsBySize(activePool.maps) : []),
+    [activePool],
+  );
 
   const tokensUsed = activePool
     ? Object.entries(draftVetoes)
@@ -233,7 +258,7 @@ export function MatchmakerMapPoolModal({
         ) : !activePool || activePool.maps.length === 0 ? (
           <p className="play-empty">{t("lobby.mapPool.empty")}</p>
         ) : (
-          activePool.maps.map((map) => {
+          activeMaps.map((map) => {
             const tokens = draftVetoes[`${activePool.id}:${map.assignmentId}`] ?? 0;
             const isVetoed = tokens > 0;
             const canVeto = tokenLimit > 0;

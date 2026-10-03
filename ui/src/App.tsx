@@ -16,7 +16,6 @@ import { StartupView } from "./features/shell/StartupView";
 import {
   clearLegacyBrowsingPreferences,
   migrateLegacyBrowsingPreferences,
-  normalizeBrowsingPreferences,
 } from "./shared/browsingPreferences";
 
 function applyInterfaceScale(scale: number): void {
@@ -111,11 +110,11 @@ export function App() {
     if (browsingMigrationStarted.current) return;
     browsingMigrationStarted.current = true;
     const storage = browserStorage();
-    const preferences = storage
+    const patch = storage
       ? migrateLegacyBrowsingPreferences(browsing, storage)
-      : normalizeBrowsingPreferences({ ...browsing, legacyStorageMigrated: true });
+      : { legacyStorageMigrated: true };
     void ipc
-      .dispatch({ kind: "Settings", command: { type: "setBrowsing", payload: { preferences } } })
+      .dispatch({ kind: "Settings", command: { type: "patchBrowsing", payload: { patch } } })
       .catch(() => {
         browsingMigrationStarted.current = false;
       });
@@ -124,9 +123,13 @@ export function App() {
   useEffect(() => {
     let active = true;
     let unlisten: (() => void) | undefined;
+    // Held here so the cleanup can stop a recovery retry it has scheduled:
+    // without that, StrictMode's discarded first run kept retrying snapshots
+    // into a store the second run now owns.
+    let mirror: RevisionedMirror | undefined;
 
     const bootstrap = async () => {
-      const mirror = new RevisionedMirror(
+      mirror = new RevisionedMirror(
         (state) => useAppStore.getState().hydrate(state),
         (event) => useAppStore.getState().apply(event),
         () => ipc.snapshot(),
@@ -141,7 +144,8 @@ export function App() {
       // Register before requesting the snapshot. Deltas that race the IPC
       // response are buffered by revision, and lag-recovery snapshots travel
       // on this same ordered channel.
-      const stopListening = await ipc.onMessage((message) => mirror.receive(message));
+      const current = mirror;
+      const stopListening = await ipc.onMessage((message) => current.receive(message));
       // StrictMode's double-invoke runs this effect's cleanup synchronously
       // before this `await` resolves, so `active` can already be false here.
       // Without this check the listener registered above would leak: never
@@ -154,7 +158,7 @@ export function App() {
       unlisten = stopListening;
       const snapshot = await ipc.snapshot();
       if (!active) return;
-      mirror.replace(snapshot);
+      current.replace(snapshot);
     };
 
     void bootstrap().catch((error: unknown) => {
@@ -164,6 +168,7 @@ export function App() {
     return () => {
       active = false;
       unlisten?.();
+      mirror?.dispose();
     };
   }, []);
 

@@ -151,6 +151,22 @@ describe("the queue breakdown by rating", () => {
     }
   });
 
+  it("lists your own band even when nobody is waiting in it", () => {
+    // Middles of 1000 and 1300, and you at a mean of 2100: nobody in the 2000
+    // band, but it is still listed so the marker has a row to sit on.
+    const team = queue({
+      teamSize: 2,
+      boundary80s: [{ min: 800, max: 1200 }, { min: 1100, max: 1500 }],
+    });
+    expect(queueRatingBuckets(team, rating(2100, 60), 0)).toEqual([
+      { min: 800, max: 1200, count: 1, inRange: 0, mine: false },
+      { min: 1200, max: 1600, count: 1, inRange: 0, mine: false },
+      { min: 2000, max: 2400, count: 0, inRange: 0, mine: true },
+    ]);
+    // And not when the queue is empty, which has no breakdown at all.
+    expect(queueRatingBuckets(queue({ boundary80s: [], boundary75s: [] }), rating(2100, 60), 0)).toEqual([]);
+  });
+
   it("claims nothing about a rating the server is unsure of", () => {
     const buckets = queueRatingBuckets(queue(), rating(1150, 201), 0);
     expect(buckets.every((bucket) => bucket.inRange === 0 && !bucket.mine)).toBe(true);

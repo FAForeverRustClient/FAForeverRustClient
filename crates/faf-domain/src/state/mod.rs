@@ -81,11 +81,11 @@ pub use leaderboard::{
     RatingLeaderboard, RatingPage, RatingQuery, SeasonLeaderboard,
 };
 pub use lobby::{
-    rating_for_game, rating_gate_blocks, title_marks_go_adapter, with_go_adapter_tag,
-    AvailableAvatar, AvatarListStatus, Game, GameLaunch, HostGameConfig, JoinState, LobbyCommand,
-    LobbyEvent, LobbyState, LobbyStatus, MatchmakerQueue, MatchmakingState, PartyMember,
-    PartyState, PlayMode, PlayerVeto, PreparationPhase, RatingRange, GLOBAL_LEADERBOARD,
-    GO_ADAPTER_TITLE_TAG,
+    rating_for_game, rating_gate_blocks, reconcile_avatar, remember_avatar, title_marks_go_adapter,
+    with_go_adapter_tag, AvailableAvatar, AvatarListStatus, AvatarReconciliation, Game, GameLaunch,
+    HostGameConfig, JoinState, LobbyCommand, LobbyEvent, LobbyState, LobbyStatus, MatchmakerQueue,
+    MatchmakingState, PartyMember, PartyState, PlayMode, PlayerVeto, PreparationPhase, RatingRange,
+    GLOBAL_LEADERBOARD, GO_ADAPTER_TITLE_TAG,
 };
 pub use map_generator::{
     is_valid_preset_name, preset_file_name, DecodedMapName, DecodedStyle, GenerationType,
@@ -101,7 +101,9 @@ pub use mods::{
     InstalledMod, ModDownloadSize, ModDownloadTarget, ModInstallStatus, ModListStatus,
     ModToggleStatus, ModType, ModVersionConflict, ModsCommand, ModsEvent, ModsState, VaultMod,
 };
-pub use nav::{NavCommand, NavEvent, NavState, Tab};
+pub use nav::{
+    MapsSection, ModsSection, NavCommand, NavEvent, NavState, ReplaysSection, SettingsSection, Tab,
+};
 pub use notifications::{
     ClientNotification, NotificationAction, NotificationCommand, NotificationEvent,
     NotificationKind, NotificationState,
@@ -141,9 +143,9 @@ pub use settings::{
     DiscordPreferences, EventReminder, EventsPreferences, GameCacheInfo, GamePreferences,
     GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
     NotificationPreferences, NotificationSound, NotificationSoundChoices, PathPreferences,
-    PlayerNote, ReplayNote, SettingsCommand, SettingsEvent, SettingsState, SocialPreferences,
-    Theme, ToastPosition, UiDensity, UpdatePreferences, WeekStart, MAX_SIDEBAR_WIDTH,
-    MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
+    PlayerNote, ReplayChatTransfers, ReplayNote, SettingsCommand, SettingsEvent, SettingsState,
+    SocialPreferences, Theme, ToastPosition, UiDensity, UpdatePreferences, WeekStart,
+    MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,

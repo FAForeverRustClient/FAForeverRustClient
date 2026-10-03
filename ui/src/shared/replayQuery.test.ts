@@ -35,11 +35,22 @@ describe("advancedReplayFilterCount", () => {
     })).toBe(0);
   });
 
-  it("counts the featured mod, which is hidden now, except co-op", () => {
+  it("does not count the sliders in the always-visible row", () => {
+    expect(advancedReplayFilterCount({
+      ...EMPTY_REPLAY_QUERY,
+      minDurationMinutes: 5,
+      minPlayers: 4,
+      mapMaxSizeKm: 10,
+      minReviewScore: 3,
+    })).toBe(0);
+  });
+
+  it("does not count the game type or the page size, which sit in the first row", () => {
     expect(advancedReplayFilterCount({
       ...EMPTY_REPLAY_QUERY,
       featuredMods: ["fafbeta"],
-    })).toBe(1);
+      pageSize: 100,
+    })).toBe(0);
     // Co-op is chosen from the visible game-mode control, not from the panel.
     expect(advancedReplayFilterCount({
       ...EMPTY_REPLAY_QUERY,

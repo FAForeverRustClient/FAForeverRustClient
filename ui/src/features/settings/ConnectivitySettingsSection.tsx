@@ -1,4 +1,4 @@
-import type { ConnectivityPreferences, IceAdapter } from "../../ipc/bindings";
+import type { IceAdapter, ConnectivityPreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { recordEntries } from "../../shared/records";
@@ -6,10 +6,10 @@ import { SettingRow } from "./SettingControls";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const save = (preferences: ConnectivityPreferences) =>
+const save = (patch: ConnectivityPreferencesPatch) =>
   ipc.send({
     kind: "Settings",
-    command: { type: "setConnectivity", payload: { preferences } },
+    command: { type: "patchConnectivity", payload: { patch } },
   });
 
 // Dynamic first: it is the default, and the one that is right for any game
@@ -30,8 +30,8 @@ const HOST_ADAPTERS: Record<HostAdapter, MessageKey> = {
 export function ConnectivitySettingsSection() {
   const { t } = useTranslation();
   const preferences = useAppStore((state) => state.state.settings.connectivity);
-  const change = (next: Partial<ConnectivityPreferences>) =>
-    void save({ ...preferences, ...next, selectionVersion: 2 });
+  const change = (next: ConnectivityPreferencesPatch) =>
+    void save({ ...next, selectionVersion: 2 });
 
   return (
     <>
