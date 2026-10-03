@@ -13,8 +13,6 @@ import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
 import { sortsDescending } from "./gameSortOrder";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { fromDrawnOrder, inDrawnOrder } from "../../../shared/columnOrder";
-import { useColumnOrder } from "../../../shared/hooks/useColumnOrder";
 import {
   columnTemplate,
   columnWidths,
@@ -29,14 +27,10 @@ import {
  *
  * An empty array is the reset: the backend keeps it, and `columnWidths` reads
  * it back as "use the designed widths", so a reset survives a restart the same
- * way a drag does. A reset puts the columns back in their designed order as
- * well (#409), in the same write: two writes in a row would each start from
- * the settings as they were, and the second would undo the first.
+ * way a drag does.
  */
-function saveColumnWidths(widths: number[], resetOrder = false): void {
+function saveColumnWidths(widths: number[]): void {
   const current = useAppStore.getState().state.settings.browsing;
-  const columnOrders = { ...current.columnOrders };
-  if (resetOrder) delete columnOrders.gameBrowser;
   ipc.send({
     kind: "Settings",
     command: {
@@ -45,7 +39,6 @@ function saveColumnWidths(widths: number[], resetOrder = false): void {
         preferences: {
           ...current,
           customGamesBrowser: { ...current.customGamesBrowser, columnWidths: widths },
-          columnOrders,
         },
       },
     },
@@ -117,13 +110,6 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   const [dragWidths, setDragWidths] = useState<number[] | null>(null);
   const widths = dragWidths ?? columnWidths(savedWidths);
   const dragOrigin = useRef<number[] | null>(null);
-  // The order the six columns are drawn in (#409). The rows keep their cells
-  // in designed order and are arranged by CSS `order`, which the template
-  // below hands them as one variable per column; so a row component knows
-  // nothing about it, and the widths stay by column.
-  const arrangement = useColumnOrder("gameBrowser", COLUMN_SORTS.length);
-  const { order } = arrangement;
-  const flexibleAt = order.indexOf(FLEXIBLE_COLUMN);
 
   // The list's width, from its header: the header is as wide as the list.
   // Watched, because the window, the detail panel and the chat sidebar all
@@ -140,22 +126,14 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     return () => observer.disconnect();
   }, [enabled]);
   const scale = columnScale(listWidth, widths);
-  const shown = scaledColumnWidths(inDrawnOrder(widths, order), scale);
+  const shown = scaledColumnWidths(widths, scale);
 
   const style = useMemo(
-    () => {
-      if (!enabled) return undefined;
-      const positions: Record<string, number> = {};
-      order.forEach((column, position) => {
-        positions[`--game-col-order-${column}`] = position;
-      });
-      const template: CSSProperties = { gridTemplateColumns: columnTemplate(shown, flexibleAt), ...positions };
-      return template;
-    },
+    () => (enabled ? { gridTemplateColumns: columnTemplate(shown) } : undefined),
     // The template is a string, so comparing the array by value is what keeps
     // every row from re-rendering on an unrelated settings write.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [enabled, shown.join(","), order.join(",")],
+    [enabled, shown.join(",")],
   );
 
   // The game column's drawn width when a drag begins. On a list wider than
@@ -173,11 +151,8 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     // The pointer moves in drawn pixels and the widths are stored unscaled:
     // at half scale a stored width changes twice as far, which is what keeps
     // the divider under the cursor. A trade keeps the total, so the scale
-    // holds still for the whole drag. `boundary` is a drawn position, and the
-    // two columns either side of it are traded in drawn order.
-    const base = dragOrigin.current;
-    const resized = withColumnResized(inDrawnOrder(base, order), boundary, delta / scale, flexibleAt);
-    setDragWidths(fromDrawnOrder(resized, order, base));
+    // holds still for the whole drag.
+    setDragWidths(withColumnResized(dragOrigin.current, boundary, delta / scale));
   };
   const onCommit = () => {
     dragOrigin.current = null;
@@ -188,7 +163,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
   const onReset = () => {
     dragOrigin.current = null;
     setDragWidths(null);
-    saveColumnWidths([], true);
+    saveColumnWidths([]);
   };
 
   /**
@@ -214,37 +189,28 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
     t("lobby.browser.column.age"),
   ];
 
-  const moveHint = t("common.moveColumnHint");
   const header = (
     <div className="game-browser-head" style={style} ref={headerRef}>
       {labels.map((label, index) => {
         const column = COLUMN_SORTS[index];
         const active = column === sort;
         const descending = column !== null && sortsDescending(column, reversed);
-        // Cells stay in designed order in the document; CSS draws them in
-        // `order`. The divider belongs to wherever the cell is drawn.
-        const position = order.indexOf(index);
-        const before = position > 0 ? order[position - 1] : -1;
         return (
-          <span
-            key={label}
-            className={arrangement.dropTarget === index ? "is-drop-target" : undefined}
-            {...arrangement.dropProps(index)}
-          >
+          <span key={label}>
             {/* One line in front of every column but the first, standing where
                 that column starts. It trades width between the two columns it
                 separates, so it lands under the cursor and no other line moves.
                 The column it is named after is the one that grows as it is
                 dragged to the right, which is the one before it unless that is
                 the game column: the game column has no width of its own. */}
-            {position > 0 && (
+            {index > 0 && (
               <ResizeHandle
                 className="game-browser-col-handle is-ruled"
                 label={t("lobby.browser.resizeColumn", {
-                  column: labels[before === FLEXIBLE_COLUMN ? index : before],
+                  column: labels[index - 1 === FLEXIBLE_COLUMN ? index : index - 1],
                 })}
                 onStart={onStart}
-                onDrag={(delta) => onDrag(position, delta)}
+                onDrag={(delta) => onDrag(index, delta)}
                 onEnd={onCommit}
                 onReset={onReset}
               />
@@ -258,12 +224,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
                 cell with `overflow: hidden` cuts it off entirely. */}
             {column === null ? (
               // Nothing to order by: the label alone, in the button's place.
-              <span
-                className="game-browser-head-sort is-static"
-                tabIndex={0}
-                title={moveHint}
-                {...arrangement.grabProps(index)}
-              >
+              <span className="game-browser-head-sort is-static">
                 <span className="game-browser-head-label">{label}</span>
               </span>
             ) : (
@@ -275,8 +236,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
                 // is a CSS grid of plain elements rather than a table, so the
                 // role would be a claim about a structure that is not there. The
                 // label carries the order instead.
-                title={`${t("lobby.browser.sortByColumn", { column: label })}. ${moveHint}`}
-                {...arrangement.grabProps(index)}
+                title={t("lobby.browser.sortByColumn", { column: label })}
                 aria-label={`${t("lobby.browser.sortByColumn", { column: label })}${
                   active
                     ? ` (${t(descending ? "lobby.browser.sortDescending" : "lobby.browser.sortAscending")})`

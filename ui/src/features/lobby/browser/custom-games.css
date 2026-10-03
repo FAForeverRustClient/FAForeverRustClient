@@ -76,16 +76,6 @@
   min-width: 0;
 }
 
-/* Moved columns (issue 409): the cells stay in designed order in the document
-   and are drawn where the list's order puts them. The positions arrive as one
-   variable per column on the template the header and every row share. */
-.game-browser-head > :nth-child(1), .game-browser-row > :nth-child(1) { order: var(--game-col-order-0, 0); }
-.game-browser-head > :nth-child(2), .game-browser-row > :nth-child(2) { order: var(--game-col-order-1, 1); }
-.game-browser-head > :nth-child(3), .game-browser-row > :nth-child(3) { order: var(--game-col-order-2, 2); }
-.game-browser-head > :nth-child(4), .game-browser-row > :nth-child(4) { order: var(--game-col-order-3, 3); }
-.game-browser-head > :nth-child(5), .game-browser-row > :nth-child(5) { order: var(--game-col-order-4, 4); }
-.game-browser-head > :nth-child(6), .game-browser-row > :nth-child(6) { order: var(--game-col-order-5, 5); }
-
 /* The header cell is a button now: the whole label, plus the arrow that says
    which way this column is ordered. Transparent and inheriting its type, so
    the row still reads as a table head rather than as five controls. */

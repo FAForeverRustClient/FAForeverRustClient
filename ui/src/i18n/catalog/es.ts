@@ -214,7 +214,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "common.unknown": "Desconocido",
   "common.now": "Ahora",
   "common.any": "Cualquiera",
-  "common.moveColumnHint": "Arrastra sobre otra columna para moverla allí, o pulsa Alt+← o Alt+→. Haz doble clic en un separador para restaurar las columnas originales.",
   "common.pickDate": "Elegir una fecha",
   "common.close": "Cerrar",
   "common.cancel": "Cancelar",

@@ -6439,7 +6439,6 @@ fn cases() -> Vec<Case> {
                         live_replay_columns: vec![120, 200],
                         coop_board_columns: Vec::new(),
                         matchmaker_recent_columns: Vec::new(),
-                        column_orders: Default::default(),
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec!["games".into(), "updated".into()],

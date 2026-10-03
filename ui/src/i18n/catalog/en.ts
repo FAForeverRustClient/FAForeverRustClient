@@ -2902,7 +2902,6 @@ export const en = {
   "common.unknown": "Unknown",
   "common.now": "Now",
   "common.any": "Any",
-  "common.moveColumnHint": "Drag onto another column to move it there, or press Alt+← or Alt+→. Double-click a divider to restore the designed columns.",
   "common.pickDate": "Pick a date",
   "common.close": "Close",
   "common.cancel": "Cancel",

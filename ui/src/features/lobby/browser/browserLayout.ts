@@ -106,21 +106,14 @@ export function withColumnResized(
   widths: readonly number[],
   boundary: number,
   delta: number,
-  flexible: number = FLEXIBLE_COLUMN,
 ): number[] {
   // The game column trades width like any other now: it has a width of its
   // own, so the divider in front of the tags column moves both of its
-  // neighbours and nothing else, on any screen. It stops at a readable floor,
-  // on whichever side of the line it is: moved columns (#409) can put it to
-  // the right of one.
-  const gameLeftGives = boundary === flexible + 1 && delta < 0;
-  const gameRightGives = boundary === flexible && delta > 0;
-  const room = Math.max(0, widths[flexible] - MIN_GAME_COLUMN_PX);
-  const bounded = gameLeftGives
-    ? Math.max(delta, -room)
-    : gameRightGives
-      ? Math.min(delta, room)
-      : delta;
+  // neighbours and nothing else, on any screen. It stops at a readable floor.
+  const gameGives = boundary === FLEXIBLE_COLUMN + 1 && delta < 0;
+  const bounded = gameGives
+    ? Math.max(delta, Math.min(0, MIN_GAME_COLUMN_PX - widths[FLEXIBLE_COLUMN]))
+    : delta;
   return withBoundaryDragged(widths, boundary, bounded, NO_FLEXIBLE_COLUMN);
 }
 
@@ -133,8 +126,8 @@ export function withColumnResized(
  * third of the way across it with nothing after it. A title that could have
  * used those pixels was being cut off at the same time.
  */
-export function columnTemplate(widths: readonly number[], flexible: number = FLEXIBLE_COLUMN): string {
-  return templateFor(widths, flexible);
+export function columnTemplate(widths: readonly number[]): string {
+  return templateFor(widths, FLEXIBLE_COLUMN);
 }
 
 /** The detail panel's width after a drag, bounded the way the backend bounds it. */

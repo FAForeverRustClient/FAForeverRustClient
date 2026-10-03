@@ -101,7 +101,6 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                 live_replay_columns: Vec::new(),
                 coop_board_columns: Vec::new(),
                 matchmaker_recent_columns: Vec::new(),
-                column_orders: Default::default(),
                 mod_vault_preset: "rating".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![

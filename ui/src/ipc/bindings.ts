@@ -493,18 +493,6 @@ export type BrowsingPreferences = {
 	/**  And for the matchmaker tab's recent games (#301). */
 	matchmakerRecentColumns: number[],
 	/**
-	 *  The order the columns of each list are drawn in, by list (#409):
-	 *  `gameBrowser`, `replayList`, `liveReplays`, `matchmakerRecent`. Each is
-	 *  the designed column at each drawn position, so `[2, 0, 1]` draws the
-	 *  third column first. A list with no entry, or with one that is not an
-	 *  arrangement of its columns, is drawn as designed.
-	 *
-	 *  The widths above stay by column, not by position, so a column keeps
-	 *  its width wherever it is moved. Java's tables let a column be dragged
-	 *  to another place too (JavaFX `TableView`).
-	 */
-	columnOrders: { [key in string]: number[] },
-	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
 	 *  Only the word is shared with `mod_vault_preset` above, which is a vault
