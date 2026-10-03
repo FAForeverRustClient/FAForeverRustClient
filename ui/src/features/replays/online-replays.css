@@ -613,15 +613,60 @@ button.vault-input {
   border-bottom: 1px solid var(--color-border);
 }
 
-/* The vault and local panel's head: title, map and id start level with the
-   top of the preview rather than floating at its middle, and the action
-   column only holds the file's actions stacked one above the other (Watch is
-   at the floor of the dialog), so it needs about the width of its longest
-   label. The live panel keeps the plain head. One class rather than two, so
-   the narrow-window rules further down, also one class, still win. */
-.replay-detail-head-top {
-  grid-template-columns: 160px minmax(0, 1fr) 210px;
+/* The vault and local panel's head, two rows of two. Above: the preview, and
+   beside it title, map and id starting level with its top, with Watch in the
+   corner. Below: the actions on the file stacked under the preview, and the
+   facts beside them against the right edge. The live panel keeps the plain
+   head. The padding moves from the head onto its first row, which is all the
+   close button needs kept clear. */
+.replay-detail-head.replay-detail-head-top {
+  grid-template-columns: 176px minmax(0, 1fr);
   align-items: start;
+  row-gap: var(--space-3);
+  padding-right: 0;
+}
+
+.replay-detail-head-top .replay-detail-thumb-frame {
+  width: 100%;
+}
+
+.replay-detail-headmain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-4);
+  min-width: 0;
+  padding-right: 28px;
+}
+
+.replay-detail-headmain > .replay-detail-headtext {
+  flex: 1 1 260px;
+}
+
+.replay-detail-headmain > .replay-watch-button {
+  flex: none;
+  min-width: 180px;
+}
+
+.replay-detail-head-top > .replay-detail-actions {
+  grid-column: 1;
+  grid-row: 2;
+  margin-right: 0;
+}
+
+/* The two rows of five, kept as they are, but sized to their contents and
+   pushed to the right edge, so they start under the preview's bottom edge
+   beside the buttons instead of across the whole dialog. */
+.replay-detail-head-top > .replay-detail-facts {
+  grid-column: 2;
+  grid-row: 2;
+  justify-content: end;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.replay-detail-head-top > .replay-detail-facts-five {
+  grid-template-columns: repeat(5, minmax(0, max-content));
 }
 
 /* Positioning context for the generate button over the thumbnail. */
@@ -1009,10 +1054,18 @@ button.vault-input {
   grid-column: 1 / -1;
 }
 
-/* One above the other: four labels of very different lengths in two columns
+/* One above the other: five labels of very different lengths in two columns
    left one cell cut short and the other half empty. */
 .replay-detail-actions-stacked {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* A long label ("Als angesehen markieren") wraps onto a second line in the
+   preview-wide column rather than running out of its button. */
+.replay-detail-actions-stacked > .replay-secondary-btn {
+  padding-block: 6px;
+  text-align: left;
+  line-height: 1.25;
 }
 
 .replay-secondary-btn {
@@ -1223,25 +1276,6 @@ button.vault-input {
 .replay-detail-reveal-btn[aria-pressed="true"] {
   border-color: var(--color-border-strong);
   background: var(--color-surface-hover);
-}
-
-/* The floor of the dialog, under the lineup: the way into the file's own
-   contents on the left where the lineup starts, and Watch in the bottom-right
-   corner. */
-.replay-detail-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
-}
-
-.replay-detail-foot > .replay-watch-button {
-  min-width: 220px;
-}
-
-.replay-detail-more-info {
-  min-width: 132px;
 }
 
 .replay-detail-teams {
@@ -1572,6 +1606,18 @@ button.vault-input {
 
   .replay-detail-actions {
     grid-column: 1 / -1;
+  }
+
+  .replay-detail-head.replay-detail-head-top {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  /* Too narrow for a column of buttons beside the facts: both take a row of
+     their own under the preview and the title. */
+  .replay-detail-head-top > .replay-detail-actions,
+  .replay-detail-head-top > .replay-detail-facts {
+    grid-column: 1 / -1;
+    grid-row: auto;
   }
 
   .replay-detail-facts {

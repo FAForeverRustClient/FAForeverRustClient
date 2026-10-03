@@ -420,11 +420,10 @@ export function ReplayDetailPanel({
     : undefined;
   return (
     <Modal className="replay-detail-modal" ariaLabel={t("replays.detail.aria", { name: cardTitle })} onClose={onClose}>
-      {/* One head across the dialog: the map, what the replay is, and the
-          actions on the file. Below it, top to bottom, is what happened in the
-          game: the facts, then the lineup, and at the floor the two ways
-          further in, More info and Watch. A reader scans one column instead of
-          crossing between a rail and a main column. */}
+      {/* One head across the dialog, in two rows of two: the map and what the
+          replay is, with Watch, then under the map the actions on the file and
+          beside them the facts. The lineup has the dialog's whole width below,
+          so a small game leaves no hole beside it. */}
       <header className="replay-detail-head replay-detail-head-top">
         {/* A picture to recognise the map by, and a way to look at it
             properly: clicking opens the same zoom frame the Play and Maps tabs
@@ -470,81 +469,113 @@ export function ReplayDetailPanel({
           )}
         </div>
 
-        <div className="replay-detail-headtext">
-          <h2 title={cardTitle}>{cardTitle}</h2>
-          <div className="replay-detail-map">
-            <Icon name="maps" size={15} />
-            <span className="replay-detail-map-name">{mapLabel}</span>
-            {/* A generated map's whole name, copied rather than shown. It is
-                `neroxis_map_generator_<version>_<seed>_<options>` and all three
-                parts are needed to rebuild it: the same seed under a different
-                version is a different map, and the generator dialog's
-                Reproduce field rejects a bare seed. Printed out it was three
-                lines of Base32 nobody reads; the tooltip and the enlarged
-                preview both show it in full. */}
-            {seed && (
-              <button
-                type="button"
-                className="replay-card-icon-btn"
-                aria-label={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-                title={copiedMapName
-                  ? t("lobby.browser.mapNameCopied")
-                  : `${t("lobby.browser.copyMapName")}\n${effectiveMap}`}
-                onClick={copyMapName}
-              >
-                <Icon name={copiedMapName ? "check" : "copy"} size={13} />
-              </button>
-            )}
-            {downloadMap && (
-              <Button className="replay-detail-map-action" onClick={downloadMap}>
-                <Icon name="download" size={13} />
-                <span>{t("lobby.details.downloadMap")}</span>
-              </Button>
-            )}
-          </div>
-          {/* The number people quote at each other, and the two things done
-              with it: copy the number, copy the link. A line under the map
-              rather than a label over the title, so the title starts level
-              with the top of the preview. */}
-          <div className="replay-detail-idline">
-            {replay.uid > 0 ? (
-              <>
-                <span className="replay-detail-id">#{replay.uid}</span>
+        {/* What the replay is, and beside it the way in: Watch in the
+            top-right corner, where every replay tab puts it. */}
+        <div className="replay-detail-headmain">
+          <div className="replay-detail-headtext">
+            <h2 title={cardTitle}>{cardTitle}</h2>
+            <div className="replay-detail-map">
+              <Icon name="maps" size={15} />
+              <span className="replay-detail-map-name">{mapLabel}</span>
+              {/* A generated map's whole name, copied rather than shown. It is
+                  `neroxis_map_generator_<version>_<seed>_<options>` and all three
+                  parts are needed to rebuild it: the same seed under a different
+                  version is a different map, and the generator dialog's
+                  Reproduce field rejects a bare seed. Printed out it was three
+                  lines of Base32 nobody reads; the tooltip and the enlarged
+                  preview both show it in full. */}
+              {seed && (
                 <button
                   type="button"
                   className="replay-card-icon-btn"
-                  aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                  title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                  onClick={copyReplayId}
+                  aria-label={t(copiedMapName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
+                  title={copiedMapName
+                    ? t("lobby.browser.mapNameCopied")
+                    : `${t("lobby.browser.copyMapName")}\n${effectiveMap}`}
+                  onClick={copyMapName}
                 >
-                  <Icon name={copiedId ? "check" : "copy"} size={13} />
+                  <Icon name={copiedMapName ? "check" : "copy"} size={13} />
                 </button>
-                <button
-                  type="button"
-                  className="replay-card-icon-btn"
-                  aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                  title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                  onClick={copyLink}
-                >
-                  <Icon name={copied ? "check" : "external"} size={13} />
-                </button>
-              </>
-            ) : (
-              <span>{t("replays.local.noReplayId")}</span>
-            )}
-          </div>
-          {!replay.replayAvailable && (
-            <div className="replay-detail-badges">
-              <span className="replay-availability pending">{t("replays.detail.processing")}</span>
+              )}
+              {downloadMap && (
+                <Button className="replay-detail-map-action" onClick={downloadMap}>
+                  <Icon name="download" size={13} />
+                  <span>{t("lobby.details.downloadMap")}</span>
+                </Button>
+              )}
             </div>
-          )}
+            {/* The number people quote at each other, and the two things done
+                with it: copy the number, copy the link. A line under the map
+                rather than a label over the title, so the title starts level
+                with the top of the preview. */}
+            <div className="replay-detail-idline">
+              {replay.uid > 0 ? (
+                <>
+                  <span className="replay-detail-id">#{replay.uid}</span>
+                  <button
+                    type="button"
+                    className="replay-card-icon-btn"
+                    aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                    title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                    onClick={copyReplayId}
+                  >
+                    <Icon name={copiedId ? "check" : "copy"} size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="replay-card-icon-btn"
+                    aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
+                    title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
+                    onClick={copyLink}
+                  >
+                    <Icon name={copied ? "check" : "external"} size={13} />
+                  </button>
+                </>
+              ) : (
+                <span>{t("replays.local.noReplayId")}</span>
+              )}
+            </div>
+            {!replay.replayAvailable && (
+              <div className="replay-detail-badges">
+                <span className="replay-availability pending">{t("replays.detail.processing")}</span>
+              </div>
+            )}
+          </div>
+          <Button
+            className="replay-watch-button"
+            variant="primary"
+            disabled={busy || !replay.replayAvailable}
+            onClick={onWatch}
+          >
+            <Icon name="play" size={18} />
+            <span>{t(replay.replayAvailable ? "replays.detail.watch" : "replays.detail.notUploaded")}</span>
+          </Button>
         </div>
 
-        {/* The actions on the file, one above the other in the order they
-            are reached for. Watch is not among them: it sits at the floor of
-            the dialog, opposite More info. */}
+        {/* Under the preview, one above the other in the order they are
+            reached for: first More info, the way into what the file itself
+            holds (chat, options, mods and the analysis tabs), then the actions
+            on the file. */}
         <div className="replay-detail-actions">
           <div className="replay-detail-actions-secondary replay-detail-actions-stacked">
+            <Button
+              className="replay-secondary-btn replay-detail-more-info"
+              onClick={() => {
+                // Both reads, in the order they are wanted. The file is fetched
+                // once and the second walk reads it off disk, so the expensive
+                // half costs the reader nothing until they reach a tab that
+                // needs it.
+                if (!details && !isLoadingDetails) loadDetails();
+                if (!analysis && analysisLoading !== replay.uid) loadAnalysis();
+                setShowInsights(true);
+              }}
+              aria-haspopup="dialog"
+              aria-expanded={showInsights}
+              title={t("replays.insights.openHint")}
+            >
+              <Icon name={isLoadingDetails ? "refresh" : "list"} size={13} className={isLoadingDetails ? "spin" : undefined} />
+              <span>{t("replays.detail.loadDetailsShort")}</span>
+            </Button>
             {onDownload && (
               <Button
                 className="replay-secondary-btn"
@@ -619,6 +650,75 @@ export function ReplayDetailPanel({
             </Button>
           </div>
         </div>
+
+        {/* Ten facts in two rows of five, paired by column: date over time,
+            the two durations (routinely minutes apart, and the difference is
+            the point of showing both), players over mod, the two numbers about
+            the game's standing, and the map's size over the community's score
+            for the replay. In the head, under the title and level with the
+            action column, against the right edge. */}
+        <dl className="replay-detail-facts replay-detail-facts-five">
+          <div><dt>{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
+          <div><dt>{t("replays.detail.realTime")}</dt><dd>{replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : t("replays.detail.unknown")}</dd></div>
+          <div><dt>{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
+          <div><dt>{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
+          <div><dt>{t("replays.filters.mapSize")}</dt><dd>{size ? size.compact : t("replays.detail.unknown")}</dd></div>
+          <div><dt>{t("replays.detail.time")}</dt><dd>{formatTime(replay.startTime, t("replays.detail.unknown"))}</dd></div>
+          <div><dt>{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
+          <div><dt>{t("replays.detail.featuredMod")}</dt><dd>{replay.modName || t("replays.detail.unknown")}</dd></div>
+          <div><dt>{t("replays.detail.quality")}</dt><dd>{replay.quality !== null ? `${replay.quality}%` : t("replays.detail.unknown")}</dd></div>
+          {/* The stars open the game's reviews, where it can be rated: the same
+              panel the map and mod vaults use, on FAF's gameReview resource
+              (issue 351). A game the server has no number for, or a session
+              without the API, has nothing to open, so there it stays a label. */}
+          <div>
+            <dt>{t("maps.vault.communityRating")}</dt>
+            {/* No score, no stars: five empty stars read as a score of zero.
+                The word alone stays the way in, so a replay nobody has rated
+                can still be rated from here. */}
+            <dd className="replay-detail-rating">
+              {stars === null ? (
+                replay.uid > 0 && !offline ? (
+                  <button
+                    type="button"
+                    className="replay-detail-stars-button replay-detail-rating-value"
+                    title={t("replays.detail.rateReplay")}
+                    aria-label={`${t("replays.detail.rateReplay")}: ${starsLabel}`}
+                    onClick={() => openReviews("game", replay.uid, cardTitle)}
+                  >
+                    {t("replays.detail.unrated")}
+                  </button>
+                ) : (
+                  <span className="replay-detail-rating-value">{t("replays.detail.unrated")}</span>
+                )
+              ) : (
+                <>
+                  {replay.uid > 0 && !offline ? (
+                    <button
+                      type="button"
+                      className="replay-detail-stars replay-detail-stars-button"
+                      title={t("replays.detail.rateReplay")}
+                      aria-label={`${t("replays.detail.rateReplay")}: ${starsLabel}`}
+                      onClick={() => openReviews("game", replay.uid, cardTitle)}
+                    >
+                      {starIcons}
+                    </button>
+                  ) : (
+                    <span className="replay-detail-stars" role="img" aria-label={starsLabel}>
+                      {starIcons}
+                    </span>
+                  )}
+                  <span className="replay-detail-rating-value">
+                    {formatDecimal(stars)}
+                    {rating.count ? (
+                      <span className="muted"> · {rating.count}</span>
+                    ) : null}
+                  </span>
+                </>
+              )}
+            </dd>
+          </div>
+        </dl>
       </header>
 
       {isGeneratingThisMap && generatorProgress && (
@@ -653,73 +753,6 @@ export function ReplayDetailPanel({
         <p className="replay-download-error surface-error">{t("replays.detail.downloadFailed", { error: downloadError })}</p>
       )}
 
-      {/* Ten facts in two rows of five, paired by column: date over time,
-          the two durations (routinely minutes apart, and the difference is
-          the point of showing both), players over mod, the two numbers about
-          the game's standing, and the map's size over the community's score
-          for the replay. */}
-      <dl className="replay-detail-facts replay-detail-facts-five">
-        <div><dt>{t("replays.detail.date")}</dt><dd>{formatDate(replay.startTime, t("replays.detail.unknown"))}</dd></div>
-        <div><dt>{t("replays.detail.realTime")}</dt><dd>{replay.durationSeconds !== null ? formatDuration(replay.durationSeconds) : t("replays.detail.unknown")}</dd></div>
-        <div><dt>{t("replays.detail.players")}</dt><dd>{totalPlayers}</dd></div>
-        <div><dt>{t("replays.detail.avgRating")}</dt><dd>{replay.averageRating !== null ? replay.averageRating : t("replays.detail.unrated")}</dd></div>
-        <div><dt>{t("replays.filters.mapSize")}</dt><dd>{size ? size.compact : t("replays.detail.unknown")}</dd></div>
-        <div><dt>{t("replays.detail.time")}</dt><dd>{formatTime(replay.startTime, t("replays.detail.unknown"))}</dd></div>
-        <div><dt>{t("replays.detail.gameTime")}</dt><dd>{replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("replays.detail.unknown")}</dd></div>
-        <div><dt>{t("replays.detail.featuredMod")}</dt><dd>{replay.modName || t("replays.detail.unknown")}</dd></div>
-        <div><dt>{t("replays.detail.quality")}</dt><dd>{replay.quality !== null ? `${replay.quality}%` : t("replays.detail.unknown")}</dd></div>
-        {/* The stars open the game's reviews, where it can be rated: the same
-            panel the map and mod vaults use, on FAF's gameReview resource
-            (issue 351). A game the server has no number for, or a session
-            without the API, has nothing to open, so there it stays a label. */}
-        <div>
-          <dt>{t("maps.vault.communityRating")}</dt>
-          {/* No score, no stars: five empty stars read as a score of zero.
-              The word alone stays the way in, so a replay nobody has rated
-              can still be rated from here. */}
-          <dd className="replay-detail-rating">
-            {stars === null ? (
-              replay.uid > 0 && !offline ? (
-                <button
-                  type="button"
-                  className="replay-detail-stars-button replay-detail-rating-value"
-                  title={t("replays.detail.rateReplay")}
-                  aria-label={`${t("replays.detail.rateReplay")}: ${starsLabel}`}
-                  onClick={() => openReviews("game", replay.uid, cardTitle)}
-                >
-                  {t("replays.detail.unrated")}
-                </button>
-              ) : (
-                <span className="replay-detail-rating-value">{t("replays.detail.unrated")}</span>
-              )
-            ) : (
-              <>
-                {replay.uid > 0 && !offline ? (
-                  <button
-                    type="button"
-                    className="replay-detail-stars replay-detail-stars-button"
-                    title={t("replays.detail.rateReplay")}
-                    aria-label={`${t("replays.detail.rateReplay")}: ${starsLabel}`}
-                    onClick={() => openReviews("game", replay.uid, cardTitle)}
-                  >
-                    {starIcons}
-                  </button>
-                ) : (
-                  <span className="replay-detail-stars" role="img" aria-label={starsLabel}>
-                    {starIcons}
-                  </span>
-                )}
-                <span className="replay-detail-rating-value">
-                  {formatDecimal(stars)}
-                  {rating.count ? (
-                    <span className="muted"> · {rating.count}</span>
-                  ) : null}
-                </span>
-              </>
-            )}
-          </dd>
-        </div>
-      </dl>
 
       <section className="replay-detail-lineup" aria-label={lineupSummary}>
         <div className="replay-detail-section-head">
@@ -758,40 +791,6 @@ export function ReplayDetailPanel({
           <p className="replay-detail-empty muted">{t("replays.detail.noLineup")}</p>
         )}
       </section>
-
-      {/* What the replay file itself holds, under the lineup it goes deeper
-          into rather than among the actions on the file: chat, options, mods
-          and the analysis tabs. Watch takes the other end of the same row,
-          the bottom-right corner where a dialog's main action is looked for. */}
-      <div className="replay-detail-foot">
-        <Button
-          className="replay-secondary-btn replay-detail-more-info"
-          onClick={() => {
-            // Both reads, in the order they are wanted. The file is fetched
-            // once and the second walk reads it off disk, so the expensive
-            // half costs the reader nothing until they reach a tab that
-            // needs it.
-            if (!details && !isLoadingDetails) loadDetails();
-            if (!analysis && analysisLoading !== replay.uid) loadAnalysis();
-            setShowInsights(true);
-          }}
-          aria-haspopup="dialog"
-          aria-expanded={showInsights}
-          title={t("replays.insights.openHint")}
-        >
-          <Icon name={isLoadingDetails ? "refresh" : "list"} size={13} className={isLoadingDetails ? "spin" : undefined} />
-          <span>{t("replays.detail.loadDetailsShort")}</span>
-        </Button>
-        <Button
-          className="replay-watch-button"
-          variant="primary"
-          disabled={busy || !replay.replayAvailable}
-          onClick={onWatch}
-        >
-          <Icon name="play" size={18} />
-          <span>{t(replay.replayAvailable ? "replays.detail.watch" : "replays.detail.notUploaded")}</span>
-        </Button>
-      </div>
 
       {/* The enlarged preview, in this dialog's own markup rather than in a
           second `Modal`. It covers the viewport the way a dialog would, and
