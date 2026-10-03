@@ -5,7 +5,6 @@ import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapPreview, type PreviewableMap } from "./MapPreview";
-import { toggleFavoriteMap, useIsFavoriteMap } from "../favoriteMaps";
 import "./map-preview-zoom.css";
 import {
   MAX_SCALE,
@@ -368,76 +367,23 @@ export function MapPreviewFrame({ kicker, title, subtitle, label, onClose, child
   );
 }
 
-/**
- * A map opened at full size in a dialog of its own: the Maps tab, the host
- * dialog, a chat game card and the matchmaker's map pool all open this one.
- *
- * Built the way the Play tab's game preview is, which is the one people know:
- * "Map preview" over the map's name and what the tab knows about it, the
- * picture as large as the window allows with the zoom and a star to keep the
- * map, and the full technical name underneath, copyable. This used to be a
- * smaller frame of its own, so a map looked different depending on which tab
- * it was opened from.
- */
-export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl }: {
+export function MapPreviewDialog({ map, meta, onClose, children }: {
   map: PreviewableMap;
-  /// The line under the title: size, player count, whatever the tab knows.
+  /// The line under the picture: size, player count, whatever the tab knows.
   meta?: ReactNode;
   /// The image to zoom, for a caller that resolves map art its own way: the
   /// lobby's `MapThumbnail` knows about generated previews the vault has never
   /// heard of. Defaults to the vault's own `MapPreview`.
   children?: ReactNode;
-  /// Where the map's zip is, so starring a map that is not on disk can fetch it.
-  downloadUrl?: string;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
   const label = map.displayName || map.folderName;
-  const favorite = useIsFavoriteMap(map.folderName);
-  const [copiedName, setCopiedName] = useState(false);
   return (
-    <Modal onClose={onClose} className="map-preview-modal">
+    <Modal onClose={onClose}>
       <div className="map-preview-dialog">
-        <header className="map-preview-dialog-header">
-          <span className="map-preview-dialog-kicker">{t("lobby.browser.mapPreview")}</span>
-          <h2 title={label}>{label}</h2>
-          {meta && <p>{meta}</p>}
-        </header>
-        <ZoomableImage
-          label={label}
-          actions={map.folderName ? (
-            <Button
-              aria-pressed={favorite}
-              onClick={() => toggleFavoriteMap(map.folderName, downloadUrl)}
-              title={t(favorite ? "maps.vault.removeFavoriteAria" : "maps.vault.addFavoriteAria", { name: label })}
-            >
-              <Icon name="star" size={14} />
-              {t(favorite ? "lobby.browser.removeFavoriteMap" : "lobby.browser.addFavoriteMap")}
-            </Button>
-          ) : undefined}
-        >
+        <MapPreviewFrame title={label} footer={meta ? <p>{meta}</p> : null}>
           {children ?? <MapPreview map={map} large />}
-        </ZoomableImage>
-        {/* The full technical name, untruncated and copyable, as the Play
-            tab's preview has it: the folder is what the vault and the disk
-            know a map by, and for a generated map it is the only way back. */}
-        {map.folderName && (
-          <div className="map-preview-dialog-name">
-            <span>{t("lobby.browser.mapFullName")}</span>
-            <code>{map.folderName}</code>
-            <button
-              type="button"
-              className="map-preview-dialog-copy"
-              aria-label={t(copiedName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-              title={t(copiedName ? "lobby.browser.mapNameCopied" : "lobby.browser.copyMapName")}
-              onClick={() =>
-                ipc.run(navigator.clipboard.writeText(map.folderName).then(() => setCopiedName(true)))
-              }
-            >
-              <Icon name={copiedName ? "check" : "copy"} size={13} />
-            </button>
-          </div>
-        )}
+        </MapPreviewFrame>
       </div>
     </Modal>
   );
