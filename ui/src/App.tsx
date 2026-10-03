@@ -18,11 +18,13 @@ import {
   migrateLegacyBrowsingPreferences,
 } from "./shared/browsingPreferences";
 
-function applyInterfaceScale(scale: number): void {
-  if (scale === 100) {
-    document.documentElement.style.zoom = "";
-  } else {
-    document.documentElement.style.zoom = `${scale}%`;
+/** Never let a zoom failure take the shell down with it; the UI is still usable
+ *  at 100%, and there is nothing the user could do about it here anyway. */
+async function applyInterfaceScale(scale: number): Promise<void> {
+  try {
+    await native.setZoom(scale / 100);
+  } catch (error) {
+    console.warn("could not apply the interface scale", error);
   }
 }
 
@@ -77,17 +79,36 @@ export function App() {
     }
   }, [foeColor]);
 
-  // Apply interface scale at the document root to avoid native WebView2 HWND clipping on Windows.
+  // Whole-interface zoom, applied at the webview again (#391). A CSS `zoom` on
+  // the root, which this was for a while, scales layout but leaves pointer
+  // coordinates, `getBoundingClientRect` and `window.innerWidth` in unscaled
+  // pixels, while every length written back and every `vh` is scaled. At 125%
+  // that put the map zoom off target, every popover a quarter too far right
+  // and down, and the large map preview past both edges of the screen. Webview
+  // zoom keeps one coordinate space. Java has no whole-interface scale; it
+  // follows the Windows display scale, which the webview does by itself.
+  const uiScale = useRef(appearance.uiScale);
   useEffect(() => {
-    applyInterfaceScale(appearance.uiScale);
+    uiScale.current = appearance.uiScale;
+    void applyInterfaceScale(appearance.uiScale);
   }, [appearance.uiScale]);
 
-  // Keep webview layout and DOM container dimensions synchronized with native window resizing.
+  // Keep webview layout and DOM container dimensions synchronized with native
+  // window resizing. The zoom is applied again once a resize settles: the CSS
+  // zoom above was introduced against WebView2 clipping its content after the
+  // window changed size, and setting the factor again makes the webview lay
+  // itself out against its new bounds.
   useEffect(() => {
+    let settle: number | undefined;
     const unlistenPromise = native.onWindowResized(() => {
       window.dispatchEvent(new Event("resize"));
+      window.clearTimeout(settle);
+      settle = window.setTimeout(() => {
+        if (uiScale.current !== 100) void applyInterfaceScale(uiScale.current);
+      }, 200);
     });
     return () => {
+      window.clearTimeout(settle);
       void unlistenPromise.then((unlisten) => unlisten());
     };
   }, []);
