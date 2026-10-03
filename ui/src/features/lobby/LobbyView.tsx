@@ -41,7 +41,8 @@ import { openPlayerCard } from "../../shared/playerCardActions";
 import { PlayerNoteModal } from "../../shared/components/PlayerNoteEditor";
 import { UserMenu, type UserMenuTarget } from "../../shared/components/UserMenu";
 import { findPlayer } from "../../store/reducer";
-import { assignedPlayerColor, includesName, nickKey } from "../../shared/nameColorsUtil";
+import { assignedPlayerColor, includesName } from "../../shared/nameColorsUtil";
+import { setPlayerMuted, setPlayerNameColor } from "../../shared/preferenceCommands";
 import { noteForPlayer } from "../../shared/rules/playerNotes";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { requestReplaySearch } from "../../shared/replaySearchIntent";
@@ -471,44 +472,6 @@ export function LobbyView() {
     ipc.send({ kind: "Chat", command: { type: "joinChannel", payload: { channel: user } } });
     ipc.send({ kind: "Chat", command: { type: "selectChannel", payload: { channel: user } } });
     ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "chat" } } });
-  }, []);
-
-  const setPlayerNameColor = useCallback((nickname: string, color: string | null) => {
-    const preferences = useAppStore.getState().state.settings.chat;
-    const key = nickKey(nickname);
-    const players = Object.fromEntries(
-      Object.entries(preferences.nameColors.players).filter(([p]) => nickKey(p) !== key),
-    );
-    if (color) players[nickname] = color;
-    ipc.send({
-      kind: "Settings",
-      command: {
-        type: "patchChat",
-        payload: {
-          patch: {
-            nameColors: { players },
-          },
-        },
-      },
-    });
-  }, []);
-
-  const setMuted = useCallback((nickname: string, muted: boolean) => {
-    const preferences = useAppStore.getState().state.settings.chat;
-    const withoutPlayer = preferences.mutedPlayers.filter(
-      (p) => p.localeCompare(nickname, undefined, { sensitivity: "accent" }) !== 0,
-    );
-    ipc.send({
-      kind: "Settings",
-      command: {
-        type: "patchChat",
-        payload: {
-          patch: {
-            mutedPlayers: muted ? [...withoutPlayer, nickname] : withoutPlayer,
-          },
-        },
-      },
-    });
   }, []);
 
   useEffect(() => {
@@ -1002,7 +965,7 @@ export function LobbyView() {
             kickFromParty: (id) =>
               ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId: id } } }),
             setNameColor: setPlayerNameColor,
-            setMuted,
+            setMuted: setPlayerMuted,
             editNote: setNoteTarget,
             reportPlayer: (profile) =>
               ipc.send({

@@ -18,7 +18,8 @@ import { ipc } from "../../ipc/client";
 import type { Game, PlayerProfile } from "../../ipc/bindings";
 import { findPlayer } from "../../store/reducer";
 import { useAppStore } from "../../store/store";
-import { assignedPlayerColor, includesName, nickKey } from "../nameColorsUtil";
+import { assignedPlayerColor, includesName } from "../nameColorsUtil";
+import { setPlayerMuted, setPlayerNameColor } from "../preferenceCommands";
 import { noteForPlayer } from "../rules/playerNotes";
 import { EMPTY_REPLAY_QUERY } from "../replayQuery";
 import { requestReplaySearch } from "../replaySearchIntent";
@@ -102,44 +103,6 @@ export function usePlayerMenu(): {
     ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "chat" } } });
   }, []);
 
-  const setPlayerNameColor = useCallback((nickname: string, color: string | null) => {
-    const preferences = useAppStore.getState().state.settings.chat;
-    const key = nickKey(nickname);
-    const players = Object.fromEntries(
-      Object.entries(preferences.nameColors.players).filter(([name]) => nickKey(name) !== key),
-    );
-    if (color) players[nickname] = color;
-    ipc.send({
-      kind: "Settings",
-      command: {
-        type: "patchChat",
-        payload: {
-          patch: {
-            nameColors: { players },
-          },
-        },
-      },
-    });
-  }, []);
-
-  const setMuted = useCallback((nickname: string, muted: boolean) => {
-    const preferences = useAppStore.getState().state.settings.chat;
-    const withoutPlayer = preferences.mutedPlayers.filter(
-      (name) => name.localeCompare(nickname, undefined, { sensitivity: "accent" }) !== 0,
-    );
-    ipc.send({
-      kind: "Settings",
-      command: {
-        type: "patchChat",
-        payload: {
-          patch: {
-            mutedPlayers: muted ? [...withoutPlayer, nickname] : withoutPlayer,
-          },
-        },
-      },
-    });
-  }, []);
-
   const viewReplays = useCallback((username: string) => {
     requestReplaySearch({ ...EMPTY_REPLAY_QUERY, player: username, exactPlayer: true });
     ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
@@ -184,7 +147,7 @@ export function usePlayerMenu(): {
             setRelation: (profile, relation, member) => void setRelation(profile, relation, member),
             kickFromParty: (id) => void kickFromParty(id),
             setNameColor: setPlayerNameColor,
-            setMuted,
+            setMuted: setPlayerMuted,
             editNote: setNoteTarget,
             reportPlayer: (profile) => ipc.send({
               kind: "Reporting",

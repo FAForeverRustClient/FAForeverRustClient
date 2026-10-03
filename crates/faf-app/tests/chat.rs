@@ -29,8 +29,9 @@ impl SettingsPort for RecordingSettings {
         SettingsState::default()
     }
 
-    async fn save(&self, settings: &SettingsState) {
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
         self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
     }
 }
 

@@ -8,6 +8,7 @@ import {
   STANDARD_CATEGORY_COLORS,
   type CategoryColorKey,
 } from "../../shared/nameColorsUtil";
+import { setPlayerNameColor } from "../../shared/preferenceCommands";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -49,23 +50,15 @@ export function ChatNameColorSettings({
   const resetToStandardColors = () => {
     saveColors({ ...STANDARD_CATEGORY_COLORS });
   };
-  const removePlayer = (nickname: string) => {
-    saveColors({
-      players: Object.fromEntries(
-        assignedPlayers.filter(([candidate]) => candidate !== nickname),
-      ),
-    });
-  };
+  // Players go one at a time rather than as a rebuilt `players` map: a map
+  // built from this render's props dropped whichever change landed in between,
+  // so two quick edits kept only the second. The backend also replaces any
+  // other spelling of the same login.
+  const removePlayer = (nickname: string) => setPlayerNameColor(nickname, null);
   const addPlayer = () => {
     const nickname = player.trim();
     if (!nickname) return;
-    const players = Object.fromEntries(
-      assignedPlayers.filter(
-        ([candidate]) => candidate.localeCompare(nickname, undefined, { sensitivity: "accent" }) !== 0,
-      ),
-    );
-    players[nickname] = playerColor;
-    saveColors({ players });
+    setPlayerNameColor(nickname, playerColor);
     setPlayer("");
   };
 
@@ -173,9 +166,7 @@ export function ChatNameColorSettings({
                   className="color-input-overlay"
                   value={color}
                   aria-label={t("settings.nameColors.changePlayerAria", { name: nickname })}
-                  onChange={(next) => saveColors({
-                    players: { ...preferences.nameColors.players, [nickname]: next },
-                  })}
+                  onChange={(next) => setPlayerNameColor(nickname, next)}
                 />
               </label>
               <button

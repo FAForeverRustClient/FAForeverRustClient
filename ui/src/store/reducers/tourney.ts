@@ -233,12 +233,17 @@ export function reduceTourney(state: TourneyState, event: TourneyEvent): Tourney
         },
       };
     // A new request drops the previous player's table at once, so one entrant's
-    // ratings never show under another's name.
+    // ratings never show under another's name. The table is the open event's,
+    // like the eligibility notice, so one asked in an event left behind is
+    // dropped too.
     case "playerRatingsLoading":
+      if (state.selectedId !== event.payload.tournamentId) return state;
       return { ...state, playerRatings: null, playerRatingsStatus: { type: "loading" } };
     case "playerRatingsLoaded":
+      if (state.selectedId !== event.payload.tournamentId) return state;
       return { ...state, playerRatings: event.payload.ratings, playerRatingsStatus: { type: "ready" } };
     case "playerRatingsFailed":
+      if (state.selectedId !== event.payload.tournamentId) return state;
       return {
         ...state,
         playerRatingsStatus: {

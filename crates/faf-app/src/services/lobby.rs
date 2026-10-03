@@ -68,7 +68,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // an id of its own: a cancelled join still draining its
             // preparation keeps reading "cancelled" for its own id.
             let operations = &ctx.lobby_operations;
-            let Some(operation) = operations.try_begin_join() else {
+            let Some(operation) = operations.try_begin_join(id) else {
                 return;
             };
 
@@ -155,8 +155,9 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 out.emit(LobbyEvent::Joining { id, prepared: true });
             }
             // Checked again right before the request: the boundary above is
-            // only reached on the live-launch path.
-            if !operations.is_live(operation) {
+            // only reached on the live-launch path. The check and the "sent"
+            // mark are one step, so a cancel cannot slip between them.
+            if !operations.try_mark_join_sent(operation) {
                 operations.release_join(operation);
                 return;
             }
@@ -370,9 +371,11 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // and the join request is not sent. The slot is freed now, so the
             // user can pick another game while the cancelled preparation
             // finishes the file it is on; that preparation can no longer
-            // touch the new join, because it is checking a different id.
+            // touch the new join, because it is checking a different id. A
+            // join whose request already went out is remembered, so the
+            // launch order the server still sends for it is turned away.
             ctx.lobby_operations.cancel();
-            ctx.lobby_operations.release_any_join();
+            ctx.lobby_operations.call_off_join();
             out.emit(LobbyEvent::JoinCancelled);
         }
         LobbyCommand::TerminateGame => {
@@ -387,6 +390,11 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // stream close and emits `Disconnected`.
             out.emit(LobbyEvent::JoinCancelled);
             ctx.ports.lobby.disconnect();
+            // Called off as well as released. Releasing alone left the
+            // operation current, so a download finishing after the hang-up
+            // still read "live" and sent its join, on the next connection if
+            // one had come up by then.
+            ctx.lobby_operations.cancel();
             ctx.lobby_operations.release_any_join();
         }
     }
@@ -653,6 +661,9 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     }
 
     ctx.lobby_active.finish();
+    // The connection a join was being prepared for is gone, so the join is
+    // too: the same reasoning as an explicit Disconnect.
+    ctx.lobby_operations.cancel();
     ctx.lobby_operations.release_any_join();
     out.emit(LobbyEvent::Disconnected);
     out.emit(SocialEvent::Cleared);
@@ -700,7 +711,10 @@ const MAX_HELD_RELAYS: usize = 512;
 
 impl LaunchSlot {
     async fn started(&mut self, session: Option<LaunchSession>, ctx: &ServiceCtx, out: &EventSink) {
-        ctx.lobby_operations.release_any_join();
+        // No join slot to free: the launch order's handler freed the one
+        // waiting for this game when it started the launch. Freeing "any"
+        // here would also drop the records of called-off join requests whose
+        // answers are still coming, and could free a join begun meanwhile.
         let held = std::mem::take(&mut self.held);
         let called_off = std::mem::replace(&mut self.called_off, false);
         let Some(session) = session else {
@@ -1119,6 +1133,26 @@ async fn handle_update<'a>(
             }
         }
         LobbyUpdate::Launch(launch_order) => {
+            // The server's acceptance of a join the user called off after its
+            // request went out. Starting it used to supersede whatever the
+            // user had picked since and launch the game they gave up on.
+            // The server has already counted this player into the game, so
+            // it is told the game ended, as after the game exits; otherwise
+            // it can refuse the next join.
+            if ctx
+                .lobby_operations
+                .take_called_off_launch(launch_order.uid)
+            {
+                tracing::info!(
+                    game_id = launch_order.uid,
+                    "lobby: not launching a join that was called off"
+                );
+                ctx.ports.lobby.send_game_relay(
+                    "GameState".into(),
+                    vec![serde_json::Value::String("Ended".into())],
+                );
+                return;
+            }
             let already_prepared = out.with_state(|state| {
                 matches!(
                     state.lobby.join,
@@ -1132,9 +1166,9 @@ async fn handle_update<'a>(
                 launch: launch_order.clone(),
             });
             if !launch_enabled {
-                // The server answered the join, so whichever join was waiting
-                // on that answer is done with the slot.
-                ctx.lobby_operations.release_any_join();
+                // The server answered the join for this game, so the join
+                // waiting on that answer is done with the slot. See below.
+                ctx.lobby_operations.release_join_launched(launch_order.uid);
                 return;
             }
             if background.launch.take().is_some() {
@@ -1153,6 +1187,7 @@ async fn handle_update<'a>(
             // beside the update loop rather than inside it (see the loop).
             let operations = &ctx.lobby_operations;
             let operation = operations.begin();
+            let game_id = launch_order.uid;
             background.launch = Some(Box::pin(async move {
                 operations
                     .run(
@@ -1161,13 +1196,22 @@ async fn handle_update<'a>(
                     )
                     .await
             }));
-            // The server answered the join, so whichever join was waiting on
-            // that answer is done with the slot.
-            ctx.lobby_operations.release_any_join();
+            // The server answered the join for this game, so the join waiting
+            // on that answer is done with the slot. Only that one: a launch for
+            // a join the user called off must not free a newer join's slot.
+            // Not the refusal path's helper: that one consumes the records of
+            // called-off attempts, which their own answers still need.
+            ctx.lobby_operations.release_join_launched(game_id);
         }
         LobbyUpdate::JoinFailed { id, reason } => {
-            ctx.lobby_operations.release_any_join();
-            out.emit(LobbyEvent::JoinFailed { id, reason })
+            // A refusal for a join the user has since called off arrives late
+            // and names the old game. It used to free the newer join's slot and
+            // replace its progress with "failed" for a game nobody is joining.
+            if ctx.lobby_operations.release_join_for_game(id) {
+                out.emit(LobbyEvent::JoinFailed { id, reason })
+            } else {
+                tracing::info!(game_id = id, %reason, "ignored a join refusal for a join no longer pending");
+            }
         }
         LobbyUpdate::Relations { friends, foes } => {
             out.emit(SocialEvent::RelationsUpdated { friends, foes })
@@ -1389,7 +1433,9 @@ fn announce_new_map_pools(ctx: &ServiceCtx, out: &EventSink, queue_names: Vec<St
         if loaded {
             let _guard = serial.acquire().await;
             let snapshot = out.with_state(|state| state.settings.clone());
-            settings.save(&snapshot).await;
+            if let Err(reason) = settings.save(&snapshot).await {
+                tracing::warn!(%reason, "the map pools seen were not saved");
+            }
         }
     });
 }

@@ -85,6 +85,10 @@ pub struct ServiceCtx {
     /// either emitted, and the second would carry the first's field back to
     /// its old value. Synchronous: nothing in between awaits.
     pub settings_merge: std::sync::Mutex<()>,
+    /// Added sounds whose removal is under way. A notifications change that
+    /// would newly choose one is refused, so a dropdown that still lists it
+    /// cannot leave a saved setting naming a file about to be deleted.
+    pub sounds_being_removed: std::sync::Mutex<std::collections::HashSet<String>>,
     /// Whether the settings file has been read yet. Nothing may be persisted
     /// before it has, or a preference set during startup writes a document
     /// made of defaults over the user's own.
@@ -175,6 +179,13 @@ pub struct ServiceCtx {
     /// invalidates it as well, so a verdict about the event just left cannot
     /// land under the one now open.
     pub tourney_rating_check_generation: LatestRequest,
+    /// The same, for one entrant's ratings table. Asking for another entrant,
+    /// or again from FAF, supersedes the answer in flight, and moving to
+    /// another event invalidates it like the eligibility check.
+    pub tourney_player_ratings_generation: LatestRequest,
+    /// The same, for the create form's "Fill from this": only the template
+    /// asked for last may fill the form, success or refusal.
+    pub tourney_template_generation: LatestRequest,
 }
 
 /// The sink a service emits events into.
@@ -469,6 +480,7 @@ impl App {
             galactic_war_active: SingleFlight::default(),
             settings_persist: SerialMutation::default(),
             settings_merge: std::sync::Mutex::new(()),
+            sounds_being_removed: std::sync::Mutex::new(std::collections::HashSet::new()),
             settings_loaded: LoadedFromDisk::default(),
             chat_typing_sent: std::sync::Mutex::new(std::collections::HashMap::new()),
             chat_read_marker_persist_generation: LatestRequest::default(),
@@ -505,6 +517,8 @@ impl App {
             tourney_chat_generation: LatestRequest::default(),
             tourney_account_search_generation: LatestRequest::default(),
             tourney_rating_check_generation: LatestRequest::default(),
+            tourney_player_ratings_generation: LatestRequest::default(),
+            tourney_template_generation: LatestRequest::default(),
         };
 
         let app = Self {

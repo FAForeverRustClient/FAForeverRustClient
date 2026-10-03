@@ -105,22 +105,32 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
 
             out.emit(ReportingEvent::Submitting);
             if let Some(game_id) = game_id {
-                match ctx
+                let participation = ctx
                     .ports
                     .reporting
                     .game_participation(game_id, player_id)
-                    .await
-                {
+                    .await;
+                // A refusal is said only to the dialog that asked. Closing it
+                // and opening a report about somebody else during the check
+                // used to put this one's "did not participate" into the new
+                // dialog. A check that passed still submits, as before: the
+                // report was sent from a dialog the user has since closed.
+                let superseded = !is_current(ctx, generation);
+                match participation {
                     Ok(GameParticipation::GameNotFound) => {
-                        out.emit(ReportingEvent::Failed {
-                            reason: format!("Game #{game_id} was not found."),
-                        });
+                        if !superseded {
+                            out.emit(ReportingEvent::Failed {
+                                reason: format!("Game #{game_id} was not found."),
+                            });
+                        }
                         return;
                     }
                     Ok(GameParticipation::PlayerAbsent) => {
-                        out.emit(ReportingEvent::Failed {
-                            reason: format!("{login} did not participate in game #{game_id}."),
-                        });
+                        if !superseded {
+                            out.emit(ReportingEvent::Failed {
+                                reason: format!("{login} did not participate in game #{game_id}."),
+                            });
+                        }
                         return;
                     }
                     Ok(GameParticipation::PlayerPresent) => {}

@@ -1439,6 +1439,7 @@ impl ReplayPort for ReplayClient {
             let version_info = game_updater::ReplayVersionInfo {
                 mod_name: mod_name.clone(),
                 game_version: replay.game_version,
+                featured_mod_version: replay.featured_mod_version,
                 git_sha: replay.git_sha,
                 git_short_sha: replay.git_short_sha,
                 build_signature: replay.build_signature,
@@ -3939,6 +3940,8 @@ struct ScfaReplay {
     mod_name: String,
     uid: Option<i32>,
     game_version: Option<i32>,
+    /// An overlay's own revision; see `ReplayVersionInfo::featured_mod_version`.
+    featured_mod_version: Option<i32>,
     map_folder: Option<String>,
     sim_mods: Vec<(String, String)>,
     git_sha: Option<String>,
@@ -3981,6 +3984,7 @@ async fn prepare_scfareplay(path: &std::path::Path) -> Result<ScfaReplay, String
                 mod_name,
                 uid: None,
                 game_version: game_updater::extract_game_version(&bytes),
+                featured_mod_version: None,
                 map_folder: game_updater::extract_map_folder(&bytes),
                 sim_mods: Vec::new(),
                 git_sha: None,
@@ -4095,6 +4099,7 @@ async fn decode_fafreplay_to(
         mod_name,
         uid,
         game_version: game_updater::extract_game_version(&decompressed_prefix),
+        featured_mod_version: overlay_version_from_header(&header),
         map_folder: game_updater::extract_map_folder(&decompressed_prefix),
         sim_mods,
         git_sha,
@@ -4103,6 +4108,23 @@ async fn decode_fafreplay_to(
         version_name,
         launched_at,
     })
+}
+
+/// The overlay revision a `.fafreplay` header names: the highest of its
+/// `featured_mod_versions`, as the Python client's `FilesObtainer` takes it.
+/// Values are numbers in current replays; numeric strings are read too.
+fn overlay_version_from_header(header: &Value) -> Option<i32> {
+    header
+        .get("featured_mod_versions")?
+        .as_object()?
+        .values()
+        .filter_map(|value| match value {
+            Value::Number(number) => number.as_i64(),
+            Value::String(text) => text.trim().parse().ok(),
+            _ => None,
+        })
+        .filter_map(|version| i32::try_from(version).ok())
+        .max()
 }
 
 const REPLAY_METADATA_PREFIX_BYTES: usize = 64 * 1024;
@@ -5003,6 +5025,19 @@ mod tests {
         );
 
         assert_eq!(map_name_from_replay_head(b"not a replay at all"), None);
+    }
+
+    #[test]
+    fn an_overlay_revision_is_the_highest_featured_mod_version() {
+        let header = serde_json::json!({
+            "featured_mod": "nomads",
+            "featured_mod_versions": { "1": 50, "2": "52", "3": null },
+        });
+        assert_eq!(overlay_version_from_header(&header), Some(52));
+        assert_eq!(
+            overlay_version_from_header(&serde_json::json!({ "featured_mod": "faf" })),
+            None
+        );
     }
 
     /// The contract between the two halves of "record a game locally": what

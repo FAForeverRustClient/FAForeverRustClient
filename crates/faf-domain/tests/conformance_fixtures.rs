@@ -4824,8 +4824,23 @@ fn cases() -> Vec<Case> {
                     },
                 }
                 .into(),
-                TourneyEvent::PlayerRatingsLoading.into(),
+                TourneyEvent::PlayerRatingsLoading {
+                    tournament_id: "t1".into(),
+                }
+                .into(),
+                // A ratings table is the open event's too: one asked in an
+                // event left behind is dropped, answer or refusal.
                 TourneyEvent::PlayerRatingsLoaded {
+                    tournament_id: "t0".into(),
+                    ratings: EntrantRatings {
+                        player_id: "p9".into(),
+                        name: "Stale".into(),
+                        ..EntrantRatings::default()
+                    },
+                }
+                .into(),
+                TourneyEvent::PlayerRatingsLoaded {
+                    tournament_id: "t1".into(),
                     ratings: EntrantRatings {
                         player_id: "p1".into(),
                         name: "Ada".into(),
@@ -4840,8 +4855,18 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 // The next player's request clears the first player's table.
-                TourneyEvent::PlayerRatingsLoading.into(),
+                TourneyEvent::PlayerRatingsLoading {
+                    tournament_id: "t1".into(),
+                }
+                .into(),
                 TourneyEvent::PlayerRatingsFailed {
+                    tournament_id: "t0".into(),
+                    reason: "stale".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+                TourneyEvent::PlayerRatingsFailed {
+                    tournament_id: "t1".into(),
                     reason: "FAF could not be reached just now.".into(),
                     kind: RequestFailureKind::Offline,
                 }
@@ -5914,6 +5939,18 @@ fn cases() -> Vec<Case> {
                         saved_at: "2026-08-16T00:00:00+00:00".into(),
                         options: GeneratorOptions::default(),
                     }],
+                }
+                .into(),
+                // A save answers its own request, stored or not; the newest
+                // answer is the one kept.
+                MapGeneratorEvent::PresetSaveFinished {
+                    request_id: 4,
+                    saved: true,
+                }
+                .into(),
+                MapGeneratorEvent::PresetSaveFinished {
+                    request_id: 5,
+                    saved: false,
                 }
                 .into(),
             ],

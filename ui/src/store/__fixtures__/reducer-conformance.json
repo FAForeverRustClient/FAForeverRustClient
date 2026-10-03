@@ -384,7 +384,8 @@
       "predictedName": "",
       "decoded": {},
       "helpText": "",
-      "presets": []
+      "presets": [],
+      "presetSave": null
     },
     "mods": {
       "vault": [],
@@ -19242,7 +19243,10 @@
           "event": {
             "kind": "Tourney",
             "event": {
-              "type": "playerRatingsLoading"
+              "type": "playerRatingsLoading",
+              "payload": {
+                "tournamentId": "t1"
+              }
             }
           },
           "expected": {
@@ -19375,6 +19379,151 @@
             "event": {
               "type": "playerRatingsLoaded",
               "payload": {
+                "tournamentId": "t0",
+                "ratings": {
+                  "playerId": "p9",
+                  "name": "Stale",
+                  "counts": "global",
+                  "countsRating": null,
+                  "capped": null,
+                  "ratingDate": null,
+                  "boards": [],
+                  "reason": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": null,
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "loading"
+            },
+            "presets": [],
+            "ratingCheck": {
+              "alreadyIn": false,
+              "asOf": null,
+              "banned": null,
+              "capped": null,
+              "eligible": false,
+              "exempt": false,
+              "max": null,
+              "message": "Your rating is below the minimum of 1500.",
+              "min": 1500,
+              "rated": true,
+              "rating": 1480,
+              "ratingKind": "ladder1v1"
+            },
+            "ratingCheckStatus": {
+              "type": "ready"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "t1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "playerRatingsLoaded",
+              "payload": {
+                "tournamentId": "t1",
                 "ratings": {
                   "playerId": "p1",
                   "name": "Ada",
@@ -19537,7 +19686,10 @@
           "event": {
             "kind": "Tourney",
             "event": {
-              "type": "playerRatingsLoading"
+              "type": "playerRatingsLoading",
+              "payload": {
+                "tournamentId": "t1"
+              }
             }
           },
           "expected": {
@@ -19670,6 +19822,143 @@
             "event": {
               "type": "playerRatingsFailed",
               "payload": {
+                "tournamentId": "t0",
+                "reason": "stale",
+                "kind": "rejected"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": null,
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "loading"
+            },
+            "presets": [],
+            "ratingCheck": {
+              "alreadyIn": false,
+              "asOf": null,
+              "banned": null,
+              "capped": null,
+              "eligible": false,
+              "exempt": false,
+              "max": null,
+              "message": "Your rating is below the minimum of 1500.",
+              "min": 1500,
+              "rated": true,
+              "rating": 1480,
+              "ratingKind": "ladder1v1"
+            },
+            "ratingCheckStatus": {
+              "type": "ready"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "t1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "playerRatingsFailed",
+              "payload": {
+                "tournamentId": "t1",
                 "reason": "FAF could not be reached just now.",
                 "kind": "offline"
               }
@@ -43216,6 +43505,7 @@
               "visualize": false
             },
             "predictedName": "",
+            "presetSave": null,
             "presets": [],
             "previews": {},
             "selectedVersion": null,
@@ -43361,6 +43651,7 @@
               "visualize": false
             },
             "predictedName": "",
+            "presetSave": null,
             "presets": [],
             "previews": {},
             "selectedVersion": null,
@@ -43509,6 +43800,7 @@
               "visualize": false
             },
             "predictedName": "",
+            "presetSave": null,
             "presets": [],
             "previews": {},
             "selectedVersion": null,
@@ -43687,6 +43979,7 @@
               "visualize": false
             },
             "predictedName": "",
+            "presetSave": null,
             "presets": [],
             "previews": {},
             "selectedVersion": null,
@@ -43855,6 +44148,7 @@
               "visualize": false
             },
             "predictedName": "",
+            "presetSave": null,
             "presets": [],
             "previews": {},
             "selectedVersion": null,
@@ -44015,6 +44309,7 @@
               "visualize": false
             },
             "predictedName": "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj",
+            "presetSave": null,
             "presets": [],
             "previews": {},
             "selectedVersion": null,
@@ -44177,6 +44472,7 @@
               "visualize": false
             },
             "predictedName": "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj",
+            "presetSave": null,
             "presets": [],
             "previews": {},
             "selectedVersion": null,
@@ -44372,6 +44668,7 @@
               "visualize": false
             },
             "predictedName": "",
+            "presetSave": null,
             "presets": [],
             "previews": {},
             "selectedVersion": null,
@@ -44547,6 +44844,7 @@
               "visualize": false
             },
             "predictedName": "",
+            "presetSave": null,
             "presets": [],
             "previews": {},
             "selectedVersion": null,
@@ -44795,6 +45093,7 @@
               "visualize": false
             },
             "predictedName": "",
+            "presetSave": null,
             "presets": [
               {
                 "name": "Team Ladder",
@@ -45080,6 +45379,441 @@
               "visualize": false
             },
             "predictedName": "",
+            "presetSave": null,
+            "presets": [
+              {
+                "name": "Team Ladder",
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [],
+                  "symmetries": [],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
+                "savedAt": "2026-08-16T00:00:00+00:00"
+              }
+            ],
+            "previews": {},
+            "selectedVersion": null,
+            "status": {
+              "type": "idle"
+            },
+            "validation": []
+          }
+        },
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "presetSaveFinished",
+              "payload": {
+                "requestId": 4,
+                "saved": true
+              }
+            }
+          },
+          "expected": {
+            "availableVersions": [],
+            "decoded": {
+              "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj": {
+                "generatedAt": null,
+                "mapSize": 512,
+                "numTeams": 2,
+                "seed": "12345",
+                "spawnCount": 6,
+                "style": {
+                  "kind": "predefined",
+                  "style": "MOUNTAIN_RANGE"
+                },
+                "symmetry": "POINT2",
+                "version": "1.22.1",
+                "visibility": null
+              }
+            },
+            "helpText": "Usage: generate [-hV]",
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "BASIC",
+                "BIG_ISLANDS",
+                "CENTER_LAKE",
+                "DROP_PLATEAU",
+                "FLOODED",
+                "HIGH_RECLAIM",
+                "LAND_BRIDGE",
+                "LITTLE_MOUNTAIN",
+                "LOW_MEX",
+                "MOUNTAIN_RANGE",
+                "MULTILEVEL",
+                "ONE_ISLAND",
+                "SMALL_ISLANDS",
+                "VALLEY",
+                "RIVERS",
+                "RIVERS_AND_OCEANS",
+                "FRACTAL_LAND",
+                "FRACTAL_PLATEAU",
+                "FRACTAL_NAVY",
+                "SETONISH",
+                "FORREST_SOMETHING"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
+            },
+            "options": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "predictedName": "",
+            "presetSave": {
+              "requestId": 4,
+              "saved": true
+            },
+            "presets": [
+              {
+                "name": "Team Ladder",
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [],
+                  "symmetries": [],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
+                "savedAt": "2026-08-16T00:00:00+00:00"
+              }
+            ],
+            "previews": {},
+            "selectedVersion": null,
+            "status": {
+              "type": "idle"
+            },
+            "validation": []
+          }
+        },
+        {
+          "event": {
+            "kind": "MapGenerator",
+            "event": {
+              "type": "presetSaveFinished",
+              "payload": {
+                "requestId": 5,
+                "saved": false
+              }
+            }
+          },
+          "expected": {
+            "availableVersions": [],
+            "decoded": {
+              "neroxis_map_generator_1.22.1_aaaaaaaaaayds_ayeaeaaj": {
+                "generatedAt": null,
+                "mapSize": 512,
+                "numTeams": 2,
+                "seed": "12345",
+                "spawnCount": 6,
+                "style": {
+                  "kind": "predefined",
+                  "style": "MOUNTAIN_RANGE"
+                },
+                "symmetry": "POINT2",
+                "version": "1.22.1",
+                "visibility": null
+              }
+            },
+            "helpText": "Usage: generate [-hV]",
+            "latestVersion": "",
+            "optionLists": {
+              "propStyles": [
+                "BASIC",
+                "BOULDERS",
+                "FOREST",
+                "ROCKS",
+                "ROCK_FIELD",
+                "TREE_FIELD",
+                "WRECKAGE"
+              ],
+              "resourceStyles": [
+                "BASIC",
+                "DENSE",
+                "EXPANSIVE",
+                "SPARSE"
+              ],
+              "styles": [
+                "BASIC",
+                "BIG_ISLANDS",
+                "CENTER_LAKE",
+                "DROP_PLATEAU",
+                "FLOODED",
+                "HIGH_RECLAIM",
+                "LAND_BRIDGE",
+                "LITTLE_MOUNTAIN",
+                "LOW_MEX",
+                "MOUNTAIN_RANGE",
+                "MULTILEVEL",
+                "ONE_ISLAND",
+                "SMALL_ISLANDS",
+                "VALLEY",
+                "RIVERS",
+                "RIVERS_AND_OCEANS",
+                "FRACTAL_LAND",
+                "FRACTAL_PLATEAU",
+                "FRACTAL_NAVY",
+                "SETONISH",
+                "FORREST_SOMETHING"
+              ],
+              "symmetries": [
+                "POINT2",
+                "POINT3",
+                "POINT4",
+                "POINT5",
+                "POINT6",
+                "POINT7",
+                "POINT8",
+                "POINT9",
+                "POINT10",
+                "POINT11",
+                "POINT12",
+                "POINT13",
+                "POINT14",
+                "POINT15",
+                "POINT16",
+                "XZ",
+                "ZX",
+                "X",
+                "Z",
+                "QUAD",
+                "DIAG",
+                "NONE"
+              ],
+              "terrainStyles": [
+                "ACCEL",
+                "BIG_ISLANDS",
+                "CENTER_ISLAND",
+                "CLEAN",
+                "CORRIDOR",
+                "DROP_PLATEAU",
+                "DUAL_GAP",
+                "FLOODED",
+                "GAP",
+                "GLACIER",
+                "HILLY",
+                "ISLANDS",
+                "LAND",
+                "LOW_PLATEAU",
+                "MOUNTAIN_RANGE",
+                "ONE_ISLAND",
+                "PASSES",
+                "PLATEAU",
+                "RAMP_PLATEAU",
+                "RIVERS",
+                "SCARRED",
+                "SLOPE",
+                "TUNDRA",
+                "VALLEY",
+                "WATER"
+              ],
+              "textureStyles": [
+                "BRIMSTONE",
+                "DESERT",
+                "FROST",
+                "LUSH",
+                "MARS",
+                "MOON",
+                "SAVANNAH",
+                "STEPPE",
+                "TUNDRA",
+                "WONDER"
+              ]
+            },
+            "options": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "predictedName": "",
+            "presetSave": {
+              "requestId": 5,
+              "saved": false
+            },
             "presets": [
               {
                 "name": "Team Ladder",

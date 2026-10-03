@@ -275,7 +275,10 @@ fn persist_read_markers_after_quiet_period(ctx: &ServiceCtx, out: &EventSink) {
         }
         let _guard = serial.acquire().await;
         let preferences = out.with_state(|state| state.settings.clone());
-        settings.save(&preferences).await;
+        if let Err(reason) = settings.save(&preferences).await {
+            // The markers are in state; the next settings write carries them.
+            tracing::warn!(%reason, "chat read markers were not saved");
+        }
     });
 }
 

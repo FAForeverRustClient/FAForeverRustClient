@@ -96,8 +96,9 @@ impl SettingsPort for RecordingSettings {
         }
     }
 
-    async fn save(&self, settings: &SettingsState) {
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
         self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
     }
 }
 
@@ -723,8 +724,9 @@ impl SettingsPort for AvatarHistorySettings {
         }
     }
 
-    async fn save(&self, settings: &SettingsState) {
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
         self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
     }
 }
 

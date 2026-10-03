@@ -7,15 +7,17 @@
 //! order mattered: removing a notification sound clears what plays it before
 //! the file goes.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_app::infra::fake_ports;
-use faf_app::ports::SettingsPort;
+use faf_app::ports::{NotificationSoundsPort, SettingsPort};
 use faf_app::{App, Ports};
+use faf_domain::state::mods::ModPreset;
 use faf_domain::state::settings::{
-    BrowsingPreferencesPatch, GamePreferencesPatch, HostGamePreferencesPatch,
+    BrowsingPreferencesPatch, GamePreferencesPatch, HostGamePreferencesPatch, PreferenceList,
 };
 use faf_domain::state::{
     GamePreferences, NotificationPreferences, NotificationSound, NotificationSoundChoices,
@@ -43,8 +45,9 @@ impl SettingsPort for RecordingSettings {
         self.initial.clone()
     }
 
-    async fn save(&self, settings: &SettingsState) {
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
         self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
     }
 }
 
@@ -243,6 +246,381 @@ async fn removing_a_sound_clears_what_plays_it_and_saves_before_the_file_goes() 
         "{:?}",
         state.notifications.items
     );
+}
+
+/// A settings store whose writes can be made to fail. Paired with a sounds port
+/// that records what it was asked to delete, so a test can see whether the
+/// file went after a failed save.
+struct FlakySettings {
+    initial: SettingsState,
+    failing: Arc<AtomicBool>,
+}
+
+#[async_trait]
+impl SettingsPort for FlakySettings {
+    async fn load(&self) -> SettingsState {
+        self.initial.clone()
+    }
+
+    async fn save(&self, _settings: &SettingsState) -> Result<(), String> {
+        if self.failing.load(Ordering::SeqCst) {
+            Err("disk full".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Default)]
+struct RecordingSounds {
+    removed: Mutex<Vec<String>>,
+}
+
+impl NotificationSoundsPort for RecordingSounds {
+    fn accepts(&self, name: &str) -> bool {
+        !name.contains(['/', '\\'])
+    }
+
+    fn remove(&self, name: &str) -> Result<(), String> {
+        self.removed.lock().unwrap().push(name.to_owned());
+        Ok(())
+    }
+}
+
+/// A settings store whose next write can be held until the test lets it go.
+struct HeldSettings {
+    initial: SettingsState,
+    hold: Arc<AtomicBool>,
+    release: Arc<tokio::sync::Notify>,
+}
+
+#[async_trait]
+impl SettingsPort for HeldSettings {
+    async fn load(&self) -> SettingsState {
+        self.initial.clone()
+    }
+
+    async fn save(&self, _settings: &SettingsState) -> Result<(), String> {
+        if self.hold.swap(false, Ordering::SeqCst) {
+            self.release.notified().await;
+        }
+        Ok(())
+    }
+}
+
+/// Sounds as files that come and go, so "is it still there" has an answer.
+struct SoundFiles(Mutex<std::collections::HashSet<String>>);
+
+impl NotificationSoundsPort for SoundFiles {
+    fn accepts(&self, name: &str) -> bool {
+        !name.contains(['/', '\\'])
+    }
+
+    fn remove(&self, name: &str) -> Result<(), String> {
+        self.0.lock().unwrap().remove(name);
+        Ok(())
+    }
+
+    fn exists(&self, name: &str) -> bool {
+        self.0.lock().unwrap().contains(name)
+    }
+}
+
+fn choose_for_other(sound: &str) -> faf_domain::AppCommand {
+    use faf_domain::state::settings::{
+        NotificationPreferencesPatch, NotificationSoundChoicesPatch,
+    };
+    SettingsCommand::PatchNotifications {
+        patch: Box::new(NotificationPreferencesPatch {
+            sounds: Some(NotificationSoundChoicesPatch {
+                other: Some(NotificationSound::Custom(sound.into())),
+                ..NotificationSoundChoicesPatch::default()
+            }),
+            ..NotificationPreferencesPatch::default()
+        }),
+    }
+    .into()
+}
+
+/// The dropdown still lists a sound while it is being removed. Choosing it in
+/// that window, or after it is gone, must not leave a saved setting naming a
+/// deleted file; another sound is still chosen as usual.
+#[tokio::test]
+async fn a_sound_being_removed_cannot_be_chosen_again() {
+    let hold = Arc::new(AtomicBool::new(false));
+    let release = Arc::new(tokio::sync::Notify::new());
+    let files = Arc::new(SoundFiles(Mutex::new(
+        ["horn.wav", "bell.wav"].map(String::from).into(),
+    )));
+    let ports = Ports {
+        settings: Arc::new(HeldSettings {
+            initial: SettingsState {
+                notifications: NotificationPreferences {
+                    sounds: NotificationSoundChoices {
+                        mention: NotificationSound::Custom("horn.wav".into()),
+                        ..NotificationSoundChoices::default()
+                    },
+                    ..NotificationPreferences::default()
+                },
+                ..initial_settings()
+            },
+            hold: hold.clone(),
+            release: release.clone(),
+        }),
+        notification_sounds: files.clone(),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let app = Arc::new(app);
+    app.dispatch_and_wait(SettingsCommand::Load.into())
+        .await
+        .unwrap();
+
+    // The removal clears its references, then waits on its save.
+    hold.store(true, Ordering::SeqCst);
+    let removal = tokio::spawn({
+        let app = app.clone();
+        async move {
+            app.dispatch_and_wait(
+                SettingsCommand::RemoveNotificationSound {
+                    name: "horn.wav".into(),
+                }
+                .into(),
+            )
+            .await
+        }
+    });
+    until(&app, |state| {
+        state.settings.notifications.sounds.mention == NotificationSound::Chime
+    })
+    .await;
+
+    // In that window the user picks the sound for one row and another sound
+    // for a second. Not waited on: its own save queues behind the held one,
+    // so the state it emits first is what is checked. The second row shows
+    // the change has been applied, so the check cannot pass by being early.
+    {
+        use faf_domain::state::settings::{
+            NotificationPreferencesPatch, NotificationSoundChoicesPatch,
+        };
+        app.dispatch(
+            SettingsCommand::PatchNotifications {
+                patch: Box::new(NotificationPreferencesPatch {
+                    sounds: Some(NotificationSoundChoicesPatch {
+                        other: Some(NotificationSound::Custom("horn.wav".into())),
+                        game_full: Some(NotificationSound::Custom("bell.wav".into())),
+                        ..NotificationSoundChoicesPatch::default()
+                    }),
+                    ..NotificationPreferencesPatch::default()
+                }),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    }
+    until(&app, |state| {
+        state.settings.notifications.sounds.game_full
+            == NotificationSound::Custom("bell.wav".into())
+    })
+    .await;
+    assert_ne!(
+        app.snapshot().settings.notifications.sounds.other,
+        NotificationSound::Custom("horn.wav".into()),
+        "a sound being removed was chosen again"
+    );
+
+    release.notify_one();
+    removal.await.unwrap().unwrap();
+    assert!(!files.exists("horn.wav"));
+
+    // Gone now, so still refused; a sound that exists is chosen normally.
+    app.dispatch_and_wait(choose_for_other("horn.wav"))
+        .await
+        .unwrap();
+    assert_ne!(
+        app.snapshot().settings.notifications.sounds.other,
+        NotificationSound::Custom("horn.wav".into())
+    );
+    app.dispatch_and_wait(choose_for_other("bell.wav"))
+        .await
+        .unwrap();
+    assert_eq!(
+        app.snapshot().settings.notifications.sounds.other,
+        NotificationSound::Custom("bell.wav".into())
+    );
+}
+
+#[tokio::test]
+async fn a_sound_is_kept_when_the_settings_naming_it_could_not_be_saved() {
+    let failing = Arc::new(AtomicBool::new(false));
+    let sounds = Arc::new(RecordingSounds::default());
+    let ports = Ports {
+        settings: Arc::new(FlakySettings {
+            initial: SettingsState {
+                notifications: NotificationPreferences {
+                    sounds: NotificationSoundChoices {
+                        mention: NotificationSound::Custom("horn.wav".into()),
+                        ..NotificationSoundChoices::default()
+                    },
+                    ..NotificationPreferences::default()
+                },
+                ..initial_settings()
+            },
+            failing: failing.clone(),
+        }),
+        notification_sounds: sounds.clone(),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    app.dispatch_and_wait(SettingsCommand::Load.into())
+        .await
+        .unwrap();
+
+    // The write fails: the saved settings on disk still play horn.wav, so
+    // deleting it would leave that row playing nothing after a restart.
+    failing.store(true, Ordering::SeqCst);
+    app.dispatch_and_wait(
+        SettingsCommand::RemoveNotificationSound {
+            name: "horn.wav".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    assert!(sounds.removed.lock().unwrap().is_empty());
+    let state = app.snapshot();
+    assert_eq!(state.notifications.items.len(), 1);
+    assert_eq!(
+        state.notifications.items[0].title,
+        "Could not remove the sound"
+    );
+
+    // Once a write succeeds the same removal goes through, even though state
+    // stopped naming the sound on the first attempt.
+    failing.store(false, Ordering::SeqCst);
+    app.dispatch_and_wait(
+        SettingsCommand::RemoveNotificationSound {
+            name: "horn.wav".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(*sounds.removed.lock().unwrap(), ["horn.wav"]);
+}
+
+#[tokio::test]
+async fn two_quick_toggles_of_the_same_list_both_survive() {
+    let (app, saved) = loaded_app(initial_settings()).await;
+
+    // Back to back, the second sent before the first one's event could reach
+    // the webview: under a whole-list patch the second carried a list without
+    // the first, and only one star survived.
+    for folder in ["gap_of_rohan.v0001", "dawn.v0003"] {
+        app.dispatch(
+            SettingsCommand::SetListMember {
+                list: PreferenceList::FavoriteMaps,
+                value: folder.into(),
+                member: true,
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    }
+    for uid in ["eco-graph", "acu-highlight"] {
+        app.dispatch(
+            SettingsCommand::SetListMember {
+                list: PreferenceList::FavoriteMods,
+                value: uid.into(),
+                member: true,
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    }
+    for login in ["Aurora", "Bo"] {
+        app.dispatch(
+            SettingsCommand::SetListMember {
+                list: PreferenceList::MutedPlayers,
+                value: login.into(),
+                member: true,
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    }
+    for (player, color) in [("Aurora", "#112233"), ("Bo", "#445566")] {
+        app.dispatch(
+            SettingsCommand::SetPlayerNameColor {
+                player: player.into(),
+                color: Some(color.into()),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    }
+    for name in ["Replay", "Team"] {
+        app.dispatch(
+            SettingsCommand::SaveModPreset {
+                preset: ModPreset {
+                    name: name.into(),
+                    uids: Vec::new(),
+                },
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    }
+
+    until(&app, |state| {
+        let browsing = &state.settings.browsing;
+        let chat = &state.settings.chat;
+        browsing.favorite_maps.len() == 2
+            && browsing.favorite_mods.len() == 2
+            && browsing.mod_presets.len() == 2
+            && chat.muted_players.len() == 2
+            && chat.name_colors.players.len() == 2
+    })
+    .await;
+
+    // And an unstar right behind them removes only its own entry.
+    app.dispatch(
+        SettingsCommand::SetListMember {
+            list: PreferenceList::FavoriteMaps,
+            value: "GAP_OF_ROHAN.v0001".into(),
+            member: false,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    app.dispatch(
+        SettingsCommand::DeleteModPreset {
+            name: "replay".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |state| {
+        state.settings.browsing.favorite_maps == ["dawn.v0003"]
+            && state.settings.browsing.mod_presets.len() == 1
+    })
+    .await;
+
+    let state = app.snapshot().settings;
+    assert_eq!(state.browsing.favorite_mods, ["eco-graph", "acu-highlight"]);
+    assert_eq!(state.browsing.mod_presets[0].name, "Team");
+    assert_eq!(state.chat.muted_players, ["Aurora", "Bo"]);
+    until(&app, |_| saved.lock().unwrap().last() == Some(&state)).await;
 }
 
 #[tokio::test]

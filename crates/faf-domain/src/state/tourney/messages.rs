@@ -967,11 +967,23 @@ pub enum TourneyEvent {
         reason: String,
         kind: RequestFailureKind,
     },
-    PlayerRatingsLoading,
+    /// One entrant's ratings table. Like the eligibility check, each of the
+    /// three names the event it was asked in: the table belongs to the open
+    /// event's entrant, and an answer can arrive after the organiser moved on.
+    /// The entrant itself is on the answer (`ratings.player_id`), which is what
+    /// the dialog matches against.
+    #[serde(rename_all = "camelCase")]
+    PlayerRatingsLoading {
+        tournament_id: String,
+    },
+    #[serde(rename_all = "camelCase")]
     PlayerRatingsLoaded {
+        tournament_id: String,
         ratings: EntrantRatings,
     },
+    #[serde(rename_all = "camelCase")]
     PlayerRatingsFailed {
+        tournament_id: String,
         reason: String,
         kind: RequestFailureKind,
     },

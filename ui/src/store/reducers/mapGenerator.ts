@@ -68,5 +68,10 @@ export function reduceMapGenerator(
       return { ...state, helpText: event.payload.text };
     case "presetsLoaded":
       return { ...state, presets: event.payload.presets };
+    case "presetSaveFinished":
+      return {
+        ...state,
+        presetSave: { requestId: event.payload.requestId, saved: event.payload.saved },
+      };
   }
 }

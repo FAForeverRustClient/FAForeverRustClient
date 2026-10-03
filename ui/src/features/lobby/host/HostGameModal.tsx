@@ -165,12 +165,6 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   const rememberTypedEntries = useAppStore((state) => state.state.settings.general.rememberTypedEntries);
   const remembered = browsing.hostGame;
 
-  /// Writes are patches now, so other preferences are safe whatever this
-  /// reads. The favourites list is still one value replaced whole, though, so
-  /// a toggle starts from the newest copy rather than the one captured at
-  /// render time, or two quick toggles would have the second undo the first.
-  const currentBrowsing = () => useAppStore.getState().state.settings.browsing;
-
   // Title, who may join, and the rating window: the same fields and rules as
   // the co-op dialog, so they come from the same hook rather than a second
   // copy of each `useState` and each validation message.
@@ -393,15 +387,16 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   );
   const isFavorite = (folderName: string) =>
     favoriteFolders.has(folderName.toLocaleLowerCase());
+  // One folder and a direction, applied by the backend to the list it holds:
+  // a whole list built here from the snapshot lost a star whenever two were
+  // clicked inside one round trip.
   const toggleFavorite = (folderName: string) => {
-    const key = folderName.toLocaleLowerCase();
-    const current = currentBrowsing();
-    const favoriteMaps = favoriteFolders.has(key)
-      ? current.favoriteMaps.filter((folder) => folder.toLocaleLowerCase() !== key)
-      : [...current.favoriteMaps, key];
     ipc.send({
       kind: "Settings",
-      command: { type: "patchBrowsing", payload: { patch: { favoriteMaps } } },
+      command: {
+        type: "setListMember",
+        payload: { list: "favoriteMaps", value: folderName, member: !isFavorite(folderName) },
+      },
     });
   };
 

@@ -162,6 +162,7 @@ const INITIAL: AppState = {
     decoded: {},
     helpText: "",
     presets: [],
+    presetSave: null,
   },
   mods: {
     vault: [],

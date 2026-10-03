@@ -58,6 +58,7 @@ export class RevisionedMirror {
   private recoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private lastRecoveryAt = 0;
   private failedAttempts = 0;
+  private disposed = false;
 
   constructor(
     private readonly hydrate: (state: AppState) => void,
@@ -67,6 +68,7 @@ export class RevisionedMirror {
   ) {}
 
   receive(message: FrontendMessage): void {
+    if (this.disposed) return;
     if (message.kind === "snapshot") {
       this.replace(message);
       return;
@@ -87,6 +89,7 @@ export class RevisionedMirror {
   }
 
   replace(snapshot: VersionedSnapshot): void {
+    if (this.disposed) return;
     // A separately requested snapshot may complete after a newer ordered
     // snapshot or delta has already landed. Never roll the mirror backward.
     if (this.revision !== null && snapshot.revision < this.revision) {
@@ -102,8 +105,14 @@ export class RevisionedMirror {
     this.drainPending();
   }
 
-  /** Stop any scheduled retry; the mirror is being thrown away. */
+  /**
+   * The mirror is being thrown away: stop a scheduled retry, and make a
+   * recovery already in flight land nowhere. Clearing the timer alone left
+   * that one free to hydrate the store, which the next mirror now owns, and
+   * to schedule a retry of its own.
+   */
   dispose(): void {
+    this.disposed = true;
     if (this.recoveryTimer !== null) clearTimeout(this.recoveryTimer);
     this.recoveryTimer = null;
   }
@@ -160,7 +169,7 @@ export class RevisionedMirror {
 
   private startRecovery(): void {
     const resnapshot = this.resnapshot;
-    if (!resnapshot || this.recoveryInFlight) return;
+    if (!resnapshot || this.recoveryInFlight || this.disposed) return;
     // The gap that asked for this may have been closed since, by an ordered
     // snapshot or by the events in between finally arriving.
     if (!this.hasRevisionGap()) {
@@ -181,6 +190,9 @@ export class RevisionedMirror {
       .finally(() => {
         this.recoveryInFlight = false;
         this.lastRecoveryAt = Date.now();
+        // Disposed while it was in flight: no retry, and no error for a page
+        // that has already moved on.
+        if (this.disposed) return;
         if (failure === null) {
           // `replace` may have left a newer gap behind, one that arrived while
           // this snapshot was being built.
