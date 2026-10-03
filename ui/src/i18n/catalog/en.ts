@@ -871,6 +871,7 @@ export const en = {
   "lobby.browser.ranked": "Ranked",
   "lobby.browser.unranked": "Unranked",
   "lobby.browser.goAdapter": "Go adapter",
+  "lobby.browser.moreTags": "+{count} more",
   "lobby.browser.goAdapterTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
   // The sim-mod tag says how many, and its tooltip says the thing the count
   // does not: whether those mods cost the game its rating. Plural because
@@ -1189,6 +1190,8 @@ export const en = {
   "lobby.browser.sortAscending": "ascending",
   "lobby.browser.sortDescending": "descending",
   "lobby.browser.resizeDetails": "Resize the details panel",
+  "lobby.browser.hideDetails": "Hide the details panel",
+  "lobby.browser.showDetails": "Show the details panel",
   "lobby.matchmaker.resizeChat": "Resize the party chat",
   "lobby.browser.openProfile": "Open {name}'s profile",
   "lobby.browser.tileAria": "{title}, hosted by {host}. Double-click to join.",

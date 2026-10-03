@@ -88,7 +88,10 @@ pub fn load_sync(path: &std::path::Path) -> SettingsState {
 /// so nothing is lost for good, and every value that still fits is kept.
 fn read_document(path: &Path, bytes: &[u8]) -> SettingsState {
     match parse(bytes) {
-        Ok(settings) => settings,
+        Ok(settings) => {
+            keep_last_good_copy(path, bytes, &settings);
+            settings
+        }
         Err(error) => {
             let copy = keep_unreadable_copy(path, bytes);
             let (settings, dropped) = salvage(bytes);
@@ -101,6 +104,40 @@ fn read_document(path: &Path, bytes: &[u8]) -> SettingsState {
             settings
         }
     }
+}
+
+/// Where the last settings document that read back cleanly is kept.
+fn last_good_path(path: &Path) -> PathBuf {
+    parent_directory(path).join("settings.last-good.json")
+}
+
+/// Keep a copy of a settings document that read back cleanly, for the day the
+/// real one goes missing or is replaced by defaults.
+///
+/// Only a document somebody actually configured is worth keeping: a copy of
+/// pure defaults would overwrite the one copy that still holds their settings.
+fn keep_last_good_copy(path: &Path, bytes: &[u8], settings: &SettingsState) {
+    if is_pristine(settings) {
+        return;
+    }
+    let copy = last_good_path(path);
+    if std::fs::read(&copy).is_ok_and(|kept| kept == bytes) {
+        return;
+    }
+    if let Err(error) = write_atomically(&copy, bytes) {
+        tracing::warn!(%error, path = %copy.display(), "could not keep a copy of the settings");
+    }
+}
+
+/// Whether these are the settings of a client nobody has configured.
+///
+/// A fresh install always has a game path by the time anything is saved, since
+/// the startup load fills it in, so a document this empty that is about to
+/// replace a real one is the reset the reports describe, not a choice.
+fn is_pristine(settings: &SettingsState) -> bool {
+    let mut settings = settings.clone();
+    settings.cache_info = Default::default();
+    settings == SettingsState::default()
 }
 
 /// Copy an unreadable settings file aside, beside the original.
@@ -213,7 +250,19 @@ impl SettingsPort for FileSettings {
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                     self.writable.store(true, Ordering::SeqCst);
-                    return SettingsState::default(); // first run: no file yet
+                    // First run, or a settings file that went missing. The
+                    // last copy that read back cleanly answers the second.
+                    let copy = last_good_path(&self.path);
+                    return match tokio::fs::read(&copy).await {
+                        Ok(bytes) => {
+                            tracing::warn!(
+                                path = %copy.display(),
+                                "settings file missing; restored the last copy that read back cleanly"
+                            );
+                            parse(&bytes).unwrap_or_else(|_| salvage(&bytes).0)
+                        }
+                        Err(_) => SettingsState::default(),
+                    };
                 }
                 Err(error) if attempt < READ_ATTEMPTS => {
                     tracing::debug!(%error, attempt, "settings file busy, trying again");
@@ -238,6 +287,21 @@ impl SettingsPort for FileSettings {
             tracing::error!(
                 path = %self.path.display(),
                 "not saving settings over a file that could not be read at startup"
+            );
+            return;
+        }
+        // The signature of every reset reported so far (#320, #383, #396): a
+        // document of nothing but defaults, written over one that held the
+        // player's settings. Whatever path produced it, it is never what the
+        // player asked for, so it is not written.
+        if is_pristine(settings)
+            && tokio::fs::read(&self.path)
+                .await
+                .is_ok_and(|bytes| parse(&bytes).is_ok_and(|stored| !is_pristine(&stored)))
+        {
+            tracing::error!(
+                path = %self.path.display(),
+                "not replacing configured settings with defaults"
             );
             return;
         }
@@ -428,6 +492,54 @@ mod tests {
             unreadable_copies(dir.path()),
             vec![b"{\"theme\": \"pythonCl".to_vec()]
         );
+    }
+
+    /// The reset as it was found on disk: a document of nothing but defaults,
+    /// written over a configured one shortly after a start.
+    #[tokio::test]
+    async fn defaults_are_never_written_over_configured_settings() {
+        let dir = tempfile::tempdir().expect("temporary settings directory");
+        let path = dir.path().join("settings.json");
+        let store = FileSettings::at(&path);
+        let configured = SettingsState {
+            theme: Theme::PythonClient,
+            game_path: "C:/ProgramData/FAForever/bin/ForgedAlliance.exe".into(),
+            ..SettingsState::default()
+        };
+        store.save(&configured).await;
+
+        store.save(&SettingsState::default()).await;
+
+        assert_eq!(store.load().await.theme, Theme::PythonClient);
+    }
+
+    #[tokio::test]
+    async fn a_missing_file_comes_back_from_the_last_good_copy() {
+        let dir = tempfile::tempdir().expect("temporary settings directory");
+        let path = dir.path().join("settings.json");
+        let store = FileSettings::at(&path);
+        store
+            .save(&SettingsState {
+                theme: Theme::PythonClient,
+                ..SettingsState::default()
+            })
+            .await;
+        // A load that reads it back cleanly is what keeps the copy.
+        assert_eq!(store.load().await.theme, Theme::PythonClient);
+
+        std::fs::remove_file(&path).expect("lose the settings file");
+
+        assert_eq!(store.load().await.theme, Theme::PythonClient);
+    }
+
+    #[tokio::test]
+    async fn an_unconfigured_client_keeps_no_copy() {
+        let dir = tempfile::tempdir().expect("temporary settings directory");
+        let path = dir.path().join("settings.json");
+        let store = FileSettings::at(&path);
+        store.save(&SettingsState::default()).await;
+        store.load().await;
+        assert!(!last_good_path(&path).exists());
     }
 
     #[test]

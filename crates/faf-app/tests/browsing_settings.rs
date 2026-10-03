@@ -82,6 +82,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                         column_widths: Vec::new(),
                         column_order: Vec::new(),
                         detail_width: 0,
+                        detail_hidden: false,
                     },
                     matchmaker_unselected_queues: vec!["  ladder_1v1 ".into()],
                     matchmaker_factions: vec!["cybran".into()],
