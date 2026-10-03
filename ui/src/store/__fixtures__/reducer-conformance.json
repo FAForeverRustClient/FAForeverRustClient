@@ -52095,6 +52095,7 @@
                 "maxPlayers": "",
                 "search": ""
               },
+              "liveReplayOrder": [],
               "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
@@ -52106,6 +52107,7 @@
                 "Seraphim"
               ],
               "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
               "matchmakerUnselectedQueues": [],
               "modPresets": [],
               "modVaultPreset": "recommended",
@@ -52332,6 +52334,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
