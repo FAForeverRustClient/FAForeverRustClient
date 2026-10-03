@@ -124,7 +124,9 @@ function PlayerLookupSearch({
           };
         })
       : [];
-    return [...online, ...fromApi].slice(0, 12);
+    // As many as the API suggests (50) after the online ones; the list
+    // scrolls, and the arrow keys keep the active one in view.
+    return [...online, ...fromApi].slice(0, 58);
   }, [lookup, trimmedQuery, players]);
 
   useEffect(() => {
@@ -214,6 +216,8 @@ function PlayerLookupSearch({
               role="option"
               aria-selected={index === activeIndex}
               className={`player-card-suggestion-item ${index === activeIndex ? "is-selected" : ""}`}
+              // Kept in view as the arrow keys walk a list longer than the box.
+              ref={index === activeIndex ? (element) => element?.scrollIntoView({ block: "nearest" }) : undefined}
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleSelect(player.id, player.login);
