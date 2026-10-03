@@ -196,6 +196,27 @@ pub fn runs_without_timeout(args: &[String]) -> bool {
     args.iter().any(|arg| arg == VISUALIZE_FLAG)
 }
 
+/// The most maps one run is given time for. The host dialog asks for at most
+/// fifty; this only bounds a hand-edited argument list.
+const MAX_TIMED_MAPS: u64 = 64;
+
+/// How long a run may take before it is presumed hung, in seconds: three
+/// minutes for every map it was asked to generate.
+///
+/// Java's three minutes are per map, because its `GenerateMapTask` starts one
+/// generator process for each. This client generates a batch in one process
+/// (`--num-to-generate`), and one three-minute limit for the whole batch
+/// killed a run of ten or twenty maps partway through, every time.
+pub fn generation_timeout_seconds(args: &[String]) -> u64 {
+    let count = args
+        .windows(2)
+        .find(|pair| pair[0] == "--num-to-generate" || pair[0] == "--num-to-gen")
+        .and_then(|pair| pair[1].parse::<u64>().ok())
+        .unwrap_or(1)
+        .clamp(1, MAX_TIMED_MAPS);
+    GENERATION_TIMEOUT_SECONDS * count
+}
+
 /// A parsed `x.y.z` generator version. Ordered numerically, not lexically,
 /// `1.10.0` is newer than `1.9.0`, which a string comparison gets wrong.
 #[derive(
@@ -1326,6 +1347,31 @@ pub fn parse_option_list(stdout: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_batch_gets_three_minutes_for_every_map() {
+        let args = |extra: &[&str]| extra.iter().map(|arg| arg.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            generation_timeout_seconds(&args(&["--map-size", "512"])),
+            180
+        );
+        assert_eq!(
+            generation_timeout_seconds(&args(&["--num-to-generate", "10"])),
+            1_800
+        );
+        assert_eq!(
+            generation_timeout_seconds(&args(&["--num-to-gen", "3"])),
+            540
+        );
+        assert_eq!(
+            generation_timeout_seconds(&args(&["--num-to-generate", "0"])),
+            180
+        );
+        assert_eq!(
+            generation_timeout_seconds(&args(&["--num-to-generate", "9999"])),
+            180 * 64
+        );
+    }
 
     fn version(major: u32, minor: u32, patch: u32) -> GeneratorVersion {
         GeneratorVersion {

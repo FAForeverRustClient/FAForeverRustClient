@@ -4204,6 +4204,21 @@ export type MapGeneratorCommand =
 { type: "decodeNames"; payload: {
 	mapNames: string[],
 } } |
+/**
+ *  Read the previews of these installed generated maps from disk, for the
+ *  tiles that are showing them.
+ *
+ *  Asked for by a tile, one map at a time, instead of every preview in the
+ *  maps folder arriving with each scan of it. That push sent the whole
+ *  folder's pictures as base64 in one event, at least twice for every map
+ *  generated from the host dialog, and an event is a script the webview
+ *  has to parse: past a few dozen generated maps that is what ran the page
+ *  out of memory (#402). Java reads each preview from disk when a tile
+ *  shows it (`MapService.getGeneratedMapPreview`).
+ */
+{ type: "loadPreviews"; payload: {
+	mapNames: string[],
+} } |
 /**  Fetch the generator's `--help` text. */
 { type: "loadHelp"; payload: {
 	version?: string | null,

@@ -54,7 +54,7 @@ export function resetLocalMapPreviewRequests(): void {
 // string comparisons per event on a full page of tiles.
 const INSTALLED_BASES = new WeakMap<object, Set<string>>();
 
-function installedBases(installed: { folderName: string }[]): Set<string> {
+export function installedBases(installed: { folderName: string }[]): Set<string> {
   let bases = INSTALLED_BASES.get(installed);
   if (!bases) {
     bases = new Set(installed.map((map) => baseMapName(map.folderName)));

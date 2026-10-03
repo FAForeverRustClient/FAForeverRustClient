@@ -68,24 +68,11 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             out.emit(MapsEvent::InstalledLoading);
             match ctx.ports.maps.list_installed().await {
-                Ok(maps) => {
-                    let gen_maps = maps
-                        .iter()
-                        .filter(|m| {
-                            faf_domain::protocol::map_generator::is_generated_map(&m.folder_name)
-                        })
-                        .map(|m| m.folder_name.clone())
-                        .collect::<Vec<_>>();
-                    if !gen_maps.is_empty() {
-                        let previews = ctx.ports.map_generator.map_previews(&gen_maps).await;
-                        if !previews.is_empty() {
-                            out.emit(faf_domain::state::MapGeneratorEvent::PreviewsLoaded {
-                                previews,
-                            });
-                        }
-                    }
-                    out.emit(MapsEvent::InstalledLoaded { maps });
-                }
+                // No previews here any more. Every generated map's picture
+                // used to go out with every scan, the whole folder in one
+                // event: see `MapGeneratorCommand::LoadPreviews`, which a tile
+                // now sends for the map it shows (#402).
+                Ok(maps) => out.emit(MapsEvent::InstalledLoaded { maps }),
                 Err(reason) => out.emit(MapsEvent::InstalledLoadFailed { reason }),
             }
         }

@@ -10,6 +10,7 @@ import { useAppStore } from "../../store/store";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
+import { useGeneratedMapPreview } from "../../shared/hooks/useGeneratedMapPreview";
 import { useListColumns } from "../../shared/hooks/useListColumns";
 import { columnTemplate } from "../../shared/tableColumns";
 
@@ -162,6 +163,7 @@ function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string })
         state.state.mapGenerator.previews?.[mapName.toLowerCase()]
       : undefined,
   );
+  useGeneratedMapPreview(mapName, isGenerated, Boolean(generatedPreview));
   const candidates = useMemo(
     () => mapThumbnailCandidates(vault, mapName, false, undefined, generatedPreview, url || undefined),
     [generatedPreview, mapName, url, vault],
