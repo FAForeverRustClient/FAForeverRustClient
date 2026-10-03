@@ -166,7 +166,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
             // the host dialog needs to host it again.
             <Button
               aria-pressed={favorite}
-              onClick={() => toggleFavoriteMap(game.map)}
+              onClick={() => toggleFavoriteMap(game.map, vaultMap?.downloadUrl)}
               title={t(favorite ? "maps.vault.removeFavoriteAria" : "maps.vault.addFavoriteAria", {
                 name: presentation.displayName || game.map,
               })}
