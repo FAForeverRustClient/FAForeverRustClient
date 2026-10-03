@@ -395,9 +395,10 @@ async fn the_startup_check_runs_when_settings_load() {
         "the automatic check",
     )
     .await;
+    // Default settings offer prereleases: every release so far is one.
     assert_eq!(
         h.calls.lock().unwrap().channels,
-        vec![ReleaseChannel::Stable]
+        vec![ReleaseChannel::PreRelease]
     );
 }
 
