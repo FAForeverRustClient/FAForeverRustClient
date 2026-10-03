@@ -4,6 +4,7 @@ import {
   isCoopGame,
   isCustomGameRanked,
   isFreeForAll,
+  isMultiTeam,
   showsUnrankedTag,
   simModsKeepGameRanked,
 } from "./gameRules";
@@ -50,6 +51,22 @@ describe("a free-for-all", () => {
     expect(isFreeForAll(game({ teams: { "1": ["A", "B"] } }))).toBe(false);
     expect(isFreeForAll(game({ teams: { "2": ["A", "B"], "3": ["C", "D"] } }))).toBe(false);
     expect(isFreeForAll(game({ teams: { "1": ["A"], "-1": ["B", "C"] } }))).toBe(false);
+  });
+});
+
+describe("a game of more than two teams", () => {
+  it("is unranked whether or not somebody is still on no team (#368)", () => {
+    const fourTeams = game({ map: "scmp_009", teams: { "2": ["A"], "3": ["B"], "4": ["C"], "5": ["D"] } });
+    expect(isMultiTeam(fourTeams)).toBe(true);
+    expect(showsUnrankedTag(fourTeams, [rankedMap], noMods)).toBe(true);
+    const oneUnassigned = game({ map: "scmp_009", teams: { "1": ["A"], "3": ["B"], "4": ["C"], "5": ["D"] } });
+    expect(showsUnrankedTag(oneUnassigned, [rankedMap], noMods)).toBe(true);
+  });
+
+  it("is not two teams, observers, or a team nobody is on", () => {
+    expect(isMultiTeam(game({ teams: { "2": ["A", "B"], "3": ["C", "D"] } }))).toBe(false);
+    expect(isMultiTeam(game({ teams: { "2": ["A"], "3": ["B"], "-1": ["C"] } }))).toBe(false);
+    expect(isMultiTeam(game({ teams: { "2": ["A"], "3": ["B"], "4": [] } }))).toBe(false);
   });
 });
 

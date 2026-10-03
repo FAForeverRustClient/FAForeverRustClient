@@ -32,9 +32,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use faf_domain::protocol::map_generator::{
-    self, GeneratorVersion, VersionPolicy, GENERATION_TIMEOUT_SECONDS,
-};
+use faf_domain::protocol::map_generator::{self, GeneratorVersion, VersionPolicy};
 use faf_domain::state::{GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus};
 use serde::Deserialize;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -401,12 +399,12 @@ impl NeroxisMapGenerator {
             total_bytes: None,
         }));
 
-        let response = self
-            .http
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| format!("could not reach the map generator download: {e}"))?;
+        let response = self.http.get(&url).send().await.map_err(|e| {
+            format!(
+                "could not reach the map generator download: {}",
+                crate::infra::http::describe_transport_error(&e)
+            )
+        })?;
         if !response.status().is_success() {
             return Err(format!(
                 "map generator {version} download returned {}",
@@ -443,7 +441,12 @@ impl NeroxisMapGenerator {
         use tokio::io::AsyncWriteExt as _;
         let write_result: Result<(), String> = async {
             while let Some(chunk) = stream.next().await {
-                let chunk = chunk.map_err(|e| format!("map generator download failed: {e}"))?;
+                let chunk = chunk.map_err(|e| {
+                    format!(
+                        "map generator download failed: {}",
+                        crate::infra::http::describe_transport_error(&e)
+                    )
+                })?;
                 downloaded = downloaded
                     .checked_add(chunk.len() as u64)
                     .ok_or_else(|| "map generator download is too large".to_string())?;
@@ -482,13 +485,18 @@ impl NeroxisMapGenerator {
     /// Kills *and reaps*: `start_kill` only signals, so without the follow-up
     /// wait the JVM would linger as a zombie for the rest of the session: and
     /// a user retrying after a timeout would accumulate one per attempt.
-    async fn abandon(&self, child: &mut tokio::process::Child, untimed: bool) -> String {
+    async fn abandon(
+        &self,
+        child: &mut tokio::process::Child,
+        untimed: bool,
+        limit_seconds: u64,
+    ) -> String {
         debug_assert!(!untimed, "an untimed run should never reach the deadline");
         let _ = child.start_kill();
         // Bounded: if the JVM ignores the signal, don't trade one hang for
         // another. The OS cleans up on client exit either way.
         let _ = tokio::time::timeout(Duration::from_secs(5), child.wait()).await;
-        format!("map generation timed out after {GENERATION_TIMEOUT_SECONDS}s")
+        format!("map generation timed out after {limit_seconds}s")
     }
 
     /// Run the generator and collect the map names it reports.
@@ -568,10 +576,11 @@ impl NeroxisMapGenerator {
 
         // A `--visualize` run opens a viewer window and stays alive on purpose,
         // so it is exempt from the timeout: the Java client's `GenerateMapTask`
-        // makes the same exception. Everything else gets three minutes.
+        // makes the same exception. Everything else gets three minutes per
+        // map it was asked for: see `generation_timeout_seconds`.
         let untimed = map_generator::runs_without_timeout(&args);
-        let deadline =
-            tokio::time::Instant::now() + Duration::from_secs(GENERATION_TIMEOUT_SECONDS);
+        let limit_seconds = map_generator::generation_timeout_seconds(&args);
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(limit_seconds);
         // `None` disables every deadline below without duplicating the loop.
         let remaining = || -> Option<Duration> {
             (!untimed).then(|| deadline.saturating_duration_since(tokio::time::Instant::now()))
@@ -580,7 +589,7 @@ impl NeroxisMapGenerator {
         loop {
             let wait_for = remaining();
             if wait_for.is_some_and(|d| d.is_zero()) {
-                return RunOutcome::Failed(self.abandon(&mut child, untimed).await);
+                return RunOutcome::Failed(self.abandon(&mut child, untimed, limit_seconds).await);
             }
             let read_line = async {
                 match wait_for {
@@ -602,7 +611,9 @@ impl NeroxisMapGenerator {
             };
             match next {
                 Err(_) => {
-                    return RunOutcome::Failed(self.abandon(&mut child, untimed).await);
+                    return RunOutcome::Failed(
+                        self.abandon(&mut child, untimed, limit_seconds).await,
+                    );
                 }
                 Ok(Ok(Some(line))) => {
                     if let Some(window) = window.as_mut() {
@@ -638,7 +649,11 @@ impl NeroxisMapGenerator {
                 Ok(Err(e)) => {
                     return RunOutcome::Failed(format!("map generator did not exit cleanly: {e}"))
                 }
-                Err(_) => return RunOutcome::Failed(self.abandon(&mut child, untimed).await),
+                Err(_) => {
+                    return RunOutcome::Failed(
+                        self.abandon(&mut child, untimed, limit_seconds).await,
+                    )
+                }
             },
             None => match child.wait().await {
                 Ok(status) => status,
@@ -774,7 +789,12 @@ impl NeroxisMapGenerator {
                     .header(reqwest::header::ACCEPT, "application/vnd.github.v3+json")
                     .send()
                     .await
-                    .map_err(|e| format!("could not reach the map generator releases: {e}"))?;
+                    .map_err(|e| {
+                        format!(
+                            "could not reach the map generator releases: {}",
+                            crate::infra::http::describe_transport_error(&e)
+                        )
+                    })?;
                 if !response.status().is_success() {
                     return Err(format!(
                         "map generator releases returned {}",

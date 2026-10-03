@@ -299,6 +299,18 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* A row followed by a note about it (Steam's "what we cannot vouch for"):
+   no rule between the two, so the note reads as part of the setting above
+   rather than as another setting. */
+.setting-row.setting-row-with-note {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+
+.setting-block.setting-row-note {
+  padding-top: 0;
+}
+
 .settings-section-body > :last-child,
 .settings-section-body > :last-child .settings-path-row:last-of-type {
   border-bottom: 0;

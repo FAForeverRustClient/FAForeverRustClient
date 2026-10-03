@@ -4124,6 +4124,78 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a reconnect ends a search but not a launch or a running game",
+            vec![
+                LobbyEvent::Connected.into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Preparing {
+                        queue_names: vec!["ladder1v1".into()],
+                    },
+                }
+                .into(),
+                LobbyEvent::Connecting.into(),
+                LobbyEvent::Connected.into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Searching {
+                        queue_names: vec!["ladder1v1".into(), "tmm2v2".into()],
+                    },
+                }
+                .into(),
+                // The server ended this search with the old connection.
+                LobbyEvent::Connecting.into(),
+                LobbyEvent::Connected.into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "ladder1v1".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::InGame.into(),
+                // The game outlives the socket; so does its launch.
+                LobbyEvent::Connecting.into(),
+                LobbyEvent::GameTerminated.into(),
+            ],
+        ),
+        case(
+            "a matchmaker launch that fails or is called off frees the panel",
+            vec![
+                LobbyEvent::Connected.into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "ladder1v1".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::LaunchFailed {
+                    reason: "ice adapter: no port".into(),
+                }
+                .into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "ladder1v1".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::Preparing {
+                    phase: PreparationPhase::Map,
+                    detail: "Generating map".into(),
+                    progress: None,
+                }
+                .into(),
+                LobbyEvent::JoinCancelled.into(),
+                // A cancel with nothing in preparation leaves a game alone.
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "ladder1v1".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::InGame.into(),
+                LobbyEvent::JoinCancelled.into(),
+                LobbyEvent::GameTerminated.into(),
+            ],
+        ),
+        case(
             "a mod version conflict parks the join until it is answered",
             vec![
                 LobbyEvent::Connected.into(),
@@ -4159,6 +4231,7 @@ fn cases() -> Vec<Case> {
                             team_size: 4,
                             num_players: 1,
                             queue_pop_time_seconds: 90,
+                            queue_pops_at: String::new(),
                             boundary_80s: Vec::new(),
                             boundary_75s: Vec::new(),
                         },
@@ -4167,6 +4240,7 @@ fn cases() -> Vec<Case> {
                             team_size: 1,
                             num_players: 7,
                             queue_pop_time_seconds: 30,
+                            queue_pops_at: String::new(),
                             boundary_80s: vec![RatingRange {
                                 min: 900,
                                 max: 1_300,
@@ -4186,6 +4260,7 @@ fn cases() -> Vec<Case> {
                         team_size: 2,
                         num_players: 3,
                         queue_pop_time_seconds: 60,
+                        queue_pops_at: String::new(),
                         boundary_80s: Vec::new(),
                         boundary_75s: Vec::new(),
                     }],
@@ -4200,6 +4275,7 @@ fn cases() -> Vec<Case> {
                         team_size: 1,
                         num_players: 12,
                         queue_pop_time_seconds: 20,
+                        queue_pops_at: String::new(),
                         boundary_80s: vec![
                             RatingRange {
                                 min: 900,
@@ -4698,15 +4774,45 @@ fn cases() -> Vec<Case> {
         case(
             "a player checks their rating, and an organiser opens two players' ratings",
             vec![
+                // The verdict belongs to the open event.
+                TourneyEvent::Selected {
+                    tournament_id: "t1".into(),
+                }
+                .into(),
                 // A refusal keeps its sentence: it says to sign in again.
-                TourneyEvent::RatingChecking.into(),
+                TourneyEvent::RatingChecking {
+                    tournament_id: "t1".into(),
+                }
+                .into(),
                 TourneyEvent::RatingCheckFailed {
+                    tournament_id: "t1".into(),
                     reason: "Checking your rating needs your FAF login.".into(),
                     kind: RequestFailureKind::Rejected,
                 }
                 .into(),
-                TourneyEvent::RatingChecking.into(),
+                TourneyEvent::RatingChecking {
+                    tournament_id: "t1".into(),
+                }
+                .into(),
+                // An answer about an event that is no longer open is dropped,
+                // on both sides, rather than drawn under the open one.
                 TourneyEvent::RatingChecked {
+                    tournament_id: "t0".into(),
+                    check: RatingCheck {
+                        rated: true,
+                        eligible: Some(true),
+                        ..RatingCheck::default()
+                    },
+                }
+                .into(),
+                TourneyEvent::RatingCheckFailed {
+                    tournament_id: "t0".into(),
+                    reason: "stale".into(),
+                    kind: RequestFailureKind::Rejected,
+                }
+                .into(),
+                TourneyEvent::RatingChecked {
+                    tournament_id: "t1".into(),
                     check: RatingCheck {
                         rated: true,
                         rating: Some(1480),
@@ -4835,9 +4941,11 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 TourneyEvent::DescImageUploaded {
+                    request_id: 7,
                     url: "/desc-images/d.png".into(),
                 }
                 .into(),
+                TourneyEvent::DescImageUploadFailed { request_id: 8 }.into(),
             ],
         ),
         case(
@@ -5608,6 +5716,31 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "the catalogue arriving after a folder lookup keeps the looked-up map",
+            vec![
+                MapsEvent::VaultLoading.into(),
+                MapsEvent::VaultFoldersResolved {
+                    maps: vec![conformance_vault_map(4, 44, "phenom spartiate v2")],
+                }
+                .into(),
+                MapsEvent::VaultLoaded {
+                    maps: vec![
+                        conformance_vault_map(1, 11, "scmp_009.v0001"),
+                        conformance_vault_map(4, 44, "phenom spartiate v2"),
+                    ],
+                }
+                .into(),
+                MapsEvent::VaultFoldersResolved {
+                    maps: vec![conformance_vault_map(5, 55, "old_map")],
+                }
+                .into(),
+                MapsEvent::VaultLoaded {
+                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")],
+                }
+                .into(),
+            ],
+        ),
+        case(
             "the profile search's account suggestions replace each other",
             vec![
                 PlayerCardEvent::AccountsFound {
@@ -6025,6 +6158,32 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "an old replay reports what it is preparing, and the report ends with it",
+            vec![
+                // Ignored: nothing is starting yet.
+                ReplayEvent::Preparing {
+                    step: ReplayPreparation {
+                        detail: "too early".into(),
+                        progress: None,
+                    },
+                }
+                .into(),
+                ReplayEvent::Connecting.into(),
+                ReplayEvent::Preparing {
+                    step: ReplayPreparation {
+                        detail: "Downloading ForgedAlliance.exe".into(),
+                        progress: Some(40),
+                    },
+                }
+                .into(),
+                ReplayEvent::Playing {
+                    uid: Some(5),
+                    warning: None,
+                }
+                .into(),
+            ],
+        ),
+        case(
             "a replay connects, fails, and is dismissed",
             vec![
                 ReplayEvent::Connecting.into(),
@@ -6315,6 +6474,13 @@ fn cases() -> Vec<Case> {
                     }],
                 }
                 .into(),
+                SettingsEvent::MapPoolsSeen {
+                    seen: vec![faf_domain::state::settings::MapPoolsSeen {
+                        queue_name: "ladder1v1".into(),
+                        assignments: vec![91, 92],
+                    }],
+                }
+                .into(),
                 // Replaced whole as well: the service works out the order and
                 // the cap, the reducer only stores the result. The empty
                 // string is a deliberate choice of no avatar.
@@ -6422,6 +6588,7 @@ fn cases() -> Vec<Case> {
                             column_widths: vec![320, 180, 90, 110, 80],
                             column_order: Vec::new(),
                             detail_width: 360,
+                            detail_hidden: false,
                         },
                         matchmaker_unselected_queues: vec![
                             "  ladder_1v1 ".into(),
@@ -6473,8 +6640,10 @@ fn cases() -> Vec<Case> {
                         replay_list_columns: vec![64, 240, 150],
                         replay_list_order: Vec::new(),
                         live_replay_columns: vec![120, 200],
+                        live_replay_order: Vec::new(),
                         coop_board_columns: Vec::new(),
                         matchmaker_recent_columns: Vec::new(),
+                        matchmaker_recent_order: Vec::new(),
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec!["games".into(), "updated".into()],
@@ -7038,7 +7207,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Lobby:gamesChanged",
     "Lobby:gamesUpdated",
     "Lobby:joinFailed",
-    "Lobby:launchFailed",
     "Lobby:launching",
     "Lobby:liveGamesChanged",
     "Lobby:liveGamesUpdated",

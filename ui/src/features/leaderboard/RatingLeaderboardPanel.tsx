@@ -76,10 +76,9 @@ export function RatingLeaderboardPanel() {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: {
-            ...browsing,
+          patch: {
             leaderboardRatingColumns: updated,
           },
         },

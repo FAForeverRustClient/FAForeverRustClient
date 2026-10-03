@@ -444,7 +444,10 @@ export function LobbyView() {
   useEffect(() => {
     if (failedJoinId !== null) setSelectedId(failedJoinId);
   }, [failedJoinId]);
-  const [previewGame, setPreviewGame] = useState<Game | null>(null);
+  // The game the large preview was opened on, followed through the live list
+  // while it is open: a snapshot kept showing the map the lobby had when the
+  // dialog opened, however often the host changed it since (#384).
+  const [previewSnapshot, setPreviewGame] = useState<Game | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [hostOpen, setHostOpen] = useState(false);
   const [passwordGame, setPasswordGame] = useState<Game | null>(null);
@@ -480,11 +483,10 @@ export function LobbyView() {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setChat",
+        type: "patchChat",
         payload: {
-          preferences: {
-            ...preferences,
-            nameColors: { ...preferences.nameColors, players },
+          patch: {
+            nameColors: { players },
           },
         },
       },
@@ -499,10 +501,9 @@ export function LobbyView() {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setChat",
+        type: "patchChat",
         payload: {
-          preferences: {
-            ...preferences,
+          patch: {
             mutedPlayers: muted ? [...withoutPlayer, nickname] : withoutPlayer,
           },
         },
@@ -592,6 +593,11 @@ export function LobbyView() {
   // jumping list must never make a misclick join the wrong game.
   const selected =
     selectedId === null ? null : (filtered.find((game) => game.id === selectedId) ?? null);
+  const previewGame = previewSnapshot
+    ? customGames.find((game) => game.id === previewSnapshot.id)
+      ?? coopGames.find((game) => game.id === previewSnapshot.id)
+      ?? previewSnapshot
+    : null;
   const inGame = (list: Game[], nickname: string) =>
     list.find((g) => Object.values(g.teams).some((team) => team.includes(nickname)));
   const menuHostedGame = menu && customGames.find((g) => g.host === menu.nickname);
@@ -618,22 +624,20 @@ export function LobbyView() {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, customGamesView: view } },
+        type: "patchBrowsing",
+        payload: { patch: { customGamesView: view } },
       },
     });
   };
 
   const updateGameBrowser = (changes: Partial<typeof gameBrowser>) => {
-    const current = useAppStore.getState().state.settings.browsing;
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: {
-            ...current,
-            customGamesBrowser: { ...current.customGamesBrowser, ...changes },
+          patch: {
+            customGamesBrowser: changes,
           },
         },
       },
@@ -685,12 +689,20 @@ export function LobbyView() {
   );
   const [draggedDetailWidth, setDraggedDetailWidth] = useState<number | null>(null);
   const detailDragOrigin = useRef<number | null>(null);
+  const detailHidden = useAppStore(
+    (state) => state.state.settings.browsing.customGamesBrowser.detailHidden,
+  );
   const currentDetailWidth = draggedDetailWidth ?? detailWidth(savedDetailWidth);
   const detailStyle = useMemo(
     // The divider's track is the whole gap, as the chat roster's is, so the
-    // two tabs space their side panel the same.
-    () => ({ gridTemplateColumns: `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px` }),
-    [currentDetailWidth],
+    // two tabs space their side panel the same. Folded away (#370, #377), the
+    // gap stays and holds the tab that brings the panel back.
+    () => ({
+      gridTemplateColumns: detailHidden
+        ? "minmax(360px, 1fr) var(--space-3)"
+        : `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px`,
+    }),
+    [currentDetailWidth, detailHidden],
   );
   const onDetailDrag = (delta: number) => {
     detailDragOrigin.current ??= currentDetailWidth;
@@ -857,15 +869,31 @@ export function LobbyView() {
             empty={emptyGames}
           />
           {/* The divider sits between the list and the panel rather than on
-              either, so dragging it reads as moving the boundary. */}
-          <ResizeHandle
-            className="custom-games-divider"
-            label={t("lobby.browser.resizeDetails")}
-            onDrag={onDetailDrag}
-            onEnd={onDetailCommit}
-            onReset={onDetailReset}
-          />
-          {selected ? (
+              either, so dragging it reads as moving the boundary. The arrow
+              in it is a tab hanging off the panel's edge, which folds the
+              panel away and back (#370, #377); the choice is a setting, so it
+              holds across restarts. */}
+          <div className="custom-games-divider">
+            {!detailHidden && (
+              <ResizeHandle
+                label={t("lobby.browser.resizeDetails")}
+                onDrag={onDetailDrag}
+                onEnd={onDetailCommit}
+                onReset={onDetailReset}
+              />
+            )}
+            <button
+              type="button"
+              className="custom-games-detail-toggle"
+              aria-expanded={!detailHidden}
+              aria-label={t(detailHidden ? "lobby.browser.showDetails" : "lobby.browser.hideDetails")}
+              title={t(detailHidden ? "lobby.browser.showDetails" : "lobby.browser.hideDetails")}
+              onClick={() => updateGameBrowser({ detailHidden: !detailHidden })}
+            >
+              <Icon name="chevronRight" size={12} />
+            </button>
+          </div>
+          {detailHidden ? null : selected ? (
             <GameDetails
               game={selected}
               onJoin={() => requestJoin(selected)}

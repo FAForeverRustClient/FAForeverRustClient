@@ -53,9 +53,8 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const [filters, setFilters] = useState<LiveFilters>(browsing.liveReplayFilters);
   const filtersDirty = useRef(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  // The game whose detail panel is open. The table expands a row in place, as
-  // it always has; the grid opens the panel, the way the vault's grid does.
+  // The game whose detail window is open. The grid and the table both open
+  // it, the way the vault's grid and list do.
   const [openId, setOpenId] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<LiveSortKey>("started");
   const [sortDirection, setSortDirection] = useState<SortDirection>("descending");
@@ -69,9 +68,9 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: { ...useAppStore.getState().state.settings.browsing, liveReplayView: mode },
+          patch: { liveReplayView: mode },
         },
       },
     });
@@ -97,13 +96,12 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   useEffect(() => {
     if (!filtersDirty.current) return;
     const timer = window.setTimeout(() => {
-      const current = useAppStore.getState().state.settings.browsing;
       filtersDirty.current = false;
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...current, liveReplayFilters: filters } },
+          type: "patchBrowsing",
+          payload: { patch: { liveReplayFilters: filters } },
         },
       });
     }, 200);
@@ -248,10 +246,6 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     }
   }, [sortKey]);
 
-  const toggleExpanded = useCallback((id: number) => {
-    setExpandedId((current) => current === id ? null : id);
-  }, []);
-
   if (lobbyStatus !== "connected") {
     return (
       <div className="live-replay-empty surface-panel">
@@ -307,21 +301,19 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           games={visibleGames}
           matchingCount={filteredGames.length}
           totalCount={liveGames.length}
-          expandedId={expandedId}
           sortKey={sortKey}
           sortDirection={sortDirection}
           previewsLoading={mapVaultStatus.type === "loading"}
           batchSize={LIVE_REPLAY_BATCH_SIZE}
           tracking={tracking}
           onSort={changeSort}
-          onToggle={toggleExpanded}
+          onOpen={setOpenId}
           onPlayerMenu={openPlayerMenu}
           onLoadMore={() => setVisibleCount((current) => current + LIVE_REPLAY_BATCH_SIZE)}
         />
       )}
-      {/* The panel a card opens. Nothing but the grid opens it, because the
-          table expands its own row instead; both are the behaviour the reader
-          already knows from the tab they came from. */}
+      {/* The window a card or a row opens, the same one either way, as in
+          the online and local tabs. */}
       {openGame && (
         <LiveReplayDetail
           game={openGame}

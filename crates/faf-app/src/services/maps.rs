@@ -37,9 +37,17 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
         MapsCommand::SearchVault { query } => {
             // No guard and no dedupe beyond the generation check: this is a
             // user-driven search, and asking again is exactly what the search
-            // button means.
+            // button means. Commands run concurrently, so a slow earlier query
+            // can answer after a fast later one; whichever started last owns
+            // the results, the totals and the error line, and anything older
+            // is dropped whether it succeeded or failed.
+            let generation = ctx.map_search_generation.begin();
             out.emit(MapsEvent::VaultSearching);
-            match ctx.ports.maps.search_vault(query.clone()).await {
+            let result = ctx.ports.maps.search_vault(query.clone()).await;
+            if !ctx.map_search_generation.is_current(generation) {
+                return;
+            }
+            match result {
                 Ok(page) => out.emit(MapsEvent::VaultSearched {
                     maps: page.maps,
                     query,
@@ -60,24 +68,11 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             out.emit(MapsEvent::InstalledLoading);
             match ctx.ports.maps.list_installed().await {
-                Ok(maps) => {
-                    let gen_maps = maps
-                        .iter()
-                        .filter(|m| {
-                            faf_domain::protocol::map_generator::is_generated_map(&m.folder_name)
-                        })
-                        .map(|m| m.folder_name.clone())
-                        .collect::<Vec<_>>();
-                    if !gen_maps.is_empty() {
-                        let previews = ctx.ports.map_generator.map_previews(&gen_maps).await;
-                        if !previews.is_empty() {
-                            out.emit(faf_domain::state::MapGeneratorEvent::PreviewsLoaded {
-                                previews,
-                            });
-                        }
-                    }
-                    out.emit(MapsEvent::InstalledLoaded { maps });
-                }
+                // No previews here any more. Every generated map's picture
+                // used to go out with every scan, the whole folder in one
+                // event: see `MapGeneratorCommand::LoadPreviews`, which a tile
+                // now sends for the map it shows (#402).
+                Ok(maps) => out.emit(MapsEvent::InstalledLoaded { maps }),
                 Err(reason) => out.emit(MapsEvent::InstalledLoadFailed { reason }),
             }
         }
@@ -88,9 +83,9 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 folder_names
                     .iter()
                     .filter(|name| {
-                        let base = crate::infra::maps::base_folder_name(name);
+                        let base = faf_domain::state::maps::base_folder_name(name);
                         !state.maps.vault.iter().any(|map| {
-                            crate::infra::maps::base_folder_name(&map.folder_name) == base
+                            faf_domain::state::maps::base_folder_name(&map.folder_name) == base
                         })
                     })
                     .cloned()
@@ -123,7 +118,7 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                         !state
                             .maps
                             .local_previews
-                            .contains_key(&crate::infra::maps::base_folder_name(name))
+                            .contains_key(&faf_domain::state::maps::base_folder_name(name))
                     })
                     .cloned()
                     .collect()

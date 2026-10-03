@@ -291,6 +291,13 @@ async fn rapid_channel_selection_batches_read_marker_persistence() {
     };
     let (app, app_loop) = App::new("test", ports);
     tokio::spawn(app_loop.run());
+    // Nothing is written back before the settings file has been read, the
+    // read markers included, so the startup load comes first as it does in
+    // the client. See `crates/faf-app/tests/settings_startup.rs`.
+    app.dispatch_and_wait(faf_domain::state::SettingsCommand::Load.into())
+        .await
+        .unwrap();
+    saved.lock().unwrap().clear();
     app.dispatch(
         ChatCommand::Connect {
             username: "Aurora".into(),
@@ -475,8 +482,8 @@ async fn the_language_channel_is_not_joined_when_the_preference_is_off() {
     let mut preferences = app.snapshot().settings.chat;
     preferences.auto_join_language_channel = false;
     app.dispatch(
-        SettingsCommand::SetChat {
-            preferences: Box::new(preferences),
+        SettingsCommand::PatchChat {
+            patch: Box::new(preferences.into()),
         }
         .into(),
     )
@@ -509,8 +516,8 @@ async fn muted_players_are_filtered_before_messages_enter_state() {
     let mut preferences = app.snapshot().settings.chat;
     preferences.muted_players.push("stormlord".into());
     app.dispatch(
-        SettingsCommand::SetChat {
-            preferences: Box::new(preferences),
+        SettingsCommand::PatchChat {
+            patch: Box::new(preferences.into()),
         }
         .into(),
     )

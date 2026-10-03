@@ -209,7 +209,10 @@ function VaultView({ busy }: { busy: boolean }) {
   const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
   // What was last searched, read once as the tab mounts: the form starts from
   // it, so coming back from another tab finds the search where it was left.
-  const [restored] = useState(() => modFilterFromQuery(browseQuery, preset));
+  // Not when a mod was clicked elsewhere to be looked at (#380): the last
+  // search's filters could hide exactly that mod, so the request below starts
+  // from a clean form instead.
+  const [restored] = useState(() => (hasModVaultFocus() ? null : modFilterFromQuery(browseQuery, preset)));
   const [search, setSearch] = useState(restored?.search ?? "");
   const [searchScope, setSearchScope] = useState<ModSearchScope>(restored?.searchScope ?? "name");
   const [sort, setSort] = useState<ModSort>(restored?.sort ?? initialSort);
@@ -252,9 +255,10 @@ function VaultView({ busy }: { busy: boolean }) {
     setSearch(focused);
     setApplied((prev) => ({ ...prev, search: focused }));
     setPage(1);
-    // The recommended preset ignores the search box, exactly as typing in it
-    // does elsewhere in this view.
-    if (preset === "recommended") choosePreset("all");
+    // A preset that narrows the list (recommended, favourites, my uploads,
+    // UI mods) would hide the very mod that was asked for, so it gives way to
+    // the whole vault. The sorting presets keep their order.
+    if (preset !== "all" && preset !== "rating" && preset !== "newest") choosePreset("all");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -316,8 +320,8 @@ function VaultView({ busy }: { busy: boolean }) {
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...browsing, modVaultSort: nextSort } },
+          type: "patchBrowsing",
+          payload: { patch: { modVaultSort: nextSort } },
         },
       });
     }
@@ -335,10 +339,10 @@ function VaultView({ busy }: { busy: boolean }) {
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
+          type: "patchBrowsing",
           // A preset brings its own order, so choosing one clears the
           // remembered sort rather than fighting it on the next load.
-          payload: { preferences: { ...browsing, modVaultPreset: next, modVaultSort: "" } },
+          payload: { patch: { modVaultPreset: next, modVaultSort: "" } },
         },
       });
     }

@@ -32,8 +32,17 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             crawl_vault(ctx, out).await;
         }
         ModsCommand::SearchVault { query } => {
+            // Same newest-wins rule as `services::maps`: an older query that
+            // answers late must not replace the newer one's page, totals or
+            // error. Separate from the catalogue crawl, which is single-flight
+            // and has no newer request to lose to.
+            let generation = ctx.mod_search_generation.begin();
             out.emit(ModsEvent::VaultSearching);
-            match ctx.ports.mods.search_vault(query.clone()).await {
+            let result = ctx.ports.mods.search_vault(query.clone()).await;
+            if !ctx.mod_search_generation.is_current(generation) {
+                return;
+            }
+            match result {
                 Ok(page) => out.emit(ModsEvent::VaultSearched {
                     mods: page.mods,
                     query,

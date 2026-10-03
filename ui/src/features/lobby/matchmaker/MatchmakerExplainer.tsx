@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Modal } from "../../../design-system/Modal";
 import { Button } from "../../../design-system/Button";
 import { Icon, type IconName } from "../../../design-system/Icon";
@@ -6,6 +7,7 @@ import { openHttpsUrl } from "../../../shared/externalLinks";
 import { formatClockDuration } from "../../../shared/format/durations";
 import { queueTitle } from "./MatchmakerQueueCard";
 import { playersPerMatch } from "./queueExplainer";
+import { secondsUntil } from "./queuePopClock";
 import { useTranslation } from "../../../i18n/useTranslation";
 import type { MessageKey } from "../../../i18n";
 
@@ -68,6 +70,13 @@ export function MatchmakerExplainer({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  // Counted down to the instant the server named, as the queue cards are
+  // (#390): the delta it sent is only true at the moment it arrived.
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   return (
     <Modal onClose={onClose} className="matchmaker-explainer-modal" ariaLabel={t("lobby.matchmaker.explain.title")}>
       <header className="matchmaker-explainer-head">
@@ -134,7 +143,7 @@ export function MatchmakerExplainer({
                       <td className={queue.numPlayers >= needed ? "is-enough" : undefined}>
                         {t("lobby.matchmaker.explain.waiting", { waiting: queue.numPlayers, players: needed })}
                       </td>
-                      <td>{formatClockDuration(queue.queuePopTimeSeconds)}</td>
+                      <td>{formatClockDuration(secondsUntil(queue, clock))}</td>
                     </tr>
                   );
                 })}

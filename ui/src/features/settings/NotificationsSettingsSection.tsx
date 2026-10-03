@@ -1,7 +1,7 @@
 import type {
-  NotificationPreferences,
+  NotificationPreferencesPatch,
   NotificationSound,
-  NotificationSoundChoices,
+  NotificationSoundChoicesPatch,
   ToastPosition,
 } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
@@ -19,6 +19,7 @@ import {
   soundOptionValue,
 } from "../notifications/notificationSound";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { NumberInput } from "../../design-system/NumberInput";
 import { MultiSelect } from "../../design-system/MultiSelect";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -32,10 +33,10 @@ const TOAST_POSITIONS: Record<ToastPosition, MessageKey> = {
   topRight: "settings.notifications.toastPosition.topRight",
 };
 
-const save = (preferences: NotificationPreferences) =>
+const save = (patch: NotificationPreferencesPatch) =>
   ipc.send({
     kind: "Settings",
-    command: { type: "setNotifications", payload: { preferences } },
+    command: { type: "patchNotifications", payload: { patch } },
   });
 
 /* Quietest first, so the list itself says what the choice is about. */
@@ -137,10 +138,16 @@ export function NotificationsSettingsSection() {
       .filter((name) => !queues.some((queue) => queue.queueName === name))
       .map((name) => ({ value: name, label: name })),
   ];
-  const update = (patch: Partial<NotificationPreferences>) =>
-    void save({ ...preferences, ...patch });
-  const setSound = (patch: Partial<NotificationSoundChoices>) =>
-    update({ sounds: { ...preferences.sounds, ...patch } });
+  const mapPoolOptions = [
+    ...queues.map((queue) => ({ value: queue.queueName, label: `${queue.teamSize} vs ${queue.teamSize}` })),
+    ...(preferences.mapPoolMutedQueues ?? [])
+      .filter((name) => !queues.some((queue) => queue.queueName === name))
+      .map((name) => ({ value: name, label: name })),
+  ];
+  const update = (patch: NotificationPreferencesPatch) => void save(patch);
+  // One row's tone, nested: the other eleven are not sent at all, so a quick
+  // change to two rows cannot have the second put the first one back.
+  const setSound = (sounds: NotificationSoundChoicesPatch) => update({ sounds });
   // A tone is only reachable when notifications and sound are both on.
   const mute = !preferences.enabled || !preferences.sound;
 
@@ -186,21 +193,27 @@ export function NotificationsSettingsSection() {
   /**
    * Delete one added sound, and put every row that used it back on a tone.
    *
-   * The settings are rewritten before the file goes, so a row can never be
-   * left naming a file that is not there: that state is silence with a
-   * "(missing)" label and no way back to it from the dropdown.
+   * One backend command does both, in that order, and keeps the file unless
+   * the settings were written first: a row left naming a file that is not
+   * there is silence with a "(missing)" label and no way back to it from the
+   * dropdown. Firing the settings write and the delete from here could not
+   * promise that, because nothing here knows when, or whether, the write
+   * landed. A failure arrives as a notification saying which half failed; the
+   * list is read again either way, so it shows what is really on disk.
    */
+  const [removing, setRemoving] = useState<string | null>(null);
   const removeSound = useCallback((name: string) => {
-    const sounds = { ...preferences.sounds };
-    for (const [kind, sound] of recordEntries(sounds)) {
-      if (customSoundName(sound) === name) sounds[kind] = "chime";
-    }
-    void save({ ...preferences, sounds });
-    ipc.run(native.removeNotificationSound(name).then(() => {
-      forgetCustomSounds();
-      reloadSounds();
-    }));
-  }, [preferences, reloadSounds]);
+    setRemoving(name);
+    ipc.run(
+      ipc
+        .settle({ kind: "Settings", command: { type: "removeNotificationSound", payload: { name } } })
+        .finally(() => {
+          setRemoving(null);
+          forgetCustomSounds();
+          reloadSounds();
+        }),
+    );
+  }, [reloadSounds]);
 
   return (
     <>
@@ -266,6 +279,21 @@ export function NotificationsSettingsSection() {
           <span>{preferences.volume}%</span>
         </label>
       </SettingRow>
+      <SettingRow
+        label={t("settings.notifications.repeatCooldown")}
+        hint={t("settings.notifications.repeatCooldownHint")}
+      >
+        <NumberInput
+          className="number-input"
+          value={preferences.repeatCooldownSeconds ?? 0}
+          min={0}
+          max={600}
+          disabled={!preferences.enabled}
+          aria-label={t("settings.notifications.repeatCooldown")}
+          onChange={(seconds) =>
+            update({ repeatCooldownSeconds: Math.min(600, Math.max(0, Math.round(seconds))) })}
+        />
+      </SettingRow>
       {/* The added files, once there are any. Adding one is a row in every
           dropdown, but removing one cannot be: a dropdown sets a value and
           this deletes a file twelve of them may be pointing at. So it lives
@@ -289,6 +317,7 @@ export function NotificationsSettingsSection() {
                 <button
                   type="button"
                   className="btn-ghost settings-sound-remove"
+                  disabled={removing !== null}
                   onClick={() => removeSound(name)}
                   title={t("settings.notifications.sound.remove", { name })}
                   aria-label={t("settings.notifications.sound.remove", { name })}
@@ -370,6 +399,26 @@ export function NotificationsSettingsSection() {
             options={queueOpponentOptions}
             selected={preferences.queueOpponentQueues}
             onChange={(queueOpponentQueues) => update({ queueOpponentQueues })}
+          />
+        </div>
+      </SettingRow>
+      {/* New map pools (#406): every queue on by default, so the setting
+          stores the ones switched off and the list shows the ones on. */}
+      <SettingRow label={t("settings.notifications.mapPool")} hint={t("settings.notifications.mapPoolHint")}>
+        <div className="settings-multi-select">
+          <MultiSelect
+            label={t("settings.notifications.mapPool")}
+            anyLabel={t("settings.notifications.queueOpponentOff")}
+            options={mapPoolOptions}
+            selected={mapPoolOptions
+              .map((option) => option.value)
+              .filter((name) => !(preferences.mapPoolMutedQueues ?? []).includes(name))}
+            onChange={(announced) =>
+              update({
+                mapPoolMutedQueues: mapPoolOptions
+                  .map((option) => option.value)
+                  .filter((name) => !announced.includes(name)),
+              })}
           />
         </div>
       </SettingRow>

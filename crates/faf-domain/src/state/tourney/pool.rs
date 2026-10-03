@@ -110,6 +110,48 @@ pub fn match_vault_map<'a, M>(
         })
 }
 
+/// The vault preview to give a map that is being saved without a picture, or
+/// `None` (#386).
+///
+/// The website shows an organiser's uploaded picture and nothing else, so a
+/// map added from this client with none was a blank card there, while this
+/// client filled the gap from the vault and looked fine. So the vault's large
+/// preview goes up as the map's picture, once: only when the save brings no
+/// picture of its own, does not ask to remove one, and the map has none
+/// stored. A picture an organiser chose is never replaced.
+pub fn vault_preview_for_new_picture<'a, M>(
+    draft: &MapDraft,
+    stored: &[TourneyMap],
+    vault: &'a [M],
+    display_name: impl Fn(&M) -> &str,
+    folder_name: impl Fn(&M) -> &str,
+    preview: impl Fn(&'a M) -> &'a str,
+) -> Option<&'a str> {
+    if draft.image.is_some() || draft.remove_image {
+        return None;
+    }
+    if !draft.id.is_empty()
+        && stored
+            .iter()
+            .any(|map| map.id == draft.id && !map.image_url.is_empty())
+    {
+        return None;
+    }
+    let probe = TourneyMap {
+        id: draft.id.clone(),
+        name: draft.name.clone(),
+        image_url: String::new(),
+        description: String::new(),
+        published: draft.published,
+        spec: None,
+        secret: false,
+        masked: false,
+    };
+    let url = preview(match_vault_map(&probe, vault, display_name, folder_name)?);
+    url.starts_with("https://content.faforever.com/")
+        .then_some(url)
+}
+
 /// One of this account's events, as a place to import maps from
 /// (`GET /api/my_tournaments`).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -268,6 +310,10 @@ pub struct MapDraft {
     pub spec: Option<MapSpec>,
     /// A new picture of the event's own, as a `data:` URL, or `None` to keep
     /// the one it has. The service stores it under a file name of its own.
+    ///
+    /// The client may also put FAF's own vault preview here, as its
+    /// `https://content.faforever.com/` address: the port fetches that and
+    /// sends the picture. See [`vault_preview_for_new_picture`].
     #[serde(default)]
     pub image: Option<String>,
     /// Delete the stored picture. Ignored when a new one is sent.

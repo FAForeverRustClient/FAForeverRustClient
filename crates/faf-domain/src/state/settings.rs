@@ -2,8 +2,10 @@
 //!
 //! Preferences live in the backend-owned [`crate::state::AppState`] and are
 //! projected by the UI. Grouping them by feature keeps the IPC contract stable
-//! as the settings page grows and lets each UI section replace one coherent
-//! value rather than dispatching a stringly-typed key/value pair.
+//! as the settings page grows. A UI section changes a group by sending a typed
+//! patch of the fields it touched (see `preference_patch!`), never a whole
+//! group copied out of its last snapshot, and never a stringly-typed key/value
+//! pair.
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -870,7 +872,20 @@ pub struct NotificationPreferences {
     pub queue_opponent_queues: Vec<String>,
     /// Sound volume from 0 to 100.
     pub volume: u8,
+    /// Seconds after one notification of a kind before another of the same
+    /// kind toasts, sounds or reaches the desktop again (#382). Zero announces
+    /// every one. The later ones still land in the notification history.
+    pub repeat_cooldown_seconds: u16,
+    /// The matchmaker queues whose new map pools are not announced (#406).
+    ///
+    /// The ones switched off rather than the ones switched on, so every queue
+    /// is announced by default, a queue added later included, which is what
+    /// the request asked for: a new pool is a reason to queue again.
+    pub map_pool_muted_queues: Vec<String>,
 }
+
+/// The longest repeat cooldown a settings file may ask for: ten minutes.
+pub const MAX_NOTIFICATION_REPEAT_COOLDOWN_SECONDS: u16 = 600;
 
 impl Default for NotificationPreferences {
     fn default() -> Self {
@@ -899,6 +914,9 @@ impl Default for NotificationPreferences {
             map_generated: true,
             queue_opponent_queues: Vec::new(),
             volume: 70,
+            // What the request asked for: a ping every two seconds at most.
+            repeat_cooldown_seconds: 2,
+            map_pool_muted_queues: Vec::new(),
         }
     }
 }
@@ -938,6 +956,8 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             map_generated: bool,
             queue_opponent_queues: Vec<String>,
             volume: u8,
+            repeat_cooldown_seconds: u16,
+            map_pool_muted_queues: Vec<String>,
         }
 
         impl Default for Wire {
@@ -971,6 +991,8 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     map_generated: defaults.map_generated,
                     queue_opponent_queues: defaults.queue_opponent_queues,
                     volume: defaults.volume,
+                    repeat_cooldown_seconds: defaults.repeat_cooldown_seconds,
+                    map_pool_muted_queues: defaults.map_pool_muted_queues,
                 }
             }
         }
@@ -1015,6 +1037,8 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             map_generated: wire.map_generated,
             queue_opponent_queues: wire.queue_opponent_queues,
             volume: wire.volume,
+            repeat_cooldown_seconds: wire.repeat_cooldown_seconds,
+            map_pool_muted_queues: wire.map_pool_muted_queues,
         })
     }
 }
@@ -1022,6 +1046,9 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
 impl NotificationPreferences {
     fn normalized(mut self) -> Self {
         self.volume = self.volume.min(100);
+        self.repeat_cooldown_seconds = self
+            .repeat_cooldown_seconds
+            .min(MAX_NOTIFICATION_REPEAT_COOLDOWN_SECONDS);
         self
     }
 }
@@ -1935,6 +1962,11 @@ pub struct CustomGameBrowserPreferences {
     /// not, so a wider preview could only be had by making the browser
     /// narrower and nothing offered that trade.
     pub detail_width: u32,
+    /// Whether the detail panel is folded away (#370, #377).
+    ///
+    /// Kept apart from `detail_width` so folding it and unfolding it again
+    /// brings back the width somebody dragged it to, rather than the default.
+    pub detail_hidden: bool,
 }
 
 impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
@@ -1956,6 +1988,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             column_widths: Vec<u32>,
             column_order: Vec<u32>,
             detail_width: u32,
+            detail_hidden: bool,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -1971,6 +2004,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             column_widths: wire.column_widths,
             column_order: wire.column_order,
             detail_width: wire.detail_width,
+            detail_hidden: wire.detail_hidden,
         })
     }
 }
@@ -2252,10 +2286,16 @@ pub struct BrowsingPreferences {
     /// different columns and therefore a different set of widths. Sharing one
     /// list between them would have a drag in one tab move the other.
     pub live_replay_columns: Vec<u32>,
+    /// The live-replay table's columns in the order they are drawn, as indexes
+    /// into the designed order. Empty is the designed order; anything that is
+    /// not exactly one of each column is dropped to empty.
+    pub live_replay_order: Vec<u32>,
     /// And for the co-op leaderboard.
     pub coop_board_columns: Vec<u32>,
     /// And for the matchmaker tab's recent games (#301).
     pub matchmaker_recent_columns: Vec<u32>,
+    /// The recent games' columns in the order they are drawn, the same way.
+    pub matchmaker_recent_order: Vec<u32>,
     /// Named mod sets the host dialog can re-apply in one click.
     ///
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -2299,12 +2339,12 @@ pub const VALID_LEADERBOARD_RATING_COLUMNS: [&str; 4] = ["mean", "deviation", "g
 impl Default for BrowsingPreferences {
     fn default() -> Self {
         Self {
-            // The list for a fresh install: at the default 1100x720 window
-            // about three tiles fit against a dozen list rows, and finding the
-            // right game quickly is what the tab is for. A saved choice wins.
-            custom_games_view: CustomGameView::List,
+            // Tiles for a fresh install in the Play and the replay tabs, the
+            // list for live games, which is a table of what is being played
+            // right now and read as one. A saved choice wins.
+            custom_games_view: CustomGameView::Tiles,
             replays_view: CustomGameView::Tiles,
-            live_replay_view: CustomGameView::Tiles,
+            live_replay_view: CustomGameView::List,
             custom_games_browser: CustomGameBrowserPreferences::default(),
             matchmaker_unselected_queues: Vec::new(),
             matchmaker_factions: MATCHMAKER_FACTIONS
@@ -2325,8 +2365,10 @@ impl Default for BrowsingPreferences {
             replay_list_columns: Vec::new(),
             replay_list_order: Vec::new(),
             live_replay_columns: Vec::new(),
+            live_replay_order: Vec::new(),
             coop_board_columns: Vec::new(),
             matchmaker_recent_columns: Vec::new(),
+            matchmaker_recent_order: Vec::new(),
             mod_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
@@ -2374,8 +2416,12 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             #[serde(default)]
             live_replay_columns: Vec<u32>,
             #[serde(default)]
+            live_replay_order: Vec<u32>,
+            #[serde(default)]
             coop_board_columns: Vec<u32>,
             matchmaker_recent_columns: Vec<u32>,
+            #[serde(default)]
+            matchmaker_recent_order: Vec<u32>,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
             replay_vault_player: String,
@@ -2410,8 +2456,10 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     replay_list_columns: defaults.replay_list_columns,
                     replay_list_order: defaults.replay_list_order,
                     live_replay_columns: defaults.live_replay_columns,
+                    live_replay_order: defaults.live_replay_order,
                     coop_board_columns: defaults.coop_board_columns,
                     matchmaker_recent_columns: defaults.matchmaker_recent_columns,
+                    matchmaker_recent_order: defaults.matchmaker_recent_order,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     replay_vault_player: defaults.replay_vault_player,
@@ -2444,8 +2492,10 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             replay_list_columns: wire.replay_list_columns,
             replay_list_order: wire.replay_list_order,
             live_replay_columns: wire.live_replay_columns,
+            live_replay_order: wire.live_replay_order,
             coop_board_columns: wire.coop_board_columns,
             matchmaker_recent_columns: wire.matchmaker_recent_columns,
+            matchmaker_recent_order: wire.matchmaker_recent_order,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             replay_vault_player: wire.replay_vault_player,
@@ -2575,8 +2625,10 @@ impl BrowsingPreferences {
         self.replay_list_columns = normalize_column_widths(self.replay_list_columns);
         self.replay_list_order = normalize_column_order(self.replay_list_order);
         self.live_replay_columns = normalize_column_widths(self.live_replay_columns);
+        self.live_replay_order = normalize_column_order(self.live_replay_order);
         self.coop_board_columns = normalize_column_widths(self.coop_board_columns);
         self.matchmaker_recent_columns = normalize_column_widths(self.matchmaker_recent_columns);
+        self.matchmaker_recent_order = normalize_column_order(self.matchmaker_recent_order);
         self
     }
 }
@@ -2676,6 +2728,11 @@ pub struct SettingsState {
     /// itself rather than being replayed wrong forever.
     #[serde(default)]
     pub matchmaker_vetoes: Vec<PlayerVeto>,
+    /// The map pools each matchmaker queue had when the client last looked,
+    /// so a new one can be announced (#406). Nothing else in FAF says that a
+    /// pool changed: the client compares what it is served with this.
+    #[serde(default)]
+    pub map_pools_seen: Vec<MapPoolsSeen>,
     /// The avatars this account was seen choosing, newest first; an empty
     /// string is a choice of none. When the newest stops being allowed (a
     /// tournament avatar rotating to the next winner), the client selects the
@@ -2684,6 +2741,31 @@ pub struct SettingsState {
     pub avatar_history: Vec<String>,
     #[serde(default)]
     pub cache_info: GameCacheInfo,
+}
+
+/// The queues whose map pools changed since they were last seen. A queue seen
+/// for the first time is not news: it is how every queue starts, and
+/// announcing all of them on the first login after an update would be noise.
+pub fn changed_map_pools(seen: &[MapPoolsSeen], current: &[MapPoolsSeen]) -> Vec<String> {
+    current
+        .iter()
+        .filter(|now| {
+            seen.iter()
+                .find(|before| before.queue_name == now.queue_name)
+                .is_some_and(|before| before.assignments != now.assignments)
+        })
+        .map(|now| now.queue_name.clone())
+        .collect()
+}
+
+/// One queue's map pools as last seen: the pool-map assignment ids of all its
+/// brackets, sorted. A new release changes them whether it reuses the pool or
+/// brings a new one.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MapPoolsSeen {
+    pub queue_name: String,
+    pub assignments: Vec<i32>,
 }
 
 impl<'de> Deserialize<'de> for SettingsState {
@@ -2717,6 +2799,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             kept_generated_maps: Vec<String>,
             map_generator: GeneratorOptions,
             matchmaker_vetoes: Vec<PlayerVeto>,
+            map_pools_seen: Vec<MapPoolsSeen>,
             avatar_history: Vec<String>,
         }
 
@@ -2741,6 +2824,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             kept_generated_maps: wire.kept_generated_maps,
             map_generator: wire.map_generator,
             matchmaker_vetoes: wire.matchmaker_vetoes,
+            map_pools_seen: wire.map_pools_seen,
             avatar_history: wire.avatar_history,
             cache_info: GameCacheInfo::default(),
         })
@@ -2778,6 +2862,445 @@ impl SettingsState {
         let excess = self.kept_generated_maps.len() - limit;
         self.kept_generated_maps.drain(..excess);
     }
+}
+
+/// Serde glue for one field of a preference patch.
+///
+/// A patch has to tell "leave this alone" from "set this to nothing", because
+/// some preferences are themselves optional: clearing the cache lifetime is
+/// `cacheLifetimeDays: null`, and that must not read as "unchanged". Plain
+/// `Option<Option<T>>` cannot say it, since serde reads `null` as the outer
+/// `None`. So a field that is present at all, `null` included, is `Some`, and
+/// only a missing one falls back to the `#[serde(default)]` of `None`.
+///
+/// Writing a patch back out is the mirror image, and is done by hand in
+/// `preference_patch!` rather than derived: an untouched field has to be left
+/// out, not written as `null`, or the patch would read back as one that
+/// clears it. `skip_serializing_if` would say that, but the bindings exporter
+/// cannot represent a field that is only sometimes written, so the derive is
+/// not available here.
+fn patch_field<'de, T: Deserialize<'de>, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<T>, D::Error> {
+    T::deserialize(deserializer).map(Some)
+}
+
+/// serde's `rename_all = "camelCase"` for one field name, for the hand-written
+/// `Serialize` of a patch. `use_24_hour_time` is `use24HourTime` either way.
+fn camel_case(snake: &str) -> String {
+    let mut out = String::with_capacity(snake.len());
+    let mut upper = false;
+    for character in snake.chars() {
+        if character == '_' {
+            upper = true;
+        } else if upper {
+            out.extend(character.to_uppercase());
+            upper = false;
+        } else {
+            out.push(character);
+        }
+    }
+    out
+}
+
+/// Declare the patch type for one preference group.
+///
+/// Every control used to send its whole group, assembled from the snapshot the
+/// webview last saw, and the service replaced the group with it. Two changes
+/// inside one round trip therefore each carried the *old* value of the other
+/// field, and the second reverted the first. A patch names only what changed
+/// and is merged into the authoritative group in the backend, so it cannot
+/// carry a stale copy of anything it did not mean to touch.
+///
+/// Plain fields are replaced when present. `nested` fields are groups of their
+/// own and take a patch of their own, so changing one column width does not
+/// rewrite the filter rules beside it. Lists and maps are replaced whole: they
+/// are one value each, and the controls that edit them own all of it.
+///
+/// [`apply_to`] destructures the group without `..` on purpose. A field added
+/// to the group and forgotten here is a compile error rather than a preference
+/// no patch can reach.
+///
+/// [`apply_to`]: GeneralPreferencesPatch::apply_to
+macro_rules! preference_patch {
+    (
+        $(#[$meta:meta])*
+        $patch:ident for $base:ident {
+            $($field:ident: $ty:ty),* $(,)?
+        }
+        $(nested { $($nested:ident: $nested_patch:ident),* $(,)? })?
+    ) => {
+        $(#[$meta])*
+        #[derive(Debug, Clone, PartialEq, Default, Deserialize, Type)]
+        #[serde(rename_all = "camelCase")]
+        pub struct $patch {
+            $(
+                #[serde(default, deserialize_with = "patch_field")]
+                #[specta(type = $ty)]
+                pub $field: Option<$ty>,
+            )*
+            $($(
+                #[serde(default)]
+                #[specta(type = $nested_patch)]
+                pub $nested: Option<$nested_patch>,
+            )*)?
+        }
+
+        impl Serialize for $patch {
+            fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                use serde::ser::SerializeMap;
+                let mut map = serializer.serialize_map(None)?;
+                $(if let Some(value) = &self.$field {
+                    map.serialize_entry(&camel_case(stringify!($field)), value)?;
+                })*
+                $($(if let Some(value) = &self.$nested {
+                    map.serialize_entry(&camel_case(stringify!($nested)), value)?;
+                })*)?
+                map.end()
+            }
+        }
+
+        impl $patch {
+            /// `base` with every field this patch names replaced, and every
+            /// other one exactly as it was. Not normalised: the caller does
+            /// that once the whole group is merged, because several bounds
+            /// depend on more than one field.
+            pub fn apply_to(self, base: $base) -> $base {
+                let $base { $($field,)* $($($nested,)*)? } = base;
+                $base {
+                    $($field: self.$field.unwrap_or($field),)*
+                    $($($nested: match self.$nested {
+                        Some(patch) => patch.apply_to($nested),
+                        None => $nested,
+                    },)*)?
+                }
+            }
+        }
+
+        /// A patch naming every field: the whole group, for the rare caller
+        /// that really does mean to replace all of it.
+        impl From<$base> for $patch {
+            fn from(base: $base) -> Self {
+                let $base { $($field,)* $($($nested,)*)? } = base;
+                Self {
+                    $($field: Some($field),)*
+                    $($($nested: Some($nested.into()),)*)?
+                }
+            }
+        }
+    };
+}
+
+preference_patch! {
+    /// A change to [`GeneralPreferences`]; see `preference_patch!`.
+    GeneralPreferencesPatch for GeneralPreferences {
+        start_page: Tab,
+        auto_login: bool,
+        remember_typed_entries: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`EventsPreferences`]. The settings tab only ever names the
+    /// week start; the reminder list belongs to the Events tab's own commands.
+    EventsPreferencesPatch for EventsPreferences {
+        week_start: WeekStart,
+        reminders: Vec<EventReminder>,
+    }
+}
+
+preference_patch! {
+    /// A change to [`AppearancePreferences`].
+    AppearancePreferencesPatch for AppearancePreferences {
+        density: UiDensity,
+        reduce_motion: bool,
+        ui_scale: u16,
+        game_tile_columns: u8,
+        sidebar_width: u16,
+        hover_panels: bool,
+        hover_open_delay_ms: u16,
+        hover_close_delay_ms: u16,
+        replay_flags: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to some of the per-kind tones in [`NotificationSoundChoices`].
+    NotificationSoundChoicesPatch for NotificationSoundChoices {
+        match_found: NotificationSound,
+        private_message: NotificationSound,
+        mention: NotificationSound,
+        friend_online: NotificationSound,
+        friend_offline: NotificationSound,
+        friend_playing: NotificationSound,
+        new_custom_game: NotificationSound,
+        game_full: NotificationSound,
+        game_launched: NotificationSound,
+        review_reminder: NotificationSound,
+        party_invite: NotificationSound,
+        other: NotificationSound,
+    }
+}
+
+preference_patch! {
+    /// A change to [`NotificationPreferences`].
+    NotificationPreferencesPatch for NotificationPreferences {
+        enabled: bool,
+        desktop: bool,
+        desktop_all_kinds: bool,
+        sound: bool,
+        sound_choice_version: u8,
+        notify_when_focused: bool,
+        toast_position: ToastPosition,
+        match_found: bool,
+        private_messages: bool,
+        mentions: bool,
+        friend_online: bool,
+        friend_offline: bool,
+        friend_playing: bool,
+        new_custom_games: bool,
+        new_custom_games_friends_only: bool,
+        game_full: bool,
+        game_launched: bool,
+        review_reminder: bool,
+        party_invites: bool,
+        stream_live: bool,
+        map_generated: bool,
+        queue_opponent_queues: Vec<String>,
+        volume: u8,
+        repeat_cooldown_seconds: u16,
+        map_pool_muted_queues: Vec<String>,
+    }
+    nested {
+        sounds: NotificationSoundChoicesPatch,
+    }
+}
+
+preference_patch! {
+    /// A change to some of the colours in [`ChatNameColors`].
+    ChatNameColorsPatch for ChatNameColors {
+        self_color: String,
+        friends: String,
+        foes: String,
+        moderators: String,
+        admins: String,
+        pings: String,
+        players: BTreeMap<String, String>,
+    }
+}
+
+preference_patch! {
+    /// A change to [`ChatPreferences`].
+    ChatPreferencesPatch for ChatPreferences {
+        show_joins_parts: bool,
+        show_timestamps: bool,
+        use_24_hour_time: bool,
+        colored_names: bool,
+        roster_width: u16,
+        font_size: u16,
+        sender_width: u16,
+        hide_foe_messages: bool,
+        visible_message_limit: u16,
+        auto_join_channels: Vec<String>,
+        auto_join_language_channel: bool,
+        auto_join_newbie_channel: bool,
+        newbie_channel_game_threshold: u32,
+        muted_players: Vec<String>,
+        read_markers: BTreeMap<String, String>,
+        hidden_roster_categories: Vec<String>,
+    }
+    nested {
+        name_colors: ChatNameColorsPatch,
+    }
+}
+
+preference_patch! {
+    /// A change to [`ConnectivityPreferences`].
+    ConnectivityPreferencesPatch for ConnectivityPreferences {
+        adapter: IceAdapter,
+        host_adapter: IceAdapter,
+        selection_version: u8,
+    }
+}
+
+preference_patch! {
+    /// A change to [`DebugPreferences`].
+    DebugPreferencesPatch for DebugPreferences {
+        ice_adapter_debug_window: bool,
+        ice_adapter_info_window: bool,
+        ice_adapter_console_window: bool,
+        map_generator_window: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`PathPreferences`].
+    PathPreferencesPatch for PathPreferences {
+        vault_dir: String,
+        maps_dir: String,
+        mods_dir: String,
+        replays_dir: String,
+        game_prefs_path: String,
+        map_generator_dir: String,
+        java_path: String,
+        wine_prefix: String,
+    }
+}
+
+preference_patch! {
+    /// A change to [`GamePreferences`]. The two cache limits are optional
+    /// preferences, so `null` for either is "no limit", not "unchanged".
+    GamePreferencesPatch for GamePreferences {
+        additional_arguments: Vec<String>,
+        launch_wrapper: String,
+        auto_generate_maps: bool,
+        confirm_downloads_before_joining: bool,
+        cache_lifetime_days: Option<u32>,
+        cache_size_alert_gb: Option<u32>,
+        cache_rolling_branches: bool,
+        pipe_live_replay: bool,
+        keep_generated_maps: bool,
+        keep_generated_maps_limit: u32,
+        steam_presence: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`DiscordPreferences`].
+    DiscordPreferencesPatch for DiscordPreferences {
+        enabled: bool,
+        disallow_joins: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`UpdatePreferences`].
+    UpdatePreferencesPatch for UpdatePreferences {
+        automatic: bool,
+        pre_release: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`CustomGameBrowserPreferences`].
+    CustomGameBrowserPreferencesPatch for CustomGameBrowserPreferences {
+        sort: CustomGameSort,
+        sort_reversed: bool,
+        hide_private: bool,
+        hide_modded: bool,
+        hide_unranked: bool,
+        hide_foes: bool,
+        apply_filters: bool,
+        rules: Vec<CustomGameFilterRule>,
+        column_widths: Vec<u32>,
+        column_order: Vec<u32>,
+        detail_width: u32,
+        detail_hidden: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`LiveReplayFilters`].
+    LiveReplayFiltersPatch for LiveReplayFilters {
+        search: String,
+        game_type: String,
+        featured_mod: String,
+        active_players: String,
+        max_players: String,
+        hide_modded: bool,
+        hide_single_player: bool,
+        hide_unranked: bool,
+        friends_only: bool,
+    }
+}
+
+preference_patch! {
+    /// A change to [`HostGamePreferences`]. Either rating bound may be `null`,
+    /// which is an open end rather than "unchanged".
+    HostGamePreferencesPatch for HostGamePreferences {
+        title: String,
+        featured_mod: String,
+        visibility: String,
+        map: String,
+        password_enabled: bool,
+        password: String,
+        enforce_rating_range: bool,
+        rating_min: Option<i32>,
+        rating_max: Option<i32>,
+    }
+}
+
+preference_patch! {
+    /// A change to [`BrowsingPreferences`], the group with the most writers:
+    /// nearly every list, vault and lobby view remembers something here.
+    BrowsingPreferencesPatch for BrowsingPreferences {
+        custom_games_view: CustomGameView,
+        replays_view: CustomGameView,
+        live_replay_view: CustomGameView,
+        matchmaker_unselected_queues: Vec<String>,
+        matchmaker_factions: Vec<String>,
+        matchmaker_chat_width: u32,
+        favorite_maps: Vec<String>,
+        favorite_mods: Vec<String>,
+        map_vault_preset: String,
+        mod_vault_preset: String,
+        map_vault_sort: String,
+        mod_vault_sort: String,
+        vault_page_size: u32,
+        replay_list_columns: Vec<u32>,
+        replay_list_order: Vec<u32>,
+        live_replay_columns: Vec<u32>,
+        live_replay_order: Vec<u32>,
+        coop_board_columns: Vec<u32>,
+        matchmaker_recent_columns: Vec<u32>,
+        matchmaker_recent_order: Vec<u32>,
+        mod_presets: Vec<ModPreset>,
+        leaderboard_rating_columns: Vec<String>,
+        replay_vault_player: String,
+        replay_chat_channel: String,
+        replay_chat_transfers: ReplayChatTransfers,
+        legacy_storage_migrated: bool,
+    }
+    nested {
+        custom_games_browser: CustomGameBrowserPreferencesPatch,
+        live_replay_filters: LiveReplayFiltersPatch,
+        host_game: HostGamePreferencesPatch,
+        host_coop: HostGamePreferencesPatch,
+    }
+}
+
+/// Point every notification tone that plays a removed sound back at a shipped
+/// one. `None` when nothing named it, so a removal that touches no setting
+/// does not write the settings file for nothing.
+///
+/// The shipped default rather than silence: a row that was set to play
+/// something keeps playing something.
+pub fn without_custom_sound(
+    sounds: &NotificationSoundChoices,
+    name: &str,
+) -> Option<NotificationSoundChoices> {
+    let mut next = sounds.clone();
+    let mut changed = false;
+    for sound in [
+        &mut next.match_found,
+        &mut next.private_message,
+        &mut next.mention,
+        &mut next.friend_online,
+        &mut next.friend_offline,
+        &mut next.friend_playing,
+        &mut next.new_custom_game,
+        &mut next.game_full,
+        &mut next.game_launched,
+        &mut next.review_reminder,
+        &mut next.party_invite,
+        &mut next.other,
+    ] {
+        if matches!(sound, NotificationSound::Custom(stored) if stored == name) {
+            *sound = NotificationSound::Chime;
+            changed = true;
+        }
+    }
+    changed.then_some(next)
 }
 
 // No `Eq`: the map generator's density preferences are `f32`.
@@ -2864,6 +3387,11 @@ pub enum SettingsEvent {
     MatchmakerVetoesChanged {
         vetoes: Vec<PlayerVeto>,
     },
+    /// The map pools seen this session, replacing the remembered ones. See
+    /// [`SettingsState::map_pools_seen`].
+    MapPoolsSeen {
+        seen: Vec<MapPoolsSeen>,
+    },
     /// The remembered avatar choices, replaced whole; see
     /// [`SettingsState::avatar_history`].
     AvatarHistoryChanged {
@@ -2884,14 +3412,17 @@ pub enum SettingsCommand {
     SetReplayGamePath {
         path: String,
     },
-    SetPaths {
-        preferences: PathPreferences,
+    // The `Patch*` commands carry only the fields that changed, merged into
+    // the authoritative group by the service; see `preference_patch!` for why
+    // a whole group is never sent any more.
+    PatchPaths {
+        patch: PathPreferencesPatch,
     },
-    SetGeneral {
-        preferences: GeneralPreferences,
+    PatchGeneral {
+        patch: GeneralPreferencesPatch,
     },
-    SetAppearance {
-        preferences: AppearancePreferences,
+    PatchAppearance {
+        patch: AppearancePreferencesPatch,
     },
     SetPlayerNote {
         player_id: i32,
@@ -2910,36 +3441,50 @@ pub enum SettingsCommand {
         from: String,
         to: String,
     },
-    SetNotifications {
-        preferences: NotificationPreferences,
+    PatchNotifications {
+        patch: Box<NotificationPreferencesPatch>,
+    },
+    /// Delete one sound the player added, after pointing every notification
+    /// that plays it back at a shipped tone.
+    ///
+    /// One command rather than a settings write followed by a file delete in
+    /// the webview, because the order is the whole point: the file may only go
+    /// once no saved setting names it, and a webview firing both cannot know
+    /// when, or whether, the first one landed. Failure is reported as a
+    /// notification; the file is kept whenever the settings could not be
+    /// written first.
+    RemoveNotificationSound {
+        name: String,
     },
     /// Boxed, like the event it produces.
-    SetChat {
-        preferences: Box<ChatPreferences>,
+    PatchChat {
+        patch: Box<ChatPreferencesPatch>,
     },
-    SetGame {
-        preferences: GamePreferences,
+    PatchGame {
+        patch: Box<GamePreferencesPatch>,
     },
-    SetDiscord {
-        preferences: DiscordPreferences,
+    PatchDiscord {
+        patch: DiscordPreferencesPatch,
     },
-    SetConnectivity {
-        preferences: ConnectivityPreferences,
+    PatchConnectivity {
+        patch: ConnectivityPreferencesPatch,
     },
-    SetDebug {
-        preferences: DebugPreferences,
+    PatchDebug {
+        patch: DebugPreferencesPatch,
     },
-    SetUpdates {
-        preferences: UpdatePreferences,
+    PatchUpdates {
+        patch: UpdatePreferencesPatch,
     },
+    /// Whole, unlike the groups above: the generator options are one recipe
+    /// the dialog edits as a unit and saves as a unit.
     SetMapGenerator {
         preferences: Box<GeneratorOptions>,
     },
-    SetBrowsing {
-        preferences: Box<BrowsingPreferences>,
+    PatchBrowsing {
+        patch: Box<BrowsingPreferencesPatch>,
     },
-    SetEvents {
-        preferences: Box<EventsPreferences>,
+    PatchEvents {
+        patch: Box<EventsPreferencesPatch>,
     },
     CheckInstalls,
     RefreshGameCache,
@@ -2982,6 +3527,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::MatchmakerVetoesChanged { vetoes } => {
             state.matchmaker_vetoes = vetoes.clone()
         }
+        SettingsEvent::MapPoolsSeen { seen } => state.map_pools_seen = seen.clone(),
         SettingsEvent::AvatarHistoryChanged { history } => state.avatar_history = history.clone(),
         SettingsEvent::GeneralChanged { preferences } => state.general = preferences.clone(),
         SettingsEvent::AppearanceChanged { preferences } => {
@@ -3168,7 +3714,8 @@ mod tests {
         assert!(settings.notifications.match_found);
         assert!(settings.notifications.sound);
         assert_eq!(settings.notifications.volume, 70);
-        assert_eq!(settings.browsing.custom_games_view, CustomGameView::List);
+        assert_eq!(settings.browsing.custom_games_view, CustomGameView::Tiles);
+        assert_eq!(settings.browsing.live_replay_view, CustomGameView::List);
         assert_eq!(
             settings.browsing.matchmaker_factions,
             ["UEF", "Aeon", "Cybran", "Seraphim"]
@@ -3594,6 +4141,7 @@ mod tests {
                     // A column twice and one missing: not an order.
                     column_order: vec![0, 0, 2, 3, 4, 5],
                     detail_width: 40,
+                    detail_hidden: false,
                 },
                 matchmaker_unselected_queues: vec![
                     "  ladder_1v1  ".into(),
@@ -3651,8 +4199,10 @@ mod tests {
                 replay_list_columns: vec![10, 200, 0, 9_999],
                 replay_list_order: Vec::new(),
                 live_replay_columns: vec![1; 40],
+                live_replay_order: Vec::new(),
                 coop_board_columns: Vec::new(),
                 matchmaker_recent_columns: Vec::new(),
+                matchmaker_recent_order: Vec::new(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
@@ -4048,5 +4598,132 @@ mod tests {
     fn a_settings_file_from_before_replay_notes_still_loads() {
         let social: SocialPreferences = serde_json::from_str(r#"{"playerNotes":[]}"#).unwrap();
         assert!(social.replay_notes.is_empty());
+    }
+
+    /// #406: a changed pool is news, a queue seen for the first time is not.
+    #[test]
+    fn only_a_pool_that_changed_is_announced() {
+        let seen = |queue: &str, assignments: &[i32]| MapPoolsSeen {
+            queue_name: queue.into(),
+            assignments: assignments.to_vec(),
+        };
+        let before = vec![seen("ladder1v1", &[1, 2, 3]), seen("tmm2v2", &[4, 5])];
+        let now = vec![
+            seen("ladder1v1", &[1, 2, 7]),
+            seen("tmm2v2", &[4, 5]),
+            seen("tmm4v4_full_share", &[9]),
+        ];
+        assert_eq!(
+            changed_map_pools(&before, &now),
+            vec!["ladder1v1".to_string()]
+        );
+        assert!(changed_map_pools(&[], &now).is_empty());
+    }
+
+    #[test]
+    fn settings_patches_merged_one_after_another_keep_each_others_fields() {
+        // The race in miniature: two patches built from the same snapshot,
+        // applied in turn. Whole groups would have the second undo the first.
+        let first: BrowsingPreferencesPatch =
+            serde_json::from_str(r#"{"favoriteMaps":["gap"]}"#).unwrap();
+        let second: BrowsingPreferencesPatch =
+            serde_json::from_str(r#"{"vaultPageSize":48,"hostGame":{"title":"4v4"}}"#).unwrap();
+
+        let merged = second.apply_to(first.apply_to(BrowsingPreferences::default()));
+        assert_eq!(merged.favorite_maps, ["gap"]);
+        assert_eq!(merged.vault_page_size, 48);
+        assert_eq!(merged.host_game.title, "4v4");
+        // A nested patch leaves the rest of its own group alone.
+        assert_eq!(
+            merged.host_game.featured_mod,
+            HostGamePreferences::default().featured_mod
+        );
+        assert_eq!(
+            merged.custom_games_browser,
+            CustomGameBrowserPreferences::default()
+        );
+    }
+
+    #[test]
+    fn a_patch_tells_an_absent_field_from_a_null_one() {
+        let base = GamePreferences {
+            cache_lifetime_days: Some(30),
+            cache_size_alert_gb: Some(40),
+            ..GamePreferences::default()
+        };
+        // Absent: unchanged. `null`: the optional preference cleared.
+        let patch: GamePreferencesPatch =
+            serde_json::from_str(r#"{"cacheSizeAlertGb":null}"#).unwrap();
+        let merged = patch.apply_to(base);
+        assert_eq!(merged.cache_lifetime_days, Some(30));
+        assert_eq!(merged.cache_size_alert_gb, None);
+
+        // A `null` for a preference that cannot be empty is a broken command,
+        // not a silent no-op.
+        assert!(serde_json::from_str::<GamePreferencesPatch>(r#"{"steamPresence":null}"#).is_err());
+    }
+
+    #[test]
+    fn a_patch_round_trips_with_untouched_fields_left_out() {
+        let patch = ChatPreferencesPatch {
+            use_24_hour_time: Some(true),
+            name_colors: Some(ChatNameColorsPatch {
+                self_color: Some("#112233".into()),
+                ..ChatNameColorsPatch::default()
+            }),
+            ..ChatPreferencesPatch::default()
+        };
+        let json = serde_json::to_value(&patch).unwrap();
+        // The same spelling serde gives the group itself.
+        assert_eq!(
+            json,
+            serde_json::json!({"use24HourTime": true, "nameColors": {"selfColor": "#112233"}})
+        );
+        assert_eq!(
+            serde_json::from_value::<ChatPreferencesPatch>(json).unwrap(),
+            patch
+        );
+
+        let game = GamePreferencesPatch {
+            cache_lifetime_days: Some(None),
+            ..GamePreferencesPatch::default()
+        };
+        let json = serde_json::to_value(&game).unwrap();
+        assert_eq!(json, serde_json::json!({"cacheLifetimeDays": null}));
+        assert_eq!(
+            serde_json::from_value::<GamePreferencesPatch>(json).unwrap(),
+            game
+        );
+    }
+
+    #[test]
+    fn a_whole_group_converts_to_a_patch_that_reproduces_it() {
+        let chat = ChatPreferences {
+            font_size: 15,
+            muted_players: vec!["Foe".into()],
+            ..ChatPreferences::default()
+        };
+        let patch: ChatPreferencesPatch = chat.clone().into();
+        let mut other = ChatPreferences::default();
+        other.show_timestamps = !other.show_timestamps;
+        assert_eq!(patch.apply_to(other), chat);
+    }
+
+    #[test]
+    fn removing_a_custom_sound_repoints_only_the_rows_that_played_it() {
+        let sounds = NotificationSoundChoices {
+            mention: NotificationSound::Custom("horn.wav".into()),
+            other: NotificationSound::Custom("horn.wav".into()),
+            game_full: NotificationSound::Custom("bell.wav".into()),
+            ..NotificationSoundChoices::default()
+        };
+        let next = without_custom_sound(&sounds, "horn.wav").expect("two rows named it");
+        assert_eq!(next.mention, NotificationSound::Chime);
+        assert_eq!(next.other, NotificationSound::Chime);
+        assert_eq!(next.game_full, NotificationSound::Custom("bell.wav".into()));
+        assert_eq!(next.match_found, sounds.match_found);
+
+        // Nothing named it: nothing to write.
+        assert_eq!(without_custom_sound(&sounds, "absent.wav"), None);
     }
 }

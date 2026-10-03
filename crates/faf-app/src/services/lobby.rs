@@ -22,10 +22,12 @@ use faf_domain::state::{
     SettingsEvent, SocialEvent,
 };
 
+use futures_util::future::BoxFuture;
+
 use crate::ports::LobbyUpdate;
 use crate::ports::ModPrepFailure;
 use crate::ports::ServerNoticeStyle;
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
 use crate::services::launcher::{self, LaunchSession};
 use crate::services::notifications;
 
@@ -39,25 +41,36 @@ use crate::services::notifications;
 /// waited: the report was fifteen minutes of "preparing for game start" for a
 /// game that could not be started any more.
 ///
-/// Two minutes is far beyond any honest wait for a launch order and far short
-/// of fifteen. It deliberately does not cover [`MatchmakingState::Launching`],
-/// which is the phase that patches the install and can legitimately take a
-/// quarter of an hour on a slow line.
+/// Two minutes is beyond the server's own patience: it gives the host sixty
+/// seconds to start the game and the guests sixty more plus ten each
+/// (`LadderService.launch_match`), then cancels. It deliberately does not cover
+/// [`MatchmakingState::Launching`], which ends with the process or with the
+/// launch failing.
 const MATCH_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
 
 pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
-        LobbyCommand::Connect => connect(ctx, out).await,
+        LobbyCommand::Connect => {
+            // An explicit Connect is what asks for the lobby to be kept up,
+            // so it is what arms the watchdog in `services::reconnect`; until
+            // it did, a connection whose adapter had given up stayed down for
+            // good. Armed before the guard, so asking while a connection is
+            // already in flight still re-arms it. The same shape as chat.
+            ctx.lobby_auto_reconnect.arm();
+            connect(ctx, out).await
+        }
         LobbyCommand::Join {
             id,
             password,
             replace_mods,
         } => {
-            if !ctx.lobby_join_active.try_start() {
+            // A new join starts uncancelled, whatever the last one did, under
+            // an id of its own: a cancelled join still draining its
+            // preparation keeps reading "cancelled" for its own id.
+            let operations = &ctx.lobby_operations;
+            let Some(operation) = operations.try_begin_join() else {
                 return;
-            }
-            // A new join starts uncancelled, whatever the last one did.
-            ctx.lobby_join_cancelled.clear();
+            };
 
             if !out.with_state(|state| {
                 matches!(
@@ -65,7 +78,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                     faf_domain::state::LobbyStatus::Connected
                 )
             }) {
-                ctx.lobby_join_active.finish();
+                operations.release_join(operation);
                 out.emit(LobbyEvent::JoinFailed {
                     id,
                     reason: "not connected to the lobby".into(),
@@ -79,7 +92,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // gets this far, and preparing a join for minutes before the
             // server refuses it is the worst of both.
             if let Some(reason) = out.with_state(|state| rating_gate_refusal(state, id)) {
-                ctx.lobby_join_active.finish();
+                operations.release_join(operation);
                 out.emit(LobbyEvent::JoinFailed { id, reason });
                 return;
             }
@@ -93,48 +106,62 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                     state.lobby.games.iter().find(|game| game.id == id).cloned()
                 });
                 let Some(game) = game else {
-                    ctx.lobby_join_active.finish();
+                    operations.release_join(operation);
                     out.emit(LobbyEvent::JoinFailed {
                         id,
                         reason: "the game is no longer available".into(),
                     });
                     return;
                 };
-                match launcher::prepare_custom_join(&game, ctx, out, replace_mods).await {
+                let prepared = operations
+                    .run(
+                        operation,
+                        launcher::prepare_custom_join(&game, ctx, out, replace_mods),
+                    )
+                    .await;
+                // Preparation can take minutes, which is long enough for the
+                // user to give up on it, and for them to start another join
+                // after that. Nothing below may run for a join that was
+                // called off or replaced while its files came down: not its
+                // outcome, not its progress, not its request. No event
+                // either: `CancelJoin` already said so, and the join state
+                // now belongs to whatever replaced this one.
+                if !operations.is_live(operation) {
+                    tracing::info!(
+                        game_id = id,
+                        "lobby: the join was called off during preparation; not joining"
+                    );
+                    operations.release_join(operation);
+                    return;
+                }
+                match prepared {
                     Ok(()) => {}
                     // Nothing was installed or deleted: the user has to say
                     // whether the versions already on disk may be replaced,
                     // and the answer comes back as another `Join`.
                     Err(ModPrepFailure::Conflicts(conflicts)) => {
-                        ctx.lobby_join_active.finish();
+                        operations.release_join(operation);
                         out.emit(LobbyEvent::JoinNeedsModReplacement { id, conflicts });
                         return;
                     }
                     Err(ModPrepFailure::Failed(reason)) => {
-                        ctx.lobby_join_active.finish();
+                        operations.release_join(operation);
                         launcher::report_failure(ctx, out, reason);
                         return;
                     }
-                }
-                // Preparation can take minutes, which is long enough for the
-                // user to give up on it. Nothing below this point should run
-                // for a join that was called off while its files came down.
-                if ctx.lobby_join_cancelled.is_cancelled() {
-                    ctx.lobby_join_active.finish();
-                    out.emit(LobbyEvent::JoinCancelled);
-                    return;
                 }
                 // Return to an explicit joining state while waiting for the
                 // server's accept/reject response.
                 out.emit(LobbyEvent::Joining { id, prepared: true });
             }
-            if ctx.lobby_join_cancelled.is_cancelled() {
-                ctx.lobby_join_active.finish();
-                out.emit(LobbyEvent::JoinCancelled);
+            // Checked again right before the request: the boundary above is
+            // only reached on the live-launch path.
+            if !operations.is_live(operation) {
+                operations.release_join(operation);
                 return;
             }
             if !ctx.ports.lobby.join(id, password) {
-                ctx.lobby_join_active.finish();
+                operations.release_join(operation);
                 out.emit(LobbyEvent::JoinFailed {
                     id,
                     reason: "the join request could not be sent".into(),
@@ -154,28 +181,34 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
         LobbyCommand::ClearHostPrefill => out.emit(LobbyEvent::HostPrefillCleared),
         LobbyCommand::Host { config } => match config.validated() {
             Ok(config) => {
-                // A new host starts uncancelled, whatever the last join did.
-                ctx.lobby_join_cancelled.clear();
+                // A new host starts uncancelled, whatever the last join did,
+                // under an id of its own; see the same note on `Join`.
+                let operations = &ctx.lobby_operations;
+                let operation = operations.begin();
                 // The map has to be on disk before the server is asked for a
                 // lobby, because its reply will not mention one: see
                 // `launcher::prepare_host`. Guarded the way the join path is,
                 // so an offline shell still exercises the request itself.
                 if ctx.ports.process.supports_live_launch() {
-                    if let Err(reason) = launcher::prepare_host(&config, ctx, out).await {
-                        launcher::report_failure(ctx, out, reason);
+                    let prepared = operations
+                        .run(operation, launcher::prepare_host(&config, ctx, out))
+                        .await;
+                    // Cancelled while the files came down, which for a co-op
+                    // mission is a long download, or replaced by a newer join
+                    // or host. The join path has always stopped here; the host
+                    // path sent its request anyway, the server answered with a
+                    // launch order, and the game Cancel had just been pressed
+                    // on started regardless. The dialog already closed on
+                    // `CancelJoin`, so there is nothing to emit, not even a
+                    // failure: that would land on the newer operation's state.
+                    if !operations.is_live(operation) {
+                        tracing::info!(
+                            "lobby: the host was called off during preparation; not hosting"
+                        );
                         return;
                     }
-                    // Cancelled while the files came down, which for a co-op
-                    // mission is a long download. The join path has always
-                    // stopped here; the host path sent its request anyway, the
-                    // server answered with a launch order, and the game Cancel
-                    // had just been pressed on started regardless. The dialog
-                    // already closed on `CancelJoin`, so there is nothing to
-                    // emit, only a request not to send.
-                    if ctx.lobby_join_cancelled.is_cancelled() {
-                        tracing::info!(
-                            "lobby: the host was cancelled during preparation; not hosting"
-                        );
+                    if let Err(reason) = prepared {
+                        launcher::report_failure(ctx, out, reason);
                         return;
                     }
                 }
@@ -230,8 +263,22 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         },
         LobbyCommand::Matchmake { queue_name, start } => {
+            // Stopping a search that is still being prepared stops the
+            // preparation from asking for it: `start_search` checks the state
+            // before it sends anything. The `stop` still goes out, which the
+            // server answers with nothing when it has no such search.
+            if !start
+                && out.with_state(|state| {
+                    matches!(state.lobby.matchmaking, MatchmakingState::Preparing { .. })
+                })
+            {
+                out.emit(LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Idle,
+                });
+            }
             ctx.ports.lobby.matchmake(queue_name, start)
         }
+        LobbyCommand::StartSearch { queue_names } => start_search(queue_names, ctx, out).await,
         LobbyCommand::LeaveParty => {
             ctx.ports.lobby.leave_party();
             // Optimistic, and the same event `kicked_from_party` raises: the
@@ -244,8 +291,34 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
         }
         LobbyCommand::KickPartyMember { player_id } => ctx.ports.lobby.kick_party_member(player_id),
-        LobbyCommand::InviteToParty { player_id } => ctx.ports.lobby.invite_to_party(player_id),
+        LobbyCommand::InviteToParty { player_id } => {
+            // Java's `TeamMatchmakingService.invitePlayer`. The server would
+            // accept the invitation and then refuse the invitee with "That
+            // party is already in queue", which is the wrong person to tell.
+            if out.with_state(|state| state.lobby.matchmaking.is_looking()) {
+                notifications::add_required(
+                    out,
+                    NotificationKind::Error,
+                    "Cannot invite now",
+                    "Stop the search before inviting somebody to the party.",
+                    Some(NotificationAction::OpenMatchmaking),
+                );
+                return;
+            }
+            ctx.ports.lobby.invite_to_party(player_id)
+        }
         LobbyCommand::AcceptPartyInvite { player_id } => {
+            if let Some(refusal) = out.with_state(|state| party_join_refusal(state, ctx, player_id))
+            {
+                notifications::add_required(
+                    out,
+                    NotificationKind::Error,
+                    "Cannot join the party",
+                    refusal,
+                    Some(NotificationAction::OpenMatchmaking),
+                );
+                return;
+            }
             ctx.ports.lobby.accept_party_invite(player_id)
         }
         LobbyCommand::SetPartyFactions { factions } => ctx.ports.lobby.set_party_factions(factions),
@@ -292,27 +365,232 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 terminate_game(ctx, out);
                 return;
             }
-            // Before that, the flag is what stops the work: preparation reads
-            // it at its next step boundary, and the join request is not sent.
-            ctx.lobby_join_cancelled.cancel();
-            ctx.lobby_join_active.finish();
+            // Before that, calling the operation off is what stops the work:
+            // preparation checks its own operation at its next step boundary,
+            // and the join request is not sent. The slot is freed now, so the
+            // user can pick another game while the cancelled preparation
+            // finishes the file it is on; that preparation can no longer
+            // touch the new join, because it is checking a different id.
+            ctx.lobby_operations.cancel();
+            ctx.lobby_operations.release_any_join();
             out.emit(LobbyEvent::JoinCancelled);
         }
         LobbyCommand::TerminateGame => {
             terminate_game(ctx, out);
         }
         LobbyCommand::Disconnect => {
+            // The user hung up, so the reconnect watchdog leaves it hung up.
+            // Disarmed before the socket closes: the watchdog reads the flag
+            // when it sees `Disconnected`, which this is about to cause.
+            ctx.lobby_auto_reconnect.disarm();
             // Cancels the active connection; the `Connect` task above then sees the
             // stream close and emits `Disconnected`.
             out.emit(LobbyEvent::JoinCancelled);
             ctx.ports.lobby.disconnect();
-            ctx.lobby_join_active.finish();
+            ctx.lobby_operations.release_any_join();
         }
     }
 }
 
+/// Why a party invitation cannot be accepted right now, in Java's order
+/// (`TeamMatchmakingService.acceptPartyInvite`).
+///
+/// The first is the one that matters. The server's `accept_invite` moves the
+/// player into the party without ending the search they already had
+/// (`PartyService.accept_invite`), so they kept searching on their own, could
+/// be matched alone, and as a member could not stop it: Stop is the leader's.
+fn party_join_refusal(
+    state: &faf_domain::AppState,
+    ctx: &ServiceCtx,
+    sender_id: i32,
+) -> Option<&'static str> {
+    if state.lobby.matchmaking.is_looking() {
+        return Some("Stop your search before joining a party.");
+    }
+    if game_is_running(state, ctx) {
+        return Some("Close Forged Alliance before joining a party.");
+    }
+    if ctx.ports.process.game_install_dir().is_none() {
+        return Some("Locate ForgedAlliance.exe in Settings → Paths before joining a party.");
+    }
+    if !state
+        .social
+        .players
+        .iter()
+        .any(|player| player.id == sender_id)
+    {
+        return Some("The player who invited you is no longer online.");
+    }
+    None
+}
+
+/// Whether Forged Alliance is running for this client, or about to be.
+fn game_is_running(state: &faf_domain::AppState, ctx: &ServiceCtx) -> bool {
+    ctx.running_game.id().is_some()
+        || matches!(
+            state.lobby.join,
+            JoinState::Launched { .. } | JoinState::InGame
+        )
+}
+
+/// Start a matchmaker search, the way Java's `TeamMatchmakingService.joinQueues`
+/// does: refuse what the server would refuse, prepare the install and the pool
+/// maps, and only then ask for the queues. See `MatchmakingState::Preparing`.
+async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx, out: &EventSink) {
+    queue_names.sort();
+    queue_names.dedup();
+    if queue_names.is_empty() {
+        return;
+    }
+    let refusal = out.with_state(|state| {
+        if !matches!(
+            state.lobby.status,
+            faf_domain::state::LobbyStatus::Connected
+        ) {
+            return Some(Err(
+                "Connect to the FAF lobby before searching for a match.",
+            ));
+        }
+        if state.lobby.matchmaking.is_looking()
+            || matches!(
+                state.lobby.matchmaking,
+                MatchmakingState::MatchFound { .. } | MatchmakingState::Launching { .. }
+            )
+        {
+            // A second press while the first is still on its way.
+            return Some(Ok(()));
+        }
+        if game_is_running(state, ctx) {
+            return Some(Err("Close Forged Alliance before searching for a match."));
+        }
+        let me = state.auth.player.as_ref().map(|player| player.id);
+        let party = &state.lobby.party;
+        if party.members.len() > 1 && party.owner_id != me {
+            return Some(Err("Only the party leader can start the search."));
+        }
+        None
+    });
+    match refusal {
+        Some(Ok(())) => return,
+        Some(Err(reason)) => {
+            notifications::add_required(
+                out,
+                NotificationKind::Error,
+                "Could not start the search",
+                reason,
+                Some(NotificationAction::OpenMatchmaking),
+            );
+            return;
+        }
+        None => {}
+    }
+
+    out.emit(LobbyEvent::MatchmakingUpdated {
+        state: MatchmakingState::Preparing {
+            queue_names: queue_names.clone(),
+        },
+    });
+    let prepared = if ctx.ports.process.supports_live_launch() {
+        launcher::prepare_search(&queue_names, ctx, out).await
+    } else {
+        Ok(())
+    };
+
+    // Stopped, disconnected or replaced while the files came down. Nothing is
+    // sent for a search nobody is waiting for any more.
+    let still_wanted = out.with_state(|state| {
+        matches!(
+            &state.lobby.matchmaking,
+            MatchmakingState::Preparing { queue_names: wanted } if *wanted == queue_names
+        )
+    });
+    if !still_wanted {
+        tracing::info!("matchmaker: the search was stopped while it was being prepared");
+        return;
+    }
+    if let Err(reason) = prepared {
+        out.emit(LobbyEvent::MatchmakingUpdated {
+            state: MatchmakingState::Idle,
+        });
+        notifications::add_required(
+            out,
+            NotificationKind::Error,
+            "Could not start the search",
+            reason,
+            Some(NotificationAction::OpenMatchmaking),
+        );
+        return;
+    }
+
+    for queue_name in &queue_names {
+        ctx.ports.lobby.matchmake(queue_name.clone(), true);
+    }
+    watch_for_search_start(queue_names, out);
+}
+
+/// How long the client waits for the server to confirm a search it asked for.
+///
+/// The answer is a `search_info` within a round trip. A refusal is a `notice`
+/// instead (a player already in a game, a party member offline), and without
+/// this the bar would sit on "Preparing" until somebody pressed Stop.
+const SEARCH_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
+
+fn watch_for_search_start(queue_names: Vec<String>, out: &EventSink) {
+    let out = out.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(SEARCH_START_TIMEOUT).await;
+        let unanswered = out.with_state(|state| {
+            matches!(
+                &state.lobby.matchmaking,
+                MatchmakingState::Preparing { queue_names: wanted } if *wanted == queue_names
+            )
+        });
+        if unanswered {
+            tracing::warn!("matchmaker: the server never confirmed the search");
+            out.emit(LobbyEvent::MatchmakingUpdated {
+                state: MatchmakingState::Idle,
+            });
+        }
+    });
+}
+
+/// Send this player's faction choice to the server, as Java does on every
+/// connection (`TeamMatchmakingService`, `sendFactions` on `CONNECTED`).
+///
+/// The server keeps it on the party member and nowhere else, and starts every
+/// member it creates with all four (`PartyMember.__init__`): on login, on
+/// joining a party, and on being put back into a party of one. A client that
+/// only sent the choice when it changed, or when its own leader pressed
+/// Start, left a member playing a faction they had switched off.
+fn send_party_factions(ctx: &ServiceCtx, out: &EventSink) {
+    let factions = out.with_state(|state| state.settings.browsing.matchmaker_factions.clone());
+    // The server refuses an empty list, and an empty list means "never chose".
+    if !factions.is_empty() {
+        ctx.ports.lobby.set_party_factions(factions);
+    }
+}
+
+/// Bring the lobby back for the reconnect watchdog.
+///
+/// Not `handle(LobbyCommand::Connect)`, because that arms the watchdog: a
+/// retry the watchdog spawned just before the user pressed Disconnect would
+/// then re-arm it, and the client would reconnect against the user's wishes.
+/// The flag is read once the connection guard is held, which is the last
+/// moment a Disconnect could have landed in between.
+pub async fn reconnect(ctx: &ServiceCtx, out: &EventSink) {
+    connect_with(ctx, out, true).await;
+}
+
 async fn connect(ctx: &ServiceCtx, out: &EventSink) {
+    connect_with(ctx, out, false).await;
+}
+
+async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     if !ctx.lobby_active.try_start() {
+        return;
+    }
+    if only_if_armed && !ctx.lobby_auto_reconnect.armed() {
+        ctx.lobby_active.finish();
         return;
     }
 
@@ -325,25 +603,135 @@ async fn connect(ctx: &ServiceCtx, out: &EventSink) {
     let mut updates = ctx.ports.lobby.connect().await;
 
     let launch_enabled = ctx.ports.process.supports_live_launch();
-    let mut session: Option<LaunchSession> = None;
+    let mut launch = LaunchSlot::default();
+    let mut background = Background::default();
     let mut game_notifications = GameNotificationTracker::default();
 
-    while let Some(update) = updates.recv().await {
-        handle_update(
-            update,
-            ctx,
-            out,
-            launch_enabled,
-            &mut session,
-            &mut game_notifications,
-        )
-        .await;
+    loop {
+        // The launch and the search's warm-up run here, beside the updates,
+        // rather than being awaited in the middle of one. Awaiting the launch
+        // stopped this loop for as long as the launch took, which for a
+        // generated map or a patch is tens of seconds to minutes; the socket
+        // behind it stopped being read, and a `match_cancelled` sent in that
+        // time was only seen once the game had already been started. Java runs
+        // both as futures beside the connection (`GameRunner`).
+        let next = tokio::select! {
+            update = updates.recv() => Next::Update(update),
+            started = async { background.launch.as_mut().expect("guarded").await },
+                if background.launch.is_some() => Next::Started(started),
+            () = async { background.warm_up.as_mut().expect("guarded").await },
+                if background.warm_up.is_some() => Next::WarmedUp,
+        };
+        match next {
+            Next::Update(None) => break,
+            Next::Update(Some(update)) => {
+                handle_update(
+                    update,
+                    ctx,
+                    out,
+                    launch_enabled,
+                    &mut launch,
+                    &mut background,
+                    &mut game_notifications,
+                )
+                .await
+            }
+            Next::Started(session) => {
+                background.launch = None;
+                launch.started(session, ctx, out).await;
+            }
+            Next::WarmedUp => background.warm_up = None,
+        }
+    }
+    // A launch still under way when the connection ended is finished rather
+    // than dropped halfway, which could leave an adapter running for a game
+    // that never started. It is the order the old loop had too: the launch
+    // completed, then the closed stream was read.
+    if let Some(starting) = background.launch.take() {
+        let session = starting.await;
+        launch.started(session, ctx, out).await;
     }
 
     ctx.lobby_active.finish();
-    ctx.lobby_join_active.finish();
+    ctx.lobby_operations.release_any_join();
     out.emit(LobbyEvent::Disconnected);
     out.emit(SocialEvent::Cleared);
+}
+
+/// What the connect loop is waiting for next.
+enum Next {
+    Update(Option<LobbyUpdate>),
+    Started(Option<LaunchSession>),
+    WarmedUp,
+}
+
+/// Work the connect loop runs beside the lobby updates. Borrowing, because it
+/// lives exactly as long as the loop that owns the context it borrows.
+#[derive(Default)]
+struct Background<'a> {
+    /// `launcher::start` for the launch order being acted on.
+    launch: Option<BoxFuture<'a, Option<LaunchSession>>>,
+    /// A party member's featured-mod update when its leader starts a search.
+    /// See `LobbyUpdate::Matchmaking`.
+    warm_up: Option<BoxFuture<'a, ()>>,
+}
+
+/// The game being launched or played, as far as the lobby loop is concerned.
+#[derive(Default)]
+struct LaunchSlot {
+    /// The running game's adapter link, once the launch has produced one.
+    session: Option<LaunchSession>,
+    /// Relay messages that arrived while the launch was still under way. The
+    /// old loop never lost these because it did not read the socket at all
+    /// until the launch was done; reading it now means keeping them until the
+    /// adapter exists, in order.
+    held: Vec<(String, Vec<serde_json::Value>)>,
+    /// The launch under way was called off: by the server's `match_cancelled`
+    /// or a kill notice. A launch that gets as far as a game anyway is then
+    /// stopped as soon as it reports back.
+    called_off: bool,
+    /// The launch order's game title, for the "Game launched" notice.
+    name: String,
+}
+
+/// How many relay messages are kept for an adapter that does not exist yet.
+/// A launch exchanges a few dozen; the cap is only against a runaway.
+const MAX_HELD_RELAYS: usize = 512;
+
+impl LaunchSlot {
+    async fn started(&mut self, session: Option<LaunchSession>, ctx: &ServiceCtx, out: &EventSink) {
+        ctx.lobby_operations.release_any_join();
+        let held = std::mem::take(&mut self.held);
+        let called_off = std::mem::replace(&mut self.called_off, false);
+        let Some(session) = session else {
+            return;
+        };
+        if called_off {
+            tracing::info!("lobby: the launch finished after it was called off; stopping the game");
+            terminate_game(ctx, out);
+            notifications::add_required(
+                out,
+                NotificationKind::Error,
+                "Match cancelled",
+                "The server cancelled the match after launch, so Forged Alliance was stopped.",
+                Some(NotificationAction::OpenMatchmaking),
+            );
+            return;
+        }
+        for (command, args) in held {
+            session.forward_to_adapter(command, args).await;
+        }
+        self.session = Some(session);
+        if out.with_state(|state| state.settings.notifications.game_launched) {
+            notifications::add(
+                out,
+                NotificationKind::GameLaunched,
+                "Game launched",
+                format!("{} started successfully.", self.name),
+                None,
+            );
+        }
+    }
 }
 
 /// Give up on a match the server never started.
@@ -355,19 +743,24 @@ async fn connect(ctx: &ServiceCtx, out: &EventSink) {
 /// Checking the state rather than cancelling a handle keeps every one of those
 /// exits working without any of them having to know this exists.
 ///
+/// The state alone cannot tell two matches on the same queue apart, though:
+/// match A cancelled, a requeue, and match B found on that queue looks exactly
+/// like A still waiting, and A's timer called B off long before B's own two
+/// minutes were up. So each match found also takes a generation, and only the
+/// timer armed for the newest one may act.
+///
 /// It reports the same [`MatchmakingState::Cancelled`] the server sends when
 /// it cancels a match itself, so the rest of the client needs no new case: the
 /// difference is only who noticed.
-fn watch_for_match_start(queue_name: String, out: &EventSink) {
+fn watch_for_match_start(queue_name: String, ctx: &ServiceCtx, out: &EventSink) {
+    let matches = ctx.lobby_match_generation.clone();
+    let generation = matches.begin();
     let out = out.clone();
     tokio::spawn(async move {
         tokio::time::sleep(MATCH_START_TIMEOUT).await;
 
         let still_waiting = out.with_state(|state| {
-            matches!(
-                &state.lobby.matchmaking,
-                MatchmakingState::MatchFound { queue_name: found } if *found == queue_name
-            )
+            match_still_waiting(&matches, generation, &state.lobby.matchmaking, &queue_name)
         });
         if !still_waiting {
             return;
@@ -396,18 +789,36 @@ fn watch_for_match_start(queue_name: String, out: &EventSink) {
     });
 }
 
-async fn handle_update(
+/// Whether the match a [`watch_for_match_start`] timer was armed for is still
+/// sitting at `MatchFound`: the newest match found, and its queue still the
+/// one on screen.
+fn match_still_waiting(
+    matches: &LatestRequest,
+    generation: u64,
+    matchmaking: &MatchmakingState,
+    queue_name: &str,
+) -> bool {
+    matches.is_current(generation)
+        && matches!(
+            matchmaking,
+            MatchmakingState::MatchFound { queue_name: found } if found == queue_name
+        )
+}
+
+async fn handle_update<'a>(
     update: LobbyUpdate,
-    ctx: &ServiceCtx,
-    out: &EventSink,
+    ctx: &'a ServiceCtx,
+    out: &'a EventSink,
     launch_enabled: bool,
-    session: &mut Option<LaunchSession>,
+    launch: &mut LaunchSlot,
+    background: &mut Background<'a>,
     game_notifications: &mut GameNotificationTracker,
 ) {
     match update {
         LobbyUpdate::Authenticated => {
             game_notifications.mark_authenticated();
             out.emit(LobbyEvent::Connected);
+            send_party_factions(ctx, out);
             restore_player_vetoes(ctx, out);
             restore_game_session(ctx);
             load_avatars(ctx, out);
@@ -485,6 +896,19 @@ async fn handle_update(
             out.emit(LobbyEvent::LiveGamesChanged { upserted, removed });
         }
         LobbyUpdate::MatchmakerQueues(queues) => {
+            if !ctx
+                .map_pools_checked
+                .swap(true, std::sync::atomic::Ordering::AcqRel)
+            {
+                announce_new_map_pools(
+                    ctx,
+                    out,
+                    queues
+                        .iter()
+                        .map(|queue| queue.queue_name.clone())
+                        .collect(),
+                );
+            }
             let (watched, ratings, searching) = out.with_state(|state| {
                 let own_ratings = state
                     .auth
@@ -543,17 +967,57 @@ async fn handle_update(
             out.emit(LobbyEvent::MatchmakerQueuesUpdated { queues })
         }
         LobbyUpdate::Matchmaking(state) => {
-            let terminate_cancelled_game = matches!(&state, MatchmakingState::Cancelled { .. })
-                && out.with_state(|current| {
+            let (was_launching, was_preparing) = out.with_state(|current| {
+                (
                     matches!(
                         current.lobby.matchmaking,
                         MatchmakingState::Launching { .. }
-                    ) && matches!(
+                    ),
+                    matches!(
+                        current.lobby.matchmaking,
+                        MatchmakingState::Preparing { .. } | MatchmakingState::Searching { .. }
+                    ),
+                )
+            });
+            let cancelled = matches!(&state, MatchmakingState::Cancelled { .. });
+            // A match the server cancelled while its launch was still being
+            // prepared is stopped before it becomes a game, which is what
+            // Java's `stopSearchMatchmaker` does by cancelling the launch
+            // future. The launch checks the flag at its step boundaries.
+            if cancelled && was_launching && background.launch.is_some() {
+                ctx.lobby_operations.cancel();
+                launch.called_off = true;
+            }
+            let terminate_cancelled_game = cancelled
+                && was_launching
+                && background.launch.is_none()
+                && out.with_state(|current| {
+                    matches!(
                         current.lobby.join,
                         faf_domain::state::JoinState::Launched { .. }
                             | faf_domain::state::JoinState::InGame
                     )
                 });
+            // Every client in a party searches once its leader starts, and
+            // Java brings each one's featured mod up to date at that moment
+            // (`TeamMatchmakingService.onInQueueChange` into
+            // `GameRunner.startSearchMatchmaker`), so that a member is not the
+            // one still patching when the match is made. The leader's own
+            // client did that before it asked (`MatchmakingState::Preparing`).
+            if matches!(state, MatchmakingState::Searching { .. })
+                && !was_preparing
+                && launch_enabled
+                && background.warm_up.is_none()
+            {
+                background.warm_up = Some(Box::pin(async move {
+                    if let Err(reason) =
+                        launcher::prepare_featured_mod(launcher::MATCHMAKER_FEATURED_MOD, ctx, out)
+                            .await
+                    {
+                        tracing::warn!(%reason, "could not update the game while the party searched");
+                    }
+                }));
+            }
             let (already_found, notify_match_found) = out.with_state(|current| {
                 (
                     matches!(
@@ -574,12 +1038,12 @@ async fn handle_update(
                         Some(NotificationAction::OpenMatchmaking),
                     );
                 }
-                watch_for_match_start(queue.to_string(), out);
+                watch_for_match_start(queue.to_string(), ctx, out);
             }
             out.emit(LobbyEvent::MatchmakingUpdated { state });
             if terminate_cancelled_game {
                 terminate_game(ctx, out);
-                *session = None;
+                launch.session = None;
                 notifications::add_required(
                     out,
                     NotificationKind::Error,
@@ -595,9 +1059,31 @@ async fn handle_update(
             // without them, and that is not a party this client is in. See
             // `PartyState::for_player`.
             let player_id = out.with_state(|state| state.auth.player.as_ref().map(|p| p.id));
-            out.emit(LobbyEvent::PartyUpdated {
-                party: party.for_player(player_id),
-            })
+            let party = party.for_player(player_id);
+            // A party the server just made for us carries its default of all
+            // four factions, whatever was chosen: see `send_party_factions`.
+            // The answer to the correction is another snapshot that agrees.
+            let wanted =
+                out.with_state(|state| state.settings.browsing.matchmaker_factions.clone());
+            let ours = party
+                .members
+                .iter()
+                .find(|member| Some(member.player_id) == player_id)
+                .map(|member| member.factions.clone());
+            // The server names factions in lower case, settings as shown.
+            let normalised = |factions: &[String]| {
+                let mut factions: Vec<String> = factions
+                    .iter()
+                    .map(|faction| faction.to_ascii_lowercase())
+                    .collect();
+                factions.sort();
+                factions
+            };
+            let differs = ours.is_some_and(|ours| normalised(&ours) != normalised(&wanted));
+            out.emit(LobbyEvent::PartyUpdated { party });
+            if differs && !wanted.is_empty() {
+                ctx.ports.lobby.set_party_factions(wanted);
+            }
         }
         LobbyUpdate::PartyInvite { player_id, login } => {
             if out.with_state(|state| state.settings.notifications.party_invites) {
@@ -615,44 +1101,72 @@ async fn handle_update(
         // or one token too many for a pool that shrank, is capped rather than
         // rejected. What it hands back is what is actually in force, so it
         // replaces what we remembered instead of being merged with it.
-        LobbyUpdate::Vetoes(vetoes) => {
+        LobbyUpdate::Vetoes { vetoes, forced } => {
             out.emit(LobbyEvent::VetoesUpdated {
                 vetoes: vetoes.clone(),
             });
             out.emit(SettingsEvent::MatchmakerVetoesChanged { vetoes });
             crate::services::settings::persist(ctx, out).await;
+            // Java's two strings, `teammatchmaking.vetoes.forced.*`.
+            if forced {
+                notifications::add_required(
+                    out,
+                    NotificationKind::ServerNotice,
+                    "Map bans were changed",
+                    "The matchmaker team changed the map pools, so some of your map bans were                      adjusted. Set them again if needed.",
+                    Some(NotificationAction::OpenMatchmaking),
+                );
+            }
         }
-        LobbyUpdate::Launch(launch) => {
+        LobbyUpdate::Launch(launch_order) => {
             let already_prepared = out.with_state(|state| {
                 matches!(
                     state.lobby.join,
                     faf_domain::state::JoinState::Joining {
                         id,
                         prepared: true,
-                    } if id == launch.uid
+                    } if id == launch_order.uid
                 )
             });
             out.emit(LobbyEvent::Launching {
-                launch: launch.clone(),
+                launch: launch_order.clone(),
             });
-            if launch_enabled {
-                *session = launcher::start(&launch, ctx, out, already_prepared).await;
-                if session.is_some()
-                    && out.with_state(|state| state.settings.notifications.game_launched)
-                {
-                    notifications::add(
-                        out,
-                        NotificationKind::GameLaunched,
-                        "Game launched",
-                        format!("{} started successfully.", launch.name),
-                        None,
-                    );
-                }
+            if !launch_enabled {
+                // The server answered the join, so whichever join was waiting
+                // on that answer is done with the slot.
+                ctx.lobby_operations.release_any_join();
+                return;
             }
-            ctx.lobby_join_active.finish();
+            if background.launch.take().is_some() {
+                // The server does not send a second order while the first is
+                // being acted on; if it ever does, the newer one is the game.
+                tracing::warn!("a launch order arrived while another was starting; replacing it");
+                ctx.ports.ice.stop();
+            }
+            launch.session = None;
+            launch.held.clear();
+            launch.called_off = false;
+            launch.name = launch_order.name.clone();
+            // A launch order is new work, with an id of its own: whatever an
+            // earlier join did, this one has not been cancelled, and a
+            // `CancelJoin` pressed while it prepares reaches it. It runs
+            // beside the update loop rather than inside it (see the loop).
+            let operations = &ctx.lobby_operations;
+            let operation = operations.begin();
+            background.launch = Some(Box::pin(async move {
+                operations
+                    .run(
+                        operation,
+                        launcher::start(&launch_order, ctx, out, already_prepared),
+                    )
+                    .await
+            }));
+            // The server answered the join, so whichever join was waiting on
+            // that answer is done with the slot.
+            ctx.lobby_operations.release_any_join();
         }
         LobbyUpdate::JoinFailed { id, reason } => {
-            ctx.lobby_join_active.finish();
+            ctx.lobby_operations.release_any_join();
             out.emit(LobbyEvent::JoinFailed { id, reason })
         }
         LobbyUpdate::Relations { friends, foes } => {
@@ -747,9 +1261,18 @@ async fn handle_update(
             };
             notifications::add_required(out, kind, title, text, None);
             if style == ServerNoticeStyle::Kill {
+                if background.launch.is_some() {
+                    launch.called_off = true;
+                }
                 terminate_game(ctx, out);
-                *session = None;
+                launch.session = None;
             } else if style == ServerNoticeStyle::Kick {
+                // The server ended this session on purpose, which is not a
+                // drop to recover from. Reconnecting would also fight
+                // whatever caused the kick: signed in from another client,
+                // the two would take the session from each other every few
+                // seconds. A later explicit Connect arms the watchdog again.
+                ctx.lobby_auto_reconnect.disarm();
                 ctx.ports.lobby.disconnect();
             }
         }
@@ -765,11 +1288,17 @@ async fn handle_update(
         LobbyUpdate::GameRelay { command, args } => {
             tracing::debug!(
                 %command,
-                has_launch_session = session.is_some(),
+                has_launch_session = launch.session.is_some(),
                 "game relay message received"
             );
-            if let Some(session) = session.as_ref() {
+            if let Some(session) = launch.session.as_ref() {
                 session.forward_to_adapter(command, args).await;
+            } else if background.launch.is_some() {
+                if launch.held.len() < MAX_HELD_RELAYS {
+                    launch.held.push((command, args));
+                } else {
+                    tracing::warn!(%command, "relay message dropped: too many held for a launch");
+                }
             }
         }
     }
@@ -792,6 +1321,87 @@ fn join_auto_channels(ctx: &ServiceCtx, out: &EventSink) {
     });
     for channel in channels {
         ctx.ports.chat.join_channel(channel);
+    }
+}
+
+/// Compare every queue's map pools with the ones seen last time, announce the
+/// queues that changed, and remember what was seen (#406).
+///
+/// Off the lobby loop: it is one API request per queue, and the lists the
+/// server sends at login should not wait on them. Nothing is written before
+/// the settings file has been read, for the reason `settings::persist` gives.
+fn announce_new_map_pools(ctx: &ServiceCtx, out: &EventSink, queue_names: Vec<String>) {
+    let maps = ctx.ports.maps.clone();
+    let settings = ctx.ports.settings.clone();
+    let serial = ctx.settings_persist.clone();
+    let loaded = ctx.settings_loaded.has_loaded();
+    let out = out.clone();
+    tokio::spawn(async move {
+        let mut current = Vec::new();
+        for queue_name in queue_names {
+            // A queue that cannot be read this time is left as it was seen, so
+            // a failed request is never mistaken for a new pool next time.
+            let Ok(pools) = maps.list_matchmaker_pools(queue_name.clone()).await else {
+                continue;
+            };
+            let mut assignments: Vec<i32> = pools
+                .iter()
+                .flat_map(|pool| pool.maps.iter().map(|map| map.assignment_id))
+                .collect();
+            if assignments.is_empty() {
+                continue;
+            }
+            assignments.sort_unstable();
+            assignments.dedup();
+            current.push(faf_domain::state::settings::MapPoolsSeen {
+                queue_name,
+                assignments,
+            });
+        }
+        if current.is_empty() {
+            return;
+        }
+        let (seen, muted) = out.with_state(|state| {
+            (
+                state.settings.map_pools_seen.clone(),
+                state.settings.notifications.map_pool_muted_queues.clone(),
+            )
+        });
+        for queue_name in faf_domain::state::settings::changed_map_pools(&seen, &current) {
+            if muted.contains(&queue_name) {
+                continue;
+            }
+            let label = queue_display_name(&queue_name);
+            notifications::add(
+                &out,
+                NotificationKind::MapPoolReleased,
+                "New map pool",
+                format!("{label} has a new map pool."),
+                Some(NotificationAction::OpenMatchmaking),
+            );
+        }
+        let mut remembered = seen;
+        for entry in current {
+            remembered.retain(|old| old.queue_name != entry.queue_name);
+            remembered.push(entry);
+        }
+        out.emit(SettingsEvent::MapPoolsSeen { seen: remembered });
+        if loaded {
+            let _guard = serial.acquire().await;
+            let snapshot = out.with_state(|state| state.settings.clone());
+            settings.save(&snapshot).await;
+        }
+    });
+}
+
+/// `ladder1v1` and `tmm2v2` as players say them, for a notification's text.
+fn queue_display_name(queue_name: &str) -> String {
+    match queue_name {
+        "ladder1v1" => "1v1".into(),
+        other => other
+            .strip_prefix("tmm")
+            .map(|rest| rest.split('_').next().unwrap_or(rest).to_string())
+            .unwrap_or_else(|| other.to_string()),
     }
 }
 
@@ -1000,9 +1610,14 @@ fn restore_game_session(ctx: &ServiceCtx) {
 }
 
 fn terminate_game(ctx: &ServiceCtx, out: &EventSink) {
+    // A launch still being prepared has no process to kill yet. The flag is
+    // what stops it at its next step instead of letting it start a game
+    // nobody wants any more; a launch that already finished never reads it,
+    // and the next one clears it when it starts.
+    ctx.lobby_operations.cancel();
     ctx.ports.process.kill();
     ctx.ports.ice.stop();
-    ctx.lobby_join_active.finish();
+    ctx.lobby_operations.release_any_join();
     ctx.running_game.clear();
     out.emit(LobbyEvent::GameTerminated);
 }
@@ -1026,6 +1641,28 @@ struct GameNotificationTracker {
     live: Option<HashMap<i32, Game>>,
     suppress_until: Option<Instant>,
     queue_opponents: QueueOpponentTracker,
+    /// When each game was last announced as full, so a lobby that fills,
+    /// loses a player to the observers and fills again is announced once
+    /// rather than on every move (#382).
+    full_announced: HashMap<i32, Instant>,
+}
+
+/// How long a game stays announced as full. People move between the slots
+/// and the observers for the whole of a lobby's setup.
+const GAME_FULL_COOLDOWN: Duration = Duration::from_secs(5 * 60);
+
+/// Whether a game that just filled up should be announced, and if so, record
+/// that it was. See [`GameNotificationTracker::full_announced`].
+fn announce_full(announced: &mut HashMap<i32, Instant>, game_id: i32) -> bool {
+    let now = Instant::now();
+    if announced
+        .get(&game_id)
+        .is_some_and(|at| now.duration_since(*at) < GAME_FULL_COOLDOWN)
+    {
+        return false;
+    }
+    announced.insert(game_id, now);
+    true
 }
 
 /// How long a queue keeps quiet after announcing an opponent.
@@ -1236,7 +1873,9 @@ impl GameNotificationTracker {
                 None => signals.push(GameNotificationSignal::NewGame(game.clone())),
                 Some(old) => {
                     if let Some(player_name) = player_name {
-                        if filled_up(&old, game, player_name) {
+                        if filled_up(&old, game, player_name)
+                            && announce_full(&mut self.full_announced, game.id)
+                        {
                             signals.push(GameNotificationSignal::GameFull(game.clone()));
                         }
                     }
@@ -1245,6 +1884,7 @@ impl GameNotificationTracker {
         }
         for id in removed {
             index.remove(id);
+            self.full_announced.remove(id);
         }
         signals
     }
@@ -1322,7 +1962,9 @@ impl GameNotificationTracker {
                 signals.push(GameNotificationSignal::NewGame(game.clone()));
             }
             if let (Some(player_name), Some(old)) = (player_name, previous.get(&game.id)) {
-                if filled_up(old, game, player_name) {
+                if filled_up(old, game, player_name)
+                    && announce_full(&mut self.full_announced, game.id)
+                {
                     signals.push(GameNotificationSignal::GameFull(game.clone()));
                 }
             }
@@ -1570,6 +2212,37 @@ mod tests {
         }
     }
 
+    /// Match A found, cancelled, a requeue, match B found on the same queue.
+    /// When A's two minutes are up the state is `MatchFound` on that queue
+    /// again, which on its own reads as A still waiting: A's timer must not
+    /// call B off. B's own timer still can.
+    #[test]
+    fn an_older_match_timer_does_not_cancel_a_newer_match_on_the_same_queue() {
+        let matches = LatestRequest::default();
+        let found = MatchmakingState::MatchFound {
+            queue_name: "ladder1v1".into(),
+        };
+
+        let first = matches.begin();
+        assert!(match_still_waiting(&matches, first, &found, "ladder1v1"));
+
+        let second = matches.begin();
+        assert!(!match_still_waiting(&matches, first, &found, "ladder1v1"));
+        assert!(match_still_waiting(&matches, second, &found, "ladder1v1"));
+
+        // The state checks that were always there still hold for the newest.
+        let launching = MatchmakingState::Launching {
+            queue_name: "ladder1v1".into(),
+        };
+        assert!(!match_still_waiting(
+            &matches,
+            second,
+            &launching,
+            "ladder1v1"
+        ));
+        assert!(!match_still_waiting(&matches, second, &found, "tmm2v2"));
+    }
+
     #[test]
     fn initial_game_snapshots_never_emit_notifications() {
         let mut tracker = GameNotificationTracker::default();
@@ -1639,6 +2312,24 @@ mod tests {
         ));
     }
 
+    /// The report in #382: people going to the observers and back made the
+    /// lobby full again, and every time was a toast and a sound.
+    #[test]
+    fn a_lobby_that_fills_again_is_announced_once() {
+        let mut tracker = GameNotificationTracker::default();
+        tracker.observe_open(&[game(1, "Me", &["Me"], 1, 2)], Some("me"));
+        let full = |tracker: &mut GameNotificationTracker| {
+            tracker
+                .observe_open(&[game(1, "Me", &["Me", "Other"], 2, 2)], Some("me"))
+                .iter()
+                .filter(|signal| matches!(signal, GameNotificationSignal::GameFull(_)))
+                .count()
+        };
+        assert_eq!(full(&mut tracker), 1);
+        tracker.observe_open(&[game(1, "Me", &["Me"], 1, 2)], Some("me"));
+        assert_eq!(full(&mut tracker), 0);
+    }
+
     #[test]
     fn an_observer_does_not_take_a_seat_in_a_full_lobby() {
         let mut tracker = GameNotificationTracker::default();
@@ -1683,6 +2374,7 @@ mod tests {
             team_size: 1,
             num_players: windows.len() as i32,
             queue_pop_time_seconds: 30,
+            queue_pops_at: String::new(),
             boundary_80s: windows
                 .iter()
                 .map(|&(min, max)| faf_domain::state::RatingRange { min, max })

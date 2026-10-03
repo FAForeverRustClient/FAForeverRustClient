@@ -392,7 +392,20 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
     match event {
         MapsEvent::VaultLoading => state.vault_status = MapListStatus::Loading,
         MapsEvent::VaultLoaded { maps } => {
-            state.vault = maps.clone();
+            // The catalogue arrives once, after a crawl of the whole vault
+            // that takes long enough for the Play tab to have looked up the
+            // folders of lobbies already on screen (`VaultFoldersResolved`).
+            // Those are exactly the records the catalogue leaves out, and
+            // replacing the list dropped them: the map lost its preview and
+            // read as unranked "after a while", which is the second half of
+            // #385, and nothing asked for the folder again. They are kept.
+            let mut vault = maps.clone();
+            for known in &state.vault {
+                if !vault.iter().any(|map| map.version_id == known.version_id) {
+                    vault.push(known.clone());
+                }
+            }
+            state.vault = vault;
             state.vault_status = MapListStatus::Ready;
         }
         MapsEvent::VaultSearching => {
@@ -541,9 +554,37 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
     }
 }
 
+/// A map folder's name without its version suffix, lower-cased:
+/// `SCCA_Coop_A01.v0017` is `scca_coop_a01`. Only a real `.v<digits>` is
+/// removed; `some_map.version` is a map called that.
+///
+/// A naming rule, not an adapter detail, so it lives here where both the maps
+/// service and the infra that reads folders off disk can use it. It used to be
+/// reached by the service from infra by its full path, which the architecture
+/// check did not catch.
+pub fn base_folder_name(folder_name: &str) -> String {
+    let lower = folder_name.trim().to_lowercase();
+    match lower.rsplit_once(".v") {
+        Some((base, version))
+            if !version.is_empty() && version.chars().all(|c| c.is_ascii_digit()) =>
+        {
+            base.to_string()
+        }
+        _ => lower,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn base_folder_name_strips_only_a_real_version_suffix() {
+        assert_eq!(base_folder_name("SCCA_Coop_A01.v0017"), "scca_coop_a01");
+        assert_eq!(base_folder_name("scca_coop_a01"), "scca_coop_a01");
+        // Not a version: the map is called that.
+        assert_eq!(base_folder_name("some_map.version"), "some_map.version");
+    }
 
     fn vault_map(folder_name: &str) -> VaultMap {
         VaultMap {
@@ -868,6 +909,36 @@ mod tests {
                 .map(|map| map.folder_name.as_str())
                 .collect::<Vec<_>>(),
             ["scmp_009.v0001", "withdrawn.v0002"]
+        );
+    }
+
+    #[test]
+    fn the_catalogue_arriving_late_keeps_the_folders_already_resolved() {
+        // The Play tab looks a lobby's map up while the catalogue is still
+        // being crawled; the crawl finishing must not take that record away
+        // again (#385: the preview vanished and the map read as unranked).
+        let mut state = MapsState::default();
+        let mut old_map = vault_map("phenom spartiate v2");
+        old_map.version_id = 7;
+        reduce(
+            &mut state,
+            &MapsEvent::VaultFoldersResolved {
+                maps: vec![old_map],
+            },
+        );
+        reduce(
+            &mut state,
+            &MapsEvent::VaultLoaded {
+                maps: vec![vault_map("scmp_009.v0001")],
+            },
+        );
+        assert_eq!(
+            state
+                .vault
+                .iter()
+                .map(|map| map.folder_name.as_str())
+                .collect::<Vec<_>>(),
+            ["scmp_009.v0001", "phenom spartiate v2"]
         );
     }
 }

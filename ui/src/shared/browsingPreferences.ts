@@ -1,5 +1,6 @@
 import type {
   BrowsingPreferences,
+  BrowsingPreferencesPatch,
   CustomGameBrowserPreferences,
   CustomGameFilterRule,
   HostGamePreferences,
@@ -140,11 +141,11 @@ export const MAX_VAULT_PAGE_SIZE = 200;
 export const DEFAULT_VAULT_PAGE_SIZE = 36;
 
 export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
-  // The list: about three tiles fit the default window against a dozen rows.
-  // Mirrors `BrowsingPreferences::default` in the Rust settings.
-  customGamesView: "list",
+  // Tiles, except the live tab's table. Mirrors `BrowsingPreferences::default`
+  // in the Rust settings.
+  customGamesView: "tiles",
   replaysView: "tiles",
-  liveReplayView: "tiles",
+  liveReplayView: "list",
   customGamesBrowser: {
     sort: "players",
     sortReversed: false,
@@ -157,6 +158,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
     columnWidths: [],
     columnOrder: [],
     detailWidth: 0,
+    detailHidden: false,
   },
   matchmakerUnselectedQueues: [],
   matchmakerFactions: [...MATCHMAKER_FACTIONS],
@@ -174,8 +176,10 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   replayListColumns: [],
   replayListOrder: [],
   liveReplayColumns: [],
+  liveReplayOrder: [],
   coopBoardColumns: [],
   matchmakerRecentColumns: [],
+  matchmakerRecentOrder: [],
   modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   replayVaultPlayer: "",
@@ -240,8 +244,10 @@ export function normalizeBrowsingPreferences(
     replayListColumns: normalizeColumnWidths(preferences.replayListColumns),
     replayListOrder: normalizeTableOrder(preferences.replayListOrder),
     liveReplayColumns: normalizeColumnWidths(preferences.liveReplayColumns),
+    liveReplayOrder: normalizeTableOrder(preferences.liveReplayOrder),
     coopBoardColumns: normalizeColumnWidths(preferences.coopBoardColumns),
     matchmakerRecentColumns: normalizeColumnWidths(preferences.matchmakerRecentColumns),
+    matchmakerRecentOrder: normalizeTableOrder(preferences.matchmakerRecentOrder),
     modPresets: normalizeModPresets(preferences.modPresets ?? []),
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
@@ -334,6 +340,7 @@ function normalizeCustomGamesBrowser(
     detailWidth: preferences.detailWidth
       ? clampInteger(preferences.detailWidth, MIN_DETAIL_PX, MAX_DETAIL_PX, 0)
       : 0,
+    detailHidden: Boolean(preferences.detailHidden),
   };
 }
 
@@ -384,10 +391,28 @@ export function parseLiveReplayFilters(value: unknown): LiveReplayFilters {
   return parseLegacyLiveReplayFilters(value, DEFAULT_LIVE_REPLAY_FILTERS);
 }
 
+/**
+ * What the one-time browser-storage migration writes: the four values it read
+ * and the marker, and nothing else. A patch rather than the whole group, so a
+ * preference changed while the migration's command is in flight is not
+ * overwritten with the value it had when the migration started.
+ */
+export type LegacyBrowsingMigration = Required<
+  Pick<
+    BrowsingPreferences,
+    | "customGamesView"
+    | "matchmakerUnselectedQueues"
+    | "matchmakerFactions"
+    | "liveReplayFilters"
+    | "legacyStorageMigrated"
+  >
+> &
+  BrowsingPreferencesPatch;
+
 export function migrateLegacyBrowsingPreferences(
   current: BrowsingPreferences,
   storage: LegacyStorage,
-): BrowsingPreferences {
+): LegacyBrowsingMigration {
   let customGamesView = current.customGamesView;
   let matchmakerUnselectedQueues = current.matchmakerUnselectedQueues;
   let matchmakerFactions = current.matchmakerFactions;
@@ -413,7 +438,7 @@ export function migrateLegacyBrowsingPreferences(
     // migration complete prevents every feature from falling back to it.
   }
 
-  return normalizeBrowsingPreferences({
+  const normalized = normalizeBrowsingPreferences({
     ...current,
     customGamesView,
     matchmakerUnselectedQueues,
@@ -421,6 +446,13 @@ export function migrateLegacyBrowsingPreferences(
     liveReplayFilters,
     legacyStorageMigrated: true,
   });
+  return {
+    customGamesView: normalized.customGamesView,
+    matchmakerUnselectedQueues: normalized.matchmakerUnselectedQueues,
+    matchmakerFactions: normalized.matchmakerFactions,
+    liveReplayFilters: normalized.liveReplayFilters,
+    legacyStorageMigrated: true,
+  };
 }
 
 export function clearLegacyBrowsingPreferences(storage: LegacyStorage): void {

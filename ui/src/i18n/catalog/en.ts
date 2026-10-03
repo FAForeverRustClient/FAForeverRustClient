@@ -115,7 +115,7 @@ export const en = {
   "auth.login": "Log in with FAF",
   "auth.hint": "Opens your browser to sign in. The client never sees your password.",
   "auth.playOffline": "Play offline",
-  "auth.playOfflineHint": "Opens the client on this machine’s replays and settings, with no account and no server.",
+  "auth.playOfflineHint": "Play offline starts Forged Alliance on its own, for skirmish against the AI. Local replays opens this client on the replays and settings on this machine. Neither needs an account.",
   "auth.localReplays": "Local replays",
   "auth.signIn": "Sign in",
   "auth.staySignedIn": "Stay signed in on this computer",
@@ -721,6 +721,9 @@ export const en = {
   "lobby.matchmaker.summary.found": "Match found in {queue}",
   "lobby.matchmaker.summary.launching": "Starting your match…",
   "lobby.matchmaker.hint.editable": "Queue selection stays editable while searching.",
+  "lobby.matchmaker.summary.preparing": "Getting ready to search",
+  "lobby.matchmaker.hint.preparing": "Updating the game and downloading the pool maps first, so that no match starts without them.",
+  "lobby.matchmaker.hint.inGame": "The search can start once nobody in the party is in a game: {names}.",
   "lobby.matchmaker.hint.selectOne": "Select at least one queue.",
   "lobby.matchmaker.partyFloor": "Your {count}-player party can enter queues sized {size} or larger.",
   "lobby.matchmaker.hint.filesChecked": "Maps and game files are checked when a match is prepared.",
@@ -735,6 +738,7 @@ export const en = {
   "lobby.mapPool.guides": "{count} guide(s)",
   "lobby.mapPool.guidesHint": "Open the training library, filtered to {map}",
   "lobby.mapPool.banned": "Vetoed",
+  "lobby.mapPool.partlyBanned": "Partly vetoed",
   "lobby.mapPool.reset": "Reset vetoes",
   "lobby.mapPool.closePreview": "Close map preview",
   "lobby.mapPool.empty": "No map pool is available for this queue.",
@@ -743,7 +747,10 @@ export const en = {
   "lobby.mapPool.vetoes": "vetoes",
   "lobby.mapPool.noVetoesAvailable": "No vetoes available in this bracket",
   "lobby.mapPool.vetoMapHint": "Click to veto this map",
-  "lobby.mapPool.removeVetoHint": "Click to remove veto",
+  "lobby.mapPool.assignVetoes": "Assign vetoes",
+  "lobby.mapPool.doneVetoing": "Done",
+  "lobby.mapPool.previewHint": "Click to see the map large",
+  "lobby.mapPool.removeVetoHint": "Click to lift the veto",
   "lobby.mapPool.vetoLimitReached": "Veto limit reached ({limit}/{limit})",
 
   // Party.
@@ -862,6 +869,8 @@ export const en = {
   "lobby.browser.host": "Host:",
   "lobby.browser.hostedBy": "Hosted by",
   "lobby.browser.mapPreview": "Map preview",
+  "lobby.browser.addFavoriteMap": "Add to favourites",
+  "lobby.browser.removeFavoriteMap": "Remove from favourites",
   "lobby.browser.gameDetails": "Game details",
   "lobby.browser.players": "Players",
   "lobby.browser.averageRating": "Average rating",
@@ -871,6 +880,7 @@ export const en = {
   "lobby.browser.ranked": "Ranked",
   "lobby.browser.unranked": "Unranked",
   "lobby.browser.goAdapter": "Go adapter",
+  "lobby.browser.moreTags": "+{count} more",
   "lobby.browser.goAdapterTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
   // The sim-mod tag says how many, and its tooltip says the thing the count
   // does not: whether those mods cost the game its rating. Plural because
@@ -1061,6 +1071,7 @@ export const en = {
   "lobby.host.error.titleAscii": "Game titles can only contain standard ASCII characters.",
   "lobby.host.error.passwordAscii": "Passwords can only contain standard ASCII characters.",
   "lobby.host.error.ratingOrder": "Minimum rating cannot be greater than maximum rating.",
+  "lobby.host.error.ratingBounds": "Rating limits must be between {min} and {max}.",
   "lobby.host.error.selectMap": "Select a map.",
   "lobby.browser.private": "Private",
 
@@ -1177,7 +1188,7 @@ export const en = {
   "lobby.mapPool.noVetoes": "No vetoes",
   "lobby.mapPool.applyVetoes": "Apply vetoes",
   "lobby.mapPool.noBracket": "No rating bracket",
-  "lobby.mapPool.vetoHint": "Click a map to add or remove vetoes.",
+  "lobby.mapPool.vetoHint": "Click a map to see it large. Press Assign vetoes, then click a map to veto it or lift its veto. Every change is sent at once.",
   "lobby.mapPool.selectHint": "Select a map for details, or enter veto mode to edit.",
   "lobby.browser.new": "New",
   "lobby.browser.any": "Any",
@@ -1189,6 +1200,8 @@ export const en = {
   "lobby.browser.sortAscending": "ascending",
   "lobby.browser.sortDescending": "descending",
   "lobby.browser.resizeDetails": "Resize the details panel",
+  "lobby.browser.hideDetails": "Hide the details panel",
+  "lobby.browser.showDetails": "Show the details panel",
   "lobby.matchmaker.resizeChat": "Resize the party chat",
   "lobby.browser.openProfile": "Open {name}'s profile",
   "lobby.browser.tileAria": "{title}, hosted by {host}. Double-click to join.",
@@ -1299,6 +1312,10 @@ export const en = {
   "settings.notifications.volume": "Sound volume",
   "settings.notifications.volumeHint": "Adjust alert volume without changing game audio.",
   "settings.notifications.volumeAria": "Notification sound volume",
+  "settings.notifications.repeatCooldown": "Repeat after (seconds)",
+  "settings.notifications.repeatCooldownHint": "Another notification of the same kind within this time stays in the list but does not pop up or play a sound. 0 announces every one.",
+  "settings.notifications.mapPool": "New map pools",
+  "settings.notifications.mapPoolHint": "Announced at login when a matchmaker queue has a new map pool. Untick a queue to stop hearing about it.",
   // The shipped tones, quietest first. Synthesised rather than sampled, so
   // "shipped" costs no files: see notificationSound.ts.
   "settings.notifications.sound.silent": "Silent",
@@ -2355,8 +2372,6 @@ export const en = {
   "replays.live.lineupUnavailable": "Player lineup unavailable",
   "replays.live.observers": "Observers",
   "replays.live.team": "Team {team}",
-  "replays.live.replayId": "Replay ID",
-  "replays.live.simMods": "SIM mods",
   "replays.live.none": "None",
   "replays.live.ratingEnforced": "enforced",
   "replays.live.column.map": "Map",
@@ -5229,6 +5244,8 @@ export const en = {
   "leaderboard.leagues.loadingSeasons": "Loading seasons…",
   "leaderboard.leagues.loadingRankings": "Loading season rankings…",
   "leaderboard.ratings.loadingRankings": "Loading rankings…",
+  "tournaments.form.imagesUploading": { one: "Uploading {count} picture…", other: "Uploading {count} pictures…" },
+  "tournaments.form.imagesFailed": { one: "{count} pasted picture could not be uploaded. Paste it again to retry.", other: "{count} pasted pictures could not be uploaded. Paste them again to retry." },
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

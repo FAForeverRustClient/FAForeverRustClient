@@ -139,17 +139,18 @@
   font-size: 12px;
 }
 
+/* Colour and type are the shared list header's (`list-head.css`). */
 .live-replay-table th {
   height: 36px;
   padding: 0 var(--space-2);
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
   text-align: left;
-  text-transform: uppercase;
-  background: var(--color-surface-raised);
-  border-bottom: 1px solid var(--color-border);
+}
+
+/* A header cell with nothing to press is still a stop for the keyboard, so
+   its column can be moved with Alt and an arrow key. */
+.live-replay-table th:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
 }
 
 .live-replay-table th button {
@@ -205,12 +206,13 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.live-replay-row td:not(.live-watch-column-cell):not(:last-child) {
+.live-replay-row td:not(.live-watch-column-cell) {
   overflow: hidden;
 }
 
-.live-replay-row .live-watch-column-cell,
-.live-replay-row td:last-child {
+/* Found by its class rather than as the last cell: the columns can be moved,
+   so Watch is not always last. */
+.live-replay-row .live-watch-column-cell {
   overflow: visible;
   position: relative;
 }
@@ -219,13 +221,8 @@
    rendered into `document.body` and so floats free of the table; highlighting
    the row is what still connects the two. */
 .live-replay-row:hover td,
-.live-replay-row.is-menu-open td,
-.live-replay-row.expanded td {
+.live-replay-row.is-menu-open td {
   background: var(--color-surface-raised);
-}
-
-.live-replay-row.expanded td:first-child {
-  box-shadow: inset 2px 0 var(--color-text);
 }
 
 /* The thumbnail and the "Generate map" button over its corner (issue 298).
@@ -481,183 +478,6 @@
   width: 100%;
 }
 
-.live-replay-detail-row td {
-  padding: 0;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
-}
-
-/* A panel, and a panel that stops growing. The columns this used to be were
-   sized by the table above it, which on a wide display put a caption and its
-   value most of a screen apart. Capped and stacked, the expanded row reads at
-   any window width as the same block of information. */
-.live-replay-details {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  max-width: 1100px;
-  padding: var(--space-3) var(--space-4) var(--space-4) 70px;
-}
-
-/* The map, at the top of the panel about a game being played on it. The row
-   above has the same picture at thumbnail size; this is the one place its
-   full technical name is spelled out. */
-.live-detail-map {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.live-detail-map-name {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.live-detail-map-name strong {
-  overflow: hidden;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.live-detail-map-name code {
-  overflow: hidden;
-  color: var(--color-muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.live-detail-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: var(--space-2);
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-/* The count beside a heading: a small filled pill, so the number reads as a
-   quantity rather than as part of the word in front of it. */
-.live-detail-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 17px;
-  padding: 0 5px;
-  background: var(--color-surface-raised);
-  border-radius: 999px;
-  color: var(--color-muted);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-}
-
-/* Facts on the left, matchup on the right. Below about a thousand pixels the
-   two stack, because a team panel and a column of tiles both stop being
-   readable before the table around them does. */
-.live-detail-body {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.6fr);
-  align-items: start;
-  gap: var(--space-4);
-}
-
-@media (max-width: 1000px) {
-  .live-detail-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* Every fact the game carries, as the tile the vault's detail panel uses,
-   which is where a reader will have met them first. Two columns inside the
-   left half rather than one long strip. */
-.live-detail-facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-}
-
-/* The roster is the vault panel's, so it needs the panel's own rules: the
-   stylesheet that carries them is loaded by the replays tab either way, and
-   only the width it is given here is this tab's business. */
-.live-detail-lineup {
-  min-width: 0;
-}
-
-/* One block per selector, not two.
-
-   These tiles were declared twice: a first pair of rules gave the box
-   `padding-left: 34px` to clear the glyph, and a second pair further down set
-   the `padding` shorthand, which is later and so reset that left padding to
-   the shorthand's own value. The glyph is positioned absolutely at the left
-   edge, so it landed on top of the caption it belongs beside. The left
-   padding is part of the shorthand now, where nothing can drop it, and 36px
-   is the vault panel's own figure. */
-.live-detail-facts > div {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  padding: var(--space-2) var(--space-3) var(--space-2) 36px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-/* Under the value it names, and quiet, the way the vault's tiles read. */
-.live-detail-facts dt {
-  display: block;
-  order: 2;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-/* Taken out of the caption's line and centred on the whole tile. */
-.live-detail-facts dt svg {
-  position: absolute;
-  top: 50%;
-  left: var(--space-3);
-  transform: translateY(-50%);
-  color: var(--color-subtle);
-}
-
-.live-detail-facts dd {
-  order: 1;
-  margin: 0;
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.live-sim-mod-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 .live-replay-footer {
   display: flex;
   align-items: center;
@@ -685,10 +505,6 @@
 .live-replay-filters {
     grid-template-columns: repeat(2, minmax(150px, 1fr));
   }
-
-  .live-replay-details {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 700px) {
@@ -709,10 +525,6 @@
 
   .live-replay-filters {
     grid-template-columns: 1fr;
-  }
-
-  .live-replay-details {
-    padding-left: var(--space-4);
   }
 }
 
@@ -837,4 +649,26 @@
    panel's lineup has above it. */
 .live-replay-detail-mods {
   margin: var(--space-4) 0 0;
+}
+
+/* In the hero the way in is the vault panel's Watch in size: its own column on
+   the right, centred against the preview, as tall and as large as the vault
+   panel's button so the two dialogs match. */
+.replay-detail-hero > .live-replay-detail-actions {
+  align-self: center;
+  min-width: 200px;
+}
+
+.replay-detail-hero > .live-replay-detail-actions .live-watch-button,
+.replay-detail-hero > .live-replay-detail-actions .live-delay-trigger {
+  min-height: 52px;
+  font-size: 15px;
+}
+
+/* A dialog too narrow for three columns: a row of its own under the title,
+   as the vault panel's Watch does. */
+@container (max-width: 760px) {
+  .replay-detail-hero > .live-replay-detail-actions {
+    grid-column: 1 / -1;
+  }
 }

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
-import type { GamePreferences } from "../../ipc/bindings";
+import type { GamePreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { steamStatusIsSupported } from "../../shared/platform";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const save = (preferences: GamePreferences) =>
-  ipc.send({ kind: "Settings", command: { type: "setGame", payload: { preferences } } });
+const save = (patch: GamePreferencesPatch) =>
+  ipc.send({ kind: "Settings", command: { type: "patchGame", payload: { patch } } });
 
 /**
  * Whether Steam shows Forged Alliance as being played while a game runs
@@ -33,6 +33,7 @@ export function SteamSettingsSection() {
   return (
     <>
       <SettingRow
+        className="setting-row-with-note"
         label={t("settings.steam.presence")}
         hint={t("settings.steam.presenceHint")}
         badge={<span className="setting-experimental-badge">{t("settings.game.experimentalBadge")}</span>}
@@ -41,12 +42,14 @@ export function SteamSettingsSection() {
           checked={preferences.steamPresence ?? false}
           onChange={(steamPresence) => {
             if (steamPresence) setConfirming(true);
-            else void save({ ...preferences, steamPresence });
+            else void save({ steamPresence });
           }}
           label={t("settings.steam.presence")}
         />
       </SettingRow>
-      <div className="setting-block">
+      {/* What the switch above means, so it hangs from that row without a rule
+          between them: with one it read as a setting of its own. */}
+      <div className="setting-block setting-row-note">
         <span className="setting-label">{t("settings.steam.trustTitle")}</span>
         <span className="muted">{t("settings.steam.trustCalls")}</span>
         <span className="muted">{t("settings.steam.trustClosed")}</span>
@@ -58,7 +61,7 @@ export function SteamSettingsSection() {
           confirmLabel={t("settings.steam.confirmButton")}
           onConfirm={() => {
             setConfirming(false);
-            void save({ ...preferences, steamPresence: true });
+            void save({ steamPresence: true });
           }}
           onCancel={() => setConfirming(false)}
         />

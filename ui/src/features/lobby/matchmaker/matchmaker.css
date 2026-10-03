@@ -329,29 +329,8 @@
   flex: 1;
 }
 
-.map-pool-card-guides {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 5px 8px;
-  color: var(--color-muted);
-  font: inherit;
-  font-size: 11px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.map-pool-card-guides:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-}
-
-.map-pool-card-guides:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
+.matchmaker-token-wallet .matchmaker-veto-mode {
+  margin-left: 8px;
 }
 
 .map-pool-grid {
@@ -439,6 +418,10 @@
 
 .map-pool-card.vetoed { border-color: var(--color-error); }
 .map-pool-card.vetoed .map-pool-card-foot { color: var(--color-subtle); }
+
+/* Some tokens on a map that can take more: the colour stays, as in the Java
+   client, where only a full ban turns the tile grey. */
+.map-pool-card.partly-vetoed { border-color: color-mix(in srgb, var(--color-error) 55%, var(--color-border)); }
 
 .map-pool-card.is-disabled {
   cursor: default;
@@ -1582,18 +1565,19 @@
   font-size: 12px;
 }
 
+/* Colour and type are the shared list header's (`list-head.css`). */
 .matchmaker-recent-table th {
   position: relative;
   height: 36px;
   padding: 0 var(--space-2);
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
   text-align: left;
-  text-transform: uppercase;
-  background: var(--color-surface-raised);
-  border-bottom: 1px solid var(--color-border);
+}
+
+/* Every header cell is a keyboard stop, so a column can be moved with Alt and
+   an arrow key. */
+.matchmaker-recent-table th:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
 }
 
 /* Two classes for the same reason as the live table's: `.resize-handle` sets
@@ -1618,7 +1602,9 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.matchmaker-recent-row td:last-child {
+/* Found by its class rather than as the last cell: the columns can be moved,
+   so the replay buttons are not always last. */
+.matchmaker-recent-row td.matchmaker-recent-replay {
   overflow: visible;
 }
 

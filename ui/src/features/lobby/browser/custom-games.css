@@ -15,6 +15,49 @@
 .custom-games-layout > .custom-games-divider {
   grid-column: 2;
   grid-row: 2;
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+
+.custom-games-divider > .resize-handle {
+  flex: 1;
+}
+
+/* The fold arrow (issues 370 and 377) is a tab on the details panel's left
+   edge: it fills the gap between the list and the panel, takes the panel's
+   own surface and border, and is open on the panel's side, overlapping the
+   panel's border by a pixel so the two read as one piece. It belongs to the
+   panel without lying over the list or over the panel's contents. Folded
+   away, it stays where the panel's edge was, against the right of the gap.
+   It points at where the panel goes: right to fold it away, left to bring
+   it back. */
+.custom-games-detail-toggle {
+  position: absolute;
+  top: 12px;
+  right: -1px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: calc(100% + 1px);
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-right: 0;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.custom-games-detail-toggle:hover,
+.custom-games-detail-toggle:focus-visible {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.custom-games-detail-toggle[aria-expanded="false"] svg {
+  transform: rotate(180deg);
 }
 
 /* Across the whole width, list and detail columns both. Confined to the list
@@ -96,19 +139,6 @@
 .game-browser-head > span {
   position: relative;
   min-width: 0;
-}
-
-/* The column being moved: a quiet lift under the pointer, and the grabbing
-   cursor across the whole header while it is held. */
-.game-browser-head > span.is-moving {
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm, 4px);
-  box-shadow: 0 0 0 6px var(--color-surface-raised);
-}
-
-.game-browser-head.is-moving,
-.game-browser-head.is-moving * {
-  cursor: grabbing;
 }
 
 /* While a divider or a column is held, the rows stop reacting to the pointer:
@@ -230,19 +260,13 @@
    same width: with the header outside the scroller, a scrollbar appearing
    narrowed the rows and left every right-hand column a scrollbar's width off
    its own label. Sticky, so it still stays put as the list scrolls. */
+/* Colour and type are the shared list header's (`list-head.css`). */
 .game-browser-head {
   position: sticky;
   top: 0;
   z-index: 2;
   min-height: 36px;
   padding: 0 16px;
-  color: var(--color-subtle);
-  background: var(--color-sidebar);
-  border-bottom: 1px solid var(--color-border);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .07em;
-  text-transform: uppercase;
 }
 
 /* Every label against the leading edge of its own column, where its divider
@@ -393,9 +417,25 @@
    that made the whole row taller, and a chip wider than the column spilled
    over the map name beside it. */
 .game-browser-tags-col {
-  flex-wrap: nowrap;
   justify-content: flex-start;
+  align-content: center;
+  /* One line, always (issue 379). Wrapping made a row taller for one long
+     lobby, and a cap on the lines cut a chip through the middle; what does
+     not fit is folded into a "+N more" chip by `FittingChips`, which lists
+     every tag on hover. The clip is only a backstop for the moment before
+     the measurement. */
+  flex-wrap: nowrap;
   overflow: hidden;
+}
+
+.game-browser-tags-col > [data-chip] {
+  display: flex;
+  flex: none;
+}
+
+.game-browser-tags-col > i.more {
+  flex: none;
+  cursor: default;
 }
 
 .game-browser-tags i {

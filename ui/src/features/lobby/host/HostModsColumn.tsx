@@ -69,12 +69,6 @@ export function HostModsColumn() {
   // open, the menu is the top of the overlay stack.
   useOverlayLayer(presetsOpen, () => setPresetsOpen(false));
 
-  /// `setBrowsing` replaces the whole preferences bag, so a writer must start
-  /// from the newest copy rather than the one captured at render time. Saving a
-  /// preset and closing the dialog in quick succession would otherwise write the
-  /// preset straight back out again.
-  const currentBrowsing = () => useAppStore.getState().state.settings.browsing;
-
   const activeModsCount = useMemo(
     () => installedMods.filter((mod) => mod.enabled).length,
     [installedMods],
@@ -119,8 +113,8 @@ export function HostModsColumn() {
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...currentBrowsing(), modPresets } },
+        type: "patchBrowsing",
+        payload: { patch: { modPresets } },
       },
     });
   };
