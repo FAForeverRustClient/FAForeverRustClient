@@ -13,7 +13,13 @@ import { applyEvent } from "./reducer";
 const INITIAL: AppState = {
   session: { backendVersion: "", status: "disconnected", offlineAuth: false },
   auth: { status: "loggedOut", player: null, error: null, mode: "account" },
-  nav: { activeTab: "news" },
+  nav: {
+    activeTab: "news",
+    mapsSection: "vault",
+    modsSection: "vault",
+    replaysSection: "online",
+    settingsSection: "general",
+  },
   notifications: { items: [] },
   chat: {
     status: "disconnected",
@@ -468,6 +474,7 @@ const INITIAL: AppState = {
     keptGeneratedMaps: [],
     matchmakerVetoes: [],
     mapPoolsSeen: [],
+    avatarHistory: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
     general: { startPage: "news", autoLogin: true, rememberTypedEntries: false },
     appearance: {
@@ -481,7 +488,7 @@ const INITIAL: AppState = {
       hoverCloseDelayMs: 160,
       replayFlags: false,
     },
-    social: { playerNotes: [], replayNotes: [], avatarHistory: [] },
+    social: { playerNotes: [], replayNotes: [] },
     notifications: {
       enabled: true,
       desktop: true,
@@ -584,7 +591,7 @@ const INITIAL: AppState = {
     },
     updates: { automatic: true, preRelease: false },
     browsing: {
-      customGamesView: "tiles",
+      customGamesView: "list",
       replaysView: "tiles",
       liveReplayView: "tiles",
       customGamesBrowser: {
@@ -597,6 +604,7 @@ const INITIAL: AppState = {
         applyFilters: false,
         rules: [],
         columnWidths: [],
+        columnOrder: [],
         detailWidth: 0,
         detailHidden: false,
       },
@@ -644,12 +652,15 @@ const INITIAL: AppState = {
       modVaultSort: "",
       vaultPageSize: 0,
       replayListColumns: [],
+      replayListOrder: [],
       liveReplayColumns: [],
       coopBoardColumns: [],
       matchmakerRecentColumns: [],
       modPresets: [],
       leaderboardRatingColumns: ["games", "updated"],
       replayVaultPlayer: "",
+      replayChatChannel: "",
+      replayChatTransfers: "show",
       legacyStorageMigrated: false,
     },
     events: { weekStart: "monday", reminders: [] },

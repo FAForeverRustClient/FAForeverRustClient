@@ -9,8 +9,11 @@ import { useEffect, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import type { Review, ReviewKind, ReviewSummary } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
+import { LoadStatusNotice } from "../../shared/components/LoadNotices";
+import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
 import { t, type MessageKey } from "../../i18n";
 import "./reviews.css";
@@ -52,44 +55,40 @@ export function ReviewsPanel() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.reviews);
   const player = useAppStore((store) => store.state.auth.player);
-  const open = state.target !== null;
-
   // A replay's reviews open on top of the replay panel, which is a `Modal`
-  // too, and every `Modal` closes on Escape from a bubble-phase listener on
-  // the document: one press shut both. Taken in the capture phase, as the
-  // replay panel's own enlarged preview does, it closes only this one.
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      void close();
-    };
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [open]);
-
+  // too. One Escape used to shut both, so this took the key in the capture
+  // phase; the overlay stack now gives it to the topmost layer only, which is
+  // this `Modal` while it is open (or a list open inside it, first).
   if (state.target === null) return null;
 
   const mine = ownReview(state.reviews, player?.name ?? "");
   const others = state.reviews.filter((review) => review.id !== mine?.id);
+  const target = state.target;
+  // Opening the same target again is the whole retry: the service reloads
+  // whatever it is asked to open, and the panel keeps its heading meanwhile.
+  const retry = () => ipc.send({ kind: "Reviews", command: { type: "open", payload: { target } } });
 
   return (
-    <Modal className="reviews-modal" onClose={() => void close()}>
+    <Modal
+      className="reviews-modal"
+      // Named after what is being reviewed, as its heading is: "Dialog" said
+      // nothing to somebody who could not see the heading.
+      ariaLabel={t("reviews.dialogAria", { kind: t(HEADING[target.kind]), name: target.name })}
+      onClose={() => void close()}
+    >
       <header className="reviews-head">
         <div>
           <span className="reviews-eyebrow">
-            {t(HEADING[state.target.kind])}
+            {t(HEADING[target.kind])}
           </span>
-          <h2>{state.target.name}</h2>
+          <h2>{target.name}</h2>
         </div>
       </header>
 
       {state.status.type === "loading" && <p className="muted">{t("reviews.loading")}</p>}
-      {state.status.type === "failed" && (
-        <p className="surface-error reviews-error">{state.status.payload.reason}</p>
-      )}
+      {/* A way out beside the failure, and the failure said plainly: the raw
+          reason stays on hover for a bug report. */}
+      <LoadStatusNotice status={state.status} failed={t("reviews.loadFailed")} onRetry={retry} />
 
       {state.status.type === "ready" && (
         <>
@@ -127,14 +126,13 @@ export function ReviewsPanel() {
 }
 
 function Distribution({ summary }: { summary: ReviewSummary }) {
+  const { t } = useTranslation();
   return (
     <section className="reviews-summary">
       <div className="reviews-average">
         <strong>{summary.total === 0 ? "N/A" : (summary.averageTenths / 10).toFixed(1)}</strong>
         <Stars score={summary.averageTenths / 10} />
-        <small className="muted">
-          {summary.total} review{summary.total === 1 ? "" : "s"}
-        </small>
+        <small className="muted">{t("reviews.count", { count: summary.total })}</small>
       </div>
       <div className="reviews-bars">
         {SCORES.map((score) => {
@@ -184,7 +182,7 @@ function OwnReview({ mine }: { mine: Review | null }) {
             key={value}
             className={value <= score ? "reviews-score is-on" : "reviews-score"}
             aria-pressed={value === score}
-            aria-label={`${value} star${value === 1 ? "" : "s"}`}
+            aria-label={t("reviews.starsAria", { count: value })}
             onClick={() => setScore(value)}
           >
             ★
@@ -212,8 +210,16 @@ function OwnReview({ mine }: { mine: Review | null }) {
         )}
       </div>
 
+      {/* Retry sends what the editor holds now, which is what the reader
+          expects a second press of the button above to send too. */}
       {submitStatus.type === "failed" && (
-        <p className="reviews-submit is-error">{submitStatus.payload.reason}</p>
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: () => void submit(score, text) }}
+          detail={submitStatus.payload.reason}
+        >
+          {t("reviews.saveFailed")}: {plainError(submitStatus.payload.reason)}
+        </StatusNotice>
       )}
       {submitStatus.type === "saved" && <p className="reviews-submit is-ok">{t("reviews.saved")}</p>}
     </section>

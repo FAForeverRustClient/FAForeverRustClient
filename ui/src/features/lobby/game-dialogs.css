@@ -1786,12 +1786,16 @@
   border-radius: 999px;
 }
 
+/* Full width and scaled to the fraction done, so progress animates a
+   transform rather than relaying the dialog out on every step. The sweep
+   below drives `transform` through its keyframes and is not given a scale. */
 .join-preparing-bar > span {
   display: block;
   width: 100%;
   height: 100%;
   background: var(--color-accent);
-  transition: width 200ms ease;
+  transform-origin: left center;
+  transition: transform 200ms ease;
 }
 
 /* No percentage to show: a sweep says "running" without implying a position. */

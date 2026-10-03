@@ -559,6 +559,85 @@ pub struct AvailableAvatar {
     pub tooltip: String,
 }
 
+/// How many avatar choices are remembered for the fallback below. Enough to
+/// walk back past a run of temporary avatars, few enough that the list never
+/// matters to the settings file.
+pub const AVATAR_HISTORY_LIMIT: usize = 8;
+
+/// What to do about the player's own avatar, once both the server's list of
+/// avatars they may wear and their own `player_info` are known.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AvatarReconciliation {
+    /// Nothing to change.
+    Keep,
+    /// Record this as the latest choice without sending anything: it was made
+    /// in another client, or (as an empty string) the avatar was cleared there.
+    Remember(String),
+    /// The avatar chosen last is no longer allowed; select this earlier one.
+    Restore(String),
+}
+
+/// Decide whether the player's avatar needs falling back.
+///
+/// The case it exists for is a rotational tournament avatar: it is assigned
+/// for a few months, and when it lapses or goes to the next winner the server
+/// simply stops sending it, leaving the player with no avatar at all. The
+/// player asked for "the last selected one" instead, so `history` is the
+/// avatars this client saw chosen, newest first, and an empty string in it is
+/// a deliberate choice of none.
+///
+/// The fallback only fires when the newest choice has left `available`. An
+/// empty avatar while that choice is still allowed means the player cleared
+/// it, here or in another client, and is remembered rather than overruled.
+pub fn reconcile_avatar(
+    history: &[String],
+    current: &str,
+    available: &[AvailableAvatar],
+) -> AvatarReconciliation {
+    let allowed = |url: &str| available.iter().any(|avatar| avatar.url == url);
+    let newest = history.first().map(String::as_str);
+
+    if !current.is_empty() && allowed(current) {
+        // Wearing something the server still allows. If it is not what this
+        // client last saw chosen, it was chosen elsewhere: that is now the
+        // choice to fall back from, and the old head becomes the fallback.
+        return if newest == Some(current) {
+            AvatarReconciliation::Keep
+        } else {
+            AvatarReconciliation::Remember(current.to_string())
+        };
+    }
+
+    match newest {
+        None | Some("") => AvatarReconciliation::Keep,
+        Some(url) if allowed(url) => {
+            if current.is_empty() {
+                AvatarReconciliation::Remember(String::new())
+            } else {
+                AvatarReconciliation::Keep
+            }
+        }
+        Some(_) => history
+            .iter()
+            .skip(1)
+            // An older "none" is where the walk stops: before this avatar the
+            // player wore nothing, and wearing nothing is what they have now.
+            .take_while(|url| !url.is_empty())
+            .find(|url| url.as_str() != current && allowed(url))
+            .map_or(AvatarReconciliation::Keep, |url| {
+                AvatarReconciliation::Restore(url.clone())
+            }),
+    }
+}
+
+/// `history` with `url` moved to the front, deduplicated and capped.
+pub fn remember_avatar(history: &[String], url: &str) -> Vec<String> {
+    std::iter::once(url.to_string())
+        .chain(history.iter().filter(|old| old.as_str() != url).cloned())
+        .take(AVATAR_HISTORY_LIMIT)
+        .collect()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum AvatarListStatus {
@@ -1253,6 +1332,92 @@ mod tests {
         reduce(&mut state, &LobbyEvent::Disconnected);
         assert_eq!(state.avatar_list_status, AvatarListStatus::Idle);
         assert!(state.available_avatars.is_empty());
+    }
+
+    fn allowed(urls: &[&str]) -> Vec<AvailableAvatar> {
+        urls.iter()
+            .map(|url| AvailableAvatar {
+                url: (*url).into(),
+                tooltip: String::new(),
+            })
+            .collect()
+    }
+
+    fn history(urls: &[&str]) -> Vec<String> {
+        urls.iter().map(|url| (*url).to_string()).collect()
+    }
+
+    #[test]
+    fn a_lapsed_tournament_avatar_falls_back_to_the_one_chosen_before_it() {
+        // The report: won a tournament, wore its avatar, and when it rotates
+        // to the next winner the server sends nothing at all.
+        let choices = history(&["cup", "veteran", "clan"]);
+        assert_eq!(
+            reconcile_avatar(&choices, "", &allowed(&["veteran", "clan"])),
+            AvatarReconciliation::Restore("veteran".into())
+        );
+        // A server that still names the lapsed one is the same case.
+        assert_eq!(
+            reconcile_avatar(&choices, "cup", &allowed(&["veteran", "clan"])),
+            AvatarReconciliation::Restore("veteran".into())
+        );
+        // Further back when the one before has lapsed too.
+        assert_eq!(
+            reconcile_avatar(&choices, "", &allowed(&["clan"])),
+            AvatarReconciliation::Restore("clan".into())
+        );
+    }
+
+    #[test]
+    fn no_avatar_is_restored_over_a_deliberate_none() {
+        // Cleared here: the newest choice is "none".
+        assert_eq!(
+            reconcile_avatar(&history(&["", "cup"]), "", &allowed(&["cup"])),
+            AvatarReconciliation::Keep
+        );
+        // Wore nothing before the tournament avatar: nothing is the fallback.
+        assert_eq!(
+            reconcile_avatar(&history(&["cup", "", "clan"]), "", &allowed(&["clan"])),
+            AvatarReconciliation::Keep
+        );
+        // Cleared in another client while the avatar is still allowed.
+        assert_eq!(
+            reconcile_avatar(&history(&["cup", "clan"]), "", &allowed(&["cup", "clan"])),
+            AvatarReconciliation::Remember(String::new())
+        );
+    }
+
+    #[test]
+    fn a_choice_made_in_another_client_becomes_the_newest() {
+        assert_eq!(
+            reconcile_avatar(&history(&["clan"]), "cup", &allowed(&["cup", "clan"])),
+            AvatarReconciliation::Remember("cup".into())
+        );
+        assert_eq!(
+            reconcile_avatar(&[], "cup", &allowed(&["cup"])),
+            AvatarReconciliation::Remember("cup".into())
+        );
+        assert_eq!(
+            reconcile_avatar(&history(&["cup"]), "cup", &allowed(&["cup"])),
+            AvatarReconciliation::Keep
+        );
+        // Nothing remembered and nothing worn: nothing to do.
+        assert_eq!(
+            reconcile_avatar(&[], "", &allowed(&["cup"])),
+            AvatarReconciliation::Keep
+        );
+    }
+
+    #[test]
+    fn remembering_moves_a_choice_to_the_front_and_caps_the_list() {
+        assert_eq!(
+            remember_avatar(&history(&["a", "b", "c"]), "c"),
+            history(&["c", "a", "b"])
+        );
+        let long: Vec<String> = (0..AVATAR_HISTORY_LIMIT).map(|n| n.to_string()).collect();
+        let next = remember_avatar(&long, "new");
+        assert_eq!(next.len(), AVATAR_HISTORY_LIMIT);
+        assert_eq!(next[0], "new");
     }
 
     fn queue(name: &str, team_size: i32, num_players: i32) -> MatchmakerQueue {

@@ -490,6 +490,12 @@ export type BrowsingPreferences = {
 	 */
 	replayListColumns: number[],
 	/**
+	 *  The replay list's columns in the order they are drawn, as indexes into
+	 *  the designed order. Empty is the designed order; anything that is not
+	 *  exactly one of each column is dropped to empty.
+	 */
+	replayListOrder: number[],
+	/**
 	 *  The same for the live-replay table, which is a different table with
 	 *  different columns and therefore a different set of widths. Sharing one
 	 *  list between them would have a drag in one tab move the other.
@@ -513,6 +519,17 @@ export type BrowsingPreferences = {
 	 *  to the currently authenticated player name.
 	 */
 	replayVaultPlayer: string,
+	/**
+	 *  The channel a replay's chat log is filtered to: `all`, `allies`, or
+	 *  empty for every channel.
+	 *
+	 *  Remembered across replays because it is a way of reading chat, not a
+	 *  fact about one game. A whisper is not kept: its channel is an army
+	 *  number, which names a different player in every game.
+	 */
+	replayChatChannel: string,
+	/**  What a replay's chat log shows of the sharing lines. */
+	replayChatTransfers: ReplayChatTransfers,
 	/**
 	 *  Set after the webview has offered its pre-0.2 browser-storage values to
 	 *  the backend. Kept in the settings file so the compatibility read really
@@ -759,7 +776,10 @@ export type ChatChannel = {
 	 *  empty for a private conversation.
 	 */
 	users: ChatUser[],
-	/**  Messages received while this channel was not the active one. */
+	/**
+	 *  Messages received since this channel was last read: selected, or
+	 *  looked at while the Chat tab was on screen and the window had focus.
+	 */
 	unread: number,
 	/**
 	 *  Of those, how many named us (or arrived in a private conversation),
@@ -1342,6 +1362,12 @@ export type ClanMember = {
 	login: string,
 	joinedAt: string,
 	accountCreatedAt: string,
+	/**
+	 *  The avatar the member is wearing, empty when they wear none. Read from
+	 *  the API with the roster, so it is there for members who are offline
+	 *  too, which the chat directory's avatars are not.
+	 */
+	avatarUrl?: string,
 };
 
 export type ClanState = {
@@ -1745,6 +1771,16 @@ export type CustomGameBrowserPreferences = {
 	 *  collapsing because a neighbour was resized.
 	 */
 	columnWidths: number[],
+	/**
+	 *  The list view's columns in the order they are drawn, as indexes into
+	 *  the designed order (game, tags, map, players, rating, age).
+	 *
+	 *  Empty means the designed order, which is the default and what a file
+	 *  written before columns could be moved reads back as. Anything that is
+	 *  not exactly one of each column is dropped to empty rather than
+	 *  repaired: a half-valid order has no obvious meaning.
+	 */
+	columnOrder: number[],
 	/**
 	 *  Pixel width of the detail panel beside the game list, or `0` for the
 	 *  designed default.
@@ -4418,6 +4454,17 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } |
 	reason: string,
 } };
 
+/**
+ *  The section open inside Maps.
+ *
+ *  Every sectioned destination remembers its section here rather than in the
+ *  view, for the reason `PlayMode` does: the views unmount when their tab loses
+ *  focus, so a section held in component state went back to the first one on
+ *  every visit, and someone working through their installed maps was dropped
+ *  into the vault each time they glanced at chat.
+ */
+export type MapsSection = "vault" | "installed";
+
 export type MapsState = {
 	/**
 	 *  The whole catalogue, kept as a lookup index: nine features resolve a
@@ -4910,6 +4957,13 @@ export type ModsCommand =
 /**  Fetch the whole catalogue once. */
 { type: "loadVault" } |
 /**
+ *  Fetch the catalogue again even though it is loaded, for "Check for
+ *  updates". `LoadVault` refuses a second crawl, so the check used to
+ *  compare the installed mods against the catalogue from the start of the
+ *  session and report "up to date" without having looked.
+ */
+{ type: "reloadVault" } |
+/**
  *  Fetch one page of a vault search. Submit-driven, as in both reference
  *  clients.
  */
@@ -5031,6 +5085,9 @@ export type ModsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } | 
 	sizes: ModDownloadSize[],
 } };
 
+/**  The section open inside Mods. See [`MapsSection`]. */
+export type ModsSection = "vault" | "installed";
+
 export type ModsState = {
 	/**
 	 *  The whole catalogue. Kept for the same reason as the map one, and
@@ -5063,16 +5120,45 @@ export type ModsState = {
 	downloadSizes: { [key in string]: number },
 };
 
+/**
+ *  One command per destination rather than one carrying a destination and a
+ *  section, so a section can never be sent to a destination that does not
+ *  have it.
+ */
 export type NavCommand = { type: "select"; payload: {
 	tab: Tab,
+} } | { type: "selectMapsSection"; payload: {
+	section: MapsSection,
+} } | { type: "selectModsSection"; payload: {
+	section: ModsSection,
+} } | { type: "selectReplaysSection"; payload: {
+	section: ReplaysSection,
+} } | { type: "selectSettingsSection"; payload: {
+	section: SettingsSection,
 } };
 
 export type NavEvent = { type: "tabSelected"; payload: {
 	tab: Tab,
+} } | { type: "mapsSectionSelected"; payload: {
+	section: MapsSection,
+} } | { type: "modsSectionSelected"; payload: {
+	section: ModsSection,
+} } | { type: "replaysSectionSelected"; payload: {
+	section: ReplaysSection,
+} } | { type: "settingsSectionSelected"; payload: {
+	section: SettingsSection,
 } };
 
 export type NavState = {
 	activeTab: Tab,
+	/**
+	 *  Kept for the session only: a fresh start opens each destination on its
+	 *  first section, the same as `PlayMode`.
+	 */
+	mapsSection: MapsSection,
+	modsSection: ModsSection,
+	replaysSection: ReplaysSection,
+	settingsSection: SettingsSection,
 };
 
 /**  One announcement from the organiser. */
@@ -5186,7 +5272,19 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  *  (#406). On for every queue unless one is switched off: see
  *  `NotificationPreferences::map_pool_muted_queues`.
  */
-"mapPoolReleased" | "error";
+"mapPoolReleased" |
+/**
+ *  A map or mod publish finished after its dialog was hidden. Closing the
+ *  dialog does not stop a publish, so this is the only place its outcome
+ *  can still be read.
+ */
+"uploadFinished" |
+/**
+ *  The avatar the player chose last stopped being theirs (a rotational
+ *  tournament avatar went to the next winner) and the client put the one
+ *  before it back. Said once, so the change is not a mystery.
+ */
+"avatarRestored" | "error";
 
 export type NotificationPreferences = {
 	enabled: boolean,
@@ -6645,6 +6743,13 @@ export type ReplayChatMessage = {
 	to?: string,
 };
 
+/**
+ *  What a replay's chat log shows of the lines the game writes when somebody
+ *  shares: "Sent 1.2k energy to …", "sent 1 unit to …" and the request
+ *  button's "Can you give me some energy, …?".
+ */
+export type ReplayChatTransfers = "show" | "hide" | "only";
+
 export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | { type: "trackLive"; payload: {
 	target: LiveReplayTarget,
 	action: LiveReplayTrackingAction,
@@ -7346,6 +7451,14 @@ export type ReplayUnitStat = {
 	kills: number,
 };
 
+/**
+ *  The replay source open inside Replays. See [`MapsSection`].
+ *
+ *  Online is the default because every "Replays" button elsewhere in the client
+ *  asks for a vault search, and the vault is what most visits are for.
+ */
+export type ReplaysSection = "live" | "online" | "local";
+
 export type ReportHistoryStatus = { type: "idle" } | { type: "loading" } | { type: "ready" } | { type: "failed"; payload: {
 	reason: string,
 } };
@@ -7856,7 +7969,23 @@ export type SettingsEvent = { type: "loaded"; payload: {
  */
 { type: "mapPoolsSeen"; payload: {
 	seen: MapPoolsSeen[],
+} } |
+/**
+ *  The remembered avatar choices, replaced whole; see
+ *  [`SettingsState::avatar_history`].
+ */
+{ type: "avatarHistoryChanged"; payload: {
+	history: string[],
 } };
+
+/**
+ *  The page open inside Settings. See [`MapsSection`].
+ *
+ *  The names are the frontend's section keys, in sidebar order, so the sidebar
+ *  can use this type as its key and a new section cannot be added on one side
+ *  only.
+ */
+export type SettingsSection = "general" | "appearance" | "chat" | "notifications" | "account" | "game" | "paths" | "cache" | "connectivity" | "diagnostics";
 
 /**
  *  Persisted preferences. `#[serde(default)]` is essential for forward
@@ -7920,6 +8049,13 @@ export type SettingsState = {
 	 *  pool changed: the client compares what it is served with this.
 	 */
 	mapPoolsSeen?: MapPoolsSeen[],
+	/**
+	 *  The avatars this account was seen choosing, newest first; an empty
+	 *  string is a choice of none. When the newest stops being allowed (a
+	 *  tournament avatar rotating to the next winner), the client selects the
+	 *  most recent one that still is. See `lobby::reconcile_avatar`.
+	 */
+	avatarHistory?: string[],
 	cacheInfo?: GameCacheInfo,
 };
 
@@ -8125,23 +8261,10 @@ export type SocialEvent =
 /**  The lobby connection went away; relations are no longer authoritative. */
 { type: "cleared" };
 
-/**
- *  The player's own annotations: notes on players and on replays, and the
- *  avatars they have worn.
- */
+/**  The player's own annotations: notes on players and on replays. */
 export type SocialPreferences = {
 	playerNotes: PlayerNote[],
 	replayNotes: ReplayNote[],
-	/**
-	 *  The avatars this account wore, newest first, by URL (#389).
-	 *
-	 *  A tournament avatar is lent for a season and taken back by the server,
-	 *  which leaves the player with none. The next one in this list that the
-	 *  server still offers is put back on at login, which is the "last
-	 *  selected one" the request asked for. Choosing no avatar empties it, so
-	 *  a player who wants none keeps none.
-	 */
-	avatarHistory: string[],
 };
 
 export type SocialState = {
@@ -10697,7 +10820,21 @@ export type TrainingCommand =
  */
 { type: "composeReview"; payload: {
 	draft: ReviewRequestDraft,
-} } | { type: "closeReview" } | { type: "openContribution" } | { type: "composeContribution"; payload: {
+} } | { type: "closeReview" } | { type: "openContribution" } |
+/**
+ *  Keep the half-written contribution, without composing anything.
+ *
+ *  The form still owns the draft while it is typed into, for the reason
+ *  `ComposeReview` gives, but a guide takes long enough to write that the
+ *  author leaves the form in the middle of it: to look something up in the
+ *  library, or in another tab. Leaving unmounts the form, so a draft only
+ *  the form held was lost and the older one in the state came back. The
+ *  form sends this after a pause in typing and when it unmounts, which
+ *  costs one round trip per pause rather than one per key.
+ */
+{ type: "changeContribution"; payload: {
+	draft: ContributionDraft,
+} } | { type: "composeContribution"; payload: {
 	draft: ContributionDraft,
 } } | { type: "closeContribution" };
 

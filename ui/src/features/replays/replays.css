@@ -55,9 +55,40 @@
 /* As wide as the space it has: every column stays on screen and is drawn
    narrower in proportion when the space is short (issue 341). */
 .replay-list-wrap {
-  --replay-list-columns: 56px minmax(190px, 1.35fr) 140px 110px 70px 82px 126px 150px;
+  --replay-list-columns: 48px minmax(190px, 1.35fr) 110px 90px 70px 82px 126px 190px;
   min-width: 0;
   overflow-x: hidden;
+}
+
+/* Where each column is drawn, from the order the list sets: the markup keeps
+   the designed order and `order` places each cell, so a moved column takes
+   its contents with it in every row. */
+.replay-list-header > :nth-child(1), .replay-list-row > :nth-child(1) { order: var(--replay-list-order-0, 0); }
+.replay-list-header > :nth-child(2), .replay-list-row > :nth-child(2) { order: var(--replay-list-order-1, 1); }
+.replay-list-header > :nth-child(3), .replay-list-row > :nth-child(3) { order: var(--replay-list-order-2, 2); }
+.replay-list-header > :nth-child(4), .replay-list-row > :nth-child(4) { order: var(--replay-list-order-3, 3); }
+.replay-list-header > :nth-child(5), .replay-list-row > :nth-child(5) { order: var(--replay-list-order-4, 4); }
+.replay-list-header > :nth-child(6), .replay-list-row > :nth-child(6) { order: var(--replay-list-order-5, 5); }
+.replay-list-header > :nth-child(7), .replay-list-row > :nth-child(7) { order: var(--replay-list-order-6, 6); }
+.replay-list-header > :nth-child(8), .replay-list-row > :nth-child(8) { order: var(--replay-list-order-7, 7); }
+
+/* The column being moved, lifted under the pointer, and the grabbing cursor
+   across the header while it is held. */
+.replay-list-header > span.is-moving {
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 6px var(--color-surface-hover);
+}
+
+.replay-list-header.is-moving,
+.replay-list-header.is-moving * {
+  cursor: grabbing;
+}
+
+.replay-list-header > span:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* The header's cells hold the drag handles, which are positioned against
@@ -84,6 +115,27 @@
   left: -14px;
   bottom: -8px;
   width: 12px;
+}
+
+/* The divider: a short hairline tick at rest, taller and brighter when
+   reached for or held. No filled grab area, which painted as a grey bar. */
+.replay-list-header > span > .replay-list-col-handle,
+.replay-list-header > span > .replay-list-col-handle:hover,
+.replay-list-header > span > .replay-list-col-handle:focus-visible {
+  background: transparent;
+  transition: none;
+}
+
+.replay-list-header > span > .replay-list-col-handle::after {
+  inset-block: 30%;
+  background: var(--color-border);
+}
+
+.replay-list-header > span > .replay-list-col-handle:hover::after,
+.replay-list-header > span > .replay-list-col-handle:focus-visible::after,
+.replay-list-header > span > .replay-list-col-handle:active::after {
+  inset-block: 6px;
+  background: var(--color-muted);
 }
 
 .replay-list-header,
@@ -132,18 +184,20 @@
   min-width: 0;
 }
 
+/* The day a group of rows was played. On the list's own surface rather than
+   the header's raised one: two raised bands, one under the other, read as two
+   headers, and the day is a divider within the list, not a second heading. */
 .replay-list-group-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  min-height: 32px;
-  padding: 0 var(--space-3);
-  color: var(--color-muted);
+  min-height: 30px;
+  padding: 10px var(--space-3) 6px;
+  color: var(--color-text);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  background: var(--color-surface-raised);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -157,8 +211,8 @@
 
 .replay-list-row {
   position: relative;
-  min-height: 62px;
-  padding: 8px var(--space-3);
+  min-height: 52px;
+  padding: 6px var(--space-3);
   color: var(--color-text);
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
@@ -214,9 +268,8 @@
 /* The one title in the row, and the thing the eye lands on first, so it is
    not the same size as the mod name and the duration beside it. */
 .replay-list-game-cell > strong {
-  font-size: 16px;
-  font-weight: 650;
-  letter-spacing: -.01em;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .replay-list-cell > small,
@@ -233,8 +286,8 @@
 
 .replay-list-thumb {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   place-items: center;
   color: var(--color-subtle);
   object-fit: cover;
@@ -261,47 +314,43 @@
   font-size: 13px;
 }
 
+/* Plain text like its neighbours: a filled chip on every row made "faf" the
+   loudest thing in a column nobody scans. */
 .replay-list-mod-cell > strong {
-  width: fit-content;
-  max-width: 100%;
-  padding: 2px 6px;
-  overflow: hidden;
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: var(--color-surface-hover);
-  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  font-weight: 500;
 }
 
-/* The status and the replay id on top, the things you can do to it
-   underneath and to the right. Side by side, the buttons and the id competed
-   for one column's width and the id ellipsised first; stacked, the actions sit
-   where the Java client puts its play button and the id stays readable. */
+/* The id, and any status worth saying, then the actions, on one line. Stacked
+   they made every row three lines tall for a column of the same badge; the
+   column is wide enough now for both, and the id ellipsises with its full
+   text in the tooltip if it is narrowed. */
 .replay-list-replay-cell {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: 4px;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .replay-list-replay-summary {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
+.replay-list-replay-summary > small {
+  margin-top: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Only a replay that cannot be watched gets a status, in its tone's colour
+   and without a chip behind it. */
 .replay-list-status {
   display: block;
-  width: fit-content;
-  max-width: 100%;
-  padding: 2px 6px;
   overflow: hidden;
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: var(--color-surface-hover);
-  border-radius: var(--radius-sm);
 }
 
 .replay-list-status-ok { color: var(--color-ok); }
@@ -325,11 +374,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
+  min-height: 28px;
   color: var(--color-text);
   font: inherit;
   background: transparent;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
@@ -340,7 +389,7 @@
 }
 
 .replay-list-icon-action {
-  width: 30px;
+  width: 28px;
   padding: 0;
   color: var(--color-subtle);
 }

@@ -241,11 +241,10 @@
   font-size: 11px;
 }
 
-.party-seat-leader {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-warn);
-  flex-shrink: 0;
+/* The leader's seat: a stronger outline in the neutral accent, so it stands
+   apart from the other seats without a status colour. */
+.party-seat.is-leader {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
 }
 
 /* The member's league mark, on the left of the seat like in the identity card.
@@ -1262,10 +1261,10 @@
 
 /* ── how the matchmaker works ───────────────────────────────────────── */
 
-/* A dialog, read once by somebody who has just arrived. Wide enough for a
-   paragraph to be a paragraph, capped so it never becomes a wall. */
+/* A dialog, read once by somebody who has just arrived. Narrow enough that
+   three short columns read as one row of a diagram, not as scattered text. */
 .matchmaker-explainer-modal {
-  width: min(1320px, 94vw);
+  width: min(760px, 94vw);
   max-height: 86vh;
   display: flex;
   flex-direction: column;
@@ -1289,65 +1288,155 @@
 }
 
 .matchmaker-explainer-body {
+  display: grid;
+  gap: 20px;
   overflow-y: auto;
-  padding: 0 var(--space-4);
-}
-
-.matchmaker-explainer-section {
-  padding: var(--space-4) 0 0;
+  padding: var(--space-4);
 }
 
 .matchmaker-explainer-section h3 {
   margin: 0 0 var(--space-2);
   color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.matchmaker-explainer-section p,
-.matchmaker-explainer-section li {
-  margin: 0 0 var(--space-2);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.matchmaker-explainer-section ul {
-  margin: 0;
-  padding-left: var(--space-4);
-}
-
-/* One queue per row: its name, then the facts read off the server's own data
-   rather than typed into the prose above. */
-/* At this width the queue rows are a column of mostly empty space, so they
-   sit side by side instead: four queues, four cards. */
-.matchmaker-explainer-queues {
+/* Steps and blockers: three equal tiles in a row, a title over one line. */
+.matchmaker-explainer-steps,
+.matchmaker-explainer-blockers {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
-  margin: 0 0 var(--space-3);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.matchmaker-explainer-queues > li {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
+.matchmaker-explainer-steps > li,
+.matchmaker-explainer-blockers > li {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: var(--space-3);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-}
-
-.matchmaker-explainer-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
   color: var(--color-muted);
   font-size: 12px;
+  line-height: 1.45;
+}
+
+.matchmaker-explainer-steps strong,
+.matchmaker-explainer-blockers strong {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* The step's number in a small ring, and the blocker's icon, both above the
+   title and in the muted colour, so the tiles lead with their words. */
+.matchmaker-explainer-step-number {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-bottom: 4px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchmaker-explainer-blockers svg {
+  margin-bottom: 4px;
+  color: var(--color-text);
+}
+
+/* A line under the steps or the blockers, and the empty-queue message. The
+   icon sits on the first line of a note that wraps. */
+.matchmaker-explainer-note > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.matchmaker-explainer-note {
+  display: flex;
+  align-items: flex-start;
+  line-height: 1.45;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* The queues right now: one row per queue, numbers in their own columns. */
+.matchmaker-explainer-queues {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchmaker-explainer-queues th,
+.matchmaker-explainer-queues td {
+  padding: 7px var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.matchmaker-explainer-queues thead th {
+  padding-top: 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.matchmaker-explainer-queues tbody th {
+  font-weight: 600;
+}
+
+.matchmaker-explainer-queues td {
+  color: var(--color-muted);
+}
+
+.matchmaker-explainer-queues tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+/* Enough players waiting for a game: green, as on the queue cards. */
+.matchmaker-explainer-queues td.is-enough {
+  color: var(--color-ok);
+  font-weight: 600;
+}
+
+/* The fixed settings, as chips: each is a fact, not a sentence. */
+.matchmaker-explainer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.matchmaker-explainer-chips > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+.matchmaker-explainer-chips svg {
+  color: var(--color-muted);
 }
 
 .matchmaker-explainer-foot {
@@ -1356,6 +1445,14 @@
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4) var(--space-4);
   border-top: 1px solid var(--color-border);
+}
+
+/* Narrow windows: the tiles stack rather than squeeze to a word per line. */
+@media (max-width: 640px) {
+  .matchmaker-explainer-steps,
+  .matchmaker-explainer-blockers {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* The queue's rating breakdown, on hover anywhere on the card.
@@ -1376,9 +1473,9 @@
   transform: translateX(-50%);
   z-index: 20;
   display: grid;
-  gap: 2px;
-  min-width: 160px;
-  padding: var(--space-2) var(--space-3);
+  gap: 1px;
+  min-width: 190px;
+  padding: 10px 10px 8px;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -1398,59 +1495,71 @@
   opacity: 1;
 }
 
+/* The title over a hairline, so the list reads as a small table with a
+   heading rather than as one more line of it. */
+.matchmaker-queue-breakdown-head {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 4px;
+  padding: 0 2px 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
 .matchmaker-queue-breakdown b {
-  margin-bottom: 2px;
   color: var(--color-muted);
   font-size: 11px;
-  font-weight: 550;
+  font-weight: 600;
   letter-spacing: .03em;
   text-transform: uppercase;
 }
 
-.matchmaker-queue-breakdown > span {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
+/* Your matchmaking rating under the title: the number the arrow follows. */
+.matchmaker-queue-breakdown-head span {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A band: the marker column, the range, the count at the right. */
+.matchmaker-queue-band {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 0 2px;
+}
+
+.matchmaker-queue-band-marker {
+  display: grid;
+  place-items: center;
+  color: var(--color-text);
 }
 
 .matchmaker-queue-breakdown em {
-  color: var(--color-text);
+  color: var(--color-muted);
   font-style: normal;
   font-variant-numeric: tabular-nums;
 }
 
 .matchmaker-queue-breakdown i {
-  color: var(--color-muted);
+  color: var(--color-subtle);
   font-style: normal;
   font-variant-numeric: tabular-nums;
 }
 
-/* A band holding somebody who would actually take this player, and the band
-   this player's own rating sits in. Both exist because the list was being read
-   as an answer to "is anybody near me": a band of one, an apparently nearby
-   rating, and "0 in your range" on the card underneath it. The bands are the
-   matchmaker's own mean and the card's rating is the conservative number, so
-   the two never did line up by eye. */
-.matchmaker-queue-breakdown > span.is-in-range i {
+/* Green is the one signal that waiting here can produce a game: a band
+   holding somebody who would take this search. The count says how many. */
+.matchmaker-queue-band.is-in-range i {
   color: var(--color-ok);
   font-weight: 600;
 }
 
-.matchmaker-queue-breakdown > span.is-mine em {
-  color: var(--color-accent);
+/* Your own band: the arrow points at it and its range is in full text
+   colour. No colour of its own, so it never reads as the green above. */
+.matchmaker-queue-band.is-mine em {
+  color: var(--color-text);
   font-weight: 600;
-}
-
-.matchmaker-queue-breakdown small {
-  margin-top: 2px;
-  color: var(--color-subtle);
-  font-size: 11px;
-}
-
-/* How far "in range" reaches (issue 303): one short line under the bands. */
-.matchmaker-queue-breakdown .matchmaker-queue-breakdown-note {
-  margin-top: 6px;
 }
 
 /* The latest matchmaker games (issue 301), as a table built like the

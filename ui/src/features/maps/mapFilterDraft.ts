@@ -7,8 +7,7 @@
 // sort, install filter and upload dates; the library's preset and sort) stay
 // in the view, because they are not the same question.
 
-import { useCallback } from "react";
-import { useSessionState } from "../../shared/hooks/useSessionState";
+import { useCallback, useState } from "react";
 
 export type RankedFilter = "all" | "ranked" | "unranked";
 
@@ -38,12 +37,12 @@ export const EMPTY_MAP_FILTER_DRAFT: MapFilterDraft = {
   height: 0,
 };
 
-/** `key` names the session memory the draft lives in; see `useSessionState`. */
-export function useMapFilterDraft(key: string) {
-  const [draft, setDraft] = useSessionState<MapFilterDraft>(key, EMPTY_MAP_FILTER_DRAFT);
+/** `initial` is read once, as the view mounts: the vault passes the search it last ran. */
+export function useMapFilterDraft(initial: MapFilterDraft = EMPTY_MAP_FILTER_DRAFT) {
+  const [draft, setDraft] = useState<MapFilterDraft>(initial);
   const setFilter = useCallback((patch: Partial<MapFilterDraft>) => {
     setDraft((current) => ({ ...current, ...patch }));
-  }, [setDraft]);
-  const resetFilters = useCallback(() => setDraft(EMPTY_MAP_FILTER_DRAFT), [setDraft]);
+  }, []);
+  const resetFilters = useCallback(() => setDraft(EMPTY_MAP_FILTER_DRAFT), []);
   return { draft, setFilter, resetFilters };
 }

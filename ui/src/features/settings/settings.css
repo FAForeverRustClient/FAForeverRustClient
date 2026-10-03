@@ -5,6 +5,11 @@
  * row of category tabs this replaces got wider with every category, so the
  * structure degraded exactly as the client grew.
  */
+/* Full width, with the cap on the page's content instead (see
+   `.settings-page`). Capping the whole view at 1120 px made the scroll area
+   stop there too, so on a wide window its scrollbar stood in the middle of
+   the screen with empty space to its right, not at the edge where every
+   other tab keeps it. */
 .settings-view {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
@@ -12,7 +17,6 @@
   height: 100%;
   max-height: 100%;
   min-height: 0;
-  max-width: 1120px;
   width: 100%;
 }
 
@@ -89,8 +93,11 @@
   color: var(--color-muted);
 }
 
+/* Solid accent, as everywhere else in the client. This was the 12% glow, which
+   on the raised background of the active item was all but invisible: a
+   keyboard user could not see which section they were on. */
 .settings-sidebar-item:focus-visible {
-  outline: 2px solid var(--color-accent-glow);
+  outline: 2px solid var(--color-accent);
   outline-offset: -2px;
 }
 
@@ -125,9 +132,12 @@
   padding-right: 4px;
 }
 
+/* The width the old view cap gave a page (1120 less the sidebar and gap), so
+   a label and its control stay within one reading line on a wide window. */
 .settings-page {
   display: flex;
   flex-direction: column;
+  max-width: 876px;
 }
 
 /* `display: flex` above would otherwise beat the user agent's [hidden] rule,
@@ -177,9 +187,12 @@
   border-radius: var(--radius-md);
 }
 
+/* The input inside draws no ring of its own, so the field draws it, solid like
+   the pagination's jump box rather than the faint glow it used to be. */
 .settings-search-field:focus-within {
-  border-color: var(--color-border-strong);
-  outline: 2px solid var(--color-accent-glow);
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
 }
 
 .settings-search-field input {
@@ -212,7 +225,13 @@
 .settings-search-field button:focus-visible {
   color: var(--color-text);
   background: var(--color-surface-hover);
-  outline: none;
+}
+
+/* Its own ring, inside the field's: with only the hover background, focus on
+   the clear button looked like the pointer resting on it. */
+.settings-search-field button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
 }
 
 .settings-section {
@@ -400,67 +419,6 @@
   resize: vertical;
   font-family: var(--font-mono);
   font-size: 12px;
-}
-
-.settings-switch {
-  position: relative;
-  display: inline-flex;
-  width: 38px;
-  height: 22px;
-  cursor: pointer;
-}
-
-.settings-switch input {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.settings-switch-track {
-  display: flex;
-  align-items: center;
-  width: 38px;
-  height: 22px;
-  padding: 3px;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border-strong);
-  border-radius: 999px;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-
-.settings-switch-track span {
-  width: 14px;
-  height: 14px;
-  background: var(--color-muted);
-  border-radius: 50%;
-  transition: transform 120ms ease, background 120ms ease;
-}
-
-.settings-switch input:checked + .settings-switch-track {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-}
-
-.settings-switch input:checked + .settings-switch-track span {
-  background: var(--color-accent-contrast);
-  transform: translateX(16px);
-}
-
-.settings-switch input:focus-visible + .settings-switch-track {
-  outline: 2px solid var(--color-text);
-  outline-offset: 2px;
-}
-
-.settings-switch input:disabled + .settings-switch-track {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .settings-inline-form {
@@ -1120,4 +1078,11 @@
 
 .settings-multi-select .multi-select > .search-panel-label {
   display: none;
+}
+
+/* The element each section's search scope reads dropdown options from. It
+   takes no part in the layout: the page lays out the panels inside it as if
+   it were not there. */
+.settings-section-scope {
+  display: contents;
 }

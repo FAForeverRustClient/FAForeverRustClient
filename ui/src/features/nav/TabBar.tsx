@@ -35,6 +35,30 @@ export function TabBar() {
   const select = (tab: Tab) =>
     ipc.send({ kind: "Nav", command: { type: "select", payload: { tab } } });
 
+  // What wants the player from another tab. The rail named places and nothing
+  // else, so a mention, a private message or a running search was invisible
+  // from anywhere but its own tab. Each read as a number, not a list, so the
+  // rail redraws when a count changes rather than on every chat line.
+  const mentions = useAppStore((s) =>
+    s.state.chat.channels.reduce((sum, channel) => sum + channel.unreadMentions, 0));
+  const unread = useAppStore((s) =>
+    s.state.chat.channels.reduce((sum, channel) => sum + channel.unread, 0));
+  const matchmaking = useAppStore((s) => s.state.lobby.matchmaking.type);
+
+  const badgeFor = (id: Tab): { text: string; label: string; loud: boolean } | null => {
+    if (id === "chat" && mentions > 0) {
+      return { text: mentions > 99 ? "99+" : String(mentions), label: t("nav.badge.mentions", { count: mentions }), loud: true };
+    }
+    if (id === "chat" && unread > 0) return { text: "", label: t("nav.badge.unread"), loud: false };
+    if (id === "play" && matchmaking === "matchFound") {
+      return { text: "!", label: t("nav.badge.matchFound"), loud: true };
+    }
+    if (id === "play" && (matchmaking === "preparing" || matchmaking === "searching" || matchmaking === "launching")) {
+      return { text: "", label: t("nav.badge.searching"), loud: false };
+    }
+    return null;
+  };
+
   // Ending an offline session puts the login screen back. `logoutTest` is the
   // teardown for a session that never held a token, which is what an offline
   // one is; see `AccountSupportSettingsSection`, where the same control sits
@@ -43,17 +67,28 @@ export function TabBar() {
 
   const renderTab = (id: Tab) => {
     const label = t(`nav.tab.${id}.label`);
+    const badge = badgeFor(id);
+    // The badge is part of the name, so a screen reader hears it too.
+    const name = badge ? `${label}, ${badge.label}` : label;
     return (
       <button
         key={id}
         className={id === active ? "tab tab-active" : "tab"}
         onClick={() => select(id)}
         aria-current={id === active ? "page" : undefined}
-        aria-label={label}
-        title={label}
+        aria-label={name}
+        title={name}
       >
         <Icon name={TABS[id].icon} size={17} />
         <span>{label}</span>
+        {badge && (
+          <span
+            className={`tab-badge${badge.loud ? " is-loud" : ""}${badge.text ? "" : " is-dot"}`}
+            aria-hidden="true"
+          >
+            {badge.text}
+          </span>
+        )}
       </button>
     );
   };

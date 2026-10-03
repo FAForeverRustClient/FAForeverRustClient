@@ -15,6 +15,8 @@ import { t } from "../../i18n";
 import { useLocale } from "../../i18n/useTranslation";
 
 const TOAST_DURATION_MS = 8_000;
+/** Not a timer id: `clearTimeout` ignores it, which is all it needs. */
+const WAITING_FOR_FOCUS = -1;
 
 const markRead = (id: string) =>
   ipc.send({ kind: "Notifications", command: { type: "markRead", payload: { id } } });
@@ -171,10 +173,29 @@ export function NotificationCenter() {
     setToastIds((current) => current.filter((candidate) => candidate !== id));
   }, []);
   const autoDismiss = useCallback((id: string) => {
-    hideToast(id);
-    // Keep the notification in the history, but prevent an unread item from
-    // being surfaced again when another backend event refreshes the state.
-    markRead(id);
+    const attempt = () => {
+      // Not while the window is in the background. The client sits behind a
+      // running game for most of a match, and a toast that expired there was
+      // marked read before anyone saw it, so the bell said nothing on the way
+      // back. It waits for the window instead, with no polling: one focus
+      // listener, then its usual time on screen.
+      if (!document.hasFocus()) {
+        const resume = () => {
+          window.removeEventListener("focus", resume);
+          timers.current.set(id, window.setTimeout(attempt, TOAST_DURATION_MS));
+        };
+        // A placeholder rather than no entry, so the scheduling effect below
+        // does not start a second timer for a toast that is only waiting.
+        timers.current.set(id, WAITING_FOR_FOCUS);
+        window.addEventListener("focus", resume);
+        return;
+      }
+      hideToast(id);
+      // Keep the notification in the history, but prevent an unread item from
+      // being surfaced again when another backend event refreshes the state.
+      markRead(id);
+    };
+    attempt();
   }, [hideToast]);
   const handleAction = useCallback((item: ClientNotification) => {
     hideToast(item.id);

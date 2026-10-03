@@ -131,7 +131,7 @@ impl PlayerCardClient {
             .append_pair("filter", filter)
             .append_pair(
                 "include",
-                "avatarAssignments.avatar,names,clanMembership.clan.memberships.player,clanMembership.clan.leader,clanMembership.clan.founder",
+                "avatarAssignments.avatar,names,clanMembership.clan.memberships.player.avatarAssignments.avatar,clanMembership.clan.leader,clanMembership.clan.founder",
             )
             .append_pair("page[size]", &page_size.to_string());
         self.get(url, token).await
@@ -1057,6 +1057,7 @@ fn parse_clan(player: &Resource, index: &Index<'_>) -> Option<PlayerClan> {
                 login: text(account, "login"),
                 joined_at: text(member, "createTime"),
                 account_created_at: text(account, "createTime"),
+                avatar_url: selected_avatar_url(account, index),
             })
         })
         .collect();

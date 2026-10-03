@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { StatusNotice } from "../../design-system/StatusNotice";
+import { EmptyState } from "../../design-system/EmptyState";
 import { PlayerName } from "../../shared/components/nameColors";
 import { ipc } from "../../ipc/client";
 import type { CoopMission, Game, PlayerProfile, VaultMap } from "../../ipc/bindings";
@@ -49,6 +51,7 @@ import "./game-dialogs.css";
 import "./play.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame } from "../../shared/joinGame";
+import { plainError } from "../../shared/plainError";
 
 /// How often the Galactic War player count is re-asked while the Play tab is
 /// open. A minute: often enough that the number is not stale advice about
@@ -179,7 +182,13 @@ function GameDetails({
     || (lobby.join.type === "launched" && !isLaunchedThis)
     || (isInGame && !isPlayerInGame && !isHost);
 
-  let joinLabel = t("lobby.details.joinGame");
+  // A join this game refused, said here, beside the button that tries again.
+  // It was an 11 px line in the status bar, in English, with no way out.
+  const failedHere = lobby.join.type === "failed" && lobby.join.payload.id === game.id
+    ? plainError(lobby.join.payload.reason)
+    : null;
+
+  let joinLabel = failedHere ? t("lobby.details.joinAgain") : t("lobby.details.joinGame");
   let joinDisabled = false;
   let joinTitle: string | undefined;
 
@@ -390,6 +399,9 @@ function GameDetails({
         )}
       </div>
       <div className="game-detail-footer">
+        {failedHere && (
+          <StatusNotice tone="error" detail={lobby.join.type === "failed" ? lobby.join.payload.reason : undefined}>{t("lobby.details.joinFailed", { reason: failedHere })}</StatusNotice>
+        )}
         <Button className="game-detail-join" variant="primary" disabled={joinDisabled} title={joinTitle} onClick={onJoin}>{joinLabel}</Button>
       </div>
     </aside>
@@ -424,6 +436,14 @@ export function LobbyView() {
   const rules: GameFilterRule[] = gameBrowser.rules;
   const foeSet = useMemo(() => new Set(social.foes.map((f) => f.toLowerCase())), [social.foes]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // A join that fails opens that game in the panel, where the reason and the
+  // way to try again are. It is the game the player just asked to join, from
+  // the list, a double-click or the preview, so this follows their action
+  // rather than moving anything on its own.
+  const failedJoinId = lobby.join.type === "failed" ? lobby.join.payload.id : null;
+  useEffect(() => {
+    if (failedJoinId !== null) setSelectedId(failedJoinId);
+  }, [failedJoinId]);
   // The game the large preview was opened on, followed through the live list
   // while it is open: a snapshot kept showing the map the lobby had when the
   // dialog opened, however often the host changed it since (#384).
@@ -568,7 +588,13 @@ export function LobbyView() {
     // mission is never rated, so hiding the unranked games hid all of them.
   }, [applyFilters, coopGames, foeSet, hideFoes, hideModded, hidePrivate, maps.vault, rules, search, sort, sortReversed]);
 
-  const selected = filtered.find((game) => game.id === selectedId) ?? filtered[0] ?? null;
+  // Only ever the game the player picked. Falling back to the first row put a
+  // different game under the Join button whenever the picked one closed,
+  // launched or was filtered out, and with nothing picked the panel followed
+  // whatever the live list sorted to the top. Both broke the rule that a
+  // jumping list must never make a misclick join the wrong game.
+  const selected =
+    selectedId === null ? null : (filtered.find((game) => game.id === selectedId) ?? null);
   const previewGame = previewSnapshot
     ? customGames.find((game) => game.id === previewSnapshot.id)
       ?? coopGames.find((game) => game.id === previewSnapshot.id)
@@ -622,6 +648,43 @@ export function LobbyView() {
     });
   };
 
+  // Why the list is empty, which decides what it says and what it offers.
+  // "No games match. Adjust the search or the filters" used to stand for all
+  // of these, so a player who was not connected went looking for a filter.
+  const emptyGames =
+    lobby.status === "disconnected" ? (
+      <EmptyState icon="globe" title={t("lobby.browser.disconnected")} hint={t("lobby.browser.disconnectedHint")}>
+        <Button onClick={() => ipc.send({ kind: "Lobby", command: { type: "connect" } })}>
+          {t("status.reconnect")}
+        </Button>
+      </EmptyState>
+    ) : lobby.status === "connecting" ? (
+      <EmptyState icon="refresh" title={t("lobby.browser.connecting")} />
+    ) : customGames.length === 0 ? (
+      <EmptyState icon="play" title={t("lobby.browser.noGames")} hint={t("lobby.browser.noGamesHint")}>
+        <Button onClick={() => { setCoopMissionToHost(null); setHostOpen(true); }}>
+          {t("lobby.toolbar.hostGame")}
+        </Button>
+      </EmptyState>
+    ) : (
+      <EmptyState icon="search" title={t("lobby.browser.noMatch")} hint={t("lobby.browser.noMatchHint")}>
+        <Button
+          onClick={() => {
+            setSearch("");
+            updateGameBrowser({
+              hidePrivate: false,
+              hideModded: false,
+              hideUnranked: false,
+              hideFoes: false,
+              applyFilters: false,
+            });
+          }}
+        >
+          {t("lobby.browser.clearFilters")}
+        </Button>
+      </EmptyState>
+    );
+
   // Same shape as the list's column drag: the saved width seeds a local copy,
   // the drag moves the copy, and letting go persists it. A settings write per
   // pointer move would be a backend round trip per pixel.
@@ -635,10 +698,13 @@ export function LobbyView() {
   );
   const currentDetailWidth = draggedDetailWidth ?? detailWidth(savedDetailWidth);
   const detailStyle = useMemo(
+    // The divider's track is the whole gap, as the chat roster's is, so the
+    // two tabs space their side panel the same. Folded away (#370, #377), the
+    // track widens to hold the arrow that brings the panel back.
     () => ({
       gridTemplateColumns: detailHidden
-        ? "minmax(360px, 1fr) 20px"
-        : `minmax(360px, 1fr) 5px ${currentDetailWidth}px`,
+        ? "minmax(360px, 1fr) calc(var(--space-3) + 20px)"
+        : `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px`,
     }),
     [currentDetailWidth, detailHidden],
   );
@@ -731,6 +797,13 @@ export function LobbyView() {
       ) : inCoop ? (
         <CoopPanel
           games={filteredCoopGames}
+          // The search box is this view's own state, which the panel cannot
+          // reach: without this its Clear filters left the typed text in place.
+          // No ranked filter here, as the co-op toolbar has none to show.
+          onClearFilters={() => {
+            setSearch("");
+            updateGameBrowser({ hidePrivate: false, hideModded: false, hideFoes: false, applyFilters: false });
+          }}
           viewMode={gameView}
           toolbar={(
             <CustomGamesToolbar
@@ -797,6 +870,7 @@ export function LobbyView() {
             onSelect={setSelectedId}
             onJoin={requestJoin}
             onPreview={setPreviewGame}
+            empty={emptyGames}
           />
           {/* The divider sits between the list and the panel rather than on
               either, so dragging it reads as moving the boundary. The arrow
@@ -831,8 +905,19 @@ export function LobbyView() {
             />
           ) : (
             <aside className="game-detail-panel surface-panel empty">
-              <Icon name="play" size={24} />
-              <p>{t("lobby.details.selectGame")}</p>
+              {/* A refused join for a game that has since gone from the list
+                  (the host left, it launched): the panel is where the reader
+                  looks after pressing Join, so the reason is said here too. */}
+              {lobby.join.type === "failed" ? (
+                <StatusNotice tone="error" detail={lobby.join.payload.reason}>
+                  {t("lobby.details.joinFailed", { reason: plainError(lobby.join.payload.reason) })}
+                </StatusNotice>
+              ) : (
+                <>
+                  <Icon name="play" size={24} />
+                  <p>{t("lobby.details.selectGame")}</p>
+                </>
+              )}
             </aside>
           )}
         </div>

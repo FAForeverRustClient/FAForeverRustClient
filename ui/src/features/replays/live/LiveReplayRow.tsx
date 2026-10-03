@@ -55,16 +55,16 @@ export function LiveMapThumbnail({
  * "Generate map" on a live game's thumbnail, for a generated map that is not
  * on disk yet. Nothing for any other map.
  *
- * The row and the card both act on a click (open, watch), so the button keeps
- * its clicks to itself.
+ * The row acts on a click (open, watch), so the button keeps its clicks to
+ * itself. The cards use `ReplayThumbGenerate`, the vault cards' button.
  */
-export function LiveMapGenerateButton({ mapName, large = false }: { mapName: string; large?: boolean }) {
+export function LiveMapGenerateButton({ mapName }: { mapName: string }) {
   const mapGen = useNamedMapGeneration(mapName);
   if (!mapGen.canGenerate && !mapGen.isGenerating) return null;
   return (
     <button
       type="button"
-      className={large ? "live-map-generate is-large" : "live-map-generate"}
+      className="live-map-generate"
       disabled={mapGen.isGenerating}
       title={mapGen.generateLabel}
       aria-label={mapGen.generateLabel}
@@ -76,7 +76,7 @@ export function LiveMapGenerateButton({ mapName, large = false }: { mapName: str
     >
       <Icon
         name={mapGen.isGenerating ? "refresh" : "plus"}
-        size={large ? 14 : 12}
+        size={12}
         className={mapGen.isGenerating ? "spin" : undefined}
       />
     </button>

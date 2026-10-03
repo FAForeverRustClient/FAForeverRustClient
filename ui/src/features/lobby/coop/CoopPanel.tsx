@@ -9,7 +9,7 @@
 // "coop", "campaign", "operation" or "mission", which both missed missions
 // named none of those things and swept in ordinary maps that were.
 
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
@@ -20,11 +20,13 @@ import { useAppStore } from "../../../store/store";
 import { friendKeys } from "../browser/friendPresence";
 import { formatShortDate } from "../../../shared/format/dates";
 import { loadStatusNote } from "../../../shared/loadStatusNote";
+import { plainError } from "../../../shared/plainError";
 import { GameBrowserRow } from "../browser/GameBrowserRow";
 import { GameTile } from "../browser/GameTile";
 import { type GameViewMode } from "../../../shared/gameRules";
 import { useGameBrowserColumns } from "../browser/gameBrowserColumns";
 import { coopFailureAction } from "./coopFailure";
+import { coopEmptyReason, isOpenCoopGame, joinableCoopGame } from "./coopGames";
 import "../browser/custom-games.css";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { scenarioBadge, sortCoopScenarios } from "./coopScenarios";
@@ -58,14 +60,55 @@ function formatDuration(seconds: number): string {
 const NO_CAMPAIGN = -1;
 
 interface Props {
+  /** The open co-op games after the toolbar's search and filters. */
   games: Game[];
   viewMode?: GameViewMode;
   toolbar?: ReactNode;
   onJoin: (game: Game) => void;
   onHost: (mission?: CoopMission) => void;
+  /**
+   * Clear the search and the filters, for when they hid every game. Without
+   * it only the saved filters are cleared: the search box belongs to the
+   * toolbar's owner.
+   */
+  onClearFilters?: () => void;
 }
 
-export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }: Props) {
+/**
+ * Turn the saved toolbar filters off. The fallback for `onClearFilters`, and
+ * the same fields the custom games list clears, minus the ranked filter the
+ * co-op toolbar does not have.
+ */
+function clearSavedFilters() {
+  const current = useAppStore.getState().state.settings.browsing;
+  ipc.send({
+    kind: "Settings",
+    command: {
+      type: "setBrowsing",
+      payload: {
+        preferences: {
+          ...current,
+          customGamesBrowser: {
+            ...current.customGamesBrowser,
+            hidePrivate: false,
+            hideModded: false,
+            hideFoes: false,
+            applyFilters: false,
+          },
+        },
+      },
+    },
+  });
+}
+
+export function CoopPanel({
+  games,
+  viewMode = "tiles",
+  toolbar,
+  onJoin,
+  onHost,
+  onClearFilters = clearSavedFilters,
+}: Props) {
   const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const maps = useAppStore((state) => state.state.maps);
@@ -131,13 +174,85 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
     }
   }, [missionsInActiveScenario, coop.selectedMissionId]);
 
-  const connected = useAppStore((state) => state.state.lobby.status === "connected");
+  const lobbyStatus = useAppStore((state) => state.state.lobby.status);
+  const connected = lobbyStatus === "connected";
+  // Every open co-op game, before the search and the filters: what tells "a
+  // search hid them all" from "nobody is playing".
+  const openGames = useAppStore((state) => state.state.lobby.games.filter(isOpenCoopGame).length);
+  const join = useAppStore((state) => state.state.lobby.join);
+  const joinable = joinableCoopGame(games, selectedGameId);
+  // A join already under way, for this game or another, is the lobby's one
+  // join: a second press would only be refused.
+  const joinBusy = join.type !== "idle" && join.type !== "failed";
+  const joiningThis = join.type === "joining" && joinable !== null && join.payload.id === joinable.id;
   // The shared rows want these; read once here rather than inside each row.
   const vaultMods = useAppStore((state) => state.state.mods.vault);
   const friendLogins = useAppStore((state) => state.state.social.friends);
   const friendSet = useMemo(() => friendKeys(friendLogins), [friendLogins]);
   const foeLogins = useAppStore((state) => state.state.social.foes);
   const foeSet = useMemo(() => friendKeys(foeLogins), [foeLogins]);
+
+  /**
+   * Enter on a focused row or tile joins its game, as a double-click does.
+   *
+   * The rows are buttons, so Enter would otherwise click one, which only
+   * selects it: joining was a pointer-only gesture. The rows belong to the
+   * shared browser, so the game is found by position among them rather than
+   * by anything they would have to carry for this panel's sake.
+   */
+  const joinOnEnter = (event: KeyboardEvent<HTMLDivElement>, rows: string, controls: string) => {
+    if (event.key !== "Enter" || event.repeat) return;
+    const target = event.target as HTMLElement;
+    if (!target.matches(controls)) return;
+    const index = Array.from(event.currentTarget.querySelectorAll(rows)).findIndex((row) =>
+      row.contains(target),
+    );
+    const game = index < 0 ? undefined : games[index];
+    if (!game) return;
+    event.preventDefault();
+    setSelectedGameId(game.id);
+    if (connected && !joinBusy) onJoin(game);
+  };
+
+  const emptyReason = coopEmptyReason(lobbyStatus, openGames);
+  // Why the list is empty decides what it says and what it offers, in the
+  // custom games list's own words: a Host button while offline could not
+  // work, and "no open games" while a search hid them all was untrue.
+  const empty =
+    emptyReason === "disconnected" ? (
+      <EmptyState
+        icon="globe"
+        title={t("lobby.browser.disconnected")}
+        hint={t("lobby.browser.disconnectedHint")}
+        className="coop-games-empty"
+      >
+        <Button onClick={() => ipc.send({ kind: "Lobby", command: { type: "connect" } })}>
+          {t("status.reconnect")}
+        </Button>
+      </EmptyState>
+    ) : emptyReason === "connecting" ? (
+      <EmptyState icon="refresh" title={t("lobby.browser.connecting")} className="coop-games-empty" />
+    ) : emptyReason === "filtered" ? (
+      <EmptyState
+        icon="search"
+        title={t("lobby.browser.noMatch")}
+        hint={t("lobby.browser.noMatchHint")}
+        className="coop-games-empty"
+      >
+        <Button onClick={onClearFilters}>{t("lobby.browser.clearFilters")}</Button>
+      </EmptyState>
+    ) : (
+      <EmptyState
+        icon="users"
+        title={t("lobby.coop.noOpenGames")}
+        hint={t("lobby.coop.hostToPlay")}
+        className="coop-games-empty"
+      >
+        <Button variant="primary" onClick={() => onHost(selected ?? undefined)}>
+          <Icon name="plus" size={16} /> {t("lobby.toolbar.hostGame")}
+        </Button>
+      </EmptyState>
+    );
 
   const catalogNote = loadStatusNote(
     coop.catalogStatus,
@@ -163,22 +278,19 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
         {/* Left Column (Priority #1): Open Co-op Games Browser */}
         <section className={`coop-games-main surface-panel game-browser-${viewMode}`}>
           {games.length === 0 ? (
-            <EmptyState
-              icon="users"
-              title={t("lobby.coop.noOpenGames")}
-              hint={t("lobby.coop.hostToPlay")}
-              className="coop-games-empty"
-            >
-              <Button variant="primary" disabled={!connected} onClick={() => onHost(selected ?? undefined)}>
-                <Icon name="plus" size={16} /> {t("lobby.toolbar.hostGame")}
-              </Button>
-            </EmptyState>
+            empty
           ) : viewMode === "list" ? (
             /* The same header the custom-games list draws, from the same
                widths. It used to be five bare spans here, so the co-op tab
                laid the identical five columns out differently from the tab
                next to it and none of them could be dragged. */
-            <div className="game-browser-list">
+            <div
+              className="game-browser-list"
+              style={columns.style}
+              onKeyDown={(event) =>
+                joinOnEnter(event, ":scope > .game-browser-row", ".game-browser-row")
+              }
+            >
               {columns.header}
               {games.map((game) => (
                 <GameBrowserRow
@@ -188,7 +300,6 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                   vaultMods={vaultMods}
                   friendSet={friendSet}
                   foeSet={foeSet}
-                  columnStyle={columns.style}
                   selected={selectedGameId === game.id}
                   onSelect={() => setSelectedGameId(game.id)}
                   onJoin={() => onJoin(game)}
@@ -196,7 +307,12 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
               ))}
             </div>
           ) : (
-            <div className="game-tile-grid">
+            <div
+              className="game-tile-grid"
+              onKeyDown={(event) =>
+                joinOnEnter(event, ":scope > .game-tile", ".game-tile-map, .game-tile-body")
+              }
+            >
               {games.map((game) => (
                 <GameTile
                   key={game.id}
@@ -211,6 +327,27 @@ export function CoopPanel({ games, viewMode = "tiles", toolbar, onJoin, onHost }
                   onJoin={() => onJoin(game)}
                 />
               ))}
+            </div>
+          )}
+
+          {/* The visible way in. A double-click on a row was the only one,
+              which a keyboard, and anybody who did not know to try it,
+              could not find: selecting a game led nowhere. */}
+          {joinable && (
+            <div className="coop-join-bar">
+              <span className="coop-join-bar-title" title={joinable.title}>
+                {joinable.title}
+              </span>
+              <Button
+                variant="primary"
+                disabled={!connected || joinBusy}
+                title={joinBusy && !joiningThis ? t("lobby.details.alreadyInGame") : undefined}
+                aria-label={t("lobby.coop.joinNamed", { title: joinable.title })}
+                onClick={() => onJoin(joinable)}
+              >
+                <Icon name="play" size={14} />
+                {t(joiningThis ? "lobby.details.joining" : "lobby.details.joinGame")}
+              </Button>
             </div>
           )}
         </section>
@@ -334,7 +471,7 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
                   type="button"
                   className={active ? "is-active" : ""}
                   aria-pressed={active}
-                  title={count === 0 ? t("lobby.coop.anyCount") : `${count} ${t("lobby.coop.column.players").toLowerCase()}`}
+                  title={count === 0 ? t("lobby.coop.anyCount") : t("lobby.coop.teamSizeTitle", { count })}
                   onClick={() => void setPlayerCount(count)}
                 >
                   {label}
@@ -414,7 +551,8 @@ function CoopLoadFailure({
       <Icon name="activity" size={18} />
       <div>
         <strong>{title}</strong>
-        <p>{reason}</p>
+        {/* Plainly, with the system's own wording kept for a bug report. */}
+        <p title={reason}>{plainError(reason)}</p>
       </div>
       {action === "signOut" && (
         <Button onClick={() => void signOut()}>

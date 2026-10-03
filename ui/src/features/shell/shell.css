@@ -268,12 +268,19 @@
   font-size: 11px;
 }
 
+/* Green only when the lobby is actually connected: green means online and
+   nothing else. Connecting and offline keep a neutral dot; the word beside it
+   says which. */
 .profile-status i {
   display: inline-block;
   width: 6px;
   height: 6px;
-  background: var(--color-ok);
+  background: var(--color-subtle);
   border-radius: 999px;
+}
+
+.profile-status.is-online i {
+  background: var(--color-ok);
 }
 
 .content {

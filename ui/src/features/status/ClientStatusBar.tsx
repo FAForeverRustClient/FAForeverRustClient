@@ -2,11 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import type {
+  AppState,
   ChatStatus,
   JoinState,
   LobbyStatus,
   ReplayDownloadStatus,
+  UploadsState,
 } from "../../ipc/bindings";
+import { isUploadBusy } from "../../store/reducers/uploads";
+import { plainError } from "../../shared/plainError";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import "./status.css";
@@ -71,7 +75,7 @@ export function GameJoinStatus({ state }: { state: JoinState }) {
   if (note === null) return null;
   return (
     <div className="client-status-task" aria-live="polite">
-      <span className="client-status-task-label" title={note}>{note}</span>
+      <span className="client-status-task-label" title={state.type === "failed" ? state.payload.reason : note}>{note}</span>
     </div>
   );
 }
@@ -82,7 +86,7 @@ function joinStatusNote(state: JoinState, t: Translate): string | null {
   switch (state.type) {
     case "joining": return t("status.join.connecting", { id: state.payload.id });
     case "launched": return t("status.join.launched", { name: state.payload.launch.name });
-    case "failed": return t("status.join.failed", { reason: state.payload.reason.replace(/_/g, " ") });
+    case "failed": return t("status.join.failed", { reason: plainError(state.payload.reason) });
     // In-game needs no narration, a launch failure is retained by the
     // notification centre where it can be dismissed, and a pending mod
     // replacement is already a modal the user is looking at.
@@ -131,6 +135,202 @@ export function ReplayDownloadTask({
   );
 }
 
+/**
+ * A map or mod publish whose dialog was hidden. Hiding does not stop it, so
+ * this is where it stays visible until the notification with the result.
+ */
+export function UploadTask({ status }: { status: UploadsState["status"] }) {
+  const { t } = useTranslation();
+  const progress =
+    status.type === "compressing" && status.payload.totalBytes > 0
+      ? Math.min(100, Math.floor((status.payload.doneBytes / status.payload.totalBytes) * 100))
+      : status.type === "uploading" && status.payload.totalBytes > 0
+        ? Math.min(100, Math.floor((status.payload.sentBytes / status.payload.totalBytes) * 100))
+        : null;
+  return (
+    <div className="client-status-task" aria-live="polite">
+      <span className="client-status-task-label">
+        <strong>{t("status.upload.label")}</strong>
+      </span>
+      <span
+        className="client-status-progress"
+        data-indeterminate={progress === null ? "true" : undefined}
+        role="progressbar"
+        aria-label={t("status.upload.label")}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress ?? undefined}
+      >
+        <span style={progress === null ? undefined : { width: `${progress}%` }} />
+      </span>
+      <span className="client-status-task-percent">
+        {progress === null ? t("status.active") : `${progress}%`}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Everything else the client is busy with, in the order it matters: installs
+ * the player started first, then searches, then catalogues being read.
+ *
+ * One fixed place for "something is on its way", which is what this bar
+ * already was for match preparation and replay downloads. The views used to
+ * say it themselves, each in its own words and position, or not at all.
+ * Failures stay in the views, beside the thing that failed and its Retry.
+ *
+ * Each value is read on its own, as a string or a boolean: a selector that
+ * built the list would hand the store a new array every time and redraw the
+ * bar on every state change.
+ */
+function useBackgroundActivities(): string[] {
+  const { t } = useTranslation();
+  const mapInstall = useAppStore((s) => {
+    const status = s.state.maps.installStatus;
+    if (status.type !== "installing") return null;
+    const folder = status.payload.folderName;
+    return s.state.maps.vault.find((map) => map.folderName === folder)?.displayName ?? folder;
+  });
+  const modName = (mods: AppState["mods"], uid: string) =>
+    mods.vault.find((mod) => mod.uid === uid)?.displayName
+    ?? mods.installed.find((mod) => mod.uid === uid)?.displayName
+    ?? uid;
+  const modInstall = useAppStore((s) =>
+    s.state.mods.installStatus.type === "installing"
+      ? modName(s.state.mods, s.state.mods.installStatus.payload.uid)
+      : null);
+  const modToggle = useAppStore((s) =>
+    s.state.mods.toggleStatus.type === "toggling"
+      ? modName(s.state.mods, s.state.mods.toggleStatus.payload.uid)
+      : null);
+  const mapSearch = useAppStore((s) => s.state.maps.browseStatus.type === "loading");
+  const modSearch = useAppStore((s) => s.state.mods.browseStatus.type === "loading");
+  const replaySearch = useAppStore((s) => s.state.replays.vaultStatus.type === "loading");
+  const mapScan = useAppStore((s) => s.state.maps.installedStatus.type === "loading");
+  const modScan = useAppStore((s) => s.state.mods.installedStatus.type === "loading");
+  const mapVault = useAppStore((s) => s.state.maps.vaultStatus.type === "loading");
+  const modVault = useAppStore((s) => s.state.mods.vaultStatus.type === "loading");
+  const leaderboards = useAppStore((s) =>
+    s.state.leaderboard.catalogStatus.type === "loading"
+    || s.state.leaderboard.ratingsStatus.type === "loading"
+    || s.state.leaderboard.seasonStatus.type === "loading");
+  const events = useAppStore((s) => s.state.events.status.type === "loading");
+  const tournaments = useAppStore((s) => s.state.tourney.status.type === "loading");
+  const changelog = useAppStore((s) => s.state.changelog.status.type === "loading");
+
+  return [
+    mapInstall !== null && t("status.activity.installingMap", { name: mapInstall }),
+    modInstall !== null && t("status.activity.installingMod", { name: modInstall }),
+    modToggle !== null && t("status.activity.togglingMod", { name: modToggle }),
+    mapSearch && t("maps.view.searching"),
+    modSearch && t("mods.view.searching"),
+    replaySearch && t("replays.vault.searching"),
+    mapScan && t("maps.view.scanning"),
+    modScan && t("mods.installed.scanning"),
+    mapVault && t("maps.view.loadingVault"),
+    modVault && t("mods.view.loadingVault"),
+    leaderboards && t("leaderboard.view.loadingCatalog"),
+    events && t("events.loading"),
+    tournaments && t("tournaments.loading"),
+    changelog && t("changelog.loading"),
+  ].filter((label): label is string => typeof label === "string");
+}
+
+/** The first background activity, and how many more are running behind it. */
+export function BackgroundActivityTask({ activities }: { activities: string[] }) {
+  const { t } = useTranslation();
+  const [first, ...rest] = activities;
+  // The rest are named on hover rather than dropped: "+2" alone would say
+  // that something is happening without saying what.
+  const title = rest.length > 0 ? `${t("status.activity.alsoRunning")}: ${rest.join(", ")}` : first;
+  return (
+    <div className="client-status-task" aria-live="polite">
+      <span className="client-status-task-label" title={title}>{first}</span>
+      <span
+        className="client-status-progress"
+        data-indeterminate="true"
+        role="progressbar"
+        aria-label={first}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuetext={t("status.active")}
+      >
+        <span />
+      </span>
+      <span className="client-status-task-percent" title={title}>
+        {rest.length > 0 ? `+${rest.length}` : t("status.active")}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The matchmaker, wherever the player is in the client.
+ *
+ * Searching was only visible inside the matchmaker panel, so a ladder player
+ * who queued and went to Chat or Replays had no sign it was still running and
+ * no way to stop it short of going back. This is the fixed place for both.
+ */
+export function MatchmakingTask({
+  state,
+  queues,
+}: {
+  state: Exclude<AppState["lobby"]["matchmaking"], { type: "idle" } | { type: "cancelled" }>;
+  queues: AppState["lobby"]["matchmakerQueues"];
+}) {
+  const { t } = useTranslation();
+  // "2 vs 2", the way the queue cards name them, rather than "tmm2v2".
+  const named = (queueName: string) => {
+    const queue = queues.find((candidate) => candidate.queueName === queueName);
+    return queue ? t("status.matchmaking.queue", { size: queue.teamSize }) : queueName;
+  };
+  if (state.type === "matchFound") {
+    return (
+      <div className="client-status-task is-attention" role="status" aria-live="assertive">
+        <span className="client-status-task-label">
+          <strong>{t("status.matchmaking.found", { queue: named(state.payload.queueName) })}</strong>
+        </span>
+      </div>
+    );
+  }
+  // Preparing (#390) is the first half of a search: the featured mod and the
+  // pool maps come down before the server is asked. It can be stopped the
+  // same way, as the matchmaker panel does.
+  const searching = state.type === "searching" || state.type === "preparing";
+  const label = state.type === "preparing"
+    ? t("lobby.matchmaker.summary.preparing")
+    : state.type === "searching"
+      ? t("status.matchmaking.searching", { queues: state.payload.queueNames.map(named).join(", ") })
+      : t("status.matchmaking.launching", { queue: named(state.payload.queueName) });
+  const stop = () => {
+    if (state.type !== "searching" && state.type !== "preparing") return;
+    state.payload.queueNames.forEach((queueName) =>
+      ipc.send({ kind: "Lobby", command: { type: "matchmake", payload: { queueName, start: false } } }),
+    );
+  };
+  return (
+    <div className="client-status-task" aria-live="polite">
+      <span className="client-status-task-label" title={label}>{label}</span>
+      <span
+        className="client-status-progress"
+        data-indeterminate="true"
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuetext={t("status.active")}
+      >
+        <span />
+      </span>
+      {searching && (
+        <button type="button" className="client-status-task-action" onClick={stop}>
+          {t("status.matchmaking.stop")}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ClientStatusBar() {
   const { t } = useTranslation();
   const session = useAppStore((state) => state.state.session);
@@ -139,6 +339,11 @@ export function ClientStatusBar() {
   const joinState = useAppStore((state) => state.state.lobby.join);
   const replayDownloadStatus = useAppStore((state) => state.state.replays.downloadStatus);
   const chatStatus = useAppStore((state) => state.state.chat.status);
+  const uploads = useAppStore((state) => state.state.uploads);
+  const hiddenUpload = uploads.request === null && isUploadBusy(uploads.status);
+  const activities = useBackgroundActivities();
+  const matchmaking = useAppStore((state) => state.state.lobby.matchmaking);
+  const matchmakerQueues = useAppStore((state) => state.state.lobby.matchmakerQueues);
   const [openMenu, setOpenMenu] = useState<ConnectionKind | null>(null);
   const rootRef = useRef<HTMLElement>(null);
   const joinTaskVisible = joinState.type === "joining"
@@ -236,14 +441,20 @@ export function ClientStatusBar() {
 
   return (
     <footer ref={rootRef} className="client-status-bar" aria-label={t("status.bar.aria")}>
-      <span className="client-status-version">v{session.backendVersion || "0.7.0"}</span>
+      <span className="client-status-version">v{session.backendVersion || "0.8.0"}</span>
       {joinState.type === "preparing"
         ? <GamePreparationStatus state={joinState} />
         : joinTaskVisible
           ? <GameJoinStatus state={joinState} />
+          : matchmaking.type !== "idle" && matchmaking.type !== "cancelled"
+            ? <MatchmakingTask state={matchmaking} queues={matchmakerQueues} />
           : replayDownloadStatus.type === "downloading"
             ? <ReplayDownloadTask status={replayDownloadStatus} />
-            : null}
+            : hiddenUpload
+              ? <UploadTask status={uploads.status} />
+              : activities.length > 0
+                ? <BackgroundActivityTask activities={activities} />
+                : null}
       <div className="client-status-connections">
         {renderConnectionMenu("faf", lobbyStatus, "FAF")}
         {renderConnectionMenu("chat", chatStatus, t("status.service.chat"))}
