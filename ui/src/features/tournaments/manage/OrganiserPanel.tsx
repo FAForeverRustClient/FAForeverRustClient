@@ -5,9 +5,11 @@
 // chose to stay off the public list. An organiser who hides is still an
 // organiser: hiding changes the credit, not the rights.
 //
-// Adding is here; removing is not. Stripping organiser rights is the site
-// admin's, and nothing the service sends says whether this account is one, so
-// the button would answer "Site admin only" for every ordinary organiser.
+// Adding and removing are both here. Any organiser may remove any other, or
+// leave: the people who can add a co-organiser are the people who can remove
+// one. It was the site admin's alone once, which turned every change to the
+// team into a support request. The last organiser is never offered the button:
+// the service refuses to leave an event with nobody to run it.
 //
 // Casters sit underneath because they are the same kind of decision made about
 // a different kind of person: an organiser runs the event, a caster watches all
@@ -19,6 +21,7 @@ import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import type { AccountSearch, Tourney } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { mayRemoveOrganiser } from "../../../shared/rules/tourneyRules";
 import { AccountPicker } from "./AccountPicker";
 
 interface OrganiserPanelProps {
@@ -29,6 +32,8 @@ interface OrganiserPanelProps {
   onAdd: (fafId: number, name: string) => void;
   onSetVisibility: (fafId: number, hidden: boolean) => void;
   onSetCaster: (fafId: number, name: string, casting: boolean) => void;
+  /** Strip organiser rights, this account's own included. */
+  onRemove: (fafId: number) => void;
 }
 
 export function OrganiserPanel(props: OrganiserPanelProps) {
@@ -57,9 +62,31 @@ export function OrganiserPanel(props: OrganiserPanelProps) {
               />
               <span>{t("tournaments.organisers.hidden")}</span>
             </label>
+            {mayRemoveOrganiser(event, organiser.fafId) && (
+              <Button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  const self = organiser.fafId === event.viewer.fafId;
+                  const question = self
+                    ? t("tournaments.organisers.leaveConfirm")
+                    : t("tournaments.organisers.removeConfirm", { name: organiser.name });
+                  if (window.confirm(question)) props.onRemove(organiser.fafId);
+                }}
+              >
+                {t(
+                  organiser.fafId === event.viewer.fafId
+                    ? "tournaments.organisers.leave"
+                    : "tournaments.organisers.remove",
+                )}
+              </Button>
+            )}
           </li>
         ))}
       </ul>
+      {event.organiserAccounts.length === 1 && (
+        <p className="muted">{t("tournaments.organisers.lastOne")}</p>
+      )}
 
       {adding ? (
         <AccountPicker

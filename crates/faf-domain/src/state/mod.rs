@@ -81,11 +81,11 @@ pub use leaderboard::{
     RatingLeaderboard, RatingPage, RatingQuery, SeasonLeaderboard,
 };
 pub use lobby::{
-    rating_for_game, rating_gate_blocks, title_marks_go_adapter, with_go_adapter_tag,
-    AvailableAvatar, AvatarListStatus, Game, GameLaunch, HostGameConfig, JoinState, LobbyCommand,
-    LobbyEvent, LobbyState, LobbyStatus, MatchmakerQueue, MatchmakingState, PartyMember,
-    PartyState, PlayMode, PlayerVeto, PreparationPhase, RatingRange, GLOBAL_LEADERBOARD,
-    GO_ADAPTER_TITLE_TAG,
+    rating_for_game, rating_gate_blocks, reconcile_avatar, remember_avatar, title_marks_go_adapter,
+    with_go_adapter_tag, AvailableAvatar, AvatarListStatus, AvatarReconciliation, Game, GameLaunch,
+    HostGameConfig, JoinState, LobbyCommand, LobbyEvent, LobbyState, LobbyStatus, MatchmakerQueue,
+    MatchmakingState, PartyMember, PartyState, PlayMode, PlayerVeto, PreparationPhase, RatingRange,
+    GLOBAL_LEADERBOARD, GO_ADAPTER_TITLE_TAG,
 };
 pub use map_generator::{
     is_valid_preset_name, preset_file_name, DecodedMapName, DecodedStyle, GenerationType,
@@ -101,7 +101,9 @@ pub use mods::{
     InstalledMod, ModDownloadSize, ModDownloadTarget, ModInstallStatus, ModListStatus,
     ModToggleStatus, ModType, ModVersionConflict, ModsCommand, ModsEvent, ModsState, VaultMod,
 };
-pub use nav::{NavCommand, NavEvent, NavState, Tab};
+pub use nav::{
+    MapsSection, ModsSection, NavCommand, NavEvent, NavState, ReplaysSection, SettingsSection, Tab,
+};
 pub use notifications::{
     ClientNotification, NotificationAction, NotificationCommand, NotificationEvent,
     NotificationKind, NotificationState,
@@ -140,9 +142,9 @@ pub use settings::{
     DiscordPreferences, EventReminder, EventsPreferences, GameCacheInfo, GamePreferences,
     GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
     NotificationPreferences, NotificationSound, NotificationSoundChoices, PathPreferences,
-    PlayerNote, ReplayNote, SettingsCommand, SettingsEvent, SettingsState, SocialPreferences,
-    Theme, ToastPosition, UiDensity, UpdatePreferences, WeekStart, MAX_SIDEBAR_WIDTH,
-    MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
+    PlayerNote, ReplayChatTransfers, ReplayNote, SettingsCommand, SettingsEvent, SettingsState,
+    SocialPreferences, Theme, ToastPosition, UiDensity, UpdatePreferences, WeekStart,
+    MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
     PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,
@@ -161,14 +163,30 @@ pub use tourney::{
     TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus, TourneyTeam, TourneyViewer,
 };
 pub use tourney::{
+    AccessKind, AccessRequest, AccessStatus, AdminArticle, ArchivedTourney, ConsoleRole,
+    HallOfFame, HallPlayer, HallTeam, ListedAccount, PendingItem, PendingSummary, SiteAdminData,
+    SiteDocument, SiteLogEntry, SiteRead, SiteWrite, TourneyAccount, TourneySite,
+};
+pub use tourney::{BanScope, EntrantBoardRating, EntrantRatings, OwnBan, RatingCheck};
+pub use tourney::{
     BracketConfig, Caster, Currency, FeedsInto, FormatDraft, MatchPlan, Prize, Qualifier,
     QualifierKind, QualifierRejection, QualifierRule, RoomBadge, RoundKey, RoundPlan, SeriesColour,
     SeriesDetail, SeriesDraft, SeriesEdition, Stream, TourneySeries, BEST_OF_CHOICES,
 };
+pub use tourney::{CaptainMode, Replacement, TeamLineup, TeamSeed};
+pub use tourney::{
+    ChatQuote, FactionChoices, FactionResult, FactionStep, FactionVetoConfig, FactionVetoGame,
+    MapSpec, MatchFactionVeto, RoundMaps, SwissCuts, SwissTiebreak, TourneyAdmin, TourneyFaction,
+};
+pub use tourney::{CopySource, CopySourceMaps, MapPick, PickMode, PlanList};
 pub use tourney::{
     Draft, DraftPick, FfaConfig, FfaMode, FfaReport, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
-    VetoDecider, VetoMode, VetoTurn,
+    VetoDecider, VetoMode, VetoTeamA, VetoTurn,
 };
+pub use tourney::{EarlyFinish, Rename, RenameCheck, Survivors, TourneyBan};
+pub use tourney::{ImportedGroup, ImportedPlacing, ImportedRow};
+pub use tourney::{PendingImage, PickSettings, PlanLists, SwissExtras, TourneyPreset};
+pub use tourney::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
 pub use training::{
     compose_contribution, compose_review_request, compose_url, contribution_problem, derive_level,
     derive_topics, filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label,

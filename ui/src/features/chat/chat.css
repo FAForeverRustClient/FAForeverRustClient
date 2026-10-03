@@ -314,7 +314,10 @@ html.is-resizing-chat-roster * {
   gap: 1px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px 20px;
+  /* 12 px at the sides, not 20: at the default window the message column is
+     about 250 px after the avatar, name and time columns, and every pixel of
+     padding is a character of the line people read for hours. */
+  padding: 14px 12px;
   scrollbar-gutter: stable;
 }
 
@@ -677,13 +680,22 @@ html.is-resizing-chat-roster * {
   white-space: nowrap;
 }
 
-/* Floating action toolbar revealed on hover / focus. */
+/* Floating action toolbar revealed on hover / focus.
+ *
+ * Hidden with opacity rather than `display: none`, which took its buttons out
+ * of the tab order: the toolbar only appeared once focus was already inside
+ * it, and focus could never get there, so replying and reacting were
+ * pointer-only. Now the buttons stay focusable and the toolbar shows whenever
+ * focus is anywhere in its line. `pointer-events` keeps the invisible toolbar
+ * from catching clicks meant for the message above. */
 .chat-message-actions {
   position: absolute;
   right: 6px;
   top: -8px;
   z-index: 10;
-  display: none;
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
   align-items: center;
   gap: 2px;
   padding: 2px;
@@ -694,8 +706,15 @@ html.is-resizing-chat-roster * {
 }
 
 .chat-message:hover .chat-message-actions,
-.chat-message-actions:focus-within {
-  display: flex;
+.chat-message:focus-within .chat-message-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* A line being worked from the keyboard reads as the hovered one does. Keyed
+   on `:focus-visible` so a mouse click on a name does not leave its line lit. */
+.chat-message:has(:focus-visible) {
+  background: var(--color-surface-hover);
 }
 
 .chat-action-btn {
@@ -814,6 +833,7 @@ html.is-resizing-chat-roster * {
 }
 
 .chat-message:hover .chat-reaction-trigger,
+.chat-message:focus-within .chat-reaction-trigger,
 .chat-reaction-trigger:focus-visible,
 .chat-reaction-trigger[aria-expanded="true"] {
   border-color: var(--color-border);
@@ -1852,17 +1872,25 @@ img.chat-game-map {
   font-size: 12px;
 }
 
+/* One grid for the whole list, three columns: leaderboard, rating, games.
+   Each row and its value cell join it through `subgrid`. A grid per row sized
+   every row's numbers to that row alone, so "2,087" and "1,948" started at
+   different places and the eye could not run down the ratings. Both number
+   columns align right, so the digits line up by place value. */
 .chat-player-card-ratings {
   display: grid;
-  gap: 3px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 3px;
   margin: 8px 0 0;
 }
 
 .chat-player-card-ratings > div {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  gap: var(--space-2);
 }
 
 .chat-player-card-ratings dt {
@@ -1873,15 +1901,23 @@ img.chat-game-map {
   white-space: nowrap;
 }
 
+/* The rating and the game count are two cells of the parent grid; a row with
+   no games leaves its third cell empty rather than shifting anything. */
 .chat-player-card-ratings dd {
-  display: flex;
+  display: grid;
+  grid-column: 2 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  gap: 6px;
   margin: 0;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
+.chat-player-card-ratings dd b {
+  text-align: right;
+}
+
 .chat-player-card-ratings dd span {
   font-size: 11px;
+  text-align: right;
 }

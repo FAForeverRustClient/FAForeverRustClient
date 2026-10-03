@@ -175,6 +175,14 @@ pub trait ProcessPort: Send + Sync {
     /// binary through a wrapper has nothing to record.
     fn set_launch_wrapper(&self, _wrapper: String, _wine_prefix: String) {}
 
+    /// Whether the next game should show on Steam as Forged Alliance being
+    /// played, for as long as it runs (issue 364).
+    ///
+    /// Read at launch, so switching it during a game changes the next one.
+    /// Defaulted to nothing, because a launcher that starts no process has no
+    /// game to show.
+    fn set_steam_presence(&self, _enabled: bool) {}
+
     /// Spell a path the way the game this launcher starts will be able to open
     /// it.
     ///

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { VaultMap } from "../../ipc/bindings";
-import { visibleVaultMaps } from "./mapVaultResults";
+import type { MapVaultQuery, VaultMap } from "../../ipc/bindings";
+import { EMPTY_MAP_QUERY } from "../../shared/vaultQuery";
+import { mapsMatchingQuery, visibleVaultMaps } from "./mapVaultResults";
 
 function map(folderName: string, extra: Partial<VaultMap> = {}): VaultMap {
   return {
@@ -67,5 +68,56 @@ describe("visibleVaultMaps", () => {
     const shown = visibleVaultMaps(page, { ...DEFAULTS, installFilter: "installed", installedFolders });
 
     expect(shown.map((m) => m.folderName)).toEqual(["kept"]);
+  });
+});
+
+describe("mapsMatchingQuery", () => {
+  // The favourites preset: the search, filters and sort it shows have to do
+  // to the starred maps what the server query would have done to the vault.
+  const starred = [
+    map("seton", { displayName: "Seton's Clutch", author: "GPG", ratingTenths: 45, reviews: 300, maxPlayers: 8, width: 1024, height: 1024, createdAt: "2014-03-01T10:00:00Z", gamesPlayed: 9000 }),
+    map("dual", { displayName: "Dual Gap", author: "Nuggets", ratingTenths: 38, reviews: 40, maxPlayers: 8, width: 512, height: 512, createdAt: "2021-07-15T10:00:00Z", gamesPlayed: 50, ranked: false }),
+    map("astro", { displayName: "Astro Crater", author: null, ratingTenths: 0, reviews: 0, maxPlayers: 4, width: 256, height: 256, createdAt: "2023-01-02T10:00:00Z", gamesPlayed: 400 }),
+  ];
+  const names = (maps: VaultMap[]) => maps.map((m) => m.folderName);
+
+  it("matches the search against the display name, ignoring case", () => {
+    expect(names(mapsMatchingQuery(starred, { ...EMPTY_MAP_QUERY, search: " CLUTCH " }))).toEqual(["seton"]);
+  });
+
+  it("matches the author login, and never a map without one", () => {
+    expect(names(mapsMatchingQuery(starred, { ...EMPTY_MAP_QUERY, author: "nug" }))).toEqual(["dual"]);
+  });
+
+  it("applies ranked, slots and size", () => {
+    const query = { ...EMPTY_MAP_QUERY, ranked: true, minPlayers: 6, width: 1024 };
+    expect(names(mapsMatchingQuery(starred, query))).toEqual(["seton"]);
+  });
+
+  it("drops unreviewed maps once a rating bound is set, as the server does", () => {
+    const query = { ...EMPTY_MAP_QUERY, minRatingTenths: 0, maxRatingTenths: 40 };
+    expect(names(mapsMatchingQuery(starred, query))).toEqual(["dual"]);
+  });
+
+  it("bounds the upload date inclusively", () => {
+    const query = { ...EMPTY_MAP_QUERY, after: "2021-07-15", before: "2023-01-02" };
+    expect(names(mapsMatchingQuery(starred, { ...query, sortBy: "name" as const, sortDescending: false })))
+      .toEqual(["astro", "dual"]);
+  });
+
+  it("drops withdrawn versions unless they are asked for", () => {
+    const withdrawn = [...starred, map("gone", { hidden: true })];
+    expect(mapsMatchingQuery(withdrawn, EMPTY_MAP_QUERY)).toHaveLength(3);
+    expect(mapsMatchingQuery(withdrawn, { ...EMPTY_MAP_QUERY, includeHidden: true })).toHaveLength(4);
+  });
+
+  it("sorts the way the query asks", () => {
+    const sorted = (sortBy: MapVaultQuery["sortBy"], sortDescending = true) =>
+      names(mapsMatchingQuery(starred, { ...EMPTY_MAP_QUERY, sortBy, sortDescending }));
+    expect(sorted("rating")).toEqual(["seton", "dual", "astro"]);
+    expect(sorted("newest")).toEqual(["astro", "dual", "seton"]);
+    expect(sorted("played")).toEqual(["seton", "astro", "dual"]);
+    expect(sorted("size")).toEqual(["seton", "dual", "astro"]);
+    expect(sorted("name", false)).toEqual(["astro", "dual", "seton"]);
   });
 });

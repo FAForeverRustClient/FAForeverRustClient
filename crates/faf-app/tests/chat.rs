@@ -86,8 +86,27 @@ async fn connect_joins_the_default_channel_with_a_roster_and_history() {
     );
     assert!(channel.users.iter().any(|u| u.name == "Aurora"));
     assert!(channel.users.iter().any(|u| u.is_moderator()));
-    // The active channel accrues no unread badge.
-    assert_eq!(channel.unread, 0);
+    // Active is not read: lines that arrived count until the channel is
+    // looked at, which the chat view does by selecting it again.
+    assert!(channel.unread > 0);
+    app.dispatch(
+        ChatCommand::SelectChannel {
+            channel: DEFAULT_CHANNEL.into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    let state = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| c.unread == 0)
+    })
+    .await;
+    assert_eq!(
+        state.chat.channel(DEFAULT_CHANNEL).unwrap().unread_mentions,
+        0
+    );
 }
 
 #[tokio::test]

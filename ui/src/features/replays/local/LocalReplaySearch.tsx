@@ -12,7 +12,7 @@ import {
   type LocalReplayQuery,
   type LocalReplaySortField,
 } from "./localReplayQuery";
-import { activeLocalReplayPreset } from "../replayPresets";
+import { activeLocalReplayPreset, SHORT_GAME_MINUTES } from "../replayPresets";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { DateInput } from "../../../design-system/DateInput";
@@ -244,6 +244,22 @@ export function LocalReplaySearch({
           onClick={() => applyPreset({ player: self, exactPlayer: true })}
         >
           {t("replays.search.preset.myReplays")}
+        </Button>
+        {/* The online vault's button, answered from the files: each one says
+            when its game started and ended. Applied at once, like the presets
+            beside it. */}
+        <Button
+          type="button"
+          className={form.minDurationMinutes === SHORT_GAME_MINUTES ? "active" : ""}
+          aria-pressed={form.minDurationMinutes === SHORT_GAME_MINUTES}
+          title={t("replays.search.hideShortHint", { minutes: SHORT_GAME_MINUTES })}
+          onClick={() =>
+            apply({
+              ...form,
+              minDurationMinutes: form.minDurationMinutes === SHORT_GAME_MINUTES ? null : SHORT_GAME_MINUTES,
+            })}
+        >
+          {t("replays.search.hideShort")}
         </Button>
         <span className="spacer" />
         <button

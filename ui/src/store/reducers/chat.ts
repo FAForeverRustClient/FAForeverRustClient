@@ -241,7 +241,6 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
       }));
     case "messageReceived": {
       const { channel, message } = event.payload;
-      const isActive = state.activeChannel === channel;
       return mapChannel(state, channel, (current) => {
         const messages = [...current.messages, message].slice(-MAX_MESSAGES);
         // Sending is the loudest possible "done typing". Waiting for the
@@ -250,8 +249,8 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
         const typing = (current.typing ?? []).filter(
           (notice) => asciiLower(notice.nickname) !== asciiLower(message.sender),
         );
+        // The active channel counts too, as in Rust: active is not read.
         const counts =
-          !isActive &&
           message.sender !== state.username &&
           message.kind !== "info" &&
           message.kind !== "error";

@@ -84,6 +84,11 @@ pub struct ClanMember {
     pub login: String,
     pub joined_at: String,
     pub account_created_at: String,
+    /// The avatar the member is wearing, empty when they wear none. Read from
+    /// the API with the roster, so it is there for members who are offline
+    /// too, which the chat directory's avatars are not.
+    #[serde(default)]
+    pub avatar_url: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]

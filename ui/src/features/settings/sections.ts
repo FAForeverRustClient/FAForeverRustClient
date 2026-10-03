@@ -18,6 +18,7 @@ import type { ComponentType } from "react";
 
 import type { IconName } from "../../design-system/Icon";
 import type { MessageKey } from "../../i18n";
+import type { SettingsSection } from "../../ipc/bindings";
 import { AccountSupportSettingsSection } from "./AccountSupportSettingsSection";
 import { AppearanceSettingsSection } from "./AppearanceSettingsSection";
 import { ChatSettingsSection } from "./ChatSettingsSection";
@@ -31,19 +32,15 @@ import { GameSettingsSection } from "./GameSettingsSection";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
 import { NotificationsSettingsSection } from "./NotificationsSettingsSection";
 import { PathsSettingsSection } from "./PathsSettingsSection";
+import { SteamSettingsSection } from "./SteamSettingsSection";
 import { UpdatesSettingsSection } from "./UpdatesSettingsSection";
 
-export type SectionKey =
-  | "general"
-  | "appearance"
-  | "chat"
-  | "notifications"
-  | "account"
-  | "game"
-  | "paths"
-  | "cache"
-  | "connectivity"
-  | "diagnostics";
+/**
+ * The section keys are the backend's `SettingsSection`, because the open
+ * section is navigation state and lives there. A section added here without
+ * a variant on the Rust side fails to typecheck rather than failing to open.
+ */
+export type SectionKey = SettingsSection;
 
 export interface SectionDef {
   readonly title: MessageKey;
@@ -95,7 +92,7 @@ export const SECTIONS: Record<SectionKey, SectionDef> = {
     description: "settings.page.account.description",
     keywords: "settings.section.account.keywords",
     icon: "user",
-    panels: [AccountSupportSettingsSection, DiscordSettingsSection],
+    panels: [AccountSupportSettingsSection, DiscordSettingsSection, SteamSettingsSection],
   },
   game: {
     title: "settings.page.game.title",
@@ -146,6 +143,3 @@ export const SECTION_ORDER: readonly SectionKey[] = [
   "connectivity",
   "diagnostics",
 ];
-
-/** Where the tab opens: the first section in the sidebar. */
-export const FIRST_SECTION: SectionKey = SECTION_ORDER[0];

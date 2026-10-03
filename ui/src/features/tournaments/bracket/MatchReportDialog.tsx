@@ -1,9 +1,9 @@
-// Reporting one series result.
+// Reporting one series result, as an organiser.
 //
-// The organiser's, and only theirs. `report` takes a score, an explicit winner
-// and a forfeit, and it is also the correction path, so it stays open on a
-// finished match. It needs no replay ids: that rule belongs to `report_submit`,
-// the player path, which this client does not use.
+// `report` takes a score, an explicit winner, a forfeit and the replay ids, and
+// it is also the correction path, so it stays open on a finished match. The ids
+// are optional here, unlike on the players' own path, but they are what makes a
+// result auditable and what casters pull the games from, so they are asked for.
 //
 // The score is a running total, not this game's result: a Bo3 at 1-1 is
 // reported as 2-1, and the server counts the difference.
@@ -13,7 +13,7 @@ import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import type { MatchReport, Tourney, TourneyMatch } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { isSubmittable } from "../../../shared/rules/tourneyRules";
+import { cleanReplayField, isSubmittable, replayIdsOf } from "../../../shared/rules/tourneyRules";
 import { NumberInput } from "../../../design-system/NumberInput";
 
 interface MatchReportDialogProps {
@@ -21,6 +21,8 @@ interface MatchReportDialogProps {
   entry: TourneyMatch;
   busy: boolean;
   onSubmit: (report: MatchReport) => void;
+  /** Settle a score one side submitted, which an organiser may do for either. */
+  onAnswer: (accept: boolean) => void;
   onClose: () => void;
 }
 
@@ -29,6 +31,7 @@ export function MatchReportDialog({
   entry,
   busy,
   onSubmit,
+  onAnswer,
   onClose,
 }: MatchReportDialogProps) {
   const { t } = useTranslation();
@@ -38,6 +41,10 @@ export function MatchReportDialog({
   const [winner, setWinner] = useState<string | null>(null);
   /** A team that did not turn up, or walked away. */
   const [forfeit, setForfeit] = useState<string | null>(null);
+  // Prefilled from the match, so a correction keeps what was recorded.
+  const [replays, setReplays] = useState(entry.replayIds.join(", "));
+  const [drawReplays, setDrawReplays] = useState(entry.drawReplayIds.join(", "));
+  const pending = entry.pendingReport;
 
   const needed = Math.ceil(entry.bestOf / 2);
   // The shorthand: a forfeit alone, no score. The server awards the win to the
@@ -64,6 +71,25 @@ export function MatchReportDialog({
     <Modal onClose={onClose} className="tournament-form" ariaLabel={t("tournaments.match.report")}>
       <h3>{t("tournaments.match.report")}</h3>
       <p className="muted">{t("tournaments.report.bestOf", { count: entry.bestOf })}</p>
+
+      {/* A score one side submitted and the other has not answered. The
+          organiser settles it here rather than overwriting it unseen. */}
+      {pending !== null && (
+        <div className="tournament-report-pending">
+          <span>
+            {t("tournaments.report.pending", {
+              score: `${pending.score1}–${pending.score2}`,
+              who: pending.byName || teamName(pending.byTeam),
+            })}
+          </span>
+          <Button variant="primary" disabled={busy} onClick={() => onAnswer(true)}>
+            {t("tournaments.report.acceptPending")}
+          </Button>
+          <Button disabled={busy} onClick={() => onAnswer(false)}>
+            {t("tournaments.report.rejectPending")}
+          </Button>
+        </div>
+      )}
 
       <div className="tournament-score-row">
         {scoreBox(entry.team1, score1, setScore1)}
@@ -111,6 +137,31 @@ export function MatchReportDialog({
         <small className="muted">{t("tournaments.report.winnerHint")}</small>
       </fieldset>
 
+      <label className="tournament-field">
+        <span>{t("tournaments.report.replayIds")}</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={replays}
+          placeholder="21534001, 21534050"
+          onChange={(changed) => setReplays(cleanReplayField(changed.target.value))}
+        />
+        <small className="muted">{t("tournaments.report.replayIdsHint")}</small>
+      </label>
+      <label className="tournament-field">
+        <span>{t("tournaments.report.drawReplayIds")}</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={drawReplays}
+          placeholder="21534010"
+          onChange={(changed) => setDrawReplays(cleanReplayField(changed.target.value))}
+        />
+        <small className="muted">{t("tournaments.report.drawReplayIdsHint")}</small>
+      </label>
+
       <div className="tournament-form-actions">
         <Button onClick={onClose} disabled={busy}>
           {t("common.cancel")}
@@ -118,15 +169,13 @@ export function MatchReportDialog({
         <Button
           variant="primary"
           disabled={busy || !ready}
-          // No replay ids: `report` treats them as optional, and only the
-          // organiser records results here.
           onClick={() =>
             onSubmit({
               matchId: entry.id,
               score1,
               score2,
-              replayIds: [],
-              drawReplayIds: [],
+              replayIds: replayIdsOf(replays),
+              drawReplayIds: replayIdsOf(drawReplays),
               winner,
               forfeit,
             })

@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { ipc } from "../../../ipc/client";
 import type { InstalledMod, ModPreset } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -61,16 +62,12 @@ export function HostModsColumn() {
         setPresetsOpen(false);
       }
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPresetsOpen(false);
-    };
     document.addEventListener("mousedown", closeOnOutsideClick);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("mousedown", closeOnOutsideClick);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
   }, [presetsOpen]);
+  // Escape closes the presets menu and leaves the host dialog open: while
+  // open, the menu is the top of the overlay stack.
+  useOverlayLayer(presetsOpen, () => setPresetsOpen(false));
 
   /// `setBrowsing` replaces the whole preferences bag, so a writer must start
   /// from the newest copy rather than the one captured at render time. Saving a

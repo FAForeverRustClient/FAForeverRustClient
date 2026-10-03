@@ -25,21 +25,34 @@ use serde_json::{json, Value};
 
 use crate::protocol::markup::to_plain_text;
 use crate::state::{
-    Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
-    ChatRoom, Competition, Currency, Formation, HostingStatus, InviteStatus, MapPool, MatchLink,
-    MatchPlan, MatchStatus, NewsPost, Organiser, PendingReport, PoolAction, PoolAssignment,
-    PoolSide, PoolStep, Prize, RatingGate, RatingKind, Seeding, SignupMode, Stream, TeamExit,
-    TeamRequest, Tourney, TourneyCategory, TourneyDraft, TourneyInvite, TourneyMap, TourneyMatch,
-    TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
+    AccessKind, AccessRequest, AccessStatus, AdminArticle, ArchivedTourney, ConsoleRole,
+    HallOfFame, HallPlayer, HallTeam, ListedAccount, PendingItem, PendingSummary, SiteAdminData,
+    SiteDocument, SiteLogEntry, SiteRead, SiteWrite, TourneyAccount,
 };
 use crate::state::{
-    Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
-    VetoDecider, VetoMode,
+    Article, AuditEntry, BracketConfig, BracketKind, BracketSide, Caster, ChatMute, ChatPost,
+    ChatQuote, ChatRoom, Competition, Currency, FactionChoices, FactionResult, FactionStep,
+    FactionVetoConfig, FactionVetoGame, Formation, HostingStatus, InviteStatus, MapPool, MapSpec,
+    MatchFactionVeto, MatchLink, MatchPlan, MatchReport, MatchStatus, NewsPost, Organiser,
+    PendingReport, PoolAction, PoolAssignment, PoolSide, PoolStep, Prize, RatingGate, RatingKind,
+    RoundMaps, Seeding, SignupMode, Stream, SwissCuts, SwissTiebreak, TeamExit, TeamRequest,
+    Tourney, TourneyCategory, TourneyDraft, TourneyFaction, TourneyInvite, TourneyMap,
+    TourneyMatch, TourneyPhase, TourneyPlayer, TourneyStatus, TourneyTeam, TourneyViewer,
 };
+use crate::state::{BanScope, EntrantBoardRating, EntrantRatings, OwnBan, RatingCheck};
+use crate::state::{CaptainMode, Replacement};
+use crate::state::{CopySource, ImportedGroup, ImportedPlacing, ImportedRow, PickMode};
+use crate::state::{
+    Draft, DraftPick, FfaConfig, FfaMode, MatchVeto, TeamPoints, VetoChoice, VetoConfig,
+    VetoDecider, VetoMode, VetoTeamA,
+};
+use crate::state::{EarlyFinish, Rename, RenameCheck, Survivors, TourneyAdmin, TourneyBan};
 use crate::state::{
     FeedsInto, FormatDraft, Qualifier, QualifierKind, QualifierRule, SeriesColour, SeriesDetail,
     SeriesDraft, SeriesEdition, TourneySeries,
 };
+use crate::state::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
+use crate::state::{PickSettings, PlanLists, SwissExtras, TourneyPreset};
 
 /// A string field, empty when absent or not a string.
 fn text(value: &Value, name: &str) -> String {
@@ -153,6 +166,7 @@ fn plan(document: &Value, kind: BracketKind, competition: Competition) -> Option
             early: best_of("early", 3),
             semi: best_of("semi", 3),
             final_bo: best_of("final", 5),
+            third_place: flag(held, "thirdPlace"),
         },
         BracketKind::Double => MatchPlan::Double {
             wb: best_of("wb", 3),
@@ -172,6 +186,171 @@ fn plan(document: &Value, kind: BracketKind, competition: Competition) -> Option
             fast: flag(held, "fast"),
         },
     })
+}
+
+/// The record cuts in the stored plan.
+///
+/// Read from `plan` rather than `cfg`, because the plan is what the next
+/// `start_bracket` uses (`cleanSwissExtras(c, t.plan)`) when the start body
+/// does not name them, and this client's never does. Out of the server's own
+/// 0 to 15 range counts as off, as `cleanSwissExtras` treats it.
+fn swiss_cuts(document: &Value) -> SwissCuts {
+    let Some(held) = document.get("plan").filter(|value| value.is_object()) else {
+        return SwissCuts::default();
+    };
+    let cut = |name: &str| {
+        int(held, name)
+            .filter(|value| (0..=15).contains(value))
+            .unwrap_or(0)
+    };
+    SwissCuts {
+        wins: cut("winCut"),
+        losses: cut("lossCut"),
+    }
+}
+
+/// A Swiss stage's planned playoffs (`plan.stage2` and `s2*`), where on.
+fn stage_two_plan(document: &Value) -> Option<StageTwoPlan> {
+    let held = document.get("plan").filter(|value| value.is_object())?;
+    if !flag(held, "stage2") {
+        return None;
+    }
+    Some(StageTwoPlan {
+        double: text(held, "s2Type") == "double",
+        cut_to: int(held, "s2CutTo").unwrap_or(8),
+        best_of: int(held, "s2Bo").unwrap_or(3),
+        final_best_of: int(held, "s2Final").unwrap_or(5),
+        grand_final: int(held, "s2Gf").unwrap_or(5),
+        handicap: flag(held, "s2Hcap"),
+        third_place: flag(held, "s2Third"),
+    })
+}
+
+/// The per-round best-of lists in the plan. `set_plan_round_bo` writes one
+/// index at a time, so a list can have holes, which arrive as `null`.
+fn plan_lists(document: &Value) -> PlanLists {
+    let Some(held) = document.get("plan").filter(|value| value.is_object()) else {
+        return PlanLists::default();
+    };
+    let list = |name: &str| -> Vec<Option<i32>> {
+        array(held, name)
+            .iter()
+            .map(|item| {
+                item.as_i64()
+                    .and_then(|bo| i32::try_from(bo).ok())
+                    .filter(|bo| [1, 3, 5, 7].contains(bo))
+            })
+            .collect()
+    };
+    PlanLists {
+        rounds: list("roundsList"),
+        winners: list("wbList"),
+        losers: list("lbList"),
+    }
+}
+
+/// A Swiss stage's deciding match length (`plan.decidingBo`); 0 is the
+/// normal length, and anything the service would not keep counts as that.
+fn deciding_best_of(document: &Value) -> i32 {
+    document
+        .get("plan")
+        .and_then(|held| int(held, "decidingBo"))
+        .filter(|bo| [1, 3, 5, 7].contains(bo))
+        .unwrap_or(0)
+}
+
+/// Two team ids, from a `[a, b]` pair.
+fn id_pair(value: &Value) -> Option<(String, String)> {
+    let pair = value.as_array()?;
+    let side = |at: usize| match pair.get(at)? {
+        Value::String(text) => Some(text.clone()),
+        Value::Number(number) => Some(number.to_string()),
+        _ => None,
+    };
+    Some((side(0)?, side(1)?))
+}
+
+/// A running Swiss stage's playoffs (`playoffs`, with `stage2`).
+fn parse_playoffs(held: &Value, stage: Option<&Value>) -> Playoffs {
+    let pick = text(held, "pick");
+    Playoffs {
+        pick: match pick.as_str() {
+            "" | "off" => None,
+            other => Some(PickMode::from_wire(other)),
+        },
+        made: flag(held, "made"),
+        built: flag(held, "built"),
+        locked: flag(held, "locked"),
+        swiss_done: flag(held, "swissDone"),
+        redraws: int(held, "redraws").unwrap_or(0),
+        double: stage.is_some_and(|stage| text(stage, "type") == "double"),
+        cut_to: stage.and_then(|stage| int(stage, "cutTo")).unwrap_or(0),
+        field: stage.map_or_else(Vec::new, |stage| string_list(stage, "field")),
+        third_place: stage.is_some_and(|stage| flag(stage, "thirdPlace")),
+    }
+}
+
+/// A pick phase (`picks`), for the main bracket or the playoffs.
+fn parse_picks(held: &Value) -> PickPhase {
+    let seconds = |name: &str| {
+        held.get(name)
+            .and_then(Value::as_i64)
+            .map(|millis| i32::try_from((millis.max(0) + 999) / 1000).unwrap_or(i32::MAX))
+    };
+    PickPhase {
+        open: text(held, "status") == "open",
+        half: int(held, "half").unwrap_or(0),
+        field: string_list(held, "field"),
+        order: string_list(held, "order"),
+        picks: held
+            .get("picks")
+            .and_then(Value::as_object)
+            .map(|made| {
+                made.iter()
+                    .filter_map(|(picker, target)| {
+                        Some(PickMade {
+                            picker: picker.clone(),
+                            target: target.as_str()?.to_string(),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        available: string_list(held, "available"),
+        turn: id(held, "turn"),
+        my_turn: flag(held, "myTurn"),
+        seconds_left: seconds("msLeft"),
+        seconds_per_pick: seconds("perPickMs"),
+        log: array(held, "log")
+            .iter()
+            .map(|entry| PickLogEntry {
+                by: text(entry, "by"),
+                by_name: text(entry, "byName"),
+                target: text(entry, "target"),
+                at: moment(entry, "at"),
+                auto: flag(entry, "auto"),
+            })
+            .collect(),
+        stage_two: text(held, "forWhat") == "stage2",
+        unbeaten: text(held, "mode") == "unbeaten",
+        rest_seeded: text(held, "rest") == "seed",
+        pool: string_list(held, "pool"),
+        pool_bottom: text(held, "poolRule") == "bottom",
+        records: held
+            .get("records")
+            .and_then(Value::as_object)
+            .map(|records| {
+                records
+                    .iter()
+                    .map(|(team_id, record)| TeamRecord {
+                        team_id: team_id.clone(),
+                        record: record.as_str().unwrap_or_default().to_string(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        drawn: array(held, "drawn").iter().filter_map(id_pair).collect(),
+    }
 }
 
 /// A JavaScript millisecond timestamp as Unix seconds.
@@ -203,6 +382,16 @@ fn calendar_moment(value: &Value, name: &str) -> Option<u32> {
         })
         .ok()?;
     u32::try_from(seconds).ok().filter(|secs| *secs > 0)
+}
+
+/// A scheduled publish time (`publishAt`), as Unix seconds.
+///
+/// The service stores it through `cleanDate`, so it arrives as an ISO instant
+/// or a bare date, never as the milliseconds the other moments are; read as
+/// milliseconds, every schedule parsed as none. Both are accepted, so an older
+/// document that did carry a number still reads.
+fn publish_moment(value: &Value, name: &str) -> Option<u32> {
+    moment(value, name).or_else(|| calendar_moment(value, name))
 }
 
 /// A count that is sometimes a collection.
@@ -329,11 +518,25 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
         veto: VetoConfig {
             enabled: flag(document.get("veto").unwrap_or(&Value::Null), "enabled"),
             mode: VetoMode::from_wire(&text(document.get("veto").unwrap_or(&Value::Null), "mode")),
+            team_a: VetoTeamA::from_wire(&text(
+                document.get("veto").unwrap_or(&Value::Null),
+                "abMode",
+            )),
+            reveal_bans: flag(document.get("veto").unwrap_or(&Value::Null), "revealBans"),
         },
+        faction_veto: document
+            .get("fveto")
+            .filter(|held| held.is_object())
+            .map(|held| FactionVetoConfig {
+                enabled: flag(held, "enabled"),
+                bans: int(held, "bans").unwrap_or(1),
+                picks: int(held, "picks").unwrap_or(2),
+            })
+            .unwrap_or_default(),
         published: document
             .get("published")
             .is_none_or(|value| flag(document, "published") || value.is_null()),
-        publish_at: moment(document, "publishAt"),
+        publish_at: publish_moment(document, "publishAt"),
         player_count: count(document, "players"),
         team_count: count(document, "teams"),
         players: array(document, "players")
@@ -358,10 +561,16 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .filter_map(parse_pool)
             .collect(),
         pool_assign: parse_pool_assign(document.get("poolAssign")),
+        round_maps: parse_round_maps(document.get("maps")),
         organisers: array(document, "organizersPublic")
             .iter()
             .map(|entry| text(entry, "name"))
             .filter(|name| !name.is_empty())
+            .collect(),
+        organiser_discords: array(document, "organizersPublic")
+            .iter()
+            .map(|entry| text(entry, "discord").trim().to_string())
+            .filter(|handle| !handle.is_empty())
             .collect(),
         news: array(document, "news")
             .iter()
@@ -401,8 +610,337 @@ pub fn parse_tourney(document: &Value) -> Option<Tourney> {
             .collect(),
         feeds_into: parse_feeds_into(document.get("feedsInto")),
         champion_team_id: id(document, "championTeamId"),
+        swiss_order: string_list(document, "swissOrder"),
+        swiss_tiebreak: SwissTiebreak::from_wire(&text(document, "tiebreak")),
+        swiss_cuts: swiss_cuts(document),
+        swiss_rounds: ["cfg", "plan"]
+            .iter()
+            .filter_map(|key| document.get(*key).filter(|value| value.is_object()))
+            .find_map(|held| int(held, "rounds").filter(|rounds| *rounds > 0))
+            .unwrap_or(0),
+        swiss_beaten: parse_beaten(document.get("swissSB")),
+        bans: array(document, "bans")
+            .iter()
+            .filter_map(parse_ban)
+            .collect(),
+        stop_at_alive: int(document, "stopAtAlive").unwrap_or(0),
+        survivors: document
+            .get("survivors")
+            .filter(|held| held.is_object())
+            .map(|held| Survivors {
+                winners: string_list(held, "wb"),
+                losers: string_list(held, "lb"),
+            }),
+        event_days: string_list(document, "eventDays"),
+        early_finish: document
+            .get("earlyFinish")
+            .filter(|held| held.is_object())
+            .map(|held| EarlyFinish {
+                at: moment(held, "at"),
+                by: text(held, "by"),
+                automatic: flag(held, "auto"),
+                target: int(held, "target").unwrap_or(0),
+                alive: int(held, "alive").unwrap_or(0),
+                names: string_list(held, "names"),
+                unplayed: held.get("unplayed").and_then(Value::as_array).map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| match item {
+                            Value::String(text) => Some(text.clone()),
+                            Value::Number(number) => Some(number.to_string()),
+                            _ => None,
+                        })
+                        .collect()
+                }),
+            }),
+        per_round_bo: flag(document, "perRoundBo"),
+        // Read beside `formation`, which folds it into open teams: the one
+        // thing premade changes is that players name their team at signup.
+        premade_teams: text(document, "formation") == "premade",
+        plan_lists: plan_lists(document),
+        entry_order: entry_order(document),
+        captain_mode: CaptainMode::from_wire(&text(document, "captainMode")),
+        captain_count: int(document, "captainCount").unwrap_or(0),
+        can_manage: flag_or_true(document, "canManage"),
+        my_mention_count: int(document, "myMentionCount").unwrap_or(0).max(0),
+        chat_ping_count: int(document, "chatPingCount").unwrap_or(0).max(0),
+        my_unread_count: int(document, "myUnreadCount").unwrap_or(0).max(0),
+        source_url: text(document, "sourceUrl"),
+        imported_type: text(document, "importedType"),
+        standings_only: flag(document, "standingsOnly"),
+        pick_opponents: flag(document, "pickOpponents"),
+        pick_minutes: int(document, "pickMinutes").unwrap_or(0).clamp(0, 1440),
+        pick_mode: PickMode::from_wire(&text(document, "pickMode")),
+        deciding_best_of: deciding_best_of(document),
+        stage_two_plan: stage_two_plan(document),
+        playoffs: document
+            .get("playoffs")
+            .filter(|held| held.is_object())
+            .map(|held| {
+                parse_playoffs(
+                    held,
+                    document.get("stage2").filter(|stage| stage.is_object()),
+                )
+            }),
+        picks: document
+            .get("picks")
+            .filter(|held| held.is_object())
+            .map(parse_picks),
+        planned_round_one: array(document, "plannedR1")
+            .iter()
+            .filter_map(id_pair)
+            .collect(),
+        round_one_open: flag(document, "swissR1Open"),
+        imported_groups: array(document, "importedGroups")
+            .iter()
+            .map(|group| ImportedGroup {
+                name: text(group, "name"),
+                played: int(group, "played").unwrap_or(0),
+                rows: array(group, "rows")
+                    .iter()
+                    .map(|row| ImportedRow {
+                        name: text(row, "name"),
+                        wins: int(row, "w").unwrap_or(0),
+                        losses: int(row, "l").unwrap_or(0),
+                        games_won: int(row, "gw").unwrap_or(0),
+                        games_lost: int(row, "gl").unwrap_or(0),
+                    })
+                    .collect(),
+            })
+            .collect(),
+        imported_standings: array(document, "importedStandings")
+            .iter()
+            .filter_map(|row| {
+                Some(ImportedPlacing {
+                    rank: int(row, "rank")?,
+                    name: text(row, "name"),
+                })
+            })
+            .collect(),
+        my_ban: document
+            .get("myBan")
+            .filter(|held| held.is_object())
+            .map(|held| OwnBan {
+                scope: BanScope::from_wire(&text(held, "scope")),
+                reason: text(held, "reason"),
+                expires: calendar_moment(held, "expires"),
+            }),
         viewer: parse_viewer(document),
     })
+}
+
+/// Team ids in the order they entered, from each team's `entryKey`.
+///
+/// The key is a millisecond timestamp, or the one an organiser's swap handed
+/// over, and it can tie: the service then keeps the list's own order, and so
+/// does this. Read as an order rather than as numbers, because the numbers
+/// mean nothing on their own.
+fn entry_order(document: &Value) -> Vec<String> {
+    let mut keyed: Vec<(f64, usize, String)> = array(document, "teams")
+        .iter()
+        .enumerate()
+        .filter_map(|(index, team)| {
+            let key = team
+                .get("entryKey")
+                .or_else(|| team.get("createdAt"))
+                .and_then(Value::as_f64)
+                .unwrap_or(f64::MAX);
+            Some((key, index, id(team, "id")?))
+        })
+        .collect();
+    keyed.sort_by(|left, right| left.0.total_cmp(&right.0).then(left.1.cmp(&right.1)));
+    keyed.into_iter().map(|(_, _, team_id)| team_id).collect()
+}
+
+/// The answer to `POST /api/t/{id}/check_rating`.
+pub fn parse_rating_check(document: &Value) -> RatingCheck {
+    RatingCheck {
+        rated: flag(document, "rated"),
+        rating: int(document, "rating"),
+        capped: int(document, "capped"),
+        rating_kind: RatingKind::from_wire(&text(document, "ratingType")),
+        // Milliseconds, like the event's own `ratingDate` it echoes.
+        as_of: moment(document, "asOf"),
+        min: int(document, "min"),
+        max: int(document, "max"),
+        exempt: flag(document, "exempt"),
+        already_in: flag(document, "alreadyIn"),
+        banned: document
+            .get("banned")
+            .and_then(Value::as_str)
+            .filter(|text| !text.trim().is_empty())
+            .map(str::to_string),
+        eligible: document.get("eligible").and_then(Value::as_bool),
+        message: text(document, "message"),
+    }
+}
+
+/// The answer to `GET /api/t/{id}/player_ratings`.
+///
+/// The five boards come keyed by the service's own names under
+/// `allRatings.boards`, and are listed here in the website's order.
+pub fn parse_player_ratings(document: &Value) -> EntrantRatings {
+    let boards = document
+        .get("allRatings")
+        .and_then(|all| all.get("boards"))
+        .filter(|boards| boards.is_object());
+    EntrantRatings {
+        player_id: id(document, "playerId").unwrap_or_default(),
+        name: text(document, "name"),
+        counts: RatingKind::from_wire(&text(document, "counts")),
+        counts_rating: int(document, "countsRating"),
+        capped: int(document, "capped"),
+        rating_date: moment(document, "ratingDate"),
+        boards: boards.map_or_else(Vec::new, |boards| {
+            ["global", "1v1", "2v2", "3v3", "4v4"]
+                .iter()
+                .map(|key| {
+                    let row = boards.get(*key).unwrap_or(&Value::Null);
+                    EntrantBoardRating {
+                        board: RatingKind::from_wire(key),
+                        rating: int(row, "rating"),
+                        games: int(row, "games"),
+                    }
+                })
+                .collect()
+        }),
+        reason: text(document, "reason"),
+    }
+}
+
+/// The body for `POST /api/t/{id}/signup`.
+///
+/// Empty but for the rating an unrated event needs: with FAF login on, the
+/// service takes the entrant's name and account from the session and refuses
+/// anything the caller claims.
+pub fn signup_body(rating: Option<i32>) -> Value {
+    match rating {
+        Some(rating) => json!({ "rating": rating }),
+        None => json!({}),
+    }
+}
+
+/// The path an uploaded event picture is served at (`add_desc_image`):
+/// `url`, else built from `file`.
+pub fn parse_uploaded_image(document: &Value) -> String {
+    let url = text(document, "url");
+    if !url.is_empty() {
+        return url;
+    }
+    let file = text(document, "file");
+    if file.is_empty() {
+        String::new()
+    } else {
+        format!("/desc-images/{file}")
+    }
+}
+
+/// The named formats, from `GET /api/presets`.
+///
+/// A preset's `apply` is shaped like a tournament document, so it is read as
+/// one; its opponent picking is `pickPhase` there, which a document calls
+/// `pickOpponents`.
+pub fn parse_presets(document: &Value) -> Vec<TourneyPreset> {
+    array(document, "presets")
+        .iter()
+        .filter_map(|value| {
+            let id = id(value, "id")?;
+            let apply = value
+                .get("apply")
+                .filter(|held| held.is_object())
+                .and_then(|held| {
+                    let mut shaped = held.clone();
+                    shaped["id"] = json!(format!("preset:{id}"));
+                    if shaped.get("pickOpponents").is_none() {
+                        shaped["pickOpponents"] = json!(flag(held, "pickPhase"));
+                    }
+                    parse_tourney(&shaped).map(Box::new)
+                });
+            Some(TourneyPreset {
+                name: text(value, "name"),
+                blurb: text(value, "blurb"),
+                notes: string_list(value, "notes"),
+                allowed: flag(value, "allowed") && apply.is_some(),
+                apply,
+                id,
+            })
+        })
+        .collect()
+}
+
+/// The events this account organises, from `GET /api/my_tournaments`.
+pub fn parse_copy_sources(document: &Value) -> Vec<CopySource> {
+    let items = match document {
+        Value::Array(items) => items.as_slice(),
+        _ => array(document, "tournaments"),
+    };
+    items
+        .iter()
+        .filter_map(|value| {
+            Some(CopySource {
+                id: id(value, "id")?,
+                name: text(value, "name"),
+                map_count: int(value, "mapCount").unwrap_or(0).max(0),
+                pool_count: int(value, "poolCount").unwrap_or(0).max(0),
+                may_copy: flag(value, "canCopyMaps"),
+            })
+        })
+        .collect()
+}
+
+/// The answer to `POST /api/t/{id}/check_renames`.
+pub fn parse_rename_check(document: &Value) -> RenameCheck {
+    RenameCheck {
+        checked: int(document, "checked").unwrap_or(0),
+        changed: array(document, "changed")
+            .iter()
+            .filter_map(|held| {
+                Some(Rename {
+                    player_id: id(held, "playerId")?,
+                    from: text(held, "from"),
+                    to: text(held, "to"),
+                    team: held
+                        .get("team")
+                        .and_then(Value::as_str)
+                        .filter(|name| !name.trim().is_empty())
+                        .map(str::to_string),
+                })
+            })
+            .collect(),
+        failed: int(document, "failed").unwrap_or(0),
+        manual: int(document, "manual").unwrap_or(0),
+    }
+}
+
+/// One of the event's own bans. The id arrives as a string key, as every FAF
+/// id does in the service's stores.
+fn parse_ban(value: &Value) -> Option<TourneyBan> {
+    Some(TourneyBan {
+        faf_id: int(value, "fafId")?,
+        name: text(value, "name"),
+        reason: text(value, "reason"),
+        // An ISO instant, unlike `at`, which is milliseconds.
+        expires: calendar_moment(value, "expires"),
+        at: moment(value, "at"),
+        by: text(value, "by"),
+        expired: flag(value, "expired"),
+    })
+}
+
+/// The `beaten` tiebreak's number per team, from `swissSB`: an object keyed by
+/// team id, or `null` when the event breaks ties by game difference.
+fn parse_beaten(value: Option<&Value>) -> std::collections::BTreeMap<String, i32> {
+    value
+        .and_then(Value::as_object)
+        .map(|held| {
+            held.iter()
+                .filter_map(|(team_id, sum)| {
+                    let sum = sum.as_i64().and_then(|n| i32::try_from(n).ok())?;
+                    Some((team_id.clone(), sum))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Who the service says is asking, and what they are in this tournament.
@@ -430,6 +968,7 @@ fn parse_viewer(document: &Value) -> TourneyViewer {
         member_team_id: id(viewer, "memberTeamId"),
         caster: flag(viewer, "caster"),
         news_read_at: moment(viewer, "newsReadAt"),
+        invited: flag(viewer, "invited"),
     }
 }
 
@@ -461,6 +1000,8 @@ fn parse_player(value: &Value) -> Option<TourneyPlayer> {
         pending: flag(value, "pending"),
         note: text(value, "note"),
         signed_at: moment(value, "signedAt"),
+        discord: text(value, "discord").trim().to_string(),
+        team_name: text(value, "teamName").trim().to_string(),
     })
 }
 
@@ -547,6 +1088,70 @@ fn parse_requests(value: &Value, name: &str) -> Vec<TeamRequest> {
         .collect()
 }
 
+/// A match's faction veto, as the viewer's slice of it (`factionViewFor`).
+///
+/// `games` is an object keyed by the game number as text, read into a list in
+/// game order. A faction the client does not know is dropped rather than
+/// guessed at.
+fn parse_faction_veto(value: Option<&Value>) -> Option<MatchFactionVeto> {
+    let value = value.filter(|held| held.is_object())?;
+    let factions = |held: &Value, name: &str| -> Vec<TourneyFaction> {
+        string_list(held, name)
+            .iter()
+            .filter_map(|raw| TourneyFaction::from_wire(raw))
+            .collect()
+    };
+    let mut games: Vec<FactionVetoGame> = value
+        .get("games")
+        .and_then(Value::as_object)
+        .map(|games| {
+            games
+                .iter()
+                .filter_map(|(number, game)| {
+                    let game_number: i32 = number.trim().parse().ok()?;
+                    let result =
+                        game.get("result")
+                            .filter(|held| held.is_object())
+                            .and_then(|held| {
+                                Some(FactionResult {
+                                    team1: TourneyFaction::from_wire(&text(held, "t1"))?,
+                                    team2: TourneyFaction::from_wire(&text(held, "t2"))?,
+                                })
+                            });
+                    Some(FactionVetoGame {
+                        game: game_number,
+                        team1_done: flag(game, "t1Done"),
+                        team2_done: flag(game, "t2Done"),
+                        result,
+                        mine: game
+                            .get("mine")
+                            .filter(|held| held.is_object())
+                            .map(|mine| FactionChoices {
+                                bans: factions(mine, "bans"),
+                                picks: factions(mine, "picks"),
+                                done: flag(mine, "done"),
+                            }),
+                        next: game
+                            .get("next")
+                            .filter(|held| held.is_object())
+                            .map(|next| FactionStep {
+                                action: PoolAction::from_wire(&text(next, "action")),
+                                index: int(next, "index").unwrap_or(1),
+                                of: int(next, "of").unwrap_or(1),
+                            }),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    games.sort_by_key(|game| game.game);
+    Some(MatchFactionVeto {
+        bans: int(value, "bans").unwrap_or(1),
+        picks: int(value, "picks").unwrap_or(2),
+        games,
+    })
+}
+
 fn parse_match(value: &Value) -> Option<TourneyMatch> {
     Some(TourneyMatch {
         id: id(value, "id")?,
@@ -567,6 +1172,7 @@ fn parse_match(value: &Value) -> Option<TourneyMatch> {
         loser_to: parse_link(value.get("loserTo")),
         pending_report: parse_pending_report(value.get("pendingReport")),
         veto: parse_match_veto(value.get("veto")),
+        faction_veto: parse_faction_veto(value.get("fveto")),
         entrants: string_list(value, "entrants"),
         winners: string_list(value, "winners"),
         // An object keyed by team id, read into an ordered list. `null` until
@@ -588,6 +1194,8 @@ fn parse_match(value: &Value) -> Option<TourneyMatch> {
             .unwrap_or_default(),
         is_final: flag(value, "isFinal"),
         replay_ids: string_list(value, "replayIds"),
+        draw_replay_ids: string_list(value, "drawReplayIds"),
+        forfeit: id(value, "forfeit"),
     })
 }
 
@@ -603,6 +1211,7 @@ fn parse_pending_report(value: Option<&Value>) -> Option<PendingReport> {
         by_team: id(pending, "byTeam")?,
         by_name: text(pending, "byName"),
         replay_ids: string_list(pending, "replayIds"),
+        draw_replay_ids: string_list(pending, "drawReplayIds"),
         at: moment(pending, "at"),
     })
 }
@@ -655,6 +1264,50 @@ fn parse_map(value: &Value) -> Option<TourneyMap> {
         published: value
             .get("published")
             .is_none_or(|_| flag(value, "published")),
+        spec: parse_map_spec(value.get("spec")),
+        secret: flag(value, "secret"),
+        masked: flag(value, "masked"),
+    })
+}
+
+/// A map's spawn information, `None` when the service sent none.
+///
+/// The wire names are the website's (`t1`, `t2`, `closed`, `closedMex`). A
+/// spec with nothing in it is `None` too, which is how the service stores it.
+fn parse_map_spec(value: Option<&Value>) -> Option<MapSpec> {
+    let value = value.filter(|held| held.is_object())?;
+    let spawns = |name: &str| -> Vec<i32> {
+        array(value, name)
+            .iter()
+            .filter_map(|entry| match entry {
+                Value::Number(number) => number.as_i64().and_then(|n| i32::try_from(n).ok()),
+                Value::String(text) => text.trim().parse().ok(),
+                _ => None,
+            })
+            .collect()
+    };
+    let spec = MapSpec {
+        team1_spawns: spawns("t1"),
+        team2_spawns: spawns("t2"),
+        closed_spawns: spawns("closed"),
+        closed_mex_spawns: spawns("closedMex"),
+        size: text(value, "size"),
+    };
+    (spec != MapSpec::default()).then_some(spec)
+}
+
+/// A map's spawn information as `map_save` takes it: the same shape it came
+/// in, or `null` for none, which the service stores as none.
+pub fn map_spec_body(spec: Option<&MapSpec>) -> Value {
+    let Some(spec) = spec else {
+        return Value::Null;
+    };
+    json!({
+        "t1": spec.team1_spawns,
+        "t2": spec.team2_spawns,
+        "closed": spec.closed_spawns,
+        "closedMex": spec.closed_mex_spawns,
+        "size": spec.size,
     })
 }
 
@@ -731,7 +1384,7 @@ fn parse_pool(value: &Value) -> Option<MapPool> {
             .collect(),
         best_of: int(value, "bo"),
         published: flag(value, "published"),
-        publish_at: moment(value, "publishAt"),
+        publish_at: publish_moment(value, "publishAt"),
     })
 }
 
@@ -752,6 +1405,32 @@ fn parse_pool_assign(value: Option<&Value>) -> Vec<PoolAssignment> {
             Some(PoolAssignment {
                 round: round.clone(),
                 pool_id,
+            })
+        })
+        .collect()
+}
+
+/// `maps`, the rounds an organiser pinned maps to directly: an object keyed by
+/// round, each a list of map ids. Flattened like `poolAssign`.
+fn parse_round_maps(value: Option<&Value>) -> Vec<RoundMaps> {
+    let Some(Value::Object(entries)) = value else {
+        return Vec::new();
+    };
+    entries
+        .iter()
+        .filter_map(|(round, maps)| {
+            let map_ids: Vec<String> = maps
+                .as_array()?
+                .iter()
+                .filter_map(|held| match held {
+                    Value::String(text) if !text.trim().is_empty() => Some(text.trim().to_string()),
+                    Value::Number(number) => Some(number.to_string()),
+                    _ => None,
+                })
+                .collect();
+            (!map_ids.is_empty()).then(|| RoundMaps {
+                round: round.clone(),
+                map_ids,
             })
         })
         .collect()
@@ -814,9 +1493,32 @@ pub fn parse_chat_posts(document: &Value) -> Vec<ChatPost> {
                 body: to_plain_text(&text(post, "text")),
                 at: moment(post, "at"),
                 system: flag(post, "sys"),
+                reply_to: post
+                    .get("replyTo")
+                    .filter(|held| held.is_object())
+                    .and_then(|quote| {
+                        Some(ChatQuote {
+                            id: id(quote, "id")?,
+                            author: text(quote, "who"),
+                            body: to_plain_text(&text(quote, "text")),
+                        })
+                    }),
+                everyone: flag(post, "everyone"),
             })
         })
         .collect()
+}
+
+/// The body for `POST /api/t/{id}/chat_post`.
+///
+/// `replyTo` only when answering: the service looks the id up in the same room
+/// and stores a snapshot of it, so an absent key is an ordinary post.
+pub fn chat_post_body(room_id: &str, body: &str, reply_to: Option<&str>) -> Value {
+    let mut out = json!({ "room": room_id, "text": body });
+    if let Some(reply_to) = reply_to.filter(|id| !id.trim().is_empty()) {
+        out["replyTo"] = json!(reply_to.trim());
+    }
+    out
 }
 
 /// The pages from `GET /api/articles`, in the order the editors put them.
@@ -903,10 +1605,7 @@ pub fn create_body(draft: &TourneyDraft) -> Value {
         "signupMode": draft.signup_mode.as_wire(),
         "maxTeams": draft.max_teams,
         "minTeams": draft.min_teams,
-        "veto": {
-            "enabled": draft.veto.enabled,
-            "mode": draft.veto.mode.as_wire(),
-        },
+        "veto": veto_body(&draft.veto),
     });
     // Only for a captains draft. The service stores `draftOrder` whatever the
     // formation, and sending it from a form that never showed the choice would
@@ -925,9 +1624,80 @@ pub fn create_body(draft: &TourneyDraft) -> Value {
     }
     if let Some(plan) = draft.plan {
         body["plan"] = plan_body(plan);
+        if matches!(plan, MatchPlan::Swiss { .. }) {
+            merge_swiss_extras(&mut body["plan"], &draft.swiss);
+        }
+    }
+    if let Some(preset) = draft.preset_id.as_ref().filter(|id| !id.trim().is_empty()) {
+        body["presetId"] = json!(preset.trim());
+    }
+    merge_picks(&mut body, &draft.picks, draft.tiebreak, draft.bracket_kind);
+    body["stopAtAlive"] = json!(draft.stop_at_alive.clamp(0, 128));
+    if draft.competition == Competition::FreeForAll {
+        if let Some(ffa) = &draft.ffa {
+            merge_ffa(&mut body, ffa);
+        }
     }
     merge_shared(&mut body, draft);
     body
+}
+
+/// A Swiss stage's extras, into its `plan`: the cuts (0 when off, which the
+/// service reads as off), the deciding length, and the playoffs with their
+/// `s2*` keys only when they are on, as the website sends them.
+fn merge_swiss_extras(plan: &mut Value, extras: &SwissExtras) {
+    let cut = |value: i32| value.clamp(0, 15);
+    plan["winCut"] = json!(cut(extras.cuts.wins));
+    plan["lossCut"] = json!(cut(extras.cuts.losses));
+    plan["decidingBo"] = json!(if [1, 3, 5, 7].contains(&extras.deciding_best_of) {
+        extras.deciding_best_of
+    } else {
+        0
+    });
+    match &extras.stage_two {
+        Some(stage) => {
+            plan["stage2"] = json!(1);
+            plan["s2CutTo"] = json!(stage.cut_to.clamp(2, 64));
+            plan["s2Type"] = json!(if stage.double { "double" } else { "single" });
+            plan["s2Bo"] = json!(stage.best_of);
+            plan["s2Final"] = json!(stage.final_best_of);
+            // The website sends the grand final as the final's length.
+            plan["s2Gf"] = json!(stage.final_best_of);
+            plan["s2Third"] = json!(u8::from(stage.third_place && !stage.double));
+        }
+        None => plan["stage2"] = json!(0),
+    }
+}
+
+/// Who picks their opponent, and the tiebreak, which only a Swiss sends:
+/// anything else gets `gd`, as on the website.
+fn merge_picks(body: &mut Value, picks: &PickSettings, tiebreak: SwissTiebreak, kind: BracketKind) {
+    body["pickOpponents"] = json!(u8::from(picks.on));
+    body["pickMinutes"] = json!(if picks.on {
+        picks.minutes.clamp(0, 1440)
+    } else {
+        0
+    });
+    body["pickMode"] = json!(picks.mode.as_wire());
+    body["tiebreak"] = json!(if kind == BracketKind::Swiss {
+        tiebreak.as_wire()
+    } else {
+        "gd"
+    });
+}
+
+/// A free-for-all's configuration, as its six keys.
+fn merge_ffa(body: &mut Value, ffa: &FfaConfig) {
+    body["perMatch"] = json!(ffa.per_match);
+    body["mode"] = json!(ffa.mode.as_wire());
+    body["advance"] = json!(if ffa.mode == FfaMode::Elimination {
+        ffa.advance
+    } else {
+        1
+    });
+    body["rounds"] = json!(ffa.rounds);
+    body["cutTo"] = json!(ffa.cut_to);
+    body["finalSize"] = json!(ffa.final_size);
 }
 
 /// The best-of template, in the shape the service stores for this bracket type.
@@ -937,7 +1707,13 @@ fn plan_body(plan: MatchPlan) -> Value {
             early,
             semi,
             final_bo,
-        } => json!({ "early": early, "semi": semi, "final": final_bo }),
+            third_place,
+        } => json!({
+            "early": early,
+            "semi": semi,
+            "final": final_bo,
+            "thirdPlace": third_place,
+        }),
         MatchPlan::Double {
             wb,
             wb_final,
@@ -967,15 +1743,31 @@ fn plan_body(plan: MatchPlan) -> Value {
     }
 }
 
+/// The veto settings, all four keys: `cleanVeto` resets any it is not sent.
+fn veto_body(veto: &VetoConfig) -> Value {
+    json!({
+        "enabled": veto.enabled,
+        "mode": veto.mode.as_wire(),
+        "abMode": veto.team_a.as_wire(),
+        "revealBans": veto.reveal_bans,
+    })
+}
+
 /// The body for `POST /api/t/{id}/edit_info`.
 ///
 /// A narrower set than creation: the format, the team size and the category are
 /// welded to a bracket that may already have been drawn, and the server keeps
 /// separate endpoints for changing those.
+///
+/// The veto is not in it: see [`TourneyAdmin::SetVeto`].
 pub fn edit_info_body(draft: &TourneyDraft) -> Value {
     let mut body = json!({
         "name": draft.name.trim(),
         "signupMode": draft.signup_mode.as_wire(),
+        // Which board counts. The form always showed it and this body never
+        // sent it, so changing it here did nothing at all. The service does
+        // not re-pull anyone on a change; `repull_ratings` does that.
+        "ratingType": draft.rating_kind.as_wire(),
     });
     merge_shared(&mut body, draft);
     body
@@ -1009,12 +1801,11 @@ fn merge_shared(body: &mut Value, draft: &TourneyDraft) {
         .filter(|stream| !stream.url.trim().is_empty())
         .map(|stream| json!({ "url": stream.url.trim(), "info": stream.info.trim() }))
         .collect::<Vec<_>>());
-    // Always off, and always sent. The client has no player reporting path at
-    // all: `report_submit` was removed, and the organiser records every result.
-    // The key has to be present to say so, because the service reads an absent
-    // one as *on* (`playerReporting === undefined ? true`), which would leave
-    // every event created here accepting scores the client cannot show.
-    body["playerReporting"] = json!(false);
+    // Always sent, and always the draft's own value, which for an edit is the
+    // event's. The service reads an absent key as on. This used to send `false`
+    // from both paths, so saving the settings of an event created on the
+    // website took player reporting away from it without a word.
+    body["playerReporting"] = json!(draft.player_reporting);
     // `null` is meaningful rather than omitted: the server tells a cleared date
     // from an untouched one by whether the key is there at all.
     body["eventDate"] = iso(draft.event_date);
@@ -1024,6 +1815,15 @@ fn merge_shared(body: &mut Value, draft: &TourneyDraft) {
     // `new Date(x).getTime()`, unlike the three above, which it keeps as text.
     // An ISO instant parses to the right number either way.
     body["ratingDate"] = iso(draft.rating_date);
+    // `null` clears it, which is how an event goes back to no check-in.
+    body["checkInDeadline"] = iso(draft.check_in_deadline);
+    // An empty list clears the schedule back to the event date alone.
+    body["eventDays"] = json!(draft
+        .event_days
+        .iter()
+        .map(|day| day.trim())
+        .filter(|day| !day.is_empty())
+        .collect::<Vec<_>>());
     body["minRating"] = gate(draft.rating.min);
     body["maxRating"] = gate(draft.rating.max);
     body["maxTeamRating"] = gate(draft.rating.max_team);
@@ -1033,6 +1833,11 @@ fn merge_shared(body: &mut Value, draft: &TourneyDraft) {
 /// A rating bound, or `null` to clear it.
 fn gate(value: Option<i32>) -> Value {
     value.map_or(Value::Null, |bound| json!(bound))
+}
+
+/// A moment as the RFC 3339 string the service's `cleanDate` reads, or `null`.
+pub fn iso_moment(seconds: Option<u32>) -> Value {
+    iso(seconds)
 }
 
 /// Unix seconds as the ISO instant `cleanDate` normalises to.
@@ -1123,6 +1928,12 @@ pub fn parse_series_detail(document: &Value) -> Option<SeriesDetail> {
             .filter_map(parse_series_edition)
             .collect(),
         can_edit: flag(document, "canEdit"),
+        // Only to those who may edit it: the service leaves the key out for
+        // everyone else.
+        bans: array(document, "bans")
+            .iter()
+            .filter_map(parse_ban)
+            .collect(),
     })
 }
 
@@ -1155,6 +1966,9 @@ fn parse_series_edition(value: &Value) -> Option<SeriesEdition> {
         abandoned: flag(value, "abandoned"),
         champion_team_id: id(value, "championTeamId"),
         champion: text(value, "champion"),
+        can_manage: flag_or_true(value, "canManage"),
+        signup_opens_at: calendar_moment(value, "signupOpensAt"),
+        event_days: string_list(value, "eventDays"),
     })
 }
 
@@ -1173,6 +1987,7 @@ fn parse_qualifier(value: &Value) -> Option<Qualifier> {
         applied: moment(value, "applied"),
         qualified: string_list(value, "qualified"),
         unreachable: string_list(value, "unreachable"),
+        seed_from: int(value, "seedFrom").unwrap_or(0),
     })
 }
 
@@ -1243,6 +2058,32 @@ pub fn edit_format_body(format: &FormatDraft, structural: bool) -> Value {
             "linear"
         });
     }
+    // The stage's extras ride in `plan`, where every key left out keeps its
+    // stored value, so the lengths the client does not edit here stay put.
+    match format.competition {
+        Competition::Team => {
+            if format.bracket_kind == BracketKind::Swiss {
+                let mut plan = json!({});
+                merge_swiss_extras(&mut plan, &format.swiss);
+                body["plan"] = plan;
+            }
+            merge_picks(
+                &mut body,
+                &format.picks,
+                format.tiebreak,
+                format.bracket_kind,
+            );
+            if format.bracket_kind != BracketKind::Swiss {
+                // Not sent for anything but a Swiss: leaving it out keeps it.
+                body.as_object_mut().map(|held| held.remove("tiebreak"));
+            }
+        }
+        Competition::FreeForAll => {
+            if let Some(ffa) = &format.ffa {
+                merge_ffa(&mut body, ffa);
+            }
+        }
+    }
     body
 }
 
@@ -1260,7 +2101,10 @@ pub fn phase_body(phase: TourneyPhase, config: Option<&BracketConfig>) -> Value 
     body["config"] = match config {
         // A free-for-all is drawn from `ffaCfg` and takes no config at all.
         BracketConfig::FreeForAll => json!({}),
-        BracketConfig::Single { rounds } => json!({ "rounds": rounds }),
+        BracketConfig::Single {
+            rounds,
+            third_place,
+        } => json!({ "rounds": rounds, "thirdPlace": third_place }),
         BracketConfig::Double {
             wb,
             lb,
@@ -1400,9 +2244,666 @@ pub fn qualifier_remove_body(link_id: &str) -> Value {
     json!({ "id": link_id })
 }
 
+/// The body for `POST /api/t/{id}/fveto_action`: one faction ban or pick.
+pub fn faction_veto_body(match_id: &str, game: i32, faction: TourneyFaction) -> Value {
+    json!({ "matchId": match_id, "game": game, "faction": faction.as_wire() })
+}
+
+/// Where an organiser's single-call change goes, and what it sends.
+///
+/// The action is the last segment of `POST /api/t/{id}/{action}`. Two of them
+/// are phase steps and go to `phase` with the step named in the body, as the
+/// website sends them.
+pub fn admin_request(change: &TourneyAdmin) -> (&'static str, Value) {
+    match change {
+        TourneyAdmin::ThirdPlace { on } => ("third_place", json!({ "on": u8::from(*on) })),
+        TourneyAdmin::RoundBestOf {
+            bracket,
+            round,
+            best_of,
+            division,
+        } => (
+            "set_round_bo",
+            // `division: null` is every division, as the website sends it
+            // outside a division's own block.
+            json!({
+                "bracket": bracket.as_wire(),
+                "round": round,
+                "bo": best_of,
+                "division": division,
+            }),
+        ),
+        TourneyAdmin::PlanRoundBestOf {
+            list,
+            index,
+            best_of,
+        } => (
+            "set_plan_round_bo",
+            json!({ "list": list.as_wire(), "index": index, "bo": best_of }),
+        ),
+        TourneyAdmin::SetMaps {
+            bracket,
+            round,
+            map_ids,
+        } => (
+            "set_maps",
+            json!({ "bracket": bracket.as_wire(), "round": round, "maps": map_ids }),
+        ),
+        TourneyAdmin::SetMatchTeam {
+            match_id,
+            slot,
+            team_id,
+        } => (
+            "set_match_team",
+            json!({ "matchId": match_id, "slot": slot, "teamId": team_id }),
+        ),
+        TourneyAdmin::CopyPoolOrder { source_id, targets } => (
+            "pool_copy_sequence",
+            match targets {
+                Some(ids) => json!({ "sourceId": source_id, "targetIds": ids }),
+                None => json!({ "sourceId": source_id, "applyAll": 1 }),
+            },
+        ),
+        TourneyAdmin::CopyMaps { source_id, picked } => (
+            "copy_maps",
+            // The service's three shapes: everything; whole pools with any
+            // extra maps; or maps alone, which needs `pools: false` spelled
+            // out, since no pool ids otherwise means every pool.
+            match picked {
+                None => json!({ "sourceId": source_id }),
+                Some(pick) if pick.pool_ids.is_empty() => {
+                    json!({ "sourceId": source_id, "pools": false, "mapIds": pick.map_ids })
+                }
+                Some(pick) => {
+                    let mut body = json!({ "sourceId": source_id, "poolIds": pick.pool_ids });
+                    if !pick.map_ids.is_empty() {
+                        body["mapIds"] = json!(pick.map_ids);
+                    }
+                    body
+                }
+            },
+        ),
+        TourneyAdmin::FactionReset {
+            match_id,
+            game,
+            slot,
+        } => {
+            let mut body = json!({ "matchId": match_id, "game": game });
+            match slot {
+                Some(1) => body["side"] = json!("t1"),
+                Some(2) => body["side"] = json!("t2"),
+                _ => {}
+            }
+            ("fveto_reset", body)
+        }
+        TourneyAdmin::PickOpponent { team_id } => ("pick_opponent", json!({ "teamId": team_id })),
+        TourneyAdmin::UndoPickOpponent => ("undo_pick_opponent", json!({})),
+        TourneyAdmin::PlayoffSetup {
+            pick,
+            minutes,
+            tiebreak,
+            redo,
+        } => {
+            let mut body = json!({
+                "pick": pick.map_or("off", PickMode::as_wire),
+                "minutes": (*minutes).clamp(0, 1440),
+                "tiebreak": tiebreak.as_wire(),
+            });
+            if *redo {
+                body["redo"] = json!(1);
+            }
+            ("playoff_setup", body)
+        }
+        TourneyAdmin::SwissRound1 { pairs } => (
+            "swiss_round1",
+            match pairs {
+                Some(pairs) => json!({
+                    "pairs": pairs.iter().map(|(one, two)| json!([one, two])).collect::<Vec<_>>()
+                }),
+                None => json!({ "shuffle": 1 }),
+            },
+        ),
+        TourneyAdmin::MatchBestOf { match_id, best_of } => (
+            "set_match_bo",
+            json!({ "matchId": match_id, "bo": best_of }),
+        ),
+        TourneyAdmin::RemoveOrganiser { faf_id } => {
+            ("remove_organizer", json!({ "fafId": faf_id.to_string() }))
+        }
+        TourneyAdmin::Ban {
+            faf_id,
+            name,
+            reason,
+            expires,
+        } => (
+            "ban_set",
+            json!({
+                "fafId": faf_id.to_string(),
+                "name": name.trim(),
+                "reason": reason.trim(),
+                // `parseBanExpiry` takes anything `new Date` reads; empty is
+                // no expiry.
+                "expires": iso(*expires),
+            }),
+        ),
+        TourneyAdmin::Unban { faf_id } => ("ban_remove", json!({ "fafId": faf_id.to_string() })),
+        TourneyAdmin::RepullRatings => ("repull_ratings", json!({})),
+        TourneyAdmin::ApplyRenames { player_ids } => {
+            ("apply_renames", json!({ "playerIds": player_ids }))
+        }
+        TourneyAdmin::QualifierSeed { link_id, seed_from } => (
+            "qualifier_seed",
+            json!({ "id": link_id, "seedFrom": seed_from }),
+        ),
+        TourneyAdmin::StopAt { alive } => {
+            ("set_stop_at", json!({ "stopAtAlive": alive, "confirm": 1 }))
+        }
+        TourneyAdmin::FinishEarly => ("phase", json!({ "action": "finish_early", "force": 1 })),
+        TourneyAdmin::ReopenEarly => (
+            "phase",
+            json!({ "action": "undo_finish_early", "force": 1 }),
+        ),
+        TourneyAdmin::AddImage { data_url } => ("add_desc_image", json!({ "image": data_url })),
+        TourneyAdmin::RemoveImage { file } => ("remove_desc_image", json!({ "file": file })),
+        TourneyAdmin::SchedulePublish { at } => (
+            "publish",
+            match at {
+                Some(_) => json!({ "publishAt": iso(*at) }),
+                None => json!({ "cancelSchedule": 1 }),
+            },
+        ),
+        TourneyAdmin::SetVeto { config } => ("edit_info", json!({ "veto": veto_body(config) })),
+        TourneyAdmin::TeamCheckIn {
+            team_id,
+            checked_in,
+        } => (
+            "checkin_team",
+            json!({ "teamId": team_id, "value": u8::from(*checked_in) }),
+        ),
+        TourneyAdmin::SwapTeam { in_id, out_id } => {
+            ("swap_team", json!({ "inId": in_id, "outId": out_id }))
+        }
+        TourneyAdmin::CreateTeamFor { player_id, name } => (
+            "org_create_team",
+            json!({ "playerId": player_id, "name": name.trim() }),
+        ),
+        TourneyAdmin::ReplacePlayer { player_id, with } => (
+            "replace_player",
+            match with {
+                Replacement::Standby { player_id: standby } => {
+                    json!({ "playerId": player_id, "replacementId": standby })
+                }
+                // `lookup` takes a FAF name or id and is resolved against FAF
+                // by the service; the id is what the picker chose.
+                Replacement::Account { faf_id, rating } => {
+                    let mut body = json!({ "playerId": player_id, "lookup": faf_id.to_string() });
+                    if let Some(rating) = rating {
+                        body["rating"] = json!(rating);
+                    }
+                    body
+                }
+            },
+        ),
+        TourneyAdmin::CancelTeamInvite { team_id, player_id } => (
+            "cancel_invite",
+            json!({ "teamId": team_id, "playerId": player_id }),
+        ),
+        // A count outside 2..=64 is refused outright, and the mode with it, so
+        // one the organiser has not typed yet is left out rather than sent.
+        TourneyAdmin::SetCaptainMode { mode, count } => {
+            let mut body = json!({ "action": "set_captain_mode", "mode": mode.as_wire() });
+            if (2..=64).contains(count) {
+                body["count"] = json!(count);
+            }
+            ("phase", body)
+        }
+        TourneyAdmin::SetTeamName {
+            player_id,
+            team_name,
+        } => {
+            let mut body = json!({ "teamName": team_name.trim() });
+            if let Some(player_id) = player_id {
+                body["playerId"] = json!(player_id);
+            }
+            ("set_team_name", body)
+        }
+        TourneyAdmin::SetCategory { category } => (
+            "set_category",
+            json!({ "category": match category {
+                TourneyCategory::Official => "official",
+                TourneyCategory::Community => "community",
+            } }),
+        ),
+        TourneyAdmin::MapSecret { map_id, secret } => {
+            let secret = u8::from(*secret);
+            (
+                "map_secret",
+                match map_id {
+                    Some(id) => json!({ "id": id, "secret": secret }),
+                    None => json!({ "all": 1, "secret": secret }),
+                },
+            )
+        }
+    }
+}
+
+/// The body for `POST /api/t/{id}/fveto_config`.
+///
+/// `enabled` as 0/1, the service's own convention, though it reads any truthy
+/// value.
+pub fn faction_veto_config_body(config: &FactionVetoConfig) -> Value {
+    json!({
+        "enabled": if config.enabled { 1 } else { 0 },
+        "bans": config.bans,
+        "picks": config.picks,
+    })
+}
+
+/// The body for `POST /api/t/{id}/report_submit`, a player's score for the
+/// other side to confirm.
+///
+/// Only what the handler reads: the running score, one replay id per new game
+/// and the replays of drawn games. No winner and no forfeit, which are the
+/// organiser's through `report`. `replayIds` is always sent, because the
+/// handler counts it against the new games and an absent key counts as none.
+pub fn submit_report_body(report: &MatchReport) -> Value {
+    let mut body = json!({
+        "matchId": report.match_id,
+        "score1": report.score1,
+        "score2": report.score2,
+        "replayIds": report.replay_ids,
+    });
+    if !report.draw_replay_ids.is_empty() {
+        body["drawReplayIds"] = json!(report.draw_replay_ids);
+    }
+    body
+}
+
+// ---------------------------------------------------------------------------
+// The site around the tournaments: the account, the pending bar, the Hall of
+// Fame, and the site administration and director console.
+// ---------------------------------------------------------------------------
+
+/// Where a site read goes, and whether it is a `POST` (the console's `data`
+/// is one, with an empty body).
+pub fn site_read_path(read: SiteRead) -> (&'static str, bool) {
+    match read {
+        SiteRead::Account => ("/auth/faf/me", false),
+        SiteRead::Pending => ("my/pending", false),
+        SiteRead::HallOfFame => ("halloffame", false),
+        SiteRead::Console => ("siteadmin/data", true),
+        SiteRead::Access {
+            kind: AccessKind::Host,
+        } => ("host_status", false),
+        SiteRead::Access {
+            kind: AccessKind::Editor,
+        } => ("editor_status", false),
+        SiteRead::Access {
+            kind: AccessKind::Importer,
+        } => ("importer_status", false),
+    }
+}
+
+/// A site read's answer, parsed.
+pub fn parse_site_document(read: SiteRead, document: &Value) -> SiteDocument {
+    match read {
+        SiteRead::Account => SiteDocument::Account(parse_account(document)),
+        SiteRead::Pending => SiteDocument::Pending(parse_pending(document)),
+        SiteRead::HallOfFame => SiteDocument::HallOfFame(parse_hall_of_fame(document)),
+        SiteRead::Console => SiteDocument::Console(Box::new(parse_console(document))),
+        SiteRead::Access { kind } => SiteDocument::Access {
+            kind,
+            status: AccessStatus {
+                oauth: flag_or_true(document, "oauth"),
+                logged_in: flag(document, "loggedIn"),
+                allowed: flag(document, "allowed"),
+                pending: flag(document, "pending"),
+            },
+        },
+    }
+}
+
+/// This account's roles, from `GET /auth/faf/me`. `user` is `null` for a
+/// caller the service holds no session for, and then every role is off.
+pub fn parse_account(document: &Value) -> TourneyAccount {
+    let Some(user) = document.get("user").filter(|held| held.is_object()) else {
+        return TourneyAccount {
+            oauth: flag(document, "enabled"),
+            ..TourneyAccount::default()
+        };
+    };
+    TourneyAccount {
+        logged_in: true,
+        oauth: flag(document, "enabled"),
+        faf_id: int(user, "fafId"),
+        faf_name: text(user, "fafName"),
+        discord: text(user, "discord"),
+        editor: flag(user, "editor"),
+        importer: flag(user, "importer"),
+        director: flag(user, "director"),
+        site_admin: flag(user, "siteAdmin"),
+        site_admin_account: flag(user, "siteAdminAccount"),
+        admin_stand_down: flag(user, "adminStandDown"),
+        allowed: flag(user, "allowed"),
+    }
+}
+
+/// The first whole number in a sentence, where there is one.
+fn first_number(text: &str) -> Option<i32> {
+    let digits: String = text
+        .chars()
+        .skip_while(|held| !held.is_ascii_digit())
+        .take_while(char::is_ascii_digit)
+        .collect();
+    digits.parse().ok()
+}
+
+/// `GET /api/my/pending`: what waits on this account, and the admin alert.
+pub fn parse_pending(document: &Value) -> PendingSummary {
+    let items = array(document, "pending")
+        .iter()
+        .filter_map(|item| {
+            let sentence = text(item, "text");
+            Some(PendingItem {
+                tournament_id: id(item, "tId")?,
+                tournament_name: text(item, "tName"),
+                kind: text(item, "type"),
+                tab: text(item, "tab"),
+                count: first_number(&sentence),
+                text: sentence,
+            })
+        })
+        .collect();
+    let alert = document.get("alert").filter(|held| held.is_object());
+    let (requests, new_requests) = match alert {
+        Some(held) => {
+            let sentence = text(held, "text");
+            // "N access request(s) waiting for review (M new)".
+            let new = sentence
+                .rfind('(')
+                .map(|at| &sentence[at..])
+                .filter(|tail| tail.contains("new"))
+                .and_then(first_number);
+            (first_number(&sentence).or(Some(1)), new)
+        }
+        None => (None, None),
+    };
+    PendingSummary {
+        items,
+        requests,
+        new_requests,
+    }
+}
+
+/// `GET /api/halloffame`.
+pub fn parse_hall_of_fame(document: &Value) -> HallOfFame {
+    HallOfFame {
+        players: array(document, "players")
+            .iter()
+            .filter_map(|held| {
+                Some(HallPlayer {
+                    faf_id: int(held, "fafId")?,
+                    name: text(held, "name"),
+                    wins: int(held, "wins").unwrap_or(0),
+                    entered: int(held, "entered").unwrap_or(0),
+                })
+            })
+            .collect(),
+        teams: array(document, "teams")
+            .iter()
+            .map(|held| HallTeam {
+                name: text(held, "name"),
+                wins: int(held, "wins").unwrap_or(0),
+            })
+            .collect(),
+    }
+}
+
+fn parse_access_request(value: &Value) -> Option<AccessRequest> {
+    Some(AccessRequest {
+        id: id(value, "id")?,
+        faf_id: int(value, "fafId").unwrap_or(0),
+        faf_name: text(value, "fafName"),
+        message: text(value, "message"),
+        at: moment(value, "at"),
+        status: text(value, "status"),
+        decided_at: moment(value, "decidedAt"),
+        decided_by: text(value, "decidedBy"),
+    })
+}
+
+fn parse_listed(value: &Value) -> Option<ListedAccount> {
+    Some(ListedAccount {
+        faf_id: int(value, "fafId")?,
+        name: text(value, "name"),
+        at: moment(value, "at"),
+        by: text(value, "by"),
+        stand_down: flag(value, "standDown"),
+    })
+}
+
+/// The console's `data` document.
+pub fn parse_console(data: &Value) -> SiteAdminData {
+    let list = |name: &str| -> Vec<ListedAccount> {
+        array(data, name).iter().filter_map(parse_listed).collect()
+    };
+    let requests = |name: &str| -> Vec<AccessRequest> {
+        array(data, name)
+            .iter()
+            .filter_map(parse_access_request)
+            .collect()
+    };
+    SiteAdminData {
+        role: match text(data, "role").as_str() {
+            "editor" => ConsoleRole::Editor,
+            "director" => ConsoleRole::Director,
+            _ => ConsoleRole::Admin,
+        },
+        oauth: flag_or_true(data, "oauth"),
+        logs: array(data, "logs")
+            .iter()
+            .map(|held| SiteLogEntry {
+                id: text(held, "id"),
+                at: moment(held, "at"),
+                action: text(held, "action"),
+                actor_kind: text(held, "actorKind"),
+                actor_faf_id: int(held, "actorFafId"),
+                actor_name: text(held, "actorName"),
+                ip: text(held, "ip"),
+                tournament_id: text(held, "tournamentId"),
+                tournament_name: text(held, "tournamentName"),
+                detail: text(held, "detail"),
+            })
+            .collect(),
+        host_requests: requests("requests"),
+        host_allowed: list("allowed"),
+        editor_requests: requests("editorRequests"),
+        editor_allowed: list("editorAllowed"),
+        importer_requests: requests("importerRequests"),
+        importer_allowed: list("importerAllowed"),
+        archived: array(data, "archived")
+            .iter()
+            .filter_map(|held| {
+                Some(ArchivedTourney {
+                    id: id(held, "id")?,
+                    name: text(held, "name"),
+                    status: TourneyStatus::from_wire(&text(held, "status")),
+                    at: moment(held, "at"),
+                    players: count(held, "players"),
+                })
+            })
+            .collect(),
+        articles: array(data, "articles")
+            .iter()
+            .filter_map(|held| {
+                Some(AdminArticle {
+                    id: id(held, "id")?,
+                    title: text(held, "title"),
+                    // The source itself, markdown and all: this is what the
+                    // editor edits, not a page to be read.
+                    body: text(held, "body"),
+                    parent_id: id(held, "parentId"),
+                    archived: flag(held, "archived"),
+                    updated_at: moment(held, "updatedAt"),
+                })
+            })
+            .collect(),
+        directors: list("directors"),
+        site_admins: list("siteAdmins"),
+        me: int(data, "me"),
+        bans: array(data, "bans").iter().filter_map(parse_ban).collect(),
+    }
+}
+
+/// Where a site write goes, and its body. Ids are strings on the service's
+/// side, as for every other FAF id it stores.
+pub fn site_request(write: &SiteWrite) -> (String, Value) {
+    let path = |act: &str| format!("siteadmin/{act}");
+    let access = |kind: AccessKind, host: &str, editor: &str, importer: &str| -> String {
+        path(match kind {
+            AccessKind::Host => host,
+            AccessKind::Editor => editor,
+            AccessKind::Importer => importer,
+        })
+    };
+    match write {
+        SiteWrite::StandDown { on } => (
+            "/auth/faf/stand_down".into(),
+            json!({ "on": u8::from(*on) }),
+        ),
+        SiteWrite::DismissRequests => ("my/dismiss_requests".into(), json!({})),
+        SiteWrite::RequestAccess { kind, message } => (
+            match kind {
+                AccessKind::Host => "host_request",
+                AccessKind::Editor => "editor_request",
+                AccessKind::Importer => "importer_request",
+            }
+            .into(),
+            json!({ "message": message.trim() }),
+        ),
+        SiteWrite::Decide { kind, id, approve } => (
+            access(*kind, "decide", "editor_decide", "importer_decide"),
+            json!({ "id": id, "approve": u8::from(*approve) }),
+        ),
+        SiteWrite::Revoke { kind, faf_id } => (
+            access(*kind, "revoke", "editor_revoke", "importer_revoke"),
+            json!({ "fafId": faf_id.to_string() }),
+        ),
+        SiteWrite::Grant { kind, faf_id, name } => (
+            access(*kind, "grant", "editor_grant", "importer_grant"),
+            json!({ "fafId": faf_id.to_string(), "name": name.trim() }),
+        ),
+        SiteWrite::SiteAdminGrant { faf_id, name } => (
+            path("siteadmin_grant"),
+            json!({ "fafId": faf_id.to_string(), "name": name.trim() }),
+        ),
+        SiteWrite::SiteAdminRevoke { faf_id } => (
+            path("siteadmin_revoke"),
+            json!({ "fafId": faf_id.to_string() }),
+        ),
+        SiteWrite::DirectorGrant { faf_id, name } => (
+            path("director_grant"),
+            json!({ "fafId": faf_id.to_string(), "name": name.trim() }),
+        ),
+        SiteWrite::DirectorRevoke { faf_id } => (
+            path("director_revoke"),
+            json!({ "fafId": faf_id.to_string() }),
+        ),
+        SiteWrite::GlobalBan {
+            faf_id,
+            name,
+            reason,
+            expires,
+        } => (
+            path("ban_set"),
+            json!({
+                "fafId": faf_id.to_string(),
+                "name": name.trim(),
+                "reason": reason.trim(),
+                "expires": iso(*expires),
+            }),
+        ),
+        SiteWrite::GlobalUnban { faf_id } => {
+            (path("ban_remove"), json!({ "fafId": faf_id.to_string() }))
+        }
+        SiteWrite::SeriesBan {
+            series_id,
+            faf_id,
+            name,
+            reason,
+            expires,
+        } => (
+            "series".into(),
+            json!({
+                "action": "ban_set",
+                "id": series_id,
+                "fafId": faf_id.to_string(),
+                "name": name.trim(),
+                "reason": reason.trim(),
+                "expires": iso(*expires),
+            }),
+        ),
+        SiteWrite::SeriesUnban { series_id, faf_id } => (
+            "series".into(),
+            json!({ "action": "ban_remove", "id": series_id, "fafId": faf_id.to_string() }),
+        ),
+        SiteWrite::ArticleSave {
+            id,
+            title,
+            body,
+            parent_id,
+        } => {
+            let mut sent = json!({
+                "title": title.trim(),
+                "body": body,
+                "parentId": parent_id,
+            });
+            if let Some(id) = id.as_ref().filter(|held| !held.is_empty()) {
+                sent["id"] = json!(id);
+            }
+            (path("article_save"), sent)
+        }
+        SiteWrite::ArticleArchive { id, restore } => {
+            let mut sent = json!({ "id": id });
+            if *restore {
+                sent["restore"] = json!(1);
+            }
+            (path("article_delete"), sent)
+        }
+        SiteWrite::ArticleImage { data_url } => {
+            (path("article_image"), json!({ "image": data_url }))
+        }
+        SiteWrite::Restore { tournament_id } => (format!("t/{tournament_id}/restore"), json!({})),
+        SiteWrite::DeleteTournament { tournament_id } => {
+            (format!("t/{tournament_id}/delete"), json!({}))
+        }
+        SiteWrite::ImportChallonge {
+            tournament,
+            api_key,
+        } => (
+            "import_challonge".into(),
+            json!({ "tournament": tournament.trim(), "apiKey": api_key.trim() }),
+        ),
+    }
+}
+
+/// What a site write answered that the client keeps: the tournament an import
+/// created, or the path of an uploaded article picture.
+pub fn parse_site_answer(write: &SiteWrite, document: &Value) -> (Option<String>, Option<String>) {
+    match write {
+        SiteWrite::ImportChallonge { .. } => (id(document, "id"), None),
+        SiteWrite::ArticleImage { .. } => (
+            None,
+            Some(text(document, "url")).filter(|url| !url.is_empty()),
+        ),
+        _ => (None, None),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::{MapPick, PlanList};
 
     /// A document shaped like `publicView`, with the conventions that matter:
     /// string ids, 0/1 flags, millisecond timestamps.
@@ -1518,6 +3019,7 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(event.players.len(), 2);
         assert_eq!(event.teams.len(), 1);
         assert_eq!(event.organisers, vec!["TD".to_string()]);
+        assert_eq!(event.organiser_discords, vec!["td#1".to_string()]);
     }
 
     #[test]
@@ -1847,6 +3349,37 @@ See the [rules](https://x.invalid/r)."
     }
 
     #[test]
+    fn a_reply_carries_its_quote_and_an_everyone_post_its_mark() {
+        let posts = parse_chat_posts(&json!({
+            "messages": [
+                { "id": "c3", "who": "Ada", "text": "yes", "everyone": 1,
+                  "replyTo": { "id": "c1", "who": "Nuggets", "text": "gl <i>hf</i>" } },
+                { "id": "c4", "who": "Ada", "text": "no", "replyTo": null }
+            ]
+        }));
+        assert_eq!(
+            posts[0].reply_to,
+            Some(ChatQuote {
+                id: "c1".into(),
+                author: "Nuggets".into(),
+                body: "gl hf".into(),
+            })
+        );
+        assert!(posts[0].everyone);
+        assert_eq!(posts[1].reply_to, None);
+        assert!(!posts[1].everyone);
+
+        assert_eq!(
+            chat_post_body("global", "yes", Some("c1")),
+            json!({ "room": "global", "text": "yes", "replyTo": "c1" })
+        );
+        assert_eq!(
+            chat_post_body("global", "yes", None),
+            json!({ "room": "global", "text": "yes" })
+        );
+    }
+
+    #[test]
     fn articles_arrive_as_a_bare_list_with_their_nesting() {
         let articles = parse_articles(&json!([
             { "id": "art33adc81d9f78", "title": "Rules", "body": "<p>Be nice</p>", "order": 0 },
@@ -1885,9 +3418,9 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(body["formation"], "draft");
         assert_eq!(body["bracketType"], "double");
         assert_eq!(body["teamSize"], 2);
-        // Always sent, always off. An absent key would be read as *on*, and the
-        // client has no player reporting path to show for it.
-        assert_eq!(body["playerReporting"], false);
+        // Always sent. An absent key would be read as *on* whatever the draft
+        // says; this one says on, as a new draft does.
+        assert_eq!(body["playerReporting"], true);
         // Dates go as ISO text: `cleanDate` accepts only strings, and a number
         // would be read as no date at all.
         assert_eq!(body["eventDate"], "2026-08-22T18:00:00Z");
@@ -1918,16 +3451,1249 @@ See the [rules](https://x.invalid/r)."
     }
 
     #[test]
-    fn neither_path_ever_turns_player_reporting_on() {
-        // The service reads an absent key as on, so both bodies have to say no
-        // rather than stay quiet. Nothing in the client can show a player's
-        // report, and `report_submit` is gone.
+    fn pinned_round_maps_and_secret_maps_are_read() {
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "maps": { "sw:1": ["map1", "map2"], "sw:2": [] },
+            "mapDb": [
+                { "id": "map1", "name": "Setons", "secret": 1 },
+                { "id": "map2", "name": "Hidden Map 1", "secret": 1, "masked": 1, "image": null },
+            ],
+        }))
+        .expect("a tournament");
+        assert_eq!(
+            event.round_maps,
+            vec![RoundMaps {
+                round: "sw:1".into(),
+                map_ids: vec!["map1".into(), "map2".into()],
+            }],
+            "an empty round is dropped"
+        );
+        assert!(event.map_db[0].secret && !event.map_db[0].masked);
+        assert!(event.map_db[1].masked);
+        assert_eq!(event.map_db[1].image_url, "");
+    }
+
+    #[test]
+    fn a_faction_veto_is_read_as_the_viewers_slice() {
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "teamSize": 1,
+            "fveto": { "enabled": 1, "bans": 1, "picks": 2 },
+            "matches": [{
+                "id": "m1", "team1": "t1", "team2": "t2", "bo": 3,
+                "fveto": { "bans": 1, "picks": 2, "games": {
+                    "2": { "t1Done": true, "t2Done": false, "result": null,
+                           "mine": { "bans": ["cybran"], "picks": [], "done": false },
+                           "next": { "action": "pick", "index": 1, "of": 2 } },
+                    "1": { "t1Done": true, "t2Done": true,
+                           "result": { "t1": "aeon", "t2": "uef" } },
+                    "3": { "t1Done": false, "t2Done": false, "result": null,
+                           "mine": { "bans": ["klingon"], "picks": [], "done": false },
+                           "next": null }
+                } }
+            }],
+        }))
+        .expect("a tournament");
+        assert!(event.faction_veto.enabled);
+        assert!(event.faction_veto_on());
+        let veto = event.matches[0]
+            .faction_veto
+            .as_ref()
+            .expect("a faction veto");
+        assert_eq!(
+            veto.games.iter().map(|game| game.game).collect::<Vec<_>>(),
+            vec![1, 2, 3],
+            "in game order, whatever order the object arrived in"
+        );
+        assert_eq!(
+            veto.games[0].result,
+            Some(FactionResult {
+                team1: TourneyFaction::Aeon,
+                team2: TourneyFaction::Uef
+            })
+        );
+        assert_eq!(
+            veto.games[0].mine, None,
+            "a spectator's slice has no choices"
+        );
+        let second = &veto.games[1];
+        assert_eq!(
+            second.mine.as_ref().unwrap().bans,
+            vec![TourneyFaction::Cybran]
+        );
+        assert_eq!(
+            second.next,
+            Some(FactionStep {
+                action: PoolAction::Pick,
+                index: 1,
+                of: 2
+            })
+        );
+        assert!(
+            veto.games[2].mine.as_ref().unwrap().bans.is_empty(),
+            "unknown faction dropped"
+        );
+        assert_eq!(veto.games_owed(), 1);
+        assert!(!veto.is_settled());
+
+        let off = parse_tourney(&json!({ "id": "e2", "fveto": null })).expect("a tournament");
+        assert_eq!(off.faction_veto, FactionVetoConfig::default());
+        assert!(!off.faction_veto_on());
+    }
+
+    #[test]
+    fn faction_veto_bodies_use_the_services_names() {
+        let body = faction_veto_body("m1", 2, TourneyFaction::Seraphim);
+        assert_eq!(
+            body,
+            json!({ "matchId": "m1", "game": 2, "faction": "seraphim" })
+        );
+        let config = faction_veto_config_body(&FactionVetoConfig {
+            enabled: true,
+            bans: 2,
+            picks: 3,
+        });
+        assert_eq!(config, json!({ "enabled": 1, "bans": 2, "picks": 3 }));
+    }
+
+    #[test]
+    fn a_third_place_match_is_its_own_side_and_not_a_second_final() {
+        // It carries the final's round number and index 0, so read as a
+        // winners match it would sit on top of the final itself.
+        let mut document = document();
+        document["bracketType"] = json!("single");
+        document["plan"] = json!({ "early": 3, "semi": 3, "final": 5, "thirdPlace": 1 });
+        document["matches"] = json!([
+            { "id": "f", "bracket": "wb", "round": 2, "index": 0, "bo": 5, "status": "ready" },
+            { "id": "t", "bracket": "3p", "round": 2, "index": 0, "bo": 3, "status": "ready" },
+        ]);
+        document["teams"][0]["out"] = json!({ "bracket": "3p", "round": 2, "place": 3 });
+        let event = parse_tourney(&document).unwrap();
+        assert_eq!(event.matches[1].bracket, BracketSide::ThirdPlace);
+        assert_eq!(event.matches[0].bracket, BracketSide::Winners);
+        assert_eq!(
+            event.teams[0].out.as_ref().unwrap().bracket,
+            BracketSide::ThirdPlace
+        );
+        assert!(matches!(
+            event.plan,
+            Some(MatchPlan::Single {
+                third_place: true,
+                ..
+            })
+        ));
+        assert_eq!(
+            event.third_place_match().map(|entry| entry.id.as_str()),
+            Some("t")
+        );
+        assert_eq!(BracketSide::ThirdPlace.as_wire(), "3p");
+    }
+
+    #[test]
+    fn a_rating_check_carries_the_verdict_and_the_numbers_behind_it() {
+        let check = parse_rating_check(&json!({
+            "ok": true, "rated": 1, "rating": 1480, "capped": null, "ratingType": "1v1",
+            "asOf": 1_790_000_000_000_i64, "min": 1500, "max": null, "exempt": false,
+            "alreadyIn": false, "banned": null, "eligible": false,
+            "message": "Your rating is below the minimum of 1500.",
+        }));
+        assert!(check.rated);
+        assert_eq!(check.rating, Some(1480));
+        assert_eq!(check.rating_kind, RatingKind::Ladder1v1);
+        assert_eq!(check.min, Some(1500));
+        assert_eq!(check.eligible, Some(false));
+        assert_eq!(check.banned, None);
+        // No rating found: the verdict is unknown, not a refusal.
+        let unknown = parse_rating_check(&json!({ "rated": 1, "rating": null, "eligible": null }));
+        assert_eq!(unknown.eligible, None);
+    }
+
+    #[test]
+    fn every_board_of_a_player_is_listed_in_the_websites_order() {
+        let ratings = parse_player_ratings(&json!({
+            "playerId": "p1", "name": "Ada", "counts": "2v2", "countsRating": 2300, "capped": 2200,
+            "ratingDate": 1_790_000_000_000_i64,
+            "allRatings": { "boards": {
+                "1v1": { "rating": 1800, "games": 120 },
+                "global": { "rating": 2100, "games": 900 },
+                "2v2": { "rating": 2300, "games": null },
+            } },
+        }));
+        assert_eq!(ratings.counts, RatingKind::Team2v2);
+        assert_eq!(ratings.capped, Some(2200));
+        let boards: Vec<_> = ratings.boards.iter().map(|row| row.board).collect();
+        assert_eq!(
+            boards,
+            vec![
+                RatingKind::Global,
+                RatingKind::Ladder1v1,
+                RatingKind::Team2v2,
+                RatingKind::Team3v3,
+                RatingKind::Team4v4,
+            ]
+        );
+        assert_eq!(ratings.boards[3].rating, None);
+        // A hand-added entrant: no boards, and the service says why.
+        let manual = parse_player_ratings(&json!({
+            "playerId": "p2", "name": "Bob", "counts": "none", "allRatings": null,
+            "reason": "This player has no FAF account linked (added manually).",
+        }));
+        assert!(manual.boards.is_empty());
+        assert!(!manual.reason.is_empty());
+    }
+
+    #[test]
+    fn the_teams_are_ordered_by_when_they_entered_not_as_listed() {
+        let mut document = document();
+        document["teams"] = json!([
+            { "id": "late", "name": "Late", "entryKey": 3_000 },
+            { "id": "first", "name": "First", "entryKey": 1_000 },
+            { "id": "swapped", "name": "Swapped", "entryKey": 2_000 },
+            { "id": "tied", "name": "Tied", "entryKey": 2_000 },
+        ]);
+        document["captainMode"] = json!("rating");
+        document["captainCount"] = json!(4);
+        let event = parse_tourney(&document).unwrap();
+        assert_eq!(event.entry_order, vec!["first", "swapped", "tied", "late"]);
+        assert_eq!(event.captain_mode, CaptainMode::Rating);
+        assert_eq!(event.captain_count, 4);
+    }
+
+    #[test]
+    fn the_team_changes_go_where_the_service_listens() {
+        let request = |change: TourneyAdmin| admin_request(&change);
+        assert_eq!(
+            request(TourneyAdmin::TeamCheckIn {
+                team_id: "t1".into(),
+                checked_in: false,
+            }),
+            ("checkin_team", json!({ "teamId": "t1", "value": 0 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::SwapTeam {
+                in_id: "t9".into(),
+                out_id: "t2".into(),
+            }),
+            ("swap_team", json!({ "inId": "t9", "outId": "t2" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::CreateTeamFor {
+                player_id: "p4".into(),
+                name: " Blue ".into(),
+            }),
+            (
+                "org_create_team",
+                json!({ "playerId": "p4", "name": "Blue" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::ReplacePlayer {
+                player_id: "p1".into(),
+                with: Replacement::Standby {
+                    player_id: "p7".into(),
+                },
+            }),
+            (
+                "replace_player",
+                json!({ "playerId": "p1", "replacementId": "p7" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::ReplacePlayer {
+                player_id: "p1".into(),
+                with: Replacement::Account {
+                    faf_id: 4711,
+                    rating: Some(1500),
+                },
+            }),
+            (
+                "replace_player",
+                json!({ "playerId": "p1", "lookup": "4711", "rating": 1500 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::CancelTeamInvite {
+                team_id: "t1".into(),
+                player_id: "p5".into(),
+            }),
+            ("cancel_invite", json!({ "teamId": "t1", "playerId": "p5" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::SetCaptainMode {
+                mode: CaptainMode::Rating,
+                count: 6,
+            }),
+            (
+                "phase",
+                json!({ "action": "set_captain_mode", "mode": "rating", "count": 6 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::SetCaptainMode {
+                mode: CaptainMode::Manual,
+                count: 0,
+            }),
+            (
+                "phase",
+                json!({ "action": "set_captain_mode", "mode": "manual" })
+            )
+        );
+    }
+
+    #[test]
+    fn a_signup_sends_a_rating_only_when_the_event_takes_one_by_hand() {
+        assert_eq!(signup_body(None), json!({}));
+        assert_eq!(signup_body(Some(1500)), json!({ "rating": 1500 }));
+    }
+
+    #[test]
+    fn the_players_own_ban_and_invitation_are_read() {
+        let mut document = document();
+        document["myBan"] = json!({ "scope": "global", "reason": "Smurfing", "expires": null });
+        document["viewer"]["invited"] = json!(1);
+        document["players"][0]["discord"] = json!("ada#1");
+        let event = parse_tourney(&document).unwrap();
+        let ban = event.my_ban.as_ref().unwrap();
+        assert_eq!(ban.scope, BanScope::Official);
+        assert_eq!(ban.expires, None);
+        assert!(event.viewer.invited);
+        assert_eq!(event.players[0].discord, "ada#1");
+        // A banned account is not offered Enter at all.
+        assert!(!event.may_sign_up());
+    }
+
+    #[test]
+    fn a_scheduled_publish_reads_as_the_date_the_service_stores() {
+        // `cleanDate` output: an ISO instant, or a bare date meaning midnight UTC.
+        let event =
+            parse_tourney(&json!({ "id": "e1", "publishAt": "2026-10-01T18:00:00.000Z" })).unwrap();
+        assert_eq!(event.publish_at, Some(1_790_877_600));
+        let event = parse_tourney(&json!({ "id": "e1", "publishAt": "2026-10-01" })).unwrap();
+        assert_eq!(event.publish_at, Some(1_790_812_800));
+        let event = parse_tourney(&json!({ "id": "e1", "publishAt": null })).unwrap();
+        assert_eq!(event.publish_at, None);
+    }
+
+    #[test]
+    fn the_account_carries_every_role_and_none_without_a_session() {
+        let account = parse_account(&json!({ "enabled": true, "user": {
+            "fafId": 7, "fafName": "Nuggets", "discord": "n#1", "editor": 0, "importer": 1,
+            "director": 1, "siteAdmin": 0, "siteAdminAccount": 1, "adminStandDown": 1, "allowed": 1 } }));
+        assert!(account.logged_in && account.oauth && account.director && account.importer);
+        assert!(!account.site_admin && account.site_admin_account && account.admin_stand_down);
+        assert_eq!((account.faf_id, account.discord.as_str()), (Some(7), "n#1"));
+        let anonymous = parse_account(&json!({ "enabled": true, "user": null }));
+        assert!(!anonymous.logged_in && !anonymous.allowed);
+    }
+
+    #[test]
+    fn the_pending_bar_keeps_the_numbers_out_of_the_sentences() {
+        let pending = parse_pending(&json!({
+            "pending": [
+                { "tId": "e1", "tName": "Cup", "type": "requests", "tab": "players",
+                  "text": "3 signup requests await your review" },
+                { "tId": "e2", "tName": "Open", "type": "draft", "tab": "teams",
+                  "text": "It's your pick in the captains draft" },
+            ],
+            "alert": { "type": "access", "dismissible": 1, "text": "5 access requests waiting for review (2 new)" },
+        }));
+        assert_eq!(pending.items[0].count, Some(3));
+        assert_eq!(pending.items[1].count, None);
+        assert_eq!((pending.requests, pending.new_requests), (Some(5), Some(2)));
+        let quiet = parse_pending(&json!({ "pending": [], "alert": null }));
+        assert_eq!(quiet.requests, None);
+    }
+
+    #[test]
+    fn the_console_reads_each_list_and_the_role() {
+        let console = parse_console(&json!({
+            "role": "director", "oauth": 1,
+            "requests": [{ "id": "r1", "fafId": 5, "fafName": "Asker", "message": "hi",
+                           "at": 1_790_000_000_000_i64, "status": "pending" }],
+            "allowed": [{ "fafId": 6, "name": "Host", "at": 1_790_000_000_000_i64, "by": "Admin" }],
+            "directors": [{ "fafId": 7, "name": "Dir" }],
+            "archived": [{ "id": "e9", "name": "Old", "status": "finished", "at": 1, "players": 12 }],
+            "articles": [{ "id": "a1", "title": "Rules", "body": "# Head", "parentId": null, "archived": 1 }],
+            "bans": [{ "fafId": "42", "name": "Troll", "reason": "", "expires": null, "at": 1, "by": "x" }],
+            "me": 7,
+        }));
+        assert_eq!(console.role, ConsoleRole::Director);
+        assert_eq!(console.host_requests[0].faf_name, "Asker");
+        assert_eq!(console.host_allowed[0].faf_id, 6);
+        assert_eq!(console.archived[0].players, 12);
+        assert_eq!(console.articles[0].body, "# Head");
+        assert!(console.articles[0].archived);
+        assert_eq!(console.bans[0].faf_id, 42);
+        assert_eq!(console.me, Some(7));
+    }
+
+    #[test]
+    fn each_site_write_goes_where_the_service_listens() {
+        let request = |write: SiteWrite| site_request(&write);
+        assert_eq!(
+            request(SiteWrite::StandDown { on: true }),
+            ("/auth/faf/stand_down".to_string(), json!({ "on": 1 }))
+        );
+        assert_eq!(
+            request(SiteWrite::RequestAccess {
+                kind: AccessKind::Host,
+                message: " weekly cup ".into(),
+            }),
+            (
+                "host_request".to_string(),
+                json!({ "message": "weekly cup" })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::Decide {
+                kind: AccessKind::Editor,
+                id: "r1".into(),
+                approve: true,
+            }),
+            (
+                "siteadmin/editor_decide".to_string(),
+                json!({ "id": "r1", "approve": 1 })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::Revoke {
+                kind: AccessKind::Host,
+                faf_id: 5,
+            }),
+            ("siteadmin/revoke".to_string(), json!({ "fafId": "5" }))
+        );
+        assert_eq!(
+            request(SiteWrite::Grant {
+                kind: AccessKind::Importer,
+                faf_id: 5,
+                name: "Imp".into(),
+            }),
+            (
+                "siteadmin/importer_grant".to_string(),
+                json!({ "fafId": "5", "name": "Imp" })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::GlobalBan {
+                faf_id: 9,
+                name: "T".into(),
+                reason: "smurf".into(),
+                expires: None,
+            }),
+            (
+                "siteadmin/ban_set".to_string(),
+                json!({ "fafId": "9", "name": "T", "reason": "smurf", "expires": null })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::SeriesUnban {
+                series_id: "s1".into(),
+                faf_id: 9,
+            }),
+            (
+                "series".to_string(),
+                json!({ "action": "ban_remove", "id": "s1", "fafId": "9" })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::ArticleSave {
+                id: None,
+                title: " Rules ".into(),
+                body: "text".into(),
+                parent_id: Some("a1".into()),
+            }),
+            (
+                "siteadmin/article_save".to_string(),
+                json!({ "title": "Rules", "body": "text", "parentId": "a1" })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::ArticleArchive {
+                id: "a2".into(),
+                restore: true,
+            }),
+            (
+                "siteadmin/article_delete".to_string(),
+                json!({ "id": "a2", "restore": 1 })
+            )
+        );
+        assert_eq!(
+            request(SiteWrite::Restore {
+                tournament_id: "e9".into(),
+            }),
+            ("t/e9/restore".to_string(), json!({}))
+        );
+        assert_eq!(
+            request(SiteWrite::ImportChallonge {
+                tournament: " challonge.com/abc ".into(),
+                api_key: " key ".into(),
+            }),
+            (
+                "import_challonge".to_string(),
+                json!({ "tournament": "challonge.com/abc", "apiKey": "key" })
+            )
+        );
+        assert_eq!(
+            parse_site_answer(
+                &SiteWrite::ImportChallonge {
+                    tournament: String::new(),
+                    api_key: String::new(),
+                },
+                &json!({ "ok": true, "id": "e77", "name": "Imported" }),
+            ),
+            (Some("e77".to_string()), None)
+        );
+        assert_eq!(
+            admin_request(&TourneyAdmin::SetCategory {
+                category: TourneyCategory::Official,
+            }),
+            ("set_category", json!({ "category": "official" }))
+        );
+        assert_eq!(
+            admin_request(&TourneyAdmin::SetTeamName {
+                player_id: None,
+                team_name: " Blue Squad ".into(),
+            }),
+            ("set_team_name", json!({ "teamName": "Blue Squad" }))
+        );
+        assert_eq!(
+            admin_request(&TourneyAdmin::SetTeamName {
+                player_id: Some("p3".into()),
+                team_name: String::new(),
+            }),
+            ("set_team_name", json!({ "teamName": "", "playerId": "p3" }))
+        );
+        let event = parse_tourney(&json!({ "id": "e1", "formation": "premade",
+            "players": [{ "id": "p1", "name": "A", "teamName": " Blue " }] }))
+        .unwrap();
+        assert!(event.premade_teams);
+        assert_eq!(event.players[0].team_name, "Blue");
+    }
+
+    #[test]
+    fn a_preset_is_read_as_the_tournament_it_describes() {
+        let presets = parse_presets(&json!({ "presets": [
+            { "id": "lots", "name": "LotS", "blurb": "b", "notes": ["n1"], "allowed": true,
+              "apply": { "competition": "team", "teamSize": 1, "bracketType": "swiss",
+                         "maxTeams": 16, "signupMode": "invite", "pickPhase": 1,
+                         "plan": { "bo": 1, "winCut": 3, "lossCut": 3, "decidingBo": 3,
+                                   "stage2": 1, "s2CutTo": 8 } } },
+            { "id": "invitational", "name": "Invitational", "allowed": false, "apply": null },
+        ] }));
+        assert_eq!(presets.len(), 2);
+        let lots = presets[0].apply.as_deref().unwrap();
+        assert_eq!(lots.bracket_kind, BracketKind::Swiss);
+        assert_eq!(lots.swiss_cuts, SwissCuts { wins: 3, losses: 3 });
+        assert_eq!(lots.deciding_best_of, 3);
+        assert!(lots.pick_opponents);
+        assert_eq!(lots.stage_two_plan.map(|stage| stage.cut_to), Some(8));
+        assert_eq!(presets[0].notes, vec!["n1".to_string()]);
+        assert!(!presets[1].allowed);
+        assert!(presets[1].apply.is_none());
+    }
+
+    #[test]
+    fn a_swiss_is_created_with_its_cuts_its_playoffs_and_who_picks() {
+        let draft = TourneyDraft {
+            name: "LotS".into(),
+            bracket_kind: BracketKind::Swiss,
+            plan: Some(MatchPlan::default_for(BracketKind::Swiss)),
+            preset_id: Some("lots".into()),
+            swiss: SwissExtras {
+                cuts: SwissCuts { wins: 3, losses: 3 },
+                deciding_best_of: 3,
+                stage_two: Some(StageTwoPlan {
+                    double: false,
+                    cut_to: 8,
+                    best_of: 3,
+                    final_best_of: 5,
+                    grand_final: 5,
+                    handicap: false,
+                    third_place: true,
+                }),
+            },
+            picks: PickSettings {
+                on: true,
+                minutes: 5,
+                mode: PickMode::Bottom,
+            },
+            tiebreak: SwissTiebreak::Beaten,
+            ..TourneyDraft::new()
+        };
+        let body = create_body(&draft);
+        assert_eq!(body["presetId"], "lots");
+        assert_eq!(body["plan"]["winCut"], 3);
+        assert_eq!(body["plan"]["decidingBo"], 3);
+        assert_eq!(body["plan"]["stage2"], 1);
+        assert_eq!(body["plan"]["s2CutTo"], 8);
+        assert_eq!(body["plan"]["s2Gf"], 5);
+        assert_eq!(body["plan"]["s2Third"], 1);
+        assert_eq!(body["pickOpponents"], 1);
+        assert_eq!(body["pickMinutes"], 5);
+        assert_eq!(body["pickMode"], "bottom");
+        assert_eq!(body["tiebreak"], "beaten");
+        assert_eq!(body["stopAtAlive"], 0);
+        // Picking off sends no clock; a bracket that is not Swiss sends `gd`.
+        let single = create_body(&TourneyDraft {
+            name: "Cup".into(),
+            picks: PickSettings {
+                on: false,
+                minutes: 9,
+                mode: PickMode::Half,
+            },
+            tiebreak: SwissTiebreak::Beaten,
+            stop_at_alive: 4,
+            ..TourneyDraft::new()
+        });
+        assert_eq!(single["pickMinutes"], 0);
+        assert_eq!(single["tiebreak"], "gd");
+        assert_eq!(single["stopAtAlive"], 4);
+        assert!(single["plan"].get("winCut").is_none());
+    }
+
+    #[test]
+    fn a_free_for_all_is_created_with_its_lobbies() {
+        let body = create_body(&TourneyDraft {
+            name: "FFA night".into(),
+            competition: Competition::FreeForAll,
+            team_size: 1,
+            plan: None,
+            ffa: Some(FfaConfig {
+                per_match: 8,
+                advance: 3,
+                mode: FfaMode::Points,
+                rounds: 4,
+                cut_to: 8,
+                final_size: 4,
+            }),
+            ..TourneyDraft::new()
+        });
+        assert_eq!(body["competition"], "ffa");
+        assert_eq!(body["perMatch"], 8);
+        assert_eq!(body["mode"], "points");
+        // Only knockout lobbies advance anyone; points mode sends 1.
+        assert_eq!(body["advance"], 1);
+        assert_eq!(
+            (
+                body["rounds"].clone(),
+                body["cutTo"].clone(),
+                body["finalSize"].clone()
+            ),
+            (json!(4), json!(8), json!(4))
+        );
+    }
+
+    #[test]
+    fn a_format_change_sends_the_swiss_extras_in_plan_and_the_tiebreak_only_for_swiss() {
+        let swiss = FormatDraft {
+            swiss: SwissExtras {
+                cuts: SwissCuts { wins: 3, losses: 2 },
+                deciding_best_of: 0,
+                stage_two: None,
+            },
+            picks: PickSettings {
+                on: false,
+                minutes: 0,
+                mode: PickMode::Half,
+            },
+            tiebreak: SwissTiebreak::GameDiff,
+            ffa: None,
+            competition: Competition::Team,
+            team_size: 1,
+            formation: Formation::Solo,
+            bracket_kind: BracketKind::Swiss,
+            draft_snakes: false,
+        };
+        let body = edit_format_body(&swiss, false);
+        assert_eq!(
+            body["plan"],
+            json!({ "winCut": 3, "lossCut": 2, "decidingBo": 0, "stage2": 0 })
+        );
+        assert_eq!(body["tiebreak"], "gd");
+        let single = edit_format_body(
+            &FormatDraft {
+                bracket_kind: BracketKind::Single,
+                ..swiss
+            },
+            false,
+        );
+        assert!(single.get("plan").is_none());
+        assert!(single.get("tiebreak").is_none());
+        assert_eq!(single["pickOpponents"], 0);
+    }
+
+    #[test]
+    fn a_swiss_with_playoffs_reads_its_plan_its_playoffs_and_the_picks() {
+        let event = parse_tourney(&json!({
+            "id": "e1", "bracketType": "swiss", "competition": "team",
+            "plan": { "bo": 1, "winCut": 3, "lossCut": 3, "decidingBo": 3, "stage2": 1,
+                      "s2Type": "single", "s2CutTo": 8, "s2Bo": 3, "s2Final": 5, "s2Third": 1 },
+            "pickOpponents": 1, "pickMinutes": 5, "pickMode": "bottom",
+            "stage2": { "type": "single", "cutTo": 8, "built": 1790000000000_i64, "field": ["t1", "t2"], "thirdPlace": 1 },
+            "playoffs": { "pick": "bottom", "made": 1, "built": 0, "locked": 0, "swissDone": 1, "redraws": 2 },
+            "picks": {
+                "status": "open", "half": 4, "field": ["t1", "t2", "t3"], "order": ["t1"],
+                "picks": { "t1": "t8" }, "available": ["t6", "t7"], "turn": "t2", "myTurn": true,
+                "msLeft": 90500, "perPickMs": 300000,
+                "log": [{ "by": "t1", "byName": "Ada", "target": "t8", "at": 1790000000000_i64, "auto": 0 }],
+                "forWhat": "stage2", "mode": "unbeaten", "rest": "seed", "pool": ["t6", "t7"],
+                "poolRule": "bottom", "records": { "t1": "3-0" }, "drawn": [["t3", "t4"]],
+            },
+            "plannedR1": [["t1", "t2"], ["bad"]],
+            "swissR1Open": 1,
+        }))
+        .unwrap();
+        assert_eq!(event.deciding_best_of, 3);
+        let plan = event.stage_two_plan.unwrap();
+        assert!(!plan.double && plan.third_place);
+        assert_eq!((plan.cut_to, plan.best_of, plan.final_best_of), (8, 3, 5));
+        assert!(event.pick_opponents);
+        assert_eq!((event.pick_minutes, event.pick_mode), (5, PickMode::Bottom));
+        let playoffs = event.playoffs.unwrap();
+        assert_eq!(playoffs.pick, Some(PickMode::Bottom));
+        assert!(playoffs.made && !playoffs.built && playoffs.swiss_done);
+        assert_eq!((playoffs.cut_to, playoffs.redraws), (8, 2));
+        assert_eq!(playoffs.field, vec!["t1".to_string(), "t2".to_string()]);
+        let picks = event.picks.unwrap();
+        assert!(picks.open && picks.my_turn && picks.stage_two && picks.unbeaten);
+        assert!(picks.rest_seeded && picks.pool_bottom);
+        // Rounded up: 90.5 seconds is still 91 seconds to go.
+        assert_eq!(
+            (picks.seconds_left, picks.seconds_per_pick),
+            (Some(91), Some(300))
+        );
+        assert_eq!(picks.picks[0].target, "t8");
+        assert_eq!(picks.turn.as_deref(), Some("t2"));
+        assert_eq!(picks.records[0].record, "3-0");
+        assert_eq!(picks.drawn, vec![("t3".to_string(), "t4".to_string())]);
+        assert_eq!(picks.log[0].by_name, "Ada");
+        assert_eq!(
+            event.planned_round_one,
+            vec![("t1".to_string(), "t2".to_string())]
+        );
+        assert!(event.round_one_open);
+    }
+
+    #[test]
+    fn an_import_brings_its_group_tables_and_placings() {
+        let event = parse_tourney(&json!({
+            "id": "e1", "imported": true, "standingsOnly": 1,
+            "importedGroups": [{ "name": "Group A", "played": 3, "rows": [
+                { "name": "Ada", "w": 2, "l": 1, "gw": 5, "gl": 3 },
+            ] }],
+            "importedStandings": [{ "rank": 1, "name": "Ada" }, { "rank": 1, "name": "Bo" }, { "name": "no rank" }],
+        }))
+        .unwrap();
+        assert_eq!(event.imported_groups[0].name, "Group A");
+        assert_eq!(event.imported_groups[0].played, 3);
+        assert_eq!(
+            event.imported_groups[0].rows[0],
+            ImportedRow {
+                name: "Ada".into(),
+                wins: 2,
+                losses: 1,
+                games_won: 5,
+                games_lost: 3,
+            }
+        );
+        // A tie stays a tie; a line without a rank is not a placing.
+        assert_eq!(event.imported_standings.len(), 2);
+        assert_eq!(event.imported_standings[1].rank, 1);
+    }
+
+    #[test]
+    fn the_import_sources_say_which_events_may_give_maps() {
+        let sources = parse_copy_sources(&json!({ "tournaments": [
+            { "id": "e1", "name": "Cup", "mapCount": 12, "poolCount": 3, "canCopyMaps": 1 },
+            { "id": "e2", "name": "Official", "mapCount": 0, "poolCount": 0, "canCopyMaps": 0 },
+            { "name": "no id" },
+        ] }));
+        assert_eq!(sources.len(), 2);
+        assert_eq!(
+            (
+                sources[0].map_count,
+                sources[0].pool_count,
+                sources[0].may_copy
+            ),
+            (12, 3, true)
+        );
+        assert!(!sources[1].may_copy);
+    }
+
+    #[test]
+    fn a_detail_carries_the_chat_counts_and_where_an_import_came_from() {
+        let event = parse_tourney(&json!({
+            "id": "e1", "myMentionCount": 2, "chatPingCount": 1, "myUnreadCount": 7,
+            "imported": true, "importedType": "double elimination", "standingsOnly": 1,
+            "sourceUrl": "https://challonge.com/abc",
+        }))
+        .unwrap();
+        assert_eq!(
+            (
+                event.my_mention_count,
+                event.chat_ping_count,
+                event.my_unread_count
+            ),
+            (2, 1, 7)
+        );
+        assert_eq!(event.imported_type, "double elimination");
+        assert!(event.standings_only);
+        assert_eq!(event.source_url, "https://challonge.com/abc");
+        // Only list rows carry `canManage`; everything else is manageable as far
+        // as the list is concerned, and the viewer block decides the rest.
+        assert!(event.can_manage);
+        let row = parse_tourney(&json!({ "id": "e2", "published": 0, "canManage": 0 })).unwrap();
+        assert!(!row.can_manage);
+    }
+
+    #[test]
+    fn a_rename_check_names_who_changed_and_what_it_could_not_ask() {
+        let check = parse_rename_check(&json!({
+            "ok": true, "checked": 3, "failed": 1, "manual": 2,
+            "changed": [
+                { "playerId": "p1", "fafId": "11", "from": "Old", "to": "New", "team": "Team Old" },
+                { "playerId": "p2", "fafId": "12", "from": "A", "to": "B", "team": null },
+                { "from": "no id", "to": "dropped" },
+            ],
+        }));
+        assert_eq!(check.checked, 3);
+        assert_eq!(check.failed, 1);
+        assert_eq!(check.manual, 2);
+        assert_eq!(check.changed.len(), 2);
+        assert_eq!(check.changed[0].team.as_deref(), Some("Team Old"));
+        assert_eq!(check.changed[1].team, None);
+    }
+
+    #[test]
+    fn the_organiser_view_carries_bans_and_how_far_the_event_got() {
+        let mut document = document();
+        document["bans"] = json!([
+            { "fafId": "77", "name": "Troll", "reason": "smurf", "expires": "2026-12-01T00:00:00.000Z",
+              "at": 1_790_000_000_000_i64, "by": "Nuggets", "expired": 0 },
+        ]);
+        document["stopAtAlive"] = json!(4);
+        document["survivors"] = json!({ "wb": ["t1", "t2"], "lb": ["t3"] });
+        document["earlyFinish"] = json!({ "at": 1_790_000_000_000_i64, "by": "Automatic", "auto": 1,
+            "target": 4, "alive": 3, "names": ["A", "B", "C"], "wb": [], "lb": [], "unplayed": [] });
+        document["qualifiers"] = json!([{ "id": "q1", "tournamentId": "c1", "seedFrom": 5 }]);
+        let event = parse_tourney(&document).unwrap();
+        assert_eq!(event.bans[0].faf_id, 77);
+        assert_eq!(event.bans[0].expires, Some(1_796_083_200));
+        assert!(!event.bans[0].expired);
+        assert_eq!(event.stop_at_alive, 4);
+        assert_eq!(event.survivors.as_ref().map(Survivors::alive), Some(3));
+        let finish = event.early_finish.unwrap();
+        assert!(finish.automatic);
+        assert_eq!(finish.names.len(), 3);
+        assert_eq!(event.qualifiers[0].seed_from, 5);
+    }
+
+    #[test]
+    fn each_admin_change_goes_where_the_service_listens() {
+        let request = |change: TourneyAdmin| admin_request(&change);
+        assert_eq!(
+            request(TourneyAdmin::ThirdPlace { on: false }),
+            ("third_place", json!({ "on": 0 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::RoundBestOf {
+                bracket: BracketSide::ThirdPlace,
+                round: 3,
+                best_of: 5,
+                division: None,
+            }),
+            (
+                "set_round_bo",
+                json!({ "bracket": "3p", "round": 3, "bo": 5, "division": null })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::RoundBestOf {
+                bracket: BracketSide::Winners,
+                round: 1,
+                best_of: 3,
+                division: Some(2),
+            }),
+            (
+                "set_round_bo",
+                json!({ "bracket": "wb", "round": 1, "bo": 3, "division": 2 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::PlanRoundBestOf {
+                list: PlanList::Losers,
+                index: 2,
+                best_of: 5,
+            }),
+            (
+                "set_plan_round_bo",
+                json!({ "list": "lb", "index": 2, "bo": 5 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::SetMaps {
+                bracket: BracketSide::Winners,
+                round: 2,
+                map_ids: vec!["mp1".into(), "mp2".into()],
+            }),
+            (
+                "set_maps",
+                json!({ "bracket": "wb", "round": 2, "maps": ["mp1", "mp2"] })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::SetMatchTeam {
+                match_id: "m1".into(),
+                slot: 2,
+                team_id: None,
+            }),
+            (
+                "set_match_team",
+                json!({ "matchId": "m1", "slot": 2, "teamId": null })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::CopyPoolOrder {
+                source_id: "pl1".into(),
+                targets: None,
+            }),
+            (
+                "pool_copy_sequence",
+                json!({ "sourceId": "pl1", "applyAll": 1 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::CopyPoolOrder {
+                source_id: "pl1".into(),
+                targets: Some(vec!["pl2".into()]),
+            }),
+            (
+                "pool_copy_sequence",
+                json!({ "sourceId": "pl1", "targetIds": ["pl2"] })
+            )
+        );
+        // The three shapes `copy_maps` reads.
+        assert_eq!(
+            request(TourneyAdmin::CopyMaps {
+                source_id: "e2".into(),
+                picked: None,
+            }),
+            ("copy_maps", json!({ "sourceId": "e2" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::CopyMaps {
+                source_id: "e2".into(),
+                picked: Some(MapPick {
+                    pool_ids: vec!["pl1".into()],
+                    map_ids: vec![],
+                }),
+            }),
+            ("copy_maps", json!({ "sourceId": "e2", "poolIds": ["pl1"] }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::CopyMaps {
+                source_id: "e2".into(),
+                picked: Some(MapPick {
+                    pool_ids: vec![],
+                    map_ids: vec!["mp9".into()],
+                }),
+            }),
+            (
+                "copy_maps",
+                json!({ "sourceId": "e2", "pools": false, "mapIds": ["mp9"] })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::FactionReset {
+                match_id: "m1".into(),
+                game: 2,
+                slot: Some(2),
+            }),
+            (
+                "fveto_reset",
+                json!({ "matchId": "m1", "game": 2, "side": "t2" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::FactionReset {
+                match_id: "m1".into(),
+                game: 1,
+                slot: None,
+            }),
+            ("fveto_reset", json!({ "matchId": "m1", "game": 1 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::PickOpponent {
+                team_id: "t7".into(),
+            }),
+            ("pick_opponent", json!({ "teamId": "t7" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::UndoPickOpponent),
+            ("undo_pick_opponent", json!({}))
+        );
+        assert_eq!(
+            request(TourneyAdmin::PlayoffSetup {
+                pick: None,
+                minutes: 5000,
+                tiebreak: SwissTiebreak::GameDiff,
+                redo: false,
+            }),
+            (
+                "playoff_setup",
+                json!({ "pick": "off", "minutes": 1440, "tiebreak": "gd" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::PlayoffSetup {
+                pick: Some(PickMode::Bottom),
+                minutes: 10,
+                tiebreak: SwissTiebreak::Beaten,
+                redo: true,
+            }),
+            (
+                "playoff_setup",
+                json!({ "pick": "bottom", "minutes": 10, "tiebreak": "beaten", "redo": 1 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::SwissRound1 {
+                pairs: Some(vec![("t1".into(), "t2".into())]),
+            }),
+            ("swiss_round1", json!({ "pairs": [["t1", "t2"]] }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::SwissRound1 { pairs: None }),
+            ("swiss_round1", json!({ "shuffle": 1 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::MatchBestOf {
+                match_id: "m1".into(),
+                best_of: 7,
+            }),
+            ("set_match_bo", json!({ "matchId": "m1", "bo": 7 }))
+        );
+        // Ids are strings on the service's side: `organizerFafIds` and the
+        // ban store are keyed by `String(fafId)`.
+        assert_eq!(
+            request(TourneyAdmin::RemoveOrganiser { faf_id: 42 }),
+            ("remove_organizer", json!({ "fafId": "42" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::Ban {
+                faf_id: 42,
+                name: " Troll ".into(),
+                reason: "".into(),
+                expires: Some(1_790_000_000),
+            }),
+            (
+                "ban_set",
+                json!({
+                    "fafId": "42",
+                    "name": "Troll",
+                    "reason": "",
+                    "expires": "2026-09-21T14:13:20Z",
+                })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::Ban {
+                faf_id: 42,
+                name: "Troll".into(),
+                reason: "smurf".into(),
+                expires: None,
+            })
+            .1["expires"],
+            Value::Null
+        );
+        assert_eq!(
+            request(TourneyAdmin::Unban { faf_id: 42 }),
+            ("ban_remove", json!({ "fafId": "42" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::RepullRatings),
+            ("repull_ratings", json!({}))
+        );
+        assert_eq!(
+            request(TourneyAdmin::ApplyRenames {
+                player_ids: vec!["p1".into(), "p2".into()],
+            }),
+            ("apply_renames", json!({ "playerIds": ["p1", "p2"] }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::QualifierSeed {
+                link_id: "q1".into(),
+                seed_from: 5,
+            }),
+            ("qualifier_seed", json!({ "id": "q1", "seedFrom": 5 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::StopAt { alive: 4 }),
+            ("set_stop_at", json!({ "stopAtAlive": 4, "confirm": 1 }))
+        );
+        // The two phase steps go to `phase`, named in the body.
+        assert_eq!(
+            request(TourneyAdmin::FinishEarly),
+            ("phase", json!({ "action": "finish_early", "force": 1 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::ReopenEarly),
+            (
+                "phase",
+                json!({ "action": "undo_finish_early", "force": 1 })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::AddImage {
+                data_url: "data:image/png;base64,AAAA".into(),
+            }),
+            (
+                "add_desc_image",
+                json!({ "image": "data:image/png;base64,AAAA" })
+            )
+        );
+        assert_eq!(
+            request(TourneyAdmin::RemoveImage {
+                file: "desc_ab.png".into(),
+            }),
+            ("remove_desc_image", json!({ "file": "desc_ab.png" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::SchedulePublish {
+                at: Some(1_790_000_000),
+            }),
+            ("publish", json!({ "publishAt": "2026-09-21T14:13:20Z" }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::SchedulePublish { at: None }),
+            ("publish", json!({ "cancelSchedule": 1 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::MapSecret {
+                map_id: Some("map1".into()),
+                secret: true,
+            }),
+            ("map_secret", json!({ "id": "map1", "secret": 1 }))
+        );
+        assert_eq!(
+            request(TourneyAdmin::MapSecret {
+                map_id: None,
+                secret: false,
+            }),
+            ("map_secret", json!({ "all": 1, "secret": 0 }))
+        );
+        // Every key, because `cleanVeto` resets whatever it is not sent.
+        assert_eq!(
+            request(TourneyAdmin::SetVeto {
+                config: VetoConfig {
+                    enabled: true,
+                    mode: VetoMode::Continuous,
+                    team_a: VetoTeamA::Manual,
+                    reveal_bans: true,
+                },
+            }),
+            (
+                "edit_info",
+                json!({ "veto": {
+                    "enabled": true,
+                    "mode": "continuous",
+                    "abMode": "manual",
+                    "revealBans": true,
+                } })
+            )
+        );
+    }
+
+    #[test]
+    fn saving_the_settings_sends_the_board_the_schedule_and_the_check_in() {
+        let draft = TourneyDraft {
+            name: "Cup".into(),
+            rating_kind: RatingKind::Ladder1v1,
+            check_in_deadline: Some(1_790_000_000),
+            event_days: vec!["2026-10-03".into(), " ".into(), "2026-10-04".into()],
+            veto: VetoConfig {
+                enabled: true,
+                ..VetoConfig::default()
+            },
+            ..TourneyDraft::new()
+        };
+        let body = edit_info_body(&draft);
+        assert_eq!(body["ratingType"], "1v1");
+        assert_eq!(body["checkInDeadline"], "2026-09-21T14:13:20Z");
+        assert_eq!(body["eventDays"], json!(["2026-10-03", "2026-10-04"]));
+        // Never the veto: it would rebuild every veto not yet started.
+        assert!(body.get("veto").is_none());
+        // Creation takes all of it, the veto included, with every key.
+        let created = create_body(&draft);
+        assert_eq!(created["veto"]["abMode"], "lowerA");
+        assert_eq!(created["veto"]["revealBans"], false);
+        assert_eq!(created["eventDays"], json!(["2026-10-03", "2026-10-04"]));
+    }
+
+    #[test]
+    fn the_veto_rules_and_the_schedule_are_read_back() {
+        let mut document = document();
+        document["veto"] =
+            json!({ "enabled": 1, "mode": "continuous", "abMode": "random", "revealBans": 1 });
+        document["eventDays"] = json!(["2026-10-03", "2026-10-04"]);
+        let event = parse_tourney(&document).unwrap();
+        assert_eq!(event.veto.team_a, VetoTeamA::Random);
+        assert!(event.veto.reveal_bans);
+        assert_eq!(event.event_days.len(), 2);
+    }
+
+    #[test]
+    fn a_players_submission_carries_the_score_and_the_replays_only() {
+        let body = submit_report_body(&MatchReport {
+            match_id: "m1".into(),
+            score1: 2,
+            score2: 1,
+            replay_ids: vec!["21534001".into()],
+            draw_replay_ids: Vec::new(),
+            winner: Some("t1".into()),
+            forfeit: Some("t2".into()),
+        });
+        assert_eq!(body["matchId"], "m1");
+        assert_eq!(body["score1"], 2);
+        assert_eq!(body["score2"], 1);
+        assert_eq!(body["replayIds"], json!(["21534001"]));
+        // `report_submit` reads neither, and sending them would suggest a
+        // player could decide a series.
+        assert!(body.get("winner").is_none());
+        assert!(body.get("forfeit").is_none());
+        assert!(body.get("drawReplayIds").is_none(), "nothing to keep");
+
+        let drawn = submit_report_body(&MatchReport {
+            match_id: "m1".into(),
+            score1: 1,
+            score2: 0,
+            replay_ids: vec!["21534001".into()],
+            draw_replay_ids: vec!["21534010".into()],
+            ..MatchReport::default()
+        });
+        assert_eq!(drawn["drawReplayIds"], json!(["21534010"]));
+    }
+
+    #[test]
+    fn both_paths_send_the_drafts_own_player_reporting() {
+        // Always present, because the service reads an absent key as on, and
+        // always the draft's: a fixed value turned it off on every event whose
+        // settings were saved here.
         let draft = TourneyDraft {
             name: "Weekend Cup".into(),
             ..TourneyDraft::new()
         };
-        assert_eq!(create_body(&draft)["playerReporting"], false);
-        assert_eq!(edit_info_body(&draft)["playerReporting"], false);
+        assert!(draft.player_reporting, "on by default, as on the website");
+        assert_eq!(create_body(&draft)["playerReporting"], true);
+        assert_eq!(edit_info_body(&draft)["playerReporting"], true);
+
+        let organiser_only = TourneyDraft {
+            player_reporting: false,
+            ..draft
+        };
+        assert_eq!(create_body(&organiser_only)["playerReporting"], false);
+        assert_eq!(edit_info_body(&organiser_only)["playerReporting"], false);
     }
 
     #[test]
@@ -2005,6 +4771,7 @@ See the [rules](https://x.invalid/r)."
             formation: Formation::Draft,
             bracket_kind: BracketKind::Swiss,
             draft_snakes: true,
+            ..FormatDraft::default()
         };
 
         let bracket_only = edit_format_body(&format, false);
@@ -2024,10 +4791,18 @@ See the [rules](https://x.invalid/r)."
 
         // Never sent, in either shape: the client reads none of these off the
         // event, so any value here would overwrite with a guess.
-        for guessed in ["plan", "perRoundBo", "seeding", "maxTeams"] {
+        for guessed in ["perRoundBo", "seeding", "maxTeams"] {
             assert!(
                 whole.get(guessed).is_none() && bracket_only.get(guessed).is_none(),
                 "{guessed} is not ours to send"
+            );
+        }
+        // A Swiss plan carries its extras alone: the lengths are left out, and
+        // a key left out keeps its stored value.
+        for length in ["bo", "final", "finalBo", "fast"] {
+            assert!(
+                bracket_only["plan"].get(length).is_none(),
+                "{length} is not ours to send"
             );
         }
     }
@@ -2063,10 +4838,14 @@ See the [rules](https://x.invalid/r)."
         // got a say. The config is read on `start_bracket` and there only.
         let plan = BracketConfig::Single {
             rounds: vec![3, 3, 5],
+            third_place: true,
         };
         let drawn = phase_body(TourneyPhase::StartBracket, Some(&plan));
         assert_eq!(drawn["action"], "start_bracket");
         assert_eq!(drawn["config"]["rounds"], json!([3, 3, 5]));
+        // Always sent, because the service falls back to the stored plan's
+        // choice when the key is absent, and "no" has to be sayable.
+        assert_eq!(drawn["config"]["thirdPlace"], true);
 
         // Every other step ignores it rather than sending it somewhere it
         // would not be read.
@@ -2319,5 +5098,138 @@ See the [rules](https://x.invalid/r)."
         assert_eq!(body["n"], 1, "the service clamps to 1 and so does this");
         // Removal is addressed by the link, not by the child it points at.
         assert_eq!(qualifier_remove_body("q1")["id"], "q1");
+    }
+
+    /// Spawn information survives a round trip, because `map_save` overwrites
+    /// whatever is stored with whatever is sent: a save that dropped it
+    /// deleted it.
+    #[test]
+    fn a_maps_spawn_information_goes_back_the_way_it_came() {
+        let map = parse_map(&json!({
+            "id": "map1",
+            "name": "Setons",
+            "spec": { "t1": [1, 3], "t2": ["2", 4], "closed": [], "closedMex": [7], "size": "10x10" },
+        }))
+        .expect("a map");
+        let spec = map.spec.expect("the spec is read");
+        assert_eq!(spec.team1_spawns, vec![1, 3]);
+        assert_eq!(
+            spec.team2_spawns,
+            vec![2, 4],
+            "a spawn number may arrive as a string"
+        );
+        assert_eq!(spec.closed_mex_spawns, vec![7]);
+        assert_eq!(spec.size, "10x10");
+
+        let body = map_spec_body(Some(&spec));
+        assert_eq!(body["t1"], json!([1, 3]));
+        assert_eq!(body["t2"], json!([2, 4]));
+        assert_eq!(body["closed"], json!([]));
+        assert_eq!(body["closedMex"], json!([7]));
+        assert_eq!(body["size"], "10x10");
+    }
+
+    #[test]
+    fn a_map_without_spawn_information_has_none_and_sends_none() {
+        for spec in [json!(null), json!({}), json!({ "t1": [], "size": "" })] {
+            let map = parse_map(&json!({ "id": "m", "name": "x", "spec": spec })).expect("a map");
+            assert_eq!(
+                map.spec, None,
+                "an empty spec is no spec, as the service stores it"
+            );
+        }
+        assert_eq!(map_spec_body(None), Value::Null);
+    }
+
+    #[test]
+    fn the_record_cuts_come_from_the_plan() {
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "bracketType": "swiss",
+            "plan": { "bo": 3, "winCut": 3, "lossCut": "3" },
+        }))
+        .expect("a tournament");
+        assert_eq!(event.swiss_cuts, SwissCuts { wins: 3, losses: 3 });
+        assert_eq!(event.swiss_cuts.rounds(), Some(5), "3-2 is the longest run");
+
+        let wins_only =
+            parse_tourney(&json!({ "id": "e2", "plan": { "winCut": 4 } })).expect("a tournament");
+        assert_eq!(wins_only.swiss_cuts.rounds(), Some(4));
+
+        let out_of_range =
+            parse_tourney(&json!({ "id": "e3", "plan": { "winCut": 99 } })).expect("a tournament");
+        assert_eq!(out_of_range.swiss_cuts, SwissCuts::default());
+        assert_eq!(out_of_range.swiss_cuts.rounds(), None);
+
+        let no_plan = parse_tourney(&json!({ "id": "e4", "plan": null })).expect("a tournament");
+        assert_eq!(no_plan.swiss_cuts.rounds(), None);
+    }
+
+    #[test]
+    fn the_swiss_round_count_is_the_draws_then_the_plans() {
+        let started = parse_tourney(&json!({
+            "id": "e1",
+            "cfg": { "rounds": 5, "bo": 3 },
+            "plan": { "rounds": 4 },
+        }))
+        .expect("a tournament");
+        assert_eq!(started.swiss_rounds, 5, "the draw's own count wins");
+
+        let planned = parse_tourney(&json!({ "id": "e2", "cfg": null, "plan": { "rounds": 4 } }))
+            .expect("a tournament");
+        assert_eq!(planned.swiss_rounds, 4);
+
+        let neither = parse_tourney(&json!({ "id": "e3" })).expect("a tournament");
+        assert_eq!(neither.swiss_rounds, 0);
+    }
+
+    /// The Swiss table's order, tiebreak and numbers are the server's to give.
+    #[test]
+    fn the_swiss_order_and_its_tiebreak_are_read() {
+        let event = parse_tourney(&json!({
+            "id": "e1",
+            "swissOrder": ["t2", "t1"],
+            "tiebreak": "beaten",
+            "swissSB": { "t1": 0, "t2": 3 },
+        }))
+        .expect("a tournament");
+        assert_eq!(event.swiss_order, vec!["t2", "t1"]);
+        assert_eq!(event.swiss_tiebreak, SwissTiebreak::Beaten);
+        assert_eq!(event.swiss_beaten.get("t2"), Some(&3));
+
+        let plain = parse_tourney(
+            &json!({ "id": "e2", "swissOrder": null, "tiebreak": "gd", "swissSB": null }),
+        )
+        .expect("a tournament");
+        assert!(plain.swiss_order.is_empty());
+        assert_eq!(plain.swiss_tiebreak, SwissTiebreak::GameDiff);
+        assert!(plain.swiss_beaten.is_empty());
+    }
+
+    /// A walkover names who forfeited, and drawn games keep their replays.
+    #[test]
+    fn a_match_carries_its_forfeit_and_its_drawn_replays() {
+        let entry = parse_match(&json!({
+            "id": "m1",
+            "bracket": "wb",
+            "round": 1,
+            "team1": "t1",
+            "team2": "t2",
+            "score1": -1,
+            "score2": 0,
+            "status": "done",
+            "forfeit": "t1",
+            "replayIds": ["21534001"],
+            "drawReplayIds": ["21534010"],
+            "pendingReport": {
+                "score1": 1, "score2": 0, "byTeam": "t2", "byName": "Ada",
+                "replayIds": ["1"], "drawReplayIds": ["2"],
+            },
+        }))
+        .expect("a match");
+        assert_eq!(entry.forfeit.as_deref(), Some("t1"));
+        assert_eq!(entry.draw_replay_ids, vec!["21534010"]);
+        let pending = entry.pending_report.expect("a pending report");
+        assert_eq!(pending.draw_replay_ids, vec!["2"]);
     }
 }

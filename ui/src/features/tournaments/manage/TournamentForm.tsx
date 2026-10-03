@@ -19,15 +19,25 @@
 // and per-round best-of overrides, which cannot be asked about before the rounds
 // exist. Both stay on the website, and the map database is its own section.
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
-import type { Prize, Tourney, TourneyDraft, TourneySeries } from "../../../ipc/bindings";
+import type {
+  CopySource,
+  Prize,
+  Tourney,
+  TourneyDraft,
+  TourneyLoadStatus,
+  TourneyPreset,
+  TourneySeries,
+} from "../../../ipc/bindings";
+import { CreateStarters } from "./CreateStarters";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { defaultPlanFor, rejectionOf, type DraftRejection } from "../../../shared/rules/tourneyRules";
 import { PlanFields } from "./PlanFields";
-import { formatPrize } from "../tourneyPresentation";
+import { defaultFfa, FfaFields, PickFields, StopAtField, SwissExtrasFields } from "./FormatExtras";
+import { formatDay, formatPrize } from "../tourneyPresentation";
 
 const REJECTION_LABELS: Record<DraftRejection, MessageKey> = {
   nameRequired: "tournaments.form.nameRequired",
@@ -101,6 +111,78 @@ function localValue(seconds: number | null): string {
   );
 }
 
+/** A moment's day as `YYYY-MM-DD` in UTC, which is how the service keeps event days. */
+function utcDay(seconds: number): string {
+  return new Date(seconds * 1000).toISOString().slice(0, 10);
+}
+
+/** The same UTC time of day on another day. */
+function onDay(seconds: number, day: string): number {
+  const midnight = Date.parse(`${day}T00:00:00Z`);
+  if (Number.isNaN(midnight)) return seconds;
+  return Math.floor(midnight / 1000) + (((seconds % 86_400) + 86_400) % 86_400);
+}
+
+/**
+ * The days a multi-day event runs on.
+ *
+ * The service keeps the earliest as the event date's day, with the event
+ * date's own time, so the two are kept together here the same way: adding a
+ * day before the event date moves the event date, and removing all but one
+ * turns it back into an event on one day.
+ */
+function EventDays({
+  eventDate,
+  days,
+  onChange,
+}: {
+  eventDate: number;
+  days: string[];
+  onChange: (days: string[], eventDate: number) => void;
+}) {
+  const { t } = useTranslation();
+  const shown = days.length > 0 ? days : [utcDay(eventDate)];
+  const commit = (next: string[]) => {
+    const sorted = [...new Set(next)].sort();
+    if (sorted.length === 0) return;
+    onChange(sorted.length > 1 ? sorted : [], onDay(eventDate, sorted[0]));
+  };
+  return (
+    <div className="tournament-field">
+      <span>{t("tournaments.form.eventDays")}</span>
+      <ul className="tournament-day-list">
+        {shown.map((day) => (
+          <li key={day} className="tournament-day">
+            {/* Noon, so the reader's own zone cannot move it to another day. */}
+            <span>{formatDay(Math.floor(Date.parse(`${day}T12:00:00Z`) / 1000), day)}</span>
+            {shown.length > 1 && (
+              <button
+                type="button"
+                className="tournament-day-remove"
+                aria-label={t("tournaments.form.removeDay")}
+                onClick={() => commit(shown.filter((held) => held !== day))}
+              >
+                {"×"}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <label className="tournament-field tournament-inline-field">
+        <span>{t("tournaments.form.addDay")}</span>
+        <input
+          type="date"
+          value=""
+          onChange={(changed) => {
+            if (changed.target.value !== "") commit([...shown, changed.target.value]);
+          }}
+        />
+      </label>
+      <small className="muted">{t("tournaments.form.eventDaysHint")}</small>
+    </div>
+  );
+}
+
 /** The draft an existing event would produce, for the edit case. */
 export function draftOf(event: Tourney): TourneyDraft {
   return {
@@ -139,6 +221,20 @@ export function draftOf(event: Tourney): TourneyDraft {
     ratingDate: event.ratingDate,
     rating: event.rating,
     maxTeams: 0,
+    // The event's own value: `edit_info` always sends it, and the service
+    // reads an absent one as on.
+    playerReporting: event.playerReporting,
+    // Both always sent by `edit_info` too, so both are the event's own.
+    checkInDeadline: event.checkInDeadline,
+    eventDays: event.eventDays,
+    // The format is the Format panel's to change once the event exists; these
+    // are carried so the draft is whole, and `edit_info` does not send them.
+    presetId: null,
+    swiss: { cuts: event.swissCuts, decidingBestOf: event.decidingBestOf, stageTwo: event.stageTwoPlan },
+    picks: { on: event.pickOpponents, minutes: event.pickMinutes, mode: event.pickMode },
+    tiebreak: event.swissTiebreak,
+    stopAtAlive: event.stopAtAlive,
+    ffa: event.ffa,
   };
 }
 
@@ -159,17 +255,26 @@ const BLANK: TourneyDraft = {
   streams: [],
   seriesId: null,
   plan: defaultPlanFor("single"),
-  veto: { enabled: false, mode: "upfront" },
+  veto: { enabled: false, mode: "upfront", teamA: "lowerA", revealBans: false },
   minTeams: 0,
   draftSnakes: false,
   ratingKind: "global",
   signupMode: "open",
+  playerReporting: true,
   eventDate: null,
   signupOpensAt: null,
   signupClosesAt: null,
   ratingDate: null,
   rating: { min: null, max: null, maxTeam: null, cap: null },
   maxTeams: 0,
+  checkInDeadline: null,
+  eventDays: [],
+  presetId: null,
+  swiss: { cuts: { wins: 0, losses: 0 }, decidingBestOf: 0, stageTwo: null },
+  picks: { on: false, minutes: 0, mode: "half" },
+  tiebreak: "gameDiff",
+  stopAtAlive: 0,
+  ffa: null,
 };
 
 interface TournamentFormProps {
@@ -189,7 +294,19 @@ interface TournamentFormProps {
   inline?: boolean;
   onSubmit: (draft: TourneyDraft) => void;
   onClose: () => void;
+  /** The create form's starting points: named formats and earlier events. */
+  presets?: TourneyPreset[];
+  sources?: CopySource[];
+  template?: Tourney | null;
+  templateStatus?: TourneyLoadStatus;
+  onLoadTemplate?: (tournamentId: string) => void;
+  /** Store a picture pasted into an existing event's text. */
+  onUploadImage?: (dataUrl: string) => void;
+  /** The last stored picture's path, to insert where it was pasted. */
+  pastedImage?: string | null;
 }
+
+type TextField = "description" | "lobbyOptions" | "rewards" | "sponsors";
 
 export function TournamentForm({
   event,
@@ -198,12 +315,65 @@ export function TournamentForm({
   inline = false,
   onSubmit,
   onClose,
+  presets = [],
+  sources = [],
+  template = null,
+  templateStatus = { type: "idle" },
+  onLoadTemplate,
+  onUploadImage,
+  pastedImage = null,
 }: TournamentFormProps) {
   const { t } = useTranslation();
   const editing = event !== null;
   const [draft, setDraft] = useState<TourneyDraft>(() => (event ? draftOf(event) : BLANK));
 
   const set = (patch: Partial<TourneyDraft>) => setDraft((held) => ({ ...held, ...patch }));
+
+  // Pictures pasted into the text, as on the website: uploaded at once to an
+  // event that exists, and held behind a token until one that is being
+  // created does (the service uploads them and swaps the tokens after).
+  const waiting = useRef<{ field: TextField; at: number } | null>(null);
+  const lastImage = useRef(pastedImage);
+  useEffect(() => {
+    if (pastedImage === null || pastedImage === lastImage.current) return;
+    lastImage.current = pastedImage;
+    const target = waiting.current;
+    if (target === null) return;
+    waiting.current = null;
+    const url = pastedImage;
+    setDraft((held) => {
+      const text = held[target.field];
+      return { ...held, [target.field]: `${text.slice(0, target.at)}\n![image](${url})\n${text.slice(target.at)}` };
+    });
+  }, [pastedImage]);
+  const pasteInto = (field: TextField) => (pasted: ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = [...pasted.clipboardData.files].find((held) => held.type.startsWith("image/"));
+    if (file === undefined) return;
+    pasted.preventDefault();
+    const at = pasted.currentTarget.selectionStart;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      const dataUrl = reader.result;
+      if (editing) {
+        if (onUploadImage === undefined) return;
+        waiting.current = { field, at };
+        onUploadImage(dataUrl);
+        return;
+      }
+      setDraft((held) => {
+        const pending = held.pendingImages ?? [];
+        const token = `pending-image-${pending.length}`;
+        const text = held[field];
+        return {
+          ...held,
+          pendingImages: [...pending, { token, dataUrl }],
+          [field]: `${text.slice(0, at)}\n![image](${token})\n${text.slice(at)}`,
+        };
+      });
+    };
+    reader.readAsDataURL(file);
+  };
   const setGate = (patch: Partial<TourneyDraft["rating"]>) =>
     setDraft((held) => ({ ...held, rating: { ...held.rating, ...patch } }));
 
@@ -229,6 +399,19 @@ export function TournamentForm({
     <Frame>
       {!inline && <h3>{title}</h3>}
 
+      {!editing && onLoadTemplate !== undefined && (
+        <CreateStarters
+          draft={draft}
+          presets={presets}
+          sources={sources}
+          template={template}
+          templateStatus={templateStatus}
+          busy={busy}
+          onLoadTemplate={onLoadTemplate}
+          onChange={setDraft}
+        />
+      )}
+
       <label className="tournament-field">
         <span>{t("tournaments.form.name")}</span>
         <input
@@ -243,6 +426,7 @@ export function TournamentForm({
         <span>{t("tournaments.form.description")}</span>
         <textarea
           value={draft.description}
+          onPaste={pasteInto("description")}
           onChange={(changed) => set({ description: changed.target.value })}
           rows={6}
           maxLength={20_000}
@@ -252,12 +436,15 @@ export function TournamentForm({
           rendered as formatted text on the overview, and an organiser who does
           not know that writes plain prose and loses nothing, while one who does
           gets headings and lists. */}
-      <p className="tournament-form-hint muted">{t("tournaments.form.markdownHint")}</p>
+      <p className="tournament-form-hint muted">
+        {t("tournaments.form.markdownHint")} {t("tournaments.form.pasteHint")}
+      </p>
 
       <label className="tournament-field">
         <span>{t("tournaments.form.lobbyOptions")}</span>
         <textarea
           value={draft.lobbyOptions}
+          onPaste={pasteInto("lobbyOptions")}
           onChange={(changed) => set({ lobbyOptions: changed.target.value })}
           rows={4}
           maxLength={20_000}
@@ -314,6 +501,7 @@ export function TournamentForm({
           <span>{t("tournaments.form.rewards")}</span>
           <textarea
             value={draft.rewards}
+            onPaste={pasteInto("rewards")}
             onChange={(changed) => set({ rewards: changed.target.value })}
             rows={3}
             maxLength={2_000}
@@ -325,6 +513,7 @@ export function TournamentForm({
           <span>{t("tournaments.form.sponsors")}</span>
           <textarea
             value={draft.sponsors}
+            onPaste={pasteInto("sponsors")}
             onChange={(changed) => set({ sponsors: changed.target.value })}
             rows={3}
             maxLength={2_000}
@@ -378,6 +567,36 @@ export function TournamentForm({
         ) : (
           <div className="tournament-form-row">
             <label className="tournament-field">
+              <span>{t("tournaments.form.competition")}</span>
+              <select
+                value={draft.competition}
+                onChange={(changed) => {
+                  const competition = changed.target.value as TourneyDraft["competition"];
+                  // A free-for-all is solo or teams of up to three, with its
+                  // own lobby settings; a team event gets its plan back.
+                  set(
+                    competition === "freeForAll"
+                      ? {
+                          competition,
+                          teamSize: Math.min(draft.teamSize, 3),
+                          formation: "solo",
+                          ffa: draft.ffa ?? defaultFfa(Math.min(draft.teamSize, 3)),
+                          plan: null,
+                        }
+                      : {
+                          competition,
+                          formation: draft.teamSize > 1 ? "open" : "solo",
+                          ffa: null,
+                          plan: defaultPlanFor(draft.bracketKind),
+                        },
+                  );
+                }}
+              >
+                <option value="team">{t("tournaments.form.competitionTeam")}</option>
+                <option value="freeForAll">{t("tournaments.form.competitionFfa")}</option>
+              </select>
+            </label>
+            <label className="tournament-field">
               <span>{t("tournaments.form.category")}</span>
               <select
                 value={draft.category}
@@ -395,13 +614,14 @@ export function TournamentForm({
                 value={draft.teamSize}
                 onChange={(changed) => set({ teamSize: Number(changed.target.value) })}
               >
-                {[1, 2, 3, 4, 5, 6].map((size) => (
+                {(draft.competition === "freeForAll" ? [1, 2, 3] : [1, 2, 3, 4, 5, 6]).map((size) => (
                   <option value={size} key={size}>
                     {size}v{size}
                   </option>
                 ))}
               </select>
             </label>
+            {draft.competition === "team" && (
             <label className="tournament-field">
               <span>{t("tournaments.form.bracket")}</span>
               <select
@@ -415,6 +635,7 @@ export function TournamentForm({
                 <option value="swiss">{t("tournaments.bracketKind.swiss")}</option>
               </select>
             </label>
+            )}
             {picksFormation && (
               <label className="tournament-field">
                 <span>{t("tournaments.form.formation")}</span>
@@ -463,6 +684,34 @@ export function TournamentForm({
                 : defaultPlanFor(draft.bracketKind)
             }
             onChange={(plan) => set({ plan })}
+          />
+          {draft.bracketKind === "swiss" && (
+            <SwissExtrasFields value={draft.swiss} busy={busy} onChange={(swiss) => set({ swiss })} />
+          )}
+          <PickFields
+            picks={draft.picks}
+            tiebreak={draft.tiebreak}
+            swiss={draft.bracketKind === "swiss"}
+            stageTwo={draft.swiss.stageTwo !== null}
+            cuts={draft.swiss.cuts}
+            busy={busy}
+            onChange={(picks, tiebreak) => set({ picks, tiebreak })}
+          />
+          {/* Elimination only: the service ignores it for a Swiss. */}
+          {draft.bracketKind !== "swiss" && (
+            <StopAtField value={draft.stopAtAlive} busy={busy} onChange={(stopAtAlive) => set({ stopAtAlive })} />
+          )}
+        </fieldset>
+      )}
+
+      {!editing && draft.competition === "freeForAll" && (
+        <fieldset className="tournament-field">
+          <legend>{t("tournaments.form.ffaLegend")}</legend>
+          <FfaFields
+            value={draft.ffa ?? defaultFfa(draft.teamSize)}
+            teamSize={draft.teamSize}
+            busy={busy}
+            onChange={(ffa) => set({ ffa })}
           />
         </fieldset>
       )}
@@ -534,7 +783,16 @@ export function TournamentForm({
             <input
               type="datetime-local"
               value={localValue(draft.eventDate)}
-              onChange={(changed) => set({ eventDate: secondsOf(changed.target.value) })}
+              onChange={(changed) => {
+                const eventDate = secondsOf(changed.target.value);
+                // A new day starts the schedule again, as on the website; a new
+                // time on the same day keeps it.
+                const sameDay =
+                  eventDate !== null &&
+                  draft.eventDate !== null &&
+                  utcDay(eventDate) === utcDay(draft.eventDate);
+                set({ eventDate, eventDays: sameDay ? draft.eventDays : [] });
+              }}
             />
           </label>
           <label className="tournament-field">
@@ -566,12 +824,29 @@ export function TournamentForm({
         {/* The third date is the one that is not about scheduling, so it says
             what it is for rather than relying on its label. */}
         <p className="tournament-form-hint muted">{t("tournaments.form.ratingDateHint")}</p>
+        {draft.eventDate !== null && (
+          <EventDays
+            eventDate={draft.eventDate}
+            days={draft.eventDays}
+            onChange={(eventDays, eventDate) => set({ eventDays, eventDate })}
+          />
+        )}
+        <label className="tournament-field">
+          <span>{t("tournaments.form.checkInDeadline")}</span>
+          <input
+            type="datetime-local"
+            value={localValue(draft.checkInDeadline)}
+            onChange={(changed) => set({ checkInDeadline: secondsOf(changed.target.value) })}
+          />
+        </label>
+        <p className="tournament-form-hint muted">{t("tournaments.form.checkInHint")}</p>
       </fieldset>
 
       <fieldset className="tournament-field">
         <legend>{t("tournaments.form.ratingLegend")}</legend>
         <label className="tournament-field">
           <span>{t("tournaments.form.ratingKind")}</span>
+          {editing && <small className="muted">{t("tournaments.form.ratingKindEditHint")}</small>}
           <select
             value={draft.ratingKind}
             onChange={(changed) =>
@@ -642,11 +917,20 @@ export function TournamentForm({
           </label>
         </div>
         <p className="tournament-form-hint muted">{t("tournaments.form.ratingGateHint")}</p>
+        <label className="tournament-check">
+          <input
+            type="checkbox"
+            checked={draft.playerReporting}
+            onChange={(changed) => set({ playerReporting: changed.target.checked })}
+          />
+          <span>{t("tournaments.form.playerReporting")}</span>
+        </label>
+        <p className="tournament-form-hint muted">{t("tournaments.form.playerReportingHint")}</p>
       </fieldset>
 
-      {/* The veto, and only whether and when: who is Team A is a per-match
-          decision the client makes from the bracket, and the service's own
-          `abMode` is not modelled here yet. */}
+      {/* The veto at creation. Once the event exists it has a panel of its own
+          under Maps with its own save: sending it with every save of the
+          settings would rebuild each veto not yet started. */}
       {!editing && (
         <fieldset className="tournament-field">
           <legend>{t("tournaments.form.vetoLegend")}</legend>
@@ -660,6 +944,27 @@ export function TournamentForm({
             />
             <span>{t("tournaments.form.vetoEnabled")}</span>
           </label>
+          {draft.veto.enabled && (
+            <label className="tournament-field">
+              <span>{t("tournaments.veto.teamARule")}</span>
+              <select
+                value={draft.veto.teamA}
+                onChange={(changed) =>
+                  set({
+                    veto: {
+                      ...draft.veto,
+                      teamA: changed.target.value as TourneyDraft["veto"]["teamA"],
+                    },
+                  })
+                }
+              >
+                <option value="lowerA">{t("tournaments.veto.teamALowerA")}</option>
+                <option value="lowerB">{t("tournaments.veto.teamALowerB")}</option>
+                <option value="random">{t("tournaments.veto.teamARandom")}</option>
+                <option value="manual">{t("tournaments.veto.teamAManual")}</option>
+              </select>
+            </label>
+          )}
           {draft.veto.enabled && (
             <label className="tournament-field">
               <span>{t("tournaments.form.vetoMode")}</span>

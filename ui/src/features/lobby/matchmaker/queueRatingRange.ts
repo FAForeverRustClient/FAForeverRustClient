@@ -196,7 +196,8 @@ export interface RatingBucket {
  * long-waiting player across neighbouring bands rather than inventing one.
  *
  * The narrow windows are preferred for that reason. Empty bands are left out
- * entirely, so the breakdown is as long as the queue is varied.
+ * entirely, so the breakdown is as long as the queue is varied; the one
+ * exception is your own band, which is kept so you can see where you stand.
  */
 export function queueRatingBuckets(
   queue: MatchmakerQueue,
@@ -230,6 +231,12 @@ export function queueRatingBuckets(
   if (myBand !== null && ownSearches > 0) {
     const tally = counts.get(myBand);
     if (tally) tally.inRange = Math.max(0, tally.inRange - ownSearches);
+  }
+  // Your own band is listed even when nobody is waiting in it, as long as
+  // somebody is waiting anywhere: otherwise the marker for where you stand
+  // vanished exactly when it mattered, with everyone queued somewhere else.
+  if (myBand !== null && counts.size > 0 && !counts.has(myBand)) {
+    counts.set(myBand, { count: 0, inRange: 0 });
   }
 
   return [...counts.entries()]

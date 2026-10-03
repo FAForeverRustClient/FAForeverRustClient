@@ -11,6 +11,8 @@
 // than from IRC, so an IRC-only nickname simply renders bare.
 //
 // Double-click opens a private conversation; right-click opens the user menu.
+// From the keyboard, Enter or Space on a row opens the conversation, since a
+// keyboard has no double-click (see `opensConversationOnClick`).
 
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatPreferences, ChatUser, Game, PlayerProfile, SocialState, VaultMap } from "../../../ipc/bindings";
@@ -70,6 +72,19 @@ function measureItemHeight(list: HTMLElement): number {
   const declared = getComputedStyle(list).getPropertyValue("--roster-row-height");
   const parsed = Number.parseFloat(declared);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : FALLBACK_ITEM_HEIGHT;
+}
+
+/**
+ * Whether a click on a roster row opens the conversation.
+ *
+ * A pointer opens it on double-click, and a single click stays free for the
+ * rating card that hovering or focusing a row shows. Enter and Space activate a
+ * button with a click whose `detail` (the click count) is 0, and that is the
+ * only activation a keyboard has, so it opens the conversation directly: the
+ * row was a button that did nothing at all when pressed.
+ */
+export function opensConversationOnClick(clickCount: number): boolean {
+  return clickCount === 0;
 }
 
 type RosterFlatItem =
@@ -238,11 +253,10 @@ export const UserList = memo(function UserList({
                           type="button"
                           className="chat-roster-heading"
                           aria-expanded={!item.collapsed}
-                          title={
-                            item.collapsed
-                              ? `Show ${t(USER_CATEGORY_LABELS[item.category])}`
-                              : `Hide ${t(USER_CATEGORY_LABELS[item.category])}`
-                          }
+                          title={t(
+                            item.collapsed ? "chat.roster.showCategory" : "chat.roster.hideCategory",
+                            { category: t(USER_CATEGORY_LABELS[item.category]) },
+                          )}
                           onClick={() => toggleCategory(item.category)}
                         >
                           <Icon
@@ -332,6 +346,9 @@ const RosterRow = memo(function RosterRow({
           ref={anchorRef as React.RefObject<HTMLButtonElement>}
           type="button"
           className="chat-roster-identity"
+          onClick={(e) => {
+            if (opensConversationOnClick(e.detail)) onOpenConversation(user.name);
+          }}
           onDoubleClick={() => onOpenConversation(user.name)}
           {...cardProps}
         >

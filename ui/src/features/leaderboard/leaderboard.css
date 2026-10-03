@@ -84,6 +84,16 @@
   min-height: 0;
 }
 
+/* The chosen league's panel under its tabs: the same column the section is,
+   so the table inside still takes the remaining height. */
+.leaderboard-league-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* What the table is ranked by, and what that board is. One line, since the
    tabs that used to say the first half are gone. */
 .leaderboard-description {
@@ -279,10 +289,28 @@
   transition: opacity 120ms ease;
 }
 
+/* The scrollbar's room is kept from the start, so the columns do not narrow
+   by its width the moment the rows arrive and overflow. */
 .leaderboard-table-scroll {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+/* A share of the table each, rather than as wide as their content. The other
+   boards' ratings arrive after the ranking itself, so every one of these
+   columns read "N/A" first and four digits a moment later, and auto-sized
+   columns re-flowed the whole row sideways when they did. */
+.leaderboard-table th.leaderboard-board-column {
+  width: 7%;
+}
+
+/* The pager's row, held open before it has anything to show: it renders
+   nothing until the page count arrives, and appearing late took its height
+   out of the table above it. */
+.leaderboard-panel > .vault-pagination {
+  min-height: 32px;
 }
 
 .leaderboard-show-more {
@@ -944,7 +972,11 @@
   flex: 1 1 240px;
 }
 
-@media (max-width: 1100px) {
+/* 900, where the sidebar folds to icons, and not 1100: 1100 is the client's
+   default window, so the detail panel dropped under the table in exactly the
+   size every layout has to hold, and a click on a row changed something the
+   reader could not see. The 230 px panel leaves the table about 578 px. */
+@media (max-width: 900px) {
   .leaderboard-header {
     grid-template-columns: 1fr;
   }
