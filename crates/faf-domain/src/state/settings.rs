@@ -1937,6 +1937,11 @@ pub struct CustomGameBrowserPreferences {
     /// not, so a wider preview could only be had by making the browser
     /// narrower and nothing offered that trade.
     pub detail_width: u32,
+    /// Whether the detail panel is folded away (#370, #377).
+    ///
+    /// Kept apart from `detail_width` so folding it and unfolding it again
+    /// brings back the width somebody dragged it to, rather than the default.
+    pub detail_hidden: bool,
 }
 
 impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
@@ -1958,6 +1963,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             column_widths: Vec<u32>,
             column_order: Vec<u32>,
             detail_width: u32,
+            detail_hidden: bool,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -1973,6 +1979,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             column_widths: wire.column_widths,
             column_order: wire.column_order,
             detail_width: wire.detail_width,
+            detail_hidden: wire.detail_hidden,
         })
     }
 }
@@ -3111,6 +3118,7 @@ preference_patch! {
         column_widths: Vec<u32>,
         column_order: Vec<u32>,
         detail_width: u32,
+        detail_hidden: bool,
     }
 }
 
@@ -4047,6 +4055,7 @@ mod tests {
                     // A column twice and one missing: not an order.
                     column_order: vec![0, 0, 2, 3, 4, 5],
                     detail_width: 40,
+                    detail_hidden: false,
                 },
                 matchmaker_unselected_queues: vec![
                     "  ladder_1v1  ".into(),

@@ -773,6 +773,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.ranked": "Gewertet",
   "lobby.browser.unranked": "Ungewertet",
   "lobby.browser.goAdapter": "Go-Adapter",
+  "lobby.browser.moreTags": "+{count} weitere",
   "lobby.browser.goAdapterTitle": "Mit dem Go-Adapter (faf-pioneer) gehostet. Mit Dynamisch trittst du automatisch mit Go bei, sonst in den Verbindungseinstellungen Go wählen.",
   "lobby.browser.simModsRanked": {
     one: "{count} Sim-Mod, gewertet: das Spiel zählt weiterhin",
@@ -4399,6 +4400,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.browser.sortAscending": "aufsteigend",
   "lobby.browser.sortDescending": "absteigend",
   "lobby.browser.resizeDetails": "Breite der Detailspalte ändern",
+  "lobby.browser.hideDetails": "Detailspalte ausblenden",
+  "lobby.browser.showDetails": "Detailspalte einblenden",
   "lobby.matchmaker.resizeChat": "Breite des Party-Chats ändern",
   "lobby.browser.openProfile": "Profil von {name} öffnen",
   "lobby.browser.tileAria": "{title}, gehostet von {host}. Doppelklick zum Beitreten.",
