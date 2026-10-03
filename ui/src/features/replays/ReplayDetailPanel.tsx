@@ -417,12 +417,22 @@ export function ReplayDetailPanel({
       }
     : undefined;
   return (
-    <Modal className="replay-detail-modal" ariaLabel={t("replays.detail.aria", { name: cardTitle })} onClose={onClose}>
-      {/* One head across the dialog: the map, what the replay is, and every
-          action on it, with Watch leading. Below it, top to bottom, is what
-          happened in the game: the facts, then the lineup. A reader scans one
-          column instead of crossing between a rail and a main column. */}
-      <header className="replay-detail-head">
+    <Modal className="replay-detail-modal replay-detail-modal-wide" ariaLabel={t("replays.detail.aria", { name: cardTitle })} onClose={onClose}>
+      {/* The hero: the map as a dimmed backdrop across the top of the dialog,
+          and in front of it the whole preview, what the replay is, and Watch.
+          The backdrop is decoration only; the preview beside the title is the
+          picture to recognise the map by, shown uncropped. */}
+      <header className="replay-detail-hero">
+        <div className="replay-detail-hero-backdrop" aria-hidden>
+          <ReplayMapThumb
+            url={replay.mapThumbnailUrl}
+            mapName={effectiveMap}
+            className="replay-detail-hero-image"
+            emptyClassName="replay-detail-hero-image-empty"
+            iconSize={16}
+            large
+          />
+        </div>
         {/* A picture to recognise the map by, and a way to look at it
             properly: clicking opens the same zoom frame the Play and Maps tabs
             use. It is not a zoom widget in place, because a wheel handler over
@@ -535,93 +545,16 @@ export function ReplayDetailPanel({
           )}
         </div>
 
-        {/* Watch leads; the other actions on the file are a compact grid
-            under it, in the order they are reached for. */}
-        <div className="replay-detail-actions">
-          <Button
-            className="replay-watch-button"
-            variant="primary"
-            disabled={busy || !replay.replayAvailable}
-            onClick={onWatch}
-          >
-            <Icon name="play" size={15} />
-            <span>{t(replay.replayAvailable ? "replays.detail.watch" : "replays.detail.notUploaded")}</span>
-          </Button>
-          <div className="replay-detail-actions-secondary">
-            {onDownload && (
-              <Button
-                className="replay-secondary-btn"
-                disabled={!replay.replayAvailable || downloadState === "downloading" || downloadState === "downloaded"}
-                onClick={onDownload}
-                title={t("replays.detail.downloadReplay")}
-              >
-                <Icon name="download" size={13} />
-                <span>{t(downloadState === "downloading"
-                  ? "replays.detail.downloading"
-                  : downloadState === "downloaded"
-                    ? "replays.detail.downloaded"
-                    : "replays.detail.downloadShort")}</span>
-              </Button>
-            )}
-            {/* Watching sets the mark, and a mark that cannot be cleared is a
-                mistake nobody can take back, so the panel carries the switch:
-                a card is itself a button and cannot hold one. A toggle keeps
-                one name and says its state by being pressed; the tooltip says
-                what pressing it again does. */}
-            {onToggleWatched && (
-              <Button
-                className={watched ? "replay-secondary-btn is-on" : "replay-secondary-btn"}
-                aria-pressed={watched}
-                onClick={onToggleWatched}
-                title={t(watched ? "replays.watched.unmark" : "replays.watched.mark")}
-              >
-                <Icon name={watched ? "check" : "eye"} size={13} />
-                <span>{t("replays.watched.mark")}</span>
-              </Button>
-            )}
-            {/* The reader's own comment and tags (#324), in an overlay: most
-                replays have none. Lit when there is a note, so a tagged game
-                says so before it is opened. */}
-            {replay.uid > 0 && (
-              <Button
-                className={hasNote ? "replay-secondary-btn is-on" : "replay-secondary-btn"}
-                aria-haspopup="dialog"
-                aria-expanded={showNotes}
-                onClick={() => setShowNotes(true)}
-                title={t("replays.notes.open")}
-              >
-                <Icon name="edit" size={13} />
-                <span>{t("replays.notes.open")}</span>
-              </Button>
-            )}
-            {/* The shortest path from "that game went badly" to a request
-                someone can answer. Naming the replay rather than passing the
-                details is deliberate: the training service reads them back out
-                of state, so this button cannot prefill the form with anything
-                the client does not actually know. */}
-            <Button
-              className="replay-secondary-btn"
-              title={t("replays.detail.requestReview")}
-              onClick={() => {
-                ipc.send({
-                  kind: "Training",
-                  command: {
-                    type: "openReview",
-                    payload: {
-                      replayUid: replay.uid > 0 ? replay.uid : null,
-                      localPath: localPath ?? null,
-                    },
-                  },
-                });
-                ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "training" } } });
-                onClose();
-              }}
-            >
-              <Icon name="book" size={13} />
-              <span>{t("replays.detail.requestReviewShort")}</span>
-            </Button>
-          </div>
-        </div>
+        {/* The way in, large, on the right of the hero. */}
+        <Button
+          className="replay-watch-button replay-detail-hero-watch"
+          variant="primary"
+          disabled={busy || !replay.replayAvailable}
+          onClick={onWatch}
+        >
+          <Icon name="play" size={18} />
+          <span>{t(replay.replayAvailable ? "replays.detail.watch" : "replays.detail.notUploaded")}</span>
+        </Button>
       </header>
 
       {isGeneratingThisMap && generatorProgress && (
@@ -725,30 +658,30 @@ export function ReplayDetailPanel({
       </dl>
 
       <section className="replay-detail-lineup" aria-label={lineupSummary}>
-        <div className="replay-detail-section-head">
-          <h3>{lineupSummary}</h3>
-          {/* The result switch, with the reason it is missing in its place.
-              There is no dead button: a game with no result to show says why
-              instead, and an unrated game with a decisive outcome has both a
-              winner and a reason it did not count (see `hasGameResult`). */}
-          <div className="replay-detail-result">
-            {(!rated || notRated !== null) && (
-              <p className="replay-detail-result-reason">
-                <Icon name="info" size={14} />
-                <span>{notRated ?? t("replays.detail.noResultYet")}</span>
-              </p>
-            )}
-            {rated && (
-              <Button
-                className="replay-detail-reveal-btn"
-                aria-pressed={showResults}
-                onClick={() => setShowResults((visible) => !visible)}
-              >
-                <Icon name="eye" size={13} />
-                <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
-              </Button>
-            )}
-          </div>
+        {/* Top right over the teams: the result switch, with the reason it is
+            missing in its place. There is no dead button: a game with no
+            result to show says why instead, and an unrated game with a
+            decisive outcome has both a winner and a reason it did not count
+            (see `hasGameResult`). The count of teams and players is not
+            repeated here: the team headings and the facts already say it, and
+            the section keeps it as its accessible name. */}
+        <div className="replay-detail-section-head replay-detail-section-head-end">
+          {(!rated || notRated !== null) && (
+            <p className="replay-detail-result-reason">
+              <Icon name="info" size={14} />
+              <span>{notRated ?? t("replays.detail.noResultYet")}</span>
+            </p>
+          )}
+          {rated && (
+            <Button
+              className="replay-detail-reveal-btn"
+              aria-pressed={showResults}
+              onClick={() => setShowResults((visible) => !visible)}
+            >
+              <Icon name="eye" size={13} />
+              <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
+            </Button>
+          )}
         </div>
         {detailTeams.length > 0 ? (
           <ReplayDetailRoster
@@ -756,18 +689,92 @@ export function ReplayDetailPanel({
             showResults={showResults}
             avatarByLogin={avatarByLogin}
             onPlayerMenu={onPlayerMenu}
+            titlesAbove
           />
         ) : (
           <p className="replay-detail-empty muted">{t("replays.detail.noLineup")}</p>
         )}
       </section>
 
-      {/* What the replay file itself holds, under the lineup it goes deeper
-          into rather than among the actions on the file: chat, options, mods
-          and the analysis tabs. */}
-      <div className="replay-detail-foot">
+      {/* Every other action on the replay, as one flat toolbar along the
+          dialog's floor, in the order they are reached for. */}
+      <div className="replay-detail-toolbar">
+        {onDownload && (
+          <Button
+            className="replay-detail-tool"
+            disabled={!replay.replayAvailable || downloadState === "downloading" || downloadState === "downloaded"}
+            onClick={onDownload}
+            title={t("replays.detail.downloadReplay")}
+          >
+            <Icon name="download" size={16} />
+            <span>{t(downloadState === "downloading"
+              ? "replays.detail.downloading"
+              : downloadState === "downloaded"
+                ? "replays.detail.downloaded"
+                : "replays.detail.downloadShort")}</span>
+          </Button>
+        )}
+        {/* The shortest path from "that game went badly" to a request
+            someone can answer. Naming the replay rather than passing the
+            details is deliberate: the training service reads them back out
+            of state, so this button cannot prefill the form with anything
+            the client does not actually know. */}
         <Button
-          className="replay-secondary-btn replay-detail-more-info"
+          className="replay-detail-tool"
+          title={t("replays.detail.requestReview")}
+          onClick={() => {
+            ipc.send({
+              kind: "Training",
+              command: {
+                type: "openReview",
+                payload: {
+                  replayUid: replay.uid > 0 ? replay.uid : null,
+                  localPath: localPath ?? null,
+                },
+              },
+            });
+            ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "training" } } });
+            onClose();
+          }}
+        >
+          <Icon name="book" size={16} />
+          <span>{t("replays.detail.requestReviewShort")}</span>
+        </Button>
+        {/* Watching sets the mark, and a mark that cannot be cleared is a
+            mistake nobody can take back, so the panel carries the switch:
+            a card is itself a button and cannot hold one. A toggle keeps
+            one name and says its state by being pressed; the tooltip says
+            what pressing it again does. */}
+        {onToggleWatched && (
+          <Button
+            className={watched ? "replay-detail-tool is-on" : "replay-detail-tool"}
+            aria-pressed={watched}
+            onClick={onToggleWatched}
+            title={t(watched ? "replays.watched.unmark" : "replays.watched.mark")}
+          >
+            <Icon name={watched ? "check" : "eye"} size={16} />
+            <span>{t("replays.watched.mark")}</span>
+          </Button>
+        )}
+        {/* The reader's own comment and tags (#324), in an overlay: most
+            replays have none. Lit when there is a note, so a tagged game
+            says so before it is opened. */}
+        {replay.uid > 0 && (
+          <Button
+            className={hasNote ? "replay-detail-tool is-on" : "replay-detail-tool"}
+            aria-haspopup="dialog"
+            aria-expanded={showNotes}
+            onClick={() => setShowNotes(true)}
+            title={t("replays.notes.open")}
+          >
+            <Icon name="edit" size={16} />
+            <span>{t("replays.notes.open")}</span>
+          </Button>
+        )}
+        {/* What the replay file itself holds: chat, options, mods and the
+            analysis tabs. */}
+        <Button
+          className="replay-detail-tool"
           onClick={() => {
             // Both reads, in the order they are wanted. The file is fetched
             // once and the second walk reads it off disk, so the expensive
@@ -781,7 +788,7 @@ export function ReplayDetailPanel({
           aria-expanded={showInsights}
           title={t("replays.insights.openHint")}
         >
-          <Icon name={isLoadingDetails ? "refresh" : "list"} size={13} className={isLoadingDetails ? "spin" : undefined} />
+          <Icon name={isLoadingDetails ? "refresh" : "list"} size={16} className={isLoadingDetails ? "spin" : undefined} />
           <span>{t("replays.detail.loadDetailsShort")}</span>
         </Button>
       </div>

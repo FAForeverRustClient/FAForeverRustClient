@@ -60,14 +60,13 @@ interface Props {
   games: Array<{ game: Game; presentation: MapPresentation; mapSize: string | null }>;
   matchingCount: number;
   totalCount: number;
-  expandedId: number | null;
   sortKey: LiveSortKey;
   sortDirection: SortDirection;
   previewsLoading: boolean;
   batchSize: number;
   tracking: LiveReplayTracking | null;
   onSort: (key: LiveSortKey) => void;
-  onToggle: (id: number) => void;
+  onOpen: (id: number) => void;
   onPlayerMenu: PlayerMenuOpener;
   onLoadMore: () => void;
 }
@@ -160,11 +159,10 @@ export function LiveReplayTable(props: Props) {
             <LiveReplayRow
               key={game.id}
               busy={props.busy}
-              expanded={props.expandedId === game.id}
               game={game}
               ageNow={ageNow}
               waitSeconds={replayDelayRemaining(game, waitNow)}
-              onToggle={props.onToggle}
+              onOpen={props.onOpen}
               onPlayerMenu={props.onPlayerMenu}
               presentation={presentation}
               mapSize={mapSize}

@@ -2355,8 +2355,6 @@ export const en = {
   "replays.live.lineupUnavailable": "Player lineup unavailable",
   "replays.live.observers": "Observers",
   "replays.live.team": "Team {team}",
-  "replays.live.replayId": "Replay ID",
-  "replays.live.simMods": "SIM mods",
   "replays.live.none": "None",
   "replays.live.ratingEnforced": "enforced",
   "replays.live.column.map": "Map",

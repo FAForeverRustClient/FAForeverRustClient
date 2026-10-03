@@ -1333,8 +1333,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.live.lineupUnavailable": "Alineación de jugadores no disponible",
   "replays.live.observers": "Observadores",
   "replays.live.team": "Equipo {team}",
-  "replays.live.replayId": "ID de la repetición",
-  "replays.live.simMods": "Mods de simulación",
   "replays.live.none": "Ninguno",
   "replays.live.column.map": "Mapa",
 
