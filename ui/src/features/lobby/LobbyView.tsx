@@ -689,12 +689,20 @@ export function LobbyView() {
   );
   const [draggedDetailWidth, setDraggedDetailWidth] = useState<number | null>(null);
   const detailDragOrigin = useRef<number | null>(null);
+  const detailHidden = useAppStore(
+    (state) => state.state.settings.browsing.customGamesBrowser.detailHidden,
+  );
   const currentDetailWidth = draggedDetailWidth ?? detailWidth(savedDetailWidth);
   const detailStyle = useMemo(
     // The divider's track is the whole gap, as the chat roster's is, so the
-    // two tabs space their side panel the same.
-    () => ({ gridTemplateColumns: `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px` }),
-    [currentDetailWidth],
+    // two tabs space their side panel the same. Folded away (#370, #377), the
+    // gap stays and holds the tab that brings the panel back.
+    () => ({
+      gridTemplateColumns: detailHidden
+        ? "minmax(360px, 1fr) var(--space-3)"
+        : `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px`,
+    }),
+    [currentDetailWidth, detailHidden],
   );
   const onDetailDrag = (delta: number) => {
     detailDragOrigin.current ??= currentDetailWidth;
@@ -861,15 +869,31 @@ export function LobbyView() {
             empty={emptyGames}
           />
           {/* The divider sits between the list and the panel rather than on
-              either, so dragging it reads as moving the boundary. */}
-          <ResizeHandle
-            className="custom-games-divider"
-            label={t("lobby.browser.resizeDetails")}
-            onDrag={onDetailDrag}
-            onEnd={onDetailCommit}
-            onReset={onDetailReset}
-          />
-          {selected ? (
+              either, so dragging it reads as moving the boundary. The arrow
+              in it is a tab hanging off the panel's edge, which folds the
+              panel away and back (#370, #377); the choice is a setting, so it
+              holds across restarts. */}
+          <div className="custom-games-divider">
+            {!detailHidden && (
+              <ResizeHandle
+                label={t("lobby.browser.resizeDetails")}
+                onDrag={onDetailDrag}
+                onEnd={onDetailCommit}
+                onReset={onDetailReset}
+              />
+            )}
+            <button
+              type="button"
+              className="custom-games-detail-toggle"
+              aria-expanded={!detailHidden}
+              aria-label={t(detailHidden ? "lobby.browser.showDetails" : "lobby.browser.hideDetails")}
+              title={t(detailHidden ? "lobby.browser.showDetails" : "lobby.browser.hideDetails")}
+              onClick={() => updateGameBrowser({ detailHidden: !detailHidden })}
+            >
+              <Icon name="chevronRight" size={12} />
+            </button>
+          </div>
+          {detailHidden ? null : selected ? (
             <GameDetails
               game={selected}
               onJoin={() => requestJoin(selected)}

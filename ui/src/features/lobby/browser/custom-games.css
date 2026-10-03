@@ -15,6 +15,49 @@
 .custom-games-layout > .custom-games-divider {
   grid-column: 2;
   grid-row: 2;
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+
+.custom-games-divider > .resize-handle {
+  flex: 1;
+}
+
+/* The fold arrow (issues 370 and 377) is a tab on the details panel's left
+   edge: it fills the gap between the list and the panel, takes the panel's
+   own surface and border, and is open on the panel's side, overlapping the
+   panel's border by a pixel so the two read as one piece. It belongs to the
+   panel without lying over the list or over the panel's contents. Folded
+   away, it stays where the panel's edge was, against the right of the gap.
+   It points at where the panel goes: right to fold it away, left to bring
+   it back. */
+.custom-games-detail-toggle {
+  position: absolute;
+  top: 12px;
+  right: -1px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: calc(100% + 1px);
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-right: 0;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.custom-games-detail-toggle:hover,
+.custom-games-detail-toggle:focus-visible {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.custom-games-detail-toggle[aria-expanded="false"] svg {
+  transform: rotate(180deg);
 }
 
 /* Across the whole width, list and detail columns both. Confined to the list
@@ -374,9 +417,25 @@
    that made the whole row taller, and a chip wider than the column spilled
    over the map name beside it. */
 .game-browser-tags-col {
-  flex-wrap: nowrap;
   justify-content: flex-start;
+  align-content: center;
+  /* One line, always (issue 379). Wrapping made a row taller for one long
+     lobby, and a cap on the lines cut a chip through the middle; what does
+     not fit is folded into a "+N more" chip by `FittingChips`, which lists
+     every tag on hover. The clip is only a backstop for the moment before
+     the measurement. */
+  flex-wrap: nowrap;
   overflow: hidden;
+}
+
+.game-browser-tags-col > [data-chip] {
+  display: flex;
+  flex: none;
+}
+
+.game-browser-tags-col > i.more {
+  flex: none;
+  cursor: default;
 }
 
 .game-browser-tags i {

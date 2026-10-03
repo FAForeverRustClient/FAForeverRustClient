@@ -51,6 +51,7 @@ const INITIAL: AppState = {
   replays: {
     status: { type: "idle" },
     lastWarning: null,
+    preparing: null,
     liveTracking: null,
     vault: [],
     vaultStatus: { type: "idle" },
@@ -605,6 +606,7 @@ const INITIAL: AppState = {
         columnWidths: [],
         columnOrder: [],
         detailWidth: 0,
+        detailHidden: false,
       },
       matchmakerUnselectedQueues: [],
       matchmakerFactions: ["UEF", "Aeon", "Cybran", "Seraphim"],

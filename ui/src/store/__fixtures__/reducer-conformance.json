@@ -125,6 +125,7 @@
         "type": "idle"
       },
       "lastWarning": null,
+      "preparing": null,
       "liveTracking": null,
       "vault": [],
       "vaultStatus": {
@@ -904,7 +905,8 @@
           "rules": [],
           "columnWidths": [],
           "columnOrder": [],
-          "detailWidth": 0
+          "detailWidth": 0,
+          "detailHidden": false
         },
         "matchmakerUnselectedQueues": [],
         "matchmakerFactions": [
@@ -2163,6 +2165,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -5197,6 +5200,798 @@
       ]
     },
     {
+      "name": "a reconnect ends a search but not a launch or a running game",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "preparing",
+                  "payload": {
+                    "queueNames": [
+                      "ladder1v1"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueNames": [
+                  "ladder1v1"
+                ]
+              },
+              "type": "preparing"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "searching",
+                  "payload": {
+                    "queueNames": [
+                      "ladder1v1",
+                      "tmm2v2"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueNames": [
+                  "ladder1v1",
+                  "tmm2v2"
+                ]
+              },
+              "type": "searching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "launching",
+                  "payload": {
+                    "queueName": "ladder1v1"
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "inGame"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "inGame"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "inGame"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "gameTerminated"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "a matchmaker launch that fails or is called off frees the panel",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "launching",
+                  "payload": {
+                    "queueName": "ladder1v1"
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "launchFailed",
+              "payload": {
+                "reason": "ice adapter: no port"
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "reason": "ice adapter: no port"
+              },
+              "type": "launchFailed"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "launching",
+                  "payload": {
+                    "queueName": "ladder1v1"
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "reason": "ice adapter: no port"
+              },
+              "type": "launchFailed"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "preparing",
+              "payload": {
+                "phase": "map",
+                "detail": "Generating map",
+                "progress": null
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "detail": "Generating map",
+                "phase": "map",
+                "progress": null
+              },
+              "type": "preparing"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joinCancelled"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "launching",
+                  "payload": {
+                    "queueName": "ladder1v1"
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "inGame"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "inGame"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joinCancelled"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "inGame"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "gameTerminated"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
       "name": "a mod version conflict parks the join until it is answered",
       "steps": [
         {
@@ -5380,6 +6175,7 @@
                     "teamSize": 4,
                     "numPlayers": 1,
                     "queuePopTimeSeconds": 90,
+                    "queuePopsAt": "",
                     "boundary80s": [],
                     "boundary75s": []
                   },
@@ -5388,6 +6184,7 @@
                     "teamSize": 1,
                     "numPlayers": 7,
                     "queuePopTimeSeconds": 30,
+                    "queuePopsAt": "",
                     "boundary80s": [
                       {
                         "min": 900,
@@ -5434,6 +6231,7 @@
                 "numPlayers": 7,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 30,
+                "queuePopsAt": "",
                 "teamSize": 1
               },
               {
@@ -5442,6 +6240,7 @@
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
+                "queuePopsAt": "",
                 "teamSize": 4
               }
             ],
@@ -5469,6 +6268,7 @@
                     "teamSize": 2,
                     "numPlayers": 3,
                     "queuePopTimeSeconds": 60,
+                    "queuePopsAt": "",
                     "boundary80s": [],
                     "boundary75s": []
                   }
@@ -5505,6 +6305,7 @@
                 "numPlayers": 7,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 30,
+                "queuePopsAt": "",
                 "teamSize": 1
               },
               {
@@ -5513,6 +6314,7 @@
                 "numPlayers": 3,
                 "queueName": "tmm2v2",
                 "queuePopTimeSeconds": 60,
+                "queuePopsAt": "",
                 "teamSize": 2
               },
               {
@@ -5521,6 +6323,7 @@
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
+                "queuePopsAt": "",
                 "teamSize": 4
               }
             ],
@@ -5548,6 +6351,7 @@
                     "teamSize": 1,
                     "numPlayers": 12,
                     "queuePopTimeSeconds": 20,
+                    "queuePopsAt": "",
                     "boundary80s": [
                       {
                         "min": 900,
@@ -5602,6 +6406,7 @@
                 "numPlayers": 12,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 20,
+                "queuePopsAt": "",
                 "teamSize": 1
               },
               {
@@ -5610,6 +6415,7 @@
                 "numPlayers": 3,
                 "queueName": "tmm2v2",
                 "queuePopTimeSeconds": 60,
+                "queuePopsAt": "",
                 "teamSize": 2
               },
               {
@@ -5618,6 +6424,7 @@
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
+                "queuePopsAt": "",
                 "teamSize": 4
               }
             ],
@@ -44351,6 +45158,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -44488,6 +45296,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -44567,6 +45376,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -44647,6 +45457,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45838,6 +46649,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "loading"
@@ -45917,6 +46729,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "payload": {
@@ -45996,6 +46809,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "loading"
@@ -46116,6 +46930,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [
               {
                 "averageRating": null,
@@ -46212,6 +47027,341 @@
       ]
     },
     {
+      "name": "an old replay reports what it is preparing, and the report ends with it",
+      "steps": [
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "preparing",
+              "payload": {
+                "step": {
+                  "detail": "too early",
+                  "progress": null
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "connecting"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "preparing",
+              "payload": {
+                "step": {
+                  "detail": "Downloading ForgedAlliance.exe",
+                  "progress": 40
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": {
+              "detail": "Downloading ForgedAlliance.exe",
+              "progress": 40
+            },
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "connecting"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "playing",
+              "payload": {
+                "uid": 5,
+                "warning": null
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "payload": {
+                "uid": 5
+              },
+              "type": "playing"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        }
+      ]
+    },
+    {
       "name": "a replay connects, fails, and is dismissed",
       "steps": [
         {
@@ -46238,6 +47388,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46317,6 +47468,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46396,6 +47548,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46493,6 +47646,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46569,6 +47723,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46645,6 +47800,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46761,6 +47917,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46849,6 +48006,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46934,6 +48092,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47061,6 +48220,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47167,6 +48327,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47275,6 +48436,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47381,6 +48543,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47485,6 +48648,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47594,6 +48758,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47700,6 +48865,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47809,6 +48975,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47912,6 +49079,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -48003,6 +49171,7 @@
                 "type": "loading"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -48126,6 +49295,7 @@
                 "type": "found"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -48232,6 +49402,7 @@
                 "type": "loading"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -48339,6 +49510,7 @@
                 "type": "missing"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -48448,6 +49620,7 @@
                 "type": "loading"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -48561,6 +49734,7 @@
                 "type": "failed"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -49174,6 +50348,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -49447,6 +50622,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -49729,6 +50905,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -50006,6 +51183,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -50283,6 +51461,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -50570,6 +51749,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -50863,6 +52043,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -51451,6 +52632,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -51796,6 +52978,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -52117,6 +53300,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -52440,6 +53624,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -52763,7 +53948,8 @@
                       80
                     ],
                     "columnOrder": [],
-                    "detailWidth": 360
+                    "detailWidth": 360,
+                    "detailHidden": false
                   },
                   "matchmakerUnselectedQueues": [
                     "  ladder_1v1 ",
@@ -52874,6 +54060,7 @@
                   110,
                   80
                 ],
+                "detailHidden": false,
                 "detailWidth": 360,
                 "hideFoes": false,
                 "hideModded": true,

@@ -256,6 +256,13 @@ fn set_typing(ctx: &ServiceCtx, channel: String, composing: bool) {
 const READ_MARKER_PERSIST_DELAY: std::time::Duration = std::time::Duration::from_millis(400);
 
 fn persist_read_markers_after_quiet_period(ctx: &ServiceCtx, out: &EventSink) {
+    // The one settings write that does not go through `settings::persist`,
+    // so it has to honour the same rule by hand: nothing is written before
+    // the settings file has been read, or the write is defaults for
+    // everything else in it.
+    if !ctx.settings_loaded.has_loaded() {
+        return;
+    }
     let generation = ctx.chat_read_marker_persist_generation.begin();
     let latest = ctx.chat_read_marker_persist_generation.clone();
     let serial = ctx.settings_persist.clone();

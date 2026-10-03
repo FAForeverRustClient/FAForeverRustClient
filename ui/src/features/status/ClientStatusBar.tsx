@@ -293,12 +293,17 @@ export function MatchmakingTask({
       </div>
     );
   }
-  const searching = state.type === "searching";
-  const label = searching
-    ? t("status.matchmaking.searching", { queues: state.payload.queueNames.map(named).join(", ") })
-    : t("status.matchmaking.launching", { queue: named(state.payload.queueName) });
+  // Preparing (#390) is the first half of a search: the featured mod and the
+  // pool maps come down before the server is asked. It can be stopped the
+  // same way, as the matchmaker panel does.
+  const searching = state.type === "searching" || state.type === "preparing";
+  const label = state.type === "preparing"
+    ? t("lobby.matchmaker.summary.preparing")
+    : state.type === "searching"
+      ? t("status.matchmaking.searching", { queues: state.payload.queueNames.map(named).join(", ") })
+      : t("status.matchmaking.launching", { queue: named(state.payload.queueName) });
   const stop = () => {
-    if (state.type !== "searching") return;
+    if (state.type !== "searching" && state.type !== "preparing") return;
     state.payload.queueNames.forEach((queueName) =>
       ipc.send({ kind: "Lobby", command: { type: "matchmake", payload: { queueName, start: false } } }),
     );

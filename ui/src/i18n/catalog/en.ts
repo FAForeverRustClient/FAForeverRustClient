@@ -721,6 +721,9 @@ export const en = {
   "lobby.matchmaker.summary.found": "Match found in {queue}",
   "lobby.matchmaker.summary.launching": "Starting your match…",
   "lobby.matchmaker.hint.editable": "Queue selection stays editable while searching.",
+  "lobby.matchmaker.summary.preparing": "Getting ready to search",
+  "lobby.matchmaker.hint.preparing": "Updating the game and downloading the pool maps first, so that no match starts without them.",
+  "lobby.matchmaker.hint.inGame": "The search can start once nobody in the party is in a game: {names}.",
   "lobby.matchmaker.hint.selectOne": "Select at least one queue.",
   "lobby.matchmaker.partyFloor": "Your {count}-player party can enter queues sized {size} or larger.",
   "lobby.matchmaker.hint.filesChecked": "Maps and game files are checked when a match is prepared.",
@@ -877,6 +880,7 @@ export const en = {
   "lobby.browser.ranked": "Ranked",
   "lobby.browser.unranked": "Unranked",
   "lobby.browser.goAdapter": "Go adapter",
+  "lobby.browser.moreTags": "+{count} more",
   "lobby.browser.goAdapterTitle": "Hosted on the Go adapter (faf-pioneer). On Dynamic you join on Go automatically; otherwise choose Go in the connectivity settings.",
   // The sim-mod tag says how many, and its tooltip says the thing the count
   // does not: whether those mods cost the game its rating. Plural because
@@ -1196,6 +1200,8 @@ export const en = {
   "lobby.browser.sortAscending": "ascending",
   "lobby.browser.sortDescending": "descending",
   "lobby.browser.resizeDetails": "Resize the details panel",
+  "lobby.browser.hideDetails": "Hide the details panel",
+  "lobby.browser.showDetails": "Show the details panel",
   "lobby.matchmaker.resizeChat": "Resize the party chat",
   "lobby.browser.openProfile": "Open {name}'s profile",
   "lobby.browser.tileAria": "{title}, hosted by {host}. Double-click to join.",
