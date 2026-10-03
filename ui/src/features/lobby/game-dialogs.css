@@ -406,8 +406,10 @@
   line-height: 1.3;
 }
 
+/* On a line of its own under the range (issue 372). As one more item in the
+   wrapping row it pushed the inputs around and broke the row in two. */
 .host-rating-error {
-  margin-left: 4px;
+  flex-basis: 100%;
 }
 
 .host-game-modal input[aria-invalid="true"] {

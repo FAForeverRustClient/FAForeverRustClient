@@ -84,6 +84,8 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
     // has to be able to clear it.
     case "matchmakerVetoesChanged":
       return { ...state, matchmakerVetoes: event.payload.vetoes };
+    case "mapPoolsSeen":
+      return { ...state, mapPoolsSeen: event.payload.seen };
     // Replaced whole as well: the service orders and caps the list.
     case "avatarHistoryChanged":
       return { ...state, avatarHistory: event.payload.history };

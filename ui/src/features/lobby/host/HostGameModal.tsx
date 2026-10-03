@@ -10,7 +10,7 @@ import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNav
 import { OFFICIAL_BASE_MAPS } from "../../../shared/mapPresentation";
 import { GameMapImage } from "../GameMapImage";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
-import { isOfficialMap } from "../../../shared/mapPresentation";
+import { isGeneratedMap, isOfficialMap } from "../../../shared/mapPresentation";
 import { MapUninstallDialog } from "../../maps/MapVaultComponents";
 import { GenerateMapModal } from "../../maps/GenerateMapModal";
 import { generatedMapDescriptionRows } from "../../../shared/generatedMapDescription";
@@ -89,6 +89,16 @@ const NO_PICKER_FILTERS: MapPickerFilters = {
   filtersOpen: false,
   mapTab: "all",
 };
+
+/**
+ * The picker as the dialog was last left, for the next time it opens (#387).
+ *
+ * Kept for the session, in memory, rather than in the settings file: what was
+ * asked for is not having to narrow the list down again after hosting, and the
+ * next host of the evening is the one that wants it. A fresh start opening on
+ * last night's search would be a list that looks empty for no reason.
+ */
+let lastPicker: MapPickerFilters = NO_PICKER_FILTERS;
 
 interface FeaturedModOption {
   id: string;
@@ -175,9 +185,12 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   const [selectedMap, setSelectedMap] = useState(remembered.map);
 
   // The map picker's own controls, as one value so a change or a reset is one
-  // update rather than seven. `mapTab` is not persisted: a dialog that opened
-  // on an empty Favourites tab would look like a client with no maps installed.
-  const [picker, setPicker] = useState<MapPickerFilters>(NO_PICKER_FILTERS);
+  // update rather than seven. They outlive the dialog for the session (see
+  // `lastPicker`); the filter popover does not reopen with them.
+  const [picker, setPicker] = useState<MapPickerFilters>(() => ({ ...lastPicker, filtersOpen: false }));
+  useEffect(() => {
+    lastPicker = picker;
+  }, [picker]);
   const { mapSearch, rankedFilter, widthKm, heightKm, playerCount, filtersOpen, mapTab } = picker;
   const filter = (patch: Partial<MapPickerFilters>) => setPicker((current) => ({ ...current, ...patch }));
 
@@ -331,8 +344,26 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
         description: t("lobby.host.mapGeneratedDescription"),
       });
     }
+    // A generated map starred from a game's preview (#394) is in no vault and
+    // usually not on disk either, and hosting it by name generates it again.
+    // So it is listed from the favourites alone, or the star would lead
+    // nowhere.
+    for (const favorite of browsing.favoriteMaps) {
+      const key = favorite.toLowerCase();
+      if (!isGeneratedMap(favorite) || catalogue.has(key) || key === selectedMap?.toLowerCase()) continue;
+      all.push({
+        displayName: favorite,
+        folderName: favorite,
+        maxPlayers: 16,
+        width: 1024,
+        height: 1024,
+        version: "1.0",
+        ranked: false,
+        description: t("lobby.host.mapGeneratedDescription"),
+      });
+    }
     return all;
-  }, [catalogue, selectedMap, t]);
+  }, [browsing.favoriteMaps, catalogue, selectedMap, t]);
 
   // The only step the search box and the filters touch.
   const availableMaps = useMemo(() => {
