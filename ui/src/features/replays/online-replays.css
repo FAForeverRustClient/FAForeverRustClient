@@ -613,6 +613,17 @@ button.vault-input {
   border-bottom: 1px solid var(--color-border);
 }
 
+/* The vault and local panel's head: title, map and id start level with the
+   top of the preview rather than floating at its middle, and the action
+   column only holds the file's actions stacked one above the other (Watch is
+   at the floor of the dialog), so it needs about the width of its longest
+   label. The live panel keeps the plain head. One class rather than two, so
+   the narrow-window rules further down, also one class, still win. */
+.replay-detail-head-top {
+  grid-template-columns: 160px minmax(0, 1fr) 210px;
+  align-items: start;
+}
+
 /* Positioning context for the generate button over the thumbnail. */
 .replay-detail-thumb-frame {
   position: relative;
@@ -756,6 +767,21 @@ button.vault-input {
   font-variant-numeric: tabular-nums;
   letter-spacing: normal;
   text-transform: none;
+}
+
+.replay-detail-idline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* A quiet line, not the headline number it was over the title. */
+.replay-detail-idline > .replay-detail-id {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .replay-detail-map {
@@ -970,6 +996,12 @@ button.vault-input {
   grid-column: 1 / -1;
 }
 
+/* One above the other: four labels of very different lengths in two columns
+   left one cell cut short and the other half empty. */
+.replay-detail-actions-stacked {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .replay-secondary-btn {
   justify-content: flex-start;
   gap: 6px;
@@ -1181,11 +1213,18 @@ button.vault-input {
 }
 
 /* The floor of the dialog, under the lineup: the way into the file's own
-   contents, on the left where the lineup starts. */
+   contents on the left where the lineup starts, and Watch in the bottom-right
+   corner. */
 .replay-detail-foot {
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   margin-top: var(--space-3);
+}
+
+.replay-detail-foot > .replay-watch-button {
+  min-width: 160px;
 }
 
 .replay-detail-more-info {

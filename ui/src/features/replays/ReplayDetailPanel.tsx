@@ -418,11 +418,12 @@ export function ReplayDetailPanel({
     : undefined;
   return (
     <Modal className="replay-detail-modal" ariaLabel={t("replays.detail.aria", { name: cardTitle })} onClose={onClose}>
-      {/* One head across the dialog: the map, what the replay is, and every
-          action on it, with Watch leading. Below it, top to bottom, is what
-          happened in the game: the facts, then the lineup. A reader scans one
-          column instead of crossing between a rail and a main column. */}
-      <header className="replay-detail-head">
+      {/* One head across the dialog: the map, what the replay is, and the
+          actions on the file. Below it, top to bottom, is what happened in the
+          game: the facts, then the lineup, and at the floor the two ways
+          further in, More info and Watch. A reader scans one column instead of
+          crossing between a rail and a main column. */}
+      <header className="replay-detail-head replay-detail-head-top">
         {/* A picture to recognise the map by, and a way to look at it
             properly: clicking opens the same zoom frame the Play and Maps tabs
             use. It is not a zoom widget in place, because a wheel handler over
@@ -468,35 +469,6 @@ export function ReplayDetailPanel({
         </div>
 
         <div className="replay-detail-headtext">
-          {/* The number people quote at each other, and the two things done
-              with it: copy the number, copy the link. */}
-          <div className="replay-detail-eyebrow">
-            {replay.uid > 0 ? (
-              <>
-                <span className="replay-detail-id">#{replay.uid}</span>
-                <button
-                  type="button"
-                  className="replay-card-icon-btn"
-                  aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                  title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
-                  onClick={copyReplayId}
-                >
-                  <Icon name={copiedId ? "check" : "copy"} size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="replay-card-icon-btn"
-                  aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                  title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
-                  onClick={copyLink}
-                >
-                  <Icon name={copied ? "check" : "external"} size={13} />
-                </button>
-              </>
-            ) : (
-              <span>{t("replays.local.noReplayId")}</span>
-            )}
-          </div>
           <h2 title={cardTitle}>{cardTitle}</h2>
           <div className="replay-detail-map">
             <Icon name="maps" size={15} />
@@ -528,6 +500,37 @@ export function ReplayDetailPanel({
               </Button>
             )}
           </div>
+          {/* The number people quote at each other, and the two things done
+              with it: copy the number, copy the link. A line under the map
+              rather than a label over the title, so the title starts level
+              with the top of the preview. */}
+          <div className="replay-detail-idline">
+            {replay.uid > 0 ? (
+              <>
+                <span className="replay-detail-id">#{replay.uid}</span>
+                <button
+                  type="button"
+                  className="replay-card-icon-btn"
+                  aria-label={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                  title={t(copiedId ? "replays.detail.idCopied" : "replays.detail.copyId")}
+                  onClick={copyReplayId}
+                >
+                  <Icon name={copiedId ? "check" : "copy"} size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="replay-card-icon-btn"
+                  aria-label={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
+                  title={t(copied ? "replays.detail.copiedShort" : "replays.detail.copyLink")}
+                  onClick={copyLink}
+                >
+                  <Icon name={copied ? "check" : "external"} size={13} />
+                </button>
+              </>
+            ) : (
+              <span>{t("replays.local.noReplayId")}</span>
+            )}
+          </div>
           {!replay.replayAvailable && (
             <div className="replay-detail-badges">
               <span className="replay-availability pending">{t("replays.detail.processing")}</span>
@@ -535,19 +538,11 @@ export function ReplayDetailPanel({
           )}
         </div>
 
-        {/* Watch leads; the other actions on the file are a compact grid
-            under it, in the order they are reached for. */}
+        {/* The actions on the file, one above the other in the order they
+            are reached for. Watch is not among them: it sits at the floor of
+            the dialog, opposite More info. */}
         <div className="replay-detail-actions">
-          <Button
-            className="replay-watch-button"
-            variant="primary"
-            disabled={busy || !replay.replayAvailable}
-            onClick={onWatch}
-          >
-            <Icon name="play" size={15} />
-            <span>{t(replay.replayAvailable ? "replays.detail.watch" : "replays.detail.notUploaded")}</span>
-          </Button>
-          <div className="replay-detail-actions-secondary">
+          <div className="replay-detail-actions-secondary replay-detail-actions-stacked">
             {onDownload && (
               <Button
                 className="replay-secondary-btn"
@@ -764,7 +759,8 @@ export function ReplayDetailPanel({
 
       {/* What the replay file itself holds, under the lineup it goes deeper
           into rather than among the actions on the file: chat, options, mods
-          and the analysis tabs. */}
+          and the analysis tabs. Watch takes the other end of the same row,
+          the bottom-right corner where a dialog's main action is looked for. */}
       <div className="replay-detail-foot">
         <Button
           className="replay-secondary-btn replay-detail-more-info"
@@ -783,6 +779,15 @@ export function ReplayDetailPanel({
         >
           <Icon name={isLoadingDetails ? "refresh" : "list"} size={13} className={isLoadingDetails ? "spin" : undefined} />
           <span>{t("replays.detail.loadDetailsShort")}</span>
+        </Button>
+        <Button
+          className="replay-watch-button"
+          variant="primary"
+          disabled={busy || !replay.replayAvailable}
+          onClick={onWatch}
+        >
+          <Icon name="play" size={15} />
+          <span>{t(replay.replayAvailable ? "replays.detail.watch" : "replays.detail.notUploaded")}</span>
         </Button>
       </div>
 
