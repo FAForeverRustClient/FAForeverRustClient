@@ -8,6 +8,7 @@ function queue(queueName: string, numPlayers: number): MatchmakerQueue {
     teamSize: 1,
     numPlayers,
     queuePopTimeSeconds: 60,
+    queuePopsAt: "",
     boundary80s: [],
     boundary75s: [],
   };

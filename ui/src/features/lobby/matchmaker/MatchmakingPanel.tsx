@@ -16,12 +16,17 @@ import { MatchmakerQueueCard, queueTitle, type QueueDisplayState } from "./Match
 import { partyChatWidth, withPartyChatResized } from "./matchmakerLayout";
 import { placementForQueue, ratingForQueue } from "./matchmakerRatings";
 import { playersInRatingRange } from "./queueRatingRange";
+import { secondsUntil } from "./queuePopClock";
+import { allGamePlayers } from "../../../shared/liveReplayModel";
 import "./matchmaker.css";
 import { t } from "../../../i18n";
 import { useLocale } from "../../../i18n/useTranslation";
 
 function stateForQueue(state: MatchmakingState, queueName: string): QueueDisplayState {
   switch (state.type) {
+    // Java shows a queue as searching from the press of the button, while it
+    // is still downloading the pool's maps.
+    case "preparing": return state.payload.queueNames.includes(queueName) ? "searching" : "idle";
     case "searching": return state.payload.queueNames.includes(queueName) ? "searching" : "idle";
     case "matchFound": return state.payload.queueName === queueName ? "found" : "idle";
     case "launching": return state.payload.queueName === queueName ? "launching" : "idle";
@@ -31,7 +36,7 @@ function stateForQueue(state: MatchmakingState, queueName: string): QueueDisplay
 }
 
 function searchingQueues(state: MatchmakingState) {
-  return state.type === "searching" ? state.payload.queueNames : [];
+  return state.type === "searching" || state.type === "preparing" ? state.payload.queueNames : [];
 }
 
 function MatchmakerSearchSummary({
@@ -47,6 +52,7 @@ function MatchmakerSearchSummary({
     }
     return <span>{t("lobby.matchmaker.summary.selected", { count: queueCount })}</span>;
   }
+  if (state.type === "preparing") return <span>{t("lobby.matchmaker.summary.preparing")}</span>;
   if (state.type === "searching") return <span>{t("lobby.matchmaker.summary.searching", { count: state.payload.queueNames.length })}</span>;
   if (state.type === "matchFound") return <span>{t("lobby.matchmaker.summary.found", { queue: state.payload.queueName })}</span>;
   if (state.type === "launching") return <span>{t("lobby.matchmaker.summary.launching")}</span>;
@@ -58,6 +64,8 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   const maps = useAppStore((state) => state.state.maps);
   const social = useAppStore((state) => state.state.social);
   const liveGames = useAppStore((state) => state.state.lobby.liveGames);
+  const openGames = useAppStore((state) => state.state.lobby.games);
+  const join = useAppStore((state) => state.state.lobby.join);
   const serverVetoes = useAppStore((state) => state.state.lobby.vetoes);
   const player = useAppStore((state) => state.state.auth.player);
   const playerCard = useAppStore((state) => state.state.playerCard);
@@ -72,17 +80,31 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   // write per pointer move would be a backend round trip per pixel.
   const [draggedChatWidth, setDraggedChatWidth] = useState<number | null>(null);
   const chatDragOrigin = useRef<number | null>(null);
-  const [queueClocks, setQueueClocks] = useState<Record<string, { seconds: number; receivedAt: number }>>({});
   const requestedProfileId = useRef<number | null>(null);
 
   const sortedQueues = useMemo(() => [...queues].sort((left, right) => left.teamSize - right.teamSize || left.queueName.localeCompare(right.queueName)), [queues]);
   const selectedQueues = sortedQueues.filter((queue) => !unselectedQueues.includes(queue.queueName));
   const activeSearches = useMemo(() => searchingQueues(matchmaking), [matchmaking]);
   const isSearching = activeSearches.length > 0;
+  const preparing = matchmaking.type === "preparing";
   const searchLocked = matchmaking.type === "matchFound" || matchmaking.type === "launching";
   const playerId = player?.id ?? null;
   const playerName = player?.name ?? t("lobby.matchmaker.player");
   const partyNeedsLeader = party.members.length > 1 && party.ownerId !== playerId;
+  // Java's `partyMembersNotReady`: nobody in the party may be in a game, a
+  // lobby included, when the search starts. The server refuses it anyway, with
+  // a notice the search bar never hears about.
+  const membersInGame = useMemo(() => {
+    const busy = new Set([...openGames, ...liveGames].flatMap((game) => allGamePlayers(game)));
+    const ids = party.members.length > 0 ? party.members.map((member) => member.playerId) : playerId === null ? [] : [playerId];
+    const names = ids
+      .filter((id) => id !== playerId)
+      .map((id) => social.players.find((entry) => entry.id === id)?.login)
+      .filter((login): login is string => login !== undefined && busy.has(login));
+    const selfBusy = join.type === "launched" || join.type === "inGame"
+      || (player !== null && busy.has(player.name));
+    return selfBusy ? [playerName, ...names] : names;
+  }, [join.type, liveGames, openGames, party.members, player, playerId, playerName, social.players]);
   const compatibleQueues = selectedQueues.filter((queue) => party.members.length <= queue.teamSize);
   const mapPoolQueue = sortedQueues.find((queue) => queue.queueName === mapPoolQueueName) ?? null;
   const matchmakerProfile = playerCard.matchmakerProfile?.playerId === playerId
@@ -121,16 +143,6 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     const timer = window.setInterval(() => setClock(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    const receivedAt = Date.now();
-    setQueueClocks((current) => Object.fromEntries(queues.map((queue) => {
-      const previous = current[queue.queueName];
-      return [queue.queueName, previous?.seconds === queue.queuePopTimeSeconds
-        ? previous
-        : { seconds: queue.queuePopTimeSeconds, receivedAt }];
-    })));
-  }, [queues]);
 
   useEffect(() => {
     setUnselectedQueues(browsing.matchmakerUnselectedQueues);
@@ -213,7 +225,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     // Only for a queue the search actually covers. A queue the party has
     // outgrown was never started, so telling the server to stop it is a
     // message about a search that does not exist.
-    if (isSearching && party.members.length <= queue.teamSize) {
+    if (matchmaking.type === "searching" && party.members.length <= queue.teamSize) {
       ipc.send({ kind: "Lobby", command: { type: "matchmake", payload: { queueName: queue.queueName, start: !selected } } });
     }
   };
@@ -225,7 +237,13 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     }
 
     ipc.send({ kind: "Lobby", command: { type: "setPartyFactions", payload: { factions: selectedFactions } } });
-    compatibleQueues.forEach((queue) => ipc.send({ kind: "Lobby", command: { type: "matchmake", payload: { queueName: queue.queueName, start: true } } }));
+    // One command for every queue: the backend prepares the install and all of
+    // their pool maps first, then asks the server for each, as Java's
+    // `joinQueues` does. See `MatchmakingState::Preparing`.
+    ipc.send({
+      kind: "Lobby",
+      command: { type: "startSearch", payload: { queueNames: compatibleQueues.map((queue) => queue.queueName) } },
+    });
   };
 
   const openMapPool = (queue: MatchmakerQueue) => {
@@ -237,7 +255,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     return <EmptyState icon="users" title={t("lobby.matchmaker.loading")} hint={t("lobby.matchmaker.loadingHint")} />;
   }
 
-  const canSearch = !partyNeedsLeader && compatibleQueues.length > 0 && !searchLocked;
+  const canSearch = !partyNeedsLeader && compatibleQueues.length > 0 && !searchLocked && membersInGame.length === 0;
   const activeMatchmakerGames = liveGames.filter((game) => game.gameType.toLocaleLowerCase() === "matchmaker");
 
   return (
@@ -255,7 +273,10 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
           country={social.players.find((entry) => entry.id === playerId)?.country ?? ""}
           queues={sortedQueues}
           selectedFactions={selectedFactions}
-          factionsDisabled={isSearching || searchLocked || partyNeedsLeader}
+          // Every member picks their own, as in Java, where the faction
+          // buttons are never disabled. The server keeps the choice per member
+          // (`set_party_factions`) and rolls each one's faction from it.
+          factionsDisabled={searchLocked}
           onFactionsChange={setFactions}
         />
 
@@ -288,8 +309,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
           </div>
           <div className="matchmaker-queue-grid">
             {sortedQueues.map((queue) => {
-              const clockState = queueClocks[queue.queueName];
-              const remaining = clockState ? Math.max(0, clockState.seconds - Math.floor((clock - clockState.receivedAt) / 1000)) : queue.queuePopTimeSeconds;
+              const remaining = secondsUntil(queue, clock);
               const activeGames = activeMatchmakerGames.filter((game) => game.maxPlayers === queue.teamSize * 2).length;
               const queueRating = ratingForQueue(matchmakerProfile?.ratings ?? [], queue.queueName);
               const queuePlacement = placementForQueue(matchmakerProfile?.leaguePlacements ?? [], queue.queueName);
@@ -301,7 +321,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
                   key={queue.queueName}
                   queue={queue}
                   selected={!unselectedQueues.includes(queue.queueName)}
-                  disabled={partyNeedsLeader || searchLocked}
+                  disabled={partyNeedsLeader || searchLocked || preparing}
                   incompatible={party.members.length > queue.teamSize}
                   status={stateForQueue(matchmaking, queue.queueName)}
                   activeGames={activeGames}
@@ -327,8 +347,14 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
               <i />
               <div>
                 <strong><MatchmakerSearchSummary state={matchmaking} queueCount={compatibleQueues.length} /></strong>
-                {isSearching && (
+                {matchmaking.type === "searching" && (
                   <span>{t("lobby.matchmaker.hint.editable")}</span>
+                )}
+                {preparing && (
+                  <span>{t("lobby.matchmaker.hint.preparing")}</span>
+                )}
+                {!isSearching && membersInGame.length > 0 && (
+                  <span>{t("lobby.matchmaker.hint.inGame", { names: membersInGame.join(", ") })}</span>
                 )}
                 {/* A party has a size floor that silently disables some cards.
                     It belongs with the rest of the search's conditions rather

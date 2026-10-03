@@ -109,6 +109,7 @@ impl LobbyPort for FakeLobby {
                         team_size: 1,
                         num_players: 18,
                         queue_pop_time_seconds: 95,
+                        queue_pops_at: String::new(),
                         // A spread of searches so the offline shell shows the
                         // "in your range" count doing something. The 75%
                         // windows are the wider ones, as on the server.
@@ -146,6 +147,7 @@ impl LobbyPort for FakeLobby {
                         team_size: 2,
                         num_players: 12,
                         queue_pop_time_seconds: 150,
+                        queue_pops_at: String::new(),
                         boundary_80s: vec![RatingRange {
                             min: 900,
                             max: 1_300,
@@ -160,6 +162,7 @@ impl LobbyPort for FakeLobby {
                         team_size: 4,
                         num_players: 20,
                         queue_pop_time_seconds: 210,
+                        queue_pops_at: String::new(),
                         boundary_80s: Vec::new(),
                         boundary_75s: Vec::new(),
                     },
@@ -242,7 +245,12 @@ impl LobbyPort for FakeLobby {
             return;
         };
         tokio::spawn(async move {
-            let _ = tx.send(LobbyUpdate::Vetoes(vetoes)).await;
+            let _ = tx
+                .send(LobbyUpdate::Vetoes {
+                    vetoes,
+                    forced: false,
+                })
+                .await;
         });
     }
 

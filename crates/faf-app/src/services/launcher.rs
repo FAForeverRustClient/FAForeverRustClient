@@ -111,8 +111,7 @@ pub async fn start(
         // wrong explanation for something the user did on purpose.
         if ctx.lobby_operations.is_cancelled() {
             tracing::info!("launcher: the join was cancelled during preparation; not starting");
-            ctx.ports.ice.stop();
-            return None;
+            return abandon(ctx, out);
         }
     }
 
@@ -142,6 +141,15 @@ pub async fn start(
         Ok(session) => session,
         Err(e) => return fail(ctx, out, format!("ice adapter: {e}")),
     };
+    // The adapter takes seconds to come up, and a matchmaker launch can be
+    // called off by the server in that time (`match_cancelled`). Starting the
+    // game after that would seat the player in a match nobody else is in.
+    if ctx.lobby_operations.is_cancelled() {
+        tracing::info!(
+            "launcher: the launch was cancelled while the adapter started; not starting"
+        );
+        return abandon(ctx, out);
+    }
 
     // 3. Launch the game pointed at the adapter's GPGNet port.
     let game_params = GameLaunchParams {
@@ -415,11 +423,24 @@ async fn prepare_install(
     .await
 }
 
+/// One preparation at a time, whoever asked for it.
+///
+/// The updater writes into the game install and the maps folder, and two runs
+/// at once write the same files. That became possible when a search started
+/// preparing the install before the queue (see [`prepare_search`]): a match
+/// can be found while that run is still going, and the launch's own run must
+/// wait for it rather than race it. Java chains the two the same way, the
+/// launch being the continuation of the search's preparation
+/// (`GameRunner.startSearchMatchmaker`). The second run is then cheap, because
+/// files matching by MD5 are skipped.
+static PREPARATION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 async fn prepare_request(
     request: GamePreparation,
     ctx: &ServiceCtx,
     out: &EventSink,
 ) -> Result<(), String> {
+    let _one_at_a_time = PREPARATION.lock().await;
     let mut updates = ctx.ports.updater.prepare(request).await;
 
     // The port always ends with `Finished`; treating a stream that closes
@@ -460,6 +481,117 @@ async fn prepare_request(
     outcome
 }
 
+/// Get the install ready for a matchmaker search, before the server is asked
+/// to queue anybody.
+///
+/// Java's `TeamMatchmakingService.joinQueues`: the featured mod is brought up
+/// to date, then each queue's pool maps are downloaded, and only then is
+/// `game_matchmaking start` sent. The reason is the server's launch window. A
+/// match can be made at the very next pop, and the host then has sixty seconds
+/// to start the game (`LadderService.launch_match`); a patch day or a pool map
+/// nobody has yet takes longer than that, and the server cancels the match for
+/// every player in it and records a violation against the one who was late.
+///
+/// The progress is not narrated: nothing is being joined yet, and the join
+/// state is what the launch dialog opens on. Java shows it as a background
+/// task, which is what the search bar's "Preparing" is here.
+///
+/// A pool map that cannot be fetched is not a reason to stay out of the
+/// queue, as in Java, which only reports it: the match may well be on another
+/// map, and if not, the launch tries again. A featured mod that cannot be
+/// updated is, since every match in the queue needs it.
+pub(crate) async fn prepare_search(
+    queue_names: &[String],
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) -> Result<(), String> {
+    use faf_domain::protocol::map_generator::is_generated_map;
+
+    if ctx.ports.process.game_install_dir().is_none() {
+        return Err(
+            "no game install configured: locate ForgedAlliance.exe in Settings → Paths".to_string(),
+        );
+    }
+
+    prepare_featured_mod(MATCHMAKER_FEATURED_MOD, ctx, out).await?;
+
+    let mut folders: Vec<String> = Vec::new();
+    for queue_name in queue_names {
+        match ctx
+            .ports
+            .maps
+            .list_matchmaker_pools(queue_name.clone())
+            .await
+        {
+            Ok(pools) => {
+                for map in pools.iter().flat_map(|pool| pool.maps.iter()) {
+                    if !map.folder_name.is_empty()
+                        && !is_generated_map(&map.folder_name)
+                        && !folders.contains(&map.folder_name)
+                    {
+                        folders.push(map.folder_name.clone());
+                    }
+                }
+            }
+            // Not knowing the pool is not knowing which maps to fetch, which
+            // the launch will make up for. Java goes on to the next queue too.
+            Err(reason) => {
+                tracing::warn!(queue = %queue_name, %reason, "could not read the map pool before the search")
+            }
+        }
+    }
+
+    let failures = {
+        let _one_at_a_time = PREPARATION.lock().await;
+        ctx.ports.updater.ensure_maps(&folders).await
+    };
+    for (folder, reason) in failures {
+        tracing::warn!(%folder, %reason, "a pool map could not be downloaded before the search");
+        notifications::add(
+            out,
+            NotificationKind::Error,
+            "Map download failed",
+            format!("{folder} could not be downloaded: {reason}"),
+            None,
+        );
+    }
+    Ok(())
+}
+
+/// Bring a featured mod up to date without narrating it as a join.
+///
+/// Also what a party member's client does when its leader starts a search:
+/// Java's `GameRunner.startSearchMatchmaker` runs on every client whose queue
+/// state turns to searching, not only on the one that pressed the button.
+pub(crate) async fn prepare_featured_mod(
+    featured_mod: &str,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) -> Result<(), String> {
+    let cache_rolling_branches = out.with_state(|state| state.settings.game.cache_rolling_branches);
+    let _one_at_a_time = PREPARATION.lock().await;
+    let mut updates = ctx
+        .ports
+        .updater
+        .prepare(GamePreparation {
+            featured_mod: featured_mod.to_string(),
+            map_folder: None,
+            cache_rolling_branches,
+        })
+        .await;
+    let mut outcome = Err("the game updater stopped without finishing".to_string());
+    while let Some(update) = updates.recv().await {
+        if let UpdateProgress::Finished(result) = update {
+            outcome = result;
+        }
+    }
+    outcome
+}
+
+/// The featured mod every matchmaker game runs on. Java joins the queues after
+/// `featuredModService.updateFeaturedModToLatest(FAF.getTechnicalName())`.
+pub(crate) const MATCHMAKER_FEATURED_MOD: &str = "faf";
+
 /// The port's phase as the domain names it.
 ///
 /// Two enums rather than one shared type, because the port describes work and
@@ -478,7 +610,10 @@ fn preparation_phase(phase: PreparationPhase) -> DomainPreparationPhase {
 /// Stop the adapter and emit `LaunchFailed`. Always returns `None` so call sites
 /// can `return fail(..)`.
 pub(crate) fn report_failure(ctx: &ServiceCtx, out: &EventSink, reason: String) {
-    tracing::warn!("game launch failed; details were sent to the client");
+    // The reason too: "details were sent to the client" left a log that could
+    // not say why any launch had failed, and the reason is an error message,
+    // nothing private.
+    tracing::warn!(%reason, "game launch failed");
     ctx.ports.ice.stop();
     notifications::add_required(
         out,
@@ -490,8 +625,39 @@ pub(crate) fn report_failure(ctx: &ServiceCtx, out: &EventSink, reason: String) 
     out.emit(LobbyEvent::LaunchFailed { reason });
 }
 
+/// A launch order that will not become a game, for whatever reason.
+///
+/// The server seated the player when it sent the order, and it learns that the
+/// seat is empty from the client alone: `GameState Ended` is what the game
+/// itself would have reported on exit. Java sends it on every way out of
+/// `GameRunner.startOnlineGame`, failures included (`notifyGameEnded` in its
+/// `whenComplete`). Without it the server waits out its own launch window
+/// first: the other players sit on a match that cannot start for a minute or
+/// more, and the player who failed is still "in a game" when they try again.
+///
+/// The server ignores the report for a player it has no game connection for
+/// (`LobbyConnection.on_message_received`), so sending it is never wrong.
+fn release_seat(ctx: &ServiceCtx) {
+    ctx.ports
+        .lobby
+        .send_game_relay("GameState".into(), vec![Value::String("Ended".into())]);
+}
+
 fn fail(ctx: &ServiceCtx, out: &EventSink, reason: String) -> Option<LaunchSession> {
+    release_seat(ctx);
     report_failure(ctx, out, reason);
+    None
+}
+
+/// A launch called off on purpose: by the player, or by the server's
+/// `match_cancelled`. No failure to report, but the seat is released all the
+/// same, and the join is closed, which for a matchmaker launch also frees the
+/// search panel (see `LobbyEvent::JoinCancelled`). A cancel from the player
+/// closed it already; one from the server did not.
+fn abandon(ctx: &ServiceCtx, out: &EventSink) -> Option<LaunchSession> {
+    ctx.ports.ice.stop();
+    release_seat(ctx);
+    out.emit(LobbyEvent::JoinCancelled);
     None
 }
 

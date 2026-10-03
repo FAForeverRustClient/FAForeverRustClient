@@ -4124,6 +4124,78 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a reconnect ends a search but not a launch or a running game",
+            vec![
+                LobbyEvent::Connected.into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Preparing {
+                        queue_names: vec!["ladder1v1".into()],
+                    },
+                }
+                .into(),
+                LobbyEvent::Connecting.into(),
+                LobbyEvent::Connected.into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Searching {
+                        queue_names: vec!["ladder1v1".into(), "tmm2v2".into()],
+                    },
+                }
+                .into(),
+                // The server ended this search with the old connection.
+                LobbyEvent::Connecting.into(),
+                LobbyEvent::Connected.into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "ladder1v1".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::InGame.into(),
+                // The game outlives the socket; so does its launch.
+                LobbyEvent::Connecting.into(),
+                LobbyEvent::GameTerminated.into(),
+            ],
+        ),
+        case(
+            "a matchmaker launch that fails or is called off frees the panel",
+            vec![
+                LobbyEvent::Connected.into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "ladder1v1".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::LaunchFailed {
+                    reason: "ice adapter: no port".into(),
+                }
+                .into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "ladder1v1".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::Preparing {
+                    phase: PreparationPhase::Map,
+                    detail: "Generating map".into(),
+                    progress: None,
+                }
+                .into(),
+                LobbyEvent::JoinCancelled.into(),
+                // A cancel with nothing in preparation leaves a game alone.
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Launching {
+                        queue_name: "ladder1v1".into(),
+                    },
+                }
+                .into(),
+                LobbyEvent::InGame.into(),
+                LobbyEvent::JoinCancelled.into(),
+                LobbyEvent::GameTerminated.into(),
+            ],
+        ),
+        case(
             "a mod version conflict parks the join until it is answered",
             vec![
                 LobbyEvent::Connected.into(),
@@ -4159,6 +4231,7 @@ fn cases() -> Vec<Case> {
                             team_size: 4,
                             num_players: 1,
                             queue_pop_time_seconds: 90,
+                            queue_pops_at: String::new(),
                             boundary_80s: Vec::new(),
                             boundary_75s: Vec::new(),
                         },
@@ -4167,6 +4240,7 @@ fn cases() -> Vec<Case> {
                             team_size: 1,
                             num_players: 7,
                             queue_pop_time_seconds: 30,
+                            queue_pops_at: String::new(),
                             boundary_80s: vec![RatingRange {
                                 min: 900,
                                 max: 1_300,
@@ -4186,6 +4260,7 @@ fn cases() -> Vec<Case> {
                         team_size: 2,
                         num_players: 3,
                         queue_pop_time_seconds: 60,
+                        queue_pops_at: String::new(),
                         boundary_80s: Vec::new(),
                         boundary_75s: Vec::new(),
                     }],
@@ -4200,6 +4275,7 @@ fn cases() -> Vec<Case> {
                         team_size: 1,
                         num_players: 12,
                         queue_pop_time_seconds: 20,
+                        queue_pops_at: String::new(),
                         boundary_80s: vec![
                             RatingRange {
                                 min: 900,
@@ -6082,6 +6158,32 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "an old replay reports what it is preparing, and the report ends with it",
+            vec![
+                // Ignored: nothing is starting yet.
+                ReplayEvent::Preparing {
+                    step: ReplayPreparation {
+                        detail: "too early".into(),
+                        progress: None,
+                    },
+                }
+                .into(),
+                ReplayEvent::Connecting.into(),
+                ReplayEvent::Preparing {
+                    step: ReplayPreparation {
+                        detail: "Downloading ForgedAlliance.exe".into(),
+                        progress: Some(40),
+                    },
+                }
+                .into(),
+                ReplayEvent::Playing {
+                    uid: Some(5),
+                    warning: None,
+                }
+                .into(),
+            ],
+        ),
+        case(
             "a replay connects, fails, and is dismissed",
             vec![
                 ReplayEvent::Connecting.into(),
@@ -7103,7 +7205,6 @@ const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
     "Lobby:gamesChanged",
     "Lobby:gamesUpdated",
     "Lobby:joinFailed",
-    "Lobby:launchFailed",
     "Lobby:launching",
     "Lobby:liveGamesChanged",
     "Lobby:liveGamesUpdated",
