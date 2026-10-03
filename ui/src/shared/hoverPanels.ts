@@ -28,12 +28,32 @@ import { useAppStore } from "../store/store";
  */
 const WARM_WINDOW_MS = 500;
 
-/** Which panels are open right now. Ids come from the caller's `useId`. */
-const openPanels = new Set<string>();
+/**
+ * Which panels are open right now, with how to close each one that takes part
+ * in "one at a time" (see `noteHoverPanelOpen`). Ids come from the caller's
+ * `useId`.
+ */
+const openPanels = new Map<string, (() => void) | undefined>();
 let lastClosedAt = 0;
 
-export function noteHoverPanelOpen(id: string): void {
-  openPanels.add(id);
+/**
+ * A panel opened.
+ *
+ * A panel that passes `close` is one of a kind with the others that do: it
+ * closes them as it opens. The game card behind a nickname's swords waits
+ * before closing, so the pointer can cross to it, and moving quickly from one
+ * badge to the next used to leave the first card on screen under the second.
+ * The rating card passes nothing: it closes the instant the pointer leaves,
+ * and the game card covers the very nickname that opens it, so letting it
+ * close the game card would shut that card while the pointer crossed to it.
+ */
+export function noteHoverPanelOpen(id: string, close?: () => void): void {
+  if (close) {
+    for (const [other, closeOther] of [...openPanels]) {
+      if (other !== id && closeOther) closeOther();
+    }
+  }
+  openPanels.set(id, close);
 }
 
 export function noteHoverPanelClosed(id: string): void {

@@ -41,12 +41,21 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
   // `shared/hoverPanels`. The card is interactive, so the closing one is not
   // decoration: without it the gap between the badge and the card closes it and
   // the button inside can never be clicked.
+  // Closed at once, skipping that delay: another badge's card is opening, and
+  // two cards would otherwise sit on top of each other until this one's
+  // delay ran out. See `noteHoverPanelOpen`.
+  const closeNow = useCallback(() => {
+    window.clearTimeout(openTimer.current);
+    window.clearTimeout(closeTimer.current);
+    noteHoverPanelClosed(tooltipId);
+    setOpen(false);
+  }, [tooltipId]);
   const show = useCallback((immediate = false) => {
     if (!hoverPanelsEnabled()) return;
     window.clearTimeout(closeTimer.current);
     window.clearTimeout(openTimer.current);
     const reveal = () => {
-      noteHoverPanelOpen(tooltipId);
+      noteHoverPanelOpen(tooltipId, closeNow);
       setOpen(true);
     };
     // `immediate` is the keyboard path: tabbing onto the badge is never
@@ -57,7 +66,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
       return;
     }
     openTimer.current = window.setTimeout(reveal, delay);
-  }, [tooltipId]);
+  }, [tooltipId, closeNow]);
   const hide = useCallback(() => {
     window.clearTimeout(openTimer.current);
     window.clearTimeout(closeTimer.current);
@@ -192,10 +201,7 @@ export function GameSummaryPopover({ presence, social, vault }: Props) {
               // The popover gives way to the dialog on purpose: left open, it
               // would float over the dialog's backdrop until the pointer
               // happened to pass over it and out again.
-              window.clearTimeout(openTimer.current);
-              window.clearTimeout(closeTimer.current);
-              noteHoverPanelClosed(tooltipId);
-              setOpen(false);
+              closeNow();
               setMapPreviewOpen(true);
             }}
             action={(
