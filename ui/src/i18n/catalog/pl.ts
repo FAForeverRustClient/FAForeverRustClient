@@ -1558,8 +1558,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.live.lineupUnavailable": "Skład graczy niedostępny",
   "replays.live.observers": "Obserwatorzy",
   "replays.live.team": "Drużyna {team}",
-  "replays.live.replayId": "ID powtórki",
-  "replays.live.simMods": "Mody symulacji",
   "replays.live.none": "Brak",
   "replays.live.column.map": "Mapa",
   "replays.source.aria": "Źródła powtórek",
