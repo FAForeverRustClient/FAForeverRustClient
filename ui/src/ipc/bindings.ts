@@ -514,10 +514,18 @@ export type BrowsingPreferences = {
 	 *  list between them would have a drag in one tab move the other.
 	 */
 	liveReplayColumns: number[],
+	/**
+	 *  The live-replay table's columns in the order they are drawn, as indexes
+	 *  into the designed order. Empty is the designed order; anything that is
+	 *  not exactly one of each column is dropped to empty.
+	 */
+	liveReplayOrder: number[],
 	/**  And for the co-op leaderboard. */
 	coopBoardColumns: number[],
 	/**  And for the matchmaker tab's recent games (#301). */
 	matchmakerRecentColumns: number[],
+	/**  The recent games' columns in the order they are drawn, the same way. */
+	matchmakerRecentOrder: number[],
 	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
@@ -572,8 +580,10 @@ export type BrowsingPreferencesPatch = {
 	replayListColumns?: number[],
 	replayListOrder?: number[],
 	liveReplayColumns?: number[],
+	liveReplayOrder?: number[],
 	coopBoardColumns?: number[],
 	matchmakerRecentColumns?: number[],
+	matchmakerRecentOrder?: number[],
 	modPresets?: ModPreset[],
 	leaderboardRatingColumns?: string[],
 	replayVaultPlayer?: string,
@@ -4203,6 +4213,21 @@ export type MapGeneratorCommand =
 } } |
 /**  Decode generated map names into their parameters, without any IO. */
 { type: "decodeNames"; payload: {
+	mapNames: string[],
+} } |
+/**
+ *  Read the previews of these installed generated maps from disk, for the
+ *  tiles that are showing them.
+ *
+ *  Asked for by a tile, one map at a time, instead of every preview in the
+ *  maps folder arriving with each scan of it. That push sent the whole
+ *  folder's pictures as base64 in one event, at least twice for every map
+ *  generated from the host dialog, and an event is a script the webview
+ *  has to parse: past a few dozen generated maps that is what ran the page
+ *  out of memory (#402). Java reads each preview from disk when a tile
+ *  shows it (`MapService.getGeneratedMapPreview`).
+ */
+{ type: "loadPreviews"; payload: {
 	mapNames: string[],
 } } |
 /**  Fetch the generator's `--help` text. */

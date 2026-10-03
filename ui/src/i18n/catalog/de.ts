@@ -2100,8 +2100,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.live.lineupUnavailable": "Spieleraufstellung nicht verfügbar",
   "replays.live.observers": "Beobachter",
   "replays.live.team": "Team {team}",
-  "replays.live.replayId": "Replay-ID",
-  "replays.live.simMods": "SIM-Mods",
   "replays.live.none": "Keine",
   "replays.live.ratingEnforced": "erzwungen",
   "replays.live.column.map": "Karte",
