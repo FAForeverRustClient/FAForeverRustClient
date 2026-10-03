@@ -313,7 +313,7 @@ export function MatchmakerMapPoolModal({
       {preview && (
         <MapPreviewDialog
           map={{ folderName: preview.folderName, displayName: preview.displayName }}
-          meta={`${formatMapSize(preview.width, preview.height)} · ${preview.maxPlayers} players`}
+          meta={`${formatMapSize(preview.width, preview.height)} · ${t("maps.view.playerCount", { count: preview.maxPlayers })}`}
           onClose={() => setPreview(null)}
         >
           <GameMapImage
