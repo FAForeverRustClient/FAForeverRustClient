@@ -33,6 +33,7 @@ export function SteamSettingsSection() {
   return (
     <>
       <SettingRow
+        className="setting-row-with-note"
         label={t("settings.steam.presence")}
         hint={t("settings.steam.presenceHint")}
         badge={<span className="setting-experimental-badge">{t("settings.game.experimentalBadge")}</span>}
@@ -46,7 +47,9 @@ export function SteamSettingsSection() {
           label={t("settings.steam.presence")}
         />
       </SettingRow>
-      <div className="setting-block">
+      {/* What the switch above means, so it hangs from that row without a rule
+          between them: with one it read as a setting of its own. */}
+      <div className="setting-block setting-row-note">
         <span className="setting-label">{t("settings.steam.trustTitle")}</span>
         <span className="muted">{t("settings.steam.trustCalls")}</span>
         <span className="muted">{t("settings.steam.trustClosed")}</span>
