@@ -2075,7 +2075,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.host.titleCoop": "Создать кооперативную миссию",
   "lobby.host.subtitle": "Выберите карту, моды, доступ и ограничения рейтинга.",
   "lobby.host.gameTitle": "Название игры",
-  "lobby.host.featuredMod": "Мод игры",
+  "lobby.host.featuredMod": "Тип игры",
   "lobby.host.mod.faf": "FAF",
   "lobby.host.mod.fafbeta": "FAF Beta Balance",
   "lobby.host.mod.fafdevelop": "FAF Develop",
