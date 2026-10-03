@@ -11593,6 +11593,10 @@ export type UpdatePreferences = {
 	/**
 	 *  Also offer prereleases. Java's `preReleaseCheckEnabled`, where it picks
 	 *  between two entirely separate check tasks.
+	 *
+	 *  On by default: every release of this client so far has been published
+	 *  as a prerelease, so a client on the stable channel was never offered
+	 *  one. A settings file that already stores the choice keeps it.
 	 */
 	preRelease: boolean,
 };

@@ -888,7 +888,7 @@
       },
       "updates": {
         "automatic": true,
-        "preRelease": false
+        "preRelease": true
       },
       "browsing": {
         "customGamesView": "tiles",
@@ -2414,7 +2414,7 @@
             "theme": "forgeDark",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         }
@@ -50589,7 +50589,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -50863,7 +50863,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -51146,7 +51146,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -51426,7 +51426,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -51705,7 +51705,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -52004,7 +52004,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -52293,7 +52293,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -52592,7 +52592,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -52891,7 +52891,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -53261,7 +53261,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -53583,7 +53583,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -53907,7 +53907,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         },
@@ -54359,7 +54359,7 @@
             "theme": "forgeLight",
             "updates": {
               "automatic": true,
-              "preRelease": false
+              "preRelease": true
             }
           }
         }

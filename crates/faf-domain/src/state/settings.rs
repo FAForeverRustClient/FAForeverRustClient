@@ -1801,6 +1801,10 @@ pub struct UpdatePreferences {
     pub automatic: bool,
     /// Also offer prereleases. Java's `preReleaseCheckEnabled`, where it picks
     /// between two entirely separate check tasks.
+    ///
+    /// On by default: every release of this client so far has been published
+    /// as a prerelease, so a client on the stable channel was never offered
+    /// one. A settings file that already stores the choice keeps it.
     pub pre_release: bool,
 }
 
@@ -1808,7 +1812,7 @@ impl Default for UpdatePreferences {
     fn default() -> Self {
         Self {
             automatic: true,
-            pre_release: false,
+            pre_release: true,
         }
     }
 }
@@ -4032,10 +4036,12 @@ mod tests {
         // has ever saved a setting, and nothing would ever say so.
         let settings: SettingsState = serde_json::from_str(r#"{"theme":"forgeDark"}"#).unwrap();
         assert!(settings.updates.automatic);
-        assert!(!settings.updates.pre_release);
+        // Prereleases are offered by default, so a file without the group
+        // gains that too.
+        assert!(settings.updates.pre_release);
         assert_eq!(
             settings.updates.channel(),
-            super::super::ReleaseChannel::Stable
+            super::super::ReleaseChannel::PreRelease
         );
     }
 

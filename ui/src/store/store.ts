@@ -589,7 +589,7 @@ const INITIAL: AppState = {
       iceAdapterConsoleWindow: false,
       mapGeneratorWindow: false,
     },
-    updates: { automatic: true, preRelease: false },
+    updates: { automatic: true, preRelease: true },
     browsing: {
       customGamesView: "tiles",
       replaysView: "tiles",
