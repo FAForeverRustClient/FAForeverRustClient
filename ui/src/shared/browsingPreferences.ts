@@ -140,11 +140,11 @@ export const MAX_VAULT_PAGE_SIZE = 200;
 export const DEFAULT_VAULT_PAGE_SIZE = 36;
 
 export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
-  // The list: about three tiles fit the default window against a dozen rows.
-  // Mirrors `BrowsingPreferences::default` in the Rust settings.
-  customGamesView: "list",
+  // Tiles, except the live tab's table. Mirrors `BrowsingPreferences::default`
+  // in the Rust settings.
+  customGamesView: "tiles",
   replaysView: "tiles",
-  liveReplayView: "tiles",
+  liveReplayView: "list",
   customGamesBrowser: {
     sort: "players",
     sortReversed: false,
