@@ -786,7 +786,7 @@ export function ReplayDetailPanel({
           disabled={busy || !replay.replayAvailable}
           onClick={onWatch}
         >
-          <Icon name="play" size={15} />
+          <Icon name="play" size={18} />
           <span>{t(replay.replayAvailable ? "replays.detail.watch" : "replays.detail.notUploaded")}</span>
         </Button>
       </div>
