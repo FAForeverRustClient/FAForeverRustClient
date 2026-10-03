@@ -2339,12 +2339,12 @@ pub const VALID_LEADERBOARD_RATING_COLUMNS: [&str; 4] = ["mean", "deviation", "g
 impl Default for BrowsingPreferences {
     fn default() -> Self {
         Self {
-            // The list for a fresh install: at the default 1100x720 window
-            // about three tiles fit against a dozen list rows, and finding the
-            // right game quickly is what the tab is for. A saved choice wins.
-            custom_games_view: CustomGameView::List,
+            // Tiles for a fresh install in the Play and the replay tabs, the
+            // list for live games, which is a table of what is being played
+            // right now and read as one. A saved choice wins.
+            custom_games_view: CustomGameView::Tiles,
             replays_view: CustomGameView::Tiles,
-            live_replay_view: CustomGameView::Tiles,
+            live_replay_view: CustomGameView::List,
             custom_games_browser: CustomGameBrowserPreferences::default(),
             matchmaker_unselected_queues: Vec::new(),
             matchmaker_factions: MATCHMAKER_FACTIONS
@@ -3714,7 +3714,8 @@ mod tests {
         assert!(settings.notifications.match_found);
         assert!(settings.notifications.sound);
         assert_eq!(settings.notifications.volume, 70);
-        assert_eq!(settings.browsing.custom_games_view, CustomGameView::List);
+        assert_eq!(settings.browsing.custom_games_view, CustomGameView::Tiles);
+        assert_eq!(settings.browsing.live_replay_view, CustomGameView::List);
         assert_eq!(
             settings.browsing.matchmaker_factions,
             ["UEF", "Aeon", "Cybran", "Seraphim"]

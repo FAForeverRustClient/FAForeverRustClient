@@ -241,24 +241,109 @@
   border-color: var(--color-border);
 }
 
-/* The enlarged-preview dialog. Here rather than in maps.css because the
-   lobby and the replay views open it too, and without the Maps tab having
-   been visited its stylesheet had not loaded. */
-.map-preview-dialog {
-  width: min(520px, calc(100vw - 64px));
+/* The shared map preview dialog. Here rather than in maps.css because the
+   lobby, the chat and the matchmaker open it too, and without the Maps tab
+   having been visited its stylesheet had not loaded. Sized and laid out as
+   the Play tab's game preview is (`.game-preview-dialog`): led by the
+   window's height, since the
+   square map runs out of room there first, less an allowance for everything
+   that is not the map (the heading, the zoom's controls and the name row),
+   and capped so a 4K window does not draw a preview larger than anyone wants
+   to look at. */
+.modal-panel.map-preview-modal {
+  width: auto;
+  max-width: min(92vw, 1120px);
+  max-height: 94vh;
+  padding: 20px 24px;
 }
 
-.map-preview-dialog p {
+.map-preview-dialog {
+  --preview-size-allowance: 250px;
+  display: grid;
+  width: min(calc(88vh - var(--preview-size-allowance)), 84vw, 1040px);
+  min-width: min(280px, calc(100vw - 48px));
+  max-width: 100%;
+  gap: var(--space-2);
+}
+
+.map-preview-dialog-header {
+  padding-right: var(--space-4);
+}
+
+.map-preview-dialog-kicker {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.map-preview-dialog-header h2,
+.map-preview-dialog-header p {
+  margin: 0;
+}
+
+.map-preview-dialog-header h2 {
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-preview-dialog-header p {
+  margin-top: 2px;
   color: var(--color-muted);
   font-size: 12px;
 }
 
-/* The picture inside is square, so the dialog is as wide as the tallest square
-   that fits. Without the height term a short window capped the image and left
-   a band of empty dialog down its right-hand side, which is the whole of the
-   report: the space was not unused, it was unusable. */
-.map-preview-dialog {
-  width: min(760px, calc(100vw - 64px), max(320px, calc(100vh - 250px)));
+/* The name row wraps rather than truncating: a generator name is 50-odd
+   characters and the half that would be cut off is the half that identifies
+   the map. */
+.map-preview-dialog-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.map-preview-dialog-name > span {
+  flex: 0 0 auto;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.map-preview-dialog-name > code {
+  min-width: 0;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.map-preview-dialog-copy {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-self: center;
+  align-items: center;
+  padding: 3px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.map-preview-dialog-copy:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
 }
 
 .map-preview-dialog .map-vault-preview {
