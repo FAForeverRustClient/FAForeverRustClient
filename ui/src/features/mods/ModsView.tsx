@@ -316,8 +316,8 @@ function VaultView({ busy }: { busy: boolean }) {
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
-          payload: { preferences: { ...browsing, modVaultSort: nextSort } },
+          type: "patchBrowsing",
+          payload: { patch: { modVaultSort: nextSort } },
         },
       });
     }
@@ -335,10 +335,10 @@ function VaultView({ busy }: { busy: boolean }) {
       ipc.send({
         kind: "Settings",
         command: {
-          type: "setBrowsing",
+          type: "patchBrowsing",
           // A preset brings its own order, so choosing one clears the
           // remembered sort rather than fighting it on the next load.
-          payload: { preferences: { ...browsing, modVaultPreset: next, modVaultSort: "" } },
+          payload: { patch: { modVaultPreset: next, modVaultSort: "" } },
         },
       });
     }

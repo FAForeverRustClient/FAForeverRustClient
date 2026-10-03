@@ -80,16 +80,13 @@ interface Props {
  * co-op toolbar does not have.
  */
 function clearSavedFilters() {
-  const current = useAppStore.getState().state.settings.browsing;
   ipc.send({
     kind: "Settings",
     command: {
-      type: "setBrowsing",
+      type: "patchBrowsing",
       payload: {
-        preferences: {
-          ...current,
+        patch: {
           customGamesBrowser: {
-            ...current.customGamesBrowser,
             hidePrivate: false,
             hideModded: false,
             hideFoes: false,

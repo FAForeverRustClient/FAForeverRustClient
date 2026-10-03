@@ -17529,7 +17529,131 @@
           "event": {
             "kind": "Tourney",
             "event": {
-              "type": "ratingChecking"
+              "type": "selected",
+              "payload": {
+                "tournamentId": "t1"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": null,
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "t1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "ratingChecking",
+              "payload": {
+                "tournamentId": "t1"
+              }
             }
           },
           "expected": {
@@ -17587,7 +17711,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -17649,6 +17773,7 @@
             "event": {
               "type": "ratingCheckFailed",
               "payload": {
+                "tournamentId": "t1",
                 "reason": "Checking your rating needs your FAF login.",
                 "kind": "rejected"
               }
@@ -17713,7 +17838,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -17773,7 +17898,10 @@
           "event": {
             "kind": "Tourney",
             "event": {
-              "type": "ratingChecking"
+              "type": "ratingChecking",
+              "payload": {
+                "tournamentId": "t1"
+              }
             }
           },
           "expected": {
@@ -17831,7 +17959,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -17893,6 +18021,265 @@
             "event": {
               "type": "ratingChecked",
               "payload": {
+                "tournamentId": "t0",
+                "check": {
+                  "rated": true,
+                  "rating": null,
+                  "capped": null,
+                  "ratingKind": "global",
+                  "asOf": null,
+                  "min": null,
+                  "max": null,
+                  "exempt": false,
+                  "alreadyIn": false,
+                  "banned": null,
+                  "eligible": true,
+                  "message": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": null,
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "loading"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "t1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "ratingCheckFailed",
+              "payload": {
+                "tournamentId": "t0",
+                "reason": "stale",
+                "kind": "rejected"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": null,
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "loading"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "t1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "ratingChecked",
+              "payload": {
+                "tournamentId": "t1",
                 "check": {
                   "rated": true,
                   "rating": 1480,
@@ -17978,7 +18365,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -18109,7 +18496,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -18273,7 +18660,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -18404,7 +18791,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -18543,7 +18930,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -20127,6 +20514,7 @@
             "event": {
               "type": "descImageUploaded",
               "payload": {
+                "requestId": 7,
                 "url": "/desc-images/d.png"
               }
             }
@@ -20155,7 +20543,169 @@
             "copySourcesStatus": {
               "type": "idle"
             },
-            "descImage": "/desc-images/d.png",
+            "descImage": {
+              "requestId": 7,
+              "url": "/desc-images/d.png"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": true,
+              "loggedIn": true,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": "/article-images/a.png",
+              "console": {
+                "archived": [],
+                "articles": [],
+                "bans": [],
+                "directors": [],
+                "editorAllowed": [],
+                "editorRequests": [],
+                "hostAllowed": [],
+                "hostRequests": [],
+                "importerAllowed": [],
+                "importerRequests": [],
+                "logs": [],
+                "me": null,
+                "oauth": false,
+                "role": "editor",
+                "siteAdmins": []
+              },
+              "consoleStatus": {
+                "type": "ready"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": true,
+                "oauth": true,
+                "pending": true
+              },
+              "hall": {
+                "players": [
+                  {
+                    "entered": 4,
+                    "fafId": 5,
+                    "name": "Ada",
+                    "wins": 2
+                  }
+                ],
+                "teams": []
+              },
+              "hallStatus": {
+                "type": "ready"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "descImageUploadFailed",
+              "payload": {
+                "requestId": 8
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": {
+              "requestId": 8,
+              "url": null
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"

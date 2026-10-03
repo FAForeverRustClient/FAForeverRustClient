@@ -131,7 +131,7 @@ export const UserList = memo(function UserList({
         : [...current.hiddenRosterCategories, category];
       ipc.send({
         kind: "Settings",
-        command: { type: "setChat", payload: { preferences: { ...current, hiddenRosterCategories: next } } },
+        command: { type: "patchChat", payload: { patch: { hiddenRosterCategories: next } } },
       });
     },
     [],

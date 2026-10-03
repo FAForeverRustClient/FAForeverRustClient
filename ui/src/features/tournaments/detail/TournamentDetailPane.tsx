@@ -12,6 +12,7 @@ import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import type {
+  DescImageAnswer,
   AccountSearch,
   Article,
   BracketConfig,
@@ -146,8 +147,8 @@ function sectionLabel(section: Section, event: Tourney): MessageKey {
 interface TournamentDetailPaneProps {
   event: Tourney;
   /** Store a picture pasted into the event's text, and the last one stored. */
-  onUploadImage?: (dataUrl: string) => void;
-  pastedImage?: string | null;
+  onUploadImage?: (dataUrl: string, requestId: number) => void;
+  pastedImage?: DescImageAnswer | null;
   /** This account is a site admin with its powers on. */
   siteAdmin?: boolean;
   /** Open one of the site's pages, from the Overview's links. */

@@ -5073,4 +5073,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.leagues.loadingSeasons": "Saisons werden geladen…",
   "leaderboard.leagues.loadingRankings": "Saisonrangliste wird geladen…",
   "leaderboard.ratings.loadingRankings": "Rangliste wird geladen…",
+  "tournaments.form.imagesUploading": { one: "{count} Bild wird hochgeladen…", other: "{count} Bilder werden hochgeladen…" },
+  "tournaments.form.imagesFailed": { one: "{count} eingefügtes Bild konnte nicht hochgeladen werden. Füge es erneut ein, um es noch einmal zu versuchen.", other: "{count} eingefügte Bilder konnten nicht hochgeladen werden. Füge sie erneut ein, um es noch einmal zu versuchen." },
 };

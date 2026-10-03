@@ -155,10 +155,10 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   const rememberTypedEntries = useAppStore((state) => state.state.settings.general.rememberTypedEntries);
   const remembered = browsing.hostGame;
 
-  /// `setBrowsing` replaces the whole preferences bag, so a writer must start
-  /// from the newest copy rather than the one captured at render time. Saving a
-  /// preset and closing the dialog in quick succession would otherwise write the
-  /// preset straight back out again.
+  /// Writes are patches now, so other preferences are safe whatever this
+  /// reads. The favourites list is still one value replaced whole, though, so
+  /// a toggle starts from the newest copy rather than the one captured at
+  /// render time, or two quick toggles would have the second undo the first.
   const currentBrowsing = () => useAppStore.getState().state.settings.browsing;
 
   // Title, who may join, and the rating window: the same fields and rules as
@@ -370,7 +370,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
       : [...current.favoriteMaps, key];
     ipc.send({
       kind: "Settings",
-      command: { type: "setBrowsing", payload: { preferences: { ...current, favoriteMaps } } },
+      command: { type: "patchBrowsing", payload: { patch: { favoriteMaps } } },
     });
   };
 
@@ -478,10 +478,9 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: {
-            ...currentBrowsing(),
+          patch: {
             hostGame: settings.remembered(featuredMod, chosen?.folderName ?? selectedMap),
           },
         },

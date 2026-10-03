@@ -59,6 +59,12 @@ pub async fn handle(cmd: ClanCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             match ctx.ports.clan.invite(&clan_id, player_id).await {
                 Ok(token) => {
+                    // A ready invitation closes the candidate list, so a search
+                    // still in flight no longer owns it: its answer would
+                    // reopen the list beside the token and invite a second
+                    // click. Only on success, because a failed invite leaves
+                    // the list open and the field still searching.
+                    ctx.clan_candidate_generation.invalidate();
                     out.emit(ClanEvent::InvitationReady {
                         invitation: ClanInvitation {
                             token,
@@ -209,13 +215,17 @@ where
 
 async fn search_candidates(query: &str, ctx: &ServiceCtx, out: &EventSink) {
     let query = query.trim();
+    // Claimed before anything else, including the early return: clearing the
+    // field is a newer answer too. Without it, a lookup for "Nu" still in
+    // flight when the field is emptied would land after the empty list and
+    // put its matches back under an empty field.
+    let generation = ctx.clan_candidate_generation.begin();
     if query.chars().count() < MIN_CANDIDATE_QUERY {
         out.emit(ClanEvent::CandidatesLoaded {
             candidates: Vec::new(),
         });
         return;
     }
-    let generation = ctx.clan_candidate_generation.begin();
     let found = ctx
         .ports
         .player_card
