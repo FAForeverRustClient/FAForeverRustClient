@@ -148,6 +148,11 @@ pub enum AuthCommand {
     Restore,
     /// Open the client without signing in, on local files only.
     PlayOffline,
+    /// Start Forged Alliance on its own, into its own menu, without signing
+    /// in: the Java client's "Play Offline" (#397). Skirmish against the AI
+    /// needs no server. A failure is reported as a failed login, which is what
+    /// the login screen it is started from shows.
+    LaunchOfflineGame,
     LoginTest,
     Logout,
     LogoutTest,

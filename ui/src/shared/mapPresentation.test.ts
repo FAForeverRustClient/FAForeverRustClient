@@ -79,6 +79,14 @@ describe("mapPresentation", () => {
     expect(candidates).toEqual([GENERATED_MAP_PLACEHOLDER_URL]);
   });
 
+  it("still finds the preview of an old vault map whose folder has spaces in it", () => {
+    // `Phenom Spartiate v2` predates versioned folders. Without its vault
+    // record, the folder-built URL is the only art there is (#385).
+    expect(mapThumbnailCandidates([], "Phenom Spartiate v2")).toContain(
+      "https://content.faforever.com/maps/previews/small/phenom%20spartiate%20v2.png",
+    );
+  });
+
   it("can prefer the clean canonical preview over stale vault artwork", () => {
     const staleVaultMap = {
       folderName: "scmp_009",

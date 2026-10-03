@@ -10,8 +10,12 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
   switch (event.type) {
     case "vaultLoading":
       return { ...state, vaultStatus: { type: "loading" } };
-    case "vaultLoaded":
-      return { ...state, vault: event.payload.maps, vaultStatus: { type: "ready" } };
+    // Merged with what folder lookups already added: see the Rust twin.
+    case "vaultLoaded": {
+      const loaded = new Set(event.payload.maps.map((map) => map.versionId));
+      const resolved = state.vault.filter((map) => !loaded.has(map.versionId));
+      return { ...state, vault: [...event.payload.maps, ...resolved], vaultStatus: { type: "ready" } };
+    }
     case "vaultLoadFailed":
       return { ...state, vaultStatus: { type: "failed", payload: { reason: event.payload.reason } } };
     // Appended, never replacing: these are records the catalogue leaves out

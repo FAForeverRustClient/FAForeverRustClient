@@ -444,7 +444,10 @@ export function LobbyView() {
   useEffect(() => {
     if (failedJoinId !== null) setSelectedId(failedJoinId);
   }, [failedJoinId]);
-  const [previewGame, setPreviewGame] = useState<Game | null>(null);
+  // The game the large preview was opened on, followed through the live list
+  // while it is open: a snapshot kept showing the map the lobby had when the
+  // dialog opened, however often the host changed it since (#384).
+  const [previewSnapshot, setPreviewGame] = useState<Game | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [hostOpen, setHostOpen] = useState(false);
   const [passwordGame, setPasswordGame] = useState<Game | null>(null);
@@ -590,6 +593,11 @@ export function LobbyView() {
   // jumping list must never make a misclick join the wrong game.
   const selected =
     selectedId === null ? null : (filtered.find((game) => game.id === selectedId) ?? null);
+  const previewGame = previewSnapshot
+    ? customGames.find((game) => game.id === previewSnapshot.id)
+      ?? coopGames.find((game) => game.id === previewSnapshot.id)
+      ?? previewSnapshot
+    : null;
   const inGame = (list: Game[], nickname: string) =>
     list.find((g) => Object.values(g.teams).some((team) => team.includes(nickname)));
   const menuHostedGame = menu && customGames.find((g) => g.host === menu.nickname);
