@@ -3893,6 +3893,14 @@ export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
 { type: "clearHostPrefill" } | { type: "matchmake"; payload: {
 	queueName: string,
 	start: boolean,
+} } |
+/**
+ *  Start a search in these queues: prepare the install and the pool maps,
+ *  then ask the server to queue the party. See
+ *  [`MatchmakingState::Preparing`].
+ */
+{ type: "startSearch"; payload: {
+	queueNames: string[],
 } } | { type: "leaveParty" } | { type: "kickPartyMember"; payload: {
 	playerId: number,
 } } |
@@ -4874,6 +4882,22 @@ export type MatchmakerQueue = {
 	numPlayers: number,
 	queuePopTimeSeconds: number,
 	/**
+	 *  When the queue pops next, as an RFC 3339 instant on this machine's clock.
+	 *
+	 *  The Java client counts down to the server's absolute `queue_pop_time`
+	 *  (`MatchmakingQueueItemController`). This is the same instant, but taken
+	 *  from `queue_pop_time_delta` at the moment the message arrived, so a
+	 *  clock that is a minute off does not move the countdown by a minute.
+	 *  Empty when the server sent no delta.
+	 *
+	 *  The countdown used to be anchored in the Play tab instead, at whatever
+	 *  moment the tab rendered the queue. A delta that had arrived while the
+	 *  tab was closed then started counting from the moment it was opened, so
+	 *  the timer ran late, and reached zero long after the pop it was counting
+	 *  down to.
+	 */
+	queuePopsAt: string,
+	/**
 	 *  The rating windows of the searches queued right now, at roughly 80%
 	 *  match quality. One entry per search, not per player.
 	 *
@@ -4889,7 +4913,21 @@ export type MatchmakerQueue = {
 	boundary75s: RatingRange[],
 };
 
-export type MatchmakingState = { type: "idle" } | { type: "searching"; payload: {
+export type MatchmakingState = { type: "idle" } |
+/**
+ *  The search was asked for and the client is getting ready for it: the
+ *  featured mod is being brought up to date and the queues' pool maps
+ *  downloaded, before the server is asked to queue anybody.
+ *
+ *  That is the Java client's order (`TeamMatchmakingService.joinQueues`):
+ *  a match can be made the moment the search starts, and the host then has
+ *  sixty seconds to start the game. A patch or a map download that begins
+ *  only at that point can take longer than that, and the server then
+ *  cancels the match for all of its players.
+ */
+{ type: "preparing"; payload: {
+	queueNames: string[],
+} } | { type: "searching"; payload: {
 	queueNames: string[],
 } } | { type: "matchFound"; payload: {
 	queueName: string,
@@ -7140,6 +7178,10 @@ export type ReplayDownloadStatus = { type: "idle" } | { type: "downloading"; pay
 } };
 
 export type ReplayEvent = { type: "connecting" } |
+/**  One step of the launch being prepared. See [`ReplayState::preparing`]. */
+{ type: "preparing"; payload: {
+	step: ReplayPreparation,
+} } |
 /**
  *  `warning` carries a non-fatal prep-step issue (see
  *  [`ReplayState::last_warning`]): `None` when prep was clean/skipped.
@@ -7356,6 +7398,13 @@ export type ReplayPoint = {
 	source: number,
 };
 
+/**  One step of a replay launch's preparation, as the dialog shows it. */
+export type ReplayPreparation = {
+	detail: string,
+	/**  Percent, when the step can say how far along it is. */
+	progress: number | null,
+};
+
 /**
  *  Everything the vault search can be narrowed by.
  *
@@ -7517,6 +7566,13 @@ export type ReplayState = {
 	 *  a non-fatal prep step failed. Cleared on the next [`ReplayEvent::Connecting`].
 	 */
 	lastWarning: string | null,
+	/**
+	 *  What the launch in progress is doing right now (#392): downloading an
+	 *  old engine build file by file can take minutes on a slow line, and a
+	 *  bar that only says "starting" read as stuck. Set while
+	 *  [`ReplayStatus::Connecting`], cleared by every change of status.
+	 */
+	preparing?: ReplayPreparation | null,
 	/**
 	 *  At most one delayed live replay is tracked, matching the Java client:
 	 *  scheduling another replaces the previous choice.

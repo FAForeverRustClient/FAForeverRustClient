@@ -624,3 +624,11 @@
   display: flex;
   justify-content: flex-end;
 }
+
+/* The file or step being fetched (issue 392). File names are long and carry
+   no spaces, so they may break anywhere rather than widen the dialog. */
+.replay-starting-step {
+  margin: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

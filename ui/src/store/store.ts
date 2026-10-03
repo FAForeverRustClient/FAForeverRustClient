@@ -51,6 +51,7 @@ const INITIAL: AppState = {
   replays: {
     status: { type: "idle" },
     lastWarning: null,
+    preparing: null,
     liveTracking: null,
     vault: [],
     vaultStatus: { type: "idle" },

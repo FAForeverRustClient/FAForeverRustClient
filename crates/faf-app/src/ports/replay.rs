@@ -5,10 +5,17 @@
 //! See `infra/replay.rs` for the real implementation and its protocol notes.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use faf_domain::state::{LiveReplayTarget, LocalReplay, ReplayQuery, VaultReplay};
 use serde::{Deserialize, Serialize};
+
+use crate::ports::PreparationStep;
+
+/// Receives the steps of a replay launch's preparation. See
+/// [`ReplayPort::set_preparation_progress`].
+pub type PreparationSink = Arc<dyn Fn(PreparationStep) + Send + Sync>;
 
 /// How many of the newest local replays to read headers for by default.
 pub const DEFAULT_LOCAL_REPLAY_LIMIT: usize = 360;
@@ -117,6 +124,11 @@ pub trait ReplayPort: Send + Sync {
     /// a replay it cannot load and drops the user on the main menu with no
     /// error anywhere.
     fn set_install_dir(&self, dir: Option<PathBuf>);
+
+    /// Where the next launch reports what it is preparing (#392): the engine
+    /// build an old replay needs, file by file, and its map. `None` stops
+    /// reporting. A port with nothing to report ignores it.
+    fn set_preparation_progress(&self, _sink: Option<PreparationSink>) {}
 
     /// Choose the transport a live replay stream is handed to FA on.
     ///

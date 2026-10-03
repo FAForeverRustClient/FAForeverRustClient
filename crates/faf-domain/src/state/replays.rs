@@ -653,6 +653,15 @@ pub enum LocalReplayStatus {
     Broken,
 }
 
+/// One step of a replay launch's preparation, as the dialog shows it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayPreparation {
+    pub detail: String,
+    /// Percent, when the step can say how far along it is.
+    pub progress: Option<u8>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum ReplayStatus {
@@ -738,6 +747,12 @@ pub struct ReplayState {
     /// but might misbehave in FA itself (stuck loading screen, etc.) because
     /// a non-fatal prep step failed. Cleared on the next [`ReplayEvent::Connecting`].
     pub last_warning: Option<String>,
+    /// What the launch in progress is doing right now (#392): downloading an
+    /// old engine build file by file can take minutes on a slow line, and a
+    /// bar that only says "starting" read as stuck. Set while
+    /// [`ReplayStatus::Connecting`], cleared by every change of status.
+    #[serde(default)]
+    pub preparing: Option<ReplayPreparation>,
     /// At most one delayed live replay is tracked, matching the Java client:
     /// scheduling another replaces the previous choice.
     pub live_tracking: Option<LiveReplayTracking>,
@@ -806,6 +821,10 @@ pub struct ReplayState {
 )]
 pub enum ReplayEvent {
     Connecting,
+    /// One step of the launch being prepared. See [`ReplayState::preparing`].
+    Preparing {
+        step: ReplayPreparation,
+    },
     /// `warning` carries a non-fatal prep-step issue (see
     /// [`ReplayState::last_warning`]): `None` when prep was clean/skipped.
     Playing {
@@ -1036,10 +1055,19 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
         ReplayEvent::Connecting => {
             state.status = ReplayStatus::Connecting;
             state.last_warning = None;
+            state.preparing = None;
+        }
+        ReplayEvent::Preparing { step } => {
+            // Only while a launch is starting: a step that arrives after the
+            // game is up, or after a cancel, describes nothing on screen.
+            if state.status == ReplayStatus::Connecting {
+                state.preparing = Some(step.clone());
+            }
         }
         ReplayEvent::Playing { uid, warning } => {
             state.status = ReplayStatus::Playing { uid: *uid };
             state.last_warning = warning.clone();
+            state.preparing = None;
             // `WatchVault` downloads into the cache as part of the playback
             // operation. Its successful completion has no LocalReplay record,
             // so clear only the transient download indicator here. Explicit
@@ -1055,6 +1083,7 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
             state.status = ReplayStatus::Failed {
                 reason: reason.clone(),
             };
+            state.preparing = None;
             if matches!(
                 state.download_status,
                 ReplayDownloadStatus::Downloading { .. }
@@ -1064,6 +1093,7 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
         }
         ReplayEvent::Closed => {
             state.status = ReplayStatus::Idle;
+            state.preparing = None;
             // A `WatchVault` called off part-way leaves its download showing in
             // the shared status task otherwise, with nothing left to finish it.
             if matches!(

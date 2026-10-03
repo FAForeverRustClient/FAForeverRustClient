@@ -53,7 +53,7 @@ export function TabBar() {
     if (id === "play" && matchmaking === "matchFound") {
       return { text: "!", label: t("nav.badge.matchFound"), loud: true };
     }
-    if (id === "play" && (matchmaking === "searching" || matchmaking === "launching")) {
+    if (id === "play" && (matchmaking === "preparing" || matchmaking === "searching" || matchmaking === "launching")) {
       return { text: "", label: t("nav.badge.searching"), loud: false };
     }
     return null;

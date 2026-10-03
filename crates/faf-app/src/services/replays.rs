@@ -5,6 +5,8 @@
 //! (WebSocket relay, file decompression, launching FA) lives entirely behind
 //! the port: see `infra/replay.rs`.
 
+use crate::ports::PreparationStep;
+use faf_domain::state::ReplayPreparation;
 use faf_domain::state::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
     NotificationAction, NotificationKind, ReplayCommand, ReplayEvent, ReplayQuery,
@@ -57,13 +59,27 @@ async fn launch(
         }
     }
 
+    // What the preparation is doing, onto the starting dialog (#392).
+    let sink = out.clone();
+    ctx.ports
+        .replay
+        .set_preparation_progress(Some(std::sync::Arc::new(move |step: PreparationStep| {
+            sink.emit(ReplayEvent::Preparing {
+                step: ReplayPreparation {
+                    detail: step.detail,
+                    progress: step.progress,
+                },
+            });
+        })));
     let result = tokio::select! {
         result = work => result,
         () = token.cancelled() => {
+            ctx.ports.replay.set_preparation_progress(None);
             out.emit(ReplayEvent::Closed);
             return;
         }
     };
+    ctx.ports.replay.set_preparation_progress(None);
 
     if let Ok(mut slot) = ctx.replay_cancellation.lock() {
         // Disarmed, so a Cancel pressed after the game is up cannot idle the
