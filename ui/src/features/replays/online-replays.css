@@ -973,14 +973,27 @@ button.vault-input {
   min-width: 0;
 }
 
+/* The dialog's main action, and drawn as one: the only filled button in it,
+   taller and wider than everything else in the floor row, so it is found at a
+   glance in the corner rather than read for. */
 .replay-watch-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 40px;
-  font-size: 14px;
-  font-weight: 600;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 24px;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  transition: background-color 120ms ease, opacity 120ms ease, box-shadow 120ms ease;
+}
+
+/* A soft ring in the theme's accent on hover and keyboard focus, on top of
+   the shared fade, so the press target reads as the important one. */
+.replay-watch-button:hover:not(:disabled),
+.replay-watch-button:focus-visible {
+  box-shadow: 0 0 0 4px var(--color-accent-glow);
 }
 
 .replay-detail-actions-secondary {
@@ -1224,7 +1237,7 @@ button.vault-input {
 }
 
 .replay-detail-foot > .replay-watch-button {
-  min-width: 160px;
+  min-width: 220px;
 }
 
 .replay-detail-more-info {
