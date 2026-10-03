@@ -862,8 +862,9 @@ export function LobbyView() {
           />
           {/* The divider sits between the list and the panel rather than on
               either, so dragging it reads as moving the boundary. The arrow
-              on it folds the panel away and back (#370, #377), and the choice
-              is a setting, so it holds across restarts. */}
+              in it is a tab hanging off the panel's edge, which folds the
+              panel away and back (#370, #377); the choice is a setting, so it
+              holds across restarts. */}
           <div className="custom-games-divider">
             {!detailHidden && (
               <ResizeHandle
@@ -881,7 +882,7 @@ export function LobbyView() {
               title={t(detailHidden ? "lobby.browser.showDetails" : "lobby.browser.hideDetails")}
               onClick={() => updateGameBrowser({ detailHidden: !detailHidden })}
             >
-              <Icon name="chevronRight" size={14} />
+              <Icon name="chevronRight" size={12} />
             </button>
           </div>
           {detailHidden ? null : selected ? (
