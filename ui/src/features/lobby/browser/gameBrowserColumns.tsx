@@ -213,7 +213,7 @@ export function useGameBrowserColumns(enabled = true): GameBrowserColumns {
 
   const header = (
     <div
-      className={`game-browser-head${resizing ? " is-resizing" : ""}${moving !== null ? " is-moving" : ""}`}
+      className={`game-browser-head list-head${resizing ? " is-resizing" : ""}${moving !== null ? " is-moving" : ""}`}
       ref={headerRef}
     >
       {labels.map((label, index) => {

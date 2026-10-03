@@ -1,7 +1,4 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import type { BrowsingPreferences } from "../../ipc/bindings";
-import { ipc } from "../../ipc/client";
-import { useColumnOrder } from "../../shared/hooks/useColumnOrder";
 import { Icon, type IconName } from "../../design-system/Icon";
 import {
   isGeneratedMap,
@@ -13,7 +10,7 @@ import { useAppStore } from "../../store/store";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
-import { useColumnWidths } from "../../shared/hooks/useColumnWidths";
+import { useListColumns } from "../../shared/hooks/useListColumns";
 import { columnTemplate } from "../../shared/tableColumns";
 
 export type ReplayListCell = {
@@ -267,15 +264,6 @@ const DEFAULT_COLUMN_PX = [48, 260, 110, 90, 70, 82, 126, 190];
  */
 const FLEXIBLE_COLUMN = 1;
 
-/** Persist part of the replay list's layout, in one settings write. */
-function saveReplayList(patch: Partial<BrowsingPreferences>): void {
-  const browsing = useAppStore.getState().state.settings.browsing;
-  ipc.send({
-    kind: "Settings",
-    command: { type: "setBrowsing", payload: { preferences: { ...browsing, ...patch } } },
-  });
-}
-
 export function ReplayList({
   groups,
   footer,
@@ -284,11 +272,17 @@ export function ReplayList({
   footer: ReactNode;
 }) {
   const { t } = useTranslation();
-  const storedOrder = useAppStore((state) => state.state.settings.browsing.replayListOrder);
   const headerRef = useRef<HTMLDivElement | null>(null);
-  const columnOrder = useColumnOrder(storedOrder, COLUMNS.length, (order) => saveReplayList({ replayListOrder: order }), headerRef);
-  const { order, moving } = columnOrder;
-  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN, "grid", 80, order);
+  // Widths, order and reset as every list view has them: see `useListColumns`.
+  const list = useListColumns({
+    widthsField: "replayListColumns",
+    orderField: "replayListOrder",
+    defaults: DEFAULT_COLUMN_PX,
+    flexible: FLEXIBLE_COLUMN,
+    headerRef,
+    layout: "grid",
+  });
+  const { order, moving, widths: columns } = list;
   const template = columnTemplate(order.map((column) => columns.drawn[column]), order.indexOf(FLEXIBLE_COLUMN));
   const style: CSSProperties & Record<string, string | number> = { "--replay-list-columns": template };
   order.forEach((column, position) => {
@@ -300,11 +294,7 @@ export function ReplayList({
   };
   // A double click on any divider puts the whole header back as designed, in
   // one write: two would each start from the settings before either.
-  const reset = () => {
-    columns.clear();
-    columnOrder.clear();
-    saveReplayList({ replayListColumns: [], replayListOrder: [] });
-  };
+  const reset = list.reset;
 
   return (
     <section
@@ -313,7 +303,7 @@ export function ReplayList({
       aria-label={t("replays.list.aria")}
       style={style}
     >
-      <div className={`replay-list-header${moving !== null ? " is-moving" : ""}`} role="row" ref={setHeader}>
+      <div className={`replay-list-header list-head${moving !== null ? " is-moving" : ""}`} role="row" ref={setHeader}>
         {COLUMNS.map((column, index) => {
           const position = order.indexOf(index);
           const before = order[position - 1];
@@ -326,7 +316,7 @@ export function ReplayList({
               role="columnheader"
               tabIndex={0}
               title={t("lobby.browser.moveColumn")}
-              {...columnOrder.cell(index)}
+              {...list.cell(index)}
             >
               {/* One line in front of every column but the first drawn,
                   standing where that column starts. It trades width between

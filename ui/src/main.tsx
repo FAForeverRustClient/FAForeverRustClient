@@ -10,6 +10,7 @@ import "./design-system/patterns.css";
 import "./design-system/vault.css";
 import "./design-system/pagination.css";
 import "./design-system/resize-handle.css";
+import "./design-system/list-head.css";
 
 const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
 if (favicon) favicon.href = FAF_LOGO_URL;
