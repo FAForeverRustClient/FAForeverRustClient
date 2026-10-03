@@ -120,12 +120,6 @@ pub(crate) fn read_notification_sound(name: String) -> Result<Vec<u8>, String> {
     std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
 }
 
-/// Forget one stored sound.
-#[tauri::command]
-pub(crate) fn remove_notification_sound(name: String) -> Result<(), String> {
-    faf_app::infra::notification_sounds::remove_sound(&name)
-}
-
 #[tauri::command]
 pub(crate) fn open_version_folder(name: String, app: tauri::AppHandle) -> Result<(), String> {
     let cache_root = faf_app::infra::cache_dir()?;

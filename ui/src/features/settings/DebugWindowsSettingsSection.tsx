@@ -1,20 +1,20 @@
-import type { DebugPreferences } from "../../ipc/bindings";
+import type { DebugPreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const save = (preferences: DebugPreferences) =>
+const save = (patch: DebugPreferencesPatch) =>
   ipc.send({
     kind: "Settings",
-    command: { type: "setDebug", payload: { preferences } },
+    command: { type: "patchDebug", payload: { patch } },
   });
 
 function useDebugPreferences() {
   const preferences = useAppStore((state) => state.state.settings.debug);
   return {
     preferences,
-    set: (patch: Partial<DebugPreferences>) => void save({ ...preferences, ...patch }),
+    set: (patch: DebugPreferencesPatch) => void save(patch),
   };
 }
 

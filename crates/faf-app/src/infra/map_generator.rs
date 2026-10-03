@@ -401,12 +401,12 @@ impl NeroxisMapGenerator {
             total_bytes: None,
         }));
 
-        let response = self
-            .http
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| format!("could not reach the map generator download: {e}"))?;
+        let response = self.http.get(&url).send().await.map_err(|e| {
+            format!(
+                "could not reach the map generator download: {}",
+                crate::infra::http::describe_transport_error(&e)
+            )
+        })?;
         if !response.status().is_success() {
             return Err(format!(
                 "map generator {version} download returned {}",
@@ -443,7 +443,12 @@ impl NeroxisMapGenerator {
         use tokio::io::AsyncWriteExt as _;
         let write_result: Result<(), String> = async {
             while let Some(chunk) = stream.next().await {
-                let chunk = chunk.map_err(|e| format!("map generator download failed: {e}"))?;
+                let chunk = chunk.map_err(|e| {
+                    format!(
+                        "map generator download failed: {}",
+                        crate::infra::http::describe_transport_error(&e)
+                    )
+                })?;
                 downloaded = downloaded
                     .checked_add(chunk.len() as u64)
                     .ok_or_else(|| "map generator download is too large".to_string())?;
@@ -774,7 +779,12 @@ impl NeroxisMapGenerator {
                     .header(reqwest::header::ACCEPT, "application/vnd.github.v3+json")
                     .send()
                     .await
-                    .map_err(|e| format!("could not reach the map generator releases: {e}"))?;
+                    .map_err(|e| {
+                        format!(
+                            "could not reach the map generator releases: {}",
+                            crate::infra::http::describe_transport_error(&e)
+                        )
+                    })?;
                 if !response.status().is_success() {
                     return Err(format!(
                         "map generator releases returned {}",

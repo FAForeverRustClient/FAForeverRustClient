@@ -18,6 +18,26 @@ function formatMapSize(width: number, height: number) {
   return `${normalize(width)}×${normalize(height)} km`;
 }
 
+/**
+ * Smallest maps first, the order the Java client uses: by area, then width,
+ * then name. The server hands maps over in the order a moderator added them,
+ * which says nothing to a player choosing what to veto.
+ */
+export function sortMapsBySize<T extends { width: number; height: number; displayName: string }>(
+  maps: readonly T[],
+): T[] {
+  // Same units-or-kilometres rule as the label, so a pool mixing the two
+  // still compares like with like.
+  const km = (value: number) => (value > 64 ? value / 51.2 : value);
+  return [...maps].sort((left, right) => {
+    const area = km(left.width) * km(left.height) - km(right.width) * km(right.height);
+    if (area !== 0) return area;
+    const width = km(left.width) - km(right.width);
+    if (width !== 0) return width;
+    return left.displayName.localeCompare(right.displayName, undefined, { sensitivity: "base" });
+  });
+}
+
 function bracketTitle(pool: MatchmakerMapPool) {
   if (pool.minRating === null && pool.maxRating === null) return t("lobby.mapPool.anyRating");
   if (pool.minRating === null) {
@@ -54,23 +74,6 @@ interface Props {
   serverVetoes: PlayerVeto[];
   playerRating: number | null;
   onClose: () => void;
-}
-
-/**
- * A pool's maps smallest first, then by name: the Java client's order
- * (`MAP_VERSION_COMPARATOR`, area first and width on a tie). The server hands
- * them over in the order they were added to the pool, which is the order a
- * moderator happened to work in and nothing a player looks for (#403).
- */
-export function sortPoolMaps<T extends { width: number; height: number; displayName: string }>(
-  maps: readonly T[],
-): T[] {
-  return [...maps].sort(
-    (left, right) =>
-      left.width * left.height - right.width * right.height ||
-      left.width - right.width ||
-      left.displayName.localeCompare(right.displayName, undefined, { sensitivity: "base" }),
-  );
 }
 
 export function MatchmakerMapPoolModal({
@@ -128,6 +131,11 @@ export function MatchmakerMapPoolModal({
     sortedPools.find((pool) => pool.id === activePoolId) ??
     matchedBracket ??
     sortedPools[0];
+
+  const activeMaps = useMemo(
+    () => (activePool ? sortMapsBySize(activePool.maps) : []),
+    [activePool],
+  );
 
   const tokensUsed = activePool
     ? Object.entries(vetoes)
@@ -242,7 +250,7 @@ export function MatchmakerMapPoolModal({
         ) : !activePool || activePool.maps.length === 0 ? (
           <p className="play-empty">{t("lobby.mapPool.empty")}</p>
         ) : (
-          sortPoolMaps(activePool.maps).map((map) => {
+          activeMaps.map((map) => {
             const tokens = vetoes[`${activePool.id}:${map.assignmentId}`] ?? 0;
             // Java's two stripes (`updateBannedState`): a map at its cap is
             // banned and loses its colour; one with fewer tokens is only

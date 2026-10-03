@@ -20,6 +20,16 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         TourneyCommand::Load => load(ctx, out).await,
 
         TourneyCommand::Select { tournament_id } => {
+            // Moving to another event ends the eligibility check of the one
+            // being left. Re-selecting the open event does not: the reducer
+            // keeps its notice then, and dropping the answer in flight would
+            // leave that notice loading for good.
+            let moving = out.with_state(|state| {
+                state.tourney.selected_id.as_deref() != Some(tournament_id.as_str())
+            });
+            if moving {
+                ctx.tourney_rating_check_generation.invalidate();
+            }
             out.emit(TourneyEvent::Selected {
                 tournament_id: tournament_id.clone(),
             });
@@ -61,10 +71,25 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
 
         TourneyCommand::CheckRating { tournament_id } => {
-            out.emit(TourneyEvent::RatingChecking);
-            match ctx.ports.tourney.check_rating(&tournament_id).await {
-                Ok(check) => out.emit(TourneyEvent::RatingChecked { check }),
+            // Claimed before the request, and given up by `Select` when the
+            // reader moves to another event. The events also name the
+            // tournament, so the reducer can refuse an answer about an event
+            // that is no longer open even if it slips past this check.
+            let generation = ctx.tourney_rating_check_generation.begin();
+            out.emit(TourneyEvent::RatingChecking {
+                tournament_id: tournament_id.clone(),
+            });
+            let checked = ctx.ports.tourney.check_rating(&tournament_id).await;
+            if !ctx.tourney_rating_check_generation.is_current(generation) {
+                return;
+            }
+            match checked {
+                Ok(check) => out.emit(TourneyEvent::RatingChecked {
+                    tournament_id,
+                    check,
+                }),
                 Err(error) => out.emit(TourneyEvent::RatingCheckFailed {
+                    tournament_id,
                     reason: error.to_string(),
                     kind: error.kind(),
                 }),
@@ -464,6 +489,7 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         TourneyCommand::UploadDescImage {
             tournament_id,
             data_url,
+            request_id,
         } => {
             let stored = std::sync::Arc::new(std::sync::Mutex::new(None::<String>));
             let held = stored.clone();
@@ -482,8 +508,11 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
                 }
             })
             .await;
-            if let Some(url) = stored.lock().ok().and_then(|mut slot| slot.take()) {
-                out.emit(TourneyEvent::DescImageUploaded { url });
+            // Answered either way: `write` reports a failure as the panel's
+            // action error, which says nothing about which paste it was.
+            match stored.lock().ok().and_then(|mut slot| slot.take()) {
+                Some(url) => out.emit(TourneyEvent::DescImageUploaded { request_id, url }),
+                None => out.emit(TourneyEvent::DescImageUploadFailed { request_id }),
             }
         }
 

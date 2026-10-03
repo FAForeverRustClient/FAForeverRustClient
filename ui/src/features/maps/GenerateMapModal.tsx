@@ -141,19 +141,19 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   // been pressed, which made it indistinguishable from a button that did
   // nothing. Remembering is now what the dialog always does.
   //
-  // The first run is skipped because the form starts *as* the remembered
-  // options: opening the dialog should not rewrite the settings file.
-  const lastRemembered = useRef(JSON.stringify(state.options));
+  // What counts as remembered is what the backend holds, read back out of
+  // state, and never what this dialog last sent: a send that was refused or
+  // lost would otherwise be taken for saved, and the same options would never
+  // be offered again. The backend echoes accepted options as
+  // `OptionsChanged`, so a form that matches state needs no write, which also
+  // keeps opening the dialog from rewriting the settings file.
+  const remembered = JSON.stringify(state.options);
   useEffect(() => {
     if (reproducing) return;
-    const serialised = JSON.stringify(form);
-    if (serialised === lastRemembered.current) return;
-    const timer = setTimeout(() => {
-      lastRemembered.current = serialised;
-      void setOptions(form);
-    }, 250);
+    if (JSON.stringify(form) === remembered) return;
+    const timer = setTimeout(() => void setOptions(form), 250);
     return () => clearTimeout(timer);
-  }, [form, reproducing]);
+  }, [form, remembered, reproducing]);
 
   const issues = reproducing ? [] : (state.validation ?? []);
   const blocking = issues.filter(isFatal);
@@ -194,12 +194,33 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   );
   const presetNameUsable = trimmedPreset !== "" && /^[\w\- ]+$/.test(trimmedPreset);
 
+  // "Saved" is an outcome, not a click. The backend answers a stored preset by
+  // re-reading the library and publishing it, and a failed one with a
+  // notification and no new list. So the request remembers the list that was
+  // on screen when it was made, and the label only changes once a *new* list
+  // arrives that holds the name.
+  const [pendingPreset, setPendingPreset] = useState<{
+    name: string;
+    before: typeof presets;
+  } | null>(null);
   const save = () => {
     if (!presetNameUsable) return;
+    setPendingPreset({ name: trimmedPreset, before: presets });
+    setSaved(false);
     void savePreset(trimmedPreset, form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
   };
+  useEffect(() => {
+    if (!pendingPreset || presets === pendingPreset.before) return;
+    setPendingPreset(null);
+    const key = pendingPreset.name.toLowerCase();
+    if (presets.some((preset) => preset.name.toLowerCase() === key)) setSaved(true);
+  }, [pendingPreset, presets]);
+  // Its own effect, so clearing the pending request above cannot cancel it.
+  useEffect(() => {
+    if (!saved) return;
+    const timer = setTimeout(() => setSaved(false), 2000);
+    return () => clearTimeout(timer);
+  }, [saved]);
 
   const applyPreset = (name: string) => {
     const preset = presets.find((entry) => entry.name === name);

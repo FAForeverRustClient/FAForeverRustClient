@@ -25,6 +25,10 @@ use serde_json::Value;
 
 use crate::ports::{PreparationPhase, PreparationStep};
 
+mod content_store;
+
+use content_store::{link_into, mirror_into, replace_with_copy, ContentStore};
+
 use crate::infra::vault_install::{
     bounded_body, bounded_body_to_file, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
 };
@@ -627,7 +631,12 @@ async fn fetch_mod_id(
         .header(reqwest::header::ACCEPT, "application/vnd.api+json")
         .send()
         .await
-        .map_err(|e| format!("request failed: {e}"))?;
+        .map_err(|e| {
+            format!(
+                "request failed: {}",
+                crate::infra::http::describe_transport_error(&e)
+            )
+        })?;
     let status = resp.status();
     let body = resp.text().await.map_err(|e| format!("read failed: {e}"))?;
     if !status.is_success() {
@@ -698,7 +707,12 @@ async fn fetch_file_list(
         .header(reqwest::header::ACCEPT, "application/vnd.api+json")
         .send()
         .await
-        .map_err(|e| format!("request failed: {e}"))?;
+        .map_err(|e| {
+            format!(
+                "request failed: {}",
+                crate::infra::http::describe_transport_error(&e)
+            )
+        })?;
     let status = resp.status();
     let body = resp.text().await.map_err(|e| format!("read failed: {e}"))?;
     if !status.is_success() {
@@ -799,23 +813,20 @@ const MAX_FEATURED_FILE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 /// used to mean holding all of it in memory first.
 async fn file_md5(path: &Path) -> Option<String> {
     let path = path.to_path_buf();
-    tokio::task::spawn_blocking(move || {
-        use std::io::Read as _;
-        let mut file = std::fs::File::open(&path).ok()?;
-        let mut context = md5::Context::new();
-        let mut buffer = vec![0_u8; 1024 * 1024];
-        loop {
-            let read = file.read(&mut buffer).ok()?;
-            if read == 0 {
-                break;
-            }
-            context.consume(&buffer[..read]);
-        }
-        Some(format!("{:x}", context.compute()))
-    })
-    .await
-    .ok()
-    .flatten()
+    off_runtime(move || content_store::md5_of_file(&path))
+        .await
+        .ok()
+        .flatten()
+}
+
+/// Run blocking file work (hashing, copying, renaming) on the blocking pool,
+/// where a few hundred megabytes of disk I/O cannot stall the async runtime.
+async fn off_runtime<T: Send + 'static>(
+    work: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, String> {
+    tokio::task::spawn_blocking(work)
+        .await
+        .map_err(|error| format!("file task failed: {error}"))
 }
 
 /// Whether a download URL the API handed us may be requested, and handed the
@@ -915,23 +926,33 @@ async fn update_file(
             .map_err(|e| format!("could not create {}: {e}", parent.display()))?;
     }
 
-    let cache_path = safe_join_file(cache_dir, &file.group, &file.md5)?;
-    if let Some(cached) = file_md5(&cache_path).await {
-        if cached.eq_ignore_ascii_case(&file.md5) {
-            tokio::fs::copy(&cache_path, &target_path)
-                .await
-                .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
-            progress(PreparationStep::counted(
-                PreparationPhase::Downloading,
-                detail,
-                done + 1,
-                total,
-            ));
-            return Ok(());
-        }
-        // A killed prior write or external cache edit must not be promoted
-        // into the live game merely because its filename looks like an MD5.
-        let _ = tokio::fs::remove_file(&cache_path).await;
+    // `verified` hashes the entry and discards it when it no longer matches:
+    // a killed prior write or external cache edit must not be promoted into
+    // the live game merely because its filename looks like an MD5.
+    //
+    // The target is replaced, never copied over in place: it may be a hard
+    // link to some other store entry, left there by replay staging, and an
+    // in-place copy would rewrite that entry under its old checksum.
+    let cached = {
+        let (root, group, md5) = (
+            cache_dir.to_path_buf(),
+            file.group.clone(),
+            file.md5.clone(),
+        );
+        off_runtime(move || ContentStore::new(&root).verified(&group, &md5)).await??
+    };
+    if let Some(entry) = cached {
+        let target = target_path.clone();
+        off_runtime(move || replace_with_copy(&entry, &target))
+            .await?
+            .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
+        progress(PreparationStep::counted(
+            PreparationPhase::Downloading,
+            detail,
+            done + 1,
+            total,
+        ));
+        return Ok(());
     }
 
     // The hmac fields are an HTTP header, not a query param, despite the
@@ -994,17 +1015,23 @@ async fn update_file(
         return Err(format!("downloaded {} failed its checksum", file.name));
     }
 
-    if let Some(parent) = cache_path.parent() {
-        tokio::fs::create_dir_all(parent)
-            .await
-            .map_err(|e| format!("could not create {}: {e}", parent.display()))?;
+    // Into the store first (whole, under its checksum), then from the store
+    // into the install, replacing the target for the reason given above.
+    let entry = {
+        let (root, group, md5) = (
+            cache_dir.to_path_buf(),
+            file.group.clone(),
+            file.md5.clone(),
+        );
+        let source = downloaded.path().to_path_buf();
+        off_runtime(move || ContentStore::new(&root).insert(&group, &md5, &source)).await??
+    };
+    {
+        let target = target_path.clone();
+        off_runtime(move || replace_with_copy(&entry, &target))
+            .await?
+            .map_err(|e| format!("could not write {}: {e}", target_path.display()))?;
     }
-    tokio::fs::copy(downloaded.path(), &cache_path)
-        .await
-        .map_err(|e| format!("could not write cache for {}: {e}", file.name))?;
-    tokio::fs::copy(downloaded.path(), &target_path)
-        .await
-        .map_err(|e| format!("could not write {}: {e}", target_path.display()))?;
     progress(PreparationStep::counted(
         PreparationPhase::Downloading,
         detail,
@@ -1046,6 +1073,11 @@ fn safe_join_file(root: &Path, group: &str, name: &str) -> Result<PathBuf, Strin
 /// list shipped no executable at all) would not fail: it would silently produce
 /// a corrupt multi-megabyte `ForgedAlliance.exe` in the user's install, which
 /// only shows up when the game refuses to start.
+///
+/// The patch goes into a private copy that then replaces the executable (see
+/// [`content_store::rewrite`]), not into the file itself: an executable that
+/// is a hard link to a cache entry would otherwise change that entry under
+/// its checksum, and a patch that fails halfway leaves the original intact.
 fn patch_exe_version(exe_path: &Path, version: i32) -> Result<(), String> {
     let required = VERSION_ADDRESSES
         .iter()
@@ -1054,15 +1086,8 @@ fn patch_exe_version(exe_path: &Path, version: i32) -> Result<(), String> {
         .unwrap_or_default()
         .saturating_add(std::mem::size_of::<i32>() as u64);
 
-    let mut file = std::fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(exe_path)
-        .map_err(|e| format!("could not open {} for patching: {e}", exe_path.display()))?;
-
-    let length = file
-        .metadata()
-        .map_err(|e| format!("could not measure {}: {e}", exe_path.display()))?
+    let length = std::fs::metadata(exe_path)
+        .map_err(|e| format!("could not open {} for patching: {e}", exe_path.display()))?
         .len();
     if length < required {
         return Err(format!(
@@ -1073,13 +1098,15 @@ fn patch_exe_version(exe_path: &Path, version: i32) -> Result<(), String> {
     }
 
     let bytes = version.to_le_bytes();
-    for &addr in &VERSION_ADDRESSES {
-        file.seek(SeekFrom::Start(addr))
-            .map_err(|e| format!("could not seek to {addr:#x}: {e}"))?;
-        file.write_all(&bytes)
-            .map_err(|e| format!("could not patch version at {addr:#x}: {e}"))?;
-    }
-    Ok(())
+    content_store::rewrite(exe_path, |file| {
+        for &addr in &VERSION_ADDRESSES {
+            file.seek(SeekFrom::Start(addr))
+                .map_err(|e| format!("could not seek to {addr:#x}: {e}"))?;
+            file.write_all(&bytes)
+                .map_err(|e| format!("could not patch version at {addr:#x}: {e}"))?;
+        }
+        Ok(())
+    })
 }
 
 /// The last step of every install pass: the retail game's own libraries into
@@ -1582,33 +1609,42 @@ pub struct CachedFileInfo {
     pub name: Option<String>,
 }
 
+/// Put one cached build's files into `target_dir`, from the store.
+///
+/// Every entry is checked against its checksum before anything is placed, so
+/// a missing or damaged entry fails the staging (the caller then downloads the
+/// build instead) without leaving the install half switched to it. The check
+/// is cheap after the first time per session: see [`ContentStore::verified`].
+///
+/// Blocking: call it off the async runtime.
 fn stage_entry_files(
     cache_dir: &Path,
     target_dir: &Path,
     entry: &CacheManifestEntry,
 ) -> Result<(), String> {
+    let store = ContentStore::new(cache_dir);
+    let mut placements = Vec::with_capacity(entry.files.len());
     for f in &entry.files {
-        let file_name = match &f.name {
-            Some(n) => n.as_str(),
-            None => f.md5.as_str(),
-        };
-        let src = cache_dir.join(&f.group).join(&f.md5);
-        if !src.is_file() {
+        let file_name = f.name.as_deref().unwrap_or(&f.md5);
+        let Some(src) = store.verified(&f.group, &f.md5)? else {
             return Err(format!(
-                "cached file {}/{} is missing from cache",
+                "cached file {}/{} is missing from the cache or damaged",
                 f.group, file_name
             ));
-        }
-        let dst = target_dir.join(&f.group).join(file_name);
-        if let Some(parent) = dst.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
+        };
+        let dst = safe_join_file(target_dir, &f.group, file_name)?;
+        placements.push((src, f.md5.as_str(), dst, file_name));
+    }
+    for (src, md5, dst, file_name) in placements {
+        // The executable gets its version patched right after, so it is a
+        // private copy from the start. Everything else is only ever read and
+        // can share the store's file.
         if file_name.eq_ignore_ascii_case("ForgedAlliance.exe") {
-            std::fs::copy(&src, &dst).map_err(|e| format!("could not copy {file_name}: {e}"))?;
+            replace_with_copy(&src, &dst)
         } else {
-            link_or_copy(&src, &dst)
-                .map_err(|e| format!("could not copy cached file {file_name}: {e}"))?;
+            link_into(&src, md5, &dst)
         }
+        .map_err(|e| format!("could not copy cached file {file_name}: {e}"))?;
     }
     Ok(())
 }
@@ -1647,6 +1683,19 @@ fn stage_cached_version(
     );
 
     Ok(entry.resolved_version)
+}
+
+/// [`stage_cached_version`] on the blocking pool: it now hashes the build's
+/// store entries, which is too much disk work for an async worker thread.
+async fn stage_cached_version_off_runtime(
+    cache_dir: &Path,
+    target_dir: &Path,
+    entry: &CacheManifestEntry,
+    manifest: &CacheManifest,
+) -> Result<i32, String> {
+    let (cache_dir, target_dir) = (cache_dir.to_path_buf(), target_dir.to_path_buf());
+    let (entry, manifest) = (entry.clone(), manifest.clone());
+    off_runtime(move || stage_cached_version(&cache_dir, &target_dir, &entry, &manifest)).await?
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1706,7 +1755,7 @@ pub async fn resolve_and_stage_replay_version(
         };
 
         if let Some(entry) = chosen {
-            match stage_cached_version(cache_dir, target_dir, entry, &manifest) {
+            match stage_cached_version_off_runtime(cache_dir, target_dir, entry, &manifest).await {
                 Ok(_) => {
                     tracing::info!(mod_name, name = %entry.name, "restored replay environment from local cache snapshot");
                     return Ok(None);
@@ -1744,7 +1793,10 @@ pub async fn resolve_and_stage_replay_version(
             .iter()
             .find(|e| e.featured_mod == *mod_name && e.resolved_version == version)
         {
-            if stage_cached_version(cache_dir, target_dir, entry, &manifest).is_ok() {
+            if stage_cached_version_off_runtime(cache_dir, target_dir, entry, &manifest)
+                .await
+                .is_ok()
+            {
                 tracing::info!(
                     mod_name,
                     version,
@@ -1778,30 +1830,12 @@ pub async fn resolve_and_stage_replay_version(
     Ok(None)
 }
 
-fn link_or_copy(src: &Path, dst: &Path) -> std::io::Result<()> {
-    if dst.is_file() || dst.is_symlink() {
-        if let (Ok(m_src), Ok(m_dst)) = (src.metadata(), dst.metadata()) {
-            if m_src.len() == m_dst.len() {
-                return Ok(());
-            }
-        }
-        let _ = std::fs::remove_file(dst);
-    }
-    if let Some(parent) = dst.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    if std::fs::hard_link(src, dst).is_ok() {
-        return Ok(());
-    }
-    #[cfg(unix)]
-    {
-        if std::os::unix::fs::symlink(src, dst).is_ok() {
-            return Ok(());
-        }
-    }
-    std::fs::copy(src, dst).map(|_| ())
-}
-
+/// Mirror one manifest entry into the `versions` folder the settings page
+/// reveals, as links to the store.
+///
+/// A browsing view only: nothing launches from it, so its entries are not
+/// hashed here (that would reread every cached build on each cache
+/// inspection). Damage is caught where it matters, when a build is staged.
 fn sync_version_folder(cache_dir: &Path, entry: &CacheManifestEntry) {
     let parent = match cache_dir.parent() {
         Some(p) => p,
@@ -1810,18 +1844,23 @@ fn sync_version_folder(cache_dir: &Path, entry: &CacheManifestEntry) {
     let versions_dir = parent.join("versions");
     let folder_name = crate::infra::sanitize_folder_name(&entry.name);
     let version_dir = versions_dir.join(folder_name);
+    let store = ContentStore::new(cache_dir);
 
     for f in &entry.files {
         let file_name = match &f.name {
             Some(n) => n.as_str(),
             None => continue,
         };
-        let src = cache_dir.join(&f.group).join(&f.md5);
+        let Ok(src) = store.entry_path(&f.group, &f.md5) else {
+            continue;
+        };
         if !src.is_file() {
             continue;
         }
-        let dst = version_dir.join(&f.group).join(file_name);
-        let _ = link_or_copy(&src, &dst);
+        let Ok(dst) = safe_join_file(&version_dir, &f.group, file_name) else {
+            continue;
+        };
+        let _ = mirror_into(&src, &dst);
     }
 }
 
@@ -3078,23 +3117,11 @@ mod tests {
             .unwrap();
         tokio::fs::create_dir_all(&target_dir).await.unwrap();
 
-        // 10000-byte fake exe (large enough for version offset)
-        let exe_bytes = vec![0u8; 10000];
-        tokio::fs::write(temp_dir.join("bin").join("md5_exe_3837"), &exe_bytes)
-            .await
-            .unwrap();
-        tokio::fs::write(
-            temp_dir.join("gamedata").join("md5_lua_3837"),
-            b"lua_content_3837",
-        )
-        .await
-        .unwrap();
-        tokio::fs::write(
-            temp_dir.join("gamedata").join("md5_dev_lua"),
-            b"lua_content_develop",
-        )
-        .await
-        .unwrap();
+        // 10000-byte fake exe (large enough for version offset). Entries are
+        // stored under their real checksums: staging verifies them.
+        let exe_md5 = put_in_store(&temp_dir, "bin", &[0u8; 10000]);
+        let lua_md5 = put_in_store(&temp_dir, "gamedata", b"lua_content_3837");
+        let dev_md5 = put_in_store(&temp_dir, "gamedata", b"lua_content_develop");
 
         let entry_3837 = CacheManifestEntry {
             featured_mod: "faf".to_string(),
@@ -3107,12 +3134,12 @@ mod tests {
             files: vec![
                 CachedFileInfo {
                     group: "bin".to_string(),
-                    md5: "md5_exe_3837".to_string(),
+                    md5: exe_md5,
                     name: Some("ForgedAlliance.exe".to_string()),
                 },
                 CachedFileInfo {
                     group: "gamedata".to_string(),
-                    md5: "md5_lua_3837".to_string(),
+                    md5: lua_md5,
                     name: Some("lua.nx2".to_string()),
                 },
             ],
@@ -3130,7 +3157,7 @@ mod tests {
             signature: Some("abcdef1".to_string()),
             files: vec![CachedFileInfo {
                 group: "gamedata".to_string(),
-                md5: "md5_dev_lua".to_string(),
+                md5: dev_md5,
                 name: Some("lua.nx2".to_string()),
             }],
             updated_at: 500,
@@ -3222,5 +3249,189 @@ mod tests {
 
         // The root, so the `versions` folder beside the cache goes with it.
         let _ = tokio::fs::remove_dir_all(&root).await;
+    }
+
+    /// Writes `bytes` into the content store under their own MD5, returning it.
+    fn put_in_store(cache_dir: &Path, group: &str, bytes: &[u8]) -> String {
+        let md5 = format!("{:x}", md5::compute(bytes));
+        let dir = cache_dir.join(group);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(&md5), bytes).unwrap();
+        md5
+    }
+
+    fn build_entry(version: i32, files: &[(&str, &str, &str)]) -> CacheManifestEntry {
+        CacheManifestEntry {
+            featured_mod: "faf".to_string(),
+            version: Some(version),
+            resolved_version: version,
+            name: format!("FAF Build {version}"),
+            url: None,
+            git_short_sha: None,
+            signature: None,
+            files: files
+                .iter()
+                .map(|(group, name, md5)| CachedFileInfo {
+                    group: (*group).to_string(),
+                    md5: (*md5).to_string(),
+                    name: Some((*name).to_string()),
+                })
+                .collect(),
+            updated_at: 0,
+        }
+    }
+
+    #[test]
+    fn switching_between_builds_with_equal_length_files_stages_the_right_content() {
+        // The reported failure: a destination whose length matched the cached
+        // file was taken to *be* it, so switching to a build whose file was
+        // the same size left the previous build's bytes installed while
+        // staging reported success.
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        let old = put_in_store(&cache, "gamedata", b"lua for build 3837");
+        let new = put_in_store(&cache, "gamedata", b"lua for build 3838");
+
+        stage_entry_files(
+            &cache,
+            &target,
+            &build_entry(3837, &[("gamedata", "lua.nx2", &old)]),
+        )
+        .unwrap();
+        stage_entry_files(
+            &cache,
+            &target,
+            &build_entry(3838, &[("gamedata", "lua.nx2", &new)]),
+        )
+        .unwrap();
+
+        let staged = target.join("gamedata").join("lua.nx2");
+        assert_eq!(std::fs::read(&staged).unwrap(), b"lua for build 3838");
+        assert_eq!(
+            std::fs::read(cache.join("gamedata").join(&old)).unwrap(),
+            b"lua for build 3837",
+            "switching away must not touch the previous build's entry"
+        );
+
+        // And back again.
+        stage_entry_files(
+            &cache,
+            &target,
+            &build_entry(3837, &[("gamedata", "lua.nx2", &old)]),
+        )
+        .unwrap();
+        assert_eq!(std::fs::read(&staged).unwrap(), b"lua for build 3837");
+    }
+
+    #[tokio::test]
+    async fn an_update_write_to_a_staged_file_leaves_the_cached_entry_alone() {
+        // Replay staging hard-links store entries into the install. The
+        // updater used to copy over such a file in place, which rewrote the
+        // store entry it was linked to: the cache then served the new bytes
+        // under the old checksum.
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        let old = put_in_store(&cache, "gamedata", b"units for build 3837");
+        let new = put_in_store(&cache, "gamedata", b"units for build 3838");
+        stage_entry_files(
+            &cache,
+            &target,
+            &build_entry(3837, &[("gamedata", "units.nx2", &old)]),
+        )
+        .unwrap();
+
+        // The live update path, served from the store (so no network).
+        let file = FeaturedModFile {
+            group: "gamedata".into(),
+            name: "units.nx2".into(),
+            md5: new.clone(),
+            version: Some(3838),
+            cacheable_url: "https://content.faforever.com/faf/updaterNew/units.nx2".into(),
+            hmac_token: "tok".into(),
+            hmac_parameter: "verify".into(),
+        };
+        update_file(
+            &reqwest::Client::new(),
+            "https://api.faforever.com",
+            &cache,
+            &target,
+            &file,
+            "faf",
+            3838,
+            0,
+            1,
+            &|_| {},
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            std::fs::read(target.join("gamedata").join("units.nx2")).unwrap(),
+            b"units for build 3838"
+        );
+        assert_eq!(
+            std::fs::read(cache.join("gamedata").join(&old)).unwrap(),
+            b"units for build 3837",
+            "the store entry must keep the bytes its checksum names"
+        );
+    }
+
+    #[test]
+    fn patching_a_staged_executable_leaves_the_cached_entry_alone() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let exe = vec![0u8; 0x476670];
+        let md5 = put_in_store(&cache, "bin", &exe);
+        let entry = cache.join("bin").join(&md5);
+        // Linked rather than copied, as a staged non-executable file is: the
+        // patch must still not reach through to the store.
+        let staged = temp.path().join("replaydata").join("bin").join("game.exe");
+        link_into(&entry, &md5, &staged).unwrap();
+
+        patch_exe_version(&staged, 3838).unwrap();
+
+        assert_eq!(read_exe_version(&staged), Some(3838));
+        assert_eq!(std::fs::read(&entry).unwrap(), exe);
+    }
+
+    #[test]
+    fn a_damaged_cached_entry_is_not_staged() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        let good = put_in_store(&cache, "gamedata", b"lua for build 3837");
+        // Named for one content, holding another of the same length: what a
+        // killed write or an in-place edit through a hard link leaves behind.
+        let damaged = format!("{:x}", md5::compute(b"units for build 3837"));
+        std::fs::write(
+            cache.join("gamedata").join(&damaged),
+            b"units for build 9999",
+        )
+        .unwrap();
+
+        let error = stage_entry_files(
+            &cache,
+            &target,
+            &build_entry(
+                3837,
+                &[
+                    ("gamedata", "lua.nx2", &good),
+                    ("gamedata", "units.nx2", &damaged),
+                ],
+            ),
+        )
+        .unwrap_err();
+
+        assert!(error.contains("units.nx2"), "{error}");
+        assert!(
+            !target.join("gamedata").exists(),
+            "nothing is placed when any entry fails its check"
+        );
+        assert!(
+            !cache.join("gamedata").join(&damaged).exists(),
+            "the damaged entry is dropped so the build is fetched again"
+        );
     }
 }

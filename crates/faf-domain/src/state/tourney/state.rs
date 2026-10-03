@@ -297,12 +297,23 @@ pub struct TourneyState {
     /// The site around the tournaments: this account's roles, the pending
     /// bar, the Hall of Fame and the console.
     pub site: TourneySite,
-    /// The last picture pasted into an event's text and stored, for the form
-    /// to insert.
-    pub desc_image: Option<String>,
+    /// The last answer to a picture pasted into an event's text, for the form
+    /// to insert or report. It names the request it answers: the form sends one
+    /// at a time and gives up on one that takes too long, and an answer that
+    /// carried only the path was then credited to the next picture.
+    pub desc_image: Option<DescImageAnswer>,
     /// The event the create form is being filled from, once read.
     pub template: Option<Box<Tourney>>,
     pub template_status: TourneyLoadStatus,
+}
+
+/// What became of one pasted picture: its stored path, or `None` when it
+/// could not be stored.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DescImageAnswer {
+    pub request_id: u32,
+    pub url: Option<String>,
 }
 
 /// A name-to-account search, as the organiser types.

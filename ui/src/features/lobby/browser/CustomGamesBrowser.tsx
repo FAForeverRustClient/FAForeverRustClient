@@ -1,6 +1,6 @@
 
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { EmptyState } from "../../../design-system/EmptyState";
 import { Modal } from "../../../design-system/Modal";
 import type { Game, VaultMap } from "../../../ipc/bindings";
@@ -24,6 +24,12 @@ interface Props {
   onSelect: (id: number) => void;
   onJoin: (game: Game) => void;
   onPreview?: (game: Game) => void;
+  /**
+   * What to show when there is nothing to list, chosen by the caller, which
+   * knows why: disconnected, connecting, no games at all, or filtered away.
+   * Without it, the filtered-away state, which used to be shown for all four.
+   */
+  empty?: ReactNode;
 }
 
 type ContextMenu = { game: Game; x: number; y: number };
@@ -37,6 +43,7 @@ export function CustomGamesBrowser({
   onSelect,
   onJoin,
   onPreview: onPreviewProp,
+  empty,
 }: Props) {
   useLocale();
   const [now, setNow] = useState(() => Date.now());
@@ -48,12 +55,8 @@ export function CustomGamesBrowser({
     : null;
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
 
-  // Column widths live in settings, but a drag has to be visible before it is
-  // saved: writing every pointer move through the backend would be a round
-  // trip per pixel. So the saved widths seed a local copy, the drag moves the
-  // copy, and releasing the handle persists it.
+  // Widths and order, set on the list once and read by every row from there.
   const columns = useGameBrowserColumns(viewMode === "list");
-  const columnStyle = columns.style;
 
   const handlePreview = onPreviewProp ?? setInternalPreviewGame;
 
@@ -105,15 +108,17 @@ export function CustomGamesBrowser({
     <section className={`game-browser-panel surface-panel game-browser-${viewMode}`}>
       <div
         className={viewMode === "tiles" ? "game-tile-grid" : "game-browser-list"}
-        style={tileGridStyle}
+        style={viewMode === "tiles" ? tileGridStyle : columns.style}
       >
         {viewMode === "list" && columns.header}
         {games.length === 0 ? (
-          <EmptyState
-            icon="search"
-            title={t("lobby.browser.noMatch")}
-            hint={t("lobby.browser.noMatchHint")}
-          />
+          empty ?? (
+            <EmptyState
+              icon="search"
+              title={t("lobby.browser.noMatch")}
+              hint={t("lobby.browser.noMatchHint")}
+            />
+          )
         ) : viewMode === "tiles" ? (
           games.map((game) => (
             <GameTile
@@ -140,7 +145,6 @@ export function CustomGamesBrowser({
               friendSet={friendSet}
               foeSet={foeSet}
               now={now}
-              columnStyle={columnStyle}
               selected={selectedId === game.id}
               onSelect={() => onSelect(game.id)}
               onJoin={() => onJoin(game)}

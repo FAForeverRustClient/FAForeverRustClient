@@ -287,9 +287,10 @@ describe("unread counting", () => {
     expect(receive(inactive(), {}).channels[0]).toMatchObject({ unread: 1, unreadMentions: 0 });
   });
 
-  it("does not count messages in the active channel", () => {
+  it("counts messages in the active channel until it is read", () => {
+    // Active is not read: the channel stays active while the player is away.
     const next = receive(state({ channels: [channel("#uef")], activeChannel: "#uef" }), {});
-    expect(next.channels[0].unread).toBe(0);
+    expect(next.channels[0].unread).toBe(1);
   });
 
   it("does not count our own lines, or client commentary", () => {

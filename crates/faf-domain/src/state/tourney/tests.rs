@@ -1074,3 +1074,60 @@ fn a_map_saved_without_a_picture_borrows_the_vault_preview() {
     };
     assert_eq!(pick(&unknown, &[]), None);
 }
+
+/// Selecting another event while its eligibility check is in flight: the
+/// answer for the event just left must not become the notice of the one now
+/// open, whether it is a verdict or a refusal.
+#[test]
+fn an_eligibility_answer_for_an_event_no_longer_open_is_dropped() {
+    let mut state = TourneyState::default();
+    let select = |id: &str| TourneyEvent::Selected {
+        tournament_id: id.into(),
+    };
+    reduce(&mut state, &select("a"));
+    reduce(
+        &mut state,
+        &TourneyEvent::RatingChecking {
+            tournament_id: "a".into(),
+        },
+    );
+    assert_eq!(state.rating_check_status, TourneyLoadStatus::Loading);
+
+    reduce(&mut state, &select("b"));
+    reduce(
+        &mut state,
+        &TourneyEvent::RatingChecked {
+            tournament_id: "a".into(),
+            check: RatingCheck {
+                eligible: Some(true),
+                ..RatingCheck::default()
+            },
+        },
+    );
+    reduce(
+        &mut state,
+        &TourneyEvent::RatingCheckFailed {
+            tournament_id: "a".into(),
+            reason: "late".into(),
+            kind: RequestFailureKind::Rejected,
+        },
+    );
+    assert_eq!(state.rating_check, None);
+    assert_eq!(state.rating_check_status, TourneyLoadStatus::Idle);
+
+    reduce(
+        &mut state,
+        &TourneyEvent::RatingChecked {
+            tournament_id: "b".into(),
+            check: RatingCheck {
+                eligible: Some(false),
+                ..RatingCheck::default()
+            },
+        },
+    );
+    assert_eq!(
+        state.rating_check.as_ref().and_then(|check| check.eligible),
+        Some(false)
+    );
+    assert_eq!(state.rating_check_status, TourneyLoadStatus::Ready);
+}

@@ -9,15 +9,26 @@
 // the one the file has always carried and nothing ever read: how many orders
 // each player gave.
 //
-// Deliberately not a second `Modal`: `Modal` closes on Escape from a
-// bubble-phase document listener, so two stacked would close both at once. This
-// takes Escape in the capture phase, the way the map preview next door does,
-// and leaves the same three ways out: the button, the scrim and Escape.
+// Drawn over the replay panel rather than as a second `Modal`, and one layer
+// of the overlay stack while open: Escape closes this and leaves the replay
+// open, and a list open inside it (the chat's "From") closes before it does.
+// The same three ways out as a dialog: the button, the scrim and Escape.
 
-import { useEffect, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Icon } from "../../../design-system/Icon";
-import { SectionTabs } from "../../../design-system/SectionTabs";
-import type { ReplayAnalysis, ReplayDetails, ReplayPlayer, ReplayTeam } from "../../../ipc/bindings";
+import { MultiSelect } from "../../../design-system/MultiSelect";
+import { SectionTabs, sectionPanelProps } from "../../../design-system/SectionTabs";
+import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
+import { useAppStore } from "../../../store/store";
+import type {
+  BrowsingPreferences,
+  ReplayAnalysis,
+  ReplayChatMessage,
+  ReplayChatTransfers,
+  ReplayDetails,
+  ReplayPlayer,
+  ReplayTeam,
+} from "../../../ipc/bindings";
 import { ReplayActivityChart } from "./ReplayActivityChart";
 import { ReplayEventsPanel, ReplayPlayersPanel } from "./ReplayAnalysisPanels";
 import { ReplayGameStats } from "./ReplayGameStats";
@@ -73,6 +84,56 @@ export function formatChatTime(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/**
+ * The lines the game writes on a player's behalf when they share: "Sent 1.2k
+ * energy to Rewer", "sent 1 unit to Nory", and the request button's "Can you
+ * give me some energy, Sainse?". Matched on the game's English wording, which
+ * is the only wording these replays have shown.
+ */
+const TRANSFER_PATTERNS: readonly RegExp[] = [
+  /^sent\s+[\d.,]+\s*[km]?\s+(?:energy|mass)\s+to\s/i,
+  /^sent\s+[\d.,]+\s+units?\s+to\s/i,
+  /^can you give me some (?:energy|mass)\b/i,
+];
+
+/** Whether a chat line is a resource or unit transfer, or a request for one. */
+export function isTransferMessage(message: string): boolean {
+  const text = message.trim();
+  return TRANSFER_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+/** Somebody who wrote in a replay's chat, and how many lines. */
+export interface ChatSender {
+  name: string;
+  lines: number;
+}
+
+/**
+ * Everyone who wrote in the chat, alphabetically, for the "From" filter, with
+ * how many of their lines are in `counted`.
+ *
+ * Everyone in `messages` is listed, a count of nought included: a name that
+ * vanished from the list whenever another filter left it nothing could not be
+ * unticked. Alphabetical rather than busiest first: the reader comes looking
+ * for a name, and a list that reorders itself by volume makes them read it all
+ * to find it.
+ */
+export function chatSenders(
+  messages: ReplayChatMessage[],
+  counted: ReplayChatMessage[] = messages,
+): ChatSender[] {
+  const lines = new Map<string, number>();
+  for (const message of messages) {
+    if (!lines.has(message.sender)) lines.set(message.sender, 0);
+  }
+  for (const message of counted) {
+    lines.set(message.sender, (lines.get(message.sender) ?? 0) + 1);
+  }
+  return [...lines]
+    .map(([name, count]) => ({ name, lines: count }))
+    .sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: "base" }));
 }
 
 /**
@@ -175,18 +236,30 @@ export function ReplayInsights({
   const [tab, setTab] = useState<InsightTab>("options");
   const [optionFilter, setOptionFilter] = useState("");
   const [chatSearch, setChatSearch] = useState("");
-  const [chatChannel, setChatChannel] = useState("");
+  // Channel and transfers are a way of reading chat rather than a fact about
+  // one game, so they are remembered in the settings and every replay opens
+  // with them. Held here as well so a change shows at once rather than after
+  // the round trip.
+  const savedChannel = useAppStore((s) => s.state.settings.browsing.replayChatChannel);
+  const savedTransfers = useAppStore((s) => s.state.settings.browsing.replayChatTransfers);
+  const [chatChannel, setChatChannel] = useState(savedChannel);
+  // The people whose lines to show; empty shows everyone. A list rather than
+  // one name: following a conversation means following both sides of it. Not
+  // remembered: the names belong to this game.
+  const [chatFrom, setChatFrom] = useState<string[]>([]);
+  // In a team game the energy and unit lines can be half the chat: hidden to
+  // read what people said, or alone to see who fed whom.
+  const [chatTransfers, setChatTransfers] = useState<ReplayChatTransfers>(savedTransfers);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      onClose();
-    };
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [onClose]);
+  const rememberChat = (patch: Pick<BrowsingPreferences, "replayChatChannel"> | Pick<BrowsingPreferences, "replayChatTransfers">) => {
+    void ipc.send({
+      kind: "Settings",
+      command: { type: "patchBrowsing", payload: { patch } },
+    });
+  };
+
+  useOverlayLayer(true, onClose);
+  const tabsId = useId();
 
   // Absent on a file whose stream could not be walked, and on a legacy
   // `.scfareplay` with no header in front of it.
@@ -206,15 +279,39 @@ export function ReplayInsights({
     () => [...new Set(chatMessages.map((message) => message.to ?? "").filter(Boolean))].sort(),
     [chatMessages],
   );
-  const filteredChat = useMemo(() => {
+  const hasTransfers = useMemo(
+    () => chatMessages.some((message) => isTransferMessage(message.message)),
+    [chatMessages],
+  );
+  // A remembered choice this game cannot honour is set aside rather than
+  // obeyed: "allies only" on a game nobody wrote to allies in, or "only
+  // transfers" on one with none, would be an empty log with the control that
+  // emptied it not even on screen.
+  const activeChannel = chatChannels.includes(chatChannel) ? chatChannel : "";
+  const activeTransfers: ReplayChatTransfers = hasTransfers ? chatTransfers : "show";
+
+  // Every filter but "From", which is what the counts in the From list are
+  // taken over: a name's number is how many of its lines the other filters
+  // leave, so it says what ticking that name would show.
+  const chatBeforeFrom = useMemo(() => {
     const needle = chatSearch.trim().toLowerCase();
     return chatMessages.filter((message) => {
-      if (chatChannel && (message.to ?? "") !== chatChannel) return false;
+      if (activeChannel && (message.to ?? "") !== activeChannel) return false;
+      if (activeTransfers !== "show") {
+        const transfer = isTransferMessage(message.message);
+        if (activeTransfers === "hide" ? transfer : !transfer) return false;
+      }
       if (!needle) return true;
       return message.message.toLowerCase().includes(needle)
         || message.sender.toLowerCase().includes(needle);
     });
-  }, [chatChannel, chatMessages, chatSearch]);
+  }, [activeChannel, activeTransfers, chatMessages, chatSearch]);
+  const senders = useMemo(() => chatSenders(chatMessages, chatBeforeFrom), [chatMessages, chatBeforeFrom]);
+  const filteredChat = useMemo(() => {
+    if (chatFrom.length === 0) return chatBeforeFrom;
+    const from = new Set(chatFrom);
+    return chatBeforeFrom.filter((message) => from.has(message.sender));
+  }, [chatBeforeFrom, chatFrom]);
 
   const filteredOptions = useMemo(() => {
     const options = details?.gameOptions ?? [];
@@ -293,9 +390,10 @@ export function ReplayInsights({
           ariaLabel={t("replays.insights.tabsAria")}
           items={tabs}
           onChange={setTab}
+          idPrefix={tabsId}
         />
 
-        <div className="replay-insights-body">
+        <div className="replay-insights-body" {...sectionPanelProps(tabsId, tab)}>
           {/* One state for the whole panel while the file is on its way: the
               tabs are already there to be read, and putting the same spinner
               in each of them would say four different things are loading. */}
@@ -391,18 +489,56 @@ export function ReplayInsights({
           {details && tab === "chat" && (
             <>
               <div className="replay-insights-toolbar">
+                {/* Whose lines to read: tick one or several, nothing ticked
+                    is everyone. Each name carries how many lines it wrote. */}
+                {senders.length > 1 && (
+                  <MultiSelect
+                    layout="inline"
+                    label={t("replays.insights.from")}
+                    anyLabel={t("replays.insights.everyone")}
+                    options={senders.map((sender) => ({
+                      value: sender.name,
+                      label: sender.name,
+                      detail: String(sender.lines),
+                    }))}
+                    selected={chatFrom}
+                    onChange={setChatFrom}
+                  />
+                )}
                 {chatChannels.length > 1 && (
                   <label className="replay-insights-filter">
                     <span className="muted">{t("replays.insights.channel")}</span>
                     <select
                       className="vault-input"
-                      value={chatChannel}
-                      onChange={(event) => setChatChannel(event.target.value)}
+                      value={activeChannel}
+                      onChange={(event) => {
+                        setChatChannel(event.target.value);
+                        rememberChat({ replayChatChannel: event.target.value });
+                      }}
                     >
                       <option value="">{t("replays.insights.everyChannel")}</option>
                       {chatChannels.map((channel) => (
                         <option key={channel} value={channel}>{channelLabel(channel, t)}</option>
                       ))}
+                    </select>
+                  </label>
+                )}
+                {/* Offered only where there is something to hide or keep. */}
+                {hasTransfers && (
+                  <label className="replay-insights-filter" title={t("replays.insights.transfersHint")}>
+                    <span className="muted">{t("replays.insights.transfers")}</span>
+                    <select
+                      className="vault-input"
+                      value={activeTransfers}
+                      onChange={(event) => {
+                        const value = event.target.value as ReplayChatTransfers;
+                        setChatTransfers(value);
+                        rememberChat({ replayChatTransfers: value });
+                      }}
+                    >
+                      <option value="show">{t("replays.insights.transfersShow")}</option>
+                      <option value="hide">{t("replays.insights.transfersHide")}</option>
+                      <option value="only">{t("replays.insights.transfersOnly")}</option>
                     </select>
                   </label>
                 )}

@@ -1,12 +1,20 @@
 // Modal primitive: overlay + centered panel, no animation library (matches
 // the plain-CSS approach the rest of this design system uses). Closes on a
-// backdrop click that starts and ends on the backdrop, or the close button;
-// callers own open/closed state.
+// backdrop click that starts and ends on the backdrop, the close button, or
+// Escape; callers own open/closed state.
+//
+// Escape and the focus trap go through the overlay stack, so a dialog opened
+// from another one (Generate Map over Host Game, an uninstall confirmation, a
+// map preview) is the only one a press of Escape closes, and the only one Tab
+// is kept inside. Anything that opens over a modal, a list or a panel drawn on
+// top, registers with the same stack and is closed before the modal is.
 
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import "./modal.css";
 import { useTranslation } from "../i18n/useTranslation";
+import { overlayStack, restoreFocus } from "./overlayStack";
+import { OverlayParentContext, useOverlayLayer } from "./useOverlayLayer";
 
 interface ModalProps {
   onClose: () => void;
@@ -70,6 +78,20 @@ export function Modal({
   const dismissibleRef = useRef(dismissible);
   dismissibleRef.current = dismissible;
 
+  // Registered before the focus effect below so it is also unregistered
+  // before that effect's cleanup runs: by the time focus is restored, the
+  // layer underneath is already the top one and can take it.
+  //
+  // A dialog that may not be dismissed still takes Escape, and does nothing
+  // with it, so the press cannot fall through and close what is underneath.
+  const layer = useOverlayLayer(
+    true,
+    () => {
+      if (dismissibleRef.current) closeRef.current();
+    },
+    { trapsFocus: true, elementRef: panelRef },
+  );
+
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const panel = panelRef.current;
@@ -85,22 +107,18 @@ export function Modal({
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        if (dismissibleRef.current) closeRef.current();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow || "hidden";
-      previousFocus?.focus();
+      restoreFocus(previousFocus);
     };
   }, []);
 
   const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Tab") return;
+    // React events bubble through portals along the component tree, so a Tab
+    // inside a dialog opened from this one arrives here too. Only the topmost
+    // dialog decides where Tab goes.
+    if (overlayStack.topFocusTrap() !== layer) return;
     const controls = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
       .filter((element) => element.offsetParent !== null);
     if (controls.length === 0) {
@@ -117,6 +135,24 @@ export function Modal({
       event.preventDefault();
       first.focus();
     }
+  };
+
+  const onPanelKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // Escape from inside the panel is settled here rather than left to the
+    // stack's document-level listener. React carries a key event up the
+    // component tree, through portals, so without this a handler on whatever
+    // rendered the dialog would see the same press after the field inside had
+    // had its say. The stack still decides which layer it goes to.
+    if (event.key === "Escape") {
+      overlayStack.handleKey({
+        key: event.key,
+        isComposing: event.nativeEvent.isComposing,
+        preventDefault: () => event.preventDefault(),
+        stopPropagation: () => event.stopPropagation(),
+      });
+      return;
+    }
+    trapFocus(event);
   };
 
   const dialog = (
@@ -140,7 +176,7 @@ export function Modal({
         aria-modal="true"
         aria-label={label}
         tabIndex={-1}
-        onKeyDown={trapFocus}
+        onKeyDown={onPanelKeyDown}
       >
         {dismissible && (
           <button
@@ -152,7 +188,7 @@ export function Modal({
             ×
           </button>
         )}
-        {children}
+        <OverlayParentContext.Provider value={layer}>{children}</OverlayParentContext.Provider>
       </div>
     </div>
   );

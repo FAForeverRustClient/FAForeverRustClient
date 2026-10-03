@@ -84,6 +84,9 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
     // has to be able to clear it.
     case "matchmakerVetoesChanged":
       return { ...state, matchmakerVetoes: event.payload.vetoes };
+    // Replaced whole as well: the service orders and caps the list.
+    case "avatarHistoryChanged":
+      return { ...state, avatarHistory: event.payload.history };
   }
 }
 
@@ -107,6 +110,14 @@ export function reduceNav(state: NavState, event: NavEvent): NavState {
   switch (event.type) {
     case "tabSelected":
       return { ...state, activeTab: event.payload.tab };
+    case "mapsSectionSelected":
+      return { ...state, mapsSection: event.payload.section };
+    case "modsSectionSelected":
+      return { ...state, modsSection: event.payload.section };
+    case "replaysSectionSelected":
+      return { ...state, replaysSection: event.payload.section };
+    case "settingsSectionSelected":
+      return { ...state, settingsSection: event.payload.section };
   }
 }
 

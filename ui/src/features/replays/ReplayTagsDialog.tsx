@@ -8,6 +8,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
+import { ConfirmDialog } from "../../design-system/ConfirmDialog";
 import { Modal } from "../../design-system/Modal";
 import { MultiSelect } from "../../design-system/MultiSelect";
 import { ipc } from "../../ipc/client";
@@ -36,6 +37,8 @@ export function ReplayTagsDialog({ onClose }: { onClose: () => void }) {
   }, [notes]);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  /** The tag whose deletion is waiting for an answer. */
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const startEditing = (tag: string) => {
     setEditing(tag);
@@ -85,7 +88,7 @@ export function ReplayTagsDialog({ onClose }: { onClose: () => void }) {
                 ) : (
                   <Button onClick={() => startEditing(tag)}>{t("replays.tags.rename")}</Button>
                 )}
-                <Button onClick={() => renameTag(tag, "")} aria-label={t("replays.tags.deleteAria", { tag })}>
+                <Button onClick={() => setDeleting(tag)} aria-label={t("replays.tags.deleteAria", { tag })}>
                   {t("replays.tags.delete")}
                 </Button>
               </li>
@@ -96,6 +99,26 @@ export function ReplayTagsDialog({ onClose }: { onClose: () => void }) {
           <Button onClick={onClose}>{t("replays.tags.close")}</Button>
         </div>
       </div>
+      {/* Asked first, with the number of replays it touches: one press took a
+          tag off every replay carrying it, and there is no undo to reach for
+          afterwards. */}
+      {deleting !== null && (
+        <ConfirmDialog
+          title={t("replays.tags.deleteConfirmTitle", { tag: deleting })}
+          body={t("replays.tags.deleteConfirmBody", {
+            tag: deleting,
+            count: counts.get(deleting.toLocaleLowerCase()) ?? 0,
+          })}
+          warning={t("replays.tags.deleteConfirmWarning")}
+          confirmLabel={t("replays.tags.delete")}
+          danger
+          onConfirm={() => {
+            renameTag(deleting, "");
+            setDeleting(null);
+          }}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
     </Modal>
   );
 }

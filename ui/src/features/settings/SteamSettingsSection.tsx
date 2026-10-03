@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
-import type { GamePreferences } from "../../ipc/bindings";
+import type { GamePreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { steamStatusIsSupported } from "../../shared/platform";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const save = (preferences: GamePreferences) =>
-  ipc.send({ kind: "Settings", command: { type: "setGame", payload: { preferences } } });
+const save = (patch: GamePreferencesPatch) =>
+  ipc.send({ kind: "Settings", command: { type: "patchGame", payload: { patch } } });
 
 /**
  * Whether Steam shows Forged Alliance as being played while a game runs
@@ -41,7 +41,7 @@ export function SteamSettingsSection() {
           checked={preferences.steamPresence ?? false}
           onChange={(steamPresence) => {
             if (steamPresence) setConfirming(true);
-            else void save({ ...preferences, steamPresence });
+            else void save({ steamPresence });
           }}
           label={t("settings.steam.presence")}
         />
@@ -58,7 +58,7 @@ export function SteamSettingsSection() {
           confirmLabel={t("settings.steam.confirmButton")}
           onConfirm={() => {
             setConfirming(false);
-            void save({ ...preferences, steamPresence: true });
+            void save({ steamPresence: true });
           }}
           onCancel={() => setConfirming(false)}
         />

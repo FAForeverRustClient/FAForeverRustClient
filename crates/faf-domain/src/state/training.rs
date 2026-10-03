@@ -1772,6 +1772,18 @@ pub enum TrainingCommand {
     },
     CloseReview,
     OpenContribution,
+    /// Keep the half-written contribution, without composing anything.
+    ///
+    /// The form still owns the draft while it is typed into, for the reason
+    /// `ComposeReview` gives, but a guide takes long enough to write that the
+    /// author leaves the form in the middle of it: to look something up in the
+    /// library, or in another tab. Leaving unmounts the form, so a draft only
+    /// the form held was lost and the older one in the state came back. The
+    /// form sends this after a pause in typing and when it unmounts, which
+    /// costs one round trip per pause rather than one per key.
+    ChangeContribution {
+        draft: Box<ContributionDraft>,
+    },
     ComposeContribution {
         draft: Box<ContributionDraft>,
     },

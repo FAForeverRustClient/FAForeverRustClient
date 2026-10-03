@@ -13,11 +13,12 @@ import {
 import type { InstalledMod, VaultMod } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { includesNormalized, isWithinNumberRange } from "../../shared/filterRanges";
-import { loadStatusNote } from "../../shared/loadStatusNote";
+import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
+import { formatShortDate } from "../../shared/format/dates";
 import { VaultDescription } from "../../shared/components/VaultDescription";
 import { useAppStore } from "../../store/store";
 import { Modal } from "../../design-system/Modal";
-import { ModPreview, UninstallDialog, cleanDescription } from "./ModVaultComponents";
+import { ModPreview, UninstallDialog, bestDescription, installNote, toggleNote } from "./ModVaultComponents";
 import { favoriteModKeys, isFavoriteMod, toggleFavoriteMod } from "./favoriteMods";
 import { modUpdateAvailable } from "./modVersions";
 import { modCounterparts } from "./modIdentity";
@@ -106,23 +107,33 @@ function InstalledModCard({
           </span>
         )}
         <span className="installed-mod-copy">
-          <span className="installed-mod-name">
+          <span className="installed-mod-name" title={mod.uid}>
             <strong>{mod.displayName}</strong>
           </span>
           <small>
             {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")} · v{mod.version}
             {mod.author ? ` \u00b7 ${mod.author}` : ""}
           </small>
-          <small title={mod.uid}>{mod.uid}</small>
+          {/* When the author last published it, from the vault's record of
+              the mod. That says more about an installed mod than its uid,
+              which stays on the name's tooltip; a mod the vault does not list
+              has no date to give, so it keeps the uid line. */}
+          {metadata ? (
+            <small className="installed-mod-updated">
+              {t("mods.vault.lastUpdated")} {formatShortDate(metadata.updatedAt || metadata.createdAt)}
+            </small>
+          ) : (
+            <small title={mod.uid}>{mod.uid}</small>
+          )}
         </span>
       </button>
+      {/* One row, every control the same height: the star, the switch, the
+          update when there is one, and remove. A state chip used to sit above
+          them on a row of its own, which made a two-tier cluster of five
+          shapes in the card's corner; the state is already the card's green
+          edge and tint, and the button beside it says which way it switches. */}
       <div className="installed-mod-side">
-        {/* The state, as a word and as a colour. It reads the same as it did
-            beside the name and it no longer competes with it for width: a mod
-            called "Advanced Strategic Icons for FAF" lost its last few words
-            to a chip that is the same six letters on every row. Top right,
-            over the buttons that act on it. */}
-        <div className="installed-mod-state-row">
+        <div className="installed-mod-actions">
           {/* The same star as the vault's, on the screen where it pays: these
               are the mods the player already has, and the set they star is the
               one "Enable favourites" turns on before a game. */}
@@ -136,13 +147,8 @@ function InstalledModCard({
             title={t(favorite ? "mods.vault.removeFavorite" : "mods.vault.addFavorite")}
             onClick={onToggleFavorite}
           >
-            <Icon name="star" size={14} fill={favorite ? "currentColor" : "none"} />
+            <Icon name="star" size={15} fill={favorite ? "currentColor" : "none"} />
           </button>
-          <em className={mod.enabled ? "installed-mod-state is-on" : "installed-mod-state is-off"}>
-            {t(mod.enabled ? "mods.installed.enabled" : "mods.installed.disabled")}
-          </em>
-        </div>
-        <div className="installed-mod-actions">
         <Button disabled={busy} onClick={onToggle}>
           {t(toggling ? "mods.installed.updating" : mod.enabled ? "mods.installed.disable" : "mods.installed.enable")}
         </Button>
@@ -200,7 +206,7 @@ function InstalledModDetail({
   const { t } = useTranslation();
   // The vault copy is the maintained one; `mod_info.lua` is what a mod that
   // was never published, or was taken down, still has.
-  const description = cleanDescription(metadata?.description || mod.description);
+  const description = bestDescription(metadata?.description, mod.description);
   const updateAvailable = Boolean(metadata && modUpdateAvailable(mod.version, metadata.version));
   return (
     <Modal className="installed-mod-modal" onClose={onClose} ariaLabel={mod.displayName}>
@@ -314,12 +320,13 @@ export function InstalledModsView({
   // of the report nothing on this screen answered: the badges only appear once
   // the catalogue happens to have been reloaded, and nothing asks it to.
   const [checking, setChecking] = useState(false);
+  /** Whether the reload a check asked for has been seen running yet. */
+  const reloadSeen = useRef(false);
   const [checkResult, setCheckResult] = useState("");
   const installedGrid = useRef<HTMLDivElement>(null);
   const browsing = useAppStore((state) => state.state.settings.browsing);
   const fittedPageSize = useGridPageSize(installedGrid, INSTALLED_MOD_CARD_PX, PAGE_SIZE);
 
-  const note = loadStatusNote(installedStatus, t("mods.installed.scanning"), t("mods.installed.scanFailed"));
   // An installed copy may be an older version than the one the vault lists,
   // and every version has its own uid: see `modIdentity`.
   const { vaultFor } = useMemo(() => modCounterparts(installed, vault), [installed, vault]);
@@ -363,7 +370,16 @@ export function InstalledModsView({
   // the mods it found it for. Silence would leave the button looking broken in
   // the common case, which is that everything is already current.
   useEffect(() => {
-    if (!checking || vaultStatus.type === "loading") return;
+    if (!checking) return;
+    // Only once the reload has started and then ended: the press lands while
+    // the old catalogue still reads "ready", and judging that would report on
+    // the very data the press was meant to replace.
+    if (vaultStatus.type === "loading") {
+      reloadSeen.current = true;
+      return;
+    }
+    if (!reloadSeen.current) return;
+    reloadSeen.current = false;
     setChecking(false);
     if (vaultStatus.type === "failed") {
       setCheckResult(t("mods.installed.checkFailed"));
@@ -590,7 +606,9 @@ export function InstalledModsView({
               onClick={() => {
                 setCheckResult("");
                 setChecking(true);
-                loadVault();
+                // A real fetch: `loadVault` is refused once the catalogue is
+                // loaded, which made this report on a stale one.
+                ipc.send({ kind: "Mods", command: { type: "reloadVault" } });
               }}
             >
               <Icon name="download" size={15} />{" "}
@@ -697,14 +715,24 @@ export function InstalledModsView({
         </SearchField>
       </SearchPanel>
 
-      {note && <p className="vault-note muted">{note}</p>}
+      <LoadStatusNotice
+        status={installedStatus}
+        failed={t("mods.installed.scanFailed")}
+        onRetry={loadInstalled}
+      />
+      {/* Update, uninstall and enable/disable failures: the store had the
+          reason, the screen only had a button that went back to normal. */}
+      <FailureNotice status={installStatus} message={installNote(installStatus)} />
+      <FailureNotice status={toggleStatus} message={toggleNote(toggleStatus)} />
       {installedStatus.type === "ready" && filtered.length === 0 ? (
         <EmptyState
           bordered
           icon={installed.length === 0 ? "mods" : "search"}
           title={t(installed.length === 0 ? "mods.installed.none" : "mods.installed.noMatch")}
           hint={t(installed.length === 0 ? "mods.installed.noneHint" : "mods.installed.noMatchHint")}
-        />
+        >
+          {installed.length > 0 && <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>}
+        </EmptyState>
       ) : filtered.length > 0 ? (
         <section className="installed-mod-library">
           <div className="vault-results-head">
