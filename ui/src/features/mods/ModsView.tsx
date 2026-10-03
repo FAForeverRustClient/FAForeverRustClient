@@ -209,7 +209,10 @@ function VaultView({ busy }: { busy: boolean }) {
   const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
   // What was last searched, read once as the tab mounts: the form starts from
   // it, so coming back from another tab finds the search where it was left.
-  const [restored] = useState(() => modFilterFromQuery(browseQuery, preset));
+  // Not when a mod was clicked elsewhere to be looked at (#380): the last
+  // search's filters could hide exactly that mod, so the request below starts
+  // from a clean form instead.
+  const [restored] = useState(() => (hasModVaultFocus() ? null : modFilterFromQuery(browseQuery, preset)));
   const [search, setSearch] = useState(restored?.search ?? "");
   const [searchScope, setSearchScope] = useState<ModSearchScope>(restored?.searchScope ?? "name");
   const [sort, setSort] = useState<ModSort>(restored?.sort ?? initialSort);
