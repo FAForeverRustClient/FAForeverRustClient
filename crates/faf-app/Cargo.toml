@@ -47,3 +47,12 @@ chrono = "0.4"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time"] }
+
+# `#[async_trait]` puts a bare `#[must_use]` on every method it rewrites, and
+# the method returns a boxed future, which is `#[must_use]` already. Clippy
+# from Rust 1.99 reports that on each of the macro's methods, about two hundred
+# of them across the ports and their test doubles, none of it in code written
+# here. Allowed for this crate, the only one that uses the macro, rather than
+# on each trait and impl.
+[lints.clippy]
+double_must_use = "allow"

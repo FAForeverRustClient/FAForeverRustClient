@@ -14,6 +14,7 @@ pub mod discord;
 pub mod error;
 pub mod events;
 pub mod galactic_war;
+pub mod game_cache;
 pub mod guides;
 pub mod ice;
 pub mod leaderboard;
@@ -21,6 +22,7 @@ pub mod lobby;
 pub mod map_generator;
 pub mod maps;
 pub mod mods;
+pub mod notification_sounds;
 pub mod paths;
 pub mod player_card;
 pub mod process;
@@ -45,6 +47,7 @@ pub use discord::{DiscordPort, DiscordRequest};
 pub use error::RequestError;
 pub use events::EventsPort;
 pub use galactic_war::{GalacticWarPort, InstallProgress};
+pub use game_cache::GameCachePort;
 pub use guides::{DeviceCode, GuidesPort};
 pub use ice::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
 pub use leaderboard::LeaderboardPort;
@@ -52,6 +55,7 @@ pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
 pub use map_generator::{GeneratorUpdate, MapGeneratorPort};
 pub use maps::{MapSearchPage, MapsPort};
 pub use mods::{ModPrepFailure, ModSearchPage, ModsPort};
+pub use notification_sounds::NotificationSoundsPort;
 pub use paths::PathsPort;
 pub use player_card::PlayerCardPort;
 pub use process::{
@@ -137,6 +141,12 @@ pub struct Ports {
     /// `process` and `updater`: Galactic War is not Forged Alliance and does
     /// not go through the lobby.
     pub galactic_war: Arc<dyn GalacticWarPort>,
+    /// The game-files cache the settings tab measures, expires and clears.
+    /// A port so a test that loads settings cannot reach the real one.
+    pub game_cache: Arc<dyn GameCachePort>,
+    /// The sounds a player added, for removing one. See
+    /// [`notification_sounds::NotificationSoundsPort`].
+    pub notification_sounds: Arc<dyn NotificationSoundsPort>,
     /// True when `auth` is the offline stub rather than real FAF OAuth.
     ///
     /// A property of the bundle rather than of any one port: it is how the

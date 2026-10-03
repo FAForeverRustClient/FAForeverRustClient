@@ -1,4 +1,7 @@
-import { memo, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import type { BrowsingPreferences } from "../../ipc/bindings";
+import { ipc } from "../../ipc/client";
+import { useColumnOrder } from "../../shared/hooks/useColumnOrder";
 import { Icon, type IconName } from "../../design-system/Icon";
 import {
   isGeneratedMap,
@@ -106,9 +109,13 @@ function ReplayListStatus({
   const tone = cell.tone ? ` replay-list-status-${cell.tone}` : "";
   return (
     <div className="replay-list-cell replay-list-replay-cell" role="cell">
+      {/* The id and the actions on one line. A replay that can be watched is
+          the normal case and its status says nothing, so only one that cannot
+          spells it out; a green "Available" on every row was a column of
+          badges reading the same word. */}
       <div className="replay-list-replay-summary">
-        <span className={`replay-list-status${tone}`}>{cell.primary || "N/A"}</span>
-        {cell.secondary && <small>{cell.secondary}</small>}
+        {cell.tone !== "ok" && <span className={`replay-list-status${tone}`}>{cell.primary || "N/A"}</span>}
+        {cell.secondary && <small title={cell.secondary}>{cell.secondary}</small>}
       </div>
       {(action || iconActions.length > 0) && (
         <div className="replay-list-actions" role="group" aria-label={t("replays.list.actionsAria")}>
@@ -249,7 +256,7 @@ const ReplayListRowView = memo(function ReplayListRowView({ row }: { row: Replay
  * column on the other, and a column with no width of its own has nothing to
  * give.
  */
-const DEFAULT_COLUMN_PX = [56, 260, 140, 110, 70, 82, 126, 150];
+const DEFAULT_COLUMN_PX = [48, 260, 110, 90, 70, 82, 126, 190];
 
 /**
  * The game column, which is the flexible one.
@@ -262,6 +269,14 @@ const DEFAULT_COLUMN_PX = [56, 260, 140, 110, 70, 82, 126, 150];
  */
 const FLEXIBLE_COLUMN = 1;
 
+/** Persist part of the replay list's layout, in one settings write. */
+function saveReplayList(patch: Partial<BrowsingPreferences>): void {
+  ipc.send({
+    kind: "Settings",
+    command: { type: "patchBrowsing", payload: { patch } },
+  });
+}
+
 export function ReplayList({
   groups,
   footer,
@@ -270,40 +285,72 @@ export function ReplayList({
   footer: ReactNode;
 }) {
   const { t } = useTranslation();
-  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN, "grid");
-  const template = columnTemplate(columns.drawn, FLEXIBLE_COLUMN);
+  const storedOrder = useAppStore((state) => state.state.settings.browsing.replayListOrder);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const columnOrder = useColumnOrder(storedOrder, COLUMNS.length, (order) => saveReplayList({ replayListOrder: order }), headerRef);
+  const { order, moving } = columnOrder;
+  const columns = useColumnWidths("replayListColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN, "grid", 80, order);
+  const template = columnTemplate(order.map((column) => columns.drawn[column]), order.indexOf(FLEXIBLE_COLUMN));
+  const style: CSSProperties & Record<string, string | number> = { "--replay-list-columns": template };
+  order.forEach((column, position) => {
+    style[`--replay-list-order-${column}`] = position;
+  });
+  const setHeader = (element: HTMLDivElement | null) => {
+    headerRef.current = element;
+    columns.containerRef(element);
+  };
+  // A double click on any divider puts the whole header back as designed, in
+  // one write: two would each start from the settings before either.
+  const reset = () => {
+    columns.clear();
+    columnOrder.clear();
+    saveReplayList({ replayListColumns: [], replayListOrder: [] });
+  };
 
   return (
     <section
       className="replay-list-wrap surface-panel"
       role="table"
       aria-label={t("replays.list.aria")}
-      style={{ "--replay-list-columns": template } as CSSProperties}
+      style={style}
     >
-      <div className="replay-list-header" role="row" ref={columns.containerRef}>
-        {COLUMNS.map((column, index) => (
-          <span className={column.className} key={column.label} role="columnheader">
-            {/* One line in front of every column but the first, standing
-                where that column starts. It trades width between the two
-                columns it separates, so it lands under the cursor and no
-                other line moves. */}
-            {index > 0 && (
-              <ResizeHandle
-                className="replay-list-col-handle is-ruled"
-                label={t("lobby.browser.resizeColumn", {
-                  column: t(COLUMNS[index - 1 === FLEXIBLE_COLUMN ? index : index - 1].label),
-                })}
-                onStart={columns.onStart}
-                onDrag={(delta) => columns.onDrag(index, delta)}
-                onEnd={columns.onCommit}
-                onReset={columns.onReset}
-              />
-            )}
-            {/* The label clips itself rather than letting the header cell do
-                it: the cell has to let the divider hang outside its own box. */}
-            <span className="replay-list-head-label">{t(column.label)}</span>
-          </span>
-        ))}
+      <div className={`replay-list-header${moving !== null ? " is-moving" : ""}`} role="row" ref={setHeader}>
+        {COLUMNS.map((column, index) => {
+          const position = order.indexOf(index);
+          const before = order[position - 1];
+          return (
+            // Dragged sideways, the header moves its column; Alt and an arrow
+            // key do the same from the keyboard.
+            <span
+              className={`${column.className}${moving === index ? " is-moving" : ""}`.trim() || undefined}
+              key={column.label}
+              role="columnheader"
+              tabIndex={0}
+              title={t("lobby.browser.moveColumn")}
+              {...columnOrder.cell(index)}
+            >
+              {/* One line in front of every column but the first drawn,
+                  standing where that column starts. It trades width between
+                  the two columns either side of it on screen, so it lands
+                  under the cursor and no other line moves. */}
+              {position > 0 && (
+                <ResizeHandle
+                  className="replay-list-col-handle"
+                  label={t("lobby.browser.resizeColumn", {
+                    column: t(COLUMNS[before === FLEXIBLE_COLUMN ? index : before].label),
+                  })}
+                  onStart={columns.onStart}
+                  onDrag={(delta) => columns.onDrag(position, delta)}
+                  onEnd={columns.onCommit}
+                  onReset={reset}
+                />
+              )}
+              {/* The label clips itself rather than letting the header cell do
+                  it: the cell has to let the divider hang outside its own box. */}
+              <span className="replay-list-head-label">{t(column.label)}</span>
+            </span>
+          );
+        })}
       </div>
       <div className="replay-list-body" role="rowgroup">
         {groups.map((group) => (

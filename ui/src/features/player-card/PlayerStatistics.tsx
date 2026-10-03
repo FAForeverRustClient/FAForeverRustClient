@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { PlayerCardProfile } from "../../ipc/bindings";
+import { FactionIcon } from "../../shared/components/FactionIcon";
 import { formatNumber, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -30,92 +31,86 @@ const EVENTS = {
   seraphimWins: "15b6c19a-6084-4e82-ada9-6c30e282191f",
 } as const;
 
-/**
- * Room kept free around a number drawn inside its bar: the label's own
- * leading padding and as much again at the trailing end, so the digits never
- * touch the bar's edge.
- */
-const LABEL_INSIDE_PADDING = 8;
-
-/**
- * One bar with its count. The count sits inside the bar whenever it fits
- * there with its padding, and just past the bar's end when it does not.
- *
- * Inside, the number is drawn in the contrast colour on the bar. On a bar a
- * few pixels wide that is the contrast colour on the card itself, which is the
- * card's own colour in either theme: an Aeon count of 7 next to a UEF count of
- * 1899 simply vanished (#342). Measured rather than guessed from the bar's
- * share, since whether "1 899" fits depends on the card's width, the font and
- * the number of digits, and a fixed share put short numbers outside bars that
- * had plenty of room for them.
- */
-function MetricBar({ value, max, className }: { value: number; max: number; className: string }) {
-  const barRef = useRef<HTMLDivElement>(null);
-  const labelRef = useRef<HTMLElement>(null);
-  const [outside, setOutside] = useState(false);
-
-  useLayoutEffect(() => {
-    const bar = barRef.current;
-    const label = labelRef.current;
-    if (!bar || !label) return;
-    const measure = () => setOutside(label.offsetWidth + LABEL_INSIDE_PADDING > bar.clientWidth);
-    measure();
-    // The card can be resized, and the bar with it.
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(bar);
-    return () => observer.disconnect();
-  }, [value, max]);
-
-  return (
-    <div
-      ref={barRef}
-      className={`${className}${outside ? " is-label-outside" : ""}`}
-      style={{ width: `${(value / max) * 100}%` }}
-    >
-      <i ref={labelRef}>{formatNumber(value)}</i>
-    </div>
-  );
-}
-
 interface Metric {
   label: string;
+  /** Drawn before the label, for a row that has a mark of its own. */
+  icon?: ReactNode;
   first: number;
   second: number;
 }
 
-function MetricChart({ title, firstLabel, secondLabel, metrics }: {
+/**
+ * A chart as a small table: the name, one bar, then the two counts and the
+ * share of the first.
+ *
+ * It was two bars per row with each count printed inside its bar, in dark
+ * text on saturated green and red at the smallest size the client allows, and
+ * moved outside the bar whenever the bar was too short to hold it. The counts
+ * now sit in columns of their own in the text colour, where they line up and
+ * read at a glance; the bar only shows the proportions. One stacked bar per
+ * row rather than two, so its length is the row's total against the largest
+ * total and the split inside it is the ratio, which is what the two separate
+ * bars made the reader work out.
+ *
+ * `share` is for a count that has no opposite of its own. FAF records games
+ * played and games won, per faction and per queue, and nothing about draws,
+ * so "played minus won" is losses and draws together and no honest name fits
+ * it. Those charts show wins against the total instead: the second column is
+ * the games themselves and the rest of the bar is neutral rather than red.
+ */
+function MetricChart({ title, firstLabel, secondLabel, rateLabel, metrics, share = false }: {
   title: string;
   firstLabel: string;
   secondLabel: string;
+  rateLabel: string;
   metrics: Metric[];
+  share?: boolean;
 }) {
-  const max = Math.max(1, ...metrics.flatMap((metric) => [metric.first, metric.second]));
+  const max = Math.max(1, ...metrics.map((metric) => metric.first + metric.second));
   return (
     <section className="player-stats-chart surface-panel">
-      <header><h3>{title}</h3><div className="player-chart-legend"><span className="is-first" />{firstLabel}<span className="is-second" />{secondLabel}</div></header>
-      <div className="player-metric-list">
-        {metrics.map((metric) => (
-          <div className="player-metric" key={metric.label}>
-            <span>{metric.label}</span>
-            <div className="player-metric-bars">
-              <MetricBar className="is-first" value={metric.first} max={max} />
-              <MetricBar className="is-second" value={metric.second} max={max} />
+      <h3>{title}</h3>
+      <div className="player-metric-table" role="table" aria-label={title}>
+        <div className="player-metric-head" role="row">
+          <span role="columnheader" />
+          <span role="columnheader" />
+          <span role="columnheader"><i className="is-first" aria-hidden />{firstLabel}</span>
+          <span role="columnheader">{!share && <i className="is-second" aria-hidden />}{secondLabel}</span>
+          <span role="columnheader">{rateLabel}</span>
+        </div>
+        {metrics.map((metric) => {
+          const total = metric.first + metric.second;
+          return (
+            <div className="player-metric" role="row" key={metric.label}>
+              <span className="player-metric-label" role="rowheader">{metric.icon}{metric.label}</span>
+              <span className="player-metric-bar" role="cell" aria-hidden>
+                {total > 0 && (
+                  <span style={{ width: `${(total / max) * 100}%` }}>
+                    <span className="is-first" style={{ flexGrow: metric.first }} />
+                    <span className={share ? "is-rest" : "is-second"} style={{ flexGrow: metric.second }} />
+                  </span>
+                )}
+              </span>
+              <span className="player-metric-count" role="cell">{formatNumber(metric.first)}</span>
+              <span className="player-metric-count" role="cell">{formatNumber(share ? total : metric.second)}</span>
+              <span className="player-metric-rate" role="cell">
+                {total > 0 ? `${Math.round((metric.first / total) * 100)}%` : "N/A"}
+              </span>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
 }
 
 // Faction names are proper nouns and stay literal; the unit classes are copy and
-// carry a message key.
-const FACTIONS: Array<[string, string, string]> = [
-  ["Aeon", EVENTS.aeonPlays, EVENTS.aeonWins],
-  ["Cybran", EVENTS.cybranPlays, EVENTS.cybranWins],
-  ["UEF", EVENTS.uefPlays, EVENTS.uefWins],
-  ["Seraphim", EVENTS.seraphimPlays, EVENTS.seraphimWins],
+// carry a message key. The number is the faction's id, for its emblem.
+const FACTIONS: Array<[string, number, string, string]> = [
+  ["Aeon", 2, EVENTS.aeonPlays, EVENTS.aeonWins],
+  ["Cybran", 3, EVENTS.cybranPlays, EVENTS.cybranWins],
+  ["UEF", 1, EVENTS.uefPlays, EVENTS.uefWins],
+  ["Seraphim", 4, EVENTS.seraphimPlays, EVENTS.seraphimWins],
 ];
 
 const UNITS: Array<[MessageKey, string, string]> = [
@@ -133,8 +128,11 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
   const { t } = useTranslation();
   const counts = new Map(profile.events.map((event) => [event.eventId, event.count]));
   const count = (id: string) => counts.get(id) ?? 0;
-  const factions = FACTIONS.map(([label, plays, wins]) => ({
+  const factions = FACTIONS.map(([label, faction, plays, wins]) => ({
     label,
+    // The name beside it says which faction, so the emblem is decoration to
+    // a screen reader.
+    icon: <FactionIcon faction={faction} size={16} aria-hidden="true" role="presentation" />,
     first: count(wins),
     second: Math.max(0, count(plays) - count(wins)),
   }));
@@ -151,9 +149,10 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
 
   return (
     <div className="player-statistics-grid">
-      <MetricChart title={t("playerCard.stats.factionsTitle")} firstLabel={t("playerCard.stats.wins")} secondLabel={t("playerCard.stats.losses")} metrics={factions} />
-      <MetricChart title={t("playerCard.stats.queuesTitle")} firstLabel={t("playerCard.stats.wins")} secondLabel={t("playerCard.stats.losses")} metrics={games} />
-      <MetricChart title={t("playerCard.stats.unitsTitle")} firstLabel={t("playerCard.stats.survived")} secondLabel={t("playerCard.stats.lost")} metrics={units} />
+      {/* Wins out of games, not wins against losses: see `share`. */}
+      <MetricChart share title={t("playerCard.stats.factionsTitle")} firstLabel={t("playerCard.stats.wins")} secondLabel={t("playerCard.stats.games")} rateLabel={t("playerCard.stats.winRate")} metrics={factions} />
+      <MetricChart share title={t("playerCard.stats.queuesTitle")} firstLabel={t("playerCard.stats.wins")} secondLabel={t("playerCard.stats.games")} rateLabel={t("playerCard.stats.winRate")} metrics={games} />
+      <MetricChart title={t("playerCard.stats.unitsTitle")} firstLabel={t("playerCard.stats.survived")} secondLabel={t("playerCard.stats.lost")} rateLabel={t("playerCard.stats.survivalRate")} metrics={units} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type {
   BrowsingPreferences,
+  BrowsingPreferencesPatch,
   CustomGameBrowserPreferences,
   CustomGameFilterRule,
   HostGamePreferences,
@@ -140,7 +141,9 @@ export const MAX_VAULT_PAGE_SIZE = 200;
 export const DEFAULT_VAULT_PAGE_SIZE = 36;
 
 export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
-  customGamesView: "tiles",
+  // The list: about three tiles fit the default window against a dozen rows.
+  // Mirrors `BrowsingPreferences::default` in the Rust settings.
+  customGamesView: "list",
   replaysView: "tiles",
   liveReplayView: "tiles",
   customGamesBrowser: {
@@ -153,6 +156,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
     applyFilters: false,
     rules: [],
     columnWidths: [],
+    columnOrder: [],
     detailWidth: 0,
   },
   matchmakerUnselectedQueues: [],
@@ -169,12 +173,15 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   modVaultSort: "",
   vaultPageSize: 0,
   replayListColumns: [],
+  replayListOrder: [],
   liveReplayColumns: [],
   coopBoardColumns: [],
   matchmakerRecentColumns: [],
   modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   replayVaultPlayer: "",
+  replayChatChannel: "",
+  replayChatTransfers: "show",
   legacyStorageMigrated: false,
 };
 
@@ -232,6 +239,7 @@ export function normalizeBrowsingPreferences(
         ? clampInteger(preferences.vaultPageSize, MIN_VAULT_PAGE_SIZE, MAX_VAULT_PAGE_SIZE, 0)
         : 0,
     replayListColumns: normalizeColumnWidths(preferences.replayListColumns),
+    replayListOrder: normalizeTableOrder(preferences.replayListOrder),
     liveReplayColumns: normalizeColumnWidths(preferences.liveReplayColumns),
     coopBoardColumns: normalizeColumnWidths(preferences.coopBoardColumns),
     matchmakerRecentColumns: normalizeColumnWidths(preferences.matchmakerRecentColumns),
@@ -239,7 +247,22 @@ export function normalizeBrowsingPreferences(
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
     replayVaultPlayer: truncateTrimmed(preferences.replayVaultPlayer ?? "", 64),
+    replayChatChannel: normalizeReplayChatChannel(preferences.replayChatChannel),
+    replayChatTransfers:
+      preferences.replayChatTransfers === "hide" || preferences.replayChatTransfers === "only"
+        ? preferences.replayChatTransfers
+        : "show",
   };
+}
+
+/**
+ * `all`, `allies` or every channel. Twin of the `replay_chat_channel` match in
+ * `BrowsingPreferences::normalized`: a whisper's channel is an army number,
+ * which names somebody else in the next replay, so it is not kept.
+ */
+function normalizeReplayChatChannel(channel: string | undefined): string {
+  const normalized = asciiLower((channel ?? "").trim());
+  return normalized === "all" || normalized === "allies" ? normalized : "";
 }
 
 /**
@@ -308,10 +331,31 @@ function normalizeCustomGamesBrowser(
       .map((width) =>
         Math.max(MIN_BROWSER_COLUMN_PX, Math.round(width)),
       ),
+    columnOrder: normalizeColumnOrder(preferences.columnOrder),
     detailWidth: preferences.detailWidth
       ? clampInteger(preferences.detailWidth, MIN_DETAIL_PX, MAX_DETAIL_PX, 0)
       : 0,
   };
+}
+
+/**
+ * The list's column order, kept only when it is exactly one of each column.
+ * Twin of the `column_order` check in `CustomGameBrowserPreferences::normalized`.
+ */
+export function normalizeColumnOrder(order: number[] | undefined): number[] {
+  const values = normalizeTableOrder(order);
+  return values.length === MAX_BROWSER_COLUMNS ? values : [];
+}
+
+/**
+ * Any table's column order: one of each column from zero up, or nothing.
+ * Twin of `normalize_column_order` in faf-domain's settings slice.
+ */
+export function normalizeTableOrder(order: number[] | undefined): number[] {
+  const values = order ?? [];
+  const sorted = [...values].sort((left, right) => left - right);
+  const complete = values.length <= MAX_TABLE_COLUMNS && sorted.every((value, index) => value === index);
+  return complete ? [...values] : [];
 }
 
 function normalizeHostGamePreferences(
@@ -341,10 +385,28 @@ export function parseLiveReplayFilters(value: unknown): LiveReplayFilters {
   return parseLegacyLiveReplayFilters(value, DEFAULT_LIVE_REPLAY_FILTERS);
 }
 
+/**
+ * What the one-time browser-storage migration writes: the four values it read
+ * and the marker, and nothing else. A patch rather than the whole group, so a
+ * preference changed while the migration's command is in flight is not
+ * overwritten with the value it had when the migration started.
+ */
+export type LegacyBrowsingMigration = Required<
+  Pick<
+    BrowsingPreferences,
+    | "customGamesView"
+    | "matchmakerUnselectedQueues"
+    | "matchmakerFactions"
+    | "liveReplayFilters"
+    | "legacyStorageMigrated"
+  >
+> &
+  BrowsingPreferencesPatch;
+
 export function migrateLegacyBrowsingPreferences(
   current: BrowsingPreferences,
   storage: LegacyStorage,
-): BrowsingPreferences {
+): LegacyBrowsingMigration {
   let customGamesView = current.customGamesView;
   let matchmakerUnselectedQueues = current.matchmakerUnselectedQueues;
   let matchmakerFactions = current.matchmakerFactions;
@@ -370,7 +432,7 @@ export function migrateLegacyBrowsingPreferences(
     // migration complete prevents every feature from falling back to it.
   }
 
-  return normalizeBrowsingPreferences({
+  const normalized = normalizeBrowsingPreferences({
     ...current,
     customGamesView,
     matchmakerUnselectedQueues,
@@ -378,6 +440,13 @@ export function migrateLegacyBrowsingPreferences(
     liveReplayFilters,
     legacyStorageMigrated: true,
   });
+  return {
+    customGamesView: normalized.customGamesView,
+    matchmakerUnselectedQueues: normalized.matchmakerUnselectedQueues,
+    matchmakerFactions: normalized.matchmakerFactions,
+    liveReplayFilters: normalized.liveReplayFilters,
+    legacyStorageMigrated: true,
+  };
 }
 
 export function clearLegacyBrowsingPreferences(storage: LegacyStorage): void {

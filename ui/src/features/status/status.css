@@ -83,6 +83,38 @@
   text-align: right;
 }
 
+/* The one control a task offers in the bar, e.g. Stop on a matchmaker search:
+   small enough for the 24 px bar, still a real button with a focus ring. */
+.client-status-task-action {
+  flex: none;
+  height: 18px;
+  padding: 0 8px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.client-status-task-action:hover {
+  background: var(--color-surface-hover);
+}
+
+.client-status-task-action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* A match was found: the prompt with a timer on it. The accent, which means
+   "the way forward", rather than a status colour. */
+.client-status-task.is-attention .client-status-task-label strong {
+  color: var(--color-accent);
+}
+
 @keyframes client-status-progress-indeterminate {
   from { transform: translateX(-110%); }
   to { transform: translateX(280%); }

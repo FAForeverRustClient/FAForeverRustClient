@@ -3,11 +3,17 @@ import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
+import { LoadStatusNotice } from "../../shared/components/LoadNotices";
 import { formatDateTime } from "../../shared/format/dates";
+import { plainError } from "../../shared/plainError";
 import "./reporting.css";
+import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const close = () => ipc.send({ kind: "Reporting", command: { type: "close" } });
+
+/** The moderation API's own limit on a report's description. */
+const MAX_DESCRIPTION = 4_000;
 
 export function ReportPlayerModal() {
   const { t } = useTranslation();
@@ -29,7 +35,7 @@ export function ReportPlayerModal() {
   const validation = useMemo(() => {
     const length = description.trim().length;
     if (length > 0 && length < 10) return t("reporting.error.tooShort");
-    if (length > 4_000) return t("reporting.error.tooLong");
+    if (length > MAX_DESCRIPTION) return t("reporting.error.tooLong");
     if (gameId.trim() && (!Number.isInteger(parsedGameId) || (parsedGameId ?? 0) <= 0)) {
       return t("reporting.error.gameId");
     }
@@ -63,7 +69,11 @@ export function ReportPlayerModal() {
   };
 
   return (
-    <Modal onClose={() => { if (!submitting) void close(); }} className="report-player-modal">
+    <Modal
+      onClose={() => { if (!submitting) void close(); }}
+      className="report-player-modal"
+      ariaLabel={t("reporting.reportPlayer", { name: report.login })}
+    >
       <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
         <header className="report-player-head">
           <span className="report-player-eyebrow">{t("reporting.title")}</span>
@@ -80,18 +90,19 @@ export function ReportPlayerModal() {
 
         {view === "history" ? (
           <section className="report-history" role="tabpanel">
-            {report.historyStatus.type === "loading" && <p className="muted" role="status">Loading your reports…</p>}
-            {report.historyStatus.type === "failed" && (
-              <div className="report-history-error" role="alert">
-                <span>{report.historyStatus.payload.reason}</span>
-                <Button type="button" onClick={() => ipc.send({ kind: "Reporting", command: { type: "loadHistory" } })}>{t("common.retry")}</Button>
-              </div>
-            )}
+            {report.historyStatus.type === "loading" && <p className="muted" role="status">{t("reporting.historyLoading")}</p>}
+            {/* Said plainly, with the system's wording on hover for a bug
+                report, and Retry beside it as every load failure has. */}
+            <LoadStatusNotice
+              status={report.historyStatus}
+              failed={t("reporting.historyFailed")}
+              onRetry={() => ipc.send({ kind: "Reporting", command: { type: "loadHistory" } })}
+            />
             {report.historyStatus.type === "ready" && report.history.length === 0 && <p className="muted">{t("reporting.historyEmpty")}</p>}
             {report.history.map((item) => (
               <article className="report-history-card surface" key={item.id}>
                 <header>
-                  <div><strong>Report #{item.id}</strong><time dateTime={item.createTime}>{formatDateTime(item.createTime)}</time></div>
+                  <div><strong>{t("reporting.historyItem", { id: item.id })}</strong><time dateTime={item.createTime}>{formatDateTime(item.createTime)}</time></div>
                   <span className="report-history-status">{item.status || t("reporting.statusFallback")}</span>
                 </header>
                 <dl>
@@ -116,13 +127,13 @@ export function ReportPlayerModal() {
               <textarea
                 autoFocus
                 value={description}
-                maxLength={4_000}
+                maxLength={MAX_DESCRIPTION}
                 rows={7}
                 disabled={submitting}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder={t("reporting.describeBehaviorContext")}
               />
-              <small>{description.length} / 4,000 characters</small>
+              <small>{t("reporting.characterCount", { count: description.length, max: formatNumber(MAX_DESCRIPTION) })}</small>
             </label>
             <div className="report-game-fields">
               <label className="report-field">
@@ -147,7 +158,13 @@ export function ReportPlayerModal() {
                 />
               </label>
             </div>
-            {(validation || failure) && <p className="report-error" role="alert">{failure || validation}</p>}
+            {/* The server's refusal plainly, its own wording on hover; the
+                form's own checks are already sentences. */}
+            {(validation || failure) && (
+              <p className="report-error" role="alert" title={failure || undefined}>
+                {failure ? `${t("reporting.submitFailed")}: ${plainError(failure)}` : validation}
+              </p>
+            )}
           </>
         )}
 

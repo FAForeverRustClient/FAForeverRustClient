@@ -16,18 +16,28 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
             if wanted.is_empty() {
                 return;
             }
+            // Claimed before the lookup rather than after it. The lookup is a
+            // network round trip, and in that time the user can close the
+            // dialog or open a report about somebody else; both bump the
+            // generation, and a lookup that answers afterwards must not reopen
+            // the form or swap the person it is about. A superseded failure is
+            // dropped too: a notification about a report nobody is filing any
+            // more is noise.
+            let generation = next_generation(ctx);
             let found = ctx
                 .ports
                 .player_card
                 .players_by_login(std::slice::from_ref(&wanted))
                 .await;
+            if !is_current(ctx, generation) {
+                return;
+            }
             match found {
                 Ok(players) => match players
                     .into_iter()
                     .find(|player| player.login.eq_ignore_ascii_case(&wanted))
                 {
                     Some(player) => {
-                        let generation = next_generation(ctx);
                         out.emit(ReportingEvent::Opened {
                             player_id: player.id,
                             login: player.login,

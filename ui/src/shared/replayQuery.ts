@@ -99,24 +99,20 @@ export function advancedReplayFilterCount(query: ReplayQuery): number {
     // `exactPlayer` is not in here: it sits in the search bar next to "Recent
     // only", so it is neither hidden nor a surprise. Nor are the game mode,
     // the rating range or the date range, which are all in the row the reader
-    // is looking at.
+    // is looking at. Nor are duration, players in the game, map size and
+    // review score, which moved up beside the rating into the search panel's
+    // always-visible row of sliders.
     query.host !== "",
     query.mapAuthor !== "",
     query.title !== "",
     query.factions.length > 0,
     query.victoryConditions.length > 0,
-    query.minReviewScore !== null || query.maxReviewScore !== null,
-    query.minDurationMinutes !== null || query.maxDurationMinutes !== null,
     query.mapMinPlayers !== null || query.mapMaxPlayers !== null,
-    query.minPlayers !== null || query.maxPlayers !== null,
-    query.mapMinSizeKm !== null || query.mapMaxSizeKm !== null,
     query.rankedMapOnly,
     // The reader's tags, which arrive as the ids of the games carrying them.
     (query.replayIds ?? []).length > 0,
-    // The mod picker moved down here when the date range moved up, so it
-    // counts now and the date range does not.
-    query.featuredMods.some((mod) => mod !== COOP_FEATURED_MOD),
+    // Not the game type (the featured mod) or the page size: both moved up
+    // into the search panel's first row.
     query.onlyRanked,
-    query.pageSize !== EMPTY_REPLAY_QUERY.pageSize,
   ].filter(Boolean).length;
 }

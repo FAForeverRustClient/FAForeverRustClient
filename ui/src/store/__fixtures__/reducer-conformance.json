@@ -29,7 +29,11 @@
       "mode": "account"
     },
     "nav": {
-      "activeTab": "news"
+      "activeTab": "news",
+      "mapsSection": "vault",
+      "modsSection": "vault",
+      "replaysSection": "online",
+      "settingsSection": "general"
     },
     "notifications": {
       "items": []
@@ -884,7 +888,7 @@
         "preRelease": false
       },
       "browsing": {
-        "customGamesView": "tiles",
+        "customGamesView": "list",
         "replaysView": "tiles",
         "liveReplayView": "tiles",
         "customGamesBrowser": {
@@ -897,6 +901,7 @@
           "applyFilters": false,
           "rules": [],
           "columnWidths": [],
+          "columnOrder": [],
           "detailWidth": 0
         },
         "matchmakerUnselectedQueues": [],
@@ -948,6 +953,7 @@
         "modVaultSort": "",
         "vaultPageSize": 0,
         "replayListColumns": [],
+        "replayListOrder": [],
         "liveReplayColumns": [],
         "coopBoardColumns": [],
         "matchmakerRecentColumns": [],
@@ -957,6 +963,8 @@
           "updated"
         ],
         "replayVaultPlayer": "",
+        "replayChatChannel": "",
+        "replayChatTransfers": "show",
         "legacyStorageMigrated": false
       },
       "events": {
@@ -997,6 +1005,7 @@
         "commandLineArgs": ""
       },
       "matchmakerVetoes": [],
+      "avatarHistory": [],
       "cacheInfo": {
         "totalSizeBytes": 0.0,
         "totalFiles": 0,
@@ -2142,10 +2151,12 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -2156,7 +2167,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -2213,7 +2224,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -2648,7 +2662,11 @@
             }
           },
           "expected": {
-            "activeTab": "play"
+            "activeTab": "play",
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
           }
         },
         {
@@ -2662,7 +2680,124 @@
             }
           },
           "expected": {
-            "activeTab": "training"
+            "activeTab": "training",
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        }
+      ]
+    },
+    {
+      "name": "nav remembers each destination's section across tab changes",
+      "steps": [
+        {
+          "event": {
+            "kind": "Nav",
+            "event": {
+              "type": "tabSelected",
+              "payload": {
+                "tab": "maps"
+              }
+            }
+          },
+          "expected": {
+            "activeTab": "maps",
+            "mapsSection": "vault",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "kind": "Nav",
+            "event": {
+              "type": "mapsSectionSelected",
+              "payload": {
+                "section": "installed"
+              }
+            }
+          },
+          "expected": {
+            "activeTab": "maps",
+            "mapsSection": "installed",
+            "modsSection": "vault",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "kind": "Nav",
+            "event": {
+              "type": "modsSectionSelected",
+              "payload": {
+                "section": "installed"
+              }
+            }
+          },
+          "expected": {
+            "activeTab": "maps",
+            "mapsSection": "installed",
+            "modsSection": "installed",
+            "replaysSection": "online",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "kind": "Nav",
+            "event": {
+              "type": "replaysSectionSelected",
+              "payload": {
+                "section": "live"
+              }
+            }
+          },
+          "expected": {
+            "activeTab": "maps",
+            "mapsSection": "installed",
+            "modsSection": "installed",
+            "replaysSection": "live",
+            "settingsSection": "general"
+          }
+        },
+        {
+          "event": {
+            "kind": "Nav",
+            "event": {
+              "type": "settingsSectionSelected",
+              "payload": {
+                "section": "connectivity"
+              }
+            }
+          },
+          "expected": {
+            "activeTab": "maps",
+            "mapsSection": "installed",
+            "modsSection": "installed",
+            "replaysSection": "live",
+            "settingsSection": "connectivity"
+          }
+        },
+        {
+          "event": {
+            "kind": "Nav",
+            "event": {
+              "type": "tabSelected",
+              "payload": {
+                "tab": "chat"
+              }
+            }
+          },
+          "expected": {
+            "activeTab": "chat",
+            "mapsSection": "installed",
+            "modsSection": "installed",
+            "replaysSection": "live",
+            "settingsSection": "connectivity"
           }
         }
       ]
@@ -3131,7 +3266,7 @@
                 "reactions": [],
                 "topic": "",
                 "typing": [],
-                "unread": 0,
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -3984,7 +4119,7 @@
                 "reactions": [],
                 "topic": "",
                 "typing": [],
-                "unread": 0,
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -4040,7 +4175,7 @@
                 ],
                 "topic": "",
                 "typing": [],
-                "unread": 0,
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -4097,7 +4232,7 @@
                 ],
                 "topic": "",
                 "typing": [],
-                "unread": 0,
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -4154,7 +4289,7 @@
                 ],
                 "topic": "",
                 "typing": [],
-                "unread": 0,
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -4211,7 +4346,7 @@
                 ],
                 "topic": "",
                 "typing": [],
-                "unread": 0,
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -4267,7 +4402,7 @@
                 ],
                 "topic": "",
                 "typing": [],
-                "unread": 0,
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -4311,7 +4446,7 @@
                 "reactions": [],
                 "topic": "",
                 "typing": [],
-                "unread": 0,
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -4360,7 +4495,7 @@
                     "nickname": "Cid"
                   }
                 ],
-                "unread": 0,
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -4404,7 +4539,7 @@
                 "reactions": [],
                 "topic": "",
                 "typing": [],
-                "unread": 0,
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -17394,7 +17529,131 @@
           "event": {
             "kind": "Tourney",
             "event": {
-              "type": "ratingChecking"
+              "type": "selected",
+              "payload": {
+                "tournamentId": "t1"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": null,
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "t1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "ratingChecking",
+              "payload": {
+                "tournamentId": "t1"
+              }
             }
           },
           "expected": {
@@ -17452,7 +17711,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -17514,6 +17773,7 @@
             "event": {
               "type": "ratingCheckFailed",
               "payload": {
+                "tournamentId": "t1",
                 "reason": "Checking your rating needs your FAF login.",
                 "kind": "rejected"
               }
@@ -17578,7 +17838,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -17638,7 +17898,10 @@
           "event": {
             "kind": "Tourney",
             "event": {
-              "type": "ratingChecking"
+              "type": "ratingChecking",
+              "payload": {
+                "tournamentId": "t1"
+              }
             }
           },
           "expected": {
@@ -17696,7 +17959,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -17758,6 +18021,265 @@
             "event": {
               "type": "ratingChecked",
               "payload": {
+                "tournamentId": "t0",
+                "check": {
+                  "rated": true,
+                  "rating": null,
+                  "capped": null,
+                  "ratingKind": "global",
+                  "asOf": null,
+                  "min": null,
+                  "max": null,
+                  "exempt": false,
+                  "alreadyIn": false,
+                  "banned": null,
+                  "eligible": true,
+                  "message": ""
+                }
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": null,
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "loading"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "t1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "ratingCheckFailed",
+              "payload": {
+                "tournamentId": "t0",
+                "reason": "stale",
+                "kind": "rejected"
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": null,
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": false,
+              "loggedIn": false,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "loading"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": "t1",
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": false,
+                "director": false,
+                "discord": "",
+                "editor": false,
+                "fafId": null,
+                "fafName": "",
+                "importer": false,
+                "loggedIn": false,
+                "oauth": false,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": null,
+              "console": null,
+              "consoleStatus": {
+                "type": "idle"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "hall": null,
+              "hallStatus": {
+                "type": "idle"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [],
+                "newRequests": null,
+                "requests": null
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "ratingChecked",
+              "payload": {
+                "tournamentId": "t1",
                 "check": {
                   "rated": true,
                   "rating": 1480,
@@ -17843,7 +18365,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -17974,7 +18496,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -18138,7 +18660,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -18269,7 +18791,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -18408,7 +18930,7 @@
             "renamesStatus": {
               "type": "idle"
             },
-            "selectedId": null,
+            "selectedId": "t1",
             "series": [],
             "seriesStatus": {
               "type": "idle"
@@ -19992,6 +20514,7 @@
             "event": {
               "type": "descImageUploaded",
               "payload": {
+                "requestId": 7,
                 "url": "/desc-images/d.png"
               }
             }
@@ -20020,7 +20543,169 @@
             "copySourcesStatus": {
               "type": "idle"
             },
-            "descImage": "/desc-images/d.png",
+            "descImage": {
+              "requestId": 7,
+              "url": "/desc-images/d.png"
+            },
+            "detail": null,
+            "detailStatus": {
+              "type": "idle"
+            },
+            "discord": "n#1",
+            "entrantProfiles": [],
+            "events": [],
+            "hosting": {
+              "allowed": true,
+              "loggedIn": true,
+              "pending": false
+            },
+            "openRoomId": null,
+            "openSeries": null,
+            "pending": null,
+            "pinnedPosts": [],
+            "pinnedRoomId": null,
+            "playerRatings": null,
+            "playerRatingsStatus": {
+              "type": "idle"
+            },
+            "presets": [],
+            "ratingCheck": null,
+            "ratingCheckStatus": {
+              "type": "idle"
+            },
+            "renames": null,
+            "renamesStatus": {
+              "type": "idle"
+            },
+            "selectedId": null,
+            "series": [],
+            "seriesStatus": {
+              "type": "idle"
+            },
+            "site": {
+              "account": {
+                "adminStandDown": false,
+                "allowed": true,
+                "director": true,
+                "discord": "n#1",
+                "editor": false,
+                "fafId": 7,
+                "fafName": "Nuggets",
+                "importer": false,
+                "loggedIn": true,
+                "oauth": true,
+                "siteAdmin": false,
+                "siteAdminAccount": false
+              },
+              "articleImage": "/article-images/a.png",
+              "console": {
+                "archived": [],
+                "articles": [],
+                "bans": [],
+                "directors": [],
+                "editorAllowed": [],
+                "editorRequests": [],
+                "hostAllowed": [],
+                "hostRequests": [],
+                "importerAllowed": [],
+                "importerRequests": [],
+                "logs": [],
+                "me": null,
+                "oauth": false,
+                "role": "editor",
+                "siteAdmins": []
+              },
+              "consoleStatus": {
+                "type": "ready"
+              },
+              "editorAccess": {
+                "allowed": false,
+                "loggedIn": true,
+                "oauth": true,
+                "pending": true
+              },
+              "hall": {
+                "players": [
+                  {
+                    "entered": 4,
+                    "fafId": 5,
+                    "name": "Ada",
+                    "wins": 2
+                  }
+                ],
+                "teams": []
+              },
+              "hallStatus": {
+                "type": "ready"
+              },
+              "importerAccess": {
+                "allowed": false,
+                "loggedIn": false,
+                "oauth": false,
+                "pending": false
+              },
+              "pending": {
+                "items": [
+                  {
+                    "count": 3,
+                    "kind": "requests",
+                    "tab": "players",
+                    "text": "3 signup requests await your review",
+                    "tournamentId": "e1",
+                    "tournamentName": "Cup"
+                  }
+                ],
+                "newRequests": null,
+                "requests": 2
+              }
+            },
+            "status": {
+              "type": "idle"
+            },
+            "template": null,
+            "templateStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Tourney",
+            "event": {
+              "type": "descImageUploadFailed",
+              "payload": {
+                "requestId": 8
+              }
+            }
+          },
+          "expected": {
+            "accountSearch": {
+              "matches": [],
+              "query": "",
+              "status": {
+                "type": "idle"
+              }
+            },
+            "actionError": null,
+            "articles": [],
+            "assetBase": "",
+            "chatPosts": [],
+            "chatRooms": [],
+            "chatStatus": {
+              "type": "idle"
+            },
+            "copySource": null,
+            "copySourceStatus": {
+              "type": "idle"
+            },
+            "copySources": [],
+            "copySourcesStatus": {
+              "type": "idle"
+            },
+            "descImage": {
+              "requestId": 8,
+              "url": null
+            },
             "detail": null,
             "detailStatus": {
               "type": "idle"
@@ -47817,10 +48502,12 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -47831,7 +48518,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -47888,7 +48575,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -48080,10 +48770,12 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -48094,7 +48786,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -48151,7 +48843,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -48352,10 +49047,12 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -48366,7 +49063,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -48423,7 +49120,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -48619,10 +49319,12 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -48633,7 +49335,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -48690,7 +49392,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -48886,10 +49591,12 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -48900,7 +49607,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -48957,7 +49664,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -49163,10 +49873,12 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -49177,7 +49889,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -49234,7 +49946,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -49446,10 +50161,12 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -49460,7 +50177,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -49517,7 +50234,295 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
+              "replayVaultPlayer": "",
+              "replaysView": "tiles",
+              "vaultPageSize": 0
+            },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
+              "coloredNames": false,
+              "fontSize": 13,
+              "hiddenRosterCategories": [],
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
+                "pings": "#ff8c00",
+                "players": {},
+                "selfColor": "#ffdd00"
+              },
+              "newbieChannelGameThreshold": 50,
+              "readMarkers": {},
+              "rosterWidth": 280,
+              "senderWidth": 116,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
+            },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
+            },
+            "discord": {
+              "disallowJoins": false,
+              "enabled": true
+            },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
+            },
+            "game": {
+              "additionalArguments": [],
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
+              "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
+              "launchWrapper": "",
+              "pipeLiveReplay": false,
+              "steamPresence": false
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "autoLogin": true,
+              "rememberTypedEntries": false,
+              "startPage": "news"
+            },
+            "keptGeneratedMaps": [
+              "neroxis_map_generator_1.15.2_keepme",
+              "neroxis_map_generator_1.15.2_alsokeep"
+            ],
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "matchmakerVetoes": [
+              {
+                "mapPoolMapVersionId": 91,
+                "matchmakerQueueMapPoolId": 4,
+                "vetoTokensApplied": 1
+              }
+            ],
+            "notifications": {
+              "desktop": true,
+              "desktopAllKinds": false,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "mapGenerated": true,
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "queueOpponentQueues": [],
+              "reviewReminder": true,
+              "sound": true,
+              "soundChoiceVersion": 2,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "alert",
+                "gameLaunched": "chime",
+                "matchFound": "fafMatch",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "streamLive": true,
+              "toastPosition": "bottomLeft",
+              "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "",
+              "replaysDir": "D:/faf/replays",
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": "/home/player/.wine"
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": [],
+              "replayNotes": []
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "avatarHistoryChanged",
+              "payload": {
+                "history": [
+                  "https://example.test/cup.png",
+                  "https://example.test/veteran.png",
+                  ""
+                ]
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
+              "reduceMotion": false,
+              "replayFlags": false,
+              "sidebarWidth": 224,
+              "uiScale": 100
+            },
+            "avatarHistory": [
+              "https://example.test/cup.png",
+              "https://example.test/veteran.png",
+              ""
+            ],
+            "browsing": {
+              "coopBoardColumns": [],
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "columnOrder": [],
+                "columnWidths": [],
+                "detailWidth": 0,
+                "hideFoes": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "hideUnranked": false,
+                "rules": [],
+                "sort": "players",
+                "sortReversed": false
+              },
+              "customGamesView": "list",
+              "favoriteMaps": [],
+              "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "games",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "hideUnranked": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "liveReplayView": "tiles",
+              "mapVaultPreset": "recommended",
+              "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerRecentColumns": [],
+              "matchmakerUnselectedQueues": [],
+              "modPresets": [],
+              "modVaultPreset": "recommended",
+              "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
+              "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -49769,10 +50774,16 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [
+              "https://example.test/cup.png",
+              "https://example.test/veteran.png",
+              ""
+            ],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -49783,7 +50794,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -49840,7 +50851,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -50068,10 +51082,16 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [
+              "https://example.test/cup.png",
+              "https://example.test/veteran.png",
+              ""
+            ],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -50082,7 +51102,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -50139,7 +51159,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -50369,10 +51392,16 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [
+              "https://example.test/cup.png",
+              "https://example.test/veteran.png",
+              ""
+            ],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
+                "columnOrder": [],
                 "columnWidths": [],
                 "detailWidth": 0,
                 "hideFoes": false,
@@ -50383,7 +51412,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -50440,7 +51469,10 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "tiles",
               "vaultPageSize": 0
@@ -50680,6 +51712,7 @@
                       110,
                       80
                     ],
+                    "columnOrder": [],
                     "detailWidth": 360
                   },
                   "matchmakerUnselectedQueues": [
@@ -50740,6 +51773,7 @@
                     240,
                     150
                   ],
+                  "replayListOrder": [],
                   "liveReplayColumns": [
                     120,
                     200
@@ -50752,6 +51786,8 @@
                     "updated"
                   ],
                   "replayVaultPlayer": "",
+                  "replayChatChannel": "",
+                  "replayChatTransfers": "show",
                   "legacyStorageMigrated": true
                 }
               }
@@ -50769,10 +51805,16 @@
               "sidebarWidth": 224,
               "uiScale": 100
             },
+            "avatarHistory": [
+              "https://example.test/cup.png",
+              "https://example.test/veteran.png",
+              ""
+            ],
             "browsing": {
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": true,
+                "columnOrder": [],
                 "columnWidths": [
                   320,
                   180,
@@ -50858,11 +51900,14 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "rating",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
               "replayListColumns": [
                 64,
                 240,
                 150
               ],
+              "replayListOrder": [],
               "replayVaultPlayer": "",
               "replaysView": "list",
               "vaultPageSize": 48

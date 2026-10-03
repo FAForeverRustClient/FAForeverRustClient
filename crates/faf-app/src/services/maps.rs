@@ -37,9 +37,17 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
         MapsCommand::SearchVault { query } => {
             // No guard and no dedupe beyond the generation check: this is a
             // user-driven search, and asking again is exactly what the search
-            // button means.
+            // button means. Commands run concurrently, so a slow earlier query
+            // can answer after a fast later one; whichever started last owns
+            // the results, the totals and the error line, and anything older
+            // is dropped whether it succeeded or failed.
+            let generation = ctx.map_search_generation.begin();
             out.emit(MapsEvent::VaultSearching);
-            match ctx.ports.maps.search_vault(query.clone()).await {
+            let result = ctx.ports.maps.search_vault(query.clone()).await;
+            if !ctx.map_search_generation.is_current(generation) {
+                return;
+            }
+            match result {
                 Ok(page) => out.emit(MapsEvent::VaultSearched {
                     maps: page.maps,
                     query,
@@ -75,9 +83,9 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 folder_names
                     .iter()
                     .filter(|name| {
-                        let base = crate::infra::maps::base_folder_name(name);
+                        let base = faf_domain::state::maps::base_folder_name(name);
                         !state.maps.vault.iter().any(|map| {
-                            crate::infra::maps::base_folder_name(&map.folder_name) == base
+                            faf_domain::state::maps::base_folder_name(&map.folder_name) == base
                         })
                     })
                     .cloned()
@@ -110,7 +118,7 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                         !state
                             .maps
                             .local_previews
-                            .contains_key(&crate::infra::maps::base_folder_name(name))
+                            .contains_key(&faf_domain::state::maps::base_folder_name(name))
                     })
                     .cloned()
                     .collect()
