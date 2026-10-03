@@ -872,7 +872,20 @@ pub struct NotificationPreferences {
     pub queue_opponent_queues: Vec<String>,
     /// Sound volume from 0 to 100.
     pub volume: u8,
+    /// Seconds after one notification of a kind before another of the same
+    /// kind toasts, sounds or reaches the desktop again (#382). Zero announces
+    /// every one. The later ones still land in the notification history.
+    pub repeat_cooldown_seconds: u16,
+    /// The matchmaker queues whose new map pools are not announced (#406).
+    ///
+    /// The ones switched off rather than the ones switched on, so every queue
+    /// is announced by default, a queue added later included, which is what
+    /// the request asked for: a new pool is a reason to queue again.
+    pub map_pool_muted_queues: Vec<String>,
 }
+
+/// The longest repeat cooldown a settings file may ask for: ten minutes.
+pub const MAX_NOTIFICATION_REPEAT_COOLDOWN_SECONDS: u16 = 600;
 
 impl Default for NotificationPreferences {
     fn default() -> Self {
@@ -901,6 +914,9 @@ impl Default for NotificationPreferences {
             map_generated: true,
             queue_opponent_queues: Vec::new(),
             volume: 70,
+            // What the request asked for: a ping every two seconds at most.
+            repeat_cooldown_seconds: 2,
+            map_pool_muted_queues: Vec::new(),
         }
     }
 }
@@ -940,6 +956,8 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             map_generated: bool,
             queue_opponent_queues: Vec<String>,
             volume: u8,
+            repeat_cooldown_seconds: u16,
+            map_pool_muted_queues: Vec<String>,
         }
 
         impl Default for Wire {
@@ -973,6 +991,8 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     map_generated: defaults.map_generated,
                     queue_opponent_queues: defaults.queue_opponent_queues,
                     volume: defaults.volume,
+                    repeat_cooldown_seconds: defaults.repeat_cooldown_seconds,
+                    map_pool_muted_queues: defaults.map_pool_muted_queues,
                 }
             }
         }
@@ -1017,6 +1037,8 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             map_generated: wire.map_generated,
             queue_opponent_queues: wire.queue_opponent_queues,
             volume: wire.volume,
+            repeat_cooldown_seconds: wire.repeat_cooldown_seconds,
+            map_pool_muted_queues: wire.map_pool_muted_queues,
         })
     }
 }
@@ -1024,6 +1046,9 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
 impl NotificationPreferences {
     fn normalized(mut self) -> Self {
         self.volume = self.volume.min(100);
+        self.repeat_cooldown_seconds = self
+            .repeat_cooldown_seconds
+            .min(MAX_NOTIFICATION_REPEAT_COOLDOWN_SECONDS);
         self
     }
 }
@@ -1937,6 +1962,11 @@ pub struct CustomGameBrowserPreferences {
     /// not, so a wider preview could only be had by making the browser
     /// narrower and nothing offered that trade.
     pub detail_width: u32,
+    /// Whether the detail panel is folded away (#370, #377).
+    ///
+    /// Kept apart from `detail_width` so folding it and unfolding it again
+    /// brings back the width somebody dragged it to, rather than the default.
+    pub detail_hidden: bool,
 }
 
 impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
@@ -1958,6 +1988,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             column_widths: Vec<u32>,
             column_order: Vec<u32>,
             detail_width: u32,
+            detail_hidden: bool,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -1973,6 +2004,7 @@ impl<'de> Deserialize<'de> for CustomGameBrowserPreferences {
             column_widths: wire.column_widths,
             column_order: wire.column_order,
             detail_width: wire.detail_width,
+            detail_hidden: wire.detail_hidden,
         })
     }
 }
@@ -2696,6 +2728,11 @@ pub struct SettingsState {
     /// itself rather than being replayed wrong forever.
     #[serde(default)]
     pub matchmaker_vetoes: Vec<PlayerVeto>,
+    /// The map pools each matchmaker queue had when the client last looked,
+    /// so a new one can be announced (#406). Nothing else in FAF says that a
+    /// pool changed: the client compares what it is served with this.
+    #[serde(default)]
+    pub map_pools_seen: Vec<MapPoolsSeen>,
     /// The avatars this account was seen choosing, newest first; an empty
     /// string is a choice of none. When the newest stops being allowed (a
     /// tournament avatar rotating to the next winner), the client selects the
@@ -2704,6 +2741,31 @@ pub struct SettingsState {
     pub avatar_history: Vec<String>,
     #[serde(default)]
     pub cache_info: GameCacheInfo,
+}
+
+/// The queues whose map pools changed since they were last seen. A queue seen
+/// for the first time is not news: it is how every queue starts, and
+/// announcing all of them on the first login after an update would be noise.
+pub fn changed_map_pools(seen: &[MapPoolsSeen], current: &[MapPoolsSeen]) -> Vec<String> {
+    current
+        .iter()
+        .filter(|now| {
+            seen.iter()
+                .find(|before| before.queue_name == now.queue_name)
+                .is_some_and(|before| before.assignments != now.assignments)
+        })
+        .map(|now| now.queue_name.clone())
+        .collect()
+}
+
+/// One queue's map pools as last seen: the pool-map assignment ids of all its
+/// brackets, sorted. A new release changes them whether it reuses the pool or
+/// brings a new one.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MapPoolsSeen {
+    pub queue_name: String,
+    pub assignments: Vec<i32>,
 }
 
 impl<'de> Deserialize<'de> for SettingsState {
@@ -2737,6 +2799,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             kept_generated_maps: Vec<String>,
             map_generator: GeneratorOptions,
             matchmaker_vetoes: Vec<PlayerVeto>,
+            map_pools_seen: Vec<MapPoolsSeen>,
             avatar_history: Vec<String>,
         }
 
@@ -2761,6 +2824,7 @@ impl<'de> Deserialize<'de> for SettingsState {
             kept_generated_maps: wire.kept_generated_maps,
             map_generator: wire.map_generator,
             matchmaker_vetoes: wire.matchmaker_vetoes,
+            map_pools_seen: wire.map_pools_seen,
             avatar_history: wire.avatar_history,
             cache_info: GameCacheInfo::default(),
         })
@@ -3004,6 +3068,8 @@ preference_patch! {
         map_generated: bool,
         queue_opponent_queues: Vec<String>,
         volume: u8,
+        repeat_cooldown_seconds: u16,
+        map_pool_muted_queues: Vec<String>,
     }
     nested {
         sounds: NotificationSoundChoicesPatch,
@@ -3129,6 +3195,7 @@ preference_patch! {
         column_widths: Vec<u32>,
         column_order: Vec<u32>,
         detail_width: u32,
+        detail_hidden: bool,
     }
 }
 
@@ -3320,6 +3387,11 @@ pub enum SettingsEvent {
     MatchmakerVetoesChanged {
         vetoes: Vec<PlayerVeto>,
     },
+    /// The map pools seen this session, replacing the remembered ones. See
+    /// [`SettingsState::map_pools_seen`].
+    MapPoolsSeen {
+        seen: Vec<MapPoolsSeen>,
+    },
     /// The remembered avatar choices, replaced whole; see
     /// [`SettingsState::avatar_history`].
     AvatarHistoryChanged {
@@ -3455,6 +3527,7 @@ pub fn reduce(state: &mut SettingsState, event: &SettingsEvent) {
         SettingsEvent::MatchmakerVetoesChanged { vetoes } => {
             state.matchmaker_vetoes = vetoes.clone()
         }
+        SettingsEvent::MapPoolsSeen { seen } => state.map_pools_seen = seen.clone(),
         SettingsEvent::AvatarHistoryChanged { history } => state.avatar_history = history.clone(),
         SettingsEvent::GeneralChanged { preferences } => state.general = preferences.clone(),
         SettingsEvent::AppearanceChanged { preferences } => {
@@ -4067,6 +4140,7 @@ mod tests {
                     // A column twice and one missing: not an order.
                     column_order: vec![0, 0, 2, 3, 4, 5],
                     detail_width: 40,
+                    detail_hidden: false,
                 },
                 matchmaker_unselected_queues: vec![
                     "  ladder_1v1  ".into(),
@@ -4523,6 +4597,26 @@ mod tests {
     fn a_settings_file_from_before_replay_notes_still_loads() {
         let social: SocialPreferences = serde_json::from_str(r#"{"playerNotes":[]}"#).unwrap();
         assert!(social.replay_notes.is_empty());
+    }
+
+    /// #406: a changed pool is news, a queue seen for the first time is not.
+    #[test]
+    fn only_a_pool_that_changed_is_announced() {
+        let seen = |queue: &str, assignments: &[i32]| MapPoolsSeen {
+            queue_name: queue.into(),
+            assignments: assignments.to_vec(),
+        };
+        let before = vec![seen("ladder1v1", &[1, 2, 3]), seen("tmm2v2", &[4, 5])];
+        let now = vec![
+            seen("ladder1v1", &[1, 2, 7]),
+            seen("tmm2v2", &[4, 5]),
+            seen("tmm4v4_full_share", &[9]),
+        ];
+        assert_eq!(
+            changed_map_pools(&before, &now),
+            vec!["ladder1v1".to_string()]
+        );
+        assert!(changed_map_pools(&[], &now).is_empty());
     }
 
     #[test]

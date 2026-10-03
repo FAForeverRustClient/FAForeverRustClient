@@ -40,6 +40,7 @@ describe("browsing preferences", () => {
         // A column twice and one missing: not an order.
         columnOrder: [0, 0, 2, 3, 4, 5],
         detailWidth: 40,
+        detailHidden: false,
         rules: [
           { field: "title", constraint: "contains", value: "  no rush  " },
           { field: "title", constraint: "contains", value: "NO RUSH" },

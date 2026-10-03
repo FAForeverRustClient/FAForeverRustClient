@@ -78,7 +78,12 @@ async function copyImageToClipboard(url: string): Promise<void> {
  * inside, including the copy, which reads the `currentSrc` the browser settled
  * on rather than a URL guessed up front.
  */
-export function ZoomableImage({ label, children }: { label: string; children: ReactNode }) {
+export function ZoomableImage({ label, children, actions }: {
+  label: string;
+  children: ReactNode;
+  /** Buttons of the caller's own, drawn just before Copy image. */
+  actions?: ReactNode;
+}) {
   const { t } = useTranslation();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState<ZoomTransform>(NO_ZOOM);
@@ -297,7 +302,9 @@ export function ZoomableImage({ label, children }: { label: string; children: Re
             {t("maps.preview.resetZoom")}
           </Button>
         </div>
-        <Button onClick={copy} title={t("maps.preview.copyImage")}>
+        <div className="map-preview-actions">
+          {actions}
+          <Button onClick={copy} title={t("maps.preview.copyImage")}>
           <Icon name={copied === "image" || copied === "link" ? "check" : "copy"} size={14} />
           {t(copied === "image"
             ? "maps.preview.imageCopied"
@@ -307,6 +314,7 @@ export function ZoomableImage({ label, children }: { label: string; children: Re
                 ? "maps.preview.copyFailed"
                 : "maps.preview.copyImage")}
         </Button>
+        </div>
       </div>
       <p className="map-preview-hint muted">{t("maps.preview.zoomHint")}</p>
     </div>

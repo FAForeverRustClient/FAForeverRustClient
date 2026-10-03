@@ -160,6 +160,26 @@ impl GameUpdaterPort for GameUpdaterClient {
 
         rx
     }
+
+    async fn ensure_maps(&self, folders: &[String]) -> Vec<(String, String)> {
+        let mut failures = Vec::new();
+        let maps_dir = maps::maps_dir();
+        for folder in folders {
+            // Already on disk is the common case, and costs a directory read.
+            if let Err(reason) = game_updater::ensure_live_map(
+                &self.http,
+                &self.config.content_base,
+                &maps_dir,
+                folder,
+                &|_| {},
+            )
+            .await
+            {
+                failures.push((folder.clone(), reason));
+            }
+        }
+        failures
+    }
 }
 
 /// Inert updater: used offline and in tests. Reports success without touching

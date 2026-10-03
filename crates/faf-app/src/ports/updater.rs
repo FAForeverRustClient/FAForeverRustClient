@@ -106,6 +106,17 @@ pub trait GameUpdaterPort: Send + Sync {
     /// calls it unconditionally rather than trying to guess whether an update
     /// is due, exactly as both reference clients do.
     async fn prepare(&self, request: GamePreparation) -> mpsc::Receiver<UpdateProgress>;
+
+    /// Put each of these map folders where a live game looks for them,
+    /// downloading the ones that are missing. Answers the folders that could
+    /// not be fetched, with why; a failure is not fatal to the others.
+    ///
+    /// For the maps of a matchmaker pool, fetched before the search starts
+    /// (see `launcher::prepare_search`). Defaulted to "nothing to do" so a test
+    /// double that has no maps folder need not pretend to have one.
+    async fn ensure_maps(&self, _folders: &[String]) -> Vec<(String, String)> {
+        Vec::new()
+    }
 }
 
 #[cfg(test)]

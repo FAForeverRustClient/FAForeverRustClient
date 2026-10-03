@@ -125,6 +125,7 @@
         "type": "idle"
       },
       "lastWarning": null,
+      "preparing": null,
       "liveTracking": null,
       "vault": [],
       "vaultStatus": {
@@ -826,7 +827,9 @@
         "streamLive": true,
         "mapGenerated": true,
         "queueOpponentQueues": [],
-        "volume": 70
+        "volume": 70,
+        "repeatCooldownSeconds": 2,
+        "mapPoolMutedQueues": []
       },
       "chat": {
         "showJoinsParts": false,
@@ -902,7 +905,8 @@
           "rules": [],
           "columnWidths": [],
           "columnOrder": [],
-          "detailWidth": 0
+          "detailWidth": 0,
+          "detailHidden": false
         },
         "matchmakerUnselectedQueues": [],
         "matchmakerFactions": [
@@ -1007,6 +1011,7 @@
         "commandLineArgs": ""
       },
       "matchmakerVetoes": [],
+      "mapPoolsSeen": [],
       "avatarHistory": [],
       "cacheInfo": {
         "totalSizeBytes": 0.0,
@@ -2160,6 +2165,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -2347,6 +2353,7 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
               "desktop": true,
@@ -2358,6 +2365,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -2366,6 +2374,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -5191,6 +5200,798 @@
       ]
     },
     {
+      "name": "a reconnect ends a search but not a launch or a running game",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "preparing",
+                  "payload": {
+                    "queueNames": [
+                      "ladder1v1"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueNames": [
+                  "ladder1v1"
+                ]
+              },
+              "type": "preparing"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "searching",
+                  "payload": {
+                    "queueNames": [
+                      "ladder1v1",
+                      "tmm2v2"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueNames": [
+                  "ladder1v1",
+                  "tmm2v2"
+                ]
+              },
+              "type": "searching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "launching",
+                  "payload": {
+                    "queueName": "ladder1v1"
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "inGame"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "inGame"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "inGame"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "gameTerminated"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "a matchmaker launch that fails or is called off frees the panel",
+      "steps": [
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "connected"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "launching",
+                  "payload": {
+                    "queueName": "ladder1v1"
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "launchFailed",
+              "payload": {
+                "reason": "ice adapter: no port"
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "reason": "ice adapter: no port"
+              },
+              "type": "launchFailed"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "launching",
+                  "payload": {
+                    "queueName": "ladder1v1"
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "reason": "ice adapter: no port"
+              },
+              "type": "launchFailed"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "preparing",
+              "payload": {
+                "phase": "map",
+                "detail": "Generating map",
+                "progress": null
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "payload": {
+                "detail": "Generating map",
+                "phase": "map",
+                "progress": null
+              },
+              "type": "preparing"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joinCancelled"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "matchmakingUpdated",
+              "payload": {
+                "state": {
+                  "type": "launching",
+                  "payload": {
+                    "queueName": "ladder1v1"
+                  }
+                }
+              }
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "inGame"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "inGame"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "joinCancelled"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "inGame"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "payload": {
+                "queueName": "ladder1v1"
+              },
+              "type": "launching"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "kind": "Lobby",
+            "event": {
+              "type": "gameTerminated"
+            }
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connected",
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
       "name": "a mod version conflict parks the join until it is answered",
       "steps": [
         {
@@ -5374,6 +6175,7 @@
                     "teamSize": 4,
                     "numPlayers": 1,
                     "queuePopTimeSeconds": 90,
+                    "queuePopsAt": "",
                     "boundary80s": [],
                     "boundary75s": []
                   },
@@ -5382,6 +6184,7 @@
                     "teamSize": 1,
                     "numPlayers": 7,
                     "queuePopTimeSeconds": 30,
+                    "queuePopsAt": "",
                     "boundary80s": [
                       {
                         "min": 900,
@@ -5428,6 +6231,7 @@
                 "numPlayers": 7,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 30,
+                "queuePopsAt": "",
                 "teamSize": 1
               },
               {
@@ -5436,6 +6240,7 @@
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
+                "queuePopsAt": "",
                 "teamSize": 4
               }
             ],
@@ -5463,6 +6268,7 @@
                     "teamSize": 2,
                     "numPlayers": 3,
                     "queuePopTimeSeconds": 60,
+                    "queuePopsAt": "",
                     "boundary80s": [],
                     "boundary75s": []
                   }
@@ -5499,6 +6305,7 @@
                 "numPlayers": 7,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 30,
+                "queuePopsAt": "",
                 "teamSize": 1
               },
               {
@@ -5507,6 +6314,7 @@
                 "numPlayers": 3,
                 "queueName": "tmm2v2",
                 "queuePopTimeSeconds": 60,
+                "queuePopsAt": "",
                 "teamSize": 2
               },
               {
@@ -5515,6 +6323,7 @@
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
+                "queuePopsAt": "",
                 "teamSize": 4
               }
             ],
@@ -5542,6 +6351,7 @@
                     "teamSize": 1,
                     "numPlayers": 12,
                     "queuePopTimeSeconds": 20,
+                    "queuePopsAt": "",
                     "boundary80s": [
                       {
                         "min": 900,
@@ -5596,6 +6406,7 @@
                 "numPlayers": 12,
                 "queueName": "ladder1v1",
                 "queuePopTimeSeconds": 20,
+                "queuePopsAt": "",
                 "teamSize": 1
               },
               {
@@ -5604,6 +6415,7 @@
                 "numPlayers": 3,
                 "queueName": "tmm2v2",
                 "queuePopTimeSeconds": 60,
+                "queuePopsAt": "",
                 "teamSize": 2
               },
               {
@@ -5612,6 +6424,7 @@
                 "numPlayers": 1,
                 "queueName": "tmm4v4",
                 "queuePopTimeSeconds": 90,
+                "queuePopsAt": "",
                 "teamSize": 4
               }
             ],
@@ -41062,6 +41875,661 @@
       ]
     },
     {
+      "name": "the catalogue arriving after a folder lookup keeps the looked-up map",
+      "steps": [
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultLoading"
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultStatus": {
+              "type": "loading"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultFoldersResolved",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 4,
+                    "versionId": 44,
+                    "displayName": "phenom spartiate v2",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "phenom spartiate v2",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "phenom spartiate v2",
+                "downloadUrl": "",
+                "folderName": "phenom spartiate v2",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 4,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 44,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "loading"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultLoaded",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 1,
+                    "versionId": 11,
+                    "displayName": "scmp_009.v0001",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "scmp_009.v0001",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  },
+                  {
+                    "mapId": 4,
+                    "versionId": 44,
+                    "displayName": "phenom spartiate v2",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "phenom spartiate v2",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "scmp_009.v0001",
+                "downloadUrl": "",
+                "folderName": "scmp_009.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "phenom spartiate v2",
+                "downloadUrl": "",
+                "folderName": "phenom spartiate v2",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 4,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 44,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultFoldersResolved",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 5,
+                    "versionId": 55,
+                    "displayName": "old_map",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "old_map",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "scmp_009.v0001",
+                "downloadUrl": "",
+                "folderName": "scmp_009.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "phenom spartiate v2",
+                "downloadUrl": "",
+                "folderName": "phenom spartiate v2",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 4,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 44,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "old_map",
+                "downloadUrl": "",
+                "folderName": "old_map",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 5,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 55,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Maps",
+            "event": {
+              "type": "vaultLoaded",
+              "payload": {
+                "maps": [
+                  {
+                    "mapId": 1,
+                    "versionId": 11,
+                    "displayName": "scmp_009.v0001",
+                    "author": "Rackover",
+                    "authorId": 4711,
+                    "folderName": "scmp_009.v0001",
+                    "version": "1",
+                    "description": "",
+                    "mapType": "skirmish",
+                    "maxPlayers": 8,
+                    "width": 1024,
+                    "height": 1024,
+                    "gamesPlayed": 0,
+                    "versionGamesPlayed": 0,
+                    "ranked": false,
+                    "hidden": false,
+                    "recommended": false,
+                    "ratingTenths": 0,
+                    "reviews": 0,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "downloadUrl": "",
+                    "thumbnailUrl": "",
+                    "thumbnailUrlLarge": ""
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "browse": [],
+            "browseQuery": {
+              "after": "",
+              "author": "",
+              "authorId": null,
+              "before": "",
+              "height": 0,
+              "includeHidden": false,
+              "maxPlayers": null,
+              "maxRatingTenths": null,
+              "minPlayers": null,
+              "minRatingTenths": null,
+              "page": 1,
+              "pageSize": 36,
+              "ranked": null,
+              "recommended": false,
+              "search": "",
+              "sortBy": "rating",
+              "sortDescending": true,
+              "width": 0
+            },
+            "browseStatus": {
+              "type": "idle"
+            },
+            "browseTotalPages": null,
+            "browseTotalRecords": null,
+            "installStatus": {
+              "type": "idle"
+            },
+            "installed": [],
+            "installedStatus": {
+              "type": "idle"
+            },
+            "localPreviewOrder": [],
+            "localPreviews": {},
+            "matchmakerPools": {},
+            "matchmakerPoolsStatus": {
+              "type": "idle"
+            },
+            "vault": [
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "scmp_009.v0001",
+                "downloadUrl": "",
+                "folderName": "scmp_009.v0001",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 1,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 11,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "phenom spartiate v2",
+                "downloadUrl": "",
+                "folderName": "phenom spartiate v2",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 4,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 44,
+                "width": 1024
+              },
+              {
+                "author": "Rackover",
+                "authorId": 4711,
+                "createdAt": "2026-01-01T00:00:00Z",
+                "description": "",
+                "displayName": "old_map",
+                "downloadUrl": "",
+                "folderName": "old_map",
+                "gamesPlayed": 0,
+                "height": 1024,
+                "hidden": false,
+                "mapId": 5,
+                "mapType": "skirmish",
+                "maxPlayers": 8,
+                "ranked": false,
+                "ratingTenths": 0,
+                "recommended": false,
+                "reviews": 0,
+                "thumbnailUrl": "",
+                "thumbnailUrlLarge": "",
+                "version": "1",
+                "versionGamesPlayed": 0,
+                "versionId": 55,
+                "width": 1024
+              }
+            ],
+            "vaultStatus": {
+              "type": "ready"
+            },
+            "visibilityStatus": {
+              "type": "idle"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "the profile search's account suggestions replace each other",
       "steps": [
         {
@@ -43690,6 +45158,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -43827,6 +45296,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -43906,6 +45376,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -43986,6 +45457,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45177,6 +46649,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "loading"
@@ -45256,6 +46729,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "payload": {
@@ -45335,6 +46809,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "loading"
@@ -45455,6 +46930,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [
               {
                 "averageRating": null,
@@ -45551,6 +47027,341 @@
       ]
     },
     {
+      "name": "an old replay reports what it is preparing, and the report ends with it",
+      "steps": [
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "preparing",
+              "payload": {
+                "step": {
+                  "detail": "too early",
+                  "progress": null
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "connecting"
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "connecting"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "preparing",
+              "payload": {
+                "step": {
+                  "detail": "Downloading ForgedAlliance.exe",
+                  "progress": 40
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": {
+              "detail": "Downloading ForgedAlliance.exe",
+              "progress": 40
+            },
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "connecting"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "playing",
+              "payload": {
+                "uid": 5,
+                "warning": null
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "payload": {
+                "uid": 5
+              },
+              "type": "playing"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        }
+      ]
+    },
+    {
       "name": "a replay connects, fails, and is dismissed",
       "steps": [
         {
@@ -45577,6 +47388,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45656,6 +47468,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45735,6 +47548,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45832,6 +47646,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45908,6 +47723,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -45984,6 +47800,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46100,6 +47917,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46188,6 +48006,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46273,6 +48092,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46400,6 +48220,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46506,6 +48327,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46614,6 +48436,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46720,6 +48543,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46824,6 +48648,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -46933,6 +48758,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47039,6 +48865,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47148,6 +48975,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47251,6 +49079,7 @@
               "type": "idle"
             },
             "onlineLookups": {},
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47342,6 +49171,7 @@
                 "type": "loading"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47465,6 +49295,7 @@
                 "type": "found"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47571,6 +49402,7 @@
                 "type": "loading"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47678,6 +49510,7 @@
                 "type": "missing"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47787,6 +49620,7 @@
                 "type": "loading"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -47900,6 +49734,7 @@
                 "type": "failed"
               }
             },
+            "preparing": null,
             "recentMatchmaker": [],
             "recentMatchmakerStatus": {
               "type": "idle"
@@ -48513,6 +50348,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -48692,6 +50528,7 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
               "desktop": true,
@@ -48703,6 +50540,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -48711,6 +50549,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -48783,6 +50622,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -48962,6 +50802,7 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
               "desktop": true,
@@ -48973,6 +50814,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -48981,6 +50823,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -49062,6 +50905,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -49241,6 +51085,7 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
               "desktop": true,
@@ -49252,6 +51097,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -49260,6 +51106,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -49336,6 +51183,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -49517,6 +51365,7 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
               "desktop": true,
@@ -49528,6 +51377,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -49536,6 +51386,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -49610,6 +51461,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -49792,6 +51644,7 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [],
             "matchmakerVetoes": [],
             "notifications": {
               "desktop": true,
@@ -49803,6 +51656,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -49811,6 +51665,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -49894,6 +51749,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -50076,6 +51932,7 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [],
             "matchmakerVetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -50098,6 +51955,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -50106,6 +51964,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -50160,6 +52019,295 @@
                     "matchmakerQueueMapPoolId": 4,
                     "mapPoolMapVersionId": 91,
                     "vetoTokensApplied": 1
+                  }
+                ]
+              }
+            }
+          },
+          "expected": {
+            "appearance": {
+              "density": "comfortable",
+              "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
+              "reduceMotion": false,
+              "replayFlags": false,
+              "sidebarWidth": 224,
+              "uiScale": 100
+            },
+            "avatarHistory": [],
+            "browsing": {
+              "coopBoardColumns": [],
+              "customGamesBrowser": {
+                "applyFilters": false,
+                "columnOrder": [],
+                "columnWidths": [],
+                "detailHidden": false,
+                "detailWidth": 0,
+                "hideFoes": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "hideUnranked": false,
+                "rules": [],
+                "sort": "players",
+                "sortReversed": false
+              },
+              "customGamesView": "list",
+              "favoriteMaps": [],
+              "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardRatingColumns": [
+                "games",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "hideUnranked": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "liveReplayView": "tiles",
+              "mapVaultPreset": "recommended",
+              "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerRecentColumns": [],
+              "matchmakerUnselectedQueues": [],
+              "modPresets": [],
+              "modVaultPreset": "recommended",
+              "modVaultSort": "",
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
+              "replayListColumns": [],
+              "replayListOrder": [],
+              "replayVaultPlayer": "",
+              "replaysView": "tiles",
+              "vaultPageSize": 0
+            },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
+              "coloredNames": false,
+              "fontSize": 13,
+              "hiddenRosterCategories": [],
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
+                "pings": "#ff8c00",
+                "players": {},
+                "selfColor": "#ffdd00"
+              },
+              "newbieChannelGameThreshold": 50,
+              "readMarkers": {},
+              "rosterWidth": 280,
+              "senderWidth": 116,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
+            },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
+            },
+            "discord": {
+              "disallowJoins": false,
+              "enabled": true
+            },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
+            },
+            "game": {
+              "additionalArguments": [],
+              "autoGenerateMaps": true,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10,
+              "confirmDownloadsBeforeJoining": true,
+              "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
+              "launchWrapper": "",
+              "pipeLiveReplay": false,
+              "steamPresence": false
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "autoLogin": true,
+              "rememberTypedEntries": false,
+              "startPage": "news"
+            },
+            "keptGeneratedMaps": [
+              "neroxis_map_generator_1.15.2_keepme",
+              "neroxis_map_generator_1.15.2_alsokeep"
+            ],
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "mapPoolsSeen": [],
+            "matchmakerVetoes": [
+              {
+                "mapPoolMapVersionId": 91,
+                "matchmakerQueueMapPoolId": 4,
+                "vetoTokensApplied": 1
+              }
+            ],
+            "notifications": {
+              "desktop": true,
+              "desktopAllKinds": false,
+              "enabled": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "mapGenerated": true,
+              "mapPoolMutedQueues": [],
+              "matchFound": true,
+              "mentions": true,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "privateMessages": true,
+              "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
+              "reviewReminder": true,
+              "sound": true,
+              "soundChoiceVersion": 2,
+              "sounds": {
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "alert",
+                "gameLaunched": "chime",
+                "matchFound": "fafMatch",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "streamLive": true,
+              "toastPosition": "bottomLeft",
+              "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "",
+              "replaysDir": "D:/faf/replays",
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": "/home/player/.wine"
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": [],
+              "replayNotes": []
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "preRelease": false
+            }
+          }
+        },
+        {
+          "event": {
+            "kind": "Settings",
+            "event": {
+              "type": "mapPoolsSeen",
+              "payload": {
+                "seen": [
+                  {
+                    "queueName": "ladder1v1",
+                    "assignments": [
+                      91,
+                      92
+                    ]
                   }
                 ]
               }
@@ -50366,6 +52514,15 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [
+              {
+                "assignments": [
+                  91,
+                  92
+                ],
+                "queueName": "ladder1v1"
+              }
+            ],
             "matchmakerVetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -50383,6 +52540,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -50391,6 +52549,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -50471,6 +52630,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -50653,6 +52813,15 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [
+              {
+                "assignments": [
+                  91,
+                  92
+                ],
+                "queueName": "ladder1v1"
+              }
+            ],
             "matchmakerVetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -50670,6 +52839,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -50678,6 +52848,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -50805,6 +52976,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -50987,6 +53159,15 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [
+              {
+                "assignments": [
+                  91,
+                  92
+                ],
+                "queueName": "ladder1v1"
+              }
+            ],
             "matchmakerVetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -51004,6 +53185,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -51012,6 +53194,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -51115,6 +53298,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -51297,6 +53481,15 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [
+              {
+                "assignments": [
+                  91,
+                  92
+                ],
+                "queueName": "ladder1v1"
+              }
+            ],
             "matchmakerVetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -51314,6 +53507,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -51322,6 +53516,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -51427,6 +53622,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -51609,6 +53805,15 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [
+              {
+                "assignments": [
+                  91,
+                  92
+                ],
+                "queueName": "ladder1v1"
+              }
+            ],
             "matchmakerVetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -51626,6 +53831,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -51634,6 +53840,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,
@@ -51739,7 +53946,8 @@
                       80
                     ],
                     "columnOrder": [],
-                    "detailWidth": 360
+                    "detailWidth": 360,
+                    "detailHidden": false
                   },
                   "matchmakerUnselectedQueues": [
                     "  ladder_1v1 ",
@@ -51850,6 +54058,7 @@
                   110,
                   80
                 ],
+                "detailHidden": false,
                 "detailWidth": 360,
                 "hideFoes": false,
                 "hideModded": true,
@@ -52048,6 +54257,15 @@
               "version": null,
               "visualize": false
             },
+            "mapPoolsSeen": [
+              {
+                "assignments": [
+                  91,
+                  92
+                ],
+                "queueName": "ladder1v1"
+              }
+            ],
             "matchmakerVetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -52065,6 +54283,7 @@
               "gameFull": true,
               "gameLaunched": true,
               "mapGenerated": true,
+              "mapPoolMutedQueues": [],
               "matchFound": true,
               "mentions": true,
               "newCustomGames": false,
@@ -52073,6 +54292,7 @@
               "partyInvites": true,
               "privateMessages": true,
               "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
               "reviewReminder": true,
               "sound": true,
               "soundChoiceVersion": 2,

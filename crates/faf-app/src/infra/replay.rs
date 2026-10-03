@@ -365,6 +365,9 @@ pub struct ReplayClient {
     /// of the local TCP proxy: the "Live Replays Workaround" setting, pushed in
     /// by the settings service (`ReplayPort::set_live_replay_pipe`).
     pipe_live_replay: std::sync::atomic::AtomicBool,
+    /// Where preparation steps are reported while a launch is being prepared.
+    /// See `ReplayPort::set_preparation_progress`.
+    preparation: std::sync::Mutex<Option<crate::ports::PreparationSink>>,
     /// Rebuilds a replay's map when it was made by the Neroxis generator.
     /// Generated maps exist in no vault, so staging cannot find them and the
     /// only way to put one on disk is to run the generator again.
@@ -457,8 +460,18 @@ impl ReplayClient {
             playback_lock: Mutex::new(()),
             vault_downloads: Mutex::new(()),
             pipe_live_replay: std::sync::atomic::AtomicBool::new(false),
+            preparation: std::sync::Mutex::new(None),
             map_generator,
             auto_generate_maps: std::sync::atomic::AtomicBool::new(true),
+        }
+    }
+
+    /// Pass one preparation step on to whoever is listening. See
+    /// `ReplayPort::set_preparation_progress`.
+    fn report_preparation(&self, step: crate::ports::PreparationStep) {
+        let sink = self.preparation.lock().unwrap().clone();
+        if let Some(sink) = sink {
+            sink(step);
         }
     }
 
@@ -1440,6 +1453,7 @@ impl ReplayPort for ReplayClient {
                 target_dir,
                 &version_info,
                 &self.config.exe_name,
+                &|step| self.report_preparation(step),
             )
             .await
             .map_err(|e| format!("could not prepare game for replay: {e}"))?
@@ -1695,6 +1709,10 @@ impl ReplayPort for ReplayClient {
 
     async fn list_local(&self, limit: usize) -> Result<Vec<LocalReplay>, String> {
         list_local_dir(&local_replays_dir(), limit).await
+    }
+
+    fn set_preparation_progress(&self, sink: Option<crate::ports::PreparationSink>) {
+        *self.preparation.lock().unwrap() = sink;
     }
 
     fn set_install_dir(&self, dir: Option<PathBuf>) {

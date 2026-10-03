@@ -51,6 +51,7 @@ const INITIAL: AppState = {
   replays: {
     status: { type: "idle" },
     lastWarning: null,
+    preparing: null,
     liveTracking: null,
     vault: [],
     vaultStatus: { type: "idle" },
@@ -472,6 +473,7 @@ const INITIAL: AppState = {
     },
     keptGeneratedMaps: [],
     matchmakerVetoes: [],
+    mapPoolsSeen: [],
     avatarHistory: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
     general: { startPage: "news", autoLogin: true, rememberTypedEntries: false },
@@ -536,6 +538,8 @@ const INITIAL: AppState = {
       mapGenerated: true,
       queueOpponentQueues: [],
       volume: 70,
+      repeatCooldownSeconds: 2,
+      mapPoolMutedQueues: [],
     },
     chat: {
       showJoinsParts: false,
@@ -602,6 +606,7 @@ const INITIAL: AppState = {
         columnWidths: [],
         columnOrder: [],
         detailWidth: 0,
+        detailHidden: false,
       },
       matchmakerUnselectedQueues: [],
       matchmakerFactions: ["UEF", "Aeon", "Cybran", "Seraphim"],

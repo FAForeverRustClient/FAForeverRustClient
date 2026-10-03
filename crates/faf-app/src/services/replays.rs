@@ -5,6 +5,8 @@
 //! (WebSocket relay, file decompression, launching FA) lives entirely behind
 //! the port: see `infra/replay.rs`.
 
+use crate::ports::PreparationStep;
+use faf_domain::state::ReplayPreparation;
 use faf_domain::state::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
     NotificationAction, NotificationKind, ReplayCommand, ReplayEvent, ReplayQuery,
@@ -57,13 +59,27 @@ async fn launch(
         }
     }
 
+    // What the preparation is doing, onto the starting dialog (#392).
+    let sink = out.clone();
+    ctx.ports
+        .replay
+        .set_preparation_progress(Some(std::sync::Arc::new(move |step: PreparationStep| {
+            sink.emit(ReplayEvent::Preparing {
+                step: ReplayPreparation {
+                    detail: step.detail,
+                    progress: step.progress,
+                },
+            });
+        })));
     let result = tokio::select! {
         result = work => result,
         () = token.cancelled() => {
+            ctx.ports.replay.set_preparation_progress(None);
             out.emit(ReplayEvent::Closed);
             return;
         }
     };
+    ctx.ports.replay.set_preparation_progress(None);
 
     if let Ok(mut slot) = ctx.replay_cancellation.lock() {
         // Disarmed, so a Cancel pressed after the game is up cannot idle the
@@ -240,7 +256,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 return;
             }
             match result {
-                Ok(search) => {
+                Ok(mut search) => {
                     // A full page is direct evidence that another one exists,
                     // and it outranks the reported count. The API's totals for
                     // a table this size can be capped or estimated, and
@@ -248,6 +264,12 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                     // total stranded the user on its last page with a dead
                     // Next button.
                     let full_page = search.replays.len() as u32 >= query.page_size;
+                    // A game still being played has a record and no end yet.
+                    // It belongs to the live tab, where it can be watched;
+                    // here it was a replay that did not exist (#399). Counted
+                    // for `full_page` above first, so dropping it never makes
+                    // a page look like the last one.
+                    search.replays.retain(|replay| !replay.end_time.is_empty());
                     let has_more = full_page
                         || search
                             .total_pages

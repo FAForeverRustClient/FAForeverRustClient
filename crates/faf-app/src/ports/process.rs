@@ -113,6 +113,15 @@ pub trait ProcessPort: Send + Sync {
         false
     }
 
+    /// Whether a game this port started, online or offline, is still running.
+    ///
+    /// Starting another one would replace it: the game slot holds one process
+    /// and ends the previous one. Java refuses instead (`GameRunner.startOffline`
+    /// and every other launch check `isRunning`), and so does "Play offline".
+    fn game_running(&self) -> bool {
+        false
+    }
+
     /// Launch the game. Returns once the process has been spawned. Errors if the
     /// executable can't be resolved or started.
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String>;

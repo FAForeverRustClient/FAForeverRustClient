@@ -8,7 +8,9 @@ function clearTransientDownload(status: ReplayDownloadStatus): ReplayDownloadSta
 export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplayState {
   switch (event.type) {
     case "connecting":
-      return { ...state, status: { type: "connecting" }, lastWarning: null };
+      return { ...state, status: { type: "connecting" }, lastWarning: null, preparing: null };
+    case "preparing":
+      return state.status.type === "connecting" ? { ...state, preparing: event.payload.step } : state;
     // Both of these clear a *transient* download. Watching a vault replay
     // downloads it into the cache as part of playback, so its completion has no
     // `vaultDownloaded` event to end the status bar's task; leaving it running
@@ -20,12 +22,14 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
         ...state,
         status: { type: "playing", payload: { uid: event.payload.uid } },
         lastWarning: event.payload.warning,
+        preparing: null,
         downloadStatus: clearTransientDownload(state.downloadStatus),
       };
     case "failed":
       return {
         ...state,
         status: { type: "failed", payload: { reason: event.payload.reason } },
+        preparing: null,
         downloadStatus: clearTransientDownload(state.downloadStatus),
       };
     // And so does a start that was called off: the download it had begun has
@@ -34,6 +38,7 @@ export function reduceReplays(state: ReplayState, event: ReplayEvent): ReplaySta
       return {
         ...state,
         status: { type: "idle" },
+        preparing: null,
         downloadStatus: clearTransientDownload(state.downloadStatus),
       };
     case "liveTrackingScheduled":

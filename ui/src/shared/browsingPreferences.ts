@@ -158,6 +158,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
     columnWidths: [],
     columnOrder: [],
     detailWidth: 0,
+    detailHidden: false,
   },
   matchmakerUnselectedQueues: [],
   matchmakerFactions: [...MATCHMAKER_FACTIONS],
@@ -339,6 +340,7 @@ function normalizeCustomGamesBrowser(
     detailWidth: preferences.detailWidth
       ? clampInteger(preferences.detailWidth, MIN_DETAIL_PX, MAX_DETAIL_PX, 0)
       : 0,
+    detailHidden: Boolean(preferences.detailHidden),
   };
 }
 

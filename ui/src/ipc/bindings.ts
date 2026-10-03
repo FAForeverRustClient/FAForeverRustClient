@@ -264,7 +264,14 @@ export type AuthCommand =
 /**  Try a previously remembered refresh token. No-op when none is stored. */
 { type: "restore" } |
 /**  Open the client without signing in, on local files only. */
-{ type: "playOffline" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
+{ type: "playOffline" } |
+/**
+ *  Start Forged Alliance on its own, into its own menu, without signing
+ *  in: the Java client's "Play Offline" (#397). Skirmish against the AI
+ *  needs no server. A failure is reported as a failed login, which is what
+ *  the login screen it is started from shows.
+ */
+{ type: "launchOfflineGame" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
 
 /**  The only way [`AuthState`] changes. */
 export type AuthEvent = { type: "loginStarted" } | { type: "loggedIn"; payload: {
@@ -1880,6 +1887,13 @@ export type CustomGameBrowserPreferences = {
 	 *  narrower and nothing offered that trade.
 	 */
 	detailWidth: number,
+	/**
+	 *  Whether the detail panel is folded away (#370, #377).
+	 *
+	 *  Kept apart from `detail_width` so folding it and unfolding it again
+	 *  brings back the width somebody dragged it to, rather than the default.
+	 */
+	detailHidden: boolean,
 };
 
 /**  A change to [`CustomGameBrowserPreferences`]. */
@@ -1895,6 +1909,7 @@ export type CustomGameBrowserPreferencesPatch = {
 	columnWidths?: number[],
 	columnOrder?: number[],
 	detailWidth?: number,
+	detailHidden?: boolean,
 };
 
 export type CustomGameFilterConstraint = "contains" | "starts" | "ends" | "equals" | "notEquals" | "above" | "below";
@@ -3888,6 +3903,14 @@ export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
 { type: "clearHostPrefill" } | { type: "matchmake"; payload: {
 	queueName: string,
 	start: boolean,
+} } |
+/**
+ *  Start a search in these queues: prepare the install and the pool maps,
+ *  then ask the server to queue the party. See
+ *  [`MatchmakingState::Preparing`].
+ */
+{ type: "startSearch"; payload: {
+	queueNames: string[],
 } } | { type: "leaveParty" } | { type: "kickPartyMember"; payload: {
 	playerId: number,
 } } |
@@ -4152,6 +4175,10 @@ export type MapDraft = {
 	/**
 	 *  A new picture of the event's own, as a `data:` URL, or `None` to keep
 	 *  the one it has. The service stores it under a file name of its own.
+	 *
+	 *  The client may also put FAF's own vault preview here, as its
+	 *  `https://content.faforever.com/` address: the port fetches that and
+	 *  sends the picture. See [`vault_preview_for_new_picture`].
 	 */
 	image?: string | null,
 	/**  Delete the stored picture. Ignored when a new one is sent. */
@@ -4389,6 +4416,16 @@ export type MapPool = {
 	 *  outright for a pool that is already out.
 	 */
 	publishAt: number | null,
+};
+
+/**
+ *  One queue's map pools as last seen: the pool-map assignment ids of all its
+ *  brackets, sorted. A new release changes them whether it reuses the pool or
+ *  brings a new one.
+ */
+export type MapPoolsSeen = {
+	queueName: string,
+	assignments: number[],
 };
 
 /**
@@ -4870,6 +4907,22 @@ export type MatchmakerQueue = {
 	numPlayers: number,
 	queuePopTimeSeconds: number,
 	/**
+	 *  When the queue pops next, as an RFC 3339 instant on this machine's clock.
+	 *
+	 *  The Java client counts down to the server's absolute `queue_pop_time`
+	 *  (`MatchmakingQueueItemController`). This is the same instant, but taken
+	 *  from `queue_pop_time_delta` at the moment the message arrived, so a
+	 *  clock that is a minute off does not move the countdown by a minute.
+	 *  Empty when the server sent no delta.
+	 *
+	 *  The countdown used to be anchored in the Play tab instead, at whatever
+	 *  moment the tab rendered the queue. A delta that had arrived while the
+	 *  tab was closed then started counting from the moment it was opened, so
+	 *  the timer ran late, and reached zero long after the pop it was counting
+	 *  down to.
+	 */
+	queuePopsAt: string,
+	/**
 	 *  The rating windows of the searches queued right now, at roughly 80%
 	 *  match quality. One entry per search, not per player.
 	 *
@@ -4885,7 +4938,21 @@ export type MatchmakerQueue = {
 	boundary75s: RatingRange[],
 };
 
-export type MatchmakingState = { type: "idle" } | { type: "searching"; payload: {
+export type MatchmakingState = { type: "idle" } |
+/**
+ *  The search was asked for and the client is getting ready for it: the
+ *  featured mod is being brought up to date and the queues' pool maps
+ *  downloaded, before the server is asked to queue anybody.
+ *
+ *  That is the Java client's order (`TeamMatchmakingService.joinQueues`):
+ *  a match can be made the moment the search starts, and the host then has
+ *  sixty seconds to start the game. A patch or a map download that begins
+ *  only at that point can take longer than that, and the server then
+ *  cancels the match for all of its players.
+ */
+{ type: "preparing"; payload: {
+	queueNames: string[],
+} } | { type: "searching"; payload: {
 	queueNames: string[],
 } } | { type: "matchFound"; payload: {
 	queueName: string,
@@ -5400,6 +5467,12 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  */
 "queueOpponent" |
 /**
+ *  A matchmaker queue was given a new map pool since the last login
+ *  (#406). On for every queue unless one is switched off: see
+ *  `NotificationPreferences::map_pool_muted_queues`.
+ */
+"mapPoolReleased" |
+/**
  *  A map or mod publish finished after its dialog was hidden. Closing the
  *  dialog does not stop a publish, so this is the only place its outcome
  *  can still be read.
@@ -5492,6 +5565,20 @@ export type NotificationPreferences = {
 	queueOpponentQueues: string[],
 	/**  Sound volume from 0 to 100. */
 	volume: number,
+	/**
+	 *  Seconds after one notification of a kind before another of the same
+	 *  kind toasts, sounds or reaches the desktop again (#382). Zero announces
+	 *  every one. The later ones still land in the notification history.
+	 */
+	repeatCooldownSeconds: number,
+	/**
+	 *  The matchmaker queues whose new map pools are not announced (#406).
+	 *
+	 *  The ones switched off rather than the ones switched on, so every queue
+	 *  is announced by default, a queue added later included, which is what
+	 *  the request asked for: a new pool is a reason to queue again.
+	 */
+	mapPoolMutedQueues: string[],
 };
 
 /**  A change to [`NotificationPreferences`]. */
@@ -5519,6 +5606,8 @@ export type NotificationPreferencesPatch = {
 	mapGenerated?: boolean,
 	queueOpponentQueues?: string[],
 	volume?: number,
+	repeatCooldownSeconds?: number,
+	mapPoolMutedQueues?: string[],
 	sounds?: NotificationSoundChoicesPatch,
 };
 
@@ -7114,6 +7203,10 @@ export type ReplayDownloadStatus = { type: "idle" } | { type: "downloading"; pay
 } };
 
 export type ReplayEvent = { type: "connecting" } |
+/**  One step of the launch being prepared. See [`ReplayState::preparing`]. */
+{ type: "preparing"; payload: {
+	step: ReplayPreparation,
+} } |
 /**
  *  `warning` carries a non-fatal prep-step issue (see
  *  [`ReplayState::last_warning`]): `None` when prep was clean/skipped.
@@ -7330,6 +7423,13 @@ export type ReplayPoint = {
 	source: number,
 };
 
+/**  One step of a replay launch's preparation, as the dialog shows it. */
+export type ReplayPreparation = {
+	detail: string,
+	/**  Percent, when the step can say how far along it is. */
+	progress: number | null,
+};
+
 /**
  *  Everything the vault search can be narrowed by.
  *
@@ -7491,6 +7591,13 @@ export type ReplayState = {
 	 *  a non-fatal prep step failed. Cleared on the next [`ReplayEvent::Connecting`].
 	 */
 	lastWarning: string | null,
+	/**
+	 *  What the launch in progress is doing right now (#392): downloading an
+	 *  old engine build file by file can take minutes on a slow line, and a
+	 *  bar that only says "starting" read as stuck. Set while
+	 *  [`ReplayStatus::Connecting`], cleared by every change of status.
+	 */
+	preparing?: ReplayPreparation | null,
 	/**
 	 *  At most one delayed live replay is tracked, matching the Java client:
 	 *  scheduling another replaces the previous choice.
@@ -8133,6 +8240,13 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	vetoes: PlayerVeto[],
 } } |
 /**
+ *  The map pools seen this session, replacing the remembered ones. See
+ *  [`SettingsState::map_pools_seen`].
+ */
+{ type: "mapPoolsSeen"; payload: {
+	seen: MapPoolsSeen[],
+} } |
+/**
  *  The remembered avatar choices, replaced whole; see
  *  [`SettingsState::avatar_history`].
  */
@@ -8205,6 +8319,12 @@ export type SettingsState = {
 	 *  itself rather than being replayed wrong forever.
 	 */
 	matchmakerVetoes?: PlayerVeto[],
+	/**
+	 *  The map pools each matchmaker queue had when the client last looked,
+	 *  so a new one can be announced (#406). Nothing else in FAF says that a
+	 *  pool changed: the client compares what it is served with this.
+	 */
+	mapPoolsSeen?: MapPoolsSeen[],
 	/**
 	 *  The avatars this account was seen choosing, newest first; an empty
 	 *  string is a choice of none. When the newest stops being allowed (a
