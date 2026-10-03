@@ -956,7 +956,6 @@
         "liveReplayColumns": [],
         "coopBoardColumns": [],
         "matchmakerRecentColumns": [],
-        "columnOrders": {},
         "modPresets": [],
         "leaderboardRatingColumns": [
           "games",
@@ -2150,7 +2149,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -49657,7 +49655,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -49926,7 +49923,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -50204,7 +50200,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -50477,7 +50472,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -50750,7 +50744,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -51033,7 +51026,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -51322,7 +51314,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -51946,7 +51937,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -52259,7 +52249,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -52574,7 +52563,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": false,
@@ -52965,7 +52953,6 @@
                   ],
                   "coopBoardColumns": [],
                   "matchmakerRecentColumns": [],
-                  "columnOrders": {},
                   "modPresets": [],
                   "leaderboardRatingColumns": [
                     "games",
@@ -52990,7 +52977,6 @@
               "uiScale": 100
             },
             "browsing": {
-              "columnOrders": {},
               "coopBoardColumns": [],
               "customGamesBrowser": {
                 "applyFilters": true,

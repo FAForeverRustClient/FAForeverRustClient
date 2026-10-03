@@ -8,7 +8,6 @@ import { replayDelayRemaining, type LiveSortKey, type SortDirection } from "../.
 import { useTranslation } from "../../../i18n/useTranslation";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
 import { useColumnWidths } from "../../../shared/hooks/useColumnWidths";
-import { useColumnOrder, type ColumnOrder } from "../../../shared/hooks/useColumnOrder";
 
 function SortHeader({
   label,
@@ -18,9 +17,6 @@ function SortHeader({
   onSort,
   className,
   handle,
-  column,
-  arrangement,
-  moveHint,
 }: {
   label: string;
   sortKey: LiveSortKey;
@@ -29,20 +25,11 @@ function SortHeader({
   onSort: (key: LiveSortKey) => void;
   className?: string;
   handle?: JSX.Element;
-  column: number;
-  arrangement: ColumnOrder;
-  moveHint: string;
 }) {
   const active = currentKey === sortKey;
-  const target = arrangement.dropTarget === column ? "is-drop-target" : "";
   return (
-    <th
-      className={[className, target].filter(Boolean).join(" ") || undefined}
-      aria-sort={active ? direction : "none"}
-      {...arrangement.dropProps(column)}
-    >
-      {/* The sort button is also what the column is picked up by (#409). */}
-      <button onClick={() => onSort(sortKey)} title={moveHint} {...arrangement.grabProps(column)}>
+    <th className={className} aria-sort={active ? direction : "none"}>
+      <button onClick={() => onSort(sortKey)}>
         {label}
         <span aria-hidden="true">{active ? (direction === "ascending" ? "↑" : "↓") : "↕"}</span>
       </button>
@@ -50,18 +37,6 @@ function SortHeader({
     </th>
   );
 }
-
-/** The sort each column stands for, in designed order; `null` for one with no order. */
-const COLUMN_SORTS: readonly (LiveSortKey | null)[] = [
-  null,
-  "started",
-  "title",
-  "players",
-  "rating",
-  "host",
-  "mods",
-  null,
-];
 
 /**
  * The designed widths, in the order the columns are drawn, the Watch column
@@ -103,12 +78,7 @@ export function LiveReplayTable(props: Props) {
   // interval scales timer work with the result count (75 rows per batch).
   // Mature rows receive a stable zero wait, so React.memo still skips them on
   // the one-second ticks needed by newly launched games.
-  const arrangement = useColumnOrder("liveReplays", DEFAULT_COLUMN_PX.length);
-  const { order } = arrangement;
-  const columns = useColumnWidths("liveReplayColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN, "table", 80, {
-    list: "liveReplays",
-    order,
-  });
+  const columns = useColumnWidths("liveReplayColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN);
   const [ageNow, setAgeNow] = useState(() => Date.now());
   const [waitNow, setWaitNow] = useState(() => Date.now());
   const hasDelayedReplay = props.games.some(({ game }) => replayDelayRemaining(game, waitNow) > 0);
@@ -141,57 +111,18 @@ export function LiveReplayTable(props: Props) {
    * the cursor and no other divider moves. The first column has nothing in
    * front of it; every other cell, the Watch column included, carries one.
    */
-  const divider = (boundary: number) => {
-    const before = order[boundary - 1];
-    return (
-      <ResizeHandle
-        className="live-replay-col-handle is-ruled"
-        label={t("lobby.browser.resizeColumn", {
-          column: columnLabels[before === FLEXIBLE_COLUMN ? order[boundary] : before],
-        })}
-        onStart={columns.onStart}
-        onDrag={(delta) => columns.onDrag(boundary, delta)}
-        onEnd={columns.onCommit}
-        onReset={columns.onReset}
-      />
-    );
-  };
-  const moveHint = t("common.moveColumnHint");
-  const sortKeyed = (column: number, position: number) => {
-    const sortKey = COLUMN_SORTS[column];
-    const handle = position > 0 ? divider(position) : undefined;
-    const className = column === 3 || column === 4 ? "live-number-column" : undefined;
-    if (sortKey === null) {
-      const target = arrangement.dropTarget === column ? " is-drop-target" : "";
-      return (
-        <th
-          key={column}
-          className={`${column === 0 ? "live-map-column" : "live-watch-column"}${target}`}
-          {...arrangement.dropProps(column)}
-        >
-          {handle}
-          <span className="live-replay-head-label" tabIndex={0} title={moveHint} {...arrangement.grabProps(column)}>
-            {columnLabels[column]}
-          </span>
-        </th>
-      );
-    }
-    return (
-      <SortHeader
-        key={column}
-        label={columnLabels[column]}
-        sortKey={sortKey}
-        currentKey={props.sortKey}
-        direction={props.sortDirection}
-        onSort={props.onSort}
-        className={className}
-        handle={handle}
-        column={column}
-        arrangement={arrangement}
-        moveHint={moveHint}
-      />
-    );
-  };
+  const divider = (boundary: number) => (
+    <ResizeHandle
+      className="live-replay-col-handle is-ruled"
+      label={t("lobby.browser.resizeColumn", {
+        column: columnLabels[boundary - 1 === FLEXIBLE_COLUMN ? boundary : boundary - 1],
+      })}
+      onStart={columns.onStart}
+      onDrag={(delta) => columns.onDrag(boundary, delta)}
+      onEnd={columns.onCommit}
+      onReset={columns.onReset}
+    />
+  );
 
   return (
     <div className="live-replay-table-wrap surface-panel">
@@ -204,17 +135,24 @@ export function LiveReplayTable(props: Props) {
             it for one release, and the table then stopped a third of the way
             across a wide window while the titles beside it were cut off. */}
         <colgroup>
-          {columns.drawn.map((width, position) =>
-            position === columns.flexible ? (
-              <col key={columnLabels[order[position]]} />
+          {columns.drawn.map((width, index) =>
+            index === FLEXIBLE_COLUMN ? (
+              <col key={columnLabels[index]} />
             ) : (
-              <col key={columnLabels[order[position]]} style={{ width: `${width}px` }} />
+              <col key={columnLabels[index]} style={{ width: `${width}px` }} />
             ),
           )}
         </colgroup>
         <thead>
           <tr>
-            {order.map((column, position) => sortKeyed(column, position))}
+            <th className="live-map-column">{columnLabels[0]}</th>
+            <SortHeader label={columnLabels[1]} sortKey="started" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={divider(1)} />
+            <SortHeader label={columnLabels[2]} sortKey="title" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={divider(2)} />
+            <SortHeader label={columnLabels[3]} sortKey="players" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" handle={divider(3)} />
+            <SortHeader label={columnLabels[4]} sortKey="rating" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} className="live-number-column" handle={divider(4)} />
+            <SortHeader label={columnLabels[5]} sortKey="host" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={divider(5)} />
+            <SortHeader label={columnLabels[6]} sortKey="mods" currentKey={props.sortKey} direction={props.sortDirection} onSort={props.onSort} handle={divider(6)} />
+            <th className="live-watch-column">{divider(7)}{columnLabels[7]}</th>
           </tr>
         </thead>
         <tbody>
@@ -231,7 +169,6 @@ export function LiveReplayTable(props: Props) {
               presentation={presentation}
               mapSize={mapSize}
               tracking={props.tracking}
-              order={order}
             />
           ))}
         </tbody>

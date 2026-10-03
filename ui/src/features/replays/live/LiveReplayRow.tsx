@@ -313,7 +313,6 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   presentation,
   mapSize,
   tracking,
-  order,
 }: {
   busy: boolean;
   expanded: boolean;
@@ -326,8 +325,6 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   /** "10 km", or null when nothing knows it. */
   mapSize: string | null;
   tracking: LiveReplayTracking | null;
-  /** The designed column at each drawn position (#409). */
-  order: readonly number[];
 }) {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -411,43 +408,6 @@ export const LiveReplayRow = memo(function LiveReplayRow({
       : []),
   ];
 
-  // In designed order; drawn in the order the header is in (#409).
-  const cells = [
-    <td key="map"><LiveMapThumbnail mapName={game.map} presentation={presentation} /></td>,
-    <td className="live-start-cell" key="started">
-      <strong>{started ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" }) : "N/A"}</strong>
-      <LiveReplayAge game={game} now={ageNow} />
-    </td>,
-    <td key="game">
-      <button className="live-game-title" onClick={() => onToggle(game.id)} aria-expanded={expanded}>
-        <strong>{game.title || presentation.displayName}</strong>
-        <small>{mapLabel} · {prettyGameType(game.gameType)}</small>
-      </button>
-    </td>,
-    <td className="live-number-cell" key="players"><strong>{game.players}</strong><small>/ {game.maxPlayers}</small></td>,
-    <td className="live-rating-cell" key="rating">{game.averageRating > 0 ? game.averageRating : "N/A"}</td>,
-    <td className="live-host-cell" key="host"><LivePlayerName name={game.host} onMenu={onPlayerMenu} /></td>,
-    <td className="live-mods-cell" key="mods">
-      <span>{game.modName || "faf"}</span>
-      <small title={simMods.join(", ")}>
-        {simMods.length === 0
-          ? t("replays.live.noSimMods")
-          : simMods.length === 1
-            ? simMods[0]
-            : t("replays.live.moreSimMods", { first: simMods[0], count: simMods.length - 1 })}
-      </small>
-    </td>,
-    <td className="live-watch-column-cell" key="watch">
-      <LiveWatchButton
-        busy={busy}
-        game={game}
-        tracking={tracking}
-        waitSeconds={waitSeconds}
-        onMenuToggle={setMenuOpen}
-      />
-    </td>,
-  ];
-
   return (
     <>
       <tr
@@ -468,7 +428,39 @@ export const LiveReplayRow = memo(function LiveReplayRow({
           }
         }}
       >
-        {order.map((column) => cells[column])}
+        <td><LiveMapThumbnail mapName={game.map} presentation={presentation} /></td>
+        <td className="live-start-cell">
+          <strong>{started ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" }) : "N/A"}</strong>
+          <LiveReplayAge game={game} now={ageNow} />
+        </td>
+        <td>
+          <button className="live-game-title" onClick={() => onToggle(game.id)} aria-expanded={expanded}>
+            <strong>{game.title || presentation.displayName}</strong>
+            <small>{mapLabel} · {prettyGameType(game.gameType)}</small>
+          </button>
+        </td>
+        <td className="live-number-cell"><strong>{game.players}</strong><small>/ {game.maxPlayers}</small></td>
+        <td className="live-rating-cell">{game.averageRating > 0 ? game.averageRating : "N/A"}</td>
+        <td className="live-host-cell"><LivePlayerName name={game.host} onMenu={onPlayerMenu} /></td>
+        <td className="live-mods-cell">
+          <span>{game.modName || "faf"}</span>
+          <small title={simMods.join(", ")}>
+            {simMods.length === 0
+              ? t("replays.live.noSimMods")
+              : simMods.length === 1
+                ? simMods[0]
+                : t("replays.live.moreSimMods", { first: simMods[0], count: simMods.length - 1 })}
+          </small>
+        </td>
+        <td className="live-watch-column-cell">
+          <LiveWatchButton
+            busy={busy}
+            game={game}
+            tracking={tracking}
+            waitSeconds={waitSeconds}
+            onMenuToggle={setMenuOpen}
+          />
+        </td>
       </tr>
       {expanded && (
         <tr className="live-replay-detail-row">

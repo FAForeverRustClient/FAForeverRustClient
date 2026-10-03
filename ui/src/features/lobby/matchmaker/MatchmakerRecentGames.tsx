@@ -21,7 +21,6 @@ import { MapThumbnail } from "../../../shared/components/MapThumbnail";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { useColumnWidths } from "../../../shared/hooks/useColumnWidths";
-import { useColumnOrder } from "../../../shared/hooks/useColumnOrder";
 import { mapPresentation } from "../../../shared/mapPresentation";
 import { openPlayerCard } from "../../../shared/playerCardActions";
 import { requestPlayerCardTab } from "../../../shared/playerCardTabIntent";
@@ -70,12 +69,7 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
   const status = useAppStore((state) => state.state.replays.recentMatchmakerStatus);
   // Draggable like the live-replay table, and remembered like it: a table of
   // its own, so a drag here never moves the live tab's columns.
-  const arrangement = useColumnOrder("matchmakerRecent", DEFAULT_COLUMN_PX.length);
-  const { order } = arrangement;
-  const columns = useColumnWidths("matchmakerRecentColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN, "table", 80, {
-    list: "matchmakerRecent",
-    order,
-  });
+  const columns = useColumnWidths("matchmakerRecentColumns", DEFAULT_COLUMN_PX, FLEXIBLE_COLUMN);
   const { openPlayerMenu, playerMenu } = usePlayerMenu();
 
   // Once per visit to the tab, and again for another account.
@@ -105,18 +99,17 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
     t("lobby.matchmaker.recent.ratingChange"),
     t("lobby.matchmaker.recent.column.replay"),
   ];
-  /** The divider in front of drawn position `boundary`, trading width with the one before it. */
+  /** The divider in front of a column, trading width with the one before it. */
   const divider = (boundary: number) => (
     <ResizeHandle
       className="matchmaker-recent-col-handle is-ruled"
-      label={t("lobby.browser.resizeColumn", { column: columnLabels[order[boundary]] })}
+      label={t("lobby.browser.resizeColumn", { column: columnLabels[boundary] })}
       onStart={columns.onStart}
       onDrag={(delta) => columns.onDrag(boundary, delta)}
       onEnd={columns.onCommit}
       onReset={columns.onReset}
     />
   );
-  const moveHint = t("common.moveColumnHint");
 
   return (
     <section className="matchmaker-card surface-panel matchmaker-recent" aria-labelledby="matchmaker-recent-title">
@@ -145,31 +138,19 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
         <div className="matchmaker-recent-table-wrap">
           <table className="matchmaker-recent-table" ref={columns.containerRef}>
             <colgroup>
-              {columns.drawn.map((width, position) =>
-                position === columns.flexible
-                  ? <col key={columnLabels[order[position]]} />
-                  : <col key={columnLabels[order[position]]} style={{ width: `${width}px` }} />,
+              {columns.drawn.map((width, index) =>
+                index === FLEXIBLE_COLUMN
+                  ? <col key={columnLabels[index]} />
+                  : <col key={columnLabels[index]} style={{ width: `${width}px` }} />,
               )}
             </colgroup>
             <thead>
               <tr>
-                {/* Movable like every list's columns (issue 409): a header
-                    is picked up by its label and dropped on another. The
-                    preview column has no words, only its aria label. */}
-                {order.map((column, position) => (
-                  <th
-                    key={columnLabels[column]}
-                    className={[
-                      column === 0 ? "matchmaker-recent-preview-column" : "",
-                      arrangement.dropTarget === column ? "is-drop-target" : "",
-                    ].filter(Boolean).join(" ") || undefined}
-                    aria-label={column === 0 ? columnLabels[0] : undefined}
-                    {...arrangement.dropProps(column)}
-                  >
-                    {position > 0 && divider(position)}
-                    <span tabIndex={0} title={moveHint} {...arrangement.grabProps(column)}>
-                      {column === 0 ? "" : columnLabels[column]}
-                    </span>
+                <th className="matchmaker-recent-preview-column" aria-label={columnLabels[0]} />
+                {columnLabels.slice(1).map((label, offset) => (
+                  <th key={label}>
+                    {divider(offset + 1)}
+                    {label}
                   </th>
                 ))}
               </tr>
@@ -180,61 +161,57 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
                 const outcome = parseOutcome(side.me?.outcome ?? "");
                 const change = side.me?.ratingChange ?? null;
                 const mapName = mapPresentation(vault, game.map).displayName;
-                // In designed order; drawn in the order the header is in.
-                const cells = [
-                  <td key="preview">
-                    <MapThumbnail
-                      mapName={game.map}
-                      vault={vault}
-                      url={game.mapThumbnailUrl || null}
-                      className="matchmaker-recent-thumb"
-                      placeholderClassName="matchmaker-recent-thumb matchmaker-recent-thumb-empty"
-                    />
-                  </td>,
-                  <td key="map" className="matchmaker-recent-map" title={mapName}>{mapName}</td>,
-                  <td key="mode" className="matchmaker-recent-mode">{side.mode}</td>,
-                  <td key="opponents" className="matchmaker-recent-opponents" title={side.opponents.join(", ")}>
-                    {/* Each name as the rest of the client draws it: the
-                        reader's friend, foe and custom colours, and the
-                        same right-click menu as a replay lineup. */}
-                    {side.opponents.map((name, index) => (
-                      <span key={name} onContextMenu={(event) => openPlayerMenu(name, event)}>
-                        {index > 0 && ", "}
-                        <PlayerName name={name} />
-                      </span>
-                    ))}
-                  </td>,
-                  <td key="when" className="muted">{formatAgeOrDate(game.startTime)}</td>,
-                  <td key="result" className={`matchmaker-recent-outcome${outcome ? ` is-${outcome}` : ""}`}>
-                    {outcomeLabel(side.me?.outcome ?? "") || t("lobby.matchmaker.recent.noResult")}
-                  </td>,
-                  <td key="change" className={`matchmaker-recent-change${change === null ? "" : change >= 0 ? " is-up" : " is-down"}`}>
-                    {change === null ? "" : signed(change)}
-                  </td>,
-                  <td key="replay">
-                    <span className="matchmaker-recent-actions">
-                      <Button
-                        disabled={!game.replayAvailable}
-                        title={game.replayAvailable ? t("lobby.matchmaker.recent.watchHint") : t("lobby.matchmaker.recent.notYetAvailable")}
-                        onClick={() => ipc.send({ kind: "Replays", command: { type: "watchVault", payload: { uid: game.uid } } })}
-                      >
-                        <Icon name="play" size={13} /> {t("lobby.matchmaker.recent.watch")}
-                      </Button>
-                      {/* Icon only, so it needs words on hover as well as
-                          for a screen reader (issue 361). */}
-                      <Button
-                        onClick={() => openReplay(game.uid)}
-                        aria-label={t("lobby.matchmaker.recent.openAria", { id: game.uid })}
-                        title={t("lobby.matchmaker.recent.openAria", { id: game.uid })}
-                      >
-                        <Icon name="replays" size={13} />
-                      </Button>
-                    </span>
-                  </td>,
-                ];
                 return (
                   <tr key={game.uid} className="matchmaker-recent-row">
-                    {order.map((column) => cells[column])}
+                    <td>
+                      <MapThumbnail
+                        mapName={game.map}
+                        vault={vault}
+                        url={game.mapThumbnailUrl || null}
+                        className="matchmaker-recent-thumb"
+                        placeholderClassName="matchmaker-recent-thumb matchmaker-recent-thumb-empty"
+                      />
+                    </td>
+                    <td className="matchmaker-recent-map" title={mapName}>{mapName}</td>
+                    <td className="matchmaker-recent-mode">{side.mode}</td>
+                    <td className="matchmaker-recent-opponents" title={side.opponents.join(", ")}>
+                      {/* Each name as the rest of the client draws it: the
+                          reader's friend, foe and custom colours, and the
+                          same right-click menu as a replay lineup. */}
+                      {side.opponents.map((name, index) => (
+                        <span key={name} onContextMenu={(event) => openPlayerMenu(name, event)}>
+                          {index > 0 && ", "}
+                          <PlayerName name={name} />
+                        </span>
+                      ))}
+                    </td>
+                    <td className="muted">{formatAgeOrDate(game.startTime)}</td>
+                    <td className={`matchmaker-recent-outcome${outcome ? ` is-${outcome}` : ""}`}>
+                      {outcomeLabel(side.me?.outcome ?? "") || t("lobby.matchmaker.recent.noResult")}
+                    </td>
+                    <td className={`matchmaker-recent-change${change === null ? "" : change >= 0 ? " is-up" : " is-down"}`}>
+                      {change === null ? "" : signed(change)}
+                    </td>
+                    <td>
+                      <span className="matchmaker-recent-actions">
+                        <Button
+                          disabled={!game.replayAvailable}
+                          title={game.replayAvailable ? t("lobby.matchmaker.recent.watchHint") : t("lobby.matchmaker.recent.notYetAvailable")}
+                          onClick={() => ipc.send({ kind: "Replays", command: { type: "watchVault", payload: { uid: game.uid } } })}
+                        >
+                          <Icon name="play" size={13} /> {t("lobby.matchmaker.recent.watch")}
+                        </Button>
+                        {/* Icon only, so it needs words on hover as well as
+                            for a screen reader (issue 361). */}
+                        <Button
+                          onClick={() => openReplay(game.uid)}
+                          aria-label={t("lobby.matchmaker.recent.openAria", { id: game.uid })}
+                          title={t("lobby.matchmaker.recent.openAria", { id: game.uid })}
+                        >
+                          <Icon name="replays" size={13} />
+                        </Button>
+                      </span>
+                    </td>
                   </tr>
                 );
               })}
