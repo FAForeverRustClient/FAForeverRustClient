@@ -891,9 +891,9 @@
         "preRelease": false
       },
       "browsing": {
-        "customGamesView": "tiles",
+        "customGamesView": "list",
         "replaysView": "tiles",
-        "liveReplayView": "list",
+        "liveReplayView": "tiles",
         "customGamesBrowser": {
           "sort": "players",
           "sortReversed": false,
@@ -2175,7 +2175,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -2218,7 +2218,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -50358,7 +50358,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -50401,7 +50401,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -50632,7 +50632,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -50675,7 +50675,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -50915,7 +50915,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -50958,7 +50958,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -51193,7 +51193,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -51236,7 +51236,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -51471,7 +51471,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -51514,7 +51514,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -51759,7 +51759,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -51802,7 +51802,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -52053,7 +52053,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -52096,7 +52096,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -52334,6 +52334,7 @@
                 "applyFilters": false,
                 "columnOrder": [],
                 "columnWidths": [],
+                "detailHidden": false,
                 "detailWidth": 0,
                 "hideFoes": false,
                 "hideModded": false,
@@ -52343,7 +52344,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -52386,7 +52387,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -52642,7 +52643,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -52685,7 +52686,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -52988,7 +52989,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -53031,7 +53032,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -53310,7 +53311,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -53353,7 +53354,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
@@ -53634,7 +53635,7 @@
                 "sort": "players",
                 "sortReversed": false
               },
-              "customGamesView": "tiles",
+              "customGamesView": "list",
               "favoriteMaps": [],
               "favoriteMods": [],
               "hostCoop": {
@@ -53677,7 +53678,7 @@
                 "search": ""
               },
               "liveReplayOrder": [],
-              "liveReplayView": "list",
+              "liveReplayView": "tiles",
               "mapVaultPreset": "recommended",
               "mapVaultSort": "",
               "matchmakerChatWidth": 0,
