@@ -11,4 +11,11 @@ pub trait NotificationSoundsPort: Send + Sync {
 
     /// Delete the stored sound. A sound that is already gone is not an error.
     fn remove(&self, name: &str) -> Result<(), String>;
+
+    /// Whether the stored sound's file is there, for refusing a setting that
+    /// would name one that is not. Defaults to "any acceptable name", which is
+    /// what a port with no directory behind it can say.
+    fn exists(&self, name: &str) -> bool {
+        self.accepts(name)
+    }
 }

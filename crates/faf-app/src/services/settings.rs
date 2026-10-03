@@ -13,6 +13,7 @@
 //! here rather than behind a separate command means there is no way to change a
 //! path without the check running.
 
+use faf_domain::state::settings as domain;
 use faf_domain::state::{
     ChatEvent, ClientNotification, InstallEvent, MapGeneratorEvent, NavEvent, NotificationAction,
     NotificationEvent, NotificationKind, SettingsCommand, SettingsEvent,
@@ -83,7 +84,11 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             // Persist the migration once. Explicit user choices always win, so
             // subsequent starts do not need to inspect the reference configs.
             if imported_reference_install {
-                ctx.ports.settings.save(&settings).await;
+                if let Err(reason) = ctx.ports.settings.save(&settings).await {
+                    // Not fatal: the paths are in state for this session, and
+                    // the next start simply discovers them again.
+                    tracing::error!(%reason, "could not save the discovered install paths");
+                }
             }
             let start_page = settings.general.start_page;
             let show_joins_parts = settings.chat.show_joins_parts;
@@ -230,7 +235,23 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             merge(ctx, out, |settings| {
                 let mut next = settings.clone();
                 next.notifications = patch.apply_to(next.notifications);
-                let preferences = next.normalized().notifications;
+                let mut preferences = next.normalized().notifications;
+                // A sound being removed, or already gone, cannot be newly
+                // chosen: the dropdown may still list it while the removal
+                // runs, and choosing it then would leave a saved setting
+                // naming a deleted file. Checked under the merge lock, which
+                // is also where the removal marks it, so the two cannot cross.
+                let removing = ctx
+                    .sounds_being_removed
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                if domain::refuse_new_custom_sounds(
+                    &settings.notifications.sounds,
+                    &mut preferences.sounds,
+                    |name| removing.contains(name) || !ctx.ports.notification_sounds.exists(name),
+                ) {
+                    tracing::info!("refused a notification sound that is being removed or is gone");
+                }
                 (SettingsEvent::NotificationsChanged { preferences }, ())
             });
             persist(ctx, out).await;
@@ -301,6 +322,41 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             persist(ctx, out).await;
         }
+        // One entry of a list or map, applied to the collection as state
+        // holds it under the merge lock. The domain functions normalise the
+        // group afterwards, exactly as a patch would.
+        SettingsCommand::SetListMember {
+            list,
+            value,
+            member,
+        } => {
+            // Nothing to sync afterwards: none of these lists is held by a
+            // port, and the chat service reads the muted players from state.
+            merge(ctx, out, |settings| {
+                let event = domain::list_member_changed(settings, list, &value, member);
+                (event, ())
+            });
+            persist(ctx, out).await;
+        }
+        SettingsCommand::SetPlayerNameColor { player, color } => {
+            merge(ctx, out, |settings| {
+                let event = domain::player_name_color_changed(settings, &player, color.as_deref());
+                (event, ())
+            });
+            persist(ctx, out).await;
+        }
+        SettingsCommand::SaveModPreset { preset } => {
+            merge(ctx, out, |settings| {
+                (domain::mod_preset_saved(settings, preset), ())
+            });
+            persist(ctx, out).await;
+        }
+        SettingsCommand::DeleteModPreset { name } => {
+            merge(ctx, out, |settings| {
+                (domain::mod_preset_deleted(settings, &name), ())
+            });
+            persist(ctx, out).await;
+        }
         SettingsCommand::SetMapGenerator { preferences } => {
             out.emit(SettingsEvent::MapGeneratorChanged { preferences });
             persist(ctx, out).await;
@@ -348,17 +404,22 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// either emitted, and the second would carry the first's field back. The lock
 /// (`ServiceCtx::settings_merge`) closes that window. It is held only across
 /// the read and the emit, which never await, and released before persisting.
-fn merge<R>(
+///
+/// The change may also be `None`, for a step that turns out to change nothing
+/// and should not emit.
+fn merge<E: Into<Option<SettingsEvent>>, R>(
     ctx: &ServiceCtx,
     out: &EventSink,
-    change: impl FnOnce(&faf_domain::state::SettingsState) -> (SettingsEvent, R),
+    change: impl FnOnce(&faf_domain::state::SettingsState) -> (E, R),
 ) -> R {
     let _merging = ctx
         .settings_merge
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let (event, result) = out.with_state(|state| change(&state.settings));
-    out.emit(event);
+    if let Some(event) = event.into() {
+        out.emit(event);
+    }
     result
 }
 
@@ -378,21 +439,34 @@ fn merge<R>(
 /// which `Loaded` is about to overwrite in state anyway. Losing one deliberate
 /// click beats erasing everything the player ever configured.
 ///
-/// Returns whether a write was attempted, for the one caller that must not go
-/// on unless it was: [`remove_notification_sound`]. Attempted, not succeeded,
-/// because [`crate::ports::SettingsPort::save`] is best-effort and reports
-/// nothing back.
-pub(crate) async fn persist(ctx: &ServiceCtx, out: &EventSink) -> bool {
+/// A failed write is logged and otherwise ignored: the change is in state for
+/// this session, and the next successful write of the whole document carries
+/// it to disk. The one caller that must not go on after a failure uses
+/// [`try_persist`] instead.
+pub(crate) async fn persist(ctx: &ServiceCtx, out: &EventSink) {
+    if let Err(reason) = try_persist(ctx, out).await {
+        tracing::warn!(%reason, "settings were not saved");
+    }
+}
+
+/// [`persist`], reporting whether the document actually reached the store.
+///
+/// For [`remove_notification_sound`], which deletes a file on the strength of
+/// the settings no longer naming it. "Attempted" is not enough there: a write
+/// that failed on disk left the saved preferences still pointing at the sound,
+/// and the file went anyway, so the next start played nothing under a
+/// "(missing)" label.
+async fn try_persist(ctx: &ServiceCtx, out: &EventSink) -> Result<(), String> {
     if !ctx.settings_loaded.has_loaded() {
-        tracing::warn!(
-            "a settings change arrived before the settings file was read; not writing defaults over it"
+        return Err(
+            "a settings change arrived before the settings file was read; not writing \
+             defaults over it"
+                .to_string(),
         );
-        return false;
     }
     let _guard = ctx.settings_persist.acquire().await;
     let settings = out.with_state(|state| state.settings.clone());
-    ctx.ports.settings.save(&settings).await;
-    true
+    ctx.ports.settings.save(&settings).await
 }
 
 /// Clear every reference to one added sound, write that down, and only then
@@ -418,30 +492,48 @@ async fn remove_notification_sound(name: &str, ctx: &ServiceCtx, out: &EventSink
         );
         return;
     }
-    let cleared = out.with_state(|state| {
-        let current = &state.settings.notifications;
-        faf_domain::state::settings::without_custom_sound(&current.sounds, name).map(|sounds| {
-            faf_domain::state::NotificationPreferences {
-                sounds,
-                ..current.clone()
+    // Under the merge lock like every other settings change: read on its own,
+    // a notifications patch landing between this read and the emit would be
+    // overwritten by the copy taken here.
+    merge(ctx, out, |settings| {
+        // Marked in the same locked step that clears the references, so no
+        // notifications change can choose the sound again in between. See
+        // `ServiceCtx::sounds_being_removed`.
+        ctx.sounds_being_removed
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(name.to_owned());
+        let current = &settings.notifications;
+        let cleared = domain::without_custom_sound(&current.sounds, name).map(|sounds| {
+            SettingsEvent::NotificationsChanged {
+                preferences: faf_domain::state::NotificationPreferences {
+                    sounds,
+                    ..current.clone()
+                },
             }
-        })
+        });
+        (cleared, ())
     });
-    if let Some(preferences) = cleared {
-        out.emit(SettingsEvent::NotificationsChanged { preferences });
-        if !persist(ctx, out).await {
-            notifications::add_required(
-                out,
-                NotificationKind::Error,
-                "Could not remove the sound",
-                format!(
-                    "{name} is still in use by a saved notification setting, and the settings \
-                     could not be written yet. The file was kept; try again in a moment."
-                ),
-                None,
-            );
-            return;
-        }
+    // Unmarked however the removal ends. After a deletion the file is gone,
+    // which refuses it from then on; after a failure it is still there and
+    // may be chosen again.
+    let _unmark = BeingRemoved { ctx, name };
+    // Written even when state named nothing, because state is not the disk:
+    // before the settings file has been read state is all defaults, and after
+    // a failed write the file can still name a sound state has let go of.
+    // Either way only a successful write proves that nothing saved plays it.
+    if let Err(reason) = try_persist(ctx, out).await {
+        notifications::add_required(
+            out,
+            NotificationKind::Error,
+            "Could not remove the sound",
+            format!(
+                "The settings could not be saved, so {name} may still be named by a saved \
+                 notification setting. The file was kept; try again in a moment. ({reason})"
+            ),
+            None,
+        );
+        return;
     }
     // A name that is already gone is not an error, so the only failure left
     // is the filesystem refusing.
@@ -456,6 +548,23 @@ async fn remove_notification_sound(name: &str, ctx: &ServiceCtx, out: &EventSink
             ),
             None,
         );
+    }
+}
+
+/// Takes a sound back out of `ServiceCtx::sounds_being_removed` when the
+/// removal that put it there ends, on every return path.
+struct BeingRemoved<'a> {
+    ctx: &'a ServiceCtx,
+    name: &'a str,
+}
+
+impl Drop for BeingRemoved<'_> {
+    fn drop(&mut self) {
+        self.ctx
+            .sounds_being_removed
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .remove(self.name);
     }
 }
 

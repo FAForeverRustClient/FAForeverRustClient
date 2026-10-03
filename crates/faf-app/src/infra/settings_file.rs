@@ -282,51 +282,46 @@ impl SettingsPort for FileSettings {
         }
     }
 
-    async fn save(&self, settings: &SettingsState) {
+    // Reports rather than logs: the caller decides whether a failure is a log
+    // line or something the player has to be told, and logging here as well
+    // would print every failure twice.
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
         if !self.writable.load(Ordering::SeqCst) {
-            tracing::error!(
-                path = %self.path.display(),
-                "not saving settings over a file that could not be read at startup"
-            );
-            return;
+            return Err(format!(
+                "not saving settings over {}, which could not be read at startup",
+                self.path.display()
+            ));
         }
         // The signature of every reset reported so far (#320, #383, #396): a
         // document of nothing but defaults, written over one that held the
         // player's settings. Whatever path produced it, it is never what the
-        // player asked for, so it is not written.
+        // player asked for, so it is not written, and the caller hears that
+        // nothing was saved.
         if is_pristine(settings)
             && tokio::fs::read(&self.path)
                 .await
                 .is_ok_and(|bytes| parse(&bytes).is_ok_and(|stored| !is_pristine(&stored)))
         {
-            tracing::error!(
-                path = %self.path.display(),
-                "not replacing configured settings with defaults"
-            );
-            return;
+            return Err(format!(
+                "not replacing the configured settings in {} with defaults",
+                self.path.display()
+            ));
         }
-        let bytes = match serde_json::to_vec_pretty(settings) {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                tracing::error!(%error, "could not serialize settings");
-                return;
-            }
-        };
+        let bytes = serde_json::to_vec_pretty(settings)
+            .map_err(|error| format!("could not serialize settings: {error}"))?;
         let parent = parent_directory(&self.path);
-        if let Err(error) = tokio::fs::create_dir_all(parent).await {
-            tracing::error!(%error, path = %parent.display(), "could not create settings directory");
-            return;
-        }
+        tokio::fs::create_dir_all(parent).await.map_err(|error| {
+            format!(
+                "could not create the settings directory {}: {error}",
+                parent.display()
+            )
+        })?;
 
         let path = self.path.clone();
         match tokio::task::spawn_blocking(move || write_atomically(&path, &bytes)).await {
-            Ok(Ok(())) => {}
-            Ok(Err(error)) => {
-                tracing::error!(%error, path = %self.path.display(), "could not write settings");
-            }
-            Err(error) => {
-                tracing::error!(%error, "settings writer task failed");
-            }
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(error)) => Err(format!("could not write {}: {error}", self.path.display())),
+            Err(error) => Err(format!("the settings writer task failed: {error}")),
         }
     }
 }
@@ -372,7 +367,8 @@ mod tests {
                 replay_game_path: String::new(),
                 ..SettingsState::default()
             })
-            .await;
+            .await
+            .expect("a writable temporary directory");
         let loaded = store.load().await;
         assert_eq!(loaded.theme, Theme::PythonClient);
         assert_eq!(loaded.game_path, "C:/FA/bin/ForgedAlliance.exe");
@@ -506,9 +502,15 @@ mod tests {
             game_path: "C:/ProgramData/FAForever/bin/ForgedAlliance.exe".into(),
             ..SettingsState::default()
         };
-        store.save(&configured).await;
+        store
+            .save(&configured)
+            .await
+            .expect("save the configured settings");
 
-        store.save(&SettingsState::default()).await;
+        store
+            .save(&SettingsState::default())
+            .await
+            .expect_err("defaults over configured settings are refused, and say so");
 
         assert_eq!(store.load().await.theme, Theme::PythonClient);
     }
@@ -523,7 +525,8 @@ mod tests {
                 theme: Theme::PythonClient,
                 ..SettingsState::default()
             })
-            .await;
+            .await
+            .expect("save the settings");
         // A load that reads it back cleanly is what keeps the copy.
         assert_eq!(store.load().await.theme, Theme::PythonClient);
 
@@ -537,7 +540,10 @@ mod tests {
         let dir = tempfile::tempdir().expect("temporary settings directory");
         let path = dir.path().join("settings.json");
         let store = FileSettings::at(&path);
-        store.save(&SettingsState::default()).await;
+        store
+            .save(&SettingsState::default())
+            .await
+            .expect("defaults are written where nothing was configured");
         store.load().await;
         assert!(!last_good_path(&path).exists());
     }

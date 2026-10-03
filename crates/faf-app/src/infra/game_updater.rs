@@ -107,8 +107,10 @@ struct JsonApiEntry {
 
 /// Ensure `target_dir` has the exact file set the FAF API lists for
 /// `(featured_mod, version)`, then stamp the engine executable's version and
-/// write `fa_path.lua`. Idempotent and cheap to call before every replay,
-/// files already matching by MD5 are left untouched (mirrors Python calling
+/// write `fa_path.lua`. `version` is the engine build; for an overlay it is
+/// the `faf` build installed under it, and `overlay_version` is the
+/// overlay's own revision (`None`: the latest). Idempotent and cheap to call
+/// before every replay, files already matching by MD5 are left untouched (mirrors Python calling
 /// `check()` unconditionally before each replay rather than pre-checking
 /// whether an update is needed).
 // Every parameter is independently required and there's a single call site
@@ -122,9 +124,38 @@ pub async fn ensure_game_version(
     target_dir: &Path,
     featured_mod: &str,
     version: i32,
+    overlay_version: Option<i32>,
     exe_name: &str,
     progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<(), String> {
+    // An overlay ships only its own changed files, so it needs `faf` under
+    // it here as much as for a live game. The replay names both: its body
+    // carries the engine build, which is the `faf` build, and its header the
+    // overlay's revision. The Python client's `FilesObtainer` uses the same
+    // pair. This used to ask for the overlay at the engine's number and put
+    // the latest `faf` under it. The cache entry records the base, so
+    // staging puts the same one back next time.
+    let overlay = !BASE_FEATURED_MODS.contains(&featured_mod);
+    let mut base = None;
+    if overlay {
+        base = Some(
+            install_featured_mod(
+                http,
+                token,
+                api_base,
+                cache_dir,
+                target_dir,
+                "faf",
+                Some(version),
+                exe_name,
+                false,
+                progress,
+                None,
+            )
+            .await?,
+        );
+    }
+
     install_featured_mod(
         http,
         token,
@@ -132,14 +163,26 @@ pub async fn ensure_game_version(
         cache_dir,
         target_dir,
         featured_mod,
-        Some(version),
+        if overlay {
+            overlay_version
+        } else {
+            Some(version)
+        },
         exe_name,
         false,
         progress,
+        base.map(|base| base.version),
     )
     .await?;
 
-    finish_install(target_dir, featured_mod, version)?;
+    // Stamped with the base build, the same number staging this entry from
+    // the cache stamps (`stage_cached_version`), so the replay is prepared
+    // the same way whether it was downloaded or cached.
+    finish_install(
+        target_dir,
+        featured_mod,
+        base.map_or(version, |base| base.version),
+    )?;
     Ok(())
 }
 
@@ -197,6 +240,7 @@ pub async fn ensure_latest_game_version(
                 exe_name,
                 cache_rolling_branches,
                 progress,
+                None,
             )
             .await?,
         );
@@ -213,6 +257,7 @@ pub async fn ensure_latest_game_version(
         exe_name,
         cache_rolling_branches,
         progress,
+        base.map(|base| base.version),
     )
     .await?;
 
@@ -311,6 +356,7 @@ async fn install_featured_mod(
     exe_name: &str,
     cache_rolling_branches: bool,
     progress: &(dyn Fn(PreparationStep) + Sync),
+    base_version: Option<i32>,
 ) -> Result<InstalledMod, String> {
     // `Updater.run` sets "Requesting files from API..." before anything else
     // happens, for the same reason it is here: two API round trips on a slow
@@ -390,8 +436,11 @@ async fn install_featured_mod(
     // version is exact by construction there. Resolving `latest`, though, only
     // stamps when the list actually shipped the executable: an overlay mod's
     // "version" is a mod revision (`5`), and writing that into the engine
-    // header would tell FA it is a build from 2007.
-    let engine_version = match (version, shipped_exe) {
+    // header would tell FA it is a build from 2007. An overlay's explicit
+    // version is that same revision, so only a base mod's is stamped; the
+    // base installed under the overlay has already stamped the engine.
+    let explicit = version.filter(|_| BASE_FEATURED_MODS.contains(&featured_mod));
+    let engine_version = match (explicit, shipped_exe) {
         (Some(v), _) => {
             let path = shipped_exe
                 .map(|f| target_dir.join(&f.group).join(&f.name))
@@ -512,6 +561,7 @@ async fn install_featured_mod(
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
             .unwrap_or(0),
+        base_version,
     };
 
     let is_rolling = featured_mod == "fafdevelop" || featured_mod == "fafbeta";
@@ -1571,7 +1621,13 @@ pub fn read_exe_version(exe_path: &Path) -> Option<i32> {
 #[derive(Debug, Clone, Default)]
 pub struct ReplayVersionInfo {
     pub mod_name: String,
+    /// The engine build the replay was recorded on, from the replay body. For
+    /// an overlay this is the `faf` build under it, not the overlay's own.
     pub game_version: Option<i32>,
+    /// An overlay's own revision, from the `.fafreplay` header's
+    /// `featured_mod_versions` (their highest, as in the Python client).
+    /// `None` for a base mod or a bare `.scfareplay`.
+    pub featured_mod_version: Option<i32>,
     pub git_sha: Option<String>,
     pub git_short_sha: Option<String>,
     pub build_signature: Option<String>,
@@ -1599,6 +1655,13 @@ pub struct CacheManifestEntry {
     pub files: Vec<CachedFileInfo>,
     #[serde(default)]
     pub updated_at: u64,
+    /// For an overlay (`nomads`, `coop`, ...): the `faf` build installed
+    /// under it when it was cached. Staging puts exactly that base back; it
+    /// used to take the newest cached `faf`, which for an older overlay is a
+    /// base it was never released against. `None` for a base build, and for
+    /// entries cached before this was recorded.
+    #[serde(default)]
+    pub base_version: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1656,19 +1719,52 @@ fn stage_cached_version(
     entry: &CacheManifestEntry,
     manifest: &CacheManifest,
 ) -> Result<i32, String> {
+    let mut base_entry = None;
     if !BASE_FEATURED_MODS.contains(&entry.featured_mod.as_str()) {
-        if let Some(base_entry) = manifest.entries.iter().rfind(|e| e.featured_mod == "faf") {
-            let _ = stage_entry_files(cache_dir, target_dir, base_entry);
-        }
+        let base = match entry.base_version {
+            Some(version) => manifest
+                .entries
+                .iter()
+                .find(|e| e.featured_mod == "faf" && e.resolved_version == version)
+                .ok_or_else(|| {
+                    format!(
+                        "the base build {version} under {} is not cached",
+                        entry.featured_mod
+                    )
+                })?,
+            // Cached before the base was recorded: the newest, as before.
+            // With no base cached at all this used to stage the overlay on
+            // its own, which cannot run.
+            None => manifest
+                .entries
+                .iter()
+                .rfind(|e| e.featured_mod == "faf")
+                .ok_or_else(|| format!("no base build is cached under {}", entry.featured_mod))?,
+        };
+        // An overlay is only as good as the base under it. This used to
+        // ignore a base that failed to stage, and report the overlay as
+        // staged over an incomplete one. Both callers take an error here
+        // as "fetch it instead", which is the right answer.
+        stage_entry_files(cache_dir, target_dir, base).map_err(|error| {
+            format!(
+                "the base build under {} could not be staged: {error}",
+                entry.featured_mod
+            )
+        })?;
+        base_entry = Some(base);
     }
     stage_entry_files(cache_dir, target_dir, entry)?;
 
+    // The engine version comes from the base: an overlay's own version is a
+    // mod revision like `5`, and stamping that into the executable and
+    // `fa_path.lua` is the mistake `ensure_latest_game_version` describes.
+    let engine_version = base_entry.map_or(entry.resolved_version, |base| base.resolved_version);
     let exe_path = target_dir.join("bin").join("ForgedAlliance.exe");
     if exe_path.is_file() {
-        let _ = patch_exe_version(&exe_path, entry.resolved_version);
+        let _ = patch_exe_version(&exe_path, engine_version);
     }
 
-    finish_install(target_dir, &entry.featured_mod, entry.resolved_version)?;
+    finish_install(target_dir, &entry.featured_mod, engine_version)?;
 
     let build_info = serde_json::json!({
         "featuredMod": entry.featured_mod,
@@ -1782,11 +1878,21 @@ pub async fn resolve_and_stage_replay_version(
 
     // Fixed / numbered release (e.g. faf build 3839)
     if let Some(version) = replay_info.game_version {
-        if let Some(entry) = manifest
-            .entries
-            .iter()
-            .find(|e| e.featured_mod == *mod_name && e.resolved_version == version)
-        {
+        // An overlay's entry is the overlay's revision cached over this
+        // engine's `faf` build. Matching the engine number against the
+        // overlay's revision, as this did, found an unrelated entry or none.
+        // With no revision in the replay the overlay is the latest, which
+        // only the API can name, so the cache is not consulted.
+        let overlay = !BASE_FEATURED_MODS.contains(&mod_name.as_str());
+        if let Some(entry) = manifest.entries.iter().find(|e| {
+            e.featured_mod == *mod_name
+                && if overlay {
+                    e.base_version == Some(version)
+                        && replay_info.featured_mod_version == Some(e.resolved_version)
+                } else {
+                    e.resolved_version == version
+                }
+        }) {
             if stage_cached_version_off_runtime(cache_dir, target_dir, entry, &manifest)
                 .await
                 .is_ok()
@@ -1802,7 +1908,16 @@ pub async fn resolve_and_stage_replay_version(
 
         // Cache miss: download from server API
         ensure_game_version(
-            http, token, api_base, cache_dir, target_dir, mod_name, version, exe_name, progress,
+            http,
+            token,
+            api_base,
+            cache_dir,
+            target_dir,
+            mod_name,
+            version,
+            replay_info.featured_mod_version,
+            exe_name,
+            progress,
         )
         .await?;
         return Ok(None);
@@ -3033,6 +3148,7 @@ mod tests {
                 },
             ],
             updated_at: 100,
+            base_version: None,
         };
         save_cache_manifest_entry(&temp_dir, entry_3837);
 
@@ -3050,6 +3166,7 @@ mod tests {
                 name: Some("lua.nx2".to_string()),
             }],
             updated_at: 101,
+            base_version: None,
         };
         save_cache_manifest_entry(&temp_dir, entry_dev);
 
@@ -3130,6 +3247,7 @@ mod tests {
                 },
             ],
             updated_at: 100,
+            base_version: None,
         };
         save_cache_manifest_entry(&temp_dir, entry_3837);
 
@@ -3147,6 +3265,7 @@ mod tests {
                 name: Some("lua.nx2".to_string()),
             }],
             updated_at: 500,
+            base_version: None,
         };
         save_cache_manifest_entry(&temp_dir, entry_dev);
 
@@ -3180,6 +3299,7 @@ mod tests {
             build_signature: Some("abcdef1".to_string()),
             version_name: Some("FAF Develop (abcdef1)".to_string()),
             launched_at: Some(510),
+            featured_mod_version: None,
         };
 
         let warn = resolve_and_stage_replay_version(
@@ -3212,6 +3332,7 @@ mod tests {
             build_signature: None,
             version_name: None,
             launched_at: Some(505), // Close to updated_at = 500
+            featured_mod_version: None,
         };
 
         let warn2 = resolve_and_stage_replay_version(
@@ -3266,7 +3387,178 @@ mod tests {
                 })
                 .collect(),
             updated_at: 0,
+            base_version: None,
         }
+    }
+
+    #[test]
+    fn an_overlay_is_staged_over_the_base_it_was_cached_with() {
+        // Two cached base builds. The overlay was cached together with the
+        // older one, so that is the base it gets, not the newest.
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        let old_base = put_in_store(&cache, "gamedata", b"base lua 3837");
+        let new_base = put_in_store(&cache, "gamedata", b"base lua 3838");
+        let overlay_file = put_in_store(&cache, "gamedata", b"nomads lua");
+
+        let mut overlay = build_entry(52, &[("gamedata", "nomads.nx2", &overlay_file)]);
+        overlay.featured_mod = "nomads".into();
+        overlay.base_version = Some(3837);
+        let manifest = CacheManifest {
+            entries: vec![
+                build_entry(3837, &[("gamedata", "lua.nx2", &old_base)]),
+                build_entry(3838, &[("gamedata", "lua.nx2", &new_base)]),
+                overlay.clone(),
+            ],
+        };
+
+        stage_cached_version(&cache, &target, &overlay, &manifest).unwrap();
+        assert_eq!(
+            std::fs::read(target.join("gamedata").join("lua.nx2")).unwrap(),
+            b"base lua 3837"
+        );
+
+        // A recorded base that is no longer cached is fetched, not guessed.
+        overlay.base_version = Some(3000);
+        let error = stage_cached_version(&cache, &target, &overlay, &manifest)
+            .expect_err("a missing recorded base must not fall back to another one");
+        assert!(error.contains("not cached"), "{error}");
+    }
+
+    #[test]
+    fn an_overlay_does_not_stage_over_a_base_that_failed_to() {
+        // Staging the base used to be `let _ =`: a base whose files were gone
+        // from the store left the overlay "staged" on top of nothing, and the
+        // replay then ran against an incomplete install.
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        let overlay_file = put_in_store(&cache, "gamedata", b"coop lua");
+
+        // The base names a file the store does not have.
+        let base = build_entry(
+            3837,
+            &[("gamedata", "lua.nx2", "0123456789abcdef0123456789abcdef")],
+        );
+        let mut overlay = build_entry(3837, &[("gamedata", "coop.nx2", &overlay_file)]);
+        overlay.featured_mod = "coop".into();
+        let manifest = CacheManifest {
+            entries: vec![base, overlay.clone()],
+        };
+
+        let error = stage_cached_version(&cache, &target, &overlay, &manifest)
+            .expect_err("an overlay over a broken base must not count as staged");
+        assert!(error.contains("base build"), "{error}");
+    }
+
+    #[test]
+    fn an_overlay_without_any_cached_base_is_fetched_instead() {
+        // An entry from before the base was recorded, and no `faf` build in
+        // the cache: this used to stage the overlay's files on their own.
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        let overlay_file = put_in_store(&cache, "gamedata", b"nomads lua");
+        let mut overlay = build_entry(52, &[("gamedata", "nomads.nx2", &overlay_file)]);
+        overlay.featured_mod = "nomads".into();
+        let manifest = CacheManifest {
+            entries: vec![overlay.clone()],
+        };
+
+        let error = stage_cached_version(&cache, &target, &overlay, &manifest)
+            .expect_err("an overlay alone cannot run");
+        assert!(error.contains("no base build"), "{error}");
+        assert!(!target.join("gamedata").join("nomads.nx2").exists());
+    }
+
+    #[test]
+    fn a_staged_overlay_reports_the_base_engine_version() {
+        // The overlay's own version is a mod revision. `fa_path.lua` used to
+        // say the game was version 52.
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        let base_file = put_in_store(&cache, "gamedata", b"base lua 3837");
+        let overlay_file = put_in_store(&cache, "gamedata", b"nomads lua");
+        let mut overlay = build_entry(52, &[("gamedata", "nomads.nx2", &overlay_file)]);
+        overlay.featured_mod = "nomads".into();
+        overlay.base_version = Some(3837);
+        let manifest = CacheManifest {
+            entries: vec![
+                build_entry(3837, &[("gamedata", "lua.nx2", &base_file)]),
+                overlay.clone(),
+            ],
+        };
+
+        stage_cached_version(&cache, &target, &overlay, &manifest).unwrap();
+        let fa_path = std::fs::read_to_string(target.join("fa_path.lua")).unwrap();
+        assert!(fa_path.contains("GameVersion = \"3837\""), "{fa_path}");
+    }
+
+    /// An overlay replay names its engine build in the body and the overlay's
+    /// revision in the header. The cached entry it gets is that revision over
+    /// that engine's base: not the revision over another base, and not an
+    /// entry whose own revision happens to equal the engine number, which is
+    /// what the lookup used to match.
+    #[tokio::test]
+    async fn an_overlay_replay_is_staged_from_its_revision_over_its_engine_build() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        let base_3837 = put_in_store(&cache, "gamedata", b"base lua 3837");
+        let base_3838 = put_in_store(&cache, "gamedata", b"base lua 3838");
+        let right = put_in_store(&cache, "gamedata", b"nomads 52 over 3837");
+        let other_base = put_in_store(&cache, "gamedata", b"nomads 52 over 3838");
+        let engine_numbered = put_in_store(&cache, "gamedata", b"nomads at the engine number");
+        let nomads = |revision: i32, base: i32, md5: &str| {
+            let mut entry = build_entry(revision, &[("gamedata", "nomads.nx2", md5)]);
+            entry.featured_mod = "nomads".into();
+            entry.base_version = Some(base);
+            entry
+        };
+        let manifest = CacheManifest {
+            entries: vec![
+                build_entry(3837, &[("gamedata", "lua.nx2", &base_3837)]),
+                build_entry(3838, &[("gamedata", "lua.nx2", &base_3838)]),
+                nomads(3837, 3838, &engine_numbered),
+                nomads(52, 3838, &other_base),
+                nomads(52, 3837, &right),
+            ],
+        };
+        std::fs::write(
+            cache.join("cache_manifest.json"),
+            serde_json::to_string(&manifest).unwrap(),
+        )
+        .unwrap();
+
+        let replay = ReplayVersionInfo {
+            mod_name: "nomads".into(),
+            game_version: Some(3837),
+            featured_mod_version: Some(52),
+            ..Default::default()
+        };
+        let warning = resolve_and_stage_replay_version(
+            &reqwest::Client::new(),
+            "token",
+            "http://127.0.0.1",
+            &cache,
+            &target,
+            &replay,
+            "ForgedAlliance.exe",
+            &|_| {},
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(warning, None);
+        let read = |path: &[&str]| {
+            std::fs::read(path.iter().fold(target.clone(), |dir, part| dir.join(part))).unwrap()
+        };
+        assert_eq!(read(&["gamedata", "nomads.nx2"]), b"nomads 52 over 3837");
+        assert_eq!(read(&["gamedata", "lua.nx2"]), b"base lua 3837");
+        let fa_path = std::fs::read_to_string(target.join("fa_path.lua")).unwrap();
+        assert!(fa_path.contains("GameVersion = \"3837\""), "{fa_path}");
     }
 
     #[test]

@@ -4249,6 +4249,8 @@ export type MapGeneratorCommand =
 { type: "savePreset"; payload: {
 	name: string,
 	options: GeneratorOptions,
+	/**  Handed back in [`MapGeneratorEvent::PresetSaveFinished`]. */
+	requestId?: number,
 } } |
 /**  Re-read the preset library from disk. */
 { type: "loadPresets" } | { type: "deletePreset"; payload: {
@@ -4299,6 +4301,11 @@ export type MapGeneratorEvent = { type: "statusChanged"; payload: {
  */
 { type: "presetsLoaded"; payload: {
 	presets: GeneratorPreset[],
+} } |
+/**  A SavePreset finished, stored or not, for the request that sent it. */
+{ type: "presetSaveFinished"; payload: {
+	requestId: number,
+	saved: boolean,
 } };
 
 export type MapGeneratorState = {
@@ -4356,6 +4363,12 @@ export type MapGeneratorState = {
 	helpText?: string,
 	/**  The saved preset library, newest first. Empty until loaded. */
 	presets?: GeneratorPreset[],
+	/**
+	 *  What became of the last preset save, named by the request that asked.
+	 *  The dialog used to call a save done once a new list held the name, and
+	 *  an unrelated refresh after a failed overwrite still held the old one.
+	 */
+	presetSave?: PresetSaveOutcome | null,
 };
 
 /**  Status of an install/uninstall action for one map folder. */
@@ -6579,6 +6592,31 @@ export type PoolStep = {
 };
 
 /**
+ *  The string lists the webview changes one entry at a time: a star, a mute,
+ *  a collapsed roster category, a chip.
+ *
+ *  They get their own command, [`SettingsCommand::SetListMember`], rather than
+ *  a `Patch*` field, because a patch replaces the whole list and the webview
+ *  can only build that list from its last snapshot. Two stars inside one round
+ *  trip sent `[A]` and then `[B]`, and only B survived. Naming the one entry
+ *  and whether it belongs lets the service apply it to the list as the backend
+ *  holds it.
+ */
+export type PreferenceList =
+/**  `browsing.favorite_maps`, by map folder name. */
+"favoriteMaps" |
+/**  `browsing.favorite_mods`, by mod uid. */
+"favoriteMods" |
+/**  `browsing.leaderboard_rating_columns`. */
+"leaderboardRatingColumns" |
+/**  `chat.muted_players`, by login. */
+"mutedPlayers" |
+/**  `chat.hidden_roster_categories`. */
+"hiddenRosterCategories" |
+/**  `chat.auto_join_channels`. */
+"autoJoinChannels";
+
+/**
  *  Which part of getting the install ready a preparation step belongs to.
  *
  *  The Python client's updater dialog gives each of these its own progress bar
@@ -6601,6 +6639,12 @@ export type PreparationPhase =
 "downloading" |
 /**  Staging the map. */
 "map";
+
+/**  The answer to one SavePreset. */
+export type PresetSaveOutcome = {
+	requestId: number,
+	saved: boolean,
+};
 
 /**
  *  The headline cash prize, where an event has one.
@@ -8166,6 +8210,25 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	patch: BrowsingPreferencesPatch,
 } } | { type: "patchEvents"; payload: {
 	patch: EventsPreferencesPatch,
+} } |
+/**  Add `value` to one string list (`member`), or remove it. */
+{ type: "setListMember"; payload: {
+	list: PreferenceList,
+	value: string,
+	member: boolean,
+} } |
+/**  Give one player's name a chat colour, or clear the one it has. */
+{ type: "setPlayerNameColor"; payload: {
+	player: string,
+	color: string | null,
+} } |
+/**  Save a named mod set, replacing one of the same name in place. */
+{ type: "saveModPreset"; payload: {
+	preset: ModPreset,
+} } |
+/**  Delete the named mod set. */
+{ type: "deleteModPreset"; payload: {
+	name: string,
 } } | { type: "checkInstalls" } | { type: "refreshGameCache" } | { type: "clearGameCache" };
 
 export type SettingsEvent = { type: "loaded"; payload: {
@@ -10419,9 +10482,21 @@ export type TourneyEvent = { type: "loading" } | { type: "loaded"; payload: {
 	tournamentId: string,
 	reason: string,
 	kind: RequestFailureKind,
-} } | { type: "playerRatingsLoading" } | { type: "playerRatingsLoaded"; payload: {
+} } |
+/**
+ *  One entrant's ratings table. Like the eligibility check, each of the
+ *  three names the event it was asked in: the table belongs to the open
+ *  event's entrant, and an answer can arrive after the organiser moved on.
+ *  The entrant itself is on the answer (`ratings.player_id`), which is what
+ *  the dialog matches against.
+ */
+{ type: "playerRatingsLoading"; payload: {
+	tournamentId: string,
+} } | { type: "playerRatingsLoaded"; payload: {
+	tournamentId: string,
 	ratings: EntrantRatings,
 } } | { type: "playerRatingsFailed"; payload: {
+	tournamentId: string,
 	reason: string,
 	kind: RequestFailureKind,
 } } | { type: "copySourcesLoading" } | { type: "copySourcesLoaded"; payload: {

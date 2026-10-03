@@ -21,8 +21,16 @@ export const loadOptions = (version?: string | null) =>
   send({ type: "loadOptions", payload: { version: version ?? null } });
 export const setOptions = (options: GeneratorOptions) =>
   send({ type: "setOptions", payload: { options } });
-export const savePreset = (name: string, options: GeneratorOptions) =>
-  send({ type: "savePreset", payload: { name, options } });
+/** Session-wide, so an answer meant for a dialog since closed matches nothing. */
+let nextPresetSave = 1;
+
+/** Save a preset; returns the request id its `presetSaveFinished` will carry. */
+export const savePreset = (name: string, options: GeneratorOptions): number => {
+  const requestId = nextPresetSave;
+  nextPresetSave += 1;
+  void send({ type: "savePreset", payload: { name, options, requestId } });
+  return requestId;
+};
 export const loadPresets = () => send({ type: "loadPresets" });
 export const deletePreset = (name: string) => send({ type: "deletePreset", payload: { name } });
 export const preflight = (options: GeneratorOptions) => send({ type: "preflight", payload: { options } });

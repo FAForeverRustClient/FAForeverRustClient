@@ -194,27 +194,22 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   );
   const presetNameUsable = trimmedPreset !== "" && /^[\w\- ]+$/.test(trimmedPreset);
 
-  // "Saved" is an outcome, not a click. The backend answers a stored preset by
-  // re-reading the library and publishing it, and a failed one with a
-  // notification and no new list. So the request remembers the list that was
-  // on screen when it was made, and the label only changes once a *new* list
-  // arrives that holds the name.
-  const [pendingPreset, setPendingPreset] = useState<{
-    name: string;
-    before: typeof presets;
-  } | null>(null);
+  // "Saved" is an outcome, not a click, and it is this save's outcome: the
+  // backend answers every save with `presetSaveFinished` naming the request.
+  // It used to be read off a new list that held the name, which an unrelated
+  // refresh after a failed overwrite satisfied with the old preset.
+  const [pendingSave, setPendingSave] = useState<number | null>(null);
   const save = () => {
     if (!presetNameUsable) return;
-    setPendingPreset({ name: trimmedPreset, before: presets });
     setSaved(false);
-    void savePreset(trimmedPreset, form);
+    setPendingSave(savePreset(trimmedPreset, form));
   };
+  const presetSave = state.presetSave;
   useEffect(() => {
-    if (!pendingPreset || presets === pendingPreset.before) return;
-    setPendingPreset(null);
-    const key = pendingPreset.name.toLowerCase();
-    if (presets.some((preset) => preset.name.toLowerCase() === key)) setSaved(true);
-  }, [pendingPreset, presets]);
+    if (pendingSave === null || presetSave?.requestId !== pendingSave) return;
+    setPendingSave(null);
+    setSaved(presetSave.saved);
+  }, [pendingSave, presetSave]);
   // Its own effect, so clearing the pending request above cannot cancel it.
   useEffect(() => {
     if (!saved) return;

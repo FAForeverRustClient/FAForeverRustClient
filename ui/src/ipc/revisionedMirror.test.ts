@@ -237,4 +237,42 @@ describe("RevisionedMirror recovery", () => {
     expect(resnapshot).toHaveBeenCalledTimes(1);
     expect(errors).toEqual([]);
   });
+
+  it("lets a recovery in flight at dispose land nowhere", async () => {
+    let finish!: (snapshot: { revision: number; state: AppState }) => void;
+    const resnapshot = vi.fn(
+      () =>
+        new Promise<{ revision: number; state: AppState }>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const hydrate = vi.fn();
+    const mirror = new RevisionedMirror(hydrate, vi.fn(), resnapshot);
+    mirror.replace({ revision: 1, state: snapshotState });
+    hydrate.mockClear();
+    mirror.receive({ kind: "event", revision: 3, event: disconnected });
+    expect(resnapshot).toHaveBeenCalledTimes(1);
+
+    // The page moves on while the snapshot is still being built.
+    mirror.dispose();
+    finish({ revision: 2, state: snapshotState });
+    await vi.runAllTimersAsync();
+
+    expect(hydrate).not.toHaveBeenCalled();
+    // Revision 2 left the gap to 3 open, which would normally ask again.
+    expect(resnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it("neither reports nor retries a failure that settles after dispose", async () => {
+    const { mirror, resnapshot, errors } = harness(
+      Array.from({ length: RECOVERY_MAX_ATTEMPTS }, () => new Error("offline")),
+    );
+    mirror.replace({ revision: 1, state: snapshotState });
+    mirror.receive({ kind: "event", revision: 3, event: disconnected });
+    mirror.dispose();
+    await vi.runAllTimersAsync();
+
+    expect(resnapshot).toHaveBeenCalledTimes(1);
+    expect(errors).toEqual([]);
+  });
 });

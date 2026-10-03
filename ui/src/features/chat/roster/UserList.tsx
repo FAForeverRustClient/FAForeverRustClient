@@ -123,15 +123,20 @@ export const UserList = memo(function UserList({
     [preferences.hiddenRosterCategories],
   );
 
+  // One category and a direction, applied by the backend to the list it
+  // holds: a list rebuilt here, even from the newest snapshot, lost a fold
+  // when two headers were clicked inside one round trip.
   const toggleCategory = useCallback(
     (category: UserCategory) => {
-      const current = useAppStore.getState().state.settings.chat;
-      const next = current.hiddenRosterCategories.includes(category)
-        ? current.hiddenRosterCategories.filter((entry) => entry !== category)
-        : [...current.hiddenRosterCategories, category];
+      const hiddenNow = useAppStore
+        .getState()
+        .state.settings.chat.hiddenRosterCategories.includes(category);
       ipc.send({
         kind: "Settings",
-        command: { type: "patchChat", payload: { patch: { hiddenRosterCategories: next } } },
+        command: {
+          type: "setListMember",
+          payload: { list: "hiddenRosterCategories", value: category, member: !hiddenNow },
+        },
       });
     },
     [],

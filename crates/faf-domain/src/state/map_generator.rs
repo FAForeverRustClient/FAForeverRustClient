@@ -381,6 +381,19 @@ pub struct MapGeneratorState {
     /// The saved preset library, newest first. Empty until loaded.
     #[serde(default)]
     pub presets: Vec<GeneratorPreset>,
+    /// What became of the last preset save, named by the request that asked.
+    /// The dialog used to call a save done once a new list held the name, and
+    /// an unrelated refresh after a failed overwrite still held the old one.
+    #[serde(default)]
+    pub preset_save: Option<PresetSaveOutcome>,
+}
+
+/// The answer to one SavePreset.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PresetSaveOutcome {
+    pub request_id: u32,
+    pub saved: bool,
 }
 
 // No `Eq`: `OptionsChanged` carries `GeneratorOptions`.
@@ -431,6 +444,11 @@ pub enum MapGeneratorEvent {
     /// sending the list beats sending deltas and keeping two copies in step.
     PresetsLoaded {
         presets: Vec<GeneratorPreset>,
+    },
+    /// A SavePreset finished, stored or not, for the request that sent it.
+    PresetSaveFinished {
+        request_id: u32,
+        saved: bool,
     },
 }
 
@@ -507,6 +525,9 @@ pub enum MapGeneratorCommand {
     SavePreset {
         name: String,
         options: GeneratorOptions,
+        /// Handed back in [`MapGeneratorEvent::PresetSaveFinished`].
+        #[serde(default)]
+        request_id: u32,
     },
     /// Re-read the preset library from disk.
     LoadPresets,
@@ -570,6 +591,12 @@ pub fn reduce(state: &mut MapGeneratorState, event: &MapGeneratorEvent) {
         MapGeneratorEvent::NamesDecoded { decoded } => state.decoded.extend(decoded.clone()),
         MapGeneratorEvent::HelpLoaded { text } => state.help_text = text.clone(),
         MapGeneratorEvent::PresetsLoaded { presets } => state.presets = presets.clone(),
+        MapGeneratorEvent::PresetSaveFinished { request_id, saved } => {
+            state.preset_save = Some(PresetSaveOutcome {
+                request_id: *request_id,
+                saved: *saved,
+            });
+        }
     }
 }
 

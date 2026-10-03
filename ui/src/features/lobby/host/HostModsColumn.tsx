@@ -109,32 +109,22 @@ export function HostModsColumn() {
     setActiveMods(installedMods.filter((mod) => wanted.has(mod.uid)).map((mod) => mod.uid));
   };
 
-  const persistPresets = (modPresets: ModPreset[]) => {
+  // One preset per command, applied by the backend to the list it holds. A
+  // list rebuilt from this render's props lost a preset whenever two saves or
+  // deletes landed inside one round trip. The backend also overwrites a
+  // preset of the same name in place rather than moving it to the end: the
+  // list is a row of buttons, and having one jump position on every save is
+  // worse than it sounds once there are more than two.
+  const savePreset = (name: string, uids: string[]) => {
     ipc.send({
       kind: "Settings",
-      command: {
-        type: "patchBrowsing",
-        payload: { patch: { modPresets } },
-      },
+      command: { type: "saveModPreset", payload: { preset: { name, uids } } },
     });
-  };
-
-  const savePreset = (name: string, uids: string[]) => {
-    const key = name.toLocaleLowerCase();
-    const existing = presets.findIndex((preset) => preset.name.toLocaleLowerCase() === key);
-    // Overwrite in place rather than moving the preset to the end: the list is
-    // a row of buttons, and having one jump position on every save is worse
-    // than it sounds once there are more than two.
-    persistPresets(
-      existing >= 0
-        ? presets.map((preset, index) => (index === existing ? { name, uids } : preset))
-        : [...presets, { name, uids }],
-    );
     setPresetModalOpen(false);
   };
 
   const deletePreset = (name: string) =>
-    persistPresets(presets.filter((preset) => preset.name !== name));
+    ipc.send({ kind: "Settings", command: { type: "deleteModPreset", payload: { name } } });
 
   // What the list shows is what Enable All / Disable All act on, which is how
   // the two mod kinds stay separately controllable without four buttons.

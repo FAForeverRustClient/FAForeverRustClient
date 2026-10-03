@@ -214,19 +214,34 @@ pub fn reduce(state: &mut TourneyState, event: &TourneyEvent) {
             }
         }
         // A new request drops the previous player's table at once, so one
-        // entrant's ratings never show under another's name.
-        TourneyEvent::PlayerRatingsLoading => {
-            state.player_ratings = None;
-            state.player_ratings_status = TourneyLoadStatus::Loading;
+        // entrant's ratings never show under another's name. The table is the
+        // open event's, as the eligibility notice is: selecting another event
+        // clears it, and anything about the event left behind is dropped.
+        TourneyEvent::PlayerRatingsLoading { tournament_id } => {
+            if state.selected_id.as_deref() == Some(tournament_id.as_str()) {
+                state.player_ratings = None;
+                state.player_ratings_status = TourneyLoadStatus::Loading;
+            }
         }
-        TourneyEvent::PlayerRatingsLoaded { ratings } => {
-            state.player_ratings = Some(ratings.clone());
-            state.player_ratings_status = TourneyLoadStatus::Ready;
+        TourneyEvent::PlayerRatingsLoaded {
+            tournament_id,
+            ratings,
+        } => {
+            if state.selected_id.as_deref() == Some(tournament_id.as_str()) {
+                state.player_ratings = Some(ratings.clone());
+                state.player_ratings_status = TourneyLoadStatus::Ready;
+            }
         }
-        TourneyEvent::PlayerRatingsFailed { reason, kind } => {
-            state.player_ratings_status = TourneyLoadStatus::Failed {
-                reason: reason.clone(),
-                kind: *kind,
+        TourneyEvent::PlayerRatingsFailed {
+            tournament_id,
+            reason,
+            kind,
+        } => {
+            if state.selected_id.as_deref() == Some(tournament_id.as_str()) {
+                state.player_ratings_status = TourneyLoadStatus::Failed {
+                    reason: reason.clone(),
+                    kind: *kind,
+                }
             }
         }
         TourneyEvent::CopySourcesLoading => {

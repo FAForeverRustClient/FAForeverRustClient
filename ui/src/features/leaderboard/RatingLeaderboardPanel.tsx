@@ -68,20 +68,18 @@ export function RatingLeaderboardPanel() {
   ]) as LeaderboardColumn[];
   const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
 
+  // One column and a direction, applied by the backend to the list it holds:
+  // a list rebuilt from this render lost a column when two boxes were ticked
+  // inside one round trip. The last visible column stays, as before; were a
+  // race to remove it anyway, the backend falls back to the default columns.
   const toggleColumn = (key: LeaderboardColumn) => {
-    const updated = visibleColumns.includes(key)
-      ? visibleColumns.filter((col) => col !== key)
-      : [...visibleColumns, key];
-    if (updated.length === 0) return;
+    const visible = visibleColumns.includes(key);
+    if (visible && visibleColumns.length === 1) return;
     ipc.send({
       kind: "Settings",
       command: {
-        type: "patchBrowsing",
-        payload: {
-          patch: {
-            leaderboardRatingColumns: updated,
-          },
-        },
+        type: "setListMember",
+        payload: { list: "leaderboardRatingColumns", value: key, member: !visible },
       },
     });
   };

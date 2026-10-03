@@ -214,7 +214,11 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             }
         }
         MapGeneratorCommand::Cancel => ctx.ports.map_generator.cancel(),
-        MapGeneratorCommand::SavePreset { name, options } => {
+        MapGeneratorCommand::SavePreset {
+            name,
+            options,
+            request_id,
+        } => {
             match ctx.ports.map_generator.save_preset(&name, &options).await {
                 Ok(()) => {
                     // Saving a preset is also "these are my current options",
@@ -227,14 +231,26 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                     });
                     services::settings::persist(ctx, out).await;
                     reload_presets(ctx, out).await;
+                    // After the reload, so the list already holds the preset
+                    // when the dialog says it was saved.
+                    out.emit(MapGeneratorEvent::PresetSaveFinished {
+                        request_id,
+                        saved: true,
+                    });
                 }
-                Err(reason) => services::notifications::add(
-                    out,
-                    NotificationKind::Error,
-                    "Could not save the preset",
-                    reason,
-                    None,
-                ),
+                Err(reason) => {
+                    services::notifications::add(
+                        out,
+                        NotificationKind::Error,
+                        "Could not save the preset",
+                        reason,
+                        None,
+                    );
+                    out.emit(MapGeneratorEvent::PresetSaveFinished {
+                        request_id,
+                        saved: false,
+                    });
+                }
             }
         }
         MapGeneratorCommand::LoadPresets => reload_presets(ctx, out).await,

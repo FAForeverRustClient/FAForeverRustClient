@@ -4,11 +4,24 @@ import { ipc } from "../../ipc/client";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useAppStore } from "../../store/store";
+import { setPlayerMuted } from "../../shared/preferenceCommands";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const save = (patch: ChatPreferencesPatch) =>
   ipc.send({ kind: "Settings", command: { type: "patchChat", payload: { patch } } });
+
+// The channel chips change one entry at a time, applied by the backend to the
+// list it holds. A list rebuilt here from the snapshot lost a change whenever
+// two chips were added or removed inside one round trip.
+const setAutoJoinChannel = (channel: string, member: boolean) =>
+  ipc.send({
+    kind: "Settings",
+    command: {
+      type: "setListMember",
+      payload: { list: "autoJoinChannels", value: channel, member },
+    },
+  });
 
 export function ChatSettingsSection() {
   const { t } = useTranslation();
@@ -19,7 +32,7 @@ export function ChatSettingsSection() {
     const trimmed = channel.trim();
     if (!trimmed) return;
     const normalized = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
-    void save({ autoJoinChannels: [...preferences.autoJoinChannels, normalized] });
+    setAutoJoinChannel(normalized, true);
     setChannel("");
   };
 
@@ -123,11 +136,7 @@ export function ChatSettingsSection() {
                   type="button"
                   aria-label={`Unmute ${player}`}
                   title={`Unmute ${player}`}
-                  onClick={() => void save({
-                    mutedPlayers: preferences.mutedPlayers.filter(
-                      (candidate) => candidate.localeCompare(player, undefined, { sensitivity: "accent" }) !== 0,
-                    ),
-                  })}
+                  onClick={() => setPlayerMuted(player, false)}
                 >
                   <Icon name="close" size={12} />
                 </button>
@@ -178,9 +187,7 @@ export function ChatSettingsSection() {
                   type="button"
                   aria-label={`Remove ${item}`}
                   title={`Remove ${item}`}
-                  onClick={() => void save({
-                    autoJoinChannels: preferences.autoJoinChannels.filter((candidate) => candidate !== item),
-                  })}
+                  onClick={() => setAutoJoinChannel(item, false)}
                 >
                   <Icon name="close" size={12} />
                 </button>

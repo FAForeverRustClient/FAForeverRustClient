@@ -152,12 +152,53 @@ pub struct LobbyOperations {
     /// [`OPERATION_CANCELLED`] set once it is called off. One word, so that
     /// "is this mine and still wanted" is a single load.
     current: AtomicU64,
-    /// The operation holding the join slot, or zero when it is free.
+    /// Which join holds the join slot, and which called-off join the server
+    /// may still answer.
     ///
     /// A custom join stays single-flight from the first click until the
     /// server accepts or rejects it. Preparation can take minutes, so a local
     /// component disabled-state alone is not a concurrency boundary.
-    join_slot: AtomicU64,
+    ///
+    /// One record behind one lock. The operation and its game used to be two
+    /// atomics, so a late cleanup could free the slot, a new join take it,
+    /// and the cleanup then clear the new join's game. The server's answer to
+    /// that join no longer matched anything, and its slot was never freed.
+    join: std::sync::Mutex<JoinSlot>,
+}
+
+#[derive(Debug, Default)]
+struct JoinSlot {
+    holder: Option<JoinClaim>,
+    /// Games whose join request went out and was then called off, one entry
+    /// per request, oldest first. The server answers each anyway, and a
+    /// launch order for one must not start a game the user gave up on. Every
+    /// entry stays until its answer arrives or the connection ends: keeping
+    /// only the latest let a second call-off erase the first, whose launch
+    /// then started.
+    called_off: Vec<i32>,
+}
+
+impl JoinSlot {
+    /// The server answered one called-off request for `game_id`: drop the
+    /// oldest such entry, and say whether there was one.
+    fn take_called_off(&mut self, game_id: i32) -> bool {
+        match self.called_off.iter().position(|&game| game == game_id) {
+            Some(index) => {
+                self.called_off.remove(index);
+                true
+            }
+            None => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct JoinClaim {
+    operation: LobbyOperation,
+    game_id: i32,
+    /// The join request went out, so the server will answer this join even
+    /// if the user calls it off.
+    sent: bool,
 }
 
 impl LobbyOperations {
@@ -177,17 +218,50 @@ impl LobbyOperations {
         operation
     }
 
+    fn join_slot(&self) -> std::sync::MutexGuard<'_, JoinSlot> {
+        self.join
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
     /// Start a custom join, or `None` when another join holds the slot.
     ///
     /// The slot is taken before the operation becomes current, so a refused
     /// duplicate click cannot supersede the join it was refused for.
-    pub fn try_begin_join(&self) -> Option<LobbyOperation> {
+    pub fn try_begin_join(&self, game_id: i32) -> Option<LobbyOperation> {
+        let mut slot = self.join_slot();
+        if slot.holder.is_some() {
+            return None;
+        }
         let operation = self.issue();
-        self.join_slot
-            .compare_exchange(0, operation.0, Ordering::AcqRel, Ordering::Acquire)
-            .ok()?;
+        slot.holder = Some(JoinClaim {
+            operation,
+            game_id,
+            sent: false,
+        });
         self.make_current(operation);
         Some(operation)
+    }
+
+    /// Whether `operation`'s join request may go out now, marking it sent if
+    /// so. From here the server answers it even if the user calls it off,
+    /// so calling it off has to remember the game.
+    ///
+    /// One step under the join lock, and the only gate before the send. A
+    /// separate "still live?" check followed by a mark left a gap: a cancel
+    /// landing between them took the claim, the mark found nothing, and the
+    /// request went out anyway with no record that it was called off.
+    /// `CancelJoin` calls the operation off before it takes the claim, so a
+    /// mark that runs in between sees the operation dead and refuses.
+    pub fn try_mark_join_sent(&self, operation: LobbyOperation) -> bool {
+        let mut slot = self.join_slot();
+        match slot.holder.as_mut() {
+            Some(claim) if claim.operation == operation && self.is_live(operation) => {
+                claim.sent = true;
+                true
+            }
+            _ => false,
+        }
     }
 
     /// Call off the current operation, whichever it is.
@@ -206,15 +280,85 @@ impl LobbyOperations {
     /// cancelled join's cleanup runs after the next join may have started,
     /// and must leave that one's slot alone.
     pub fn release_join(&self, operation: LobbyOperation) {
-        let _ =
-            self.join_slot
-                .compare_exchange(operation.0, 0, Ordering::AcqRel, Ordering::Acquire);
+        let mut slot = self.join_slot();
+        if slot
+            .holder
+            .is_some_and(|claim| claim.operation == operation)
+        {
+            slot.holder = None;
+        }
     }
 
-    /// Release the join slot whoever holds it: the server answered the join,
-    /// the user called it off, or the connection it was sent on is gone.
+    /// The user called the join off: free the slot for whatever they pick
+    /// next. A join whose request already went out is remembered, because
+    /// the server's answer to it is still coming.
+    pub fn call_off_join(&self) {
+        let mut slot = self.join_slot();
+        if let Some(claim) = slot.holder.take() {
+            if claim.sent {
+                slot.called_off.push(claim.game_id);
+            }
+        }
+    }
+
+    /// Forget every join: the connection they were sent on is gone, or the
+    /// game they led to was taken down. The server forgets them as well.
     pub fn release_any_join(&self) {
-        self.join_slot.store(0, Ordering::Release);
+        *self.join_slot() = JoinSlot::default();
+    }
+
+    /// The server answered about game_id: release the slot if the join in
+    /// it is for that game, and say whether it was.
+    ///
+    /// An answer about another game is a late one for a join the user has
+    /// since called off. It used to release whatever join held the slot and
+    /// put its failure on screen over the newer join. A server message that
+    /// names no game (id zero) cannot be matched, so it keeps the old behaviour.
+    ///
+    /// Matching and releasing happen under one lock, so the join the answer
+    /// was matched against is the one it releases.
+    ///
+    /// The server answers requests in the order they were sent, and a
+    /// called-off request for this game went out before the current join's.
+    /// So an answer for a game with one outstanding is that one's, even when
+    /// the current join is a retry of the same game: a refusal for the first
+    /// attempt (a wrong password, say) used to end the corrected retry.
+    pub fn release_join_for_game(&self, game_id: i32) -> bool {
+        let mut slot = self.join_slot();
+        if game_id != 0 && slot.take_called_off(game_id) {
+            return false;
+        }
+        let ours = game_id == 0 || slot.holder.is_some_and(|claim| claim.game_id == game_id);
+        if ours {
+            slot.holder = None;
+        }
+        ours
+    }
+
+    /// A launch order for game_id was carried out: the join waiting for this
+    /// game has what it wanted, so it gives up the slot.
+    ///
+    /// Never consumes a called-off record. The launch order already took its
+    /// own in [`Self::take_called_off_launch`]; any left belong to requests
+    /// whose answers are still coming. This used to share
+    /// [`Self::release_join_for_game`] with refusals, so after two called-off
+    /// attempts and a retry of one game, the launch took the second attempt's
+    /// record and kept the slot; that attempt's refusal then matched the
+    /// retry and put "failed" over the game that had launched.
+    pub fn release_join_launched(&self, game_id: i32) {
+        let mut slot = self.join_slot();
+        if slot.holder.is_some_and(|claim| claim.game_id == game_id) {
+            slot.holder = None;
+        }
+    }
+
+    /// A launch order for game_id arrived: whether it answers a join the
+    /// user called off after its request went out, and so must not start.
+    /// Host and matchmaker launches are never in that record. A user who
+    /// called a game off and then joined it again wants it after all.
+    pub fn take_called_off_launch(&self, game_id: i32) -> bool {
+        let mut slot = self.join_slot();
+        slot.take_called_off(game_id) && slot.holder.is_none_or(|claim| claim.game_id != game_id)
     }
 
     /// Run `work` as `operation`, so the launcher's checks inside it answer
@@ -383,13 +527,13 @@ mod tests {
     #[tokio::test]
     async fn a_cancelled_join_stays_cancelled_after_the_next_one_starts() {
         let operations = LobbyOperations::default();
-        let first = operations.try_begin_join().expect("the slot is free");
-        assert!(operations.try_begin_join().is_none(), "one join at a time");
+        let first = operations.try_begin_join(1).expect("the slot is free");
+        assert!(operations.try_begin_join(1).is_none(), "one join at a time");
         assert!(operations.is_live(first));
 
         operations.cancel();
         operations.release_any_join();
-        let second = operations.try_begin_join().expect("cancel frees the slot");
+        let second = operations.try_begin_join(1).expect("cancel frees the slot");
 
         assert!(
             !operations.is_live(first),
@@ -411,11 +555,151 @@ mod tests {
         // The first join's cleanup runs late and must leave the slot alone.
         operations.release_join(first);
         assert!(
-            operations.try_begin_join().is_none(),
+            operations.try_begin_join(1).is_none(),
             "the slot is still held"
         );
         operations.release_join(second);
-        assert!(operations.try_begin_join().is_some());
+        assert!(operations.try_begin_join(1).is_some());
+    }
+
+    /// A late cleanup for join A runs after B took the slot. It must leave
+    /// B's claim whole, so the server's answer about B still releases it.
+    #[test]
+    fn a_late_cleanup_leaves_the_next_joins_game_alone() {
+        let operations = LobbyOperations::default();
+        let first = operations.try_begin_join(1).expect("the slot is free");
+        operations.call_off_join();
+        operations.try_begin_join(2).expect("calling off frees it");
+
+        operations.release_join(first);
+        assert!(
+            !operations.release_join_for_game(1),
+            "A's answer is not B's"
+        );
+        assert!(operations.try_begin_join(3).is_none(), "B still holds it");
+        assert!(operations.release_join_for_game(2), "B's answer is B's");
+        assert!(operations.try_begin_join(3).is_some());
+    }
+
+    /// Only a join whose request went out is answered by the server, so only
+    /// that one's launch order is turned away, and only once.
+    #[test]
+    fn a_launch_for_a_join_called_off_after_its_request_is_turned_away() {
+        let operations = LobbyOperations::default();
+        operations.try_begin_join(1).expect("the slot is free");
+        operations.call_off_join();
+        assert!(
+            !operations.take_called_off_launch(1),
+            "never sent, so the server has nothing to answer"
+        );
+
+        let sent = operations.try_begin_join(1).expect("the slot is free");
+        assert!(operations.try_mark_join_sent(sent));
+        operations.call_off_join();
+        operations.try_begin_join(2).expect("calling off frees it");
+        assert!(!operations.take_called_off_launch(2), "B's launch is B's");
+        assert!(operations.take_called_off_launch(1));
+        assert!(!operations.take_called_off_launch(1), "turned away once");
+    }
+
+    /// Two joins sent and called off in turn: both are remembered, so the
+    /// first one's late launch is still turned away.
+    #[test]
+    fn every_called_off_join_is_remembered_until_answered() {
+        let operations = LobbyOperations::default();
+        for game in [1, 2] {
+            let join = operations.try_begin_join(game).expect("the slot is free");
+            assert!(operations.try_mark_join_sent(join));
+            operations.call_off_join();
+        }
+        assert!(
+            operations.take_called_off_launch(1),
+            "B's call-off erased A's"
+        );
+        assert!(
+            !operations.release_join_for_game(2),
+            "B's refusal is not ours"
+        );
+        assert!(!operations.take_called_off_launch(2), "and it answered B");
+    }
+
+    /// A cancel that lands before the request goes out stops it: the mark is
+    /// refused, so nothing is sent without a record.
+    #[test]
+    fn a_join_called_off_before_its_request_may_not_send() {
+        let operations = LobbyOperations::default();
+        let join = operations.try_begin_join(1).expect("the slot is free");
+        // `CancelJoin`'s first step, with the claim not yet taken.
+        operations.cancel();
+        assert!(!operations.try_mark_join_sent(join));
+        operations.call_off_join();
+        assert!(
+            !operations.try_mark_join_sent(join),
+            "nor after the claim is gone"
+        );
+        assert!(!operations.take_called_off_launch(1), "nothing was sent");
+    }
+
+    /// Join with the wrong password, call it off, retry the same game with
+    /// the right one. The refusal for the first attempt is that attempt's:
+    /// it must not end the retry, whose own answer still releases it.
+    #[test]
+    fn a_refusal_for_a_called_off_attempt_leaves_a_retry_of_the_same_game() {
+        let operations = LobbyOperations::default();
+        let first = operations.try_begin_join(1).expect("the slot is free");
+        assert!(operations.try_mark_join_sent(first));
+        operations.call_off_join();
+        let retry = operations.try_begin_join(1).expect("calling off frees it");
+        assert!(operations.try_mark_join_sent(retry));
+
+        assert!(
+            !operations.release_join_for_game(1),
+            "the first attempt's refusal ended the retry"
+        );
+        assert!(
+            operations.try_begin_join(2).is_none(),
+            "the retry still holds it"
+        );
+        assert!(
+            operations.release_join_for_game(1),
+            "the retry's own answer"
+        );
+        assert!(operations.try_begin_join(2).is_some());
+    }
+
+    /// Two attempts at one game sent and called off, then a retry. The first
+    /// attempt's launch is carried out for the retry; the second attempt's
+    /// refusal is that attempt's, and must not touch the launched game.
+    #[test]
+    fn a_launch_for_a_retry_leaves_the_other_attempts_records() {
+        let operations = LobbyOperations::default();
+        for _ in 0..2 {
+            let attempt = operations.try_begin_join(1).expect("the slot is free");
+            assert!(operations.try_mark_join_sent(attempt));
+            operations.call_off_join();
+        }
+        let retry = operations.try_begin_join(1).expect("calling off frees it");
+        assert!(operations.try_mark_join_sent(retry));
+
+        assert!(!operations.take_called_off_launch(1), "the retry wants it");
+        operations.release_join_launched(1);
+        assert!(
+            !operations.release_join_for_game(1),
+            "the second attempt's refusal was taken for the launched retry"
+        );
+        assert!(!operations.release_join_for_game(1), "the slot is free");
+        assert!(operations.try_begin_join(2).is_some());
+    }
+
+    /// Joining the called-off game again means the user wants it after all.
+    #[test]
+    fn a_called_off_game_joined_again_is_launched() {
+        let operations = LobbyOperations::default();
+        let sent = operations.try_begin_join(1).expect("the slot is free");
+        assert!(operations.try_mark_join_sent(sent));
+        operations.call_off_join();
+        operations.try_begin_join(1).expect("calling off frees it");
+        assert!(!operations.take_called_off_launch(1));
     }
 
     /// The launcher's `clear` inside a named operation must not supersede the

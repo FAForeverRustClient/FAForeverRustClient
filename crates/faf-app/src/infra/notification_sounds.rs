@@ -30,6 +30,10 @@ impl NotificationSoundsPort for StoredSounds {
     fn remove(&self, name: &str) -> Result<(), String> {
         remove_sound(name)
     }
+
+    fn exists(&self, name: &str) -> bool {
+        sound_path(name).is_ok_and(|path| path.is_file())
+    }
 }
 
 /// The same rules about names, and a directory that is never touched: for

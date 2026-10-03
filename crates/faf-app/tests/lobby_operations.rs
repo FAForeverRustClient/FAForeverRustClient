@@ -276,6 +276,188 @@ async fn a_join_cancelled_during_preparation_is_not_revived_by_the_next_join() {
     assert_eq!(launches, vec![2], "only B's join request was sent");
 }
 
+/// The server refuses join A after the user called A off and started B. The
+/// refusal names A, so it must neither free B's slot nor put "failed" over
+/// B's progress. A refusal naming B still lands.
+#[tokio::test]
+async fn a_late_refusal_for_a_called_off_join_leaves_the_newer_join_alone() {
+    const FIRST_MAP: &str = "Theta Passage";
+    const SECOND_MAP: &str = "Seton's Clutch";
+
+    let gates = Gates::default();
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        lobby: Arc::new(lobby.clone()),
+        process: Arc::new(LaunchableProcess),
+        updater: Arc::new(GatedUpdater {
+            gates: gates.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let app = Arc::new(app);
+    let mut log = Log {
+        events: app.subscribe(),
+        seen: Vec::new(),
+    };
+
+    app.dispatch(AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    log.until("the lobby connecting", |event| {
+        matches!(event, LobbyEvent::GamesUpdated { .. })
+    })
+    .await;
+
+    tokio::spawn({
+        let app = app.clone();
+        async move { app.dispatch_and_wait(join(1)).await }
+    });
+    log.until("join A preparing", |event| is_step(event, FIRST_MAP))
+        .await;
+    app.dispatch_and_wait(LobbyCommand::CancelJoin.into())
+        .await
+        .unwrap();
+    tokio::spawn({
+        let app = app.clone();
+        async move { app.dispatch_and_wait(join(2)).await }
+    });
+    log.until("join B preparing", |event| is_step(event, SECOND_MAP))
+        .await;
+
+    // The server's late answer to A.
+    assert!(lobby.push_update(faf_app::ports::LobbyUpdate::JoinFailed {
+        id: 1,
+        reason: "game_not_found".into(),
+    }));
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    log.drain();
+    assert!(
+        !log.seen
+            .iter()
+            .any(|event| matches!(event, LobbyEvent::JoinFailed { id: 1, .. })),
+        "a refusal for the called-off join reached the screen"
+    );
+    assert!(
+        !matches!(
+            app.snapshot().lobby.join,
+            faf_domain::state::JoinState::Failed { .. }
+        ),
+        "B's progress was replaced by A's failure"
+    );
+    // B still holds the slot, so a third join is refused.
+    let before_third = log.seen.len();
+    app.dispatch_and_wait(join(3)).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    log.drain();
+    assert!(
+        !log.seen[before_third..]
+            .iter()
+            .any(|event| matches!(event, LobbyEvent::Joining { id: 3, .. })),
+        "A's refusal freed B's slot"
+    );
+
+    // A refusal for B is B's, and lands.
+    assert!(lobby.push_update(faf_app::ports::LobbyUpdate::JoinFailed {
+        id: 2,
+        reason: "game_full".into(),
+    }));
+    log.until("B's refusal", |event| {
+        matches!(event, LobbyEvent::JoinFailed { id: 2, .. })
+    })
+    .await;
+}
+
+/// A hang-up calls the join off as well as freeing its slot. Freeing alone
+/// left the operation current, so a download that finished after the
+/// disconnect still read "live" and sent its join, on whatever connection was
+/// up by then.
+#[tokio::test]
+async fn a_disconnect_calls_off_a_join_still_preparing() {
+    const MAP: &str = "Theta Passage";
+
+    let gates = Gates::default();
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        process: Arc::new(LaunchableProcess),
+        updater: Arc::new(GatedUpdater {
+            gates: gates.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let app = Arc::new(app);
+    let mut log = Log {
+        events: app.subscribe(),
+        seen: Vec::new(),
+    };
+
+    app.dispatch(AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    log.until("the lobby connecting", |event| {
+        matches!(event, LobbyEvent::GamesUpdated { .. })
+    })
+    .await;
+
+    let joining = tokio::spawn({
+        let app = app.clone();
+        async move { app.dispatch_and_wait(join(1)).await }
+    });
+    log.until("the join preparing", |event| is_step(event, MAP))
+        .await;
+
+    // Hang up mid-download, then come straight back.
+    app.dispatch_and_wait(LobbyCommand::Disconnect.into())
+        .await
+        .unwrap();
+    log.until("the lobby disconnecting", |event| {
+        matches!(event, LobbyEvent::Disconnected)
+    })
+    .await;
+    let after_disconnect = log.seen.len();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    log.until("the lobby back", |event| {
+        matches!(event, LobbyEvent::GamesUpdated { .. })
+    })
+    .await;
+
+    // Only now does the download finish.
+    gates.open(MAP);
+    tokio::time::timeout(Duration::from_secs(5), joining)
+        .await
+        .expect("the join's handler never finished")
+        .unwrap()
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    log.drain();
+
+    let after: Vec<_> = log.seen[after_disconnect..].to_vec();
+    assert!(
+        !after.iter().any(|event| is_step(event, MAP)),
+        "the called-off join narrated progress after the hang-up: {after:?}"
+    );
+    assert!(
+        !after
+            .iter()
+            .any(|event| matches!(event, LobbyEvent::Launching { .. })),
+        "the called-off join was sent on the new connection: {after:?}"
+    );
+}
+
 /// How long to give the reconnect watchdog: two of its five-second ticks.
 const WATCHDOG_WAIT: Duration = Duration::from_secs(11);
 
@@ -354,4 +536,267 @@ async fn expect(
     tokio::time::timeout(Duration::from_secs(5), wait_for(events, matches))
         .await
         .unwrap_or_else(|_| panic!("never saw {what}"));
+}
+
+/// Wait until the fake lobby has seen a join request for `id`.
+async fn until_join_sent(lobby: &FakeLobby, id: i32) {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while !lobby.held_joins().contains(&id) {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("join {id} was never sent"));
+}
+
+/// Join A's request goes out, the user calls A off and starts B, and only
+/// then does the server accept A. That launch order used to supersede B and
+/// start A. It is turned away, the server is told A is over, and B carries
+/// on to its own launch.
+#[tokio::test]
+async fn a_launch_for_a_join_called_off_after_its_request_does_not_start() {
+    const FIRST_MAP: &str = "Theta Passage";
+    const SECOND_MAP: &str = "Seton's Clutch";
+
+    let gates = Gates::default();
+    let lobby = FakeLobby::default();
+    lobby.hold_join_answers();
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        lobby: Arc::new(lobby.clone()),
+        process: Arc::new(LaunchableProcess),
+        updater: Arc::new(GatedUpdater {
+            gates: gates.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let app = Arc::new(app);
+    let mut log = Log {
+        events: app.subscribe(),
+        seen: Vec::new(),
+    };
+
+    app.dispatch(AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    log.until("the lobby connecting", |event| {
+        matches!(event, LobbyEvent::GamesUpdated { .. })
+    })
+    .await;
+
+    // A prepares without waiting and sends its request.
+    gates.open(FIRST_MAP);
+    tokio::spawn({
+        let app = app.clone();
+        async move { app.dispatch_and_wait(join(1)).await }
+    });
+    until_join_sent(&lobby, 1).await;
+    app.dispatch_and_wait(LobbyCommand::CancelJoin.into())
+        .await
+        .unwrap();
+    tokio::spawn({
+        let app = app.clone();
+        async move { app.dispatch_and_wait(join(2)).await }
+    });
+    log.until("join B preparing", |event| is_step(event, SECOND_MAP))
+        .await;
+
+    // The server accepts A late.
+    assert!(lobby.answer_join(1));
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    log.drain();
+    assert!(
+        !log.seen
+            .iter()
+            .any(|event| matches!(event, LobbyEvent::Launching { launch } if launch.uid == 1)),
+        "the called-off join was launched"
+    );
+    assert!(
+        lobby
+            .game_relays()
+            .iter()
+            .any(|(command, args)| command == "GameState" && args == &[serde_json::json!("Ended")]),
+        "the server was not told the called-off game is over"
+    );
+
+    // B is still live: it finishes, sends its own request and launches.
+    gates.open(SECOND_MAP);
+    until_join_sent(&lobby, 2).await;
+    assert!(lobby.answer_join(2));
+    log.until(
+        "B's launch",
+        |event| matches!(event, LobbyEvent::Launching { launch } if launch.uid == 2),
+    )
+    .await;
+}
+
+/// Join with the wrong password, call it off once the request is out, and
+/// retry the same game. The server's refusal of the first attempt arrives
+/// while the retry waits. It used to end the retry and put "failed" on
+/// screen; the retry's own launch still comes through.
+#[tokio::test]
+async fn a_refusal_for_a_called_off_attempt_leaves_a_retry_of_the_same_game() {
+    const MAP: &str = "Theta Passage";
+
+    let gates = Gates::default();
+    let lobby = FakeLobby::default();
+    lobby.hold_join_answers();
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        lobby: Arc::new(lobby.clone()),
+        process: Arc::new(LaunchableProcess),
+        updater: Arc::new(GatedUpdater {
+            gates: gates.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let app = Arc::new(app);
+    let mut log = Log {
+        events: app.subscribe(),
+        seen: Vec::new(),
+    };
+
+    app.dispatch(AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    log.until("the lobby connecting", |event| {
+        matches!(event, LobbyEvent::GamesUpdated { .. })
+    })
+    .await;
+
+    gates.open(MAP);
+    app.dispatch_and_wait(join(1)).await.unwrap();
+    until_join_sent(&lobby, 1).await;
+    app.dispatch_and_wait(LobbyCommand::CancelJoin.into())
+        .await
+        .unwrap();
+    gates.open(MAP);
+    app.dispatch_and_wait(join(1)).await.unwrap();
+    assert_eq!(lobby.held_joins(), vec![1, 1], "both attempts were sent");
+
+    // The first attempt's refusal.
+    assert!(lobby.push_update(faf_app::ports::LobbyUpdate::JoinFailed {
+        id: 1,
+        reason: "bad_password".into(),
+    }));
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    log.drain();
+    assert!(
+        !log.seen
+            .iter()
+            .any(|event| matches!(event, LobbyEvent::JoinFailed { .. })),
+        "the first attempt's refusal reached the screen"
+    );
+    assert!(
+        matches!(
+            app.snapshot().lobby.join,
+            faf_domain::state::JoinState::Joining { id: 1, .. }
+        ),
+        "the retry is no longer waiting: {:?}",
+        app.snapshot().lobby.join
+    );
+
+    // The retry's acceptance launches it.
+    assert!(lobby.answer_join(1));
+    log.until(
+        "the retry's launch",
+        |event| matches!(event, LobbyEvent::Launching { launch } if launch.uid == 1),
+    )
+    .await;
+}
+
+/// Two attempts at one game are sent and called off, then a retry is sent.
+/// The server accepts the first attempt, which launches for the retry. The
+/// second attempt's refusal arrives after that; it used to find the retry
+/// still holding the slot and put "failed" over the game that launched.
+#[tokio::test]
+async fn a_refusal_for_another_attempt_leaves_the_launched_retry_alone() {
+    const MAP: &str = "Theta Passage";
+
+    let gates = Gates::default();
+    let lobby = FakeLobby::default();
+    lobby.hold_join_answers();
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        lobby: Arc::new(lobby.clone()),
+        process: Arc::new(LaunchableProcess),
+        updater: Arc::new(GatedUpdater {
+            gates: gates.clone(),
+        }),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    let app = Arc::new(app);
+    let mut log = Log {
+        events: app.subscribe(),
+        seen: Vec::new(),
+    };
+
+    app.dispatch(AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    log.until("the lobby connecting", |event| {
+        matches!(event, LobbyEvent::GamesUpdated { .. })
+    })
+    .await;
+
+    for _ in 0..2 {
+        gates.open(MAP);
+        app.dispatch_and_wait(join(1)).await.unwrap();
+        app.dispatch_and_wait(LobbyCommand::CancelJoin.into())
+            .await
+            .unwrap();
+    }
+    gates.open(MAP);
+    app.dispatch_and_wait(join(1)).await.unwrap();
+    assert_eq!(lobby.held_joins(), vec![1, 1, 1], "all three were sent");
+
+    // The first attempt is accepted, for the retry.
+    assert!(lobby.answer_join(1));
+    log.until(
+        "the launch",
+        |event| matches!(event, LobbyEvent::Launching { launch } if launch.uid == 1),
+    )
+    .await;
+
+    // The second attempt's refusal, then a marker: updates are handled in
+    // order, so once the marker is seen the refusal has been handled too.
+    assert!(lobby.push_update(faf_app::ports::LobbyUpdate::JoinFailed {
+        id: 1,
+        reason: "bad_password".into(),
+    }));
+    assert!(lobby.push_update(faf_app::ports::LobbyUpdate::Vetoes {
+        vetoes: Vec::new(),
+        forced: false,
+    }));
+    log.until("the marker", |event| {
+        matches!(event, LobbyEvent::VetoesUpdated { .. })
+    })
+    .await;
+    assert!(
+        !log.seen
+            .iter()
+            .any(|event| matches!(event, LobbyEvent::JoinFailed { .. })),
+        "another attempt's refusal was put over the launched game"
+    );
 }

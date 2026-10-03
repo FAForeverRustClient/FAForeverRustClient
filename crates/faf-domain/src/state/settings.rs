@@ -3283,6 +3283,198 @@ pub fn without_custom_sound(
     changed.then_some(next)
 }
 
+/// Put back every slot that `next` newly points at a refused added sound.
+///
+/// "Newly" is the point: a slot that already named the sound before this
+/// change is left as it was, so changing one row never rewrites another that
+/// happens to name a file that has since gone. Returns whether anything was
+/// put back. The settings service refuses a sound that is being removed or
+/// whose file no longer exists, so a dropdown that still listed it cannot
+/// leave a saved setting naming a deleted file.
+pub fn refuse_new_custom_sounds(
+    previous: &NotificationSoundChoices,
+    next: &mut NotificationSoundChoices,
+    refused: impl Fn(&str) -> bool,
+) -> bool {
+    let mut put_back = false;
+    for (before, after) in [
+        (&previous.match_found, &mut next.match_found),
+        (&previous.private_message, &mut next.private_message),
+        (&previous.mention, &mut next.mention),
+        (&previous.friend_online, &mut next.friend_online),
+        (&previous.friend_offline, &mut next.friend_offline),
+        (&previous.friend_playing, &mut next.friend_playing),
+        (&previous.new_custom_game, &mut next.new_custom_game),
+        (&previous.game_full, &mut next.game_full),
+        (&previous.game_launched, &mut next.game_launched),
+        (&previous.review_reminder, &mut next.review_reminder),
+        (&previous.party_invite, &mut next.party_invite),
+        (&previous.other, &mut next.other),
+    ] {
+        if after != before {
+            if let NotificationSound::Custom(name) = &*after {
+                if refused(name) {
+                    *after = before.clone();
+                    put_back = true;
+                }
+            }
+        }
+    }
+    put_back
+}
+
+/// The string lists the webview changes one entry at a time: a star, a mute,
+/// a collapsed roster category, a chip.
+///
+/// They get their own command, [`SettingsCommand::SetListMember`], rather than
+/// a `Patch*` field, because a patch replaces the whole list and the webview
+/// can only build that list from its last snapshot. Two stars inside one round
+/// trip sent `[A]` and then `[B]`, and only B survived. Naming the one entry
+/// and whether it belongs lets the service apply it to the list as the backend
+/// holds it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PreferenceList {
+    /// `browsing.favorite_maps`, by map folder name.
+    FavoriteMaps,
+    /// `browsing.favorite_mods`, by mod uid.
+    FavoriteMods,
+    /// `browsing.leaderboard_rating_columns`.
+    LeaderboardRatingColumns,
+    /// `chat.muted_players`, by login.
+    MutedPlayers,
+    /// `chat.hidden_roster_categories`.
+    HiddenRosterCategories,
+    /// `chat.auto_join_channels`.
+    AutoJoinChannels,
+}
+
+/// The same entry, whatever case or padding an older client stored it in. Every
+/// list behind [`PreferenceList`] already treats entries this way when it is
+/// normalised, so matching any looser or stricter would leave a duplicate the
+/// normalisation then silently resolves the other way.
+fn same_entry(left: &str, right: &str) -> bool {
+    left.trim().to_lowercase() == right.trim().to_lowercase()
+}
+
+/// `value` added to (`member`) or removed from `list`, normalised as a whole.
+///
+/// An entry already present is left where it is rather than moved to the end,
+/// so starring something twice does not reorder anybody's favourites.
+fn with_member(mut list: Vec<String>, value: &str, member: bool) -> Vec<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return list;
+    }
+    let present = list.iter().any(|entry| same_entry(entry, value));
+    if member && !present {
+        list.push(value.to_owned());
+    } else if !member {
+        list.retain(|entry| !same_entry(entry, value));
+    }
+    list
+}
+
+/// The event that adds `value` to or removes it from one list, worked out
+/// against `settings` as they are now and normalised like any other write to
+/// the group.
+pub fn list_member_changed(
+    settings: &SettingsState,
+    list: PreferenceList,
+    value: &str,
+    member: bool,
+) -> SettingsEvent {
+    let mut next = settings.clone();
+    match list {
+        PreferenceList::FavoriteMaps => {
+            next.browsing.favorite_maps = with_member(next.browsing.favorite_maps, value, member)
+        }
+        PreferenceList::FavoriteMods => {
+            next.browsing.favorite_mods = with_member(next.browsing.favorite_mods, value, member)
+        }
+        PreferenceList::LeaderboardRatingColumns => {
+            next.browsing.leaderboard_rating_columns =
+                with_member(next.browsing.leaderboard_rating_columns, value, member)
+        }
+        PreferenceList::MutedPlayers => {
+            next.chat.muted_players = with_member(next.chat.muted_players, value, member)
+        }
+        PreferenceList::HiddenRosterCategories => {
+            next.chat.hidden_roster_categories =
+                with_member(next.chat.hidden_roster_categories, value, member)
+        }
+        PreferenceList::AutoJoinChannels => {
+            next.chat.auto_join_channels = with_member(next.chat.auto_join_channels, value, member)
+        }
+    }
+    let next = next.normalized();
+    match list {
+        PreferenceList::FavoriteMaps
+        | PreferenceList::FavoriteMods
+        | PreferenceList::LeaderboardRatingColumns => SettingsEvent::BrowsingChanged {
+            preferences: Box::new(next.browsing),
+        },
+        PreferenceList::MutedPlayers
+        | PreferenceList::HiddenRosterCategories
+        | PreferenceList::AutoJoinChannels => SettingsEvent::ChatChanged {
+            preferences: Box::new(next.chat),
+        },
+    }
+}
+
+/// The event that gives one player's name a colour, or (`None`) takes it away.
+///
+/// Any entry for the same login in another case goes first: the map is keyed
+/// by the spelling it was assigned under, and two spellings of one player would
+/// leave which colour wins to the map's ordering.
+pub fn player_name_color_changed(
+    settings: &SettingsState,
+    player: &str,
+    color: Option<&str>,
+) -> SettingsEvent {
+    let mut next = settings.clone();
+    let player = player.trim();
+    if !player.is_empty() {
+        let players = &mut next.chat.name_colors.players;
+        players.retain(|existing, _| !same_entry(existing, player));
+        if let Some(color) = color {
+            players.insert(player.to_owned(), color.to_owned());
+        }
+    }
+    SettingsEvent::ChatChanged {
+        preferences: Box::new(next.normalized().chat),
+    }
+}
+
+/// The event that saves one mod preset, replacing the one of the same name in
+/// place (so a row of preset buttons does not reorder on every save) or adding
+/// it at the end.
+pub fn mod_preset_saved(settings: &SettingsState, preset: ModPreset) -> SettingsEvent {
+    let mut next = settings.clone();
+    let presets = &mut next.browsing.mod_presets;
+    match presets
+        .iter_mut()
+        .find(|existing| same_entry(&existing.name, &preset.name))
+    {
+        Some(existing) => *existing = preset,
+        None => presets.push(preset),
+    }
+    SettingsEvent::BrowsingChanged {
+        preferences: Box::new(next.normalized().browsing),
+    }
+}
+
+/// The event that deletes the mod preset called `name`.
+pub fn mod_preset_deleted(settings: &SettingsState, name: &str) -> SettingsEvent {
+    let mut next = settings.clone();
+    next.browsing
+        .mod_presets
+        .retain(|preset| !same_entry(&preset.name, name));
+    SettingsEvent::BrowsingChanged {
+        preferences: Box::new(next.normalized().browsing),
+    }
+}
+
 // No `Eq`: the map generator's density preferences are `f32`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 // `rename_all_fields` matters from `KeptGeneratedMaps` onwards: every earlier
@@ -3465,6 +3657,29 @@ pub enum SettingsCommand {
     },
     PatchEvents {
         patch: Box<EventsPreferencesPatch>,
+    },
+    // The commands below change one entry of a list or map. A `Patch*` field
+    // would carry the whole collection as the webview last saw it, so two
+    // quick toggles of the same list would still lose the first; these are
+    // applied to the backend's copy instead. See `PreferenceList`.
+    /// Add `value` to one string list (`member`), or remove it.
+    SetListMember {
+        list: PreferenceList,
+        value: String,
+        member: bool,
+    },
+    /// Give one player's name a chat colour, or clear the one it has.
+    SetPlayerNameColor {
+        player: String,
+        color: Option<String>,
+    },
+    /// Save a named mod set, replacing one of the same name in place.
+    SaveModPreset {
+        preset: ModPreset,
+    },
+    /// Delete the named mod set.
+    DeleteModPreset {
+        name: String,
     },
     CheckInstalls,
     RefreshGameCache,
@@ -4702,5 +4917,172 @@ mod tests {
 
         // Nothing named it: nothing to write.
         assert_eq!(without_custom_sound(&sounds, "absent.wav"), None);
+    }
+
+    #[test]
+    fn a_refused_sound_is_put_back_only_where_this_change_chose_it() {
+        let previous = NotificationSoundChoices {
+            // Already named before the change: left alone even though refused.
+            other: NotificationSound::Custom("gone.wav".into()),
+            ..NotificationSoundChoices::default()
+        };
+        let mut next = NotificationSoundChoices {
+            mention: NotificationSound::Custom("gone.wav".into()),
+            game_full: NotificationSound::Custom("bell.wav".into()),
+            ..previous.clone()
+        };
+        let refused = |name: &str| name == "gone.wav";
+
+        assert!(refuse_new_custom_sounds(&previous, &mut next, refused));
+        assert_eq!(
+            next.mention, previous.mention,
+            "the new choice was put back"
+        );
+        assert_eq!(next.game_full, NotificationSound::Custom("bell.wav".into()));
+        assert_eq!(next.other, NotificationSound::Custom("gone.wav".into()));
+
+        let mut unchanged = previous.clone();
+        assert!(!refuse_new_custom_sounds(
+            &previous,
+            &mut unchanged,
+            refused
+        ));
+    }
+
+    /// Apply one element change the way the reducer would, so each assertion
+    /// reads the state a second change would be applied to.
+    fn applied(mut settings: SettingsState, event: SettingsEvent) -> SettingsState {
+        reduce(&mut settings, &event);
+        settings
+    }
+
+    #[test]
+    fn list_members_are_added_and_removed_one_at_a_time() {
+        let settings = SettingsState::default();
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::FavoriteMaps, "Gap.v0001", true),
+        );
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::FavoriteMaps, "dawn.v0003", true),
+        );
+        // The second star kept the first: this is the whole point.
+        assert_eq!(settings.browsing.favorite_maps, ["gap.v0001", "dawn.v0003"]);
+
+        // A star in another case is the same map, so nothing moves.
+        let again = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::FavoriteMaps, "GAP.v0001", true),
+        );
+        assert_eq!(
+            again.browsing.favorite_maps,
+            settings.browsing.favorite_maps
+        );
+
+        // Removal matches any spelling an older client stored.
+        let removed = applied(
+            settings.clone(),
+            list_member_changed(
+                &settings,
+                PreferenceList::FavoriteMaps,
+                " GAP.V0001 ",
+                false,
+            ),
+        );
+        assert_eq!(removed.browsing.favorite_maps, ["dawn.v0003"]);
+    }
+
+    #[test]
+    fn chat_lists_take_members_and_stay_normalised() {
+        let mut settings = SettingsState::default();
+        settings.chat.muted_players = vec!["Zed".into()];
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::MutedPlayers, "aurora", true),
+        );
+        // Muted players are kept sorted by the group's own normalisation.
+        assert_eq!(settings.chat.muted_players, ["aurora", "Zed"]);
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::MutedPlayers, "zed", false),
+        );
+        assert_eq!(settings.chat.muted_players, ["aurora"]);
+
+        let settings = applied(
+            settings.clone(),
+            list_member_changed(
+                &settings,
+                PreferenceList::HiddenRosterCategories,
+                "ircOnly",
+                true,
+            ),
+        );
+        assert_eq!(settings.chat.hidden_roster_categories, ["ircOnly"]);
+        // A blank value is not an entry.
+        let unchanged = applied(
+            settings.clone(),
+            list_member_changed(&settings, PreferenceList::AutoJoinChannels, "  ", true),
+        );
+        assert_eq!(unchanged.chat, settings.chat);
+    }
+
+    #[test]
+    fn a_player_colour_replaces_every_spelling_of_that_login() {
+        let mut settings = SettingsState::default();
+        settings.chat.name_colors.players = BTreeMap::from([
+            ("Aurora".into(), "#112233".into()),
+            ("Bo".into(), "#445566".into()),
+        ]);
+        let next = applied(
+            settings.clone(),
+            player_name_color_changed(&settings, "aurora", Some("#ABCDEF")),
+        );
+        assert_eq!(
+            next.chat.name_colors.players,
+            BTreeMap::from([
+                ("Bo".into(), "#445566".into()),
+                ("aurora".into(), "#abcdef".into())
+            ])
+        );
+        let cleared = applied(
+            next.clone(),
+            player_name_color_changed(&next, "AURORA", None),
+        );
+        assert_eq!(
+            cleared.chat.name_colors.players,
+            BTreeMap::from([("Bo".into(), "#445566".into())])
+        );
+    }
+
+    #[test]
+    fn a_saved_mod_preset_replaces_its_namesake_in_place() {
+        let mut settings = SettingsState::default();
+        settings.browsing.mod_presets = vec![
+            ModPreset {
+                name: "Replay".into(),
+                uids: vec!["a".into()],
+            },
+            ModPreset {
+                name: "Team".into(),
+                uids: vec!["b".into()],
+            },
+        ];
+        let next = applied(
+            settings.clone(),
+            mod_preset_saved(
+                &settings,
+                ModPreset {
+                    name: "replay".into(),
+                    uids: vec!["c".into()],
+                },
+            ),
+        );
+        let names: Vec<_> = next.browsing.mod_presets.iter().map(|p| &p.name).collect();
+        assert_eq!(names, ["replay", "Team"], "same slot, not moved to the end");
+        assert_eq!(next.browsing.mod_presets[0].uids, ["c"]);
+
+        let next = applied(next.clone(), mod_preset_deleted(&next, "TEAM"));
+        assert_eq!(next.browsing.mod_presets.len(), 1);
     }
 }

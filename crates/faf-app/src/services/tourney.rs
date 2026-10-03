@@ -20,15 +20,16 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
         TourneyCommand::Load => load(ctx, out).await,
 
         TourneyCommand::Select { tournament_id } => {
-            // Moving to another event ends the eligibility check of the one
-            // being left. Re-selecting the open event does not: the reducer
-            // keeps its notice then, and dropping the answer in flight would
-            // leave that notice loading for good.
+            // Moving to another event ends the eligibility check and the
+            // entrant ratings read of the one being left. Re-selecting the
+            // open event does not: the reducer keeps both then, and dropping
+            // the answer in flight would leave them loading for good.
             let moving = out.with_state(|state| {
                 state.tourney.selected_id.as_deref() != Some(tournament_id.as_str())
             });
             if moving {
                 ctx.tourney_rating_check_generation.invalidate();
+                ctx.tourney_player_ratings_generation.invalidate();
             }
             out.emit(TourneyEvent::Selected {
                 tournament_id: tournament_id.clone(),
@@ -101,15 +102,31 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             player_id,
             refresh,
         } => {
-            out.emit(TourneyEvent::PlayerRatingsLoading);
-            match ctx
+            // One table on screen, so one owner: asking for another entrant,
+            // or again from FAF, supersedes the answer in flight, and an older
+            // one landing last would put the wrong player's ratings (or a
+            // refusal nobody is waiting for) under the dialog that is open.
+            // Claimed before the request, and given up by `Select` like the
+            // eligibility check.
+            let generation = ctx.tourney_player_ratings_generation.begin();
+            out.emit(TourneyEvent::PlayerRatingsLoading {
+                tournament_id: tournament_id.clone(),
+            });
+            let loaded = ctx
                 .ports
                 .tourney
                 .player_ratings(&tournament_id, &player_id, refresh)
-                .await
-            {
-                Ok(ratings) => out.emit(TourneyEvent::PlayerRatingsLoaded { ratings }),
+                .await;
+            if !ctx.tourney_player_ratings_generation.is_current(generation) {
+                return;
+            }
+            match loaded {
+                Ok(ratings) => out.emit(TourneyEvent::PlayerRatingsLoaded {
+                    tournament_id,
+                    ratings,
+                }),
                 Err(error) => out.emit(TourneyEvent::PlayerRatingsFailed {
+                    tournament_id,
                     reason: error.to_string(),
                     kind: error.kind(),
                 }),
@@ -161,9 +178,20 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
 
         // Read like a map source, without opening it: the form fills from it
         // while whatever event is open stays open.
+        //
+        // Newest wins, refusals included. The form matches a filled template
+        // against the source it asked for, but a refusal carries no source,
+        // so an older request's failure landing last would read as the newer
+        // one's. Not tied to the selection: the template is the create form's,
+        // and moving between events leaves that form as it is.
         TourneyCommand::LoadTemplate { tournament_id } => {
+            let generation = ctx.tourney_template_generation.begin();
             out.emit(TourneyEvent::TemplateLoading);
-            match ctx.ports.tourney.detail(&tournament_id).await {
+            let loaded = ctx.ports.tourney.detail(&tournament_id).await;
+            if !ctx.tourney_template_generation.is_current(generation) {
+                return;
+            }
+            match loaded {
                 Ok(event) => out.emit(TourneyEvent::TemplateLoaded {
                     event: Box::new(event),
                 }),
