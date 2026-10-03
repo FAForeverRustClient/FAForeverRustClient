@@ -1164,7 +1164,28 @@ pub async fn handle(cmd: TourneyCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
 
-        TourneyCommand::SaveMap { tournament_id, map } => {
+        TourneyCommand::SaveMap {
+            tournament_id,
+            mut map,
+        } => {
+            if let Some(preview) = out.with_state(|state| {
+                let stored = state
+                    .tourney
+                    .open_event()
+                    .map(|event| event.map_db.as_slice())
+                    .unwrap_or_default();
+                faf_domain::state::tourney::vault_preview_for_new_picture(
+                    &map,
+                    stored,
+                    &state.maps.vault,
+                    |vault| vault.display_name.as_str(),
+                    |vault| vault.folder_name.as_str(),
+                    |vault| vault.thumbnail_url_large.as_str(),
+                )
+                .map(str::to_owned)
+            }) {
+                map.image = Some(preview);
+            }
             write(TourneyAction::SavingMap, ctx, out, {
                 let tournament_id = tournament_id.clone();
                 async move { ctx.ports.tourney.save_map(&tournament_id, &map).await }

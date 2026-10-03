@@ -264,7 +264,14 @@ export type AuthCommand =
 /**  Try a previously remembered refresh token. No-op when none is stored. */
 { type: "restore" } |
 /**  Open the client without signing in, on local files only. */
-{ type: "playOffline" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
+{ type: "playOffline" } |
+/**
+ *  Start Forged Alliance on its own, into its own menu, without signing
+ *  in: the Java client's "Play Offline" (#397). Skirmish against the AI
+ *  needs no server. A failure is reported as a failed login, which is what
+ *  the login screen it is started from shows.
+ */
+{ type: "launchOfflineGame" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
 
 /**  The only way [`AuthState`] changes. */
 export type AuthEvent = { type: "loginStarted" } | { type: "loggedIn"; payload: {
@@ -4142,6 +4149,10 @@ export type MapDraft = {
 	/**
 	 *  A new picture of the event's own, as a `data:` URL, or `None` to keep
 	 *  the one it has. The service stores it under a file name of its own.
+	 *
+	 *  The client may also put FAF's own vault preview here, as its
+	 *  `https://content.faforever.com/` address: the port fetches that and
+	 *  sends the picture. See [`vault_preview_for_new_picture`].
 	 */
 	image?: string | null,
 	/**  Delete the stored picture. Ignored when a new one is sent. */
