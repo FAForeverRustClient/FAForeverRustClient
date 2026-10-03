@@ -449,6 +449,7 @@ export function ReplayDetailRoster({
   showResults = false,
   avatarByLogin,
   onPlayerMenu,
+  titlesAbove = false,
 }: {
   teams: (ReplayTeam | RosterTeam)[];
   /**
@@ -468,6 +469,13 @@ export function ReplayDetailRoster({
    * on its own, which is all a surface with nowhere to put a menu can offer.
    */
   onPlayerMenu?: PlayerMenuOpener;
+  /**
+   * Each team's name, rating and outcome stand above its card instead of
+   * inside it, with the first of two teams aligned to its card's right edge
+   * so the two names meet in the middle. Every replay surface asks for this
+   * now; the default stays for anything that has not.
+   */
+  titlesAbove?: boolean;
 }) {
   useLocale();
   if (teams.length === 0) return null;
@@ -483,6 +491,7 @@ export function ReplayDetailRoster({
       className="replay-detail-teams"
       data-layout={versus ? "versus" : undefined}
       data-sole-team={soleTeam ? "true" : undefined}
+      data-titles-above={titlesAbove ? "true" : undefined}
     >
       {teams.map((team, index) => {
         const observer = isObserverTeam(team.team);
@@ -504,29 +513,45 @@ export function ReplayDetailRoster({
         const isSplit = (isSingleTeamGame || soleTeam) && team.players.length > 4;
         const rowCount = isSplit ? Math.ceil(team.players.length / 2) : undefined;
         const showHeader = !isSingleTeamGame || (showResults && Boolean(outcomeText));
-        return (
-          <Fragment key={team.team}>
-            {versus && index === 1 && <span className="replay-detail-versus" aria-hidden>vs</span>}
-            {/* Green and red say who won, so they may only appear once the
-                result is on screen. Before that the panels are neutral: a
-                colour keyed to which team happens to be listed first told the
-                reader something the game never said. */}
+        const outcomeBadge = showResults && outcomeText && (
+          <span className={`replay-team-outcome ${outcomeKind || "unknown"}`}>
+            {outcomeText}
+          </span>
+        );
+        // Above the card: the name over the combined rating, and the outcome
+        // beside them once the result is on screen.
+        const headingAbove = titlesAbove && showHeader && (
+          <header className="replay-detail-team-heading">
+            <span className="replay-detail-team-heading-text">
+              <span className="replay-detail-team-heading-name">
+                {!isSingleTeamGame ? teamName(team.team, soleTeam) : ""}
+              </span>
+              {!isSingleTeamGame && teamRating !== null && (
+                <span className="replay-detail-team-heading-rating" title={t("replays.roster.combinedRating")}>
+                  {teamRating} rating
+                </span>
+              )}
+            </span>
+            {outcomeBadge}
+          </header>
+        );
+        const card = (
+            /* Green and red say who won, so they may only appear once the
+               result is on screen. Before that the panels are neutral: a
+               colour keyed to which team happens to be listed first told the
+               reader something the game never said. */
             <section
               className="replay-detail-team surface-panel"
               data-outcome={showResults && outcomeKind ? outcomeKind : undefined}
             >
-              {showHeader && (
+              {showHeader && !titlesAbove && (
                 <header className="replay-detail-team-title">
                   <span>{!isSingleTeamGame ? teamName(team.team, soleTeam) : ""}</span>
                   <span className="replay-detail-team-summary">
                     {!isSingleTeamGame && teamRating !== null && (
                       <span title={t("replays.roster.combinedRating")}>{teamRating} rating</span>
                     )}
-                    {showResults && outcomeText && (
-                      <span className={`replay-team-outcome ${outcomeKind || "unknown"}`}>
-                        {outcomeText}
-                      </span>
-                    )}
+                    {outcomeBadge}
                   </span>
                 </header>
               )}
@@ -594,6 +619,16 @@ export function ReplayDetailRoster({
                 })}
               </div>
             </section>
+        );
+        return (
+          <Fragment key={team.team}>
+            {versus && index === 1 && <span className="replay-detail-versus" aria-hidden>vs</span>}
+            {titlesAbove ? (
+              <div className="replay-detail-team-column">
+                {headingAbove}
+                {card}
+              </div>
+            ) : card}
           </Fragment>
         );
       })}

@@ -1366,8 +1366,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.live.lineupUnavailable": "Состав игроков недоступен",
   "replays.live.observers": "Наблюдатели",
   "replays.live.team": "Команда {team}",
-  "replays.live.replayId": "ID реплея",
-  "replays.live.simMods": "SIM моды",
   "replays.live.none": "Нет",
   "replays.live.column.map": "Карта",
 

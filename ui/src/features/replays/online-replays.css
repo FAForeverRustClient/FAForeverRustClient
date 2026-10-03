@@ -613,62 +613,6 @@ button.vault-input {
   border-bottom: 1px solid var(--color-border);
 }
 
-/* The vault and local panel's head, two rows of two. Above: the preview, and
-   beside it title, map and id starting level with its top, with Watch in the
-   corner. Below: the actions on the file stacked under the preview, and the
-   facts beside them against the right edge. The live panel keeps the plain
-   head. The padding moves from the head onto its first row, which is all the
-   close button needs kept clear. */
-.replay-detail-head.replay-detail-head-top {
-  grid-template-columns: 176px minmax(0, 1fr);
-  align-items: start;
-  row-gap: var(--space-3);
-  padding-right: 0;
-}
-
-.replay-detail-head-top .replay-detail-thumb-frame {
-  width: 100%;
-}
-
-.replay-detail-headmain {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--space-3) var(--space-4);
-  min-width: 0;
-  padding-right: 28px;
-}
-
-.replay-detail-headmain > .replay-detail-headtext {
-  flex: 1 1 260px;
-}
-
-.replay-detail-headmain > .replay-watch-button {
-  flex: none;
-  min-width: 180px;
-}
-
-.replay-detail-head-top > .replay-detail-actions {
-  grid-column: 1;
-  grid-row: 2;
-  margin-right: 0;
-}
-
-/* The two rows of five, kept as they are, but sized to their contents and
-   pushed to the right edge, so they start under the preview's bottom edge
-   beside the buttons instead of across the whole dialog. */
-.replay-detail-head-top > .replay-detail-facts {
-  grid-column: 2;
-  grid-row: 2;
-  justify-content: end;
-  padding: 0;
-  border-bottom: 0;
-}
-
-.replay-detail-head-top > .replay-detail-facts-five {
-  grid-template-columns: repeat(5, minmax(0, max-content));
-}
-
 /* Positioning context for the generate button over the thumbnail. */
 .replay-detail-thumb-frame {
   position: relative;
@@ -812,21 +756,6 @@ button.vault-input {
   font-variant-numeric: tabular-nums;
   letter-spacing: normal;
   text-transform: none;
-}
-
-.replay-detail-idline {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-/* A quiet line, not the headline number it was over the title. */
-.replay-detail-idline > .replay-detail-id {
-  color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 500;
 }
 
 .replay-detail-map {
@@ -1018,27 +947,14 @@ button.vault-input {
   min-width: 0;
 }
 
-/* The dialog's main action, and drawn as one: the only filled button in it,
-   taller and wider than everything else in the floor row, so it is found at a
-   glance in the corner rather than read for. */
 .replay-watch-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  min-height: 46px;
-  padding: 0 24px;
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: 0.01em;
-  transition: background-color 120ms ease, opacity 120ms ease, box-shadow 120ms ease;
-}
-
-/* A soft ring in the theme's accent on hover and keyboard focus, on top of
-   the shared fade, so the press target reads as the important one. */
-.replay-watch-button:hover:not(:disabled),
-.replay-watch-button:focus-visible {
-  box-shadow: 0 0 0 4px var(--color-accent-glow);
+  gap: 7px;
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .replay-detail-actions-secondary {
@@ -1052,20 +968,6 @@ button.vault-input {
    download, and a file with no replay id has no notes. */
 .replay-detail-actions-secondary > :last-child:nth-child(odd) {
   grid-column: 1 / -1;
-}
-
-/* One above the other: five labels of very different lengths in two columns
-   left one cell cut short and the other half empty. */
-.replay-detail-actions-stacked {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-/* A long label ("Als angesehen markieren") wraps onto a second line in the
-   preview-wide column rather than running out of its button. */
-.replay-detail-actions-stacked > .replay-secondary-btn {
-  padding-block: 6px;
-  text-align: left;
-  line-height: 1.25;
 }
 
 .replay-secondary-btn {
@@ -1276,6 +1178,20 @@ button.vault-input {
 .replay-detail-reveal-btn[aria-pressed="true"] {
   border-color: var(--color-border-strong);
   background: var(--color-surface-hover);
+}
+
+/* The floor of the dialog, under the lineup: the way into the file's own
+   contents, on the left where the lineup starts. */
+.replay-detail-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px;
+  margin-top: var(--space-3);
+}
+
+.replay-detail-more-info {
+  min-width: 132px;
 }
 
 .replay-detail-teams {
@@ -1606,18 +1522,6 @@ button.vault-input {
 
   .replay-detail-actions {
     grid-column: 1 / -1;
-  }
-
-  .replay-detail-head.replay-detail-head-top {
-    grid-template-columns: 96px minmax(0, 1fr);
-  }
-
-  /* Too narrow for a column of buttons beside the facts: both take a row of
-     their own under the preview and the title. */
-  .replay-detail-head-top > .replay-detail-actions,
-  .replay-detail-head-top > .replay-detail-facts {
-    grid-column: 1 / -1;
-    grid-row: auto;
   }
 
   .replay-detail-facts {
@@ -1964,17 +1868,22 @@ input.replay-options-filter {
   backdrop-filter: blur(4px);
 }
 
-/* Sized so the square map lands near the 512px the preview image actually
-   has: at 900px wide it was stretched by three quarters, which nearest-
-   neighbour scaling drew as stair-stepped coastlines, and the square alone was
-   taller than most windows. The height term keeps the whole frame, controls
-   and name included, inside a short window; the scroll is only a backstop. */
+/* Sized the way the Play tab's map preview is (`.game-preview-dialog`): led
+   by the window's height, since the square map is what runs out of room
+   first, less an allowance for everything that is not the map (the kicker,
+   the title, the name row and the gaps), and capped so a 4K window does not
+   draw a preview larger than anyone wants to look at. It used to stop at
+   576px, against stair-stepped coastlines from nearest-neighbour scaling;
+   the zoom now draws pixels sharp only once zoomed in, so a large preview at
+   rest is smooth. The scroll is only a backstop. */
 .replay-preview-overlay {
+  --preview-size-allowance: 180px;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   box-sizing: border-box;
-  width: min(576px, calc(100vw - 48px), max(320px, calc(92vh - 180px)));
+  width: min(calc(92vh - var(--preview-size-allowance)), calc(100vw - 48px), 1040px);
+  min-width: min(320px, calc(100vw - 48px));
   max-height: 92vh;
   overflow-y: auto;
   padding: var(--space-4);
@@ -2040,34 +1949,27 @@ input.replay-options-filter {
   color: var(--color-text);
 }
 
-/* A team's colour is carried by a line across the top of its panel, not by its
-   border: a fully coloured outline around six rows reads as an alert. */
+/* Once the result is revealed, each side's panel takes its outcome's colour:
+   a green border and tint for the winners, the same in red for the losers,
+   the pair the mod vault uses for a mod that is switched on, kept fainter
+   here so a whole team does not read as an alert. Both sides or neither: one
+   coloured panel beside a plain one read as a highlight rather than a
+   result. A draw stays neutral. Keyed to the result, not to the order the
+   teams arrived in, and only set once the result is revealed, so until then
+   the panels say nothing they do not know. */
 .replay-detail-team {
   position: relative;
   overflow: hidden;
 }
 
-.replay-detail-team::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 2px;
-  background: var(--team-accent, transparent);
-}
-
-/* Keyed to the result, not to the order the teams arrived in. The attribute is
-   only set once the result is revealed, so until then every panel keeps the
-   transparent default and the card says nothing it does not know. */
 .replay-detail-team[data-outcome="victory"] {
-  --team-accent: var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 40%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 4%, var(--color-surface-raised));
 }
 
 .replay-detail-team[data-outcome="defeat"] {
-  --team-accent: var(--color-error);
-}
-
-.replay-detail-team[data-outcome="draw"] {
-  --team-accent: var(--color-warn);
+  border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+  background: color-mix(in srgb, var(--color-error) 4%, var(--color-surface-raised));
 }
 
 /* A team is one block, not a stack of pills, and not a ruled table either.
@@ -2593,4 +2495,307 @@ input.replay-options-filter {
 .friend-replay-option[aria-selected="true"] {
   color: var(--color-accent);
   font-weight: 600;
+}
+
+/* ------------------------------------------------------------------------
+   The vault and local replay dialog: a hero over the map, a strip of facts,
+   the lineup, and a flat toolbar along the floor. The live dialog shares the
+   modal class and keeps the head above; everything here is keyed to classes
+   only this dialog carries.
+   ------------------------------------------------------------------------ */
+
+/* Wider than the live dialog. A container too, so the hero rearranges by the
+   dialog's own width rather than the window's. */
+.replay-detail-modal.replay-detail-modal-wide {
+  width: min(1040px, 96vw);
+  max-width: 1040px;
+  container-type: inline-size;
+}
+
+/* Above the hero, which is positioned and comes later in the markup. */
+.replay-detail-modal-wide > .modal-close {
+  z-index: 3;
+  color: var(--color-text);
+}
+
+/* The map behind everything, dimmed from the left so the text in front of it
+   reads, and the whole preview in front of it, uncropped. Bleeds to the
+   dialog's edges over its padding. The right padding keeps Watch clear of the
+   close button. */
+.replay-detail-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4) 20px;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  padding: 24px 56px 24px 24px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.replay-detail-hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.replay-detail-hero-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.6;
+}
+
+/* No picture is no backdrop: the placeholder glyph blown up to the hero's
+   size would be noise. */
+.replay-detail-hero-image-empty {
+  display: none;
+}
+
+.replay-detail-hero-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-surface) 94%, transparent) 0%,
+      color-mix(in srgb, var(--color-surface) 80%, transparent) 45%,
+      color-mix(in srgb, var(--color-surface) 35%, transparent) 100%
+    ),
+    linear-gradient(0deg, color-mix(in srgb, var(--color-surface) 60%, transparent), transparent 55%);
+}
+
+.replay-detail-hero .replay-detail-thumb-frame {
+  width: 148px;
+}
+
+/* Contained, not covered: a map that is not square is shown whole, on the
+   raised surface, rather than cut to the square. */
+.replay-detail-hero .replay-detail-thumb {
+  object-fit: contain;
+}
+
+.replay-detail-hero .replay-detail-thumb-open {
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-bg) 60%, transparent);
+}
+
+.replay-detail-hero .replay-detail-headtext {
+  gap: 6px;
+}
+
+.replay-detail-hero .replay-detail-headtext h2 {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.replay-detail-hero .replay-detail-map {
+  color: var(--color-text);
+  font-size: 15px;
+}
+
+.replay-detail-hero-watch {
+  min-width: 200px;
+  min-height: 52px;
+  font-size: 15px;
+}
+
+
+/* The floor: every other action as a flat button in one row, hairlines
+   between them, bleeding to the dialog's edges. */
+.replay-detail-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  margin: var(--space-4) calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
+  padding: 4px var(--space-2);
+  border-top: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-bg) 55%, var(--color-surface));
+}
+
+.replay-detail-toolbar > .replay-detail-tool {
+  position: relative;
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.replay-detail-toolbar > .replay-detail-tool + .replay-detail-tool::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 1px;
+  background: var(--color-border);
+}
+
+.replay-detail-toolbar > .replay-detail-tool:hover:not(:disabled),
+.replay-detail-toolbar > .replay-detail-tool.is-on,
+.replay-detail-toolbar > .replay-detail-tool[aria-pressed="true"] {
+  background: var(--color-surface-hover);
+}
+
+.replay-detail-toolbar > .replay-detail-tool > svg {
+  flex: none;
+  color: var(--color-muted);
+}
+
+.replay-detail-toolbar > .replay-detail-tool.is-on > svg,
+.replay-detail-toolbar > .replay-detail-tool[aria-pressed="true"] > svg {
+  color: var(--color-text);
+}
+
+/* A dialog narrower than the hero's three columns: Watch takes a row of its
+   own under the title, and the preview gets smaller. */
+@container (max-width: 760px) {
+  .replay-detail-hero {
+    grid-template-columns: 104px minmax(0, 1fr);
+    padding-right: 40px;
+  }
+
+  .replay-detail-hero .replay-detail-thumb-frame {
+    width: 104px;
+  }
+
+  .replay-detail-hero .replay-detail-headtext h2 {
+    font-size: 22px;
+  }
+
+  .replay-detail-hero-watch {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The result switch on the team headings' line, at its right end, rather
+   than on a row of its own above them. Taken out of the flow and laid over
+   the headings' row, which is exactly as tall (see `.replay-detail-team-heading`);
+   the second team's heading keeps to the left of its column, so the two do
+   not meet. With no switch the head is not drawn at all. */
+.replay-detail-lineup:has(> .replay-detail-section-head-end) {
+  position: relative;
+}
+
+.replay-detail-section-head-end {
+  position: absolute;
+  top: var(--space-3);
+  right: 0;
+  z-index: 1;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  max-width: calc(50% - 190px);
+  height: 38px;
+  min-height: 0;
+  margin: 0;
+}
+
+/* A long reason wraps onto a second line rather than pushing into the
+   heading beside it; two lines still fit the headings' height. */
+.replay-detail-section-head-end > .replay-detail-result-reason {
+  min-width: 0;
+  text-align: right;
+}
+
+.replay-detail-section-head-end > .replay-detail-reveal-btn {
+  flex: none;
+}
+
+.replay-detail-section-head-end:empty {
+  display: none;
+}
+
+/* Team headings above the cards (`titlesAbove`). Each team is a column of
+   heading and card, on a grid shared across the columns, so the headings sit
+   on one row. No rule under them: the cards start the lineup by themselves. */
+.replay-detail-teams[data-titles-above="true"] {
+  row-gap: 0;
+}
+
+.replay-detail-team-column {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  row-gap: var(--space-3);
+  min-width: 0;
+}
+
+.replay-detail-team-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2) var(--space-3);
+  min-height: 38px;
+  padding: 0 2px;
+}
+
+.replay-detail-team-heading-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.replay-detail-team-heading-name {
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.replay-detail-team-heading-rating {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two teams: no "vs" box between them. Its column stays, empty, so the cards
+   keep the distance it gave them. */
+.replay-detail-teams[data-titles-above="true"][data-layout="versus"] > .replay-detail-versus {
+  grid-column: 2;
+  grid-row: 2;
+  visibility: hidden;
+}
+
+/* Placed outright, so the "vs" placed above cannot push a team out of its
+   column. */
+.replay-detail-teams[data-titles-above="true"][data-layout="versus"] > .replay-detail-team-column:first-child {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+.replay-detail-teams[data-titles-above="true"][data-layout="versus"] > .replay-detail-team-column:last-child {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+
+/* The first team's heading against its card's right edge, the second's
+   against its left, so the two names meet at the "vs" and the matchup reads
+   from the middle out. The outcome moves to the outer side with it. */
+.replay-detail-teams[data-titles-above="true"][data-layout="versus"] > .replay-detail-team-column:first-child .replay-detail-team-heading {
+  flex-direction: row-reverse;
+}
+
+.replay-detail-teams[data-titles-above="true"][data-layout="versus"] > .replay-detail-team-column:first-child .replay-detail-team-heading-text {
+  align-items: flex-end;
+  text-align: right;
+}
+
+/* A lone team's roster flows into columns, as it does with the title inside
+   the card, now that the card is no longer the only child. */
+.replay-detail-team-column:only-child .replay-detail-roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 2px var(--space-4);
 }
