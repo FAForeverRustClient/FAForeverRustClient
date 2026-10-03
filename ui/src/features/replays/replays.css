@@ -72,19 +72,6 @@
 .replay-list-header > :nth-child(7), .replay-list-row > :nth-child(7) { order: var(--replay-list-order-6, 6); }
 .replay-list-header > :nth-child(8), .replay-list-row > :nth-child(8) { order: var(--replay-list-order-7, 7); }
 
-/* The column being moved, lifted under the pointer, and the grabbing cursor
-   across the header while it is held. */
-.replay-list-header > span.is-moving {
-  background: var(--color-surface-hover);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 0 0 6px var(--color-surface-hover);
-}
-
-.replay-list-header.is-moving,
-.replay-list-header.is-moving * {
-  cursor: grabbing;
-}
-
 .replay-list-header > span:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
@@ -146,16 +133,10 @@
   align-items: center;
 }
 
+/* Colour and type are the shared list header's (`list-head.css`). */
 .replay-list-header {
   min-height: 32px;
   padding: 0 var(--space-3);
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  background: var(--color-surface-raised);
-  border-bottom: 1px solid var(--color-border);
 }
 
 .replay-list-header > span {

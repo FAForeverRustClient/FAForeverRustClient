@@ -514,10 +514,18 @@ export type BrowsingPreferences = {
 	 *  list between them would have a drag in one tab move the other.
 	 */
 	liveReplayColumns: number[],
+	/**
+	 *  The live-replay table's columns in the order they are drawn, as indexes
+	 *  into the designed order. Empty is the designed order; anything that is
+	 *  not exactly one of each column is dropped to empty.
+	 */
+	liveReplayOrder: number[],
 	/**  And for the co-op leaderboard. */
 	coopBoardColumns: number[],
 	/**  And for the matchmaker tab's recent games (#301). */
 	matchmakerRecentColumns: number[],
+	/**  The recent games' columns in the order they are drawn, the same way. */
+	matchmakerRecentOrder: number[],
 	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
@@ -572,8 +580,10 @@ export type BrowsingPreferencesPatch = {
 	replayListColumns?: number[],
 	replayListOrder?: number[],
 	liveReplayColumns?: number[],
+	liveReplayOrder?: number[],
 	coopBoardColumns?: number[],
 	matchmakerRecentColumns?: number[],
+	matchmakerRecentOrder?: number[],
 	modPresets?: ModPreset[],
 	leaderboardRatingColumns?: string[],
 	replayVaultPlayer?: string,

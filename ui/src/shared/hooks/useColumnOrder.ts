@@ -51,12 +51,32 @@ export interface ColumnOrder {
 }
 
 /**
+ * The header row's cells, by designed index.
+ *
+ * A cell that says which column it is (`data-column`) is found by that, which
+ * is what a real table needs: its cells are drawn in the stored order, because
+ * a table cell cannot be moved with CSS `order`. Without the attribute the
+ * children are taken as they stand, in designed order, which is how the grid
+ * lists keep their cells.
+ */
+function designedCells(header: HTMLElement | null, count: number): Element[] {
+  if (!header) return [];
+  const tagged = Array.from(header.children).filter((child) => child instanceof HTMLElement && child.dataset.column !== undefined);
+  if (tagged.length === count) {
+    const cells: Element[] = [];
+    for (const cell of tagged) cells[Number((cell as HTMLElement).dataset.column)] = cell;
+    return cells;
+  }
+  return Array.from(header.children).slice(0, count);
+}
+
+/**
  * @param stored the saved order, or empty for the designed one
  * @param count how many columns the table has
  * @param save persists an order; called once per finished move
- * @param headerRef the header row, whose children are the header cells in
- *   designed order: their positions on screen are what a drag is measured
- *   against
+ * @param headerRef the header row. Its cells are what a drag is measured
+ *   against: each one marked with `data-column` (its designed index), or all
+ *   of them in designed order. See `designedCells`.
  */
 export function useColumnOrder(
   stored: readonly number[] | undefined,
@@ -97,7 +117,7 @@ export function useColumnOrder(
       // The position is how many of the other columns have their middle to
       // the left of the pointer. Measured against the others only, so a column
       // that has just changed places does not count itself and swap back.
-      const cells = Array.from(headerRef.current?.children ?? []).slice(0, count);
+      const cells = designedCells(headerRef.current, count);
       let position = 0;
       cells.forEach((other, index) => {
         if (index === state.column) return;

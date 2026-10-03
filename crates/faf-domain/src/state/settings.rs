@@ -2286,10 +2286,16 @@ pub struct BrowsingPreferences {
     /// different columns and therefore a different set of widths. Sharing one
     /// list between them would have a drag in one tab move the other.
     pub live_replay_columns: Vec<u32>,
+    /// The live-replay table's columns in the order they are drawn, as indexes
+    /// into the designed order. Empty is the designed order; anything that is
+    /// not exactly one of each column is dropped to empty.
+    pub live_replay_order: Vec<u32>,
     /// And for the co-op leaderboard.
     pub coop_board_columns: Vec<u32>,
     /// And for the matchmaker tab's recent games (#301).
     pub matchmaker_recent_columns: Vec<u32>,
+    /// The recent games' columns in the order they are drawn, the same way.
+    pub matchmaker_recent_order: Vec<u32>,
     /// Named mod sets the host dialog can re-apply in one click.
     ///
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -2359,8 +2365,10 @@ impl Default for BrowsingPreferences {
             replay_list_columns: Vec::new(),
             replay_list_order: Vec::new(),
             live_replay_columns: Vec::new(),
+            live_replay_order: Vec::new(),
             coop_board_columns: Vec::new(),
             matchmaker_recent_columns: Vec::new(),
+            matchmaker_recent_order: Vec::new(),
             mod_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
@@ -2408,8 +2416,12 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             #[serde(default)]
             live_replay_columns: Vec<u32>,
             #[serde(default)]
+            live_replay_order: Vec<u32>,
+            #[serde(default)]
             coop_board_columns: Vec<u32>,
             matchmaker_recent_columns: Vec<u32>,
+            #[serde(default)]
+            matchmaker_recent_order: Vec<u32>,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
             replay_vault_player: String,
@@ -2444,8 +2456,10 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     replay_list_columns: defaults.replay_list_columns,
                     replay_list_order: defaults.replay_list_order,
                     live_replay_columns: defaults.live_replay_columns,
+                    live_replay_order: defaults.live_replay_order,
                     coop_board_columns: defaults.coop_board_columns,
                     matchmaker_recent_columns: defaults.matchmaker_recent_columns,
+                    matchmaker_recent_order: defaults.matchmaker_recent_order,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     replay_vault_player: defaults.replay_vault_player,
@@ -2478,8 +2492,10 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             replay_list_columns: wire.replay_list_columns,
             replay_list_order: wire.replay_list_order,
             live_replay_columns: wire.live_replay_columns,
+            live_replay_order: wire.live_replay_order,
             coop_board_columns: wire.coop_board_columns,
             matchmaker_recent_columns: wire.matchmaker_recent_columns,
+            matchmaker_recent_order: wire.matchmaker_recent_order,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             replay_vault_player: wire.replay_vault_player,
@@ -2609,8 +2625,10 @@ impl BrowsingPreferences {
         self.replay_list_columns = normalize_column_widths(self.replay_list_columns);
         self.replay_list_order = normalize_column_order(self.replay_list_order);
         self.live_replay_columns = normalize_column_widths(self.live_replay_columns);
+        self.live_replay_order = normalize_column_order(self.live_replay_order);
         self.coop_board_columns = normalize_column_widths(self.coop_board_columns);
         self.matchmaker_recent_columns = normalize_column_widths(self.matchmaker_recent_columns);
+        self.matchmaker_recent_order = normalize_column_order(self.matchmaker_recent_order);
         self
     }
 }
@@ -3232,8 +3250,10 @@ preference_patch! {
         replay_list_columns: Vec<u32>,
         replay_list_order: Vec<u32>,
         live_replay_columns: Vec<u32>,
+        live_replay_order: Vec<u32>,
         coop_board_columns: Vec<u32>,
         matchmaker_recent_columns: Vec<u32>,
+        matchmaker_recent_order: Vec<u32>,
         mod_presets: Vec<ModPreset>,
         leaderboard_rating_columns: Vec<String>,
         replay_vault_player: String,
@@ -4178,8 +4198,10 @@ mod tests {
                 replay_list_columns: vec![10, 200, 0, 9_999],
                 replay_list_order: Vec::new(),
                 live_replay_columns: vec![1; 40],
+                live_replay_order: Vec::new(),
                 coop_board_columns: Vec::new(),
                 matchmaker_recent_columns: Vec::new(),
+                matchmaker_recent_order: Vec::new(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
