@@ -4848,4 +4848,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "leaderboard.leagues.loadingSeasons": "Chargement des saisons…",
   "leaderboard.leagues.loadingRankings": "Chargement du classement de la saison…",
   "leaderboard.ratings.loadingRankings": "Chargement du classement…",
+  "tournaments.form.imagesUploading": { one: "Envoi de {count} image…", other: "Envoi de {count} images…" },
+  "tournaments.form.imagesFailed": { one: "{count} image collée n'a pas pu être envoyée. Collez-la à nouveau pour réessayer.", other: "{count} images collées n'ont pas pu être envoyées. Collez-les à nouveau pour réessayer." },
 };

@@ -1,4 +1,4 @@
-import type { ClientUpdateState, UpdatePreferences } from "../../ipc/bindings";
+import type { ClientUpdateState, UpdatePreferencesPatch } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
@@ -8,10 +8,10 @@ import "../updates/updates.css";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const save = (preferences: UpdatePreferences) =>
+const save = (patch: UpdatePreferencesPatch) =>
   ipc.send({
     kind: "Settings",
-    command: { type: "setUpdates", payload: { preferences } },
+    command: { type: "patchUpdates", payload: { patch } },
   });
 
 const checkNow = () => ipc.send({ kind: "ClientUpdate", command: { type: "check" } });
@@ -29,7 +29,7 @@ export function UpdatesSettingsSection() {
       >
         <SettingsSwitch
           checked={preferences.automatic}
-          onChange={(automatic) => void save({ ...preferences, automatic })}
+          onChange={(automatic) => void save({ automatic })}
           label={t("settings.updates.checkUpdatesAt")}
         />
       </SettingRow>
@@ -39,7 +39,7 @@ export function UpdatesSettingsSection() {
       >
         <SettingsSwitch
           checked={preferences.preRelease}
-          onChange={(preRelease) => void save({ ...preferences, preRelease })}
+          onChange={(preRelease) => void save({ preRelease })}
           label={t("settings.updates.includePreReleases")}
         />
       </SettingRow>

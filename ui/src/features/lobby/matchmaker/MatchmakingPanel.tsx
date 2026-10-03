@@ -93,10 +93,9 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
+        type: "patchBrowsing",
         payload: {
-          preferences: {
-            ...useAppStore.getState().state.settings.browsing,
+          patch: {
             matchmakerChatWidth,
           },
         },
@@ -190,12 +189,12 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, matchmakerFactions: factions } },
+        type: "patchBrowsing",
+        payload: { patch: { matchmakerFactions: factions } },
       },
     });
     ipc.send({ kind: "Lobby", command: { type: "setPartyFactions", payload: { factions } } });
-  }, [browsing]);
+  }, []);
 
   const toggleQueue = (queue: MatchmakerQueue) => {
     const selected = !unselectedQueues.includes(queue.queueName);
@@ -206,8 +205,8 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
     ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, matchmakerUnselectedQueues: next } },
+        type: "patchBrowsing",
+        payload: { patch: { matchmakerUnselectedQueues: next } },
       },
     });
 

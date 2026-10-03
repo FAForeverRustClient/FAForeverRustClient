@@ -162,8 +162,8 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
     void ipc.send({
       kind: "Settings",
       command: {
-        type: "setBrowsing",
-        payload: { preferences: { ...browsing, replaysView: mode } },
+        type: "patchBrowsing",
+        payload: { patch: { replaysView: mode } },
       },
     });
   };

@@ -269,10 +269,9 @@ const FLEXIBLE_COLUMN = 1;
 
 /** Persist part of the replay list's layout, in one settings write. */
 function saveReplayList(patch: Partial<BrowsingPreferences>): void {
-  const browsing = useAppStore.getState().state.settings.browsing;
   ipc.send({
     kind: "Settings",
-    command: { type: "setBrowsing", payload: { preferences: { ...browsing, ...patch } } },
+    command: { type: "patchBrowsing", payload: { patch } },
   });
 }
 

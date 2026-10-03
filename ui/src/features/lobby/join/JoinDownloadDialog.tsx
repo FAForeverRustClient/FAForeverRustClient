@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
-import type { GamePreferences, ModDownloadTarget } from "../../../ipc/bindings";
+import type { GamePreferencesPatch, ModDownloadTarget } from "../../../ipc/bindings";
 import { useAppStore } from "../../../store/store";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { confirmPendingJoin } from "../../../shared/joinGame";
@@ -28,13 +28,12 @@ import {
 import { formatBytes } from "../../../shared/format/formatBytes";
 import "../game-dialogs.css";
 
-const saveGamePreferences = (preferences: GamePreferences) =>
-  ipc.send({ kind: "Settings", command: { type: "setGame", payload: { preferences } } });
+const saveGamePreferences = (patch: GamePreferencesPatch) =>
+  ipc.send({ kind: "Settings", command: { type: "patchGame", payload: { patch } } });
 
 export function JoinDownloadDialog() {
   const { t } = useTranslation();
   const pending = useSyncExternalStore(subscribePendingJoin, pendingJoinSnapshot, () => null);
-  const game = useAppStore((state) => state.state.settings.game);
   const vault = useAppStore((state) => state.state.mods.vault);
   const sizes = useAppStore((state) => state.state.mods.downloadSizes);
 
@@ -88,7 +87,7 @@ export function JoinDownloadDialog() {
     // asking them to find it among the game options afterwards is asking them
     // to do the same thing twice.
     if (remember) {
-      saveGamePreferences({ ...game, confirmDownloadsBeforeJoining: false });
+      saveGamePreferences({ confirmDownloadsBeforeJoining: false });
     }
     setRemember(false);
     void confirmPendingJoin(pending.id, pending.password);

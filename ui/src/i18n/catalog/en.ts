@@ -5229,6 +5229,8 @@ export const en = {
   "leaderboard.leagues.loadingSeasons": "Loading seasons…",
   "leaderboard.leagues.loadingRankings": "Loading season rankings…",
   "leaderboard.ratings.loadingRankings": "Loading rankings…",
+  "tournaments.form.imagesUploading": { one: "Uploading {count} picture…", other: "Uploading {count} pictures…" },
+  "tournaments.form.imagesFailed": { one: "{count} pasted picture could not be uploaded. Paste it again to retry.", other: "{count} pasted pictures could not be uploaded. Paste them again to retry." },
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

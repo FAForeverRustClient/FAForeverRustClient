@@ -45,9 +45,9 @@ export function toggleFavoriteMod(browsing: BrowsingPreferences, uid: string): v
   ipc.send({
     kind: "Settings",
     command: {
-      type: "setBrowsing",
+      type: "patchBrowsing",
       payload: {
-        preferences: { ...browsing, favoriteMods: withFavoriteToggled(browsing.favoriteMods, uid) },
+        patch: { favoriteMods: withFavoriteToggled(browsing.favoriteMods, uid) },
       },
     },
   });
