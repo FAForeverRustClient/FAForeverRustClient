@@ -242,6 +242,24 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
           />
         </label>
 
+        {/* The lobby title, up here beside player and map rather than behind
+            "More filters" (#415). Two players who met in a tournament have
+            usually played many other games against each other, and the title
+            ("... Cup Final", "Round 3") is what tells those apart. It was in
+            the advanced panel all along, where nobody found it. A contains
+            match, like the map. */}
+        <label className="vault-field vault-field-grow search-panel-field search-panel-field-grow">
+          <span className="vault-field-label search-panel-label">{t("replays.search.gameTitle")}</span>
+          <input
+            className="vault-input search-panel-control"
+            type="search"
+            value={form.title}
+            placeholder={t("replays.search.anyTitle")}
+            title={t("replays.search.titleTooltip")}
+            onChange={(e) => set("title", e.target.value)}
+          />
+        </label>
+
         <label className="vault-field vault-search-replay-id search-panel-field">
           <span className="vault-field-label search-panel-label">{t("replays.search.replayId")}</span>
           <input

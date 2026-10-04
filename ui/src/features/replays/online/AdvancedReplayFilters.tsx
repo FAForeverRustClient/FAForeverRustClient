@@ -207,16 +207,6 @@ export function AdvancedReplayFilters({ form, set, setRange, tagOptions, selecte
           />
         </label>
 
-        <label className="vault-field">
-          <span className="vault-field-label">{t("replays.filters.gameTitle")}</span>
-          <input
-            className="vault-input"
-            type="search"
-            value={form.title}
-            onChange={(e) => set("title", e.target.value)}
-          />
-        </label>
-
         {/* The reader's own tags (#324). The vault has never heard of them,
             so the picked tags become the ids of the games carrying them, and
             the search asks for exactly those. */}
