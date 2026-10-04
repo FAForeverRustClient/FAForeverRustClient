@@ -4382,6 +4382,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "leaderboard.leagues.placementGames": "Platzierungsspiele",
   "leaderboard.leagues.gamesRequired": "{count} erforderlich",
   "lobby.host.mapPlayers": { one: "{count} Spieler", other: "{count} Spieler" },
+  "lobby.host.mapPlayersShort": { one: "{count} Spieler", other: "{count} Spieler" },
   "maps.view.playerCount": { one: "{count} Spieler", other: "{count} Spieler" },
   "maps.generate.spawnCount": { one: "{count} Spieler", other: "{count} Spieler" },
   "maps.generate.teamCount": { one: "{count} Team", other: "{count} Teams" },

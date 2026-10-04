@@ -212,6 +212,9 @@ export const en = {
   // Plural: Russian needs four forms for a count of players, which the
   // template literal this replaced could not express in any language.
   "lobby.host.mapPlayers": { one: "{count} player", other: "{count} players" },
+  // The compact player count in a map row ("4p"); plural so a language that
+  // spells it out ("4 игрока") can.
+  "lobby.host.mapPlayersShort": { one: "{count}p", other: "{count}p" },
   "lobby.host.mapPlayersUnknown": "Players: N/A",
   "lobby.host.mapSizeUnknown": "Size: N/A",
   "lobby.host.mapOfficialDescription": "Official base game map.",

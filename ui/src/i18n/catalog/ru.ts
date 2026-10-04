@@ -2239,6 +2239,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.generate.presetFromMapCancel": "Отмена",
   "maps.generate.presetFromMapFailed": "Не удалось сохранить шаблон.",
   "lobby.host.mapPlayers": { one: "{count} игрок", few: "{count} игрока", many: "{count} игроков", other: "{count} игрока" },
+  "lobby.host.mapPlayersShort": { one: "{count} игрок", few: "{count} игрока", many: "{count} игроков", other: "{count} игрока" },
   "maps.view.playerCount": { one: "{count} игрок", few: "{count} игрока", many: "{count} игроков", other: "{count} игрока" },
   "maps.generate.spawnCount": { one: "{count} игрок", few: "{count} игрока", many: "{count} игроков", other: "{count} игрока" },
   "maps.generate.teamCount": { one: "{count} команда", few: "{count} команды", many: "{count} команд", other: "{count} команды" },
