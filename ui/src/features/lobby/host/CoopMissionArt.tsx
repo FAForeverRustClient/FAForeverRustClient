@@ -50,8 +50,8 @@ interface Props {
 }
 
 export function CoopMissionArt({ mission, scenario, vault, className }: Props) {
-  const { t, locale } = useTranslation();
-  const missionName = translateCoopMissionName(mission.name, locale);
+  const { t } = useTranslation();
+  const missionName = translateCoopMissionName(mission.mapFolderName, mission.name);
   const localPreview = useLocalMapPreview(mission.mapFolderName, true, true);
   const candidates = useMemo(
     () => [...(localPreview ? [localPreview] : []), ...coopPreviewCandidates(mission, vault)],
