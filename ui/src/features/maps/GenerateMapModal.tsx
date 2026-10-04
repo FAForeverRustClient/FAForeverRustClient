@@ -404,7 +404,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </span>
                 {decoded && (
                   <ul className="generate-map-facts">
-                    {summariseDecodedName(decoded).map((fact) => (
+                    {summariseDecodedName(decoded, t).map((fact) => (
                       <li key={fact} className="generate-map-fact">
                         {fact}
                       </li>
@@ -912,7 +912,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
 
               {currentFacts && (
                 <div className="generate-map-tags">
-                  {summariseDecodedName(currentFacts).map((fact) => (
+                  {summariseDecodedName(currentFacts, t).map((fact) => (
                     <span key={fact} className="generate-map-tag">
                       {fact}
                     </span>
