@@ -356,7 +356,7 @@ function GameDetails({
                     </span>
                     {showsStats && (
                       <span className="game-team-stats">
-                        Avg: {avgRating} | Total: {totalRating}
+                        {t("lobby.details.teamStats", { average: avgRating ?? "", total: totalRating ?? "" })}
                       </span>
                     )}
                   </div>

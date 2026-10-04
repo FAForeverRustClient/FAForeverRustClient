@@ -18,7 +18,7 @@ function teamName(team: number, soleTeam: boolean): string {
   if (soleTeam) {
     return team === 1 ? t("replays.roster.freeForAll") : t("replays.roster.players");
   }
-  if (team > 1) return `Team ${team - 1}`;
+  if (team > 1) return t("replays.live.team", { team: team - 1 });
   return t("replays.roster.unassigned");
 }
 

@@ -41,7 +41,7 @@ const IGNORED_FILES = new Map([
   ["ui/src/shared/mapPresentation.ts", "official map names: proper nouns, never translated"],
   ["ui/src/design-system/Icon.tsx", "inline SVG path data"],
   ["ui/src/shared/externalLinks.ts", "developer-facing throw messages, never rendered"],
-  ["ui/src/shared/factions.ts", "faction data keyed by wire id; the shown label is factions.random"],
+  ["ui/src/shared/factions.ts", "faction wire words keyed by game id; the shown labels are the factions.* keys"],
   ["ui/src/features/links/LinksView.tsx", "the names in the thanks list; what each is thanked for is a key"],
   ["ui/src/features/player-card/PlayerOverview.tsx", "the three clients' product names, matched against the user agent"],
   ["ui/src/features/training/RunMap.tsx", "marker type ids read out of the game's own map files"],

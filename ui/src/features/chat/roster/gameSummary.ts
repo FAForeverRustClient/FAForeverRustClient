@@ -5,6 +5,7 @@ import { displayedRating, gameLeaderboard } from "../../../shared/playerRatings"
 // `5 * 60` there, which is the same number until somebody changes one of
 // them; the server enforces the rule and both of these only draw it.
 import { LIVE_REPLAY_DELAY_SECONDS } from "../../../shared/liveReplayModel";
+import { t } from "../../../i18n";
 
 export type GamePresenceStatus = "hosting" | "lobbying" | "playing" | "playingDelayed";
 

@@ -24,6 +24,7 @@ import { HostModsColumn } from "./HostModsColumn";
 import { useHostLobbySettings } from "./hostLobbySettings";
 import { FeaturedModIcon } from "../../../shared/components/FeaturedModIcon";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { t as translate } from "../../../i18n";
 import type { MessageKey } from "../../../i18n/catalog/en";
 import { OptionalNumberInput } from "../../../design-system/NumberInput";
 // The map column's two tabs borrow the shared tab strip. Imported here rather
@@ -124,7 +125,7 @@ const FEATURED_MODS: FeaturedModOption[] = [
 function formatMapMeta(map: { maxPlayers: number; width: number; height: number }): string {
   const parts: string[] = [];
   if (map.maxPlayers > 0) {
-    parts.push(`${map.maxPlayers}p`);
+    parts.push(translate("lobby.host.mapPlayersShort", { count: map.maxPlayers }));
   }
   if (map.width > 0 && map.height > 0) {
     parts.push(kilometresArea(toKilometres(map.width), toKilometres(map.height)));

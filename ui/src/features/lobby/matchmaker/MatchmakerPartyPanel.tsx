@@ -8,7 +8,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { ProfileAvatar } from "../../../shared/components/ProfileAvatar";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
-import { factionIdFromName, orderFactionNames } from "../../../shared/factions";
+import { factionIdFromName, factionLabelFromName, orderFactionNames } from "../../../shared/factions";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 
 interface InviteModalProps {
@@ -112,7 +112,7 @@ function PartyFactions({ factions }: { factions: string[] }) {
   // different row for each member of the party.
   const ordered = orderFactionNames(factions);
   return (
-    <span className="party-seat-factions" title={ordered.join(", ")}>
+    <span className="party-seat-factions" title={ordered.map(factionLabelFromName).join(", ")}>
       {ordered.map((faction) => {
         const id = factionIdFromName(faction);
         return id === null ? (
@@ -301,8 +301,8 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
                   type="button"
                   className="party-seat-kick"
                   disabled={searching}
-                  title={searching ? t("lobby.party.lockedWhileSearching") : `Remove ${nameFor(member)}`}
-                  aria-label={`Remove ${nameFor(member)}`}
+                  title={searching ? t("lobby.party.lockedWhileSearching") : t("lobby.party.removeMember", { name: nameFor(member) })}
+                  aria-label={t("lobby.party.removeMember", { name: nameFor(member) })}
                   onClick={() => ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId: member.playerId } } })}
                 >
                   <Icon name="close" size={13} />

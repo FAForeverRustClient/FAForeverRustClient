@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "../../design-system/Icon";
+import { useTranslation } from "../../i18n/useTranslation";
 import "./map-preview.css";
 
 export type PreviewableMap = {
@@ -18,6 +19,7 @@ export type PreviewableMap = {
 };
 
 export function MapPreview({ map, large = false }: { map: PreviewableMap; large?: boolean }) {
+  const { t } = useTranslation();
   const cdnFallback = `https://content.faforever.com/maps/previews/${large ? "large" : "small"}/${encodeURIComponent(map.folderName.toLowerCase())}.png`;
   const primaryUrl = large
     ? (map.thumbnailUrlLarge || map.thumbnailUrl || map.previewUrl)
@@ -57,7 +59,7 @@ export function MapPreview({ map, large = false }: { map: PreviewableMap; large?
     <img
       className={large ? "map-vault-preview" : "map-vault-thumb"}
       src={currentUrl}
-      alt={`${map.displayName || map.folderName} preview`}
+      alt={t("common.mapPreview", { name: map.displayName || map.folderName })}
       loading="lazy"
       decoding="async"
       onError={handleError}

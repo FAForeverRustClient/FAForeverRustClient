@@ -116,11 +116,11 @@ type LineupSide = "left" | "right" | "neutral";
 export function displayTeamName(team: string, soleTeam: boolean): string {
   if (team === "-1" || team === "null") return t("lobby.details.observers");
   const numeric = Number(team);
-  if (!Number.isInteger(numeric)) return `Team ${team}`;
+  if (!Number.isInteger(numeric)) return t("lobby.details.team", { id: team });
   // Team 1 is the server's "no team" bucket. When it holds everyone the game is
   // a free-for-all, which says more than "No team" did.
   if (numeric === 1) return soleTeam ? t("lobby.browser.freeForAll") : t("lobby.browser.unassigned");
-  return `Team ${numeric - 1}`;
+  return t("lobby.details.team", { id: numeric - 1 });
 }
 
 /** Combined displayed rating of a team, or `null` if any member is unknown. */
