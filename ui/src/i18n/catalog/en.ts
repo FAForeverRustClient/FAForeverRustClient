@@ -975,7 +975,7 @@ export const en = {
   "lobby.coop.mission.scca_coop_e03.name": "Metal Shark",
   "lobby.coop.mission.scca_coop_e04.name": "Vaccine",
   "lobby.coop.mission.scca_coop_e05.name": "Forge",
-  "lobby.coop.mission.scca_coop_e06.name": "Stone Wall - Remastered",
+  "lobby.coop.mission.scca_coop_e06.name": "Stone Wall",
   "lobby.coop.mission.scca_coop_r01.name": "Liberation",
   "lobby.coop.mission.scca_coop_r02.name": "Artifact",
   "lobby.coop.mission.scca_coop_r03.name": "Defrag",
