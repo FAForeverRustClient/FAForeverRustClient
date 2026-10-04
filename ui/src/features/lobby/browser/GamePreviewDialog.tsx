@@ -170,6 +170,28 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           label={presentation.displayName || game.map}
           actions={(
             <>
+              {/* In the action row with the others. It used to float over the
+                  bottom-right corner of the whole block, which is where this
+                  row puts "Copy image". */}
+              {!installed && isGenerated && (
+                <Button
+                  disabled={isGeneratingThisMap}
+                  onClick={() =>
+                    ipc.send({
+                      kind: "MapGenerator",
+                      command: {
+                        type: "generateNamed",
+                        payload: {
+                          mapName: game.map,
+                        },
+                      },
+                    })
+                  }
+                >
+                  <Icon name="plus" size={13} />
+                  {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
+                </Button>
+              )}
               {/* Starring from here is what makes a generated map worth keeping
                   (#394): it has no vault page to star it on, and the name is all
                   the host dialog needs to host it again. */}
@@ -214,26 +236,6 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
             <Icon name="lock" size={13} />
             {t("lobby.browser.private")}
           </span>
-        )}
-        {!installed && isGenerated && (
-          <Button
-            className="game-preview-dialog-map-action"
-            disabled={isGeneratingThisMap}
-            onClick={() =>
-              ipc.send({
-                kind: "MapGenerator",
-                command: {
-                  type: "generateNamed",
-                  payload: {
-                    mapName: game.map,
-                  },
-                },
-              })
-            }
-          >
-            <Icon name="plus" size={13} />
-            {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
-          </Button>
         )}
       </div>
       {/* The full technical name. It is nowhere else in the client, and it is
