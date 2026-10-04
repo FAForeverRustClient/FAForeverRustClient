@@ -73,9 +73,10 @@
   flex: 0 0 auto;
 }
 
-/* Something waiting in that tab: a count of mentions, a found match, or a dot
-   for quieter news. Neutral unless it wants an answer, which takes the accent;
-   the label beside it is part of the tab's accessible name either way. */
+/* Something waiting in that tab: a found match, or a dot for something
+   addressed to the player in chat or a search running (issue 429: the chat tab no
+   longer prints a count). Neutral unless it wants an answer, which takes the
+   accent; the label beside it is part of the tab's accessible name either way. */
 .tab {
   position: relative;
 }

@@ -4825,7 +4825,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "status.matchmaking.launching": "Lancement de {queue}…",
   "status.matchmaking.stop": "Arrêter",
   "nav.badge.mentions": "Mentions : {count}",
-  "nav.badge.unread": "Messages non lus",
   "nav.badge.matchFound": "Partie trouvée",
   "nav.badge.searching": "Recherche d'une partie",
   "errors.cause.locked": "Le dossier est verrouillé ou en lecture seule. Fermez le jeu et tout ce qui l'utilise, puis réessayez.",

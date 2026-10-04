@@ -5332,7 +5332,6 @@ export const en = {
   "status.matchmaking.launching": "Starting {queue}…",
   "status.matchmaking.stop": "Stop",
   "nav.badge.mentions": "Mentions: {count}",
-  "nav.badge.unread": "Unread messages",
   "nav.badge.matchFound": "Match found",
   "nav.badge.searching": "Searching for a match",
   "errors.cause.locked": "The folder is locked or read-only. Close the game and anything else using it, then try again.",

@@ -1,4 +1,4 @@
-import type { ChatChannel, ChatEvent, ChatState, ChatUser, Reaction } from "../../ipc/bindings";
+import type { ChatChannel, ChatEvent, ChatMessage, ChatState, ChatUser, Reaction } from "../../ipc/bindings";
 
 const DEFAULT_CHANNEL = "#aeolus";
 const MAX_MESSAGES = 500;
@@ -26,6 +26,22 @@ export function mentions(content: string, username: string): boolean {
     if (!isWord(haystack[start - 1]) && !isWord(haystack[end])) return true;
     from = end;
   }
+}
+
+/**
+ * Does a reply to `replyTo` answer something `username` wrote? Rust:
+ * `answers`. A reply carries only the id, not the original author, so this
+ * is what makes an answer that does not type the name count as one (#429).
+ */
+function answers(messages: readonly ChatMessage[], replyTo: string, username: string): boolean {
+  return (
+    replyTo !== "" &&
+    username !== "" &&
+    messages.some(
+      (candidate) =>
+        candidate.msgid === replyTo && asciiLower(candidate.sender) === asciiLower(username),
+    )
+  );
 }
 
 /**
@@ -255,7 +271,10 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
           message.kind !== "info" &&
           message.kind !== "error";
         if (!counts) return { ...current, messages, typing };
-        const loud = isPrivateChannel(current.name) || mentions(message.content, state.username);
+        const loud =
+          isPrivateChannel(current.name) ||
+          mentions(message.content, state.username) ||
+          answers(messages, message.replyTo ?? "", state.username);
         return {
           ...current,
           messages,
