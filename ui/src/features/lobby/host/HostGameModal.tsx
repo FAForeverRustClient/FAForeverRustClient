@@ -10,7 +10,7 @@ import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNav
 import { OFFICIAL_BASE_MAPS } from "../../../shared/mapPresentation";
 import { GameMapImage } from "../GameMapImage";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
-import { isGeneratedMap, isOfficialMap } from "../../../shared/mapPresentation";
+import { findVaultMapByFolder, isGeneratedMap, isOfficialMap } from "../../../shared/mapPresentation";
 import { MapUninstallDialog } from "../../maps/MapVaultComponents";
 import { GenerateMapModal } from "../../maps/GenerateMapModal";
 import { generatedMapDescriptionRows } from "../../../shared/generatedMapDescription";
@@ -234,7 +234,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   // filtering and sorting follow the search box.
   const vaultIndex = useMemo(
     () => ({
-      byFolder: new Map(maps.vault.map((map) => [map.folderName.toLowerCase(), map])),
+      maps: maps.vault,
       byName: new Map(maps.vault.map((map) => [map.displayName.toLowerCase(), map])),
     }),
     [maps.vault],
@@ -263,9 +263,13 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
       const baseKey = key.replace(/\.v\d+$/i, "");
       const nameKey = installed.displayName.toLowerCase();
 
+      // By base name when the exact version is not in the catalogue, which
+      // holds only each map's latest. The old base-name probe asked a map
+      // keyed by *versioned* folders for an unversioned key, so it never hit,
+      // and an older installed version only found its record when the name
+      // derived from its folder happened to equal the vault's title (#416).
       const vaultMeta =
-        vaultIndex.byFolder.get(key)
-        ?? vaultIndex.byFolder.get(baseKey)
+        findVaultMapByFolder(vaultIndex.maps, installed.folderName)
         ?? vaultIndex.byName.get(nameKey);
       const officialMeta =
         OFFICIAL_BY_FOLDER.get(key)
