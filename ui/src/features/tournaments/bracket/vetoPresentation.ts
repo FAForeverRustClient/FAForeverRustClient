@@ -79,12 +79,21 @@ export function hasVeto(event: Tourney, entry: TourneyMatch): boolean {
   );
 }
 
-/** Whether a match's vetoes are over: the maps settled, or the factions. */
+/**
+ * Whether a match's vetoes are over: every run it has, the maps and the
+ * factions. A 1v1 can have both, and the map run ending used to read as the
+ * whole match settled while the faction choices were still owed, so the
+ * Matches tab said Ready and the Vetoes tab filed it as done (issue 367).
+ */
 export function vetoSettled(event: Tourney, entry: TourneyMatch): boolean {
   if (entry.status === "done") return true;
-  if (entry.veto !== null && event.veto.enabled) return entry.veto.done;
-  const factions = entry.factionVeto;
-  return factions !== null && factions.games.length > 0 && factions.games.every((game) => game.result !== null);
+  const maps = entry.veto !== null && event.veto.enabled ? entry.veto.done : null;
+  const factions =
+    entry.factionVeto !== null && factionVetoOn(event)
+      ? entry.factionVeto.games.length > 0 && entry.factionVeto.games.every((game) => game.result !== null)
+      : null;
+  if (maps === null && factions === null) return false;
+  return maps !== false && factions !== false;
 }
 
 /** The four factions in the order the website offers them, with their glyph. */
