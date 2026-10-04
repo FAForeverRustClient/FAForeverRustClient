@@ -3,6 +3,7 @@ import { Icon } from "../../../design-system/Icon";
 import type { MatchmakerQueue, PlayerLeaguePlacement, PlayerRatingSummary } from "../../../ipc/bindings";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 import { formatClockDuration } from "../../../shared/format/durations";
+import { placementLabel } from "../../../shared/leagueNames";
 import { queueRatingBuckets } from "./queueRatingRange";
 import { t } from "../../../i18n";
 
@@ -134,7 +135,7 @@ export function MatchmakerQueueCard({
               className="matchmaker-queue-division"
               src={placement?.imageUrl || UNLISTED_DIVISION_IMAGE}
               alt=""
-              title={placement?.division || t("lobby.matchmaker.unplaced")}
+              title={placementLabel(placement) ?? t("lobby.matchmaker.unplaced")}
               loading="lazy"
               decoding="async"
               draggable={false}

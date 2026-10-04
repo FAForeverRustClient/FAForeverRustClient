@@ -27,7 +27,6 @@ function rating(mean: number | null, deviation: number | null): PlayerRatingSumm
   return {
     leaderboardId: 1,
     technicalName: "ladder_1v1",
-    name: "1v1",
     rating: (mean ?? 0) - 3 * (deviation ?? 0),
     mean,
     deviation,

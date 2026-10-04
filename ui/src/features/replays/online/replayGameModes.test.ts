@@ -9,10 +9,9 @@ import {
   withGameModes,
 } from "./replayGameModes";
 
-const board = (technicalName: string, name: string): RatingLeaderboard => ({
+const board = (technicalName: string): RatingLeaderboard => ({
   id: 1,
   technicalName,
-  name,
   description: "",
 });
 
@@ -20,9 +19,9 @@ const board = (technicalName: string, name: string): RatingLeaderboard => ({
 // carry. The `/data/league` list, which this once read, names the same modes
 // `1v1_league` and `2v2_league`: a search for those matched nothing.
 const boards = [
-  board("global", "Global"),
-  board("ladder_1v1", "1v1"),
-  board("tmm_2v2", "2v2"),
+  board("global"),
+  board("ladder_1v1"),
+  board("tmm_2v2"),
 ];
 
 const query = (fields: Partial<ReplayQuery>): ReplayQuery => ({ ...EMPTY_REPLAY_QUERY, ...fields });

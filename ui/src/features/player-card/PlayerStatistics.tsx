@@ -143,7 +143,7 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
     second: count(lost),
   }));
   const games = profile.ratings.map((rating) => ({
-    label: rating.name,
+    label: leaderboardLabel(rating.technicalName),
     first: rating.wonGames,
     second: Math.max(0, rating.gamesPlayed - rating.wonGames),
   }));

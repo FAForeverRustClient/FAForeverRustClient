@@ -8,6 +8,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { ProfileAvatar } from "../../../shared/components/ProfileAvatar";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
+import { placementLabel } from "../../../shared/leagueNames";
 import { factionIdFromName, factionLabelFromName, orderFactionNames } from "../../../shared/factions";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 
@@ -140,7 +141,7 @@ function PartyFactions({ factions }: { factions: string[] }) {
 function PartyLeague({ placements }: { placements: PlayerLeaguePlacement[] | undefined }) {
   const { t } = useTranslation();
   const placement = placements?.[0] ?? null;
-  const label = placement?.division || t("lobby.matchmaker.unplaced");
+  const label = placementLabel(placement) ?? t("lobby.matchmaker.unplaced");
   return (
     <span className="party-seat-league" role="img" title={label} aria-label={label}>
       <img

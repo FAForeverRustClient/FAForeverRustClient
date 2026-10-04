@@ -10,6 +10,7 @@ import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
 import { noteForPlayer } from "../../shared/rules/playerNotes";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
+import { leaderboardLabel } from "../../shared/playerRatings";
 import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { PlayerAchievements } from "./PlayerAchievements";
 import { PlayerClanView } from "./PlayerClanView";
@@ -317,7 +318,7 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         <label><span>{t("playerCard.history.queue")}</span><select value={rating.leaderboardId} onChange={(event) => {
           const next = ratings.find((candidate) => candidate.leaderboardId === Number(event.target.value));
           if (next) onRatingChange(next);
-        }}>{ratings.map((candidate) => <option key={candidate.leaderboardId} value={candidate.leaderboardId}>{candidate.name}</option>)}</select></label>
+        }}>{ratings.map((candidate) => <option key={candidate.leaderboardId} value={candidate.leaderboardId}>{leaderboardLabel(candidate.technicalName)}</option>)}</select></label>
         <label><span>{t("playerCard.history.period")}</span><select value={period} onChange={(event) => setPeriod(event.target.value as RatingHistoryPeriod)}>{PERIODS.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}</select></label>
       </div>
 
@@ -329,7 +330,7 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         <div>
           <span>{t("playerCard.history.current")}</span>
           <strong>{rating.rating}</strong>
-          <small>{rating.name}</small>
+          <small>{leaderboardLabel(rating.technicalName)}</small>
         </div>
         <div>
           <span>{t(peakIsAuthoritative ? "playerCard.history.peakAllTime" : "playerCard.history.peakLoaded")}</span>

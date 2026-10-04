@@ -6,6 +6,8 @@ import { PlayerNoteCard } from "../../shared/components/PlayerNoteEditor";
 import { formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { formatDateTime } from "../../shared/format/dates";
+import { placementLabel, seasonLabel } from "../../shared/leagueNames";
+import { leaderboardLabel } from "../../shared/playerRatings";
 import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
 
 function displayDate(value: string): string {
@@ -38,10 +40,10 @@ export function RatingSummaryCard({ rating, onOpenHistory }: {
     <button
       type="button"
       className="player-rating-summary surface-panel surface-interactive"
-      aria-label={t("playerCard.rating.viewHistoryAria", { queue: rating.name })}
+      aria-label={t("playerCard.rating.viewHistoryAria", { queue: leaderboardLabel(rating.technicalName) })}
       onClick={() => onOpenHistory(rating)}
     >
-      <span className="player-card-eyebrow">{rating.name}</span>
+      <span className="player-card-eyebrow">{leaderboardLabel(rating.technicalName)}</span>
       <div className="player-rating-value">
         <strong>{rating.rating}</strong>
         <span><small>{t("playerCard.rating.meanDeviation")}</small>{rating.mean?.toFixed(0) ?? "N/A"} ± {rating.deviation?.toFixed(0) ?? "N/A"}</span>
@@ -197,9 +199,9 @@ export function PlayerOverview({ profile, country, note, onOpenHistory, avatarsS
           <div className="player-card-section-heading"><div><span className="player-card-eyebrow">{t("playerCard.overview.competitiveEyebrow")}</span><h3>{t("playerCard.overview.placementsTitle")}</h3></div></div>
           <div className="player-placement-grid">
             {profile.leaguePlacements.map((placement) => (
-              <article className="surface-panel" key={`${placement.leaderboard}-${placement.season}`}>
+              <article className="surface-panel" key={`${placement.technicalName}-${placement.seasonNumber}`}>
                 {placement.imageUrl && <img src={placement.imageUrl} alt="" loading="lazy" onError={(event) => { event.currentTarget.hidden = true; }} />}
-                <div><span>{placement.leaderboard} · {placement.season}</span><strong>{placement.division}</strong><small>{t("playerCard.overview.placementMeta", { score: placement.score, games: placement.gamesPlayed })}</small></div>
+                <div><span>{leaderboardLabel(placement.technicalName)} · {seasonLabel(placement.seasonNumber)}</span><strong>{placementLabel(placement) ?? t("lobby.matchmaker.unplaced")}</strong><small>{t("playerCard.overview.placementMeta", { score: placement.score, games: placement.gamesPlayed })}</small></div>
               </article>
             ))}
           </div>

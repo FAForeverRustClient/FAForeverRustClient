@@ -17,6 +17,7 @@ import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DateInput } from "../../design-system/DateInput";
 import { plainError } from "../../shared/plainError";
+import { leaderboardLabel } from "../../shared/playerRatings";
 
 /**
  * The columns beside the boards.
@@ -195,7 +196,7 @@ export function RatingLeaderboardPanel() {
           five boards was the same choice offered twice. */}
       {currentBoard && (
         <p className="leaderboard-description muted">
-          <span>{t("leaderboard.ratings.rankedByBoard", { board: currentBoard.name })}</span>
+          <span>{t("leaderboard.ratings.rankedByBoard", { board: leaderboardLabel(currentBoard.technicalName) })}</span>
           {currentBoard.description && <span className="leaderboard-description-note">{currentBoard.description}</span>}
         </p>
       )}
@@ -296,7 +297,6 @@ export function RatingLeaderboardPanel() {
             <LeaderboardTable
               entries={entries}
               columns={columns}
-              boards={state.ratingLeaderboards}
               activeBoard={state.ratingQuery.leaderboard}
               crossRatings={crossRatings}
               selectedPlayerId={selected?.playerId ?? null}

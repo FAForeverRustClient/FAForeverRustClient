@@ -2391,7 +2391,6 @@ mod tests {
                 ratings: vec![PlayerRatingSummary {
                     leaderboard_id: 1,
                     technical_name: "global".into(),
-                    name: "Global".into(),
                     rating: 1320,
                     mean: 1400.0,
                     deviation: 80.0,
@@ -2425,7 +2424,6 @@ mod tests {
                 ratings: vec![PlayerRatingSummary {
                     leaderboard_id: 1,
                     technical_name: "global".into(),
-                    name: "Global".into(),
                     rating: 2100,
                     mean: 2100.0,
                     deviation: 40.0,
