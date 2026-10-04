@@ -32,6 +32,7 @@ import type {
 import { ReplayActivityChart } from "./ReplayActivityChart";
 import { ReplayEventsPanel, ReplayPlayersPanel } from "./ReplayAnalysisPanels";
 import { ReplayGameStats } from "./ReplayGameStats";
+import { gameOptionLabel } from "./gameOptionLabels";
 import { ReplayHeatmap, type HeatmapMapAction } from "./ReplayHeatmap";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { PlayerName } from "../../../shared/components/nameColors";
@@ -319,7 +320,9 @@ export function ReplayInsights({
     if (!query) return options;
     return options.filter(
       (option) =>
-        option.key.toLowerCase().includes(query) || option.value.toLowerCase().includes(query),
+        option.key.toLowerCase().includes(query) ||
+        gameOptionLabel(option.key).toLowerCase().includes(query) ||
+        option.value.toLowerCase().includes(query),
     );
   }, [details?.gameOptions, optionFilter]);
 
@@ -608,7 +611,7 @@ export function ReplayInsights({
                     {filteredOptions.length > 0 ? (
                       filteredOptions.map((option) => (
                         <tr key={option.key}>
-                          <td><strong>{option.key}</strong></td>
+                          <td title={option.key}><strong>{gameOptionLabel(option.key)}</strong></td>
                           <td>{option.value}</td>
                         </tr>
                       ))
