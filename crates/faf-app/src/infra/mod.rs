@@ -81,6 +81,7 @@ pub(crate) mod java_runtime;
 pub(crate) mod jsonapi;
 pub mod jsonrpc;
 pub mod leaderboard;
+pub(crate) mod league_keys;
 pub mod lobby_fake;
 pub mod lobby_ws;
 pub mod map_generator;

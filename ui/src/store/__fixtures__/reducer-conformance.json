@@ -47479,9 +47479,9 @@
                   "7": [
                     {
                       "technicalName": "ladder_1v1",
-                      "leaderboard": "1v1",
-                      "season": "Season 1",
-                      "division": "Diamond I",
+                      "seasonNumber": 1,
+                      "division": "diamond",
+                      "subdivision": "I",
                       "score": 5,
                       "highestScore": 10,
                       "gamesPlayed": 3,
@@ -47515,13 +47515,13 @@
             "partyPlacements": {
               "7": [
                 {
-                  "division": "Diamond I",
+                  "division": "diamond",
                   "gamesPlayed": 3,
                   "highestScore": 10,
                   "imageUrl": "diamond.png",
-                  "leaderboard": "1v1",
                   "score": 5,
-                  "season": "Season 1",
+                  "seasonNumber": 1,
+                  "subdivision": "I",
                   "technicalName": "ladder_1v1"
                 }
               ],
@@ -47543,9 +47543,9 @@
                   "9": [
                     {
                       "technicalName": "tmm_2v2",
-                      "leaderboard": "2v2",
-                      "season": "Season 1",
-                      "division": "Bronze II",
+                      "seasonNumber": 1,
+                      "division": "bronze",
+                      "subdivision": "II",
                       "score": 1,
                       "highestScore": 4,
                       "gamesPlayed": 2,
@@ -47578,26 +47578,26 @@
             "partyPlacements": {
               "7": [
                 {
-                  "division": "Diamond I",
+                  "division": "diamond",
                   "gamesPlayed": 3,
                   "highestScore": 10,
                   "imageUrl": "diamond.png",
-                  "leaderboard": "1v1",
                   "score": 5,
-                  "season": "Season 1",
+                  "seasonNumber": 1,
+                  "subdivision": "I",
                   "technicalName": "ladder_1v1"
                 }
               ],
               "8": [],
               "9": [
                 {
-                  "division": "Bronze II",
+                  "division": "bronze",
                   "gamesPlayed": 2,
                   "highestScore": 4,
                   "imageUrl": "bronze.png",
-                  "leaderboard": "2v2",
                   "score": 1,
-                  "season": "Season 1",
+                  "seasonNumber": 1,
+                  "subdivision": "II",
                   "technicalName": "tmm_2v2"
                 }
               ]

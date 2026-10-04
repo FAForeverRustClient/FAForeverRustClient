@@ -3651,7 +3651,17 @@ export type LeaderboardEntry = {
 	gamesPlayed: number,
 	wonGames: number | null,
 	updateTime: string | null,
+	/**
+	 *  The placement's division name key (`bronze`, ...), as on
+	 *  [`LeaderboardTier::division`]. `None` on a rating board.
+	 */
 	division: string | null,
+	/**  The placement's subdivision name key (`I`, `II`, ...). */
+	subdivision: string | null,
+	/**
+	 *  The tier this entry is placed in, the same number as its
+	 *  [`LeaderboardTier::division_order`].
+	 */
 	divisionOrder: number | null,
 	highestScore: number | null,
 	divisionImageUrl: string | null,
@@ -3731,9 +3741,22 @@ export type LeaderboardStatus = { type: "idle" } | { type: "loading" } | { type:
 } };
 
 export type LeaderboardTier = {
-	name: string,
+	/**
+	 *  The division's name key as the API sends it (`bronze`, `grandmaster`).
+	 *
+	 *  An identifier the UI names from its catalogue, never a label. Empty
+	 *  when the API left the division out of the response.
+	 */
 	division: string,
+	/**
+	 *  The subdivision's name key (`I`, `II`, ...), a Roman numeral the UI
+	 *  shows as sent.
+	 */
 	subdivision: string,
+	/**
+	 *  Division index, then subdivision index. Unique within a season, which
+	 *  makes it the tier's identity as well as its order.
+	 */
 	divisionOrder: number,
 	highestScore: number,
 	imageUrl: string | null,
@@ -3742,8 +3765,11 @@ export type LeaderboardTier = {
 
 export type League = {
 	id: number,
+	/**
+	 *  The league's technical name (`1v1_league`, ...), which the UI names
+	 *  from its catalogue.
+	 */
 	technicalName: string,
-	name: string,
 	description: string,
 };
 
@@ -3751,8 +3777,11 @@ export type LeagueSeason = {
 	id: number,
 	leagueId: number,
 	leaderboardId: number,
+	/**
+	 *  What the UI words as "Season 12". There is no name beside it: the
+	 *  one this used to carry was English written here.
+	 */
 	seasonNumber: number,
-	name: string,
 	startDate: string,
 	endDate: string,
 	placementGames: number,
@@ -6312,15 +6341,25 @@ export type PlayerLeaguePlacement = {
 	/**
 	 *  The leaderboard's technical name (`ladder_1v1`, `tmm_2v2`, ...).
 	 *
-	 *  Kept beside the display name because the two are joined on: the
-	 *  matchmaker shows a division per queue, and matching a queue against
-	 *  "4v4 League" would tie that join to a string written for humans, which
-	 *  [`leaderboard_display_name`] has now changed once already.
+	 *  The only name a placement carries for its board. The matchmaker joins a
+	 *  queue to its division on it, and the UI names the board from its
+	 *  catalogue, so no text written for humans travels with it.
 	 */
 	technicalName: string,
-	leaderboard: string,
-	season: string,
+	/**  The season's number, which the UI words as "Season 12". */
+	seasonNumber: number,
+	/**
+	 *  The division's name key as the API sends it (`bronze`, `grandmaster`).
+	 *
+	 *  An identifier, not a label: the UI names it from its catalogue and
+	 *  prettifies a key it has never seen. Empty when the API left it out.
+	 */
 	division: string,
+	/**
+	 *  The subdivision's name key (`I`, `II`, ...), a Roman numeral the UI
+	 *  shows as sent.
+	 */
+	subdivision: string,
 	score: number,
 	/**
 	 *  The score that ends this subdivision, or zero when the API omitted it.
@@ -6500,8 +6539,11 @@ export type PlayerProfile = {
 
 export type PlayerRatingSummary = {
 	leaderboardId: number,
+	/**
+	 *  The leaderboard's technical name (`global`, `ladder_1v1`, ...). The UI
+	 *  names the board from its catalogue; there is no display name here.
+	 */
 	technicalName: string,
-	name: string,
 	rating: number,
 	mean: number | null,
 	deviation: number | null,
@@ -6844,8 +6886,11 @@ export type RatingKind = "global" | "ladder1v1" | "team2v2" | "team3v3" | "team4
 
 export type RatingLeaderboard = {
 	id: number,
+	/**
+	 *  The board's technical name. The UI names it from its catalogue
+	 *  (`leaderboardLabel`), so no display name travels with it.
+	 */
 	technicalName: string,
-	name: string,
 	description: string,
 };
 
