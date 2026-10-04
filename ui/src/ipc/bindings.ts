@@ -536,6 +536,16 @@ export type BrowsingPreferences = {
 	/**  Visible column keys in the rating leaderboard table. */
 	leaderboardRatingColumns: string[],
 	/**
+	 *  Whether the rating leaderboard's player search also matches names a
+	 *  player used to go by (#424).
+	 *
+	 *  Off for a fresh install, because it turns a lookup into a list of
+	 *  candidates, but a way of searching rather than a fact about one search:
+	 *  somebody who ticks it ticks it every time, and the box reset itself
+	 *  whenever the tab was opened again.
+	 */
+	leaderboardIncludeFormerNames: boolean,
+	/**
 	 *  Last searched player username in the replay vault. When empty, defaults
 	 *  to the currently authenticated player name.
 	 */
@@ -586,6 +596,7 @@ export type BrowsingPreferencesPatch = {
 	matchmakerRecentOrder?: number[],
 	modPresets?: ModPreset[],
 	leaderboardRatingColumns?: string[],
+	leaderboardIncludeFormerNames?: boolean,
 	replayVaultPlayer?: string,
 	replayChatChannel?: string,
 	replayChatTransfers?: ReplayChatTransfers,

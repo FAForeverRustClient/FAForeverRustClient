@@ -109,6 +109,7 @@ describe("browsing preferences", () => {
         { name: "   ", uids: ["c"] },
       ],
       leaderboardRatingColumns: ["deviation", "MEAN", "invalid_column"],
+      leaderboardIncludeFormerNames: true,
       replayVaultPlayer: "  VindexNoob  ",
       replayChatChannel: "  ALLIES  ",
       replayChatTransfers: "hide",
@@ -175,6 +176,7 @@ describe("browsing preferences", () => {
     expect(normalized.customGamesBrowser.columnOrder).toEqual([]);
     expect(normalized.customGamesBrowser.detailWidth).toBe(MIN_DETAIL_PX);
     expect(normalized.leaderboardRatingColumns).toEqual(["mean", "deviation"]);
+    expect(normalized.leaderboardIncludeFormerNames).toBe(true);
     expect(normalized.replayVaultPlayer).toBe("VindexNoob");
     expect(normalized.replayChatChannel).toBe("allies");
     expect(normalized.replayChatTransfers).toBe("hide");

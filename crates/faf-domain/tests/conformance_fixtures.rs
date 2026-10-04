@@ -6684,6 +6684,7 @@ fn cases() -> Vec<Case> {
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec!["games".into(), "updated".into()],
+                        leaderboard_include_former_names: false,
                         replay_vault_player: String::new(),
                         replay_chat_channel: String::new(),
                         replay_chat_transfers: Default::default(),
