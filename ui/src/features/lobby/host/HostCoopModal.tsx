@@ -13,10 +13,15 @@ import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
 import type { CoopMission } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { translateCoopMissionDescription, translateCoopMissionName } from "../../../i18n";
 import { useAppStore } from "../../../store/store";
 import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNavigation";
 import { loadLocalMapPreviews } from "../../../shared/hooks/useLocalMapPreview";
-import { scenarioBadge, sortCoopScenarios } from "../coop/coopScenarios";
+import {
+  displayScenarioName,
+  scenarioBadge,
+  sortCoopScenarios,
+} from "../coop/coopScenarios";
 import { CoopMissionArt } from "./CoopMissionArt";
 import { HostModsColumn } from "./HostModsColumn";
 import { HostTopConfig } from "./HostTopConfig";
@@ -40,7 +45,7 @@ interface Props {
  *  off re-renders on every game list the lobby sends, and nothing in here
  *  reads one. */
 export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const vault = useAppStore((state) => state.state.maps.vault);
   const remembered = useAppStore((state) => state.state.settings.browsing.hostCoop);
@@ -290,7 +295,9 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                     }}
                   >
                     <div className="host-gametype-title-row">
-                      <span className="host-gametype-name">{campaign.name}</span>
+                      <span className="host-gametype-name">
+                        {displayScenarioName(campaign, locale, t)}
+                      </span>
                       <span className="host-coop-faction-badge" data-faction={scenarioBadge(campaign)}>
                         {t(`lobby.coop.badge.${scenarioBadge(campaign)}`)}
                       </span>
@@ -340,8 +347,11 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                   className={`host-map-row${selected?.id === mission.id ? " active" : ""}`}
                   onClick={() => setMissionId(mission.id)}
                 >
-                  <span className="host-map-name" title={mission.name}>
-                    {mission.name}
+                  <span
+                    className="host-map-name"
+                    title={translateCoopMissionName(mission.mapFolderName, mission.name, locale)}
+                  >
+                    {translateCoopMissionName(mission.mapFolderName, mission.name, locale)}
                   </span>
                   <span className="host-map-meta">{mission.mapFolderName}</span>
                 </button>
@@ -387,8 +397,10 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                 host dialog: the overlay dimmed the corner of every preview to
                 repeat what the row below already says. */}
             <div className="host-preview-name">
-              <span title={selected?.name}>
-                {selected?.name ?? t("lobby.coop.selectMission")}
+              <span title={selected ? translateCoopMissionName(selected.mapFolderName, selected.name, locale) : undefined}>
+                {selected
+                  ? translateCoopMissionName(selected.mapFolderName, selected.name, locale)
+                  : t("lobby.coop.selectMission")}
               </span>
             </div>
 
@@ -401,7 +413,14 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                   <dd>{selected.mapFolderName}</dd>
                 </dl>
                 {selected.description && (
-                  <p className="host-map-description">{selected.description}</p>
+                  <p className="host-map-description">
+                    {translateCoopMissionDescription(
+                      selected.mapFolderName,
+                      selected.name,
+                      selected.description,
+                      locale,
+                    )}
+                  </p>
                 )}
               </div>
             )}

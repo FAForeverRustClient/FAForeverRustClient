@@ -4,7 +4,12 @@ import { CATALOGUES } from "./catalog";
 import { de } from "./catalog/de";
 import type { Message } from "./catalog/en";
 import { en } from "./catalog/en";
-import { formatNumber, translateIn } from ".";
+import {
+  formatNumber,
+  translateCoopMissionDescription,
+  translateCoopMissionName,
+  translateIn,
+} from ".";
 import { isLocale, LOCALE_KEYS } from "./locales";
 import { getLocale, resetLocaleForTests, setLocale, subscribeToLocale } from "./store";
 
@@ -85,6 +90,244 @@ describe("translateIn", () => {
       .toBe("Replay 27456965");
     expect(translateIn("de", "status.replay.subject", { uid: 27456965 }))
       .toBe("Replay 27456965");
+  });
+});
+
+describe("translateCoopMissionDescription", () => {
+  it.each([
+    "Liberation",
+    "Artifact",
+    "Defrag",
+    "Mainframe Tango",
+    "Unlock",
+    "Freedom",
+    "Yath-Aez",
+    "Operation Tha-Atha-Aez",
+    "Uhthe-Thuum-QAI",
+    "Ioz-Shavoh-Kael",
+    "Overlord Surth-Velsok",
+    "Joust",
+    "Machine Purge",
+    "High Tide",
+    "Entity",
+    "Shining Star",
+    "Beginnings",
+    "Rebel's Rest",
+    "Red Revenge",
+    "Blockade",
+    "Operation Blockade",
+    "Holy Raid",
+    "Operation Holy Raid",
+    "Golden Crystals",
+    "Operation Golden Crystals",
+    "Fort Clarke Assault",
+    "Haven's Invasion",
+    "Novax Station Assaault",
+    "Novax Station Assault",
+    "Prothyon - 16",
+    "Prothyon 16",
+    "Rescue",
+    "Theta Civilian Rescue",
+    "Tight Spot",
+    "Trident",
+    "Operation Trident",
+  ])("translates the %s briefing", (englishName) => {
+    expect(translateCoopMissionDescription(
+      "untranslated_map",
+      englishName,
+      "English source description",
+      "ru",
+    )).not.toBe("English source description");
+  });
+
+  it.each([
+    ["Black Earth", "Чёрная Земля"],
+    ["Snow Blind", "Снежная слепота"],
+    ["Show Blind", "Снежная слепота"],
+    ["Metal Shark", "Металлическая акула"],
+    ["Vaccine", "Вакцина"],
+    ["Forge", "Кузница"],
+    ["Stone Wall", "Каменная стена"],
+    ["Stone Wall - Remastered", "Каменная стена"],
+  ])("translates the %s briefing", (englishName) => {
+    expect(translateCoopMissionDescription(
+      "untranslated_map",
+      englishName,
+      "English source description",
+      "ru",
+    )).not.toBe("English source description");
+  });
+
+  it("keeps the API description when no translation exists", () => {
+    const source = "Intel reports that two Cybran Commanders gated to Capella.";
+    expect(translateCoopMissionDescription("untranslated_mission", "Unknown mission", source, "ru"))
+      .toBe(source);
+  });
+
+  it("resolves a translation by normalized map folder name", () => {
+    expect(translateCoopMissionDescription(
+      "scca_coop_r03.v0021",
+      "Untranslated title",
+      "English source description",
+      "ru",
+    )).toBe("English source description");
+  });
+
+  it("resolves a translation by the mission's displayed name", () => {
+    expect(translateCoopMissionDescription(
+      "untranslated_map",
+      "Black day (Всё)",
+      "English source description",
+      "ru",
+    )).toBe(
+      "Форт Кларк, расположенный на планете Грифон IV, является последним рубежом обороны ОФЗ. Силы серафим и Ордена, атакующие форт, превышают по численности силы ОФЗ. Если Форт Кларк падет, ОФЗ перестанет существовать. Вам предстоит уничтожить Командующих противника и остановить осаду Форта Кларк.",
+    );
+  });
+
+  it("translates the Dawn mission description", () => {
+    expect(translateCoopMissionDescription(
+      "untranslated_map",
+      "Dawn",
+      "English source description",
+      "ru",
+    )).toBe(
+      "Верные Эон, возглавляемые Крестоносцем Ризой, были захвачены в плен во время проведения диверсионных и разведопераций на территории Ордена и КИИ. Вы должны освободить Верных, находящихся в плену у КИИ, и уничтожить всех командующих противника на планете.",
+    );
+  });
+
+  it("translates the Red Flag mission description", () => {
+    expect(translateCoopMissionDescription(
+      "untranslated_map",
+      "Red Flag",
+      "English source description",
+      "ru",
+    )).toBe(
+      "Принцесса Берк вернулась, но она находится в серьезной опасности. Силы серафим загнали ее в ловушку на планете Голубое Небо, у нее нет шансов выбраться оттуда. Вы отправитесь на планету Голубое Небо, уничтожите командующих серафим и спасете Принцессу Берк.",
+    );
+  });
+
+  it("translates the Meltdown mission description", () => {
+    expect(translateCoopMissionDescription(
+      "untranslated_map",
+      "Meltdown",
+      "English source description",
+      "ru",
+    )).toBe(
+      "Командование Коалиции получило неподтвержденные разведанные о том, что серафим собирают войска на планете Гадес - контроль над этой планетой позволит серафим атаковать любую точку на территории Коалиции. Элитный командующий Достя присоединится к вам для выполнения этого задания, вы вдвоем должны будете уничтожить силы серафим на Гадесе.",
+    );
+  });
+
+  it("translates the Mind Games mission description", () => {
+    expect(translateCoopMissionDescription(
+      "untranslated_map",
+      "Mind Games",
+      "English source description",
+      "ru",
+    )).toBe(
+      "После событий на Гадесе, КИИ должен быть уничтожен раз и навсегда. Благодаря разведанным, полученным от узла Семи Рук, Коалиции удалось узнать, что главный терминал КИИ находится на планете Жемчужина II. Вашим заданием является постройка базы на Жемчужине II, в этом случае доктор Брэкмен сможет высадиться и лично отключить КИИ.",
+    );
+  });
+
+  it("translates the Overlord mission description", () => {
+    expect(translateCoopMissionDescription(
+      "untranslated_map",
+      "Overlord",
+      "English source description",
+      "ru",
+    )).toBe(
+      "Благодаря кодам врат, полученных от КИИ, силы Коалиции могут телепортироваться прямо на Землю, где серафим строят Квантовую Арку. Если им удастся завершить ее, серафим смогут вызывать бесчисленные подкрепления. Арка должна быть уничтожена, не важно, какой ценой.",
+    );
+  });
+});
+
+describe("translateCoopMissionName", () => {
+  it.each([
+    ["Liberation", "Освобождение (Liberation)"],
+    ["Artifact", "Артефакт (Artifact)"],
+    ["Defrag", "Дебрифинг (Defrag)"],
+    ["Mainframe Tango", "Мейнфрейм Танго (Mainframe Tango)"],
+    ["Unlock", "Ключ (Unlock)"],
+    ["Freedom", "Свобода (Freedom)"],
+    ["Yath-Aez", "Йат-Аэз (Yath-Aez)"],
+    ["Operation Tha-Atha-Aez", "Операция «Та-Атха-Аэз» (Operation Tha-Atha-Aez)"],
+    ["Uhthe-Thuum-QAI", "Ут-Тхум-КИИ (Uhthe-Thuum-QAI)"],
+    ["Ioz-Shavoh-Kael", "Иоз-Шавох-Каэль (Ioz-Shavoh-Kael)"],
+    ["Overlord Surth-Velsok", "Оверлорд Сурт-Вельсок (Overlord Surth-Velsok)"],
+    ["Joust", "Поединок (Joust)"],
+    ["Machine Purge", "Механическое искупление (Machine Purge)"],
+    ["High Tide", "Прилив (High Tide)"],
+    ["Entity", "Сущность (Entity)"],
+    ["Shining Star", "Сияющая звезда (Shining Star)"],
+    ["Beginnings", "Начало (Beginnings)"],
+    ["Rebel's Rest", "Пристанище мятежников (Rebel's Rest)"],
+    ["Red Revenge", "Красная месть (Red Revenge)"],
+    ["Blockade", "Блокада (Blockade)"],
+    ["Operation Blockade", "Операция «Блокада» (Operation Blockade)"],
+    ["Fort Clarke Assault", "Штурм Форт-Кларка (Fort Clarke Assault)"],
+    ["Haven's Invasion", "Вторжение на Хейвен (Haven's Invasion)"],
+    ["Novax Station Assaault", "Штурм станции Новакс (Novax Station Assaault)"],
+    ["Novax Station Assault", "Штурм станции Новакс (Novax Station Assault)"],
+    ["Prothyon - 16", "Протион-16 (Prothyon - 16)"],
+    ["Prothyon 16", "Протион-16 (Prothyon 16)"],
+    ["Rescue", "Спасение (Rescue)"],
+    ["Theta Civilian Rescue", "Спасение мирных жителей на Тете (Theta Civilian Rescue)"],
+    ["Tight Spot", "Трудное положение (Tight Spot)"],
+    ["Trident", "Трезубец (Trident)"],
+    ["Operation Trident", "Операция «Трезубец» (Operation Trident)"],
+    ["Holy Raid", "Священный рейд (Holy Raid)"],
+    ["Operation Holy Raid", "Операция «Священный рейд» (Operation Holy Raid)"],
+    ["Golden Crystals", "Золотые кристаллы (Golden Crystals)"],
+    ["Operation Golden Crystals", "Операция «Золотые кристаллы» (Operation Golden Crystals)"],
+  ])("translates the %s mission name", (englishName, expected) => {
+    expect(translateCoopMissionName("untranslated_map", englishName, "ru")).toBe(expected);
+  });
+
+  it.each([
+    ["Black Earth", "Чёрная Земля (Black Earth)"],
+    ["Snow Blind", "Снежная слепота (Snow Blind)"],
+    ["Show Blind", "Снежная слепота (Show Blind)"],
+    ["Metal Shark", "Металлическая акула (Metal Shark)"],
+    ["Vaccine", "Вакцина (Vaccine)"],
+    ["Forge", "Кузница (Forge)"],
+    ["Stone Wall", "Каменная стена (Stone Wall)"],
+    ["Stone Wall - Remastered", "Каменная стена (Stone Wall - Remastered)"],
+  ])("translates the %s mission name", (englishName, expected) => {
+    expect(translateCoopMissionName("untranslated_map", englishName, "ru")).toBe(expected);
+  });
+
+  it("translates the Dawn mission name", () => {
+    expect(translateCoopMissionName("untranslated_map", "Dawn", "ru"))
+      .toBe("Рассвет (Dawn)");
+  });
+
+  it("translates the Red Flag mission name", () => {
+    expect(translateCoopMissionName("untranslated_map", "Red Flag", "ru"))
+      .toBe("Красный флаг (Red Flag)");
+  });
+
+  it("translates the Meltdown mission name", () => {
+    expect(translateCoopMissionName("untranslated_map", "Meltdown", "ru"))
+      .toBe("Расплав (Meltdown)");
+  });
+
+  it("translates the Mind Games mission name", () => {
+    expect(translateCoopMissionName("untranslated_map", "Mind Games", "ru"))
+      .toBe("Игры разума (Mind Games)");
+  });
+
+  it("translates the Overlord mission name", () => {
+    expect(translateCoopMissionName("untranslated_map", "Overlord", "ru"))
+      .toBe("Оверлорд (Overlord)");
+  });
+
+  it("translates a co-op mission's displayed name", () => {
+    expect(translateCoopMissionName("untranslated_map", "Black day (Всё)", "ru"))
+      .toBe("Чёрный день (всё) (Black day (Всё))");
+  });
+
+  it("keeps the API name when no translation exists", () => {
+    expect(translateCoopMissionName("untranslated_map", "Unknown mission", "ru"))
+      .toBe("Unknown mission");
   });
 });
 

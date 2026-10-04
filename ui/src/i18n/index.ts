@@ -14,6 +14,7 @@
 
 import { CATALOGUES as CATALOGUE_REGISTRY } from "./catalog";
 import { en, type Message, type MessageKey, type PluralMessage } from "./catalog/en";
+import { COOP_MISSION_DESCRIPTIONS, COOP_MISSION_NAMES } from "./catalog/coopMissions";
 import { intlTag, type Locale } from "./locales";
 import { getLocale } from "./store";
 
@@ -73,6 +74,49 @@ export function translateIn(locale: Locale, key: MessageKey, values?: MessageVal
   const message = resolve(key, locale);
   const template = isPlural(message) ? selectPlural(message, locale, values) : message;
   return interpolate(template, values);
+}
+
+/** Translate a co-op mission description, keeping the API text as fallback. */
+export function translateCoopMissionDescription(
+  mapFolderName: string,
+  missionName: string,
+  source: string,
+  locale: Locale = getLocale(),
+): string {
+  const folder = mapFolderName.replace(/\\/g, "/").split("/").pop() ?? "";
+  const keys = [
+    folder.replace(/\.v\d+$/i, "").toLowerCase(),
+    missionName.trim().toLowerCase(),
+  ];
+  const descriptions = COOP_MISSION_DESCRIPTIONS[locale];
+  for (const key of keys) {
+    const description = descriptions?.[key];
+    if (description) return description;
+  }
+  return source;
+}
+
+/** Translate a co-op mission name, keeping the API name as fallback. */
+export function translateCoopMissionName(
+  mapFolderName: string,
+  missionName: string,
+  locale: Locale = getLocale(),
+): string {
+  const folder = mapFolderName.replace(/\\/g, "/").split("/").pop() ?? "";
+  const keys = [
+    folder.replace(/\.v\d+$/i, "").toLowerCase(),
+    missionName.trim().toLowerCase(),
+  ];
+  const names = COOP_MISSION_NAMES[locale];
+  for (const key of keys) {
+    const name = names?.[key];
+    if (name) {
+      return locale === "ru" && name.toLocaleLowerCase() !== missionName.trim().toLocaleLowerCase()
+        ? `${name} (${missionName})`
+        : name;
+    }
+  }
+  return missionName;
 }
 
 export function formatNumber(value: number, locale: Locale = getLocale()): string {

@@ -29,7 +29,12 @@ import { coopFailureAction } from "./coopFailure";
 import { coopEmptyReason, isOpenCoopGame, joinableCoopGame } from "./coopGames";
 import "../browser/custom-games.css";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { scenarioBadge, sortCoopScenarios } from "./coopScenarios";
+import { translateCoopMissionDescription, translateCoopMissionName } from "../../../i18n";
+import {
+  displayScenarioName,
+  scenarioBadge,
+  sortCoopScenarios,
+} from "./coopScenarios";
 import "./coop.css";
 
 /** `0` means "any team size": matches `ANY_PLAYER_COUNT` in the domain. */
@@ -106,7 +111,7 @@ export function CoopPanel({
   onHost,
   onClearFilters = clearSavedFilters,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const maps = useAppStore((state) => state.state.maps);
   const [selectedScenarioId, setSelectedScenarioId] = useState<number | null>(null);
@@ -365,7 +370,8 @@ export function CoopPanel({
               >
                 {scenarios.map((scenario) => (
                   <option key={scenario.id} value={scenario.id}>
-                    {scenario.name} ({t(`lobby.coop.badge.${scenarioBadge(scenario)}`)})
+                    {displayScenarioName(scenario, locale, t)}
+                    {` (${t(`lobby.coop.badge.${scenarioBadge(scenario)}`)})`}
                   </option>
                 ))}
                 {orphanCount > 0 && (
@@ -387,7 +393,7 @@ export function CoopPanel({
               >
                 {missionsInActiveScenario.map((mission) => (
                   <option key={mission.id} value={mission.id}>
-                    {mission.name}
+                    {translateCoopMissionName(mission.mapFolderName, mission.name, locale)}
                   </option>
                 ))}
               </select>
@@ -430,7 +436,14 @@ export function CoopPanel({
 const BOARD_COLUMN_SHARES = [5, 11, 10, 34, 12, 16, 12];
 
 function MissionDetail({ mission }: { mission: CoopMission }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const description = translateCoopMissionDescription(
+    mission.mapFolderName,
+    mission.name,
+    mission.description,
+    locale,
+  );
+  const missionName = translateCoopMissionName(mission.mapFolderName, mission.name, locale);
   const boardLabels = [
     "#",
     t("lobby.coop.column.time"),
@@ -449,7 +462,8 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
 
   return (
     <>
-      {mission.description && <p className="coop-detail-brief">{mission.description}</p>}
+      <h3>{missionName}</h3>
+      {description && <p className="coop-detail-brief">{description}</p>}
 
       <div className="coop-board-head">
         <h4>{t("lobby.coop.fastest")}</h4>
