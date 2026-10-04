@@ -146,7 +146,9 @@ describe("co-op mission catalogue lookup", () => {
     expect(translateCoopMissionName("x1ca_coop_002", "API title"))
       .toBe("\u0420\u0430\u0441\u0441\u0432\u0435\u0442 (Dawn)");
     expect(translateCoopMissionName("x1ca_coop_001", "API title"))
-      .toBe("\u0427\u0451\u0440\u043d\u044b\u0439 \u0434\u0435\u043d\u044c (\u0432\u0441\u0451) (Black Day)");
+      .toBe("\u0427\u0451\u0440\u043d\u044b\u0439 \u0434\u0435\u043d\u044c (Black Day)");
+    expect(translateCoopMissionName("scca_coop_e06", "API title"))
+      .toBe("\u041a\u0430\u043c\u0435\u043d\u043d\u0430\u044f \u0441\u0442\u0435\u043d\u0430 (Stone Wall)");
   });
 
   it("translates the mission briefing from the map-folder key", () => {
