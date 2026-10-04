@@ -14,11 +14,17 @@
 
 import { CATALOGUES as CATALOGUE_REGISTRY } from "./catalog";
 import { en, type Message, type MessageKey, type PluralMessage } from "./catalog/en";
-import { COOP_MISSION_DESCRIPTIONS, COOP_MISSION_NAMES } from "./catalog/coopMissions";
+import {
+  COOP_MISSION_DESCRIPTIONS,
+  COOP_MISSION_NAMES,
+  COOP_MISSION_NAME_FORMATS,
+} from "./catalog/coopMissions";
 import { intlTag, type Locale } from "./locales";
 import { getLocale } from "./store";
 
 const CATALOGUES: Record<Locale, Partial<Record<MessageKey, Message>>> = CATALOGUE_REGISTRY;
+
+type MissionTextCatalogue = Partial<Record<Locale, Partial<Record<string, string>>>>;
 
 /** Values substituted into `{placeholder}` slots. */
 export type MessageValues = Record<string, string | number>;
@@ -76,47 +82,35 @@ export function translateIn(locale: Locale, key: MessageKey, values?: MessageVal
   return interpolate(template, values);
 }
 
+function lookupMissionText(
+  catalogue: MissionTextCatalogue,
+  locale: Locale,
+  missionName: string,
+): string | undefined {
+  return catalogue[locale]?.[missionName.trim().toLowerCase()];
+}
+
 /** Translate a co-op mission description, keeping the API text as fallback. */
 export function translateCoopMissionDescription(
-  mapFolderName: string,
   missionName: string,
   source: string,
   locale: Locale = getLocale(),
 ): string {
-  const folder = mapFolderName.replace(/\\/g, "/").split("/").pop() ?? "";
-  const keys = [
-    folder.replace(/\.v\d+$/i, "").toLowerCase(),
-    missionName.trim().toLowerCase(),
-  ];
-  const descriptions = COOP_MISSION_DESCRIPTIONS[locale];
-  for (const key of keys) {
-    const description = descriptions?.[key];
-    if (description) return description;
-  }
-  return source;
+  return lookupMissionText(COOP_MISSION_DESCRIPTIONS, locale, missionName) ?? source;
 }
 
 /** Translate a co-op mission name, keeping the API name as fallback. */
 export function translateCoopMissionName(
-  mapFolderName: string,
   missionName: string,
   locale: Locale = getLocale(),
 ): string {
-  const folder = mapFolderName.replace(/\\/g, "/").split("/").pop() ?? "";
-  const keys = [
-    folder.replace(/\.v\d+$/i, "").toLowerCase(),
-    missionName.trim().toLowerCase(),
-  ];
-  const names = COOP_MISSION_NAMES[locale];
-  for (const key of keys) {
-    const name = names?.[key];
-    if (name) {
-      return locale === "ru" && name.toLocaleLowerCase() !== missionName.trim().toLocaleLowerCase()
-        ? `${name} (${missionName})`
-        : name;
-    }
-  }
-  return missionName;
+  const name = lookupMissionText(COOP_MISSION_NAMES, locale, missionName);
+  if (!name) return missionName;
+
+  const format = COOP_MISSION_NAME_FORMATS[locale];
+  return format
+    ? format.replace("{name}", name).replace("{original}", missionName)
+    : name;
 }
 
 export function formatNumber(value: number, locale: Locale = getLocale()): string {

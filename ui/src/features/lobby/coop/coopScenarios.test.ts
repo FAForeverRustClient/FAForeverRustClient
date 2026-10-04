@@ -47,14 +47,14 @@ describe("co-op campaign ordering", () => {
     ])("uses the Russian campaign label for %s", (entry, expected) => {
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
         translateIn("ru", key, values);
-      expect(displayScenarioName(entry, "ru", t)).toBe(expected);
+      expect(displayScenarioName(entry, t)).toBe(expected);
     });
 
     it("uses the translated Forged Alliance name and retains its official badge", () => {
       const entry = scenario("Forged Alliance Campaign", "custom", "scfa", 1);
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
         translateIn("ru", key, values);
-      expect(displayScenarioName(entry, "ru", t)).toBe("Кампания SCFA (Forged Alliance)");
+      expect(displayScenarioName(entry, t)).toBe("Кампания SCFA (Forged Alliance)");
       expect(scenarioBadge(entry)).toBe("official");
     });
 
@@ -62,7 +62,7 @@ describe("co-op campaign ordering", () => {
       const entry = scenario("Community Campaign", "custom", "custom", 1);
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
         translateIn("ru", key, values);
-      expect(displayScenarioName(entry, "ru", t)).toBe("Community Campaign");
+      expect(displayScenarioName(entry, t)).toBe("Community Campaign");
       expect(scenarioBadge(entry)).toBe("custom");
     });
 
@@ -77,15 +77,19 @@ describe("co-op campaign ordering", () => {
     ])("localizes community catalog label %s and keeps its badge", (entry, expected, badge) => {
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
         translateIn("ru", key, values);
-      expect(displayScenarioName(entry, "ru", t)).toBe(expected);
+      expect(displayScenarioName(entry, t)).toBe(expected);
       expect(scenarioBadge(entry)).toBe(badge);
     });
 
-    it("keeps the API campaign name in other locales", () => {
+    it("resolves campaign names through the active locale catalogue", () => {
       const entry = scenario("Vanilla Aeon Campaign", "aeon", "sc", 1);
-      const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
-        translateIn("en", key, values);
-      expect(displayScenarioName(entry, "en", t)).toBe("Vanilla Aeon Campaign");
+      for (const locale of ["en", "ru"] as const) {
+        const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
+          translateIn(locale, key, values);
+        expect(displayScenarioName(entry, t)).toBe(
+          locale === "en" ? "Vanilla Aeon Campaign" : "Кампания Эон (SC)",
+        );
+      }
     });
 
     it("localizes known campaigns even when API category and faction metadata differ", () => {
@@ -101,7 +105,7 @@ describe("co-op campaign ordering", () => {
         scenario("Standalone missions", "custom", "sc", 7),
       ];
 
-      expect(entries.map((entry) => displayScenarioName(entry, "ru", t))).toEqual([
+      expect(entries.map((entry) => displayScenarioName(entry, t))).toEqual([
         "Кампания ОФЗ (SC)",
         "Кампания Кибран (SC)",
         "Кампания Эон (SC)",
@@ -112,35 +116,31 @@ describe("co-op campaign ordering", () => {
       ]);
     });
 
-    it("does not repeat a badge already present in the translated campaign name", () => {
+    it("uses catalogue option formats for official and community campaigns", () => {
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
         translateIn("ru", key, values);
 
       expect(
         displayScenarioOptionLabel(
           scenario("Vanilla UEF Campaign", "uef", "sc", 1),
-          "ru",
           t,
         ),
       ).toBe("Кампания ОФЗ (SC)");
       expect(
         displayScenarioOptionLabel(
           scenario("Seraphim Campaign", "seraphim", "custom", 2),
-          "ru",
           t,
         ),
       ).toBe("Кампания Серафим (От сообщества)");
       expect(
         displayScenarioOptionLabel(
           scenario("Forged Alliance Campaign", "custom", "scfa", 3),
-          "ru",
           t,
         ),
       ).toBe("Кампания SCFA (Forged Alliance)");
       expect(
         displayScenarioOptionLabel(
           scenario("Coalition Campaign", "custom", "custom", 4),
-          "ru",
           t,
         ),
       ).toBe("Кампания Коалиции (От сообщества)");
@@ -162,5 +162,8 @@ describe("co-op campaign ordering", () => {
     expect(scenarioBadge(byName.get("Coalition Campaign")!)).toBe("custom");
     expect(scenarioBadge(byName.get("Vanilla UEF Campaign")!)).toBe("uef");
     expect(scenarioBadge(byName.get("Seraphim Campaign")!)).toBe("custom");
+    expect(scenarioBadge(scenario("Another campaign", "seraphim", "sc", 7))).toBe("seraphim");
+    expect(scenarioBadge(scenario("Another community campaign", "seraphim", "custom", 8)))
+      .toBe("custom");
   });
 });

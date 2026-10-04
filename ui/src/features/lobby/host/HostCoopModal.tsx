@@ -146,6 +146,13 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
 
   const selected: CoopMission | undefined =
     missionsInCampaign.find((mission) => mission.id === missionId) ?? missionsInCampaign[0];
+  const selectedDescription = selected
+    ? translateCoopMissionDescription(
+        selected.name,
+        selected.description,
+        locale,
+      )
+    : "";
 
   // One batch per campaign rather than one read per click: the art lives in the
   // installed map folders, and reading twenty of them once is cheaper than
@@ -296,7 +303,7 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                   >
                     <div className="host-gametype-title-row">
                       <span className="host-gametype-name">
-                        {displayScenarioName(campaign, locale, t)}
+                        {displayScenarioName(campaign, t)}
                       </span>
                       <span className="host-coop-faction-badge" data-faction={scenarioBadge(campaign)}>
                         {t(`lobby.coop.badge.${scenarioBadge(campaign)}`)}
@@ -349,9 +356,9 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                 >
                   <span
                     className="host-map-name"
-                    title={translateCoopMissionName(mission.mapFolderName, mission.name, locale)}
+                    title={translateCoopMissionName(mission.name, locale)}
                   >
-                    {translateCoopMissionName(mission.mapFolderName, mission.name, locale)}
+                    {translateCoopMissionName(mission.name, locale)}
                   </span>
                   <span className="host-map-meta">{mission.mapFolderName}</span>
                 </button>
@@ -397,9 +404,9 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                 host dialog: the overlay dimmed the corner of every preview to
                 repeat what the row below already says. */}
             <div className="host-preview-name">
-              <span title={selected ? translateCoopMissionName(selected.mapFolderName, selected.name, locale) : undefined}>
+              <span title={selected ? translateCoopMissionName(selected.name, locale) : undefined}>
                 {selected
-                  ? translateCoopMissionName(selected.mapFolderName, selected.name, locale)
+                  ? translateCoopMissionName(selected.name, locale)
                   : t("lobby.coop.selectMission")}
               </span>
             </div>
@@ -412,14 +419,9 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                   <dt>{t("lobby.coop.mapFolder")}</dt>
                   <dd>{selected.mapFolderName}</dd>
                 </dl>
-                {selected.description && (
+                {selectedDescription && (
                   <p className="host-map-description">
-                    {translateCoopMissionDescription(
-                      selected.mapFolderName,
-                      selected.name,
-                      selected.description,
-                      locale,
-                    )}
+                    {selectedDescription}
                   </p>
                 )}
               </div>
