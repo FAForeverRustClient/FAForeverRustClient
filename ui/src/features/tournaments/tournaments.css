@@ -4304,6 +4304,15 @@ button.tournament-chat-author:hover {
   margin: 0;
 }
 
+/* The compact room (the match-chat dialog, the pinned panel) sizes itself:
+   its log has a height of its own, below. The full room's `flex: 1 1 0` fills
+   a column of definite height, the Chat tab's; in a dialog, which is only as
+   tall as what is in it, a zero basis collapsed the room to nothing and left
+   the dialog a sliver scrolled down to the composer. */
+.tournament-chat-room-body.is-compact {
+  flex: none;
+}
+
 .tournament-chat-room-body.is-compact .tournament-chat-posts {
   flex: none;
   height: clamp(240px, 45vh, 420px);
