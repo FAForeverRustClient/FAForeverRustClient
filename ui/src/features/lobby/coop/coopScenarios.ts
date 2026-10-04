@@ -5,7 +5,28 @@
 // sort, so this is one module they share.
 
 import type { CoopScenario } from "../../../ipc/bindings";
+import type { MessageKey } from "../../../i18n";
 import type { Translation } from "../../../i18n/useTranslation";
+
+const CAMPAIGN_NAME_KEYS: Record<string, MessageKey> = {
+  "vanilla uef campaign": "lobby.coop.vanillaUefCampaignName",
+  "vanilla cybran campaign": "lobby.coop.vanillaCybranCampaignName",
+  "vanilla aeon campaign": "lobby.coop.vanillaAeonCampaignName",
+  "forged alliance campaign": "lobby.coop.scfaCampaignName",
+  "coalition campaign": "lobby.coop.coalitionCampaignName",
+  "seraphim campaign": "lobby.coop.seraphimCampaignName",
+  "standalone missions": "lobby.coop.standaloneMissionsName",
+};
+
+const CAMPAIGN_OPTION_KEYS: Record<string, MessageKey> = {
+  "vanilla uef campaign": "lobby.coop.campaignOption.vanillaUef",
+  "vanilla cybran campaign": "lobby.coop.campaignOption.vanillaCybran",
+  "vanilla aeon campaign": "lobby.coop.campaignOption.vanillaAeon",
+  "forged alliance campaign": "lobby.coop.campaignOption.scfa",
+  "coalition campaign": "lobby.coop.campaignOption.coalition",
+  "seraphim campaign": "lobby.coop.campaignOption.seraphim",
+  "standalone missions": "lobby.coop.campaignOption.standalone",
+};
 
 /**
  * Which game a campaign came from, and the primary sort key.
@@ -65,42 +86,27 @@ export function sortCoopScenarios<T extends CoopScenario>(scenarios: readonly T[
  * alongside genuine community work. The category is what separates those two.
  */
 export function scenarioBadge(scenario: CoopScenario): "uef" | "cybran" | "aeon" | "seraphim" | "official" | "custom" {
-  if (scenario.category === "custom") return "custom";
   if (scenario.faction !== "custom") return scenario.faction;
-  return "official";
+  return scenario.category === "custom" ? "custom" : "official";
 }
 
 export function displayScenarioName(
   scenario: CoopScenario,
   t: Translation["t"],
 ): string {
-  switch (scenario.name.trim().toLowerCase()) {
-    case "vanilla uef campaign":
-      return t("lobby.coop.vanillaUefCampaignName");
-    case "vanilla cybran campaign":
-      return t("lobby.coop.vanillaCybranCampaignName");
-    case "vanilla aeon campaign":
-      return t("lobby.coop.vanillaAeonCampaignName");
-    case "forged alliance campaign":
-      return t("lobby.coop.scfaCampaignName");
-    case "coalition campaign":
-      return t("lobby.coop.coalitionCampaignName");
-    case "seraphim campaign":
-      return t("lobby.coop.seraphimCampaignName");
-    case "standalone missions":
-      return t("lobby.coop.standaloneMissionsName");
-  }
-  return scenario.name;
+  const key = CAMPAIGN_NAME_KEYS[scenario.name.trim().toLowerCase()];
+  return key ? t(key) : scenario.name;
 }
 
 export function displayScenarioOptionLabel(
   scenario: CoopScenario,
   t: Translation["t"],
 ): string {
-  const name = displayScenarioName(scenario, t);
-  const badge = t(`lobby.coop.badge.${scenarioBadge(scenario)}`);
-  const format = scenario.category === "custom"
-    ? t("lobby.coop.communityCampaignOption")
-    : t("lobby.coop.officialCampaignOption");
-  return format.replace("{name}", name).replace("{badge}", badge);
+  const name = scenario.name.trim().toLowerCase();
+  const optionKey = CAMPAIGN_OPTION_KEYS[name];
+  if (optionKey) return t(optionKey);
+  return t("lobby.coop.unknownCampaignOption", {
+    name: displayScenarioName(scenario, t),
+    badge: t(`lobby.coop.badge.${scenarioBadge(scenario)}`),
+  });
 }

@@ -45,7 +45,7 @@ interface Props {
  *  off re-renders on every game list the lobby sends, and nothing in here
  *  reads one. */
 export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const vault = useAppStore((state) => state.state.maps.vault);
   const remembered = useAppStore((state) => state.state.settings.browsing.hostCoop);
@@ -148,9 +148,8 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
     missionsInCampaign.find((mission) => mission.id === missionId) ?? missionsInCampaign[0];
   const selectedDescription = selected
     ? translateCoopMissionDescription(
-        selected.name,
+        selected.mapFolderName,
         selected.description,
-        locale,
       )
     : "";
 
@@ -356,9 +355,9 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                 >
                   <span
                     className="host-map-name"
-                    title={translateCoopMissionName(mission.name, locale)}
+                    title={translateCoopMissionName(mission.mapFolderName, mission.name)}
                   >
-                    {translateCoopMissionName(mission.name, locale)}
+                    {translateCoopMissionName(mission.mapFolderName, mission.name)}
                   </span>
                   <span className="host-map-meta">{mission.mapFolderName}</span>
                 </button>
@@ -404,9 +403,9 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
                 host dialog: the overlay dimmed the corner of every preview to
                 repeat what the row below already says. */}
             <div className="host-preview-name">
-              <span title={selected ? translateCoopMissionName(selected.name, locale) : undefined}>
+              <span title={selected ? translateCoopMissionName(selected.mapFolderName, selected.name) : undefined}>
                 {selected
-                  ? translateCoopMissionName(selected.name, locale)
+                  ? translateCoopMissionName(selected.mapFolderName, selected.name)
                   : t("lobby.coop.selectMission")}
               </span>
             </div>

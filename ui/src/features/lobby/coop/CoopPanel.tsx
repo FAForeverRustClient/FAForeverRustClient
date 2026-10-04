@@ -110,7 +110,7 @@ export function CoopPanel({
   onHost,
   onClearFilters = clearSavedFilters,
 }: Props) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const maps = useAppStore((state) => state.state.maps);
   const [selectedScenarioId, setSelectedScenarioId] = useState<number | null>(null);
@@ -391,7 +391,7 @@ export function CoopPanel({
               >
                 {missionsInActiveScenario.map((mission) => (
                   <option key={mission.id} value={mission.id}>
-                    {translateCoopMissionName(mission.name, locale)}
+                    {translateCoopMissionName(mission.mapFolderName, mission.name)}
                   </option>
                 ))}
               </select>
@@ -434,11 +434,10 @@ export function CoopPanel({
 const BOARD_COLUMN_SHARES = [5, 11, 10, 34, 12, 16, 12];
 
 function MissionDetail({ mission }: { mission: CoopMission }) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const description = translateCoopMissionDescription(
-    mission.name,
+    mission.mapFolderName,
     mission.description,
-    locale,
   );
   const boardLabels = [
     "#",
