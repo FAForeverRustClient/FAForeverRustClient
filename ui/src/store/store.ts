@@ -661,6 +661,7 @@ const INITIAL: AppState = {
       matchmakerRecentOrder: [],
       modPresets: [],
       leaderboardRatingColumns: ["games", "updated"],
+      leaderboardIncludeFormerNames: false,
       replayVaultPlayer: "",
       replayChatChannel: "",
       replayChatTransfers: "show",

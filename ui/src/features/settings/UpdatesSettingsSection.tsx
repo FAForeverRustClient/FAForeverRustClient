@@ -4,6 +4,8 @@ import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
 import { isUpdateBusy } from "../../store/reducers/clientUpdate";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
+import { hourCycleOptions } from "../../shared/format/clock";
+import { clientIntlTag } from "../../shared/format/dates";
 import "../updates/updates.css";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -118,12 +120,12 @@ function formatChecked(timestamp: string | undefined): string {
   if (!timestamp) return "";
   const at = new Date(timestamp);
   if (Number.isNaN(at.getTime())) return "";
-  // Explicitly English, matching the notification centre's clock: the
-  // repository's rule is that no view inherits the operating system's locale
-  // while the catalogue is the only place language is chosen.
-  return new Intl.DateTimeFormat("en-US", {
+  // The client's language, never the operating system's, and the player's
+  // 24- or 12-hour clock like every other time of day the client prints (#425).
+  return new Intl.DateTimeFormat(clientIntlTag(), {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    ...hourCycleOptions(),
   }).format(at);
 }

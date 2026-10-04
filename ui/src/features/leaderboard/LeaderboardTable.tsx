@@ -4,6 +4,7 @@ import type { LeaderboardEntry, PlayerRatings, RatingLeaderboard } from "../../i
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
+import { hourCycleOptions } from "../../shared/format/clock";
 
 export type LeaderboardColumn =
   | "rank"
@@ -110,7 +111,7 @@ function format(
   if (column === "mean" || column === "deviation") return Number(raw).toFixed(1);
   if (column === "updated") {
     const date = new Date(String(raw));
-    return Number.isNaN(date.valueOf()) ? String(raw) : date.toLocaleString("en-US");
+    return Number.isNaN(date.valueOf()) ? String(raw) : date.toLocaleString("en-US", hourCycleOptions());
   }
   return String(raw);
 }

@@ -51,12 +51,27 @@ function load(query: RatingQuery) {
   ipc.send({ kind: "Leaderboard", command: { type: "loadRatings", payload: { query } } });
 }
 
+/**
+ * The "include previous names" box is a way of searching, not a fact about one
+ * search, so it is remembered in the settings rather than reset whenever the
+ * tab opens again (#424).
+ */
+function rememberIncludeFormerNames(leaderboardIncludeFormerNames: boolean) {
+  ipc.send({
+    kind: "Settings",
+    command: { type: "patchBrowsing", payload: { patch: { leaderboardIncludeFormerNames } } },
+  });
+}
+
 export function RatingLeaderboardPanel() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.leaderboard);
   const browsing = useAppStore((store) => store.state.settings.browsing);
+  const savedIncludeFormerNames = browsing.leaderboardIncludeFormerNames;
   const [player, setPlayer] = useState(state.ratingQuery.player);
-  const [includeFormerNames, setIncludeFormerNames] = useState(state.ratingQuery.includeFormerNames);
+  // Held here as well so a click shows at once rather than after the round
+  // trip; the saved value wins whenever it changes.
+  const [includeFormerNames, setIncludeFormerNames] = useState(savedIncludeFormerNames);
   const [activeOnly, setActiveOnly] = useState(state.ratingQuery.activeOnly);
   const [after, setAfter] = useState(dayValue(state.ratingQuery.updatedAfter));
   const [before, setBefore] = useState(dayValue(state.ratingQuery.updatedBefore));
@@ -96,6 +111,10 @@ export function RatingLeaderboardPanel() {
       ? current
       : null);
   }, [state.ratingPage.entries]);
+
+  useEffect(() => {
+    setIncludeFormerNames(savedIncludeFormerNames);
+  }, [savedIncludeFormerNames]);
 
   useEffect(() => {
     setPlayer(state.ratingQuery.player);
@@ -157,14 +176,15 @@ export function RatingLeaderboardPanel() {
   };
   const changePage = (page: number) => void load({ ...state.ratingQuery, page });
   const columns: TableColumn[] = ["rank", "player", ...boardColumns, ...visibleColumns];
+  // The remembered "include previous names" choice survives Clear: it says how
+  // the next name is looked up, and with the name cleared it filters nothing.
   const clearFilters = () => {
     setPlayer("");
-    setIncludeFormerNames(false);
     setActiveOnly(true);
     setAfter("");
     setBefore("");
     setPageSize(100);
-    void load({ ...state.ratingQuery, page: 1, pageSize: 100, activeOnly: true, updatedAfter: null, updatedBefore: null, player: "", includeFormerNames: false });
+    void load({ ...state.ratingQuery, page: 1, pageSize: 100, activeOnly: true, updatedAfter: null, updatedBefore: null, player: "", includeFormerNames });
   };
 
   return (
@@ -237,12 +257,16 @@ export function RatingLeaderboardPanel() {
         </SearchField>
         {/* Off by default, because it turns a lookup into a list of
             candidates: part of any name, current or former, and a released
-            name can have been worn by several accounts (#299). */}
+            name can have been worn by several accounts (#299). Once ticked
+            it stays ticked, across restarts too (#424). */}
         <label className="option-check leaderboard-search-former" title={t("leaderboard.ratings.includeFormerNamesHint")}>
           <input
             type="checkbox"
             checked={includeFormerNames}
-            onChange={(event) => setIncludeFormerNames(event.target.checked)}
+            onChange={(event) => {
+              setIncludeFormerNames(event.target.checked);
+              rememberIncludeFormerNames(event.target.checked);
+            }}
           />
           {t("leaderboard.ratings.includeFormerNames")}
         </label>

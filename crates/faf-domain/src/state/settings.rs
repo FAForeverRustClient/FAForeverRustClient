@@ -2307,6 +2307,14 @@ pub struct BrowsingPreferences {
     pub mod_presets: Vec<ModPreset>,
     /// Visible column keys in the rating leaderboard table.
     pub leaderboard_rating_columns: Vec<String>,
+    /// Whether the rating leaderboard's player search also matches names a
+    /// player used to go by (#424).
+    ///
+    /// Off for a fresh install, because it turns a lookup into a list of
+    /// candidates, but a way of searching rather than a fact about one search:
+    /// somebody who ticks it ticks it every time, and the box reset itself
+    /// whenever the tab was opened again.
+    pub leaderboard_include_former_names: bool,
     /// Last searched player username in the replay vault. When empty, defaults
     /// to the currently authenticated player name.
     pub replay_vault_player: String,
@@ -2378,6 +2386,7 @@ impl Default for BrowsingPreferences {
                 .iter()
                 .map(|col| (*col).to_owned())
                 .collect(),
+            leaderboard_include_former_names: false,
             replay_vault_player: String::new(),
             replay_chat_channel: String::new(),
             replay_chat_transfers: ReplayChatTransfers::Show,
@@ -2428,6 +2437,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             matchmaker_recent_order: Vec<u32>,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
+            #[serde(default)]
+            leaderboard_include_former_names: bool,
             replay_vault_player: String,
             #[serde(default)]
             replay_chat_channel: String,
@@ -2466,6 +2477,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     matchmaker_recent_order: defaults.matchmaker_recent_order,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
+                    leaderboard_include_former_names: defaults.leaderboard_include_former_names,
                     replay_vault_player: defaults.replay_vault_player,
                     replay_chat_channel: defaults.replay_chat_channel,
                     replay_chat_transfers: defaults.replay_chat_transfers,
@@ -2502,6 +2514,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             matchmaker_recent_order: wire.matchmaker_recent_order,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
+            leaderboard_include_former_names: wire.leaderboard_include_former_names,
             replay_vault_player: wire.replay_vault_player,
             replay_chat_channel: wire.replay_chat_channel,
             replay_chat_transfers: wire.replay_chat_transfers,
@@ -3260,6 +3273,7 @@ preference_patch! {
         matchmaker_recent_order: Vec<u32>,
         mod_presets: Vec<ModPreset>,
         leaderboard_rating_columns: Vec<String>,
+        leaderboard_include_former_names: bool,
         replay_vault_player: String,
         replay_chat_channel: String,
         replay_chat_transfers: ReplayChatTransfers,
@@ -4431,6 +4445,7 @@ mod tests {
                     "MEAN".into(),
                     "invalid_col".into(),
                 ],
+                leaderboard_include_former_names: true,
                 replay_vault_player: "  VindexNoob  ".into(),
                 replay_chat_channel: "  ALLIES  ".into(),
                 replay_chat_transfers: ReplayChatTransfers::Hide,
@@ -4542,6 +4557,31 @@ mod tests {
         let browsing: BrowsingPreferences = serde_json::from_str("{}").unwrap();
         assert!(browsing.replay_chat_channel.is_empty());
         assert_eq!(browsing.replay_chat_transfers, ReplayChatTransfers::Show);
+    }
+
+    #[test]
+    fn the_former_names_search_is_off_until_ticked_and_then_remembered() {
+        // A settings file from before #424 searches current names only.
+        let browsing: BrowsingPreferences = serde_json::from_str("{}").unwrap();
+        assert!(!browsing.leaderboard_include_former_names);
+
+        // The leaderboard sends the box alone; nothing else in the group moves.
+        let patch: BrowsingPreferencesPatch =
+            serde_json::from_str(r#"{"leaderboardIncludeFormerNames":true}"#).unwrap();
+        let ticked = patch.apply_to(BrowsingPreferences::default());
+        assert!(ticked.leaderboard_include_former_names);
+        assert_eq!(
+            BrowsingPreferences {
+                leaderboard_include_former_names: false,
+                ..ticked.clone()
+            },
+            BrowsingPreferences::default()
+        );
+
+        // And it survives the round trip through the settings file.
+        let stored = serde_json::to_string(&ticked).unwrap();
+        let reloaded: BrowsingPreferences = serde_json::from_str(&stored).unwrap();
+        assert!(reloaded.leaderboard_include_former_names);
     }
 
     #[test]

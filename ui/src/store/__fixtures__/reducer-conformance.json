@@ -969,6 +969,7 @@
           "games",
           "updated"
         ],
+        "leaderboardIncludeFormerNames": false,
         "replayVaultPlayer": "",
         "replayChatChannel": "",
         "replayChatTransfers": "show",
@@ -2201,6 +2202,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -51117,6 +51119,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -51391,6 +51394,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -51674,6 +51678,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -51952,6 +51957,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -52230,6 +52236,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -52518,6 +52525,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -52812,6 +52820,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -53103,6 +53112,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -53402,6 +53412,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -53748,6 +53759,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -54070,6 +54082,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -54394,6 +54407,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -54758,6 +54772,7 @@
                     "games",
                     "updated"
                   ],
+                  "leaderboardIncludeFormerNames": false,
                   "replayVaultPlayer": "",
                   "replayChatChannel": "",
                   "replayChatTransfers": "show",
@@ -54840,6 +54855,7 @@
                 "title": "Friday game",
                 "visibility": "friends"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"

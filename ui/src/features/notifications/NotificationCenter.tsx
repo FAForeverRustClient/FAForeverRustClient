@@ -5,6 +5,8 @@ import { ipc } from "../../ipc/client";
 import { requestSettingsSection } from "../settings/settingsNavigation";
 import { native } from "../../ipc/native";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { useClockPreference } from "../../shared/format/clock";
+import { formatTime } from "../../shared/format/dates";
 import { useAppStore } from "../../store/store";
 import { renderFormattedText, stripHtmlTags } from "../chat/messages/chatFormat";
 import { playNotificationSound, soundForKind } from "./notificationSound";
@@ -138,13 +140,6 @@ async function runAction(item: ClientNotification) {
   markRead(item.id);
 }
 
-function formatTime(timestamp: string) {
-  const date = new Date(timestamp);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit" }).format(date);
-}
-
 function notificationTone(item: ClientNotification): string {
   if (item.kind === "error") return " is-error";
   if (item.kind === "serverWarning" || item.kind === "gameCacheAlert") return " is-warning";
@@ -156,6 +151,9 @@ export function NotificationCenter() {
   useLocale();
   const items = useAppStore((state) => state.state.notifications.items);
   const preferences = useAppStore((state) => state.state.settings.notifications);
+  // The centre is always mounted, so it subscribes to the clock preference
+  // rather than reading it once: flipping the switch redraws the cards (#425).
+  const use24HourTime = useClockPreference();
   const [open, setOpen] = useState(false);
   const [toastIds, setToastIds] = useState<string[]>([]);
   const processed = useRef(new Set<string>());
@@ -334,7 +332,7 @@ export function NotificationCenter() {
             ) : items.map((item) => (
               <article className={`notification-item${item.read ? " is-read" : ""}${notificationTone(item)}`} key={item.id}>
                 <button className="notification-content" type="button" onClick={() => handleAction(item)}>
-                  <span className="notification-item-head"><strong>{item.title}</strong><time>{formatTime(item.createdAt)}</time></span>
+                  <span className="notification-item-head"><strong>{item.title}</strong><time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time></span>
                   <span className="notification-body">{renderFormattedText(item.body)}</span>
                   {actionContent(item.action)}
                 </button>
