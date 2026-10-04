@@ -30,7 +30,7 @@ import type {
   TrainingTopic,
 } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-import { FACTION_NAMES } from "../../shared/factions";
+import { FACTION_NAMES, factionLabel } from "../../shared/factions";
 import { contributionProblem } from "../../shared/rules/trainingRules";
 import { sameDraft } from "./contributionDraft";
 import { Markdown } from "./markdown";
@@ -50,13 +50,16 @@ import {
 const NO_LEVEL = "";
 
 /**
- * The catalogue stores factions as lowercase slugs; the labels are proper
- * nouns, so they are the same in every language (see `shared/factions.ts`).
+ * The catalogue stores factions as lowercase slugs of the game's own words;
+ * the labels are the reader's names for them (see `shared/factions.ts`).
+ * A function, not a constant, so the labels follow a language switch.
  */
-const CATALOGUE_FACTIONS = [1, 2, 3, 4].map((id) => ({
-  value: FACTION_NAMES[id].toLowerCase(),
-  label: FACTION_NAMES[id],
-}));
+function catalogueFactions() {
+  return [1, 2, 3, 4].map((id) => ({
+    value: FACTION_NAMES[id].toLowerCase(),
+    label: factionLabel(id),
+  }));
+}
 
 /**
  * How long typing has to pause before the draft is handed to the state.
@@ -294,7 +297,7 @@ export function ContributePanel({
           />
           <MultiSelect
             label={t("training.contribute.factions")}
-            options={CATALOGUE_FACTIONS}
+            options={catalogueFactions()}
             selected={draft.factions}
             onChange={(factions) => onChange({ ...draft, factions })}
           />

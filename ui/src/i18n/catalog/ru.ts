@@ -251,6 +251,10 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "designSystem.pagination.lastPage": "Последняя страница ({page})",
   "designSystem.pagination.goTo": "Перейти к странице",
   "designSystem.pagination.goToPlaceholder": "Страница…",
+  "factions.uef": "ОФЗ",
+  "factions.aeon": "Эон",
+  "factions.cybran": "Кибран",
+  "factions.seraphim": "Серафим",
   "factions.random": "Случайная",
   "factions.unknown": "Неизвестная фракция",
 

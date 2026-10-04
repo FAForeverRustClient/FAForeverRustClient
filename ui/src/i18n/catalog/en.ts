@@ -3067,6 +3067,12 @@ export const en = {
   "designSystem.pagination.lastPage": "Last page ({page})",
   "designSystem.pagination.goTo": "Go to page",
   "designSystem.pagination.goToPlaceholder": "Page…",
+  // Faction names as shown. Proper nouns in most languages, but not all of
+  // them: the Russian community writes them in Cyrillic.
+  "factions.uef": "UEF",
+  "factions.aeon": "Aeon",
+  "factions.cybran": "Cybran",
+  "factions.seraphim": "Seraphim",
   "factions.random": "Random",
   "factions.unknown": "Unknown faction",
   "notifications.action.openChat": "Open chat",
