@@ -369,7 +369,7 @@ export function CoopPanel({
               >
                 {scenarios.map((scenario) => (
                   <option key={scenario.id} value={scenario.id}>
-                    {displayScenarioOptionLabel(scenario, locale, t)}
+                    {displayScenarioOptionLabel(scenario, t)}
                   </option>
                 ))}
                 {orphanCount > 0 && (
@@ -391,7 +391,7 @@ export function CoopPanel({
               >
                 {missionsInActiveScenario.map((mission) => (
                   <option key={mission.id} value={mission.id}>
-                    {translateCoopMissionName(mission.mapFolderName, mission.name, locale)}
+                    {translateCoopMissionName(mission.name, locale)}
                   </option>
                 ))}
               </select>
@@ -436,12 +436,10 @@ const BOARD_COLUMN_SHARES = [5, 11, 10, 34, 12, 16, 12];
 function MissionDetail({ mission }: { mission: CoopMission }) {
   const { t, locale } = useTranslation();
   const description = translateCoopMissionDescription(
-    mission.mapFolderName,
     mission.name,
     mission.description,
     locale,
   );
-  const missionName = translateCoopMissionName(mission.mapFolderName, mission.name, locale);
   const boardLabels = [
     "#",
     t("lobby.coop.column.time"),
@@ -460,7 +458,6 @@ function MissionDetail({ mission }: { mission: CoopMission }) {
 
   return (
     <>
-      <h3>{missionName}</h3>
       {description && <p className="coop-detail-brief">{description}</p>}
 
       <div className="coop-board-head">

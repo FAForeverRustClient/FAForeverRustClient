@@ -133,7 +133,6 @@ describe("translateCoopMissionDescription", () => {
     "Operation Trident",
   ])("translates the %s briefing", (englishName) => {
     expect(translateCoopMissionDescription(
-      "untranslated_map",
       englishName,
       "English source description",
       "ru",
@@ -151,7 +150,6 @@ describe("translateCoopMissionDescription", () => {
     ["Stone Wall - Remastered", "Каменная стена"],
   ])("translates the %s briefing", (englishName) => {
     expect(translateCoopMissionDescription(
-      "untranslated_map",
       englishName,
       "English source description",
       "ru",
@@ -160,22 +158,24 @@ describe("translateCoopMissionDescription", () => {
 
   it("keeps the API description when no translation exists", () => {
     const source = "Intel reports that two Cybran Commanders gated to Capella.";
-    expect(translateCoopMissionDescription("untranslated_mission", "Unknown mission", source, "ru"))
+    expect(translateCoopMissionDescription("Unknown mission", source, "ru"))
       .toBe(source);
   });
 
-  it("resolves a translation by normalized map folder name", () => {
+  it("uses a translated description when the API description is empty", () => {
+    expect(translateCoopMissionDescription("Dawn", "", "ru")).not.toBe("");
+  });
+
+  it("resolves a translation by normalized displayed mission name", () => {
     expect(translateCoopMissionDescription(
-      "scca_coop_r03.v0021",
-      "Untranslated title",
+      "  BLACK DAY (Всё)  ",
       "English source description",
       "ru",
-    )).toBe("English source description");
+    )).toContain("Форт Кларк");
   });
 
   it("resolves a translation by the mission's displayed name", () => {
     expect(translateCoopMissionDescription(
-      "untranslated_map",
       "Black day (Всё)",
       "English source description",
       "ru",
@@ -186,7 +186,6 @@ describe("translateCoopMissionDescription", () => {
 
   it("translates the Dawn mission description", () => {
     expect(translateCoopMissionDescription(
-      "untranslated_map",
       "Dawn",
       "English source description",
       "ru",
@@ -197,7 +196,6 @@ describe("translateCoopMissionDescription", () => {
 
   it("translates the Red Flag mission description", () => {
     expect(translateCoopMissionDescription(
-      "untranslated_map",
       "Red Flag",
       "English source description",
       "ru",
@@ -208,7 +206,6 @@ describe("translateCoopMissionDescription", () => {
 
   it("translates the Meltdown mission description", () => {
     expect(translateCoopMissionDescription(
-      "untranslated_map",
       "Meltdown",
       "English source description",
       "ru",
@@ -219,7 +216,6 @@ describe("translateCoopMissionDescription", () => {
 
   it("translates the Mind Games mission description", () => {
     expect(translateCoopMissionDescription(
-      "untranslated_map",
       "Mind Games",
       "English source description",
       "ru",
@@ -230,7 +226,6 @@ describe("translateCoopMissionDescription", () => {
 
   it("translates the Overlord mission description", () => {
     expect(translateCoopMissionDescription(
-      "untranslated_map",
       "Overlord",
       "English source description",
       "ru",
@@ -279,7 +274,7 @@ describe("translateCoopMissionName", () => {
     ["Golden Crystals", "Золотые кристаллы (Golden Crystals)"],
     ["Operation Golden Crystals", "Операция «Золотые кристаллы» (Operation Golden Crystals)"],
   ])("translates the %s mission name", (englishName, expected) => {
-    expect(translateCoopMissionName("untranslated_map", englishName, "ru")).toBe(expected);
+    expect(translateCoopMissionName(englishName, "ru")).toBe(expected);
   });
 
   it.each([
@@ -292,42 +287,47 @@ describe("translateCoopMissionName", () => {
     ["Stone Wall", "Каменная стена (Stone Wall)"],
     ["Stone Wall - Remastered", "Каменная стена (Stone Wall - Remastered)"],
   ])("translates the %s mission name", (englishName, expected) => {
-    expect(translateCoopMissionName("untranslated_map", englishName, "ru")).toBe(expected);
+    expect(translateCoopMissionName(englishName, "ru")).toBe(expected);
   });
 
   it("translates the Dawn mission name", () => {
-    expect(translateCoopMissionName("untranslated_map", "Dawn", "ru"))
+    expect(translateCoopMissionName("Dawn", "ru"))
       .toBe("Рассвет (Dawn)");
   });
 
   it("translates the Red Flag mission name", () => {
-    expect(translateCoopMissionName("untranslated_map", "Red Flag", "ru"))
+    expect(translateCoopMissionName("Red Flag", "ru"))
       .toBe("Красный флаг (Red Flag)");
   });
 
   it("translates the Meltdown mission name", () => {
-    expect(translateCoopMissionName("untranslated_map", "Meltdown", "ru"))
+    expect(translateCoopMissionName("Meltdown", "ru"))
       .toBe("Расплав (Meltdown)");
   });
 
   it("translates the Mind Games mission name", () => {
-    expect(translateCoopMissionName("untranslated_map", "Mind Games", "ru"))
+    expect(translateCoopMissionName("Mind Games", "ru"))
       .toBe("Игры разума (Mind Games)");
   });
 
   it("translates the Overlord mission name", () => {
-    expect(translateCoopMissionName("untranslated_map", "Overlord", "ru"))
+    expect(translateCoopMissionName("Overlord", "ru"))
       .toBe("Оверлорд (Overlord)");
   });
 
   it("translates a co-op mission's displayed name", () => {
-    expect(translateCoopMissionName("untranslated_map", "Black day (Всё)", "ru"))
+    expect(translateCoopMissionName("Black day (Всё)", "ru"))
       .toBe("Чёрный день (всё) (Black day (Всё))");
   });
 
   it("keeps the API name when no translation exists", () => {
-    expect(translateCoopMissionName("untranslated_map", "Unknown mission", "ru"))
+    expect(translateCoopMissionName("Unknown mission", "ru"))
       .toBe("Unknown mission");
+  });
+
+  it("uses the locale catalogue to decide whether to show the original name", () => {
+    expect(translateCoopMissionName("Dawn", "en")).toBe("Dawn");
+    expect(translateCoopMissionName("Dawn", "ru")).toBe("Рассвет (Dawn)");
   });
 });
 

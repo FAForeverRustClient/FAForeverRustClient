@@ -64,11 +64,15 @@ export const COOP_MISSION_NAMES: Partial<
   pl: {},
 };
 
+export const COOP_MISSION_NAME_FORMATS: Partial<Record<Locale, string>> = {
+  ru: "{name} ({original})",
+};
+
 /**
  * Mission descriptions are authored by the co-op catalogue API rather than
  * the client, so their translations live separately from UI message keys.
- * Entries can use a mission's map folder name or displayed name; missing
- * entries keep showing the API description.
+ * Entries use the API's displayed mission name; missing entries keep showing
+ * the API description.
  */
 export const COOP_MISSION_DESCRIPTIONS: Partial<
   Record<Locale, Partial<Record<string, string>>>

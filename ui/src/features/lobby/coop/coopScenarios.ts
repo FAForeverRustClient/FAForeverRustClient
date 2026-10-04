@@ -6,7 +6,6 @@
 
 import type { CoopScenario } from "../../../ipc/bindings";
 import type { Translation } from "../../../i18n/useTranslation";
-import type { Locale } from "../../../i18n/locales";
 
 /**
  * Which game a campaign came from, and the primary sort key.
@@ -66,39 +65,22 @@ export function sortCoopScenarios<T extends CoopScenario>(scenarios: readonly T[
  * alongside genuine community work. The category is what separates those two.
  */
 export function scenarioBadge(scenario: CoopScenario): "uef" | "cybran" | "aeon" | "seraphim" | "official" | "custom" {
-  if (
-    scenario.category === "custom" &&
-    scenario.name.trim().toLowerCase() === "seraphim campaign"
-  ) {
-    return "custom";
-  }
+  if (scenario.category === "custom") return "custom";
   if (scenario.faction !== "custom") return scenario.faction;
-  return scenario.category === "custom" ? "custom" : "official";
+  return "official";
 }
 
 export function displayScenarioName(
   scenario: CoopScenario,
-  locale: Locale,
   t: Translation["t"],
 ): string {
-  if (locale !== "ru") return scenario.name;
-
   switch (scenario.name.trim().toLowerCase()) {
     case "vanilla uef campaign":
-      return t("lobby.coop.vanillaCampaignName", {
-        faction: t("lobby.coop.badge.uef"),
-        game: "SC",
-      });
+      return t("lobby.coop.vanillaUefCampaignName");
     case "vanilla cybran campaign":
-      return t("lobby.coop.vanillaCampaignName", {
-        faction: t("lobby.coop.badge.cybran"),
-        game: "SC",
-      });
+      return t("lobby.coop.vanillaCybranCampaignName");
     case "vanilla aeon campaign":
-      return t("lobby.coop.vanillaCampaignName", {
-        faction: t("lobby.coop.badge.aeon"),
-        game: "SC",
-      });
+      return t("lobby.coop.vanillaAeonCampaignName");
     case "forged alliance campaign":
       return t("lobby.coop.scfaCampaignName");
     case "coalition campaign":
@@ -113,18 +95,12 @@ export function displayScenarioName(
 
 export function displayScenarioOptionLabel(
   scenario: CoopScenario,
-  locale: Locale,
   t: Translation["t"],
 ): string {
-  const name = displayScenarioName(scenario, locale, t);
-  const normalizedName = scenario.name.trim().toLowerCase();
-  if (
-    locale === "ru" &&
-    (normalizedName.startsWith("vanilla ") ||
-      normalizedName === "forged alliance campaign")
-  ) {
-    return name;
-  }
+  const name = displayScenarioName(scenario, t);
   const badge = t(`lobby.coop.badge.${scenarioBadge(scenario)}`);
-  return `${name} (${badge})`;
+  const format = scenario.category === "custom"
+    ? t("lobby.coop.communityCampaignOption")
+    : t("lobby.coop.officialCampaignOption");
+  return format.replace("{name}", name).replace("{badge}", badge);
 }
