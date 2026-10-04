@@ -10,7 +10,7 @@ import type {
   ValidationIssue,
 } from "../ipc/bindings";
 import type { Translation } from "../i18n/useTranslation";
-import { kilometresLabel } from "./mapPresentation";
+import { kilometres, kilometresLabel } from "./mapPresentation";
 
 /** Generator units per kilometre, the generator's own `MultipleMapSizeConverter`. */
 export const UNITS_PER_KM = 51.2;
@@ -46,7 +46,7 @@ export function sizeInKm(units: number): number {
 
 /** "10 km (512×512)", "17.5 km (896×896)". */
 export function formatMapSize(units: number): string {
-  return `${kilometresLabel(units)} km (${units}×${units})`;
+  return `${kilometres(kilometresLabel(units))} (${units}×${units})`;
 }
 
 /**

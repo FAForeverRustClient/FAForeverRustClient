@@ -27,7 +27,7 @@ import { ipc } from "../../ipc/client";
 import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
 import { toggleFavoriteMap } from "../../shared/favoriteMaps";
 import { isWithinNumberRange } from "../../shared/filterRanges";
-import { installNote, kilometresLabel } from "../../shared/mapPresentation";
+import { installNote, kilometres, kilometresLabel } from "../../shared/mapPresentation";
 import { EMPTY_MAP_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
 import { useAppStore } from "../../store/store";
 import { MapPreview } from "../../shared/components/MapPreview";
@@ -471,8 +471,8 @@ function VaultView({ busy }: { busy: boolean }) {
               <SearchField label={t("maps.view.installation")}><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">{t("maps.view.any")}</option><option value="installed">{t("maps.view.installed")}</option><option value="available">{t("maps.view.notInstalled")}</option></select></SearchField>
               <SearchField label={t("maps.view.uploadedAfter")}><DateInput className="search-panel-control" value={createdAfter} onChange={setCreatedAfter} /></SearchField>
               <SearchField label={t("maps.view.uploadedBefore")}><DateInput className="search-panel-control" value={createdBefore} onChange={setCreatedBefore} /></SearchField>
-              <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
-              <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
+              <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}</select></SearchField>
+              <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}</select></SearchField>
               {/* "My maps" shows them regardless, so the control would be a
                   lie there: an author is meant to see what they withdrew. */}
               {preset !== "mine" && (
@@ -882,13 +882,13 @@ function InstalledView({ busy }: { busy: boolean }) {
               <SearchField label={t("maps.view.width")}>
                 <select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}>
                   <option value={0}>{t("maps.view.any")}</option>
-                  {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}
+                  {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}
                 </select>
               </SearchField>
               <SearchField label={t("maps.view.height")}>
                 <select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}>
                   <option value={0}>{t("maps.view.any")}</option>
-                  {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}
+                  {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}
                 </select>
               </SearchField>
             </div>

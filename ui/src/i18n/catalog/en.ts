@@ -2972,6 +2972,9 @@ export const en = {
   "common.cancel": "Cancel",
   "common.retry": "Retry",
   "common.rangeBetween": "{low} to {high}",
+  // Map sizes. The numbers arrive already in kilometres, formatted.
+  "common.kilometres": "{size} km",
+  "common.kilometresArea": "{width} × {height} km",
   "reporting.error.tooShort": "Please describe the incident in at least 10 characters.",
   "reporting.error.tooLong": "The description cannot exceed 4,000 characters.",
   "reporting.error.gameId": "Game ID must be a positive whole number.",

@@ -10,7 +10,13 @@ import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNav
 import { OFFICIAL_BASE_MAPS } from "../../../shared/mapPresentation";
 import { GameMapImage } from "../GameMapImage";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
-import { findVaultMapByFolder, isGeneratedMap, isOfficialMap } from "../../../shared/mapPresentation";
+import {
+  findVaultMapByFolder,
+  isGeneratedMap,
+  isOfficialMap,
+  kilometres,
+  kilometresArea,
+} from "../../../shared/mapPresentation";
 import { MapUninstallDialog } from "../../maps/MapVaultComponents";
 import { GenerateMapModal } from "../../maps/GenerateMapModal";
 import { generatedMapDescriptionRows } from "../../../shared/generatedMapDescription";
@@ -121,7 +127,7 @@ function formatMapMeta(map: { maxPlayers: number; width: number; height: number 
     parts.push(`${map.maxPlayers}p`);
   }
   if (map.width > 0 && map.height > 0) {
-    parts.push(`${toKilometres(map.width)}×${toKilometres(map.height)}km`);
+    parts.push(kilometresArea(toKilometres(map.width), toKilometres(map.height)));
   }
   return parts.join(" · ");
 }
@@ -138,7 +144,7 @@ const OFFICIAL_BY_NAME = new Map(
 
 function formatMapDimensions(width: number, height: number): string {
   if (width <= 0) return "";
-  return `${toKilometres(width)} × ${toKilometres(height)} km`;
+  return kilometresArea(toKilometres(width), toKilometres(height));
 }
 
 /**
@@ -739,7 +745,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                     max={MAX_MAP_KM}
                     low={widthKm.low}
                     high={widthKm.high}
-                    format={(value) => `${value} km`}
+                    format={kilometres}
                     onChange={(low, high) => filter({ widthKm: { low, high } })}
                   />
                   <RangeSlider
@@ -748,7 +754,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                     max={MAX_MAP_KM}
                     low={heightKm.low}
                     high={heightKm.high}
-                    format={(value) => `${value} km`}
+                    format={kilometres}
                     onChange={(low, high) => filter({ heightKm: { low, high } })}
                   />
                   <RangeSlider

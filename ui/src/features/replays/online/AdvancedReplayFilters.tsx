@@ -3,6 +3,7 @@ import { MultiSelect, type MultiSelectOption } from "../../../design-system/Mult
 import { ReplayTagFilter } from "../ReplayTagsDialog";
 import { RangeSlider } from "../../../design-system/RangeSlider";
 import { FACTION_OPTIONS } from "../../../shared/factions";
+import { kilometres } from "../../../shared/mapPresentation";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 
@@ -85,7 +86,7 @@ export function ReplaySearchSliders({ form, setRange }: Pick<Props, "form" | "se
         step={1}
         low={form.mapMinSizeKm}
         high={form.mapMaxSizeKm}
-        format={(v) => `${v} km`}
+        format={kilometres}
         onChange={(lo, hi) => setRange("mapMinSizeKm", "mapMaxSizeKm", lo, hi)}
       />
       <RangeSlider
