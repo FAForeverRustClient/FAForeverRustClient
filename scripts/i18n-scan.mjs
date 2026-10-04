@@ -48,6 +48,11 @@ const IGNORED_FILES = new Map([
   ["ui/src/features/training/recording.ts", "the same marker type ids, on the analyser side"],
   ["ui/src/features/events/eventSubmission.ts", "the body of a GitHub issue, which is English wherever it is written from"],
   ["ui/src/shared/components/MapPreviewZoom.tsx", "throw messages for a copy that falls back on its own; never rendered"],
+  // Not a decision that they stay English: some 250 names in six languages
+  // is translation work of its own, and the search vocabulary has to stay
+  // English beside it. Until that is done, this list would hide everything
+  // else behind its own length.
+  ["ui/src/features/chat/messages/emoji.ts", "the picker's English emoji names and search keywords; translating them is open work"],
 ]);
 
 // Attribute names whose values are machine tokens, never prose.
@@ -68,6 +73,23 @@ const DEVELOPER_ONLY =
 // a short list of words but is matched against markup, never displayed.
 const SELECTOR_CALLS =
   /(\.(?:closest|matches|querySelector(?:All)?)(?:<[\w\s|]+>)?\(\s*)(?:"[^"\n]*"|'[^'\n]*'|`[^`\n]*`)/g;
+
+// A string compared against is a value read off the wire or the DOM
+// (`kind.toLowerCase() === "game patch"`), never one that is shown. So is a
+// switch's case label; what the case returns is still read.
+const COMPARED_AFTER = /([!=]==\s*)"[^"\n]*"/g;
+const COMPARED_BEFORE = /"[^"\n]*"(\s*[!=]==)/g;
+const CASE_LABELS = /\bcase\s+"[^"\n]*"\s*:/g;
+
+// A class name chosen by an expression, `className={on ? "is-on" : "muted mono"}`.
+// Its strings are class lists whether or not one of them has a hyphen in it.
+// Only an expression without nested braces, so a template's `${...}` is left
+// for the template pass rather than cut in half.
+const CLASS_EXPRESSIONS = /className=\{([^{}]*)\}/g;
+
+// The second word begins with the first (`mod`, `mods`), which is what tells a
+// plural from any other pair chosen by a count (`"end" : "middle"`).
+const HAND_MADE_PLURAL = /[!=]==\s*1\s*\?\s*"([a-z]+)[a-z ]*"\s*:\s*"\1[a-z ]*"/g;
 
 // KeyboardEvent.key values: compared against, never displayed, and sentence
 // cased, so without this list they dominate the report.
@@ -100,7 +122,10 @@ const NOT_PROSE = [
   // them matched against or printed verbatim rather than translated.
   // Twitch is the streaming service's name on the badge of a stream link.
   /^(?:faf|coop|nomads|fafbeta|fafdevelop|ladder1v1|global|en|de|UEF|Aeon|Cybran|Seraphim|Neroxis|Grandmaster|Hotfix|Twitch)$/,
-  /^[a-z][\w-]*(?:\s+[a-z][\w-]*)+$/,             // a CSS class list
+  // A CSS class list. At least one class has a hyphen or an underscore in it,
+  // which is what tells `is-active muted` from `your rating`: without that,
+  // every lower-case phrase in a ternary passed for a class list.
+  /^(?=.*[a-z0-9][-_][a-z0-9])[a-z][\w-]*(?:\s+[a-z][\w-]*)+$/,
   /(?:\|\||&&|===|!==|=>|\)\.)/,                  // half of a split expression
   /^[A-Z][a-z]+(?:[A-Z][a-z]+)+$/,                // PascalCase type or slice name
   /^[,;:.]/,                                      // half of a concatenation
@@ -110,13 +135,32 @@ const NOT_PROSE = [
   // declaration's closing brace up to the next generic's `<`.
   /^export\s/,                                    // export function Select<
   /^(?:class|function|interface|enum)\s+[A-Z]/,   // a declaration's head
+  /^(?:function|const|let|type)\s+\w+$/,          // function uniqueBy<T>(
   /\bas const\b|\bsatisfies\s+[A-Z]/,             // as const satisfies Record<
   // A CSS value in an ordinary string, e.g. a grid template or a colour.
   /\b(?:minmax|repeat|calc|var|color-mix|translate[XY]?|rotate|scale|url|(?:linear|radial)-gradient|rgba?|hsla?)\(/,
 ];
 
+// Abbreviations shown as they are. Each is copy all the same: "N/A" is "k. A."
+// in German and "н/д" in Russian, and the rule below, which wants a lower-case
+// letter, let every one of them through. A list rather than a pattern, because
+// most upper-case literals here are wire values ("VICTORY", "DEFEAT") that are
+// matched against and never shown.
+const UI_ABBREVIATIONS = new Set(["N/A", "FFA", "VS", "SE", "DE", "FF", "GM", "IP", "UI", "SIM", "TBD"]);
+
+// A word printed beside a count, `{count} placed`: a single lower-case word,
+// and so not prose by the rule below. Only looked for in JSX text, where a
+// word is always rendered; in a string literal it is as likely a token.
+const LOWER_CASE_WORDS = /^[a-z][a-z'’]{2,}(?:\s+[a-z][a-z'’]*)*$/;
+
+// The keywords that sit between a closing brace and the next `<` in ordinary
+// TypeScript (`} as Array<`, `} extends Base<`), which the JSX pass would
+// otherwise read as a word printed beside an expression.
+const TS_KEYWORDS = /^(?:as|extends|satisfies|implements|keyof|typeof|in|of|is|new|return|else)\b/;
+
 function isProse(value) {
   const text = value.trim();
+  if (UI_ABBREVIATIONS.has(text)) return true;
   if (text.length < 3) return false;
   if (KEYBOARD_KEYS.has(text)) return false;
   if (TYPE_NAMES.has(text)) return false;
@@ -179,19 +223,30 @@ for (const path of (await sourceFiles(resolve(root, target))).sort()) {
     .replace(TECHNICAL_ATTRS, "")
     .replace(COMMAND_KEYS, "")
     .replace(DEVELOPER_ONLY, "$1")
-    .replace(SELECTOR_CALLS, "$1");
+    .replace(SELECTOR_CALLS, "$1")
+    .replace(COMPARED_AFTER, "$1")
+    .replace(COMPARED_BEFORE, "$1")
+    .replace(CASE_LABELS, "case:")
+    .replace(CLASS_EXPRESSIONS, (_, inner) => `className={${inner.replace(/"[^"\n]*"/g, '""')}}`);
 
   const hits = new Set();
+  // A plural made by hand: `count === 1 ? "mod" : "mods"`. Two lower-case
+  // words, each too short to read as prose on its own, and a sentence that
+  // cannot be translated, because most languages do not pluralise by adding
+  // an s and some need more than two forms.
+  for (const [match] of source.matchAll(HAND_MADE_PLURAL)) hits.add(match);
   const templates = [];
   for (const literal of stringLiterals(source)) {
     if (literal.kind === "template") templates.push(literal.value);
-    else if (literal.value.length >= 3 && isProse(literal.value)) hits.add(literal.value);
+    else if (isProse(literal.value)) hits.add(literal.value);
   }
   // JSX text nodes are not string literals, so they need their own pass. The
   // `>` must close a tag: after `=` it is an arrow, and the "text" up to the
   // next `<` is a function body with a comparison in it.
-  for (const [, value] of source.matchAll(/(?<![=-])>\s*([A-Z][A-Za-z0-9 ,.'\u2019!?()/&%:-]{2,})\s*</g)) {
-    if (isProse(value)) hits.add(value);
+  // Two characters are enough for an abbreviation (`VS`), which `isProse`
+  // only accepts from its list.
+  for (const [, value] of source.matchAll(/(?<![=-])>\s*([A-Z][A-Za-z0-9 ,.'\u2019!?()/&%:-]{1,})\s*</g)) {
+    if (isProse(value)) hits.add(value.trim());
   }
   // JSX text that touches an expression container on either side. Without
   // this, `Filters{count > 0 ? ... : ""}` and `{count} slots` both read as
@@ -208,6 +263,13 @@ for (const path of (await sourceFiles(resolve(root, target))).sort()) {
   for (const pattern of JSX_BESIDE_EXPRESSION) {
     for (const [, value] of source.matchAll(pattern)) if (isProse(value)) hits.add(value.trim());
   }
+  // The same, for lower-case words: `{count} placed`, `{n} games played`.
+  // Between a brace and a tag nothing but rendered text can sit, apart from
+  // the TypeScript keywords that a generic's `<` makes look like markup.
+  for (const [, value] of source.matchAll(/\}[ \t]*([a-z][a-z'’ \t]{2,}?)[ \t]*<\/?[a-zA-Z]/g)) {
+    const text = value.trim();
+    if (LOWER_CASE_WORDS.test(text) && !TS_KEYWORDS.test(text)) hits.add(text);
+  }
   // Template literals whose fixed halves are prose. A class name is the
   // common false positive and is excluded by `isProse`, which refuses a
   // lower-case identifier list; what is left is copy with a number in it.
@@ -217,7 +279,22 @@ for (const path of (await sourceFiles(resolve(root, target))).sort()) {
     if (value.length < 3 || /[\\\n]/.test(value)) continue;
     const fixed = value.replace(/\$\{[^}]*\}/g, " ").trim();
     if (CSS_VALUE.test(fixed)) continue;
-    if (fixed.split(/\s+/).filter(Boolean).length >= 2 && isProse(fixed)) hits.add(`\`${value}\``);
+    const words = fixed.split(/\s+/).filter(Boolean);
+    if (words.length >= 2 && isProse(fixed)) {
+      hits.add(`\`${value}\``);
+    } else if (
+      // A lower-case sentence with a value in it, `${n} players online`.
+      // `isProse` takes lower-case words for a class list, which in a
+      // template they usually are; but a class name is hyphenated or
+      // prefixed (`is-active`, `leaderboard-row`), and a sentence's words
+      // are not.
+      value.includes("${")
+      && words.length >= 2
+      && words.every((word) => /^[a-z]+[.,!?:]?$/.test(word))
+      && !TS_KEYWORDS.test(fixed)
+    ) {
+      hits.add(`\`${value}\``);
+    }
   }
 
   if (hits.size === 0) continue;
