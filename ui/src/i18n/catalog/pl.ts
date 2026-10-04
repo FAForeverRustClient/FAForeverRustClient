@@ -684,7 +684,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.vault.unknown": "Nieznane",
   "maps.vault.maxPlayersTitle": "Maksymalnie {count} graczy",
   "maps.vault.ratingTitle": "{score} na 5 z {reviews} recenzji",
-  "maps.vault.noReviews": "Nie ma jeszcze recenzji",
   "maps.vault.removeFavorite": "Usuń z ulubionych",
   "maps.vault.addFavorite": "Dodaj do ulubionych",
   "maps.vault.installing": "Instalowanie…",

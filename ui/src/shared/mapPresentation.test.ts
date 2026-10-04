@@ -5,6 +5,7 @@ import {
   OFFICIAL_BASE_MAPS,
   effectiveReplayMapName,
   extractGeneratedMapSeed,
+  findVaultMapByFolder,
   isGeneratedMap,
   mapPresentation,
   mapSize,
@@ -253,5 +254,21 @@ describe("mapSize", () => {
     // A badge reading 10 km because that is the common size would be worse
     // than no badge: it is the number somebody is deciding on.
     expect(mapSize([], "some_custom_map_nobody_has")).toBeNull();
+  });
+});
+
+describe("findVaultMapByFolder", () => {
+  it("finds the record of an installed older version through its base name", () => {
+    // The catalogue holds each map's latest version only. An exact match
+    // missed every older version on disk, and the installed list then called
+    // a ranked map "Unranked" (#416).
+    const latest = { folderName: "lena_river.v0009", displayName: "Lena river", ranked: true } as VaultMap;
+    expect(findVaultMapByFolder([latest], "lena_river.v0008")).toBe(latest);
+    expect(findVaultMapByFolder([latest], "Lena_River.v0009")).toBe(latest);
+  });
+
+  it("does not fall through to a title match", () => {
+    const record = { folderName: "lena_river.v0009", displayName: "Lena river" } as VaultMap;
+    expect(findVaultMapByFolder([record], "Lena river")).toBeUndefined();
   });
 });
