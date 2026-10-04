@@ -5069,7 +5069,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "status.matchmaking.launching": "Запуск {queue}…",
   "status.matchmaking.stop": "Остановить",
   "nav.badge.mentions": "Упоминания: {count}",
-  "nav.badge.unread": "Непрочитанные сообщения",
   "nav.badge.matchFound": "Матч найден",
   "nav.badge.searching": "Идёт поиск матча",
   "errors.cause.locked": "Папка заблокирована или доступна только для чтения. Закройте игру и всё, что её использует, и попробуйте снова.",

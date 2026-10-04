@@ -4855,7 +4855,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "status.matchmaking.launching": "Uruchamianie {queue}…",
   "status.matchmaking.stop": "Zatrzymaj",
   "nav.badge.mentions": "Wzmianki: {count}",
-  "nav.badge.unread": "Nieprzeczytane wiadomości",
   "nav.badge.matchFound": "Znaleziono mecz",
   "nav.badge.searching": "Szukanie meczu",
   "errors.cause.locked": "Folder jest zablokowany lub tylko do odczytu. Zamknij grę i wszystko, co z niego korzysta, i spróbuj ponownie.",

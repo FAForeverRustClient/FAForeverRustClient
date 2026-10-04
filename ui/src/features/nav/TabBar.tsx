@@ -8,7 +8,7 @@ import { GameFoldersMenu } from "../game-folders/GameFoldersMenu";
 import { openTabForMode, TABS, tabsForMode } from "./tabs";
 import type { Tab } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useTranslation, type Translation } from "../../i18n/useTranslation";
 import "./nav.css";
 
 /**
@@ -20,6 +20,42 @@ import "./nav.css";
  * above.
  */
 const BOTTOM_TABS: Tab[] = ["links", "settings"];
+
+export interface TabBadge {
+  /** What the badge prints; empty draws a dot. */
+  text: string;
+  /** Appended to the tab's accessible name. */
+  label: string;
+  loud: boolean;
+}
+
+/**
+ * The badge a tab carries, if any.
+ *
+ * Chat is a dot and only a dot, and only for what is addressed to the player:
+ * a mention, an answer to one of their lines, or a private message - which is
+ * what `unreadMentions` counts. It used to light up for any line in any
+ * joined channel, which in #aeolus is always, and to print the mention count
+ * in an accent pill; both went in #429. The count stays in the accessible
+ * name, where it costs nothing to look at.
+ */
+export function tabBadge(
+  id: Tab,
+  mentions: number,
+  matchmaking: string,
+  t: Translation["t"],
+): TabBadge | null {
+  if (id === "chat" && mentions > 0) {
+    return { text: "", label: t("nav.badge.mentions", { count: mentions }), loud: false };
+  }
+  if (id === "play" && matchmaking === "matchFound") {
+    return { text: "!", label: t("nav.badge.matchFound"), loud: true };
+  }
+  if (id === "play" && (matchmaking === "preparing" || matchmaking === "searching" || matchmaking === "launching")) {
+    return { text: "", label: t("nav.badge.searching"), loud: false };
+  }
+  return null;
+}
 
 export function TabBar() {
   const mode = useAppStore((s) => s.state.auth.mode);
@@ -37,27 +73,12 @@ export function TabBar() {
 
   // What wants the player from another tab. The rail named places and nothing
   // else, so a mention, a private message or a running search was invisible
-  // from anywhere but its own tab. Each read as a number, not a list, so the
-  // rail redraws when a count changes rather than on every chat line.
+  // from anywhere but its own tab. Read as a number, not a list, so the rail
+  // redraws when the count changes rather than on every chat line.
   const mentions = useAppStore((s) =>
     s.state.chat.channels.reduce((sum, channel) => sum + channel.unreadMentions, 0));
-  const unread = useAppStore((s) =>
-    s.state.chat.channels.reduce((sum, channel) => sum + channel.unread, 0));
   const matchmaking = useAppStore((s) => s.state.lobby.matchmaking.type);
-
-  const badgeFor = (id: Tab): { text: string; label: string; loud: boolean } | null => {
-    if (id === "chat" && mentions > 0) {
-      return { text: mentions > 99 ? "99+" : String(mentions), label: t("nav.badge.mentions", { count: mentions }), loud: true };
-    }
-    if (id === "chat" && unread > 0) return { text: "", label: t("nav.badge.unread"), loud: false };
-    if (id === "play" && matchmaking === "matchFound") {
-      return { text: "!", label: t("nav.badge.matchFound"), loud: true };
-    }
-    if (id === "play" && (matchmaking === "preparing" || matchmaking === "searching" || matchmaking === "launching")) {
-      return { text: "", label: t("nav.badge.searching"), loud: false };
-    }
-    return null;
-  };
+  const badgeFor = (id: Tab) => tabBadge(id, mentions, matchmaking, t);
 
   // Ending an offline session puts the login screen back. `logoutTest` is the
   // teardown for a session that never held a token, which is what an offline

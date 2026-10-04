@@ -299,6 +299,7 @@ export function RatingLeaderboardPanel() {
               columns={columns}
               activeBoard={state.ratingQuery.leaderboard}
               crossRatings={crossRatings}
+              scrollResetKey={state.ratingQuery}
               selectedPlayerId={selected?.playerId ?? null}
               onSelect={setSelected}
               onRankBy={(leaderboard) => void load({ ...state.ratingQuery, leaderboard, page: 1 })}

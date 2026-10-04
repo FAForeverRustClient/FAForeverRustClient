@@ -371,6 +371,22 @@ impl ChatState {
     }
 }
 
+/// Does a reply to `reply_to` answer something `username` wrote?
+///
+/// A reply carries only the id it answers, not the name of whoever wrote the
+/// original, so a reply that does not also type the name would otherwise go
+/// unnoticed. That is the third thing, after a private message and a mention,
+/// that is addressed to the player rather than said near them (#429). Only
+/// the scrollback can answer it: a reply to a line already trimmed from it
+/// counts as an ordinary message.
+fn answers(messages: &[ChatMessage], reply_to: &str, username: &str) -> bool {
+    !reply_to.is_empty()
+        && !username.is_empty()
+        && messages
+            .iter()
+            .any(|m| m.msgid == reply_to && m.sender.eq_ignore_ascii_case(username))
+}
+
 /// Does `content` name `username`? Case-insensitive, and bounded by non-word
 /// characters so "Sheikah" doesn't light up for "Sheik". Mirrors the Python
 /// client's `mentions_me` and the Java client's mention highlighting.
@@ -902,7 +918,10 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
                 && !matches!(message.kind, ChatMessageKind::Info | ChatMessageKind::Error);
             if counts {
                 c.unread = c.unread.saturating_add(1);
-                if is_private || mentions(&message.content, &username) {
+                if is_private
+                    || mentions(&message.content, &username)
+                    || answers(&c.messages, &message.reply_to, &username)
+                {
                     c.unread_mentions = c.unread_mentions.saturating_add(1);
                 }
             }
@@ -1235,6 +1254,31 @@ mod tests {
         let c = s.channel("#newbie").unwrap();
         assert_eq!(c.unread, 2);
         assert_eq!(c.unread_mentions, 1);
+    }
+
+    #[test]
+    fn a_reply_to_our_own_line_counts_as_a_mention() {
+        let mut s = connected("Aurora");
+        let mut ours = message("1");
+        ours.sender = "Aurora".into();
+        let mut answer = message("2");
+        answer.reply_to = "srv-1".into();
+        answer.content = "agreed".into();
+        let mut elsewhere = message("3");
+        elsewhere.reply_to = "srv-2".into();
+        for m in [ours, answer, elsewhere] {
+            reduce(
+                &mut s,
+                &ChatEvent::MessageReceived {
+                    channel: "#newbie".into(),
+                    message: m,
+                },
+            );
+        }
+        let c = s.channel("#newbie").unwrap();
+        // Our own line is not unread; the answer to it is a mention, the
+        // answer to somebody else's line is not.
+        assert_eq!((c.unread, c.unread_mentions), (2, 1));
     }
 
     #[test]

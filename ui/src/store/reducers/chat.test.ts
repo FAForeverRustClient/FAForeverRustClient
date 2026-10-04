@@ -314,6 +314,15 @@ describe("unread counting", () => {
     expect(next.channels[0]).toMatchObject({ unread: 1, unreadMentions: 1 });
   });
 
+  it("counts a reply to our own line as a mention", () => {
+    // Rust: `answers`. The reply names nobody; its id is what points at us.
+    let next = receive(inactive(), { sender: "Ada", msgid: "srv-ours" });
+    next = receive(next, { msgid: "srv-answer", replyTo: "srv-ours", content: "agreed" });
+    expect(next.channels[0]).toMatchObject({ unread: 1, unreadMentions: 1 });
+    next = receive(next, { replyTo: "srv-answer", content: "same" });
+    expect(next.channels[0]).toMatchObject({ unread: 2, unreadMentions: 1 });
+  });
+
   it("treats every message in a private conversation as a mention", () => {
     // Rust: `is_private` short-circuits the mention check.
     const next = apply(state({ channels: [channel("Bob")], activeChannel: "#other" }), {

@@ -5164,7 +5164,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "status.matchmaking.launching": "{queue} startet…",
   "status.matchmaking.stop": "Stopp",
   "nav.badge.mentions": "Erwähnungen: {count}",
-  "nav.badge.unread": "Ungelesene Nachrichten",
   "nav.badge.matchFound": "Match gefunden",
   "nav.badge.searching": "Suche nach einem Match",
   "errors.cause.locked": "Der Ordner ist gesperrt oder schreibgeschützt. Schließe das Spiel und alles andere, das ihn nutzt, und versuche es erneut.",
