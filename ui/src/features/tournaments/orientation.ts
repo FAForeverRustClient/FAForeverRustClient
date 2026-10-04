@@ -5,7 +5,7 @@
 // pure functions so the header, the list and the overview draw the same answer
 // and a test can read it without rendering anything.
 
-import type { MessageKey } from "../../i18n";
+import { t, type MessageKey } from "../../i18n";
 import type { Tourney, TourneyStatus } from "../../ipc/bindings";
 import { STATUS_LABELS } from "./tourneyPresentation";
 import { mayPick, pendingSignups } from "../../shared/rules/tourneyRules";
@@ -153,7 +153,7 @@ export function eventDayCount(days: string[]): number {
 /** The list row's short format: `2v2 SE`, `1v1 Swiss`, `FFA`. */
 export function listKind(event: Tourney): string {
   if (event.competition === "freeForAll") return "FFA";
-  const bracket = { single: "SE", double: "DE", swiss: "Swiss" }[event.bracketKind];
+  const bracket = { single: "SE", double: "DE", swiss: t("tournaments.bracketKind.swiss") }[event.bracketKind];
   return `${event.teamSize}v${event.teamSize} ${bracket}`;
 }
 

@@ -14,7 +14,7 @@ import type {
   TourneyCategory,
   TourneySeries,
 } from "../../../ipc/bindings";
-import type { MessageKey } from "../../../i18n";
+import { t, type MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { RichText } from "../detail/RichText";
 import { eventDayCount } from "../orientation";
@@ -35,7 +35,7 @@ function editionPill(edition: SeriesEdition, now: number): { label: MessageKey; 
 
 function kindOf(edition: SeriesEdition): string {
   if (edition.competition === "freeForAll") return "FFA";
-  const bracket = { single: "SE", double: "DE", swiss: "Swiss" }[edition.bracketKind];
+  const bracket = { single: "SE", double: "DE", swiss: t("tournaments.bracketKind.swiss") }[edition.bracketKind];
   return `${edition.teamSize}v${edition.teamSize} ${bracket}`;
 }
 

@@ -1,4 +1,5 @@
 import type { Game, PlayerProfile, SocialState } from "../../../ipc/bindings";
+import { t } from "../../../i18n";
 import { displayedRating, gameLeaderboard } from "../../../shared/playerRatings";
 // One definition, imported rather than repeated. It was 300 here and
 // `5 * 60` there, which is the same number until somebody changes one of
@@ -119,9 +120,9 @@ function hostedAtSeconds(hostedAt: string | null): number | null {
 }
 
 function teamLabel(id: string): string {
-  if (id === "-1" || id === "null") return "Observers";
-  if (id === "0") return "No team";
-  return `Team ${id}`;
+  if (id === "-1" || id === "null") return t("chat.team.observers");
+  if (id === "0") return t("chat.team.none");
+  return t("chat.team.numbered", { id });
 }
 
 function teamOrder([id]: [string, string[]]): number {
