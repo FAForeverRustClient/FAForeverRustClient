@@ -4997,6 +4997,7 @@ export const en = {
   "tournaments.bracket.divisionNumber": "Division {number}",
   "tournaments.bracket.notPlayed": "not played",
   "tournaments.bracket.replaysTitle": "FAF replays, in game order",
+  "tournaments.bracket.replayGameTitle": "Game {number}: watch replay {uid} in the client",
   "tournaments.mapblock.pool": "MAP POOL",
   "tournaments.mapblock.change": "change",
   "tournaments.mapblock.edit": "edit",

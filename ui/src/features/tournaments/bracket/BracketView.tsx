@@ -709,19 +709,52 @@ function MatchCard({
           screen that belongs tightly together, and in a first round of eight
           cards stacked flush against each other they read as a list of sixteen
           names instead. Tight inside, spaced outside. */}
-      <div className="tournament-match-pair">
-        {side(entry.team1, entry.score1, 1)}
-        {side(entry.team2, entry.score2, 2)}
-      </div>
+      {/* The pair and what is said about it, in the left column: the
+          submitted score, and the replays. The replays used to sit with the
+          buttons, and three eight-digit ids were what made that column wide
+          enough to run into the names, and tall enough, on an organiser's
+          card, to run into the card below. */}
+      <div className="tournament-match-main">
+        <div className="tournament-match-pair">
+          {side(entry.team1, entry.score1, 1)}
+          {side(entry.team2, entry.score2, 2)}
+        </div>
 
-      {pending !== null && !masked && (
-        <span className="tournament-match-pending muted">
-          {t("tournaments.match.awaiting", {
-            who: pending.byName || teamName(pending.byTeam),
-            score: `${pending.score1}–${pending.score2}`,
-          })}
-        </span>
-      )}
+        {pending !== null && !masked && (
+          <span className="tournament-match-pending muted">
+            {t("tournaments.match.awaiting", {
+              who: pending.byName || teamName(pending.byTeam),
+              score: `${pending.score1}–${pending.score2}`,
+            })}
+          </span>
+        )}
+
+        {/* The FAF replays, in game order, as soon as they are confirmed:
+            played here in the client rather than linked to the vault page.
+            Numbered by game; the id is in the tooltip. */}
+        {!masked && onWatchReplay !== undefined && entry.replayIds.length + entry.drawReplayIds.length > 0 && (
+          <span className="tournament-match-replays" title={t("tournaments.bracket.replaysTitle")}>
+            {[...entry.replayIds, ...entry.drawReplayIds].slice(0, 7).map((id, index) => {
+              const uid = Number(id.replace(/\D/g, ""));
+              return Number.isSafeInteger(uid) && uid > 0 ? (
+                <button
+                  type="button"
+                  key={id}
+                  className="tournament-link-button mono"
+                  title={t("tournaments.bracket.replayGameTitle", { number: index + 1, uid })}
+                  onClick={() => onWatchReplay(uid)}
+                >
+                  {"\u25B6"}
+                  {index + 1}
+                </button>
+              ) : null;
+            })}
+            {entry.replayIds.length + entry.drawReplayIds.length > 7 && (
+              <span className="muted">+{entry.replayIds.length + entry.drawReplayIds.length - 7}</span>
+            )}
+          </span>
+        )}
+      </div>
 
       {/* Always rendered, empty when there is nothing to do: every card in a
           column has to be the same height, or the connector geometry, which is
@@ -741,30 +774,6 @@ function MatchCard({
         )}
         {neverPlayed(event, entry) && (
           <span className="tournament-not-played mono">{t("tournaments.bracket.notPlayed")}</span>
-        )}
-        {/* The FAF replays, in game order, as soon as they are confirmed:
-            played here in the client rather than linked to the vault page. */}
-        {!masked && onWatchReplay !== undefined && entry.replayIds.length + entry.drawReplayIds.length > 0 && (
-          <span className="tournament-match-replays" title={t("tournaments.bracket.replaysTitle")}>
-            {[...entry.replayIds, ...entry.drawReplayIds].slice(0, 3).map((id) => {
-              const uid = Number(id.replace(/\D/g, ""));
-              return Number.isSafeInteger(uid) && uid > 0 ? (
-                <button
-                  type="button"
-                  key={id}
-                  className="tournament-link-button mono"
-                  title={t("tournaments.matches.watchReplay")}
-                  onClick={() => onWatchReplay(uid)}
-                >
-                  {"\u25B6"}
-                  {uid}
-                </button>
-              ) : null;
-            })}
-            {entry.replayIds.length + entry.drawReplayIds.length > 3 && (
-              <span className="muted">+{entry.replayIds.length + entry.drawReplayIds.length - 3}</span>
-            )}
-          </span>
         )}
         {display.streamer && entry.status === "done" && (
           <button type="button" className="tournament-link-button" onClick={() => display.toggleReveal(entry.id)}>

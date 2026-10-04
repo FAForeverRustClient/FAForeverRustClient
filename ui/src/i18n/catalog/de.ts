@@ -4829,6 +4829,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.bracket.divisionNumber": "Division {number}",
   "tournaments.bracket.notPlayed": "nicht gespielt",
   "tournaments.bracket.replaysTitle": "FAF-Replays in Spielreihenfolge",
+  "tournaments.bracket.replayGameTitle": "Spiel {number}: Replay {uid} im Client ansehen",
   "tournaments.mapblock.pool": "KARTENPOOL",
   "tournaments.mapblock.change": "ändern",
   "tournaments.mapblock.edit": "bearbeiten",

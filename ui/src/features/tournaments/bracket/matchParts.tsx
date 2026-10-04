@@ -198,9 +198,12 @@ export function MatchActions({
       type="button"
       className="tournament-round-pool-toggle"
       title={t("tournaments.chat.matchChatHint")}
+      aria-label={t("tournaments.chat.matchChat")}
       onClick={() => chat.open(entry)}
     >
-      <Icon name="chat" size={12} /> {t("tournaments.chat.matchChat")}
+      {/* The label is its own element so the bracket card, which has room for
+          the icon only, can hide it; the list views keep it. */}
+      <Icon name="chat" size={12} /> <span className="tournament-action-label">{t("tournaments.chat.matchChat")}</span>
       {chatUnread > 0 && <span className="tournament-badge">{chatUnread > 9 ? "9+" : chatUnread}</span>}
     </button>
   );
@@ -242,8 +245,9 @@ export function MatchActions({
           aria-expanded={vetoOpen}
           onClick={onToggleVeto}
           title={t(owed > 0 ? "tournaments.veto.dueHint" : "tournaments.veto.openHint")}
+          aria-label={t("tournaments.veto.open")}
         >
-          <Icon name="maps" size={12} /> {t("tournaments.veto.open")}
+          <Icon name="maps" size={12} /> <span className="tournament-action-label">{t("tournaments.veto.open")}</span>
           {owed > 0 && <span className="tournament-badge">{owed}</span>}
         </button>
       )}
