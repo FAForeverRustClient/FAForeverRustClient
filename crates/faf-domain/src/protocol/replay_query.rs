@@ -1134,6 +1134,32 @@ mod tests {
     }
 
     #[test]
+    fn a_title_narrows_a_player_search() {
+        // #415: two players who met in a tournament have played many other
+        // games against each other; the lobby title tells them apart.
+        let q = ReplayQuery {
+            title: "Cup".into(),
+            ..query()
+        };
+        let filter = build_filter(&q, None, Some("Nuggets")).unwrap();
+        assert!(
+            filter.contains(r#"playerStats.player.login=="*Nuggets*""#),
+            "{filter}"
+        );
+        assert!(filter.contains(r#"name=="*Cup*""#), "{filter}");
+    }
+
+    #[test]
+    fn a_title_reaches_the_shared_games_scan() {
+        let q = ReplayQuery {
+            title: "Cup".into(),
+            ..query()
+        };
+        let filter = build_scan_filter(&q, &[11, 22], None).unwrap();
+        assert!(filter.contains(r#"name=="*Cup*""#), "{filter}");
+    }
+
+    #[test]
     fn multi_select_filters_become_in_clauses() {
         let q = ReplayQuery {
             featured_mods: vec!["faf".into(), "ladder1v1".into()],
