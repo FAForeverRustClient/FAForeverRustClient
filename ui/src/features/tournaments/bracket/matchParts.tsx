@@ -16,6 +16,7 @@ import { mayReport, maySubmit } from "../../../shared/rules/tourneyRules";
 import { PlayerChip } from "../PlayerChip";
 import { isMyMatch, myTeamId } from "../tourneyPresentation";
 import { hasVeto, myVetoSteps } from "./vetoPresentation";
+import { isBye } from "./swissRecords";
 import { MatchChatContext, mayOpenMatchChat } from "./matchChat";
 import { playersLabel } from "../display";
 
@@ -171,10 +172,12 @@ export function MatchActions({
   const { t } = useTranslation();
   const mine = myTeamId(event);
   const pending = entry.pendingReport;
+  // A bye has two slots filled, one of them by nobody: there is no game to host.
   const playable =
     (entry.status === "ready" || entry.status === "live") &&
     entry.team1 !== null &&
-    entry.team2 !== null;
+    entry.team2 !== null &&
+    !isBye(entry);
   // Hosting belongs to the two sides and to whoever runs the event, which is
   // what `viewer.organiser` already means (organisers, a director on an
   // official event, a site admin). It used to be offered to everyone watching,

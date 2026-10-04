@@ -2864,10 +2864,12 @@
   font-size: 12px;
 }
 
+/* Rows close together, as a list and not a stack of cards: a round of eight
+   matches should read at a glance (issue 367). */
 .tournament-swiss-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2879,8 +2881,9 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-2) var(--space-3);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-left: 3px solid var(--color-accent);
@@ -2941,8 +2944,12 @@
   display: none;
 }
 
+/* One fixed width rather than stretched across the row, so the score sits
+   just after the names instead of at the far edge, a pane's width away from
+   them, and the scores of a round still line up in a column (issue 367). The
+   controls trail at the right. */
 .tournament-swiss-teams {
-  flex: 1 1 240px;
+  flex: 0 1 420px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -2972,6 +2979,7 @@
 }
 
 .tournament-swiss-score {
+  min-width: 56px;
   font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
