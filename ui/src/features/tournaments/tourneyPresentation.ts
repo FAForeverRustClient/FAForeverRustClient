@@ -9,7 +9,7 @@
 // conformance harness can pin them: `store/` may not import from `features/`,
 // so a twin left here would be a twin nothing can hold.
 
-import type { MessageKey } from "../../i18n";
+import { t, type MessageKey } from "../../i18n";
 import type {
   BracketKind,
   BracketSide,
@@ -79,7 +79,7 @@ export function formatDay(seconds: number | null, fallback: string): string {
  * format rather than a shorthand for it.
  */
 export function formatOf(event: Tourney): string {
-  if (event.competition === "freeForAll") return "FFA";
+  if (event.competition === "freeForAll") return t("tournaments.format.freeForAll");
   return `${event.teamSize}v${event.teamSize}`;
 }
 

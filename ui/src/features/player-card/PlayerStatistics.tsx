@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import type { PlayerCardProfile } from "../../ipc/bindings";
 import { FactionIcon } from "../../shared/components/FactionIcon";
 import { factionLabel } from "../../shared/factions";
-import { formatNumber, type MessageKey } from "../../i18n";
+import { leaderboardLabel } from "../../shared/playerRatings";
+import { formatNumber, t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const EVENTS = {
@@ -95,7 +96,7 @@ function MetricChart({ title, firstLabel, secondLabel, rateLabel, metrics, share
               <span className="player-metric-count" role="cell">{formatNumber(metric.first)}</span>
               <span className="player-metric-count" role="cell">{formatNumber(share ? total : metric.second)}</span>
               <span className="player-metric-rate" role="cell">
-                {total > 0 ? `${Math.round((metric.first / total) * 100)}%` : "N/A"}
+                {total > 0 ? `${Math.round((metric.first / total) * 100)}%` : t("common.notAvailable")}
               </span>
             </div>
           );

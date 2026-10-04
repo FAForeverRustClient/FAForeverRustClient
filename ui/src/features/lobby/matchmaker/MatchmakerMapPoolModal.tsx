@@ -290,7 +290,7 @@ export function MatchmakerMapPoolModal({
                 </span>
                 <span className="map-pool-card-foot">
                   <strong>{map.displayName}</strong>
-                  <small>{formatMapSize(map.width, map.height)} · {map.maxPlayers} players</small>
+                  <small>{formatMapSize(map.width, map.height)} · {t("maps.view.playerCount", { count: map.maxPlayers })}</small>
                 </span>
               </button>
               </div>

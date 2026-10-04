@@ -102,7 +102,7 @@ export function MapCard({
               "Unranked" for every map it could not look up, and the detail
               panel still states it for the map that is selected. */}
           <span className="map-vault-fact" title={t("maps.vault.maxPlayersTitle", { count: map.maxPlayers || t("maps.vault.unknown") })}>
-            <Icon name="users" size={13} /> {map.maxPlayers || "N/A"}
+            <Icon name="users" size={13} /> {map.maxPlayers || t("common.notAvailable")}
           </span>
           <span className="map-vault-fact" title={t("maps.vault.dimensionsTitle", { size: sizeLabel(map) })}>
             {sizeLabel(map).replace(" km", "")}
@@ -231,7 +231,7 @@ export function MapDetailPanel({
           </div>
           <div className="vault-prop-row">
             <span className="vault-prop-label">{t("maps.vault.maxPlayers")}</span>
-            <span className="vault-prop-value">{map.maxPlayers || "N/A"}</span>
+            <span className="vault-prop-value">{map.maxPlayers || t("common.notAvailable")}</span>
           </div>
           <div className="vault-prop-row">
             <span className="vault-prop-label">{t("maps.vault.allTimePlays")}</span>

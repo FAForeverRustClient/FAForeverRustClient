@@ -8,7 +8,7 @@ import {
 import { hourCycleOptions } from "../../shared/format/clock";
 import { clientIntlTag, formatAgeOrDate } from "../../shared/format/dates";
 import { useAppStore } from "../../store/store";
-import type { MessageKey } from "../../i18n";
+import { t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ResizeHandle } from "../../design-system/ResizeHandle";
 import { useGeneratedMapPreview } from "../../shared/hooks/useGeneratedMapPreview";
@@ -73,7 +73,7 @@ const COLUMNS = [
   { label: "replays.column.replay", className: "" },
 ] as const satisfies readonly { label: MessageKey; className: string }[];
 
-export function formatReplayListTime(value: string | number, fallback = "N/A"): string {
+export function formatReplayListTime(value: string | number, fallback = t("common.notAvailable")): string {
   if (value === "" || (typeof value === "number" && value <= 0)) return fallback;
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -81,14 +81,14 @@ export function formatReplayListTime(value: string | number, fallback = "N/A"): 
     : date.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit", ...hourCycleOptions() });
 }
 
-export function formatReplayListAge(value: string | number, fallback = "N/A"): string {
+export function formatReplayListAge(value: string | number, fallback = t("common.notAvailable")): string {
   return formatAgeOrDate(value, fallback);
 }
 
 function ReplayListCellView({ cell, className = "" }: { cell: ReplayListCell; className?: string }) {
   return (
     <div className={`replay-list-cell ${className}`.trim()} role="cell">
-      <strong>{cell.primary || "N/A"}</strong>
+      <strong>{cell.primary || t("common.notAvailable")}</strong>
       {cell.secondary && <small>{cell.secondary}</small>}
     </div>
   );
@@ -112,7 +112,7 @@ function ReplayListStatus({
           spells it out; a green "Available" on every row was a column of
           badges reading the same word. */}
       <div className="replay-list-replay-summary">
-        {cell.tone !== "ok" && <span className={`replay-list-status${tone}`}>{cell.primary || "N/A"}</span>}
+        {cell.tone !== "ok" && <span className={`replay-list-status${tone}`}>{cell.primary || t("common.notAvailable")}</span>}
         {cell.secondary && <small title={cell.secondary}>{cell.secondary}</small>}
       </div>
       {(action || iconActions.length > 0) && (
@@ -350,7 +350,7 @@ export function ReplayList({
           <div className="replay-list-group" key={group.label}>
             <div className="replay-list-group-header" role="row">
               <span>{group.label}</span>
-              <small>{group.rows.length} {group.rows.length === 1 ? "replay" : "replays"}</small>
+              <small>{t("replays.list.count", { count: group.rows.length })}</small>
             </div>
             {group.rows.map((row) => <ReplayListRowView key={row.key} row={row} />)}
           </div>

@@ -338,9 +338,7 @@ export function ReplayCardRoster({
               <header className="replay-card-team-title">
                 <span>{teamName(team.team, soleTeam)}</span>
                 <span>
-                  {team.players.length} {observer
-                    ? (team.players.length === 1 ? "observer" : "observers")
-                    : (team.players.length === 1 ? "player" : "players")}
+                  {t(observer ? "replays.roster.observerCount" : "replays.detail.playerCount", { count: team.players.length })}
                 </span>
               </header>
             )}
@@ -528,7 +526,7 @@ export function ReplayDetailRoster({
               </span>
               {!isSingleTeamGame && teamRating !== null && (
                 <span className="replay-detail-team-heading-rating" title={t("replays.roster.combinedRating")}>
-                  {teamRating} rating
+                  {t("lobby.browser.teamRating", { rating: teamRating })}
                 </span>
               )}
             </span>
@@ -549,7 +547,7 @@ export function ReplayDetailRoster({
                   <span>{!isSingleTeamGame ? teamName(team.team, soleTeam) : ""}</span>
                   <span className="replay-detail-team-summary">
                     {!isSingleTeamGame && teamRating !== null && (
-                      <span title={t("replays.roster.combinedRating")}>{teamRating} rating</span>
+                      <span title={t("replays.roster.combinedRating")}>{t("lobby.browser.teamRating", { rating: teamRating })}</span>
                     )}
                     {outcomeBadge}
                   </span>

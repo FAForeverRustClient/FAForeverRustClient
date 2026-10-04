@@ -134,7 +134,7 @@ export function ModCard({
             the facts did. */}
         <span className="mod-vault-card-facts">
           <span className="mod-vault-facts-row">
-            <span className={`mod-vault-type ${mod.modType}`}>{mod.modType === "ui" ? "UI" : "SIM"}</span>
+            <span className={`mod-vault-type ${mod.modType}`}>{t(mod.modType === "ui" ? "mods.vault.typeBadge.ui" : "mods.vault.typeBadge.sim")}</span>
             {mod.modType === "sim" && (
               <span className={`mod-vault-type ${mod.ranked ? "ranked" : "unranked"}`}>
                 {t(mod.ranked ? "mods.vault.state.ranked" : "mods.vault.state.unranked")}
@@ -160,7 +160,7 @@ export function ModCard({
                 : t("mods.vault.noReviews")}
             >
               <Icon name="star" size={12} />
-              {mod.reviews ? t("mods.vault.ratingSummary", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews }) : "N/A"}
+              {mod.reviews ? t("mods.vault.ratingSummary", { rating: (mod.ratingTenths / 10).toFixed(1), reviews: mod.reviews }) : t("common.notAvailable")}
             </span>
           </span>
         </span>
@@ -297,7 +297,7 @@ export function ModDetailPanel({
         <div className="vault-detail-props">
           <div className="vault-prop-row">
             <span className="vault-prop-label">{t("mods.vault.version")}</span>
-            <span className="vault-prop-value">{mod.version ? t("common.version", { version: mod.version }) : "N/A"}</span>
+            <span className="vault-prop-value">{mod.version ? t("common.version", { version: mod.version }) : t("common.notAvailable")}</span>
           </div>
           <div className="vault-prop-row">
             <span className="vault-prop-label">{t("mods.vault.communityRating")}</span>

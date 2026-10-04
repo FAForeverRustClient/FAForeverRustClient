@@ -14,6 +14,7 @@ import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { useAppStore } from "../../store/store";
 import { useGameRating } from "./useGameRating";
 import { playerCount, ReplayCardRoster, mergeReplayTeamsWithLocal } from "./ReplayRoster";
+import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 /**
@@ -147,7 +148,7 @@ export function ReplayMetaFact({
   return (
     <span className="replay-meta-fact" title={detail ? `${label}: ${detail}` : label}>
       <Icon name={icon} size={13} />
-      <span>{value || "N/A"}</span>
+      <span>{value || t("common.notAvailable")}</span>
     </span>
   );
 }

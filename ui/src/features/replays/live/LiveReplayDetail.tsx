@@ -39,7 +39,7 @@ import { LiveWatchButton } from "./LiveReplayRow";
 import { gameStartedAt, prettyGameType } from "../../../shared/liveReplayModel";
 import { hourCycleOptions } from "../../../shared/format/clock";
 import { clientIntlTag } from "../../../shared/format/dates";
-import { formatRelativeDuration } from "../../../shared/format/durations";
+import { formatRelativeDuration, zeroMinutes } from "../../../shared/format/durations";
 import { useTranslation } from "../../../i18n/useTranslation";
 
 export function LiveReplayDetail({
@@ -134,7 +134,7 @@ export function LiveReplayDetail({
       label: t("replays.live.runningFor"),
       value: formatRelativeDuration(
         Math.max(0, (Date.now() - started.getTime()) / 1000),
-        { nowLabel: "0m" },
+        { nowLabel: zeroMinutes() },
       ),
     });
   }

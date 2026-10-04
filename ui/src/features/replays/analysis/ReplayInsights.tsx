@@ -463,12 +463,12 @@ export function ReplayInsights({
                               <PlayerName name={row.player} />
                             </span>
                           </td>
-                          <td>{row.rating === null ? "N/A" : row.rating}</td>
+                          <td>{row.rating === null ? t("common.notAvailable") : row.rating}</td>
                           <td className="replay-activity-count">{row.commands}</td>
                           <td>
                             <span className="replay-activity-rate">
                               <span className="replay-activity-rate-value">
-                                {row.perMinute === null ? "N/A" : formatDecimal(row.perMinute)}
+                                {row.perMinute === null ? t("common.notAvailable") : formatDecimal(row.perMinute)}
                               </span>
                               {/* The bar is the comparison the table is for:
                                   the numbers alone need reading twice to see

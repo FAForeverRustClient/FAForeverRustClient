@@ -5,12 +5,13 @@ import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { openPlayerCard } from "../../shared/playerCardActions";
+import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
 import { ClanManagement, LeaveClanAction } from "./ClanManagement";
 
 function displayDate(value: string): string {
-  return formatDate(value, "N/A");
+  return formatDate(value, t("common.notAvailable"));
 }
 
 /** The member who joined last, skipping any whose join date does not parse. */
@@ -38,7 +39,7 @@ function ClanPerson({ login, members, crown = false }: {
   crown?: boolean;
 }) {
   const { t } = useTranslation();
-  if (login === "") return <>N/A</>;
+  if (login === "") return <>{t("common.notAvailable")}</>;
   const member = members.find((entry) => entry.login.localeCompare(login, undefined, { sensitivity: "base" }) === 0);
   return (
     <button
@@ -126,7 +127,7 @@ export function PlayerClanView({
                     {displayDate(newestMember.joinedAt)}
                   </span>
                 </>
-              ) : "N/A"}
+              ) : t("common.notAvailable")}
             </dd>
           </div>
           <div><dt>{t("playerCard.clan.members")}</dt><dd>{clan.members.length}</dd></div>

@@ -141,7 +141,7 @@ export const MatchmakerPartyChat = memo(function MatchmakerPartyChat({ party }: 
         onGameLink={activateGameLink}
       />
       <Composer
-        channel={roomName ?? "party chat"}
+        channel={roomName ?? t("lobby.matchmaker.partyChatChannel")}
         draftKey={partyDraftKey(roomName)}
         nicknames={room?.users.map((user) => user.name) ?? []}
         disabled={chat.status !== "connected" || !room || !roomName}

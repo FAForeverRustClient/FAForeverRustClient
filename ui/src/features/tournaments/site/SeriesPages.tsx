@@ -17,7 +17,7 @@ import type {
 import { t, type MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { RichText } from "../detail/RichText";
-import { eventDayCount } from "../orientation";
+import { bracketShort, eventDayCount } from "../orientation";
 import { formatDay, STATUS_LABELS } from "../tourneyPresentation";
 import { BanList } from "./BanList";
 
@@ -34,9 +34,8 @@ function editionPill(edition: SeriesEdition, now: number): { label: MessageKey; 
 }
 
 function kindOf(edition: SeriesEdition): string {
-  if (edition.competition === "freeForAll") return "FFA";
-  const bracket = { single: "SE", double: "DE", swiss: t("tournaments.bracketKind.swiss") }[edition.bracketKind];
-  return `${edition.teamSize}v${edition.teamSize} ${bracket}`;
+  if (edition.competition === "freeForAll") return t("tournaments.format.freeForAll");
+  return t("tournaments.format.kind", { size: `${edition.teamSize}v${edition.teamSize}`, bracket: bracketShort(edition.bracketKind) });
 }
 
 function CategoryBadge({ category }: { category: TourneyCategory | null }) {

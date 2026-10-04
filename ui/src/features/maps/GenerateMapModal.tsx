@@ -874,14 +874,14 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               <dl className="generate-map-specs-grid">
                 <div>
                   <dt>{t("maps.generate.mapSize")}</dt>
-                  <dd>{currentFacts ? formatMapSize(currentFacts.mapSize) : "N/A"}</dd>
+                  <dd>{currentFacts ? formatMapSize(currentFacts.mapSize) : t("common.notAvailable")}</dd>
                 </div>
                 <div>
                   <dt>{t("maps.generate.spawns")}</dt>
                   <dd>
                     {currentFacts
                       ? t("maps.generate.spawnCount", { count: currentFacts.spawnCount })
-                      : "N/A"}
+                      : t("common.notAvailable")}
                   </dd>
                 </div>
                 <div>
@@ -891,7 +891,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       ? currentFacts.numTeams === 0
                         ? t("maps.generate.asymmetric")
                         : t("maps.generate.teamCount", { count: currentFacts.numTeams })
-                      : "N/A"}
+                      : t("common.notAvailable")}
                   </dd>
                 </div>
                 <div>
@@ -900,12 +900,12 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </div>
                 <div>
                   <dt>{t("maps.generate.generatorVersion")}</dt>
-                  <dd>{currentFacts ? t("common.version", { version: currentFacts.version }) : "N/A"}</dd>
+                  <dd>{currentFacts ? t("common.version", { version: currentFacts.version }) : t("common.notAvailable")}</dd>
                 </div>
                 <div>
                   <dt>{t("maps.generate.seed")}</dt>
                   <dd className="generate-map-spec-seed" title={currentFacts?.seed}>
-                    {currentFacts?.seed || "N/A"}
+                    {currentFacts?.seed || t("common.notAvailable")}
                   </dd>
                 </div>
               </dl>

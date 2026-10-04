@@ -3,7 +3,7 @@ import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { PlayerNoteCard } from "../../shared/components/PlayerNoteEditor";
-import { formatNumber } from "../../i18n";
+import { formatNumber, t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { formatDateTime } from "../../shared/format/dates";
 import { placementLabel, seasonLabel } from "../../shared/leagueNames";
@@ -11,11 +11,11 @@ import { leaderboardLabel } from "../../shared/playerRatings";
 import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
 
 function displayDate(value: string): string {
-  return formatDateTime(value, "N/A");
+  return formatDateTime(value, t("common.notAvailable"));
 }
 
 export function formatUserAgent(userAgent?: string | null): string {
-  if (!userAgent || !userAgent.trim()) return "N/A";
+  if (!userAgent || !userAgent.trim()) return t("common.notAvailable");
   const trimmed = userAgent.trim();
   const lower = trimmed.toLowerCase();
   if (lower.includes("rust") || lower.includes("forge")) {
@@ -46,7 +46,7 @@ export function RatingSummaryCard({ rating, onOpenHistory }: {
       <span className="player-card-eyebrow">{leaderboardLabel(rating.technicalName)}</span>
       <div className="player-rating-value">
         <strong>{rating.rating}</strong>
-        <span><small>{t("playerCard.rating.meanDeviation")}</small>{rating.mean?.toFixed(0) ?? "N/A"} ± {rating.deviation?.toFixed(0) ?? "N/A"}</span>
+        <span><small>{t("playerCard.rating.meanDeviation")}</small>{rating.mean?.toFixed(0) ?? t("common.notAvailable")} ± {rating.deviation?.toFixed(0) ?? t("common.notAvailable")}</span>
       </div>
       <dl>
         <div><dt>{t("playerCard.rating.games")}</dt><dd>{formatNumber(rating.gamesPlayed)}</dd></div>
@@ -117,9 +117,9 @@ export function PlayerOverview({ profile, country, note, onOpenHistory, avatarsS
             <div><dt>{t("playerCard.overview.registered")}</dt><dd>{displayDate(profile.registeredAt)}</dd></div>
             <div><dt>{t("playerCard.overview.userAgent")}</dt><dd title={profile.userAgent || undefined}>{formatUserAgent(profile.userAgent)}</dd></div>
             {/* Written out here because the header only shows the flag. */}
-            <div><dt>{t("playerCard.overview.country")}</dt><dd>{country ? countryOf(country) : "N/A"}</dd></div>
+            <div><dt>{t("playerCard.overview.country")}</dt><dd>{country ? countryOf(country) : t("common.notAvailable")}</dd></div>
             <div><dt>{t("playerCard.overview.clan")}</dt><dd>{profile.clan ? `[${profile.clan.tag}] ${profile.clan.name}` : t("playerCard.overview.noClan")}</dd></div>
-            <div><dt>{t("playerCard.overview.clanJoined")}</dt><dd>{profile.clan ? displayDate(profile.clan.joinedAt) : "N/A"}</dd></div>
+            <div><dt>{t("playerCard.overview.clanJoined")}</dt><dd>{profile.clan ? displayDate(profile.clan.joinedAt) : t("common.notAvailable")}</dd></div>
           </dl>
         </div>
         <div>

@@ -453,14 +453,14 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
                     primary: formatReplayListTime(replayTimestamp),
                     secondary: formatReplayListAge(replayTimestamp),
                   },
-                  players: { primary: replay.numPlayers > 0 ? String(replay.numPlayers) : "N/A" },
-                  rating: { primary: replay.averageRating === null ? "N/A" : String(replay.averageRating) },
+                  players: { primary: replay.numPlayers > 0 ? String(replay.numPlayers) : t("common.notAvailable") },
+                  rating: { primary: replay.averageRating === null ? t("common.notAvailable") : String(replay.averageRating) },
                   mod: {
                     primary: replay.modName || "faf",
                     secondary: simModLabel,
                   },
                   duration: {
-                    primary: formatDuration(replay.durationSeconds, "N/A"),
+                    primary: formatDuration(replay.durationSeconds, t("common.notAvailable")),
                     secondary: replay.durationSeconds === null
                       ? t("replays.local.notRecorded")
                       : t("replays.local.realTime"),

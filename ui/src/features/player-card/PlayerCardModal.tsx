@@ -334,7 +334,7 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         </div>
         <div>
           <span>{t(peakIsAuthoritative ? "playerCard.history.peakAllTime" : "playerCard.history.peakLoaded")}</span>
-          <strong>{peak?.toFixed(0) ?? "N/A"}</strong>
+          <strong>{peak?.toFixed(0) ?? t("common.notAvailable")}</strong>
           {peak != null && <small>{peak - rating.rating >= 0
             ? t("playerCard.history.aboveCurrent", { amount: (peak - rating.rating).toFixed(0) })
             : t("playerCard.history.isRecord")}</small>}
@@ -346,8 +346,8 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         </div>
         <div>
           <span>{t("playerCard.history.deviation")}</span>
-          <strong>±{rating.deviation?.toFixed(0) ?? "N/A"}</strong>
-          <small>{t("playerCard.history.skillEstimate", { mean: rating.mean?.toFixed(0) ?? "N/A" })}</small>
+          <strong>±{rating.deviation?.toFixed(0) ?? t("common.notAvailable")}</strong>
+          <small>{t("playerCard.history.skillEstimate", { mean: rating.mean?.toFixed(0) ?? t("common.notAvailable") })}</small>
         </div>
       </div>
 

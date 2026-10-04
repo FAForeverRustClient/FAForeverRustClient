@@ -150,11 +150,19 @@ export function eventDayCount(days: string[]): number {
   return eventDayList(days).length;
 }
 
+/** A bracket kind as the list row abbreviates it: `SE`, `DE`, `Swiss`. */
+export function bracketShort(kind: Tourney["bracketKind"]): string {
+  switch (kind) {
+    case "single": return t("tournaments.format.singleElimination");
+    case "double": return t("tournaments.format.doubleElimination");
+    case "swiss": return t("tournaments.bracketKind.swiss");
+  }
+}
+
 /** The list row's short format: `2v2 SE`, `1v1 Swiss`, `FFA`. */
 export function listKind(event: Tourney): string {
-  if (event.competition === "freeForAll") return "FFA";
-  const bracket = { single: "SE", double: "DE", swiss: t("tournaments.bracketKind.swiss") }[event.bracketKind];
-  return `${event.teamSize}v${event.teamSize} ${bracket}`;
+  if (event.competition === "freeForAll") return t("tournaments.format.freeForAll");
+  return t("tournaments.format.kind", { size: `${event.teamSize}v${event.teamSize}`, bracket: bracketShort(event.bracketKind) });
 }
 
 /** The rating limits in one line, or empty where there are none. */

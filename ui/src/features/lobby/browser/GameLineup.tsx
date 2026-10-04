@@ -86,7 +86,7 @@ export function GameLineup({
               leaderboard={leaderboard}
             />
           ))}
-          {mirrored && <span className="game-lineup-versus" aria-hidden>VS</span>}
+          {mirrored && <span className="game-lineup-versus" aria-hidden>{t("lobby.browser.versus")}</span>}
         </div>
       ) : (
         <span className="game-lineup-empty">{t("lobby.browser.noLineup")}</span>
@@ -240,7 +240,7 @@ function GameLineupTeam({
               >
                 <PlayerName name={login} className="game-lineup-player" />
               </button>
-              <span className="game-lineup-rating">{rating === null ? "N/A" : rating}</span>
+              <span className="game-lineup-rating">{rating === null ? t("common.notAvailable") : rating}</span>
             </li>
           );
         })}

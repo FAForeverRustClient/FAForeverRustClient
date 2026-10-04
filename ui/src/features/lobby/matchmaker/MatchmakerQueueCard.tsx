@@ -5,7 +5,7 @@ import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
 import { formatClockDuration } from "../../../shared/format/durations";
 import { placementLabel } from "../../../shared/leagueNames";
 import { queueRatingBuckets } from "./queueRatingRange";
-import { t } from "../../../i18n";
+import { formatNumber, t } from "../../../i18n";
 
 export type QueueDisplayState = "idle" | "searching" | "found" | "launching" | "cancelled";
 
@@ -126,8 +126,8 @@ export function MatchmakerQueueCard({
               queue at all, so it leads rather than sharing a row of four
               equally sized statistics. */}
           <span className="matchmaker-queue-rating">
-            <strong>{rating ? rating.rating.toLocaleString("en-US") : "N/A"}</strong>
-            <small>{rating ? "your rating" : "unrated"}</small>
+            <strong>{rating ? formatNumber(rating.rating) : t("common.notAvailable")}</strong>
+            <small>{t(rating ? "lobby.matchmaker.yourRating" : "lobby.matchmaker.unratedHint")}</small>
             {/* The division for *this* queue, under its rating. A player is
                 placed per leaderboard, so the badge only means anything next
                 to the queue it belongs to. */}
