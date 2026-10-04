@@ -2569,7 +2569,6 @@ export const en = {
   "maps.vault.unknown": "Unknown",
   "maps.vault.maxPlayersTitle": "{count} maximum players",
   "maps.vault.ratingTitle": "{score} out of 5 from {reviews} reviews",
-  "maps.vault.noReviews": "No reviews yet",
   "maps.vault.removeFavorite": "Remove from favorites",
   "maps.vault.addFavorite": "Add to favorites",
   "maps.vault.installing": "Installing…",

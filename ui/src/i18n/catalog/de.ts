@@ -2300,7 +2300,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.vault.unknown": "Unbekannt",
   "maps.vault.maxPlayersTitle": "Maximal {count} Spieler",
   "maps.vault.ratingTitle": "{score} von 5 aus {reviews} Bewertungen",
-  "maps.vault.noReviews": "Noch keine Bewertungen",
   "maps.vault.removeFavorite": "Aus Favoriten entfernen",
   "maps.vault.addFavorite": "Zu Favoriten hinzufügen",
   "maps.vault.installing": "Wird installiert…",

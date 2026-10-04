@@ -23,6 +23,29 @@ function cleanDescription(value: string): string {
   return value.replace(/^<LOC\s+[^>]+>/i, "").trim();
 }
 
+/**
+ * The community verdict on a map, for a card's top-right corner: a star, the
+ * average score and, in brackets, how many reviews it rests on ("4.3 (128)").
+ *
+ * Renders nothing for a map nobody has reviewed, or one the vault has no
+ * record of. A corner reading "no reviews" down most of a long installed list
+ * would be the same repeated word the ranked chip it replaces was (#416), so
+ * the empty state is silence; the detail panel still says "Not rated".
+ */
+export function MapRating({ map }: { map: Pick<VaultMap, "ratingTenths" | "reviews"> | undefined }) {
+  useLocale();
+  if (!map || map.reviews <= 0) return null;
+  const score = (map.ratingTenths / 10).toFixed(1);
+  const label = t("maps.vault.ratingTitle", { score, reviews: map.reviews });
+  return (
+    <span className="map-rating" title={label} aria-label={label}>
+      <Icon name="star" size={12} fill="currentColor" />
+      <span>{score}</span>
+      <span className="map-rating-count">({formatCount(map.reviews)})</span>
+    </span>
+  );
+}
+
 export function MapCard({
   map,
   active,
@@ -55,6 +78,8 @@ export function MapCard({
       >
         <span className="map-vault-image-wrap">
           <MapPreview map={map} />
+          {/* The rating owns the corner; "Featured" stacks under it. */}
+          <MapRating map={map} />
           {map.recommended && <VaultFeaturedBadge />}
         </span>
         <span className="map-vault-card-copy">
@@ -73,21 +98,14 @@ export function MapCard({
               {t("maps.vault.hidden")}
             </span>
           )}
-          <span className={map.ranked ? "map-vault-type ranked" : "map-vault-type unranked"}>
-            {t(map.ranked ? "maps.vault.ranked" : "maps.vault.unranked")}
-          </span>
+          {/* No ranked chip (#416): the installed list's copy of it read
+              "Unranked" for every map it could not look up, and the detail
+              panel still states it for the map that is selected. */}
           <span className="map-vault-fact" title={t("maps.vault.maxPlayersTitle", { count: map.maxPlayers || t("maps.vault.unknown") })}>
             <Icon name="users" size={13} /> {map.maxPlayers || "N/A"}
           </span>
           <span className="map-vault-fact" title={t("maps.vault.dimensionsTitle", { size: sizeLabel(map) })}>
             {sizeLabel(map).replace(" km", "")}
-          </span>
-          <span
-            className="map-vault-fact is-rating"
-            title={map.reviews ? t("maps.vault.ratingTitle", { score: (map.ratingTenths / 10).toFixed(1), reviews: map.reviews }) : t("maps.vault.noReviews")}
-          >
-            <Icon name="star" size={12} />
-            {map.reviews ? (map.ratingTenths / 10).toFixed(1) : "N/A"}
           </span>
         </span>
       </button>
