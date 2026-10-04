@@ -2972,6 +2972,8 @@ export const en = {
   "common.cancel": "Cancel",
   "common.retry": "Retry",
   "common.rangeBetween": "{low} to {high}",
+  // A release of a map, a mod or a tool. `version` is the bare number.
+  "common.version": "v{version}",
   // Map sizes. The numbers arrive already in kilometres, formatted.
   "common.kilometres": "{size} km",
   "common.kilometresArea": "{width} × {height} km",

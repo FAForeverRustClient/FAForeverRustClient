@@ -900,7 +900,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </div>
                 <div>
                   <dt>{t("maps.generate.generatorVersion")}</dt>
-                  <dd>{currentFacts ? `v${currentFacts.version}` : "N/A"}</dd>
+                  <dd>{currentFacts ? t("common.version", { version: currentFacts.version }) : "N/A"}</dd>
                 </div>
                 <div>
                   <dt>{t("maps.generate.seed")}</dt>
