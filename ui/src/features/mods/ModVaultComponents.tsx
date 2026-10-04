@@ -126,7 +126,7 @@ export function ModCard({
 
         <span className="mod-vault-card-copy">
           <strong title={mod.displayName}>{mod.displayName}</strong>
-          <small>{mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}{mod.version ? ` · v${mod.version}` : ""}</small>
+          <small>{mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}{mod.version ? ` · ${t("common.version", { version: mod.version })}` : ""}</small>
         </span>
 
         {/* One line instead of a three-column ruled table: the values are a
@@ -250,7 +250,7 @@ export function ModDetailPanel({
           name={mod.displayName}
           details={[
             { label: t("mods.vault.author"), value: mod.author },
-            { label: t("mods.vault.version"), value: `v${mod.version}` },
+            { label: t("mods.vault.version"), value: t("common.version", { version: mod.version }) },
             { label: t("mods.vault.uid"), value: mod.uid },
           ]}
           onClose={() => setReporting(false)}
@@ -297,7 +297,7 @@ export function ModDetailPanel({
         <div className="vault-detail-props">
           <div className="vault-prop-row">
             <span className="vault-prop-label">{t("mods.vault.version")}</span>
-            <span className="vault-prop-value">{mod.version ? `v${mod.version}` : "N/A"}</span>
+            <span className="vault-prop-value">{mod.version ? t("common.version", { version: mod.version }) : "N/A"}</span>
           </div>
           <div className="vault-prop-row">
             <span className="vault-prop-label">{t("mods.vault.communityRating")}</span>

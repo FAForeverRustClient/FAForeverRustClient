@@ -5,13 +5,14 @@
 // pure functions so the header, the list and the overview draw the same answer
 // and a test can read it without rendering anything.
 
-import type { MessageKey } from "../../i18n";
+import { t, type MessageKey } from "../../i18n";
 import type { Tourney, TourneyStatus } from "../../ipc/bindings";
 import { STATUS_LABELS } from "./tourneyPresentation";
 import { mayPick, pendingSignups } from "../../shared/rules/tourneyRules";
 import { myFactionGamesOwed, myMapVetoTurn } from "./bracket/vetoPresentation";
 import { teamNameOf } from "./bracket/matchParts";
 import { swissShowsBracket } from "./bracket/swissPresentation";
+import { clientIntlTag } from "../../shared/format/dates";
 
 type Translate = (key: MessageKey, values?: Record<string, string | number>) => string;
 
@@ -82,7 +83,16 @@ export function stages(event: Tourney): Stage[] {
   }));
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/**
+ * A month's short name (`Sep` in English, `Sept.` in German), in the client's
+ * language rather than a table that only ever speaks English. `month` is 1-based,
+ * the way an ISO day writes it; UTC so no time zone can move it a month.
+ */
+function shortMonth(month: number): string {
+  return new Intl.DateTimeFormat(clientIntlTag(), { month: "short", timeZone: "UTC" }).format(
+    Date.UTC(2000, month - 1, 1),
+  );
+}
 
 function nextDay(day: string): string {
   const [year, month, date] = day.split("-").map(Number);
@@ -122,7 +132,7 @@ export function eventDaysLabel(days: string[]): string {
     const isLast = index === ends.length - 1;
     const needYear = isLast || (next !== undefined && next.slice(0, 4) !== year);
     const needMonth = isLast || needYear || (next !== undefined && next.slice(5, 7) !== month);
-    return `${Number(date)}${needMonth ? ` ${MONTHS[Number(month) - 1]}` : ""}${needYear ? ` ${year}` : ""}`;
+    return `${Number(date)}${needMonth ? ` ${shortMonth(Number(month))}` : ""}${needYear ? ` ${year}` : ""}`;
   };
   let index = 0;
   return runs
@@ -143,7 +153,7 @@ export function eventDayCount(days: string[]): number {
 /** The list row's short format: `2v2 SE`, `1v1 Swiss`, `FFA`. */
 export function listKind(event: Tourney): string {
   if (event.competition === "freeForAll") return "FFA";
-  const bracket = { single: "SE", double: "DE", swiss: "Swiss" }[event.bracketKind];
+  const bracket = { single: "SE", double: "DE", swiss: t("tournaments.bracketKind.swiss") }[event.bracketKind];
   return `${event.teamSize}v${event.teamSize} ${bracket}`;
 }
 

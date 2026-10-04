@@ -86,7 +86,7 @@ export function MapCard({
           <strong title={map.displayName}>{map.displayName}</strong>
           <small>
             {map.author ? t("maps.vault.byAuthor", { author: map.author }) : t("maps.vault.unknownAuthor")}
-            {map.version ? ` · v${map.version}` : ""}
+            {map.version ? ` · ${t("common.version", { version: map.version })}` : ""}
           </small>
         </span>
         <span className="map-vault-card-facts">

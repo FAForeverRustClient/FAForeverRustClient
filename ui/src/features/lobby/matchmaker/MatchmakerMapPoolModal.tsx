@@ -7,7 +7,7 @@ import { GameMapImage } from "../GameMapImage";
 import { t } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
-import { kilometresLabel } from "../../../shared/mapPresentation";
+import { kilometresArea, kilometresLabel } from "../../../shared/mapPresentation";
 
 function formatMapSize(width: number, height: number) {
   // A pool may state either units or kilometres; anything above 64 is units.
@@ -15,7 +15,7 @@ function formatMapSize(width: number, height: number) {
   // as 18 here and as 17.5 everywhere else.
   const normalize = (value: number) =>
     value > 64 ? kilometresLabel(value) : String(Math.round(value * 100) / 100);
-  return `${normalize(width)}×${normalize(height)} km`;
+  return kilometresArea(normalize(width), normalize(height));
 }
 
 /**

@@ -81,6 +81,20 @@ describe("tolerance", () => {
     expect(rows(withUnknown)).toContainEqual(["New thing", "whatever"]);
   });
 
+  it("labels the settings newer generators spell differently from the catalog", () => {
+    const newer =
+      "Spawns: 8\\r\\nMap Size: 512\\r\\nBiome Name: Brimstone\\r\\n" +
+      "Reclaim Density: 0.5\\r\\nResource Density: 0.75";
+    const ru: typeof t = (key, values) => translateIn("ru", key, values);
+    const labels = generatedMapDescriptionRows(newer, ru).map((row) => row.label);
+    expect(labels).toContain(translateIn("ru", "maps.generate.biome"));
+    expect(labels).toContain(translateIn("ru", "maps.generate.reclaimDensity"));
+    expect(labels).toContain(translateIn("ru", "maps.generate.resourceDensity"));
+    expect(labels).not.toContain("Biome name");
+    expect(rows(newer)).toContainEqual(["Biome", "Brimstone"]);
+    expect(rows(newer)).toContainEqual(["Reclaim density", "0.5"]);
+  });
+
   it("keeps a record value whole when its insides do not parse", () => {
     const odd = "Spawns: 8\\r\\nMap Size: 512\\r\\nSymmetry Settings: Something[opaque]";
     expect(rows(odd)).toContainEqual(["Symmetry settings", "Something[opaque]"]);

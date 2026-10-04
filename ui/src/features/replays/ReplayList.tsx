@@ -154,6 +154,7 @@ function ReplayListStatus({
 }
 
 function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string }) {
+  const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
   const isGenerated = isGeneratedMap(mapName);
   const normalized = normalizeMapName(mapName);
@@ -177,7 +178,7 @@ function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string })
 
   if (!currentUrl) {
     return (
-      <span className="replay-list-thumb replay-list-thumb-empty" aria-label={`${mapName} preview unavailable`}>
+      <span className="replay-list-thumb replay-list-thumb-empty" aria-label={t("common.mapPreviewUnavailable", { name: mapName })}>
         <Icon name="maps" size={17} />
       </span>
     );
@@ -187,7 +188,7 @@ function ReplayListThumbnail({ url, mapName }: { url: string; mapName: string })
     <img
       className="replay-list-thumb"
       src={currentUrl}
-      alt={`${mapName} preview`}
+      alt={t("common.mapPreview", { name: mapName })}
       loading="lazy"
       decoding="async"
       onError={() => setCandidateIndex((index) => index + 1)}
