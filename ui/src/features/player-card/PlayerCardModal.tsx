@@ -10,6 +10,7 @@ import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
 import { noteForPlayer } from "../../shared/rules/playerNotes";
 import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
+import { leaderboardLabel } from "../../shared/playerRatings";
 import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { PlayerAchievements } from "./PlayerAchievements";
 import { PlayerClanView } from "./PlayerClanView";
@@ -317,7 +318,7 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         <label><span>{t("playerCard.history.queue")}</span><select value={rating.leaderboardId} onChange={(event) => {
           const next = ratings.find((candidate) => candidate.leaderboardId === Number(event.target.value));
           if (next) onRatingChange(next);
-        }}>{ratings.map((candidate) => <option key={candidate.leaderboardId} value={candidate.leaderboardId}>{candidate.name}</option>)}</select></label>
+        }}>{ratings.map((candidate) => <option key={candidate.leaderboardId} value={candidate.leaderboardId}>{leaderboardLabel(candidate.technicalName)}</option>)}</select></label>
         <label><span>{t("playerCard.history.period")}</span><select value={period} onChange={(event) => setPeriod(event.target.value as RatingHistoryPeriod)}>{PERIODS.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}</select></label>
       </div>
 
@@ -329,11 +330,11 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         <div>
           <span>{t("playerCard.history.current")}</span>
           <strong>{rating.rating}</strong>
-          <small>{rating.name}</small>
+          <small>{leaderboardLabel(rating.technicalName)}</small>
         </div>
         <div>
           <span>{t(peakIsAuthoritative ? "playerCard.history.peakAllTime" : "playerCard.history.peakLoaded")}</span>
-          <strong>{peak?.toFixed(0) ?? "N/A"}</strong>
+          <strong>{peak?.toFixed(0) ?? t("common.notAvailable")}</strong>
           {peak != null && <small>{peak - rating.rating >= 0
             ? t("playerCard.history.aboveCurrent", { amount: (peak - rating.rating).toFixed(0) })
             : t("playerCard.history.isRecord")}</small>}
@@ -345,8 +346,8 @@ function PlayerRatingHistory({ rating, onRatingChange, ratings }: {
         </div>
         <div>
           <span>{t("playerCard.history.deviation")}</span>
-          <strong>±{rating.deviation?.toFixed(0) ?? "N/A"}</strong>
-          <small>{t("playerCard.history.skillEstimate", { mean: rating.mean?.toFixed(0) ?? "N/A" })}</small>
+          <strong>±{rating.deviation?.toFixed(0) ?? t("common.notAvailable")}</strong>
+          <small>{t("playerCard.history.skillEstimate", { mean: rating.mean?.toFixed(0) ?? t("common.notAvailable") })}</small>
         </div>
       </div>
 

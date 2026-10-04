@@ -89,7 +89,7 @@ export function TutorialsView() {
         </div>
         {total > 0 && (
           <span className="muted tutorials-count">
-            {total} {total === 1 ? "lesson" : "lessons"}
+            {t("tutorials.lessonCount", { count: total })}
           </span>
         )}
       </header>

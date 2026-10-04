@@ -1034,19 +1034,55 @@ impl NeroxisMapGenerator {
             options.preview_path = self.preview_dir().to_string_lossy().into_owned();
         }
 
-        let args = fail!(map_generator::build_arguments(
-            version,
-            map_name.as_deref(),
-            &options,
-            self.config.version_policy,
-        ));
+        // A batch whose selections leave something to choose becomes one run
+        // per map, each with its own pick (#414); otherwise this is the single
+        // run it always was. Reproducing by name never has a choice to make.
+        let batch = match map_name {
+            Some(_) => vec![options],
+            None => map_generator::plan_batch(&options, rand::random::<u64>),
+        };
+        // Every command line is built before anything is downloaded, so an
+        // unusable option is refused without side effects, as it always was.
+        let mut runs = Vec::with_capacity(batch.len());
+        for options in &batch {
+            runs.push(fail!(map_generator::build_arguments(
+                version,
+                map_name.as_deref(),
+                options,
+                self.config.version_policy,
+            )));
+        }
         let jar = fail!(self.ensure_jar(version, tx).await);
         // A cancellation arriving during the download should stop us here
         // rather than starting a JVM nobody is waiting for.
         if self.is_cancelled() {
             return RunOutcome::Cancelled;
         }
-        self.run_generator(version, &jar, args, tx).await
+        if runs.len() == 1 {
+            let args = runs.pop().unwrap_or_default();
+            return self.run_generator(version, &jar, args, tx).await;
+        }
+
+        // Sequential on purpose: each run is a CPU-bound JVM, and running
+        // them side by side would only make every one of them slower.
+        let mut maps = Vec::new();
+        for args in runs {
+            match self.run_generator(version, &jar, args, tx).await {
+                RunOutcome::Generated(names) => maps.extend(names),
+                RunOutcome::Cancelled => return RunOutcome::Cancelled,
+                RunOutcome::Failed(reason) if maps.is_empty() => return RunOutcome::Failed(reason),
+                // The maps already written are real and on disk: say how far
+                // the batch got rather than presenting them as lost.
+                RunOutcome::Failed(reason) => {
+                    return RunOutcome::Failed(format!(
+                        "{reason} (after {} of {} maps were generated)",
+                        maps.len(),
+                        batch.len()
+                    ))
+                }
+            }
+        }
+        RunOutcome::Generated(maps)
     }
 
     /// Resolve options through the generator's own `--parse`, returning the map

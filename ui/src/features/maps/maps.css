@@ -172,8 +172,49 @@
   color: var(--color-muted);
 }
 
-.map-vault-fact.is-rating svg {
+/* A card's rating corner (issue 416): star, average, review count. The chip shape
+   of the featured badge, so the two read as one family where they stack on
+   the vault artwork. */
+.map-rating {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.map-rating svg {
+  flex: none;
   color: var(--color-warn);
+}
+
+.map-rating-count {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+/* On the vault artwork the rating takes the top-right corner, and "Featured"
+   moves down beneath it rather than covering it. Only there does it need a
+   plate behind it: over map art bare text is unreadable, while in the
+   installed list it sits on the card and reads as plain text. */
+.map-vault-image-wrap .map-rating {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  padding: 2px 6px;
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.map-vault-image-wrap .map-rating + .vault-featured-badge {
+  top: 36px;
 }
 
 .map-vault-card-action {
@@ -329,13 +370,20 @@
   gap: 2px;
 }
 
-/* The chip above, the action below, both against the right edge: the same
-   shape the installed mods list settled on. */
+/* The rating above, the action below, both against the right edge: the same
+   shape the installed mods list settled on. Full height, with the action held
+   to the bottom, so the trash button sits in the same place on a row that has
+   no rating to show. */
 .installed-map-side {
   display: flex;
+  align-self: stretch;
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
+}
+
+.installed-map-side .installed-map-actions {
+  margin-top: auto;
 }
 
 .installed-map-actions {

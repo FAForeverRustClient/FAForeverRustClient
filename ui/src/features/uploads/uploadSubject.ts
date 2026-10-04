@@ -6,7 +6,7 @@
 // a name and a folder and nothing else an author could check against.
 
 import type { InstalledMap, InstalledMod, UploadRequest } from "../../ipc/bindings";
-import { kilometresLabel } from "../../shared/mapPresentation";
+import { kilometres as kilometresText, kilometresArea, kilometresLabel } from "../../shared/mapPresentation";
 
 /**
  * Whether the vault already holds what is about to be published.
@@ -59,7 +59,7 @@ function kilometres(width: number | undefined, height: number | undefined): stri
   // so the smallest of them rounded to 1.3.
   const w = kilometresLabel(width);
   const h = kilometresLabel(height);
-  return w === h ? `${w} km` : `${w} × ${h} km`;
+  return w === h ? kilometresText(w) : kilometresArea(w, h);
 }
 
 /**

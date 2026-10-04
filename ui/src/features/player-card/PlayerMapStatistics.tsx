@@ -208,7 +208,7 @@ export function PlayerMapStatistics({ playerId }: Props) {
           <dt>{t("playerCard.maps.distinctMaps")}</dt>
           <dd className="player-maps-value">{formatNumber(stats.maps.length)}</dd>
           <dd className="player-maps-detail" title={mostPlayed ? label(mostPlayed) : undefined}>
-            {mostPlayed ? t("playerCard.maps.mostPlayed", { map: label(mostPlayed) }) : "N/A"}
+            {mostPlayed ? t("playerCard.maps.mostPlayed", { map: label(mostPlayed) }) : t("common.notAvailable")}
           </dd>
         </div>
       </dl>

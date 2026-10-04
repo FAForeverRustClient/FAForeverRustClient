@@ -27,12 +27,12 @@ import { ipc } from "../../ipc/client";
 import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
 import { toggleFavoriteMap } from "../../shared/favoriteMaps";
 import { isWithinNumberRange } from "../../shared/filterRanges";
-import { installNote, kilometresLabel } from "../../shared/mapPresentation";
+import { installNote, kilometres, kilometresLabel } from "../../shared/mapPresentation";
 import { EMPTY_MAP_QUERY, sameVaultSearch } from "../../shared/vaultQuery";
 import { useAppStore } from "../../store/store";
 import { MapPreview } from "../../shared/components/MapPreview";
-import { isOfficialMap, mapInstalled, ratingLabel, sizeLabel } from "../../shared/mapPresentation";
-import { MapCard, MapDetailPanel, MapHideDialog, MapUninstallDialog } from "./MapVaultComponents";
+import { findVaultMapByFolder, isOfficialMap, mapInstalled, sizeLabel } from "../../shared/mapPresentation";
+import { MapCard, MapDetailPanel, MapHideDialog, MapRating, MapUninstallDialog } from "./MapVaultComponents";
 import { MapPreviewDialog } from "../../shared/components/MapPreviewZoom";
 import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
@@ -471,8 +471,8 @@ function VaultView({ busy }: { busy: boolean }) {
               <SearchField label={t("maps.view.installation")}><select className="search-panel-control" value={installFilter} onChange={(event) => setInstallFilter(event.target.value as InstallFilter)}><option value="all">{t("maps.view.any")}</option><option value="installed">{t("maps.view.installed")}</option><option value="available">{t("maps.view.notInstalled")}</option></select></SearchField>
               <SearchField label={t("maps.view.uploadedAfter")}><DateInput className="search-panel-control" value={createdAfter} onChange={setCreatedAfter} /></SearchField>
               <SearchField label={t("maps.view.uploadedBefore")}><DateInput className="search-panel-control" value={createdBefore} onChange={setCreatedBefore} /></SearchField>
-              <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
-              <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}</select></SearchField>
+              <SearchField label={t("maps.view.width")}><select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}</select></SearchField>
+              <SearchField label={t("maps.view.height")}><select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}><option value={0}>{t("maps.view.any")}</option>{MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}</select></SearchField>
               {/* "My maps" shows them regardless, so the control would be a
                   lie there: an author is meant to see what they withdrew. */}
               {preset !== "mine" && (
@@ -719,7 +719,16 @@ function InstalledView({ busy }: { busy: boolean }) {
   const fittedPageSize = useGridPageSize(installedGrid, INSTALLED_MAP_CARD_PX, DEFAULT_VAULT_PAGE_SIZE);
   const pageSize = browsing.vaultPageSize || fittedPageSize;
 
-  const vaultByFolder = useMemo(() => new Map(vault.map((map) => [map.folderName.toLocaleLowerCase(), map])), [vault]);
+  // The vault record of an installed folder, matched on the folder's base name
+  // when the exact version is not there. The catalogue holds each map's
+  // *latest* version only, so an exact match missed every installed older
+  // version (`lena_river.v0008` beside a vault at `.v0009`), and the card then
+  // read "Unranked" and the Ranked filter dropped the map (#416). The same
+  // lookup the lobby rows and the ranked-game rule already use.
+  const vaultRecordOf = useMemo(
+    () => (folderName: string) => findVaultMapByFolder(vault, folderName),
+    [vault],
+  );
 
   useEffect(() => {
     loadInstalled();
@@ -748,10 +757,12 @@ function InstalledView({ busy }: { busy: boolean }) {
     const authorQuery = author.trim().toLocaleLowerCase();
     return installed
       .filter((map) => {
-        const meta = vaultByFolder.get(map.folderName.toLocaleLowerCase());
+        const meta = vaultRecordOf(map.folderName);
         const isFav = favoriteFolders.has(map.folderName.toLocaleLowerCase());
         const isOfficial = isOfficialMap(map.folderName);
-        const isRankedMap = meta?.ranked ?? false;
+        // A base-game map the vault has no record of is rated by definition;
+        // the same rule the host dialog's map list applies.
+        const isRankedMap = meta ? meta.ranked : isOfficial;
 
         if (preset === "favorites" && !isFav) return false;
         if (preset === "ranked" && !isRankedMap) return false;
@@ -796,8 +807,8 @@ function InstalledView({ busy }: { busy: boolean }) {
       })
       .slice()
       .sort((left, right) => {
-        const metaLeft = vaultByFolder.get(left.folderName.toLocaleLowerCase());
-        const metaRight = vaultByFolder.get(right.folderName.toLocaleLowerCase());
+        const metaLeft = vaultRecordOf(left.folderName);
+        const metaRight = vaultRecordOf(right.folderName);
         switch (sort) {
           case "name":
             return left.displayName.localeCompare(right.displayName);
@@ -816,7 +827,7 @@ function InstalledView({ busy }: { busy: boolean }) {
       });
   }, [
     installed, search, author, preset, sort, ranked, minimumRating, maximumRating,
-    minimumPlayers, maximumPlayers, width, height, vaultByFolder, favoriteFolders,
+    minimumPlayers, maximumPlayers, width, height, vaultRecordOf, favoriteFolders,
   ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -871,13 +882,13 @@ function InstalledView({ busy }: { busy: boolean }) {
               <SearchField label={t("maps.view.width")}>
                 <select className="search-panel-control" value={width} onChange={(event) => setFilter({ width: Number(event.target.value) })}>
                   <option value={0}>{t("maps.view.any")}</option>
-                  {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}
+                  {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}
                 </select>
               </SearchField>
               <SearchField label={t("maps.view.height")}>
                 <select className="search-panel-control" value={height} onChange={(event) => setFilter({ height: Number(event.target.value) })}>
                   <option value={0}>{t("maps.view.any")}</option>
-                  {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometresLabel(value)} km</option>)}
+                  {MAP_SIZES.map((value) => <option key={value} value={value}>{kilometres(kilometresLabel(value))}</option>)}
                 </select>
               </SearchField>
             </div>
@@ -970,9 +981,8 @@ function InstalledView({ busy }: { busy: boolean }) {
           </div>
           <div className="installed-map-grid" ref={installedGrid}>
             {pageMaps.map((map) => {
-              const metadata = vaultByFolder.get(map.folderName.toLocaleLowerCase());
+              const metadata = vaultRecordOf(map.folderName);
               const isBusy = busy && installStatus.type === "installing" && installStatus.payload.folderName === map.folderName;
-              const isRanked = metadata ? metadata.ranked : isOfficialMap(map.folderName);
               return (
                 <article className="installed-map-card surface-panel" key={map.folderName}>
                   <button
@@ -984,10 +994,9 @@ function InstalledView({ busy }: { busy: boolean }) {
                   >
                     <MapPreview map={metadata ?? map} />
                   </button>
-                  {/* The name gets the whole line back. The ranked chip is
-                      the same six letters on every row and was taking width
-                      from titles that needed it, so it moves to the corner,
-                      where the installed mods list already keeps its state. */}
+                  {/* The name gets the whole line, and the rating sits in the
+                      corner rather than at the end of the facts line, where
+                      it was the part that got cut off. */}
                   <span>
                     <span className="installed-map-title-row">
                       <strong title={metadata?.displayName || map.displayName}>{metadata?.displayName || map.displayName}</strong>
@@ -997,13 +1006,14 @@ function InstalledView({ busy }: { busy: boolean }) {
                       {sizeLabel(metadata ?? { width: map.width ?? 512, height: map.height ?? 512 })}
                       {" · "}
                       {t("maps.view.playerCount", { count: map.maxPlayers ?? metadata?.maxPlayers ?? 2 })}
-                      {metadata && metadata.reviews > 0 && ` · ${ratingLabel(metadata)}`}
                     </small>
                   </span>
                   <span className="installed-map-side">
-                    <span className={isRanked ? "map-vault-type ranked" : "map-vault-type unranked"}>
-                      {t(isRanked ? "maps.vault.ranked" : "maps.vault.unranked")}
-                    </span>
+                    {/* This corner said Ranked/Unranked, and said "Unranked"
+                        for every folder it could not find in the vault (#416).
+                        It shows the rating now, and nothing for a map nobody
+                        has reviewed. */}
+                    <MapRating map={metadata} />
                     <span className="installed-map-actions">
                       {/* An icon rather than the word. "Uninstall" in red was
                           the loudest thing on a row whose subject is the map,

@@ -34,6 +34,7 @@ const decoded = (overrides: Partial<DecodedMapName> = {}): DecodedMapName => ({
   style: null,
   visibility: null,
   generatedAt: null,
+  options: null,
   ...overrides,
 });
 
@@ -183,6 +184,7 @@ describe("decoded map names", () => {
   it("summarises a predefined-style map", () => {
     const parts = summariseDecodedName(
       decoded({ symmetry: "POINT2", style: { kind: "predefined", style: "MOUNTAIN_RANGE" } }),
+      t,
     );
     expect(parts).toEqual(["10 km (512×512)", "6 spawns", "2 teams", "POINT2", "Mountain range"]);
   });
@@ -203,6 +205,7 @@ describe("decoded map names", () => {
           resourceDensity: 0.25,
         },
       }),
+      t,
     );
     expect(parts).toContain("20 km (1024×1024)");
     expect(parts).toContain("4 teams");
@@ -211,19 +214,19 @@ describe("decoded map names", () => {
   });
 
   it("calls a zero-team map asymmetric rather than '0 teams'", () => {
-    expect(summariseDecodedName(decoded({ numTeams: 0 }))).toContain("asymmetric");
+    expect(summariseDecodedName(decoded({ numTeams: 0 }), t)).toContain("asymmetric");
   });
 
   it("shows the visibility instead of a style for tournament maps", () => {
     // Those maps deliberately reveal nothing about their terrain.
-    const parts = summariseDecodedName(decoded({ visibility: "TOURNAMENT" }));
+    const parts = summariseDecodedName(decoded({ visibility: "TOURNAMENT" }), t);
     expect(parts).toContain("Tournament");
   });
 
   it("omits what it cannot name rather than guessing", () => {
     // A style ordinal from a newer generator decodes to null; inventing a name
     // would be worse than saying nothing.
-    const parts = summariseDecodedName(decoded({ style: { kind: "predefined", style: null } }));
+    const parts = summariseDecodedName(decoded({ style: { kind: "predefined", style: null } }), t);
     expect(parts).toEqual(["10 km (512×512)", "6 spawns", "2 teams"]);
   });
 });

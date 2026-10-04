@@ -92,7 +92,7 @@ export function CoopMissionArt({ mission, scenario, vault, className }: Props) {
       <img
         className={className}
         src={loadedUrl}
-        alt={`${mission.name} preview`}
+        alt={t("common.mapPreview", { name: mission.name })}
         loading="lazy"
         decoding="async"
       />

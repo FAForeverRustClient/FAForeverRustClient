@@ -127,6 +127,12 @@ jobs:
       - name: Architecture boundaries
         run: pnpm run architecture
 
+      # Every user-visible string goes through the i18n catalogue. The scanner
+      # lists any literal that still reads like copy; the budget is zero, so a
+      # hardcoded string fails the build instead of shipping untranslatable.
+      - name: No hardcoded user-facing strings
+        run: pnpm run i18n:check --list --max 0
+
       - name: No em dashes in source or project documentation
         run: |
           hits=$(grep -rnP '\x{2014}' crates ui/src src-tauri/src docs .github --include='*' || true)

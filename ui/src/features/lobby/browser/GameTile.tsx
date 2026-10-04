@@ -126,7 +126,7 @@ export const GameTile = memo(function GameTile({
             <b>{players} / {game.maxPlayers}</b>
             <small>{t("lobby.browser.playersWord", { count: players })}</small>
           </span>
-          <span><b>{game.averageRating || "N/A"}</b><small>{t("lobby.browser.column.rating")}</small></span>
+          <span><b>{game.averageRating || t("common.notAvailable")}</b><small>{t("lobby.browser.column.rating")}</small></span>
           <span>
             <b title={featuredModLabel(game.modName)}>{featuredModLabel(game.modName)}</b>
             <small>{t("lobby.browser.column.version")}</small>
@@ -140,7 +140,7 @@ export const GameTile = memo(function GameTile({
               className={simModsRanked ? "modded is-ranked" : "modded"}
               title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
             >
-              {simModCount} SIM
+              {t("lobby.browser.simModBadge", { count: simModCount })}
             </i>
           )}
           {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}

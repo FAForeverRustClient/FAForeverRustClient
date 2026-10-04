@@ -182,6 +182,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   matchmakerRecentOrder: [],
   modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
+  leaderboardIncludeFormerNames: false,
   replayVaultPlayer: "",
   replayChatChannel: "",
   replayChatTransfers: "show",

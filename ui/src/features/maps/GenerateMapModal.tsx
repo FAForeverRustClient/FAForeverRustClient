@@ -52,6 +52,7 @@ import {
   summariseDecodedName,
 } from "../../shared/generatorPresentation";
 import { ZoomableImage } from "../../shared/components/MapPreviewZoom";
+import { MAX_PRESET_NAME, isUsablePresetName } from "../../shared/generatorPresets";
 import "./generate-map.css";
 import { NumberInput } from "../../design-system/NumberInput";
 import { GENERATION_TYPES, cancel, decodeNames, deletePreset, generate, generateNamed, loadHelp, loadOptions, loadPresets, preflight, savePreset, setOptions } from "./generatorCommands";
@@ -192,7 +193,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
   const existing = presets.find(
     (preset) => preset.name.toLowerCase() === trimmedPreset.toLowerCase(),
   );
-  const presetNameUsable = trimmedPreset !== "" && /^[\w\- ]+$/.test(trimmedPreset);
+  const presetNameUsable = isUsablePresetName(trimmedPreset);
 
   // "Saved" is an outcome, not a click, and it is this save's outcome: the
   // backend answers every save with `presetSaveFinished` naming the request.
@@ -403,7 +404,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </span>
                 {decoded && (
                   <ul className="generate-map-facts">
-                    {summariseDecodedName(decoded).map((fact) => (
+                    {summariseDecodedName(decoded, t).map((fact) => (
                       <li key={fact} className="generate-map-fact">
                         {fact}
                       </li>
@@ -697,7 +698,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                         <input
                           className="generate-map-control"
                           value={presetName}
-                          maxLength={80}
+                          maxLength={MAX_PRESET_NAME}
                           aria-label={t("maps.generate.presetName")}
                           placeholder={t("maps.generate.presetName")}
                           onChange={(e) => setPresetName(e.target.value)}
@@ -873,14 +874,14 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
               <dl className="generate-map-specs-grid">
                 <div>
                   <dt>{t("maps.generate.mapSize")}</dt>
-                  <dd>{currentFacts ? formatMapSize(currentFacts.mapSize) : "N/A"}</dd>
+                  <dd>{currentFacts ? formatMapSize(currentFacts.mapSize) : t("common.notAvailable")}</dd>
                 </div>
                 <div>
                   <dt>{t("maps.generate.spawns")}</dt>
                   <dd>
                     {currentFacts
                       ? t("maps.generate.spawnCount", { count: currentFacts.spawnCount })
-                      : "N/A"}
+                      : t("common.notAvailable")}
                   </dd>
                 </div>
                 <div>
@@ -890,7 +891,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                       ? currentFacts.numTeams === 0
                         ? t("maps.generate.asymmetric")
                         : t("maps.generate.teamCount", { count: currentFacts.numTeams })
-                      : "N/A"}
+                      : t("common.notAvailable")}
                   </dd>
                 </div>
                 <div>
@@ -899,19 +900,19 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                 </div>
                 <div>
                   <dt>{t("maps.generate.generatorVersion")}</dt>
-                  <dd>{currentFacts ? `v${currentFacts.version}` : "N/A"}</dd>
+                  <dd>{currentFacts ? t("common.version", { version: currentFacts.version }) : t("common.notAvailable")}</dd>
                 </div>
                 <div>
                   <dt>{t("maps.generate.seed")}</dt>
                   <dd className="generate-map-spec-seed" title={currentFacts?.seed}>
-                    {currentFacts?.seed || "N/A"}
+                    {currentFacts?.seed || t("common.notAvailable")}
                   </dd>
                 </div>
               </dl>
 
               {currentFacts && (
                 <div className="generate-map-tags">
-                  {summariseDecodedName(currentFacts).map((fact) => (
+                  {summariseDecodedName(currentFacts, t).map((fact) => (
                     <span key={fact} className="generate-map-tag">
                       {fact}
                     </span>

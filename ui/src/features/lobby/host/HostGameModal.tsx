@@ -10,7 +10,13 @@ import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNav
 import { OFFICIAL_BASE_MAPS } from "../../../shared/mapPresentation";
 import { GameMapImage } from "../GameMapImage";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
-import { isGeneratedMap, isOfficialMap } from "../../../shared/mapPresentation";
+import {
+  findVaultMapByFolder,
+  isGeneratedMap,
+  isOfficialMap,
+  kilometres,
+  kilometresArea,
+} from "../../../shared/mapPresentation";
 import { MapUninstallDialog } from "../../maps/MapVaultComponents";
 import { GenerateMapModal } from "../../maps/GenerateMapModal";
 import { generatedMapDescriptionRows } from "../../../shared/generatedMapDescription";
@@ -18,6 +24,7 @@ import { HostModsColumn } from "./HostModsColumn";
 import { useHostLobbySettings } from "./hostLobbySettings";
 import { FeaturedModIcon } from "../../../shared/components/FeaturedModIcon";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { t as translate } from "../../../i18n";
 import type { MessageKey } from "../../../i18n/catalog/en";
 import { OptionalNumberInput } from "../../../design-system/NumberInput";
 // The map column's two tabs borrow the shared tab strip. Imported here rather
@@ -118,10 +125,10 @@ const FEATURED_MODS: FeaturedModOption[] = [
 function formatMapMeta(map: { maxPlayers: number; width: number; height: number }): string {
   const parts: string[] = [];
   if (map.maxPlayers > 0) {
-    parts.push(`${map.maxPlayers}p`);
+    parts.push(translate("lobby.host.mapPlayersShort", { count: map.maxPlayers }));
   }
   if (map.width > 0 && map.height > 0) {
-    parts.push(`${toKilometres(map.width)}×${toKilometres(map.height)}km`);
+    parts.push(kilometresArea(toKilometres(map.width), toKilometres(map.height)));
   }
   return parts.join(" · ");
 }
@@ -138,7 +145,7 @@ const OFFICIAL_BY_NAME = new Map(
 
 function formatMapDimensions(width: number, height: number): string {
   if (width <= 0) return "";
-  return `${toKilometres(width)} × ${toKilometres(height)} km`;
+  return kilometresArea(toKilometres(width), toKilometres(height));
 }
 
 /**
@@ -234,7 +241,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   // filtering and sorting follow the search box.
   const vaultIndex = useMemo(
     () => ({
-      byFolder: new Map(maps.vault.map((map) => [map.folderName.toLowerCase(), map])),
+      maps: maps.vault,
       byName: new Map(maps.vault.map((map) => [map.displayName.toLowerCase(), map])),
     }),
     [maps.vault],
@@ -263,9 +270,13 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
       const baseKey = key.replace(/\.v\d+$/i, "");
       const nameKey = installed.displayName.toLowerCase();
 
+      // By base name when the exact version is not in the catalogue, which
+      // holds only each map's latest. The old base-name probe asked a map
+      // keyed by *versioned* folders for an unversioned key, so it never hit,
+      // and an older installed version only found its record when the name
+      // derived from its folder happened to equal the vault's title (#416).
       const vaultMeta =
-        vaultIndex.byFolder.get(key)
-        ?? vaultIndex.byFolder.get(baseKey)
+        findVaultMapByFolder(vaultIndex.maps, installed.folderName)
         ?? vaultIndex.byName.get(nameKey);
       const officialMeta =
         OFFICIAL_BY_FOLDER.get(key)
@@ -735,7 +746,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                     max={MAX_MAP_KM}
                     low={widthKm.low}
                     high={widthKm.high}
-                    format={(value) => `${value} km`}
+                    format={kilometres}
                     onChange={(low, high) => filter({ widthKm: { low, high } })}
                   />
                   <RangeSlider
@@ -744,7 +755,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
                     max={MAX_MAP_KM}
                     low={heightKm.low}
                     high={heightKm.high}
-                    format={(value) => `${value} km`}
+                    format={kilometres}
                     onChange={(low, high) => filter({ heightKm: { low, high } })}
                   />
                   <RangeSlider

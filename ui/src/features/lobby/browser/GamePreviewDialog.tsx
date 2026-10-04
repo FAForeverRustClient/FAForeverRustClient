@@ -1,6 +1,6 @@
 // The game opened out of the list: map, settings, lineup, and the join button.
 
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
@@ -19,6 +19,7 @@ import {
 import { t } from "../../../i18n";
 import { displayedRating, gameLeaderboard, ratingGateBlocks } from "../../../shared/playerRatings";
 import { toggleFavoriteMap, useIsFavoriteMap } from "../../../shared/favoriteMaps";
+import { SaveGeneratorPresetForm } from "../../../shared/components/SaveGeneratorPresetForm";
 
 export const GamePreviewDialog = memo(function GamePreviewDialog({
   game,
@@ -87,6 +88,13 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
   // which is 20 by 10 km for a map that is square -- and the game files are
   // what the catalogue above is read from, so they win for a map that has one.
   const size = mapSize(vault, game.map, decoded?.mapSize);
+  // The same name is also a preset waiting to be saved (#421), when it carries
+  // the whole recipe. The backend decides that while decoding; a name that
+  // does not (a seed only, or an ordinal newer than this client's tables)
+  // leaves the action visible but disabled, with the reason as its tooltip.
+  const presetOptions = decoded?.options ?? null;
+  const [namingPreset, setNamingPreset] = useState(false);
+  const closePresetForm = useCallback(() => setNamingPreset(false), []);
 
   const isHost = !!player && game.host.localeCompare(player.name, undefined, { sensitivity: "base" }) === 0;
   const isPlayerInGame = !!player && Object.values(game.teams).some((teamPlayers) =>
@@ -161,19 +169,58 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
         <ZoomableImage
           label={presentation.displayName || game.map}
           actions={(
-            // Starring from here is what makes a generated map worth keeping
-            // (#394): it has no vault page to star it on, and the name is all
-            // the host dialog needs to host it again.
-            <Button
-              aria-pressed={favorite}
-              onClick={() => toggleFavoriteMap(game.map, vaultMap?.downloadUrl)}
-              title={t(favorite ? "maps.vault.removeFavoriteAria" : "maps.vault.addFavoriteAria", {
-                name: presentation.displayName || game.map,
-              })}
-            >
-              <Icon name="star" size={14} />
-              {t(favorite ? "lobby.browser.removeFavoriteMap" : "lobby.browser.addFavoriteMap")}
-            </Button>
+            <>
+              {/* In the action row with the others. It used to float over the
+                  bottom-right corner of the whole block, which is where this
+                  row puts "Copy image". */}
+              {!installed && isGenerated && (
+                <Button
+                  disabled={isGeneratingThisMap}
+                  onClick={() =>
+                    ipc.send({
+                      kind: "MapGenerator",
+                      command: {
+                        type: "generateNamed",
+                        payload: {
+                          mapName: game.map,
+                        },
+                      },
+                    })
+                  }
+                >
+                  <Icon name="plus" size={13} />
+                  {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
+                </Button>
+              )}
+              {/* Starring from here is what makes a generated map worth keeping
+                  (#394): it has no vault page to star it on, and the name is all
+                  the host dialog needs to host it again. */}
+              <Button
+                aria-pressed={favorite}
+                onClick={() => toggleFavoriteMap(game.map, vaultMap?.downloadUrl)}
+                title={t(favorite ? "maps.vault.removeFavoriteAria" : "maps.vault.addFavoriteAria", {
+                  name: presentation.displayName || game.map,
+                })}
+              >
+                <Icon name="star" size={14} />
+                {t(favorite ? "lobby.browser.removeFavoriteMap" : "lobby.browser.addFavoriteMap")}
+              </Button>
+              {isGenerated && (
+                <Button
+                  aria-expanded={namingPreset}
+                  disabled={!presetOptions}
+                  title={t(
+                    presetOptions
+                      ? "maps.generate.presetFromMapHint"
+                      : "maps.generate.presetFromMapUnavailable",
+                  )}
+                  onClick={() => setNamingPreset((open) => !open)}
+                >
+                  <Icon name="settings" size={14} />
+                  {t("maps.generate.presetFromMap")}
+                </Button>
+              )}
+            </>
           )}
         >
           <GameMapImage
@@ -189,26 +236,6 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
             <Icon name="lock" size={13} />
             {t("lobby.browser.private")}
           </span>
-        )}
-        {!installed && isGenerated && (
-          <Button
-            className="game-preview-dialog-map-action"
-            disabled={isGeneratingThisMap}
-            onClick={() =>
-              ipc.send({
-                kind: "MapGenerator",
-                command: {
-                  type: "generateNamed",
-                  payload: {
-                    mapName: game.map,
-                  },
-                },
-              })
-            }
-          >
-            <Icon name="plus" size={13} />
-            {isGeneratingThisMap ? t("lobby.browser.generatingMap") : t("lobby.browser.generateMap")}
-          </Button>
         )}
       </div>
       {/* The full technical name. It is nowhere else in the client, and it is
@@ -243,6 +270,9 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
           <Icon name={copiedName ? "check" : "copy"} size={13} />
         </button>
       </div>
+      {namingPreset && presetOptions && (
+        <SaveGeneratorPresetForm options={presetOptions} onDone={closePresetForm} />
+      )}
       {/* All that is left of the metadata column: the facts that are about the
           map rather than about the game. Host, featured mod, players, ratings
           and teams are the details rail's job, and repeating them here in a

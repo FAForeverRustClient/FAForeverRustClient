@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
-import type { LeaderboardEntry, PlayerRatings, RatingLeaderboard } from "../../ipc/bindings";
-import type { MessageKey } from "../../i18n";
+import type { LeaderboardEntry, PlayerRatings } from "../../ipc/bindings";
+import { t as translate, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
+import { hourCycleOptions } from "../../shared/format/clock";
+import { clientIntlTag } from "../../shared/format/dates";
+import { tierLabel } from "../../shared/leagueNames";
+import { leaderboardLabel } from "../../shared/playerRatings";
 
 export type LeaderboardColumn =
   | "rank"
@@ -74,8 +78,10 @@ function value(entry: LeaderboardEntry, column: LeaderboardColumn): number | str
   switch (column) {
     case "rank": return entry.rank;
     case "player": return entry.playerName;
-    case "league": return entry.division;
-    case "division": return entry.division;
+    // A tier sorts by its place in the season, Bronze below Silver, which is
+    // also what keeps the order the same in every language.
+    case "league": return entry.divisionOrder;
+    case "division": return entry.divisionOrder;
     case "score": return entry.score;
     case "rating": return entry.rating;
     case "mean": return entry.mean;
@@ -106,11 +112,13 @@ function format(
   cross: CrossRatings,
 ): string {
   const raw = cellValue(entry, column, activeBoard, cross);
-  if (raw === null || raw === "") return "N/A";
+  if (column === "player") return entry.playerName || translate("common.unknown");
+  if (raw === null || raw === "") return translate("common.notAvailable");
+  if (column === "division" || column === "league") return tierLabel(entry.division, entry.subdivision);
   if (column === "mean" || column === "deviation") return Number(raw).toFixed(1);
   if (column === "updated") {
     const date = new Date(String(raw));
-    return Number.isNaN(date.valueOf()) ? String(raw) : date.toLocaleString("en-US");
+    return Number.isNaN(date.valueOf()) ? String(raw) : date.toLocaleString(clientIntlTag(), hourCycleOptions());
   }
   return String(raw);
 }
@@ -133,7 +141,7 @@ function playerCell(entry: LeaderboardEntry) {
       ) : (
         <span className="leaderboard-avatar-slot" aria-hidden="true" />
       )}
-      <PlayerName name={entry.playerName} />
+      <PlayerName name={entry.playerName || translate("common.unknown")} />
     </span>
   );
 }
@@ -145,7 +153,7 @@ function leagueCell(entry: LeaderboardEntry) {
       className="leaderboard-division-icon"
       src={imageUrl}
       alt=""
-      title={entry.division || undefined}
+      title={entry.division === null ? undefined : tierLabel(entry.division, entry.subdivision)}
       width={48}
       height={24}
       loading="lazy"
@@ -224,8 +232,6 @@ interface LeaderboardTableProps {
   selectedPlayerId: number | null;
   onSelect: (entry: LeaderboardEntry) => void;
   emptyMessage?: string;
-  /** The boards with a column, for their names in the header. */
-  boards?: RatingLeaderboard[];
   /** Which board the page is ranked by. Its column is the emphasised one. */
   activeBoard?: string;
   /** What the other boards say, once the second request has answered. */
@@ -256,7 +262,6 @@ export function LeaderboardTable({
   selectedPlayerId,
   onSelect,
   emptyMessage,
-  boards = [],
   activeBoard = "",
   crossRatings = NO_CROSS_RATINGS,
   onRankBy,
@@ -270,10 +275,6 @@ export function LeaderboardTable({
   const [shown, setShown] = useState(rowBatch ?? Infinity);
   // A new list, a new filter or a new order starts from the top batch again.
   useEffect(() => setShown(rowBatch ?? Infinity), [entries, rowBatch, sort]);
-  const boardNames = useMemo(
-    () => new Map(boards.map((board) => [board.technicalName, board.name])),
-    [boards],
-  );
   const sorted = useMemo(
     () => sortLeaderboard(entries, sort.column, sort.descending, activeBoard, crossRatings),
     [activeBoard, crossRatings, entries, sort],
@@ -310,7 +311,7 @@ export function LeaderboardTable({
               >
                 <button type="button" className="leaderboard-sort" onClick={() => chooseSort(column)}>
                   {isBoardColumn(column)
-                    ? boardNames.get(boardOf(column)) ?? boardOf(column)
+                    ? leaderboardLabel(boardOf(column))
                     : t(LABELS[column])}
                   {sort.column === column && <span aria-hidden="true">{sort.descending ? "↓" : "↑"}</span>}
                 </button>

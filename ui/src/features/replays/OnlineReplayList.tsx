@@ -64,18 +64,18 @@ export function OnlineReplayList({
         // date under it repeated that heading on every row.
         played: {
           primary: formatReplayListTime(replay.startTime),
-          secondary: groupByDate ? undefined : replayAge(replay.startTime) || "N/A",
+          secondary: groupByDate ? undefined : replayAge(replay.startTime) || t("common.notAvailable"),
         },
         players: { primary: String(playerCount(replay.teams)) },
-        rating: { primary: replay.averageRating === null ? "N/A" : String(replay.averageRating) },
+        rating: { primary: replay.averageRating === null ? t("common.notAvailable") : String(replay.averageRating) },
         mod: {
           primary: replay.modName || "faf",
           secondary: replay.reviewsCount
-            ? `★ ${replay.reviewsAverage?.toFixed(1) ?? "N/A"} (${replay.reviewsCount})`
+            ? `★ ${replay.reviewsAverage?.toFixed(1) ?? t("common.notAvailable")} (${replay.reviewsCount})`
             : undefined,
         },
         duration: {
-          primary: replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : "N/A",
+          primary: replay.gameDurationSeconds !== null ? formatDuration(replay.gameDurationSeconds) : t("common.notAvailable"),
           secondary: replay.durationSeconds !== null
             ? t("replays.list.realTimeSuffix", { duration: formatDuration(replay.durationSeconds) })
             : t("replays.list.realTimeUnavailable"),

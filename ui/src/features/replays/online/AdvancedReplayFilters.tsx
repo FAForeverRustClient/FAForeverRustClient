@@ -2,7 +2,8 @@ import type { ReplayQuery } from "../../../ipc/bindings";
 import { MultiSelect, type MultiSelectOption } from "../../../design-system/MultiSelect";
 import { ReplayTagFilter } from "../ReplayTagsDialog";
 import { RangeSlider } from "../../../design-system/RangeSlider";
-import { FACTION_OPTIONS } from "../../../shared/factions";
+import { factionOptions } from "../../../shared/factions";
+import { kilometres } from "../../../shared/mapPresentation";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 
@@ -85,7 +86,7 @@ export function ReplaySearchSliders({ form, setRange }: Pick<Props, "form" | "se
         step={1}
         low={form.mapMinSizeKm}
         high={form.mapMaxSizeKm}
-        format={(v) => `${v} km`}
+        format={kilometres}
         onChange={(lo, hi) => setRange("mapMinSizeKm", "mapMaxSizeKm", lo, hi)}
       />
       <RangeSlider
@@ -207,16 +208,6 @@ export function AdvancedReplayFilters({ form, set, setRange, tagOptions, selecte
           />
         </label>
 
-        <label className="vault-field">
-          <span className="vault-field-label">{t("replays.filters.gameTitle")}</span>
-          <input
-            className="vault-input"
-            type="search"
-            value={form.title}
-            onChange={(e) => set("title", e.target.value)}
-          />
-        </label>
-
         {/* The reader's own tags (#324). The vault has never heard of them,
             so the picked tags become the ids of the games carrying them, and
             the search asks for exactly those. */}
@@ -227,7 +218,7 @@ export function AdvancedReplayFilters({ form, set, setRange, tagOptions, selecte
         <div className="vault-field">
           <MultiSelect
             label={t("replays.filters.faction")}
-            options={FACTION_OPTIONS}
+            options={factionOptions()}
             selected={form.factions.map(String)}
             onChange={(v) => set("factions", v.map(Number))}
           />

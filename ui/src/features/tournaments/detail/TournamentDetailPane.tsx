@@ -698,7 +698,18 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           </button>
         </p>
       )}
-      <div className={props.pinnedRoomId !== null ? "tournament-body-row has-pin" : "tournament-body-row"}>
+      <div
+        className={[
+          "tournament-body-row",
+          props.pinnedRoomId !== null ? "has-pin" : "",
+          // The chat takes the pane's remaining height, which the row has to
+          // take first: a row sized to its content left `is-fill` nothing to
+          // fill, and the log a short box over an empty pane (issue 367).
+          section === "chat" ? "is-fill" : "",
+        ]
+          .filter((name) => name !== "")
+          .join(" ")}
+      >
       <div
         className={
           section === "bracket"

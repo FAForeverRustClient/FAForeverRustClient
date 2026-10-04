@@ -538,14 +538,28 @@ export function kilometresLabel(units: number): string {
   return (units / UNITS_PER_KM).toFixed(2).replace(/\.?0+$/, "");
 }
 
+/**
+ * `10 km`: a length already in kilometres, with the unit as the catalogue
+ * writes it. Every map size in the client goes through this or
+ * `kilometresArea`, so the unit is worded in one place.
+ */
+export function kilometres(size: string | number): string {
+  return t("common.kilometres", { size });
+}
+
+/** `10 × 5 km`: a width and a height already in kilometres. */
+export function kilometresArea(width: string | number, height: string | number): string {
+  return t("common.kilometresArea", { width, height });
+}
+
 /** Both renderings of a width and height in generator units. */
 export function mapSizeOf(width: number, height: number): MapSize | null {
   if (!(width > 0) || !(height > 0)) return null;
   const w = kilometresLabel(width);
   const h = kilometresLabel(height);
   return {
-    full: `${w} × ${h} km`,
-    compact: w === h ? `${w} km` : `${w} × ${h} km`,
+    full: kilometresArea(w, h),
+    compact: w === h ? kilometres(w) : kilometresArea(w, h),
   };
 }
 
@@ -596,7 +610,7 @@ export function installNote(status: MapInstallStatus): string | null {
 export function sizeLabel(map: { width?: number; height?: number }): string {
   const w = map.width ?? 512;
   const h = map.height ?? 512;
-  return `${kilometresLabel(w)} × ${kilometresLabel(h)} km`;
+  return kilometresArea(kilometresLabel(w), kilometresLabel(h));
 }
 
 export function ratingLabel(map: VaultMap): string {

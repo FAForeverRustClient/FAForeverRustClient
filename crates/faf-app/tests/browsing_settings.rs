@@ -115,6 +115,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                         "GAMES".into(),
                         "invalid".into(),
                     ],
+                    leaderboard_include_former_names: true,
                     replay_vault_player: "VindexNoob".into(),
                     replay_chat_channel: "Allies".into(),
                     replay_chat_transfers: ReplayChatTransfers::Only,
@@ -150,6 +151,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
     assert_eq!(state.map_vault_preset, "newest");
     assert_eq!(state.mod_vault_preset, "rating");
     assert_eq!(state.leaderboard_rating_columns, ["deviation", "games"]);
+    assert!(state.leaderboard_include_former_names);
     assert_eq!(state.replay_vault_player, "VindexNoob");
     assert_eq!(state.replay_chat_channel, "allies");
     assert_eq!(state.replay_chat_transfers, ReplayChatTransfers::Only);

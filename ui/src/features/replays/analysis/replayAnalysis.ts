@@ -12,7 +12,7 @@ import type {
   ReplayOrder,
   ReplayPoint,
 } from "../../../ipc/bindings";
-import type { MessageKey } from "../../../i18n";
+import { t, type MessageKey } from "../../../i18n";
 
 /** The simulation's clock: ten ticks to the second. */
 export const TICKS_PER_SECOND = 10;
@@ -59,58 +59,68 @@ export function playerColor(index: number): string {
 }
 
 /**
- * `EUnitCommandType`, which is what an order's `command` is.
+ * `EUnitCommandType`, which is what an order's `command` is, as the engine
+ * names it (`UNITCOMMAND_BuildFactory` is `buildFactory`).
  *
  * Taken from the engine's own enum, which the Python client's Zig parser also
  * carries. That client's display table has `BuildFactory` and `BuildMobile` the
  * other way round to its own enum; the two agreeing sources win.
  */
-export const COMMAND_NAMES = [
-  "None",
-  "Stop",
-  "Move",
-  "Dive",
-  "Form move",
-  "Build tactical silo",
-  "Build nuclear silo",
-  "Build factory",
-  "Build mobile",
-  "Assist build",
-  "Attack",
-  "Form attack",
-  "Nuke",
-  "Tactical missile",
-  "Teleport",
-  "Guard",
-  "Patrol",
-  "Ferry",
-  "Form patrol",
-  "Reclaim",
-  "Repair",
-  "Capture",
-  "Load transport",
-  "Reverse load transport",
-  "Unload transport",
-  "Unload some units",
-  "Detach from transport",
-  "Upgrade",
-  "Script",
-  "Assist commander",
-  "Kill self",
-  "Destroy self",
-  "Sacrifice",
-  "Pause",
-  "Overcharge",
-  "Aggressive move",
-  "Form aggressive move",
-  "Assist move",
-  "Special action",
-  "Dock",
-  "Retarget",
+export const COMMAND_IDS = [
+  "none",
+  "stop",
+  "move",
+  "dive",
+  "formMove",
+  "buildSiloTactical",
+  "buildSiloNuke",
+  "buildFactory",
+  "buildMobile",
+  "buildAssist",
+  "attack",
+  "formAttack",
+  "nuke",
+  "tactical",
+  "teleport",
+  "guard",
+  "patrol",
+  "ferry",
+  "formPatrol",
+  "reclaim",
+  "repair",
+  "capture",
+  "transportLoadUnits",
+  "transportReverseLoadUnits",
+  "transportUnloadUnits",
+  "transportUnloadSpecificUnits",
+  "detachFromTransport",
+  "upgrade",
+  "script",
+  "assistCommander",
+  "killSelf",
+  "destroySelf",
+  "sacrifice",
+  "pause",
+  "overCharge",
+  "aggressiveMove",
+  "formAggressiveMove",
+  "assistMove",
+  "specialAction",
+  "dock",
+  "retarget",
 ] as const;
 
+export type CommandId = (typeof COMMAND_IDS)[number];
+
+/**
+ * What to call a command, in the client's language. The engine id stays the
+ * data; only the label goes through the catalogue.
+ */
 export function commandName(command: number): string {
-  return COMMAND_NAMES[command] ?? `Command ${command}`;
+  const id: CommandId | undefined = COMMAND_IDS[command];
+  if (id === undefined) return t("replays.insights.command.unknown", { command });
+  const key: `replays.insights.command.${CommandId}` = `replays.insights.command.${id}`;
+  return t(key);
 }
 
 /** `12:34`, and `1:02:03` once a game passes the hour. */

@@ -111,8 +111,9 @@ pub struct PlayerClan {
 #[serde(rename_all = "camelCase")]
 pub struct PlayerRatingSummary {
     pub leaderboard_id: i32,
+    /// The leaderboard's technical name (`global`, `ladder_1v1`, ...). The UI
+    /// names the board from its catalogue; there is no display name here.
     pub technical_name: String,
-    pub name: String,
     pub rating: i32,
     pub mean: f64,
     pub deviation: f64,
@@ -126,14 +127,20 @@ pub struct PlayerRatingSummary {
 pub struct PlayerLeaguePlacement {
     /// The leaderboard's technical name (`ladder_1v1`, `tmm_2v2`, ...).
     ///
-    /// Kept beside the display name because the two are joined on: the
-    /// matchmaker shows a division per queue, and matching a queue against
-    /// "4v4 League" would tie that join to a string written for humans, which
-    /// [`leaderboard_display_name`] has now changed once already.
+    /// The only name a placement carries for its board. The matchmaker joins a
+    /// queue to its division on it, and the UI names the board from its
+    /// catalogue, so no text written for humans travels with it.
     pub technical_name: String,
-    pub leaderboard: String,
-    pub season: String,
+    /// The season's number, which the UI words as "Season 12".
+    pub season_number: i32,
+    /// The division's name key as the API sends it (`bronze`, `grandmaster`).
+    ///
+    /// An identifier, not a label: the UI names it from its catalogue and
+    /// prettifies a key it has never seen. Empty when the API left it out.
     pub division: String,
+    /// The subdivision's name key (`I`, `II`, ...), a Roman numeral the UI
+    /// shows as sent.
+    pub subdivision: String,
     pub score: i32,
     /// The score that ends this subdivision, or zero when the API omitted it.
     ///
@@ -638,38 +645,38 @@ pub fn reduce(state: &mut PlayerCardState, event: &PlayerCardEvent) {
     }
 }
 
-/// Every leaderboard this client can name, in the order it presents them.
+/// Every leaderboard this client knows, in the order it presents them.
 ///
 /// One table for a question that used to be answered twice: `infra::player_card`
-/// named a queue for the profile and `infra::leaderboard` named the same queue
-/// again for the leaderboard tab, from two `match` arms that had already
-/// drifted apart. A label here reaches both.
+/// ordered a queue for the profile and `infra::leaderboard` ordered the same
+/// queue again for the leaderboard tab, from two `match` arms that had already
+/// drifted apart. An entry here reaches both.
 ///
-/// The names are the queues' own. "1v1 Ladder" and "4v4 Full Share" were the
-/// two that said more than the queue does: every queue is ranked, so "Ladder"
-/// only implied the others were not, and full share stopped being a
-/// distinction when the queue it was distinguished from was retired.
+/// Order only. What a board is called is the UI's to say, from its catalogue
+/// (`leaderboardLabel` in `ui/src/shared/playerRatings.ts`), so that a
+/// translation reaches it; this side carries technical names and nothing
+/// written for humans.
 ///
 /// The order is the matchmaker's: solo first, then by team size. Sorting by
 /// games played, which the profile used to do, reorders the same account from
 /// one visit to the next and puts a queue somebody tried twice above the one
 /// they play.
-const KNOWN_LEADERBOARDS: &[(&str, &str)] = &[
-    ("global", "Global"),
-    ("ladder_1v1", "1v1"),
-    ("ladder1v1", "1v1"),
-    ("tmm_2v2", "2v2"),
-    ("ladder2v2", "2v2"),
-    ("tmm_3v3", "3v3"),
-    ("ladder3v3", "3v3"),
-    ("tmm_4v4_full_share", "4v4"),
-    ("ladder4v4", "4v4"),
-    ("tmm_4v4_share_until_death", "4v4 No Share"),
-    ("1v1_league", "1v1 League"),
-    ("2v2_league", "2v2 League"),
-    ("3v3_league", "3v3 League"),
-    ("4v4_full_share_league", "4v4 League"),
-    ("4v4_share_until_death_league", "4v4 No Share League"),
+const KNOWN_LEADERBOARDS: &[&str] = &[
+    "global",
+    "ladder_1v1",
+    "ladder1v1",
+    "tmm_2v2",
+    "ladder2v2",
+    "tmm_3v3",
+    "ladder3v3",
+    "tmm_4v4_full_share",
+    "ladder4v4",
+    "tmm_4v4_share_until_death",
+    "1v1_league",
+    "2v2_league",
+    "3v3_league",
+    "4v4_full_share_league",
+    "4v4_share_until_death_league",
 ];
 
 /// The 4v4 queue that was retired weeks after it appeared, and its league.
@@ -687,20 +694,11 @@ pub fn is_retired_leaderboard(technical_name: &str) -> bool {
     RETIRED_LEADERBOARDS.contains(&technical_name)
 }
 
-/// What to call a leaderboard, or `None` for one this client has never heard
-/// of, which every caller names from the API's own fields instead.
-pub fn leaderboard_display_name(technical_name: &str) -> Option<&'static str> {
-    KNOWN_LEADERBOARDS
-        .iter()
-        .find(|(known, _)| *known == technical_name)
-        .map(|(_, name)| *name)
-}
-
 /// Where a leaderboard sits in the fixed run, if it is in it at all.
 pub fn leaderboard_display_rank(technical_name: &str) -> Option<usize> {
     KNOWN_LEADERBOARDS
         .iter()
-        .position(|(known, _)| *known == technical_name)
+        .position(|known| *known == technical_name)
 }
 
 /// Put a player's ratings in the order a profile shows them.
@@ -721,7 +719,7 @@ pub fn sort_rating_summaries(ratings: &mut Vec<PlayerRatingSummary>) {
             (None, None) => right
                 .games_played
                 .cmp(&left.games_played)
-                .then_with(|| left.name.cmp(&right.name)),
+                .then_with(|| left.technical_name.cmp(&right.technical_name)),
         }
     });
 }
@@ -755,7 +753,7 @@ pub fn sort_league_placements(placements: &mut Vec<PlayerLeaguePlacement>) {
             (None, None) => right
                 .games_played
                 .cmp(&left.games_played)
-                .then_with(|| left.leaderboard.cmp(&right.leaderboard)),
+                .then_with(|| left.technical_name.cmp(&right.technical_name)),
         }
     });
 }
@@ -926,11 +924,11 @@ mod tests {
 
     #[test]
     fn the_profile_lists_placements_by_queue_and_not_by_division() {
-        let placement = |technical: &str, board: &str, games: i32| PlayerLeaguePlacement {
+        let placement = |technical: &str, games: i32| PlayerLeaguePlacement {
             technical_name: technical.into(),
-            leaderboard: board.into(),
-            season: "Season 12".into(),
-            division: "Bronze I".into(),
+            season_number: 12,
+            division: "bronze".into(),
+            subdivision: "I".into(),
             score: 5,
             highest_score: 10,
             games_played: games,
@@ -941,36 +939,43 @@ mod tests {
         // queues in whatever sequence this particular account happens to be
         // ranked in.
         let mut placements = vec![
-            placement("tmm_4v4_full_share", "4v4", 12),
-            placement("ladder_1v1", "1v1", 40),
-            placement("tmm_4v4_share_until_death", "4v4 No Share", 2),
-            placement("some_new_league", "Something New", 1),
-            placement("global", "Global", 900),
-            placement("another_new_league", "Another", 7),
-            placement("tmm_2v2", "2v2", 25),
+            placement("tmm_4v4_full_share", 12),
+            placement("ladder_1v1", 40),
+            placement("tmm_4v4_share_until_death", 2),
+            placement("some_new_league", 1),
+            placement("global", 900),
+            placement("another_new_league", 7),
+            placement("tmm_2v2", 25),
         ];
         sort_league_placements(&mut placements);
 
         let order: Vec<_> = placements
             .iter()
-            .map(|placement| placement.leaderboard.as_str())
+            .map(|placement| placement.technical_name.as_str())
             .collect();
         // Solo first, then by team size, exactly as the ratings grid above it,
         // and the leagues this build has never heard of after all of them,
         // most played first. The retired 4v4 queue is gone, as it is there.
         assert_eq!(
             order,
-            ["Global", "1v1", "2v2", "4v4", "Another", "Something New"],
+            [
+                "global",
+                "ladder_1v1",
+                "tmm_2v2",
+                "tmm_4v4_full_share",
+                "another_new_league",
+                "some_new_league"
+            ],
         );
     }
 
     #[test]
     fn party_placements_merge_and_keep_an_unplaced_member_distinguishable() {
-        let placement = |division: &str| PlayerLeaguePlacement {
+        let placement = |division: &str, subdivision: &str| PlayerLeaguePlacement {
             technical_name: "ladder_1v1".into(),
-            leaderboard: "1v1".into(),
-            season: "Season 1".into(),
+            season_number: 1,
             division: division.into(),
+            subdivision: subdivision.into(),
             score: 5,
             highest_score: 10,
             games_played: 3,
@@ -981,20 +986,20 @@ mod tests {
         reduce(
             &mut state,
             &PlayerCardEvent::PartyPlacementsLoaded {
-                placements: BTreeMap::from([(7, vec![placement("Diamond I")]), (8, Vec::new())]),
+                placements: BTreeMap::from([(7, vec![placement("diamond", "I")]), (8, Vec::new())]),
             },
         );
         // A second batch merges: a partner looked up earlier stays known.
         reduce(
             &mut state,
             &PlayerCardEvent::PartyPlacementsLoaded {
-                placements: BTreeMap::from([(9, vec![placement("Bronze II")])]),
+                placements: BTreeMap::from([(9, vec![placement("bronze", "II")])]),
             },
         );
 
-        assert_eq!(state.party_placements[&7][0].division, "Diamond I");
+        assert_eq!(state.party_placements[&7][0].division, "diamond");
         assert!(state.party_placements[&8].is_empty(), "unplaced, but known");
-        assert_eq!(state.party_placements[&9][0].division, "Bronze II");
+        assert_eq!(state.party_placements[&9][0].division, "bronze");
         assert!(
             !state.party_placements.contains_key(&10),
             "never asked about"
@@ -1647,7 +1652,6 @@ mod generated_map_tests {
         PlayerRatingSummary {
             leaderboard_id: 0,
             technical_name: technical_name.into(),
-            name: technical_name.into(),
             rating: 1000,
             mean: 1500.0,
             deviation: 100.0,
@@ -1687,18 +1691,11 @@ mod generated_map_tests {
     }
 
     #[test]
-    fn the_two_queues_that_said_more_than_the_queue_does_are_renamed() {
-        // Every queue is ranked, so "1v1 Ladder" only implied the others were
-        // not, and "4v4 Full Share" was a distinction from a queue that no
-        // longer exists.
-        assert_eq!(leaderboard_display_name("ladder_1v1"), Some("1v1"));
-        assert_eq!(leaderboard_display_name("tmm_4v4_full_share"), Some("4v4"));
-        assert_eq!(
-            leaderboard_display_name("4v4_full_share_league"),
-            Some("4v4 League")
-        );
-        assert_eq!(leaderboard_display_name("global"), Some("Global"));
-        assert_eq!(leaderboard_display_name("seasonal_experiment"), None);
+    fn a_board_this_client_has_never_heard_of_has_no_place_in_the_run() {
+        // Naming is the UI's; the table here only says where a board goes.
+        assert_eq!(leaderboard_display_rank("global"), Some(0));
+        assert!(leaderboard_display_rank("4v4_full_share_league").is_some());
+        assert_eq!(leaderboard_display_rank("seasonal_experiment"), None);
     }
 
     #[test]

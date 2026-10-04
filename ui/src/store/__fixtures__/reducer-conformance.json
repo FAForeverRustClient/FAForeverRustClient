@@ -969,6 +969,7 @@
           "games",
           "updated"
         ],
+        "leaderboardIncludeFormerNames": false,
         "replayVaultPlayer": "",
         "replayChatChannel": "",
         "replayChatTransfers": "show",
@@ -2201,6 +2202,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -44506,7 +44508,43 @@
                       "style": "MOUNTAIN_RANGE"
                     },
                     "visibility": null,
-                    "generatedAt": null
+                    "generatedAt": null,
+                    "options": {
+                      "version": null,
+                      "spawnCount": 6,
+                      "numTeams": 2,
+                      "mapSize": 512,
+                      "seed": "",
+                      "generationType": "casual",
+                      "symmetry": "",
+                      "symmetries": [
+                        "POINT2"
+                      ],
+                      "style": "",
+                      "styles": [
+                        "MOUNTAIN_RANGE"
+                      ],
+                      "terrainStyle": "",
+                      "terrainStyles": [],
+                      "textureStyle": "",
+                      "textureStyles": [],
+                      "resourceStyle": "",
+                      "resourceStyles": [],
+                      "propStyle": "",
+                      "propStyles": [],
+                      "reclaimDensity": null,
+                      "reclaimDensityMin": null,
+                      "reclaimDensityMax": null,
+                      "resourceDensity": null,
+                      "resourceDensityMin": null,
+                      "resourceDensityMax": null,
+                      "numToGenerate": null,
+                      "debug": false,
+                      "visualize": false,
+                      "previewPath": "",
+                      "outputPath": "",
+                      "commandLineArgs": ""
+                    }
                   }
                 }
               }
@@ -44519,6 +44557,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -44695,6 +44769,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -44944,6 +45054,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -45230,6 +45376,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -45444,6 +45626,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -45661,6 +45879,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -47225,9 +47479,9 @@
                   "7": [
                     {
                       "technicalName": "ladder_1v1",
-                      "leaderboard": "1v1",
-                      "season": "Season 1",
-                      "division": "Diamond I",
+                      "seasonNumber": 1,
+                      "division": "diamond",
+                      "subdivision": "I",
                       "score": 5,
                       "highestScore": 10,
                       "gamesPlayed": 3,
@@ -47261,13 +47515,13 @@
             "partyPlacements": {
               "7": [
                 {
-                  "division": "Diamond I",
+                  "division": "diamond",
                   "gamesPlayed": 3,
                   "highestScore": 10,
                   "imageUrl": "diamond.png",
-                  "leaderboard": "1v1",
                   "score": 5,
-                  "season": "Season 1",
+                  "seasonNumber": 1,
+                  "subdivision": "I",
                   "technicalName": "ladder_1v1"
                 }
               ],
@@ -47289,9 +47543,9 @@
                   "9": [
                     {
                       "technicalName": "tmm_2v2",
-                      "leaderboard": "2v2",
-                      "season": "Season 1",
-                      "division": "Bronze II",
+                      "seasonNumber": 1,
+                      "division": "bronze",
+                      "subdivision": "II",
                       "score": 1,
                       "highestScore": 4,
                       "gamesPlayed": 2,
@@ -47324,26 +47578,26 @@
             "partyPlacements": {
               "7": [
                 {
-                  "division": "Diamond I",
+                  "division": "diamond",
                   "gamesPlayed": 3,
                   "highestScore": 10,
                   "imageUrl": "diamond.png",
-                  "leaderboard": "1v1",
                   "score": 5,
-                  "season": "Season 1",
+                  "seasonNumber": 1,
+                  "subdivision": "I",
                   "technicalName": "ladder_1v1"
                 }
               ],
               "8": [],
               "9": [
                 {
-                  "division": "Bronze II",
+                  "division": "bronze",
                   "gamesPlayed": 2,
                   "highestScore": 4,
                   "imageUrl": "bronze.png",
-                  "leaderboard": "2v2",
                   "score": 1,
-                  "season": "Season 1",
+                  "seasonNumber": 1,
+                  "subdivision": "II",
                   "technicalName": "tmm_2v2"
                 }
               ]
@@ -51117,6 +51371,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -51391,6 +51646,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -51674,6 +51930,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -51952,6 +52209,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -52230,6 +52488,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -52518,6 +52777,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -52812,6 +53072,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -53103,6 +53364,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -53402,6 +53664,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -53748,6 +54011,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -54070,6 +54334,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -54394,6 +54659,7 @@
                 "title": "",
                 "visibility": "public"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"
@@ -54758,6 +55024,7 @@
                     "games",
                     "updated"
                   ],
+                  "leaderboardIncludeFormerNames": false,
                   "replayVaultPlayer": "",
                   "replayChatChannel": "",
                   "replayChatTransfers": "show",
@@ -54840,6 +55107,7 @@
                 "title": "Friday game",
                 "visibility": "friends"
               },
+              "leaderboardIncludeFormerNames": false,
               "leaderboardRatingColumns": [
                 "games",
                 "updated"

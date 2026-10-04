@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import type { PlayerCardProfile } from "../../ipc/bindings";
 import { FactionIcon } from "../../shared/components/FactionIcon";
-import { formatNumber, type MessageKey } from "../../i18n";
+import { factionLabel } from "../../shared/factions";
+import { leaderboardLabel } from "../../shared/playerRatings";
+import { formatNumber, t, type MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const EVENTS = {
@@ -94,7 +96,7 @@ function MetricChart({ title, firstLabel, secondLabel, rateLabel, metrics, share
               <span className="player-metric-count" role="cell">{formatNumber(metric.first)}</span>
               <span className="player-metric-count" role="cell">{formatNumber(share ? total : metric.second)}</span>
               <span className="player-metric-rate" role="cell">
-                {total > 0 ? `${Math.round((metric.first / total) * 100)}%` : "N/A"}
+                {total > 0 ? `${Math.round((metric.first / total) * 100)}%` : t("common.notAvailable")}
               </span>
             </div>
           );
@@ -104,13 +106,13 @@ function MetricChart({ title, firstLabel, secondLabel, rateLabel, metrics, share
   );
 }
 
-// Faction names are proper nouns and stay literal; the unit classes are copy and
-// carry a message key. The number is the faction's id, for its emblem.
-const FACTIONS: Array<[string, number, string, string]> = [
-  ["Aeon", 2, EVENTS.aeonPlays, EVENTS.aeonWins],
-  ["Cybran", 3, EVENTS.cybranPlays, EVENTS.cybranWins],
-  ["UEF", 1, EVENTS.uefPlays, EVENTS.uefWins],
-  ["Seraphim", 4, EVENTS.seraphimPlays, EVENTS.seraphimWins],
+// The number is the faction's id: its emblem and, through the catalog, its
+// name. The unit classes carry a message key.
+const FACTIONS: Array<[number, string, string]> = [
+  [2, EVENTS.aeonPlays, EVENTS.aeonWins],
+  [3, EVENTS.cybranPlays, EVENTS.cybranWins],
+  [1, EVENTS.uefPlays, EVENTS.uefWins],
+  [4, EVENTS.seraphimPlays, EVENTS.seraphimWins],
 ];
 
 const UNITS: Array<[MessageKey, string, string]> = [
@@ -128,8 +130,8 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
   const { t } = useTranslation();
   const counts = new Map(profile.events.map((event) => [event.eventId, event.count]));
   const count = (id: string) => counts.get(id) ?? 0;
-  const factions = FACTIONS.map(([label, faction, plays, wins]) => ({
-    label,
+  const factions = FACTIONS.map(([faction, plays, wins]) => ({
+    label: factionLabel(faction),
     // The name beside it says which faction, so the emblem is decoration to
     // a screen reader.
     icon: <FactionIcon faction={faction} size={16} aria-hidden="true" role="presentation" />,
@@ -142,7 +144,7 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
     second: count(lost),
   }));
   const games = profile.ratings.map((rating) => ({
-    label: rating.name,
+    label: leaderboardLabel(rating.technicalName),
     first: rating.wonGames,
     second: Math.max(0, rating.gamesPlayed - rating.wonGames),
   }));
