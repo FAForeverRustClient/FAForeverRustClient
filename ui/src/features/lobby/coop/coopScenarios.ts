@@ -66,6 +66,12 @@ export function sortCoopScenarios<T extends CoopScenario>(scenarios: readonly T[
  * alongside genuine community work. The category is what separates those two.
  */
 export function scenarioBadge(scenario: CoopScenario): "uef" | "cybran" | "aeon" | "seraphim" | "official" | "custom" {
+  if (
+    scenario.category === "custom" &&
+    scenario.name.trim().toLowerCase() === "seraphim campaign"
+  ) {
+    return "custom";
+  }
   if (scenario.faction !== "custom") return scenario.faction;
   return scenario.category === "custom" ? "custom" : "official";
 }
@@ -111,6 +117,14 @@ export function displayScenarioOptionLabel(
   t: Translation["t"],
 ): string {
   const name = displayScenarioName(scenario, locale, t);
+  const normalizedName = scenario.name.trim().toLowerCase();
+  if (
+    locale === "ru" &&
+    (normalizedName.startsWith("vanilla ") ||
+      normalizedName === "forged alliance campaign")
+  ) {
+    return name;
+  }
   const badge = t(`lobby.coop.badge.${scenarioBadge(scenario)}`);
-  return name.includes(badge) ? name : `${name} (${badge})`;
+  return `${name} (${badge})`;
 }

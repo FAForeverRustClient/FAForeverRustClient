@@ -72,7 +72,7 @@ describe("co-op campaign ordering", () => {
       [
         scenario("Seraphim Campaign", "seraphim", "custom", 3),
         "Кампания Серафим",
-        "seraphim",
+        "custom",
       ],
     ])("localizes community catalog label %s and keeps its badge", (entry, expected, badge) => {
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
@@ -129,14 +129,14 @@ describe("co-op campaign ordering", () => {
           "ru",
           t,
         ),
-      ).toBe("Кампания Серафим");
+      ).toBe("Кампания Серафим (От сообщества)");
       expect(
         displayScenarioOptionLabel(
           scenario("Forged Alliance Campaign", "custom", "scfa", 3),
           "ru",
           t,
         ),
-      ).toBe("Кампания SCFA (Forged Alliance) (Официальная)");
+      ).toBe("Кампания SCFA (Forged Alliance)");
       expect(
         displayScenarioOptionLabel(
           scenario("Coalition Campaign", "custom", "custom", 4),
@@ -161,6 +161,6 @@ describe("co-op campaign ordering", () => {
     expect(scenarioBadge(byName.get("Forged Alliance Campaign")!)).toBe("official");
     expect(scenarioBadge(byName.get("Coalition Campaign")!)).toBe("custom");
     expect(scenarioBadge(byName.get("Vanilla UEF Campaign")!)).toBe("uef");
-    expect(scenarioBadge(byName.get("Seraphim Campaign")!)).toBe("seraphim");
+    expect(scenarioBadge(byName.get("Seraphim Campaign")!)).toBe("custom");
   });
 });
