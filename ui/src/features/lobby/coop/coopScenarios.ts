@@ -5,6 +5,8 @@
 // sort, so this is one module they share.
 
 import type { CoopScenario } from "../../../ipc/bindings";
+import type { Translation } from "../../../i18n/useTranslation";
+import type { Locale } from "../../../i18n/locales";
 
 /**
  * Which game a campaign came from, and the primary sort key.
@@ -66,4 +68,36 @@ export function sortCoopScenarios<T extends CoopScenario>(scenarios: readonly T[
 export function scenarioBadge(scenario: CoopScenario): "uef" | "cybran" | "aeon" | "seraphim" | "official" | "custom" {
   if (scenario.faction !== "custom") return scenario.faction;
   return scenario.category === "custom" ? "custom" : "official";
+}
+
+export function displayScenarioName(
+  scenario: CoopScenario,
+  locale: Locale,
+  t: Translation["t"],
+): string {
+  if (locale !== "ru") return scenario.name;
+
+  if (locale === "ru" && scenario.category === "custom") {
+    switch (scenario.name.trim().toLowerCase()) {
+      case "coalition campaign": return t("lobby.coop.coalitionCampaignName");
+      case "standalone missions": return t("lobby.coop.standaloneMissionsName");
+    }
+  }
+  if (scenario.faction === "seraphim"
+    && scenario.name.trim().toLowerCase() === "seraphim campaign") {
+    return t("lobby.coop.seraphimCampaignName");
+  }
+  if (scenario.category === "scfa" && scenario.faction === "custom") {
+    return t("lobby.coop.scfaCampaignName");
+  }
+  if (scenario.category !== "sc" || scenario.faction === "custom") return scenario.name;
+
+  let faction: string;
+  switch (scenario.faction) {
+    case "uef": faction = t("lobby.coop.badge.uef"); break;
+    case "cybran": faction = t("lobby.coop.badge.cybran"); break;
+    case "aeon": faction = t("lobby.coop.badge.aeon"); break;
+    case "seraphim": faction = t("lobby.coop.badge.seraphim"); break;
+  }
+  return t("lobby.coop.vanillaCampaignName", { faction, game: "SC" });
 }
