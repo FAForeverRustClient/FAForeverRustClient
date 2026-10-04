@@ -86,6 +86,30 @@ describe("co-op campaign ordering", () => {
         translateIn("en", key, values);
       expect(displayScenarioName(entry, "en", t)).toBe("Vanilla Aeon Campaign");
     });
+
+    it("localizes known campaigns even when API category and faction metadata differ", () => {
+      const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
+        translateIn("ru", key, values);
+      const entries = [
+        scenario("Vanilla UEF Campaign", "custom", "custom", 1),
+        scenario("Vanilla Cybran Campaign", "custom", "custom", 2),
+        scenario("Vanilla Aeon Campaign", "custom", "custom", 3),
+        scenario("Forged Alliance Campaign", "uef", "custom", 4),
+        scenario("Coalition Campaign", "custom", "sc", 5),
+        scenario("Seraphim Campaign", "custom", "scfa", 6),
+        scenario("Standalone missions", "custom", "sc", 7),
+      ];
+
+      expect(entries.map((entry) => displayScenarioName(entry, "ru", t))).toEqual([
+        "Кампания ОФЗ (SC)",
+        "Кампания Кибран (SC)",
+        "Кампания Эон (SC)",
+        "Кампания SCFA (Forged Alliance)",
+        "Кампания Коалиции",
+        "Кампания Серафим",
+        "Отдельные миссии",
+      ]);
+    });
   });
 
   it("keeps the groups apart even when the API sends no useful order", () => {
