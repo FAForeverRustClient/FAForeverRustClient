@@ -81,3 +81,60 @@ export function applyMention(
     caret: mention.start + inserted.length,
   };
 }
+
+/**
+ * How long a pause still keeps two posts from one person in one block: the
+ * Chat tab's window (`continuesPrevious`), so a run reads the same in both.
+ */
+const CONTINUATION_SECONDS = 5 * 60;
+
+/** The fields of a post the row layout decides on. */
+export interface PostShape {
+  author: string;
+  at: number | null;
+  system: boolean;
+  replyTo: unknown;
+}
+
+/**
+ * Whether a post continues the one above it, and so carries no name or
+ * avatar of its own. The Chat tab's rule: the same person, a few minutes
+ * apart, and neither an announcement nor a reply, which needs a name above
+ * its quote to make sense.
+ */
+export function postContinues(post: PostShape, previous: PostShape | undefined): boolean {
+  if (previous === undefined) return false;
+  if (post.system || previous.system) return false;
+  if (post.replyTo !== null) return false;
+  if (post.author !== previous.author) return false;
+  if (post.at === null || previous.at === null) return false;
+  const gap = post.at - previous.at;
+  return gap >= 0 && gap <= CONTINUATION_SECONDS;
+}
+
+/**
+ * A post's clock time as the Chat tab prints it, honouring the same 24-hour
+ * setting. Empty for a post without a time.
+ */
+export function postClock(at: number | null, use24HourTime: boolean): string {
+  if (at === null) return "";
+  const date = new Date(at * 1000);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: !use24HourTime });
+}
+
+/**
+ * Whether a post prints its time: only when the minute changed since the post
+ * above, as in the Chat tab, so a quick exchange is not a column of the same
+ * number.
+ */
+export function postShowsTime(
+  post: PostShape,
+  previous: PostShape | undefined,
+  use24HourTime: boolean,
+): boolean {
+  const clock = postClock(post.at, use24HourTime);
+  if (clock === "") return false;
+  return previous === undefined || clock !== postClock(previous.at, use24HourTime);
+}
