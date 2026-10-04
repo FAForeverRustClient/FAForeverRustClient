@@ -646,6 +646,142 @@ fn pick_density(
     }
 }
 
+/// Split a multi-map run into the runs that actually have to be started (#414).
+///
+/// The generator's own `--num-to-generate` only varies the seed: every map in
+/// the batch shares the one style, symmetry and density that
+/// [`build_arguments`] picked out of the user's selection. When the user
+/// selected several candidates for anything, that is not what they asked for,
+/// so the batch becomes one single-map run per map instead, each with its own
+/// fresh pick for every parameter.
+///
+/// Everything else stays one run: a single map, a pinned seed (which already
+/// forces one map), raw arguments, a generation-type preset (which ignores the
+/// style options), or a selection with nothing to choose between. There the
+/// generator's own batching is the cheaper way to the same result.
+///
+/// `next_random` is the source of every pick, injected so the choice of
+/// randomness stays with the caller and tests can drive it deterministically.
+pub fn plan_batch(
+    options: &GeneratorOptions,
+    mut next_random: impl FnMut() -> u64,
+) -> Vec<GeneratorOptions> {
+    let count = options.num_to_generate.unwrap_or(1);
+    let generator_batches_itself = count <= 1
+        || !options.seed.is_empty()
+        || !options.command_line_args.is_empty()
+        || options.generation_type.flag().is_some()
+        || !has_choices_to_reroll(options);
+    if generator_batches_itself {
+        return vec![options.clone()];
+    }
+    (0..count)
+        .map(|_| resolve_choices(options, &mut next_random))
+        .collect()
+}
+
+/// Whether any parameter has more than one candidate left to pick from.
+fn has_choices_to_reroll(options: &GeneratorOptions) -> bool {
+    let several = |single: &str, multi: &[String]| single.is_empty() && multi.len() > 1;
+    let range = |single: Option<f32>, min: Option<f32>, max: Option<f32>| {
+        single.is_none()
+            && matches!((min, max), (Some(a), Some(b)) if (a - b).abs() >= f32::EPSILON)
+    };
+    several(&options.symmetry, &options.symmetries)
+        || several(&options.style, &options.styles)
+        || several(&options.terrain_style, &options.terrain_styles)
+        || several(&options.texture_style, &options.texture_styles)
+        || several(&options.resource_style, &options.resource_styles)
+        || several(&options.prop_style, &options.prop_styles)
+        || range(
+            options.reclaim_density,
+            options.reclaim_density_min,
+            options.reclaim_density_max,
+        )
+        || range(
+            options.resource_density,
+            options.resource_density_min,
+            options.resource_density_max,
+        )
+}
+
+/// One map's worth of options: every multi-selection collapsed to a single
+/// pick, every density range to a single value, and the map count to one.
+///
+/// Applies the same narrowing [`build_arguments`] does (symmetries that can
+/// make the requested teams, styles that suit the map's shape) so a re-rolled
+/// map is never worse off than the single pick would have been.
+fn resolve_choices(
+    options: &GeneratorOptions,
+    next_random: &mut impl FnMut() -> u64,
+) -> GeneratorOptions {
+    let mut pick = |single: &str, multi: &[String]| -> String {
+        if !single.is_empty() || multi.is_empty() {
+            return single.to_string();
+        }
+        let index = (next_random() % multi.len() as u64) as usize;
+        multi[index].clone()
+    };
+
+    let symmetries = match options.num_teams {
+        Some(teams) => retain_or_keep(&options.symmetries, |symmetry| {
+            symmetry_fits_teams(symmetry, teams)
+        }),
+        None => options.symmetries.clone(),
+    };
+    let styles = match (options.map_size, options.spawn_count, options.num_teams) {
+        (Some(size), Some(spawns), Some(teams)) => retain_or_keep(&options.styles, |style| {
+            style_constraints(style).matches(size, spawns, teams)
+        }),
+        _ => options.styles.clone(),
+    };
+
+    let mut resolved = options.clone();
+    resolved.num_to_generate = None;
+    resolved.symmetry = pick(&options.symmetry, &symmetries);
+    resolved.style = pick(&options.style, &styles);
+    resolved.terrain_style = pick(&options.terrain_style, &options.terrain_styles);
+    resolved.texture_style = pick(&options.texture_style, &options.texture_styles);
+    resolved.resource_style = pick(&options.resource_style, &options.resource_styles);
+    resolved.prop_style = pick(&options.prop_style, &options.prop_styles);
+    resolved.symmetries.clear();
+    resolved.styles.clear();
+    resolved.terrain_styles.clear();
+    resolved.texture_styles.clear();
+    resolved.resource_styles.clear();
+    resolved.prop_styles.clear();
+
+    let mut density =
+        |single: Option<f32>, min: Option<f32>, max: Option<f32>| match (single, min, max) {
+            (Some(value), _, _) => Some(value),
+            (None, Some(a), Some(b)) => {
+                let (low, high) = (a.min(b), a.max(b));
+                // The top 24 bits are exactly what an f32 mantissa can hold, so
+                // every fraction in [0, 1) is reachable and none is rounded to 1.
+                let fraction = (next_random() >> 40) as f32 / (1u64 << 24) as f32;
+                Some(low + fraction * (high - low))
+            }
+            (None, Some(a), None) => Some(a),
+            (None, None, Some(b)) => Some(b),
+            (None, None, None) => None,
+        };
+    resolved.reclaim_density = density(
+        options.reclaim_density,
+        options.reclaim_density_min,
+        options.reclaim_density_max,
+    );
+    resolved.resource_density = density(
+        options.resource_density,
+        options.resource_density_min,
+        options.resource_density_max,
+    );
+    resolved.reclaim_density_min = None;
+    resolved.reclaim_density_max = None;
+    resolved.resource_density_min = None;
+    resolved.resource_density_max = None;
+    resolved
+}
+
 /// Build the generator's arguments (everything after `java -jar <jar>`).
 ///
 /// Reproduces the Java client's `GeneratorCommand.getCommand()` including its
@@ -1835,6 +1971,114 @@ mod tests {
                     .any(|w| w == ["--terrain-symmetry", "POINT4"]),
                 "seed {seed} picked an incompatible symmetry: {args:?}"
             );
+        }
+    }
+
+    /// A deterministic stand-in for the random source (SplitMix64 from a fixed
+    /// seed), so the test is repeatable without depending on a real RNG.
+    fn seeded_random() -> impl FnMut() -> u64 {
+        let mut state = 0x5eed_u64;
+        move || {
+            state = state.wrapping_add(0x9e37_79b9_7f4a_7c15);
+            let mut z = state;
+            z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+            z ^ (z >> 31)
+        }
+    }
+
+    #[test]
+    fn a_batch_with_several_choices_rerolls_every_parameter_per_map() {
+        // #414: five maps from two styles, two textures and a density range
+        // used to come back as five seeds of one identical configuration.
+        let options = GeneratorOptions {
+            num_to_generate: Some(5),
+            terrain_styles: vec!["HILLY".into(), "VALLEY".into()],
+            texture_styles: vec!["LUSH".into(), "FROST".into(), "MOON".into()],
+            symmetries: vec!["POINT2".into(), "XZ".into()],
+            reclaim_density_min: Some(10.0),
+            reclaim_density_max: Some(100.0),
+            ..Default::default()
+        };
+        let mut calls = 0u32;
+        let mut random = seeded_random();
+        let batch = plan_batch(&options, || {
+            calls += 1;
+            random()
+        });
+
+        assert_eq!(batch.len(), 5, "one run per requested map");
+        // Each map drew its own symmetry, terrain, texture and density.
+        assert_eq!(calls, 5 * 4);
+        for map in &batch {
+            assert_eq!(map.num_to_generate, None, "each run makes a single map");
+            assert!(map.terrain_styles.is_empty() && map.texture_styles.is_empty());
+            assert!(map.symmetries.is_empty());
+            assert!(options.terrain_styles.contains(&map.terrain_style));
+            assert!(options.texture_styles.contains(&map.texture_style));
+            assert!(options.symmetries.contains(&map.symmetry));
+            let density = map.reclaim_density.expect("a density was picked");
+            assert!((10.0..=100.0).contains(&density));
+            assert_eq!(map.reclaim_density_min, None);
+        }
+        let distinct = |field: fn(&GeneratorOptions) -> String| {
+            batch
+                .iter()
+                .map(field)
+                .collect::<std::collections::HashSet<_>>()
+                .len()
+        };
+        assert!(distinct(|m| m.terrain_style.clone()) > 1);
+        assert!(distinct(|m| m.texture_style.clone()) > 1);
+        assert!(distinct(|m| m.symmetry.clone()) > 1);
+
+        // And each resolved map builds a command line with exactly its pick.
+        let args = build_arguments(
+            MIN_MODERN_CLI_VERSION,
+            None,
+            &batch[0],
+            VersionPolicy::default(),
+        )
+        .unwrap();
+        assert!(!args.iter().any(|arg| arg == "--num-to-generate"));
+    }
+
+    #[test]
+    fn a_reroll_still_skips_choices_that_cannot_work() {
+        let options = GeneratorOptions {
+            num_to_generate: Some(6),
+            num_teams: Some(2),
+            symmetries: vec!["POINT3".into(), "POINT4".into(), "XZ".into()],
+            ..Default::default()
+        };
+        for map in plan_batch(&options, seeded_random()) {
+            assert_ne!(map.symmetry, "POINT3", "POINT3 cannot make two teams");
+        }
+    }
+
+    #[test]
+    fn a_batch_without_anything_to_reroll_stays_one_generator_run() {
+        let single_choices = GeneratorOptions {
+            num_to_generate: Some(4),
+            terrain_styles: vec!["HILLY".into()],
+            texture_style: "LUSH".into(),
+            texture_styles: vec!["LUSH".into(), "FROST".into()],
+            ..Default::default()
+        };
+        let pinned_seed = GeneratorOptions {
+            seed: "42".into(),
+            styles: vec!["BASIC".into(), "VALLEY".into()],
+            num_to_generate: Some(4),
+            ..Default::default()
+        };
+        let one_map = GeneratorOptions {
+            styles: vec!["BASIC".into(), "VALLEY".into()],
+            num_to_generate: Some(1),
+            ..Default::default()
+        };
+        for options in [single_choices, pinned_seed, one_map] {
+            let batch = plan_batch(&options, || panic!("nothing to pick"));
+            assert_eq!(batch, vec![options], "left to the generator's own batching");
         }
     }
 
