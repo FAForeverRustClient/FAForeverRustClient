@@ -88,6 +88,24 @@ export function OrganiserPanel(props: OrganiserPanelProps) {
         <p className="muted">{t("tournaments.organisers.lastOne")}</p>
       )}
 
+      {/* The website's "add myself". Manage is open to whoever has organiser
+          rights, and a director on an official event or a site admin has them
+          without being on the list; one click puts their own account on it,
+          addressed by the id the service already told us. */}
+      {event.viewer.fafId !== null &&
+        !event.organiserAccounts.some((organiser) => organiser.fafId === event.viewer.fafId) && (
+          <Button
+            type="button"
+            disabled={busy}
+            title={t("tournaments.organisers.addMyselfHint")}
+            onClick={() => {
+              if (event.viewer.fafId !== null) props.onAdd(event.viewer.fafId, event.viewer.fafName);
+            }}
+          >
+            {t("tournaments.organisers.addMyself")}
+          </Button>
+        )}
+
       {adding ? (
         <AccountPicker
           label={t("tournaments.organisers.fafName")}

@@ -3390,6 +3390,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.formation.open": "Spieler bilden ihre Teams selbst",
   "tournaments.formation.draft": "Kapitäne wählen abwechselnd",
   "tournaments.organisers.add": "Organisator hinzufügen",
+  "tournaments.organisers.addMyself": "Mich selbst hinzufügen",
+  "tournaments.organisers.addMyselfHint": "Du kannst dieses Event leiten, ohne auf der Liste der Organisatoren zu stehen. Damit kommt dein Konto auf die Liste, du wirst genannt und kannst wie jeder andere wieder entfernt werden.",
   "tournaments.organisers.fafName": "FAF-Konto",
   "tournaments.organisers.fafNamePlaceholder": "Namen eintippen",
   "tournaments.organisers.hidden": "Vor Spielern verborgen",
