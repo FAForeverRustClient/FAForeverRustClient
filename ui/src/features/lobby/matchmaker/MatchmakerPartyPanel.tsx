@@ -301,8 +301,8 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
                   type="button"
                   className="party-seat-kick"
                   disabled={searching}
-                  title={searching ? t("lobby.party.lockedWhileSearching") : `Remove ${nameFor(member)}`}
-                  aria-label={`Remove ${nameFor(member)}`}
+                  title={searching ? t("lobby.party.lockedWhileSearching") : t("lobby.party.removeMember", { name: nameFor(member) })}
+                  aria-label={t("lobby.party.removeMember", { name: nameFor(member) })}
                   onClick={() => ipc.send({ kind: "Lobby", command: { type: "kickPartyMember", payload: { playerId: member.playerId } } })}
                 >
                   <Icon name="close" size={13} />

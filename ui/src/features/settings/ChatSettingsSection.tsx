@@ -134,8 +134,8 @@ export function ChatSettingsSection() {
                 {player}
                 <button
                   type="button"
-                  aria-label={`Unmute ${player}`}
-                  title={`Unmute ${player}`}
+                  aria-label={t("settings.chat.unmutePlayer", { name: player })}
+                  title={t("settings.chat.unmutePlayer", { name: player })}
                   onClick={() => setPlayerMuted(player, false)}
                 >
                   <Icon name="close" size={12} />
@@ -185,8 +185,8 @@ export function ChatSettingsSection() {
                 {item}
                 <button
                   type="button"
-                  aria-label={`Remove ${item}`}
-                  title={`Remove ${item}`}
+                  aria-label={t("settings.chat.removeChannel", { name: item })}
+                  title={t("settings.chat.removeChannel", { name: item })}
                   onClick={() => setAutoJoinChannel(item, false)}
                 >
                   <Icon name="close" size={12} />
