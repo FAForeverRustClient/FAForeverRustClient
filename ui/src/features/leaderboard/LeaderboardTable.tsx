@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import type { LeaderboardEntry, PlayerRatings } from "../../ipc/bindings";
 import { t as translate, type MessageKey } from "../../i18n";
@@ -275,6 +275,15 @@ export function LeaderboardTable({
   const [shown, setShown] = useState(rowBatch ?? Infinity);
   // A new list, a new filter or a new order starts from the top batch again.
   useEffect(() => setShown(rowBatch ?? Infinity), [entries, rowBatch, sort]);
+  // ...and from the top of the table (#427). The pager's own scroll reset
+  // cannot reach this: it resets the nearest scrolling *ancestor* of the
+  // pager, and the rows scroll in their own box beside it, so page two opened
+  // wherever page one had been left. A layout effect, so the new rows are
+  // never painted at the old offset first.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [entries, sort]);
   const sorted = useMemo(
     () => sortLeaderboard(entries, sort.column, sort.descending, activeBoard, crossRatings),
     [activeBoard, crossRatings, entries, sort],
@@ -297,7 +306,7 @@ export function LeaderboardTable({
   if (sorted.length === 0) return <div className="leaderboard-empty muted">{emptyMessage}</div>;
 
   return (
-    <div className="leaderboard-table-scroll">
+    <div className="leaderboard-table-scroll" ref={scrollRef}>
       <table className="leaderboard-table">
         <thead>
           <tr>
