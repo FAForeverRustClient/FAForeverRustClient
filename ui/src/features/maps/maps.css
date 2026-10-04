@@ -172,7 +172,7 @@
   color: var(--color-muted);
 }
 
-/* A card's rating corner (#416): star, average, review count. The chip shape
+/* A card's rating corner (issue 416): star, average, review count. The chip shape
    of the featured badge, so the two read as one family where they stack on
    the vault artwork. */
 .map-rating {

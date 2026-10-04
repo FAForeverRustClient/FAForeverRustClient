@@ -1143,7 +1143,7 @@ mod tests {
         };
         let filter = build_filter(&q, None, Some("Nuggets")).unwrap();
         assert!(
-            filter.contains(r#"playerStats.player.login=="*Nuggets*""#),
+            filter.contains(r#"playerStats.player.login=="Nuggets""#),
             "{filter}"
         );
         assert!(filter.contains(r#"name=="*Cup*""#), "{filter}");
