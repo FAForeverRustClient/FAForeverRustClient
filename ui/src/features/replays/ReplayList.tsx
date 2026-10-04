@@ -5,6 +5,7 @@ import {
   mapThumbnailCandidates,
   normalizeMapName,
 } from "../../shared/mapPresentation";
+import { hourCycleOptions } from "../../shared/format/clock";
 import { clientIntlTag, formatAgeOrDate } from "../../shared/format/dates";
 import { useAppStore } from "../../store/store";
 import type { MessageKey } from "../../i18n";
@@ -77,7 +78,7 @@ export function formatReplayListTime(value: string | number, fallback = "N/A"): 
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? fallback
-    : date.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" });
+    : date.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit", ...hourCycleOptions() });
 }
 
 export function formatReplayListAge(value: string | number, fallback = "N/A"): string {

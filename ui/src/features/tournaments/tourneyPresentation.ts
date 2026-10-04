@@ -23,6 +23,7 @@ import type {
   TourneyStatus,
 } from "../../ipc/bindings";
 import { thirdPlaceOn } from "../../shared/rules/tourneyRules";
+import { hourCycleOptions } from "../../shared/format/clock";
 
 export const STATUS_LABELS: Record<TourneyStatus, MessageKey> = {
   draft: "tournaments.status.draft",
@@ -61,6 +62,7 @@ export function formatMoment(seconds: number | null, fallback: string): string {
   return new Date(seconds * 1000).toLocaleString("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
+    ...hourCycleOptions(),
   });
 }
 

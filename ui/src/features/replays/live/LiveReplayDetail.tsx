@@ -37,6 +37,7 @@ import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
 import { liveReplayTeams } from "./LiveReplayCards";
 import { LiveWatchButton } from "./LiveReplayRow";
 import { gameStartedAt, prettyGameType } from "../../../shared/liveReplayModel";
+import { hourCycleOptions } from "../../../shared/format/clock";
 import { clientIntlTag } from "../../../shared/format/dates";
 import { formatRelativeDuration } from "../../../shared/format/durations";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -127,7 +128,7 @@ export function LiveReplayDetail({
   if (started) {
     facts.push({
       label: t("replays.detail.time"),
-      value: started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" }),
+      value: started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit", ...hourCycleOptions() }),
     });
     facts.push({
       label: t("replays.live.runningFor"),

@@ -13,6 +13,7 @@ import { useAppStore } from "../../../store/store";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
 import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { hourCycleOptions } from "../../../shared/format/clock";
 import { clientIntlTag } from "../../../shared/format/dates";
 
 /**
@@ -335,7 +336,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
   const cells = [
     <td key={0}><LiveMapThumbnail mapName={game.map} presentation={presentation} /></td>,
     <td key={1} className="live-start-cell">
-      <strong>{started ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit" }) : "N/A"}</strong>
+      <strong>{started ? started.toLocaleTimeString(clientIntlTag(), { hour: "2-digit", minute: "2-digit", ...hourCycleOptions() }) : "N/A"}</strong>
       <LiveReplayAge game={game} now={ageNow} />
     </td>,
     <td key={2}>
