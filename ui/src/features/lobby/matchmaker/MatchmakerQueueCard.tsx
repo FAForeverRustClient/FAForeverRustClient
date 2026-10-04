@@ -206,11 +206,17 @@ export function MatchmakerQueueCard({
             )}
           </span>
           <span><Icon name="play" size={14} /> {t("lobby.matchmaker.activeCount", { count: activeGames })}</span>
-          {inRange !== null && (
-            <span title={t("lobby.matchmaker.inRangeHint")}>
-              <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange })}
-            </span>
-          )}
+          {/* Always a line, invisible while there is no answer. The answer
+              needs your rating, which arrives after the tab has drawn, and a
+              line added then made every card taller and pushed the page
+              down a moment after it opened. */}
+          <span
+            className={inRange === null ? "matchmaker-queue-fact-pending" : undefined}
+            title={inRange === null ? undefined : t("lobby.matchmaker.inRangeHint")}
+            aria-hidden={inRange === null || undefined}
+          >
+            <Icon name="check" size={14} /> {t("lobby.matchmaker.inRange", { count: inRange ?? 0 })}
+          </span>
           {/* Only for the size, which is the one the note names. A card
               disabled because somebody else leads the party said "party too
               large" as well, which is a different fact and not true. */}

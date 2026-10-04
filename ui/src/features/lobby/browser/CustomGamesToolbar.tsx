@@ -39,6 +39,10 @@ interface Props {
   onOpenFilters: () => void;
   onHost: () => void;
   onRefresh?: () => void;
+  /** Whether the details panel beside the list is folded away. */
+  detailHidden?: boolean;
+  /** Folds the details panel away or brings it back. */
+  onToggleDetails?: () => void;
 }
 
 export function CustomGamesToolbar(props: Props) {
@@ -144,6 +148,21 @@ export function CustomGamesToolbar(props: Props) {
       {props.onRefresh && (
         <Button onClick={props.onRefresh} title={t("lobby.coop.refresh")}>
           <Icon name="refresh" size={15} />
+        </Button>
+      )}
+      {/* The details panel's fold, beside the view switch: the other choice
+          about how this list is laid out. It used to be a tab hanging in the
+          gap between the list and the panel, which touched the list and
+          looked stranded once the panel was folded away. */}
+      {props.onToggleDetails && (
+        <Button
+          className="play-detail-toggle"
+          aria-pressed={!props.detailHidden}
+          aria-label={t(props.detailHidden ? "lobby.browser.showDetails" : "lobby.browser.hideDetails")}
+          title={t(props.detailHidden ? "lobby.browser.showDetails" : "lobby.browser.hideDetails")}
+          onClick={props.onToggleDetails}
+        >
+          <Icon name="panelRight" size={15} />
         </Button>
       )}
     </div>

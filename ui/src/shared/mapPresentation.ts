@@ -277,6 +277,16 @@ export function isUnknownVaultMap(mapName: string): boolean {
 }
 
 /**
+ * Did this listing name a generated map only as the generator, without the
+ * seed? The vault records most generated games that way, and a name without
+ * its seed can neither be generated nor matched to a preview: the replay file
+ * has the whole name, as it has a co-op mission's.
+ */
+export function isSeedlessGeneratedMap(mapName: string): boolean {
+  return isGeneratedMap(mapName) && !extractGeneratedMapSeed(mapName);
+}
+
+/**
  * Prefer the technical map name from a matching local replay when a vault
  * replay only contains the generic Neroxis display name. The technical name
  * is the key used by the locally generated preview cache.

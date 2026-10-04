@@ -208,6 +208,25 @@ pub(crate) async fn dispatch_and_wait(
     core.dispatch_and_wait(command).await
 }
 
+/// The webview's main thread was busy for this much of the last few seconds,
+/// so clicks waited. Written to the client log beside the backend's own
+/// late-command warnings, so a client that seemed stuck says which side it
+/// was stuck on. `place` is the open tab, cut short in case it is not.
+#[tauri::command]
+pub(crate) fn report_webview_stall(
+    busy_milliseconds: u32,
+    longest_milliseconds: u32,
+    place: String,
+) {
+    let place: String = place.chars().take(48).collect();
+    tracing::warn!(
+        busy_milliseconds,
+        longest_milliseconds,
+        %place,
+        "the webview was busy for most of the last five seconds; clicks waited"
+    );
+}
+
 /// Backend → UI: a consistent snapshot for initial hydration.
 #[tauri::command]
 pub(crate) fn snapshot(core: tauri::State<'_, Core>) -> VersionedSnapshot {

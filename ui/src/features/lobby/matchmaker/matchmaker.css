@@ -729,6 +729,11 @@
   opacity: 0.7;
 }
 
+/* Holds the line's height until the answer is known. See the card. */
+.matchmaker-queue-fact-pending {
+  visibility: hidden;
+}
+
 .matchmaker-queue-check {
   display: grid;
   width: 20px;

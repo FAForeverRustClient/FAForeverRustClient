@@ -156,6 +156,7 @@ pub fn run() {
             commands::read_latest_log,
             commands::webview_engine,
             commands::system_date_pattern,
+            commands::report_webview_stall,
             commands::exit_app
         ])
         .run(tauri::generate_context!())

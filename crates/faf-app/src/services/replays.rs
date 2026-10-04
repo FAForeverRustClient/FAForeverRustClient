@@ -441,7 +441,19 @@ const LOOKUP_BATCH: usize = 25;
 /// the vault does not answer for is recorded as missing rather than left
 /// pending: a running game the API has not written a row for yet is a result,
 /// and asking again every time the list refreshes is not.
+///
+/// The claim is checked here, too, not only promised: ids already claimed or
+/// answered are dropped before anything is asked. A burst of overlapping
+/// calls used to look every game up as many times as it was asked about.
 async fn look_up_many(uids: Vec<i32>, ctx: &ServiceCtx, out: &EventSink) {
+    let uids: Vec<i32> = out.with_state(|state| {
+        uids.into_iter()
+            .filter(|uid| !state.replays.online_lookups.contains_key(uid))
+            .collect()
+    });
+    if uids.is_empty() {
+        return;
+    }
     for uid in &uids {
         out.emit(ReplayEvent::OnlineLookupStarted { uid: *uid });
     }
