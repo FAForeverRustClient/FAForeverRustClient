@@ -34,6 +34,7 @@ const decoded = (overrides: Partial<DecodedMapName> = {}): DecodedMapName => ({
   style: null,
   visibility: null,
   generatedAt: null,
+  options: null,
   ...overrides,
 });
 

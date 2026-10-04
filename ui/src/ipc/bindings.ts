@@ -2013,6 +2013,19 @@ export type DecodedMapName = {
 	 *  the caller wants anyway.
 	 */
 	generatedAt: string | null,
+	/**
+	 *  The generator settings this map was made with, ready to be saved as a
+	 *  preset (#421): size, spawns, teams, symmetry, style and densities, or
+	 *  the visibility preset of a tournament/blind/unexplored map. Never the
+	 *  seed or the release, because a preset is a recipe for *new* maps.
+	 *
+	 *  `None` when the name does not carry the whole recipe: no option bytes
+	 *  at all (the triple would only be the generator's defaults, guessed),
+	 *  an ordinal from a newer generator than this client's tables, or a
+	 *  layout this decoder does not recognise. Half a recipe saved as if it
+	 *  were the whole one would generate different maps without saying so.
+	 */
+	options: GeneratorOptions | null,
 };
 
 /**  The style half of a decoded name. */

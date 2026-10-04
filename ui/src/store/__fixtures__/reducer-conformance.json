@@ -44508,7 +44508,43 @@
                       "style": "MOUNTAIN_RANGE"
                     },
                     "visibility": null,
-                    "generatedAt": null
+                    "generatedAt": null,
+                    "options": {
+                      "version": null,
+                      "spawnCount": 6,
+                      "numTeams": 2,
+                      "mapSize": 512,
+                      "seed": "",
+                      "generationType": "casual",
+                      "symmetry": "",
+                      "symmetries": [
+                        "POINT2"
+                      ],
+                      "style": "",
+                      "styles": [
+                        "MOUNTAIN_RANGE"
+                      ],
+                      "terrainStyle": "",
+                      "terrainStyles": [],
+                      "textureStyle": "",
+                      "textureStyles": [],
+                      "resourceStyle": "",
+                      "resourceStyles": [],
+                      "propStyle": "",
+                      "propStyles": [],
+                      "reclaimDensity": null,
+                      "reclaimDensityMin": null,
+                      "reclaimDensityMax": null,
+                      "resourceDensity": null,
+                      "resourceDensityMin": null,
+                      "resourceDensityMax": null,
+                      "numToGenerate": null,
+                      "debug": false,
+                      "visualize": false,
+                      "previewPath": "",
+                      "outputPath": "",
+                      "commandLineArgs": ""
+                    }
                   }
                 }
               }
@@ -44521,6 +44557,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -44697,6 +44769,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -44946,6 +45054,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -45232,6 +45376,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -45446,6 +45626,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
@@ -45663,6 +45879,42 @@
                 "generatedAt": null,
                 "mapSize": 512,
                 "numTeams": 2,
+                "options": {
+                  "commandLineArgs": "",
+                  "debug": false,
+                  "generationType": "casual",
+                  "mapSize": 512,
+                  "numTeams": 2,
+                  "numToGenerate": null,
+                  "outputPath": "",
+                  "previewPath": "",
+                  "propStyle": "",
+                  "propStyles": [],
+                  "reclaimDensity": null,
+                  "reclaimDensityMax": null,
+                  "reclaimDensityMin": null,
+                  "resourceDensity": null,
+                  "resourceDensityMax": null,
+                  "resourceDensityMin": null,
+                  "resourceStyle": "",
+                  "resourceStyles": [],
+                  "seed": "",
+                  "spawnCount": 6,
+                  "style": "",
+                  "styles": [
+                    "MOUNTAIN_RANGE"
+                  ],
+                  "symmetries": [
+                    "POINT2"
+                  ],
+                  "symmetry": "",
+                  "terrainStyle": "",
+                  "terrainStyles": [],
+                  "textureStyle": "",
+                  "textureStyles": [],
+                  "version": null,
+                  "visualize": false
+                },
                 "seed": "12345",
                 "spawnCount": 6,
                 "style": {
