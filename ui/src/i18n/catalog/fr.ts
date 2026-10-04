@@ -3366,6 +3366,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "tournaments.formation.open": "Les joueurs forment leurs propres équipes",
   "tournaments.formation.draft": "Les capitaines choisissent à tour de rôle",
   "tournaments.organisers.add": "Ajouter un organisateur",
+  "tournaments.organisers.addMyself": "M’ajouter",
+  "tournaments.organisers.addMyselfHint": "Vous pouvez gérer cet événement sans figurer sur sa liste d’organisateurs. Ceci y ajoute votre compte : vous êtes crédité et pouvez être retiré comme n’importe qui.",
   "tournaments.organisers.fafName": "Compte FAF",
   "tournaments.organisers.fafNamePlaceholder": "Commencez à taper un nom",
   "tournaments.organisers.hidden": "Masqué pour les joueurs",

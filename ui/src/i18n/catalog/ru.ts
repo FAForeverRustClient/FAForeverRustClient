@@ -3623,6 +3623,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.formation.open": "Игроки собирают команды сами",
   "tournaments.formation.draft": "Капитаны выбирают по очереди",
   "tournaments.organisers.add": "Добавить организатора",
+  "tournaments.organisers.addMyself": "Добавить себя",
+  "tournaments.organisers.addMyselfHint": "Вы можете вести это событие, не будучи в списке организаторов. Это добавит ваш аккаунт в список: вас будут указывать, и вас можно будет убрать, как любого другого.",
   "tournaments.organisers.fafName": "Учётная запись FAF",
   "tournaments.organisers.fafNamePlaceholder": "Начните вводить имя",
   "tournaments.organisers.hidden": "Скрыт от игроков",

@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import type { MatchVeto } from "../../../ipc/bindings";
 import { match, team, tourney } from "../fixtures";
-import { myVetoSteps, vetoLog } from "./vetoPresentation";
+import { myVetoSteps, vetoLog, vetoSettled } from "./vetoPresentation";
 
 const run = (over: Partial<MatchVeto> = {}): MatchVeto => ({
   remaining: ["m4", "m5"],
@@ -70,5 +70,39 @@ describe("myVetoSteps", () => {
 
   it("owes nothing once the match has a result", () => {
     expect(myVetoSteps(event, match({ veto: run(), status: "done" }))).toBe(0);
+  });
+});
+
+describe("vetoSettled", () => {
+  const event = tourney({
+    teamSize: 1,
+    veto: { enabled: true, mode: "upfront", teamA: "lowerA", revealBans: false },
+    factionVeto: { enabled: true, bans: 1, picks: 2 },
+  });
+  const factions = (result: boolean) => ({
+    bans: 1,
+    picks: 2,
+    games: [
+      {
+        game: 1,
+        team1Done: result,
+        team2Done: result,
+        result: result ? { team1: "uef" as const, team2: "aeon" as const } : null,
+        mine: null,
+        next: null,
+      },
+    ],
+  });
+
+  it("waits for the faction choices when the map run is over", () => {
+    expect(vetoSettled(event, match({ veto: run({ done: true }), factionVeto: factions(false) }))).toBe(false);
+    expect(vetoSettled(event, match({ veto: run({ done: true }), factionVeto: factions(true) }))).toBe(true);
+  });
+
+  it("reads a single run on its own", () => {
+    expect(vetoSettled(event, match({ veto: run({ done: false }) }))).toBe(false);
+    expect(vetoSettled(event, match({ veto: run({ done: true }) }))).toBe(true);
+    expect(vetoSettled(event, match({ factionVeto: factions(true) }))).toBe(true);
+    expect(vetoSettled(event, match({ status: "done", veto: run({ done: false }) }))).toBe(true);
   });
 });

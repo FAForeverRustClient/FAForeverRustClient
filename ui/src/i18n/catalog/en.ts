@@ -3689,6 +3689,8 @@ export const en = {
   "tournaments.formation.open": "Players form their own teams",
   "tournaments.formation.draft": "Captains pick in turn",
   "tournaments.organisers.add": "Add an organiser",
+  "tournaments.organisers.addMyself": "Add myself",
+  "tournaments.organisers.addMyselfHint": "You can run this event without being on its list of organisers. This puts your account on it, so you are credited and can be removed like anyone else.",
   "tournaments.organisers.fafName": "FAF account",
   "tournaments.organisers.fafNamePlaceholder": "Start typing a name",
   "tournaments.organisers.hidden": "Hidden from players",
