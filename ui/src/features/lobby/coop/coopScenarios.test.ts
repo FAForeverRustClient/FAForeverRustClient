@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CoopScenario } from "../../../ipc/bindings";
 import { translateIn } from "../../../i18n";
 import {
+  displayScenarioOptionLabel,
   displayScenarioName,
   scenarioBadge,
   sortCoopScenarios,
@@ -109,6 +110,40 @@ describe("co-op campaign ordering", () => {
         "Кампания Серафим",
         "Отдельные миссии",
       ]);
+    });
+
+    it("does not repeat a badge already present in the translated campaign name", () => {
+      const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
+        translateIn("ru", key, values);
+
+      expect(
+        displayScenarioOptionLabel(
+          scenario("Vanilla UEF Campaign", "uef", "sc", 1),
+          "ru",
+          t,
+        ),
+      ).toBe("Кампания ОФЗ (SC)");
+      expect(
+        displayScenarioOptionLabel(
+          scenario("Seraphim Campaign", "seraphim", "custom", 2),
+          "ru",
+          t,
+        ),
+      ).toBe("Кампания Серафим");
+      expect(
+        displayScenarioOptionLabel(
+          scenario("Forged Alliance Campaign", "custom", "scfa", 3),
+          "ru",
+          t,
+        ),
+      ).toBe("Кампания SCFA (Forged Alliance) (Официальная)");
+      expect(
+        displayScenarioOptionLabel(
+          scenario("Coalition Campaign", "custom", "custom", 4),
+          "ru",
+          t,
+        ),
+      ).toBe("Кампания Коалиции (От сообщества)");
     });
   });
 

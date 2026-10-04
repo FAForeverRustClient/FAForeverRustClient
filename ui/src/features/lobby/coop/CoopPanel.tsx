@@ -31,8 +31,7 @@ import "../browser/custom-games.css";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { translateCoopMissionDescription, translateCoopMissionName } from "../../../i18n";
 import {
-  displayScenarioName,
-  scenarioBadge,
+  displayScenarioOptionLabel,
   sortCoopScenarios,
 } from "./coopScenarios";
 import "./coop.css";
@@ -370,8 +369,7 @@ export function CoopPanel({
               >
                 {scenarios.map((scenario) => (
                   <option key={scenario.id} value={scenario.id}>
-                    {displayScenarioName(scenario, locale, t)}
-                    {` (${t(`lobby.coop.badge.${scenarioBadge(scenario)}`)})`}
+                    {displayScenarioOptionLabel(scenario, locale, t)}
                   </option>
                 ))}
                 {orphanCount > 0 && (
