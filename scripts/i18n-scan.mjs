@@ -23,7 +23,7 @@
 //   node scripts/i18n-scan.mjs ui/src/features/maps --list    with the strings
 //   node scripts/i18n-scan.mjs --max 0         exit non-zero above a budget
 
-import { readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import { extname, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -47,7 +47,7 @@ const IGNORED_FILES = new Map([
   ["ui/src/features/training/RunMap.tsx", "marker type ids read out of the game's own map files"],
   ["ui/src/features/training/recording.ts", "the same marker type ids, on the analyser side"],
   ["ui/src/features/events/eventSubmission.ts", "the body of a GitHub issue, which is English wherever it is written from"],
-  ["ui/src/features/maps/MapPreviewZoom.tsx", "throw messages for a copy that falls back on its own; never rendered"],
+  ["ui/src/shared/components/MapPreviewZoom.tsx", "throw messages for a copy that falls back on its own; never rendered"],
 ]);
 
 // Attribute names whose values are machine tokens, never prose.
@@ -57,6 +57,17 @@ const TECHNICAL_ATTRS =
 // Object keys carrying machine tokens in this codebase's command shapes.
 const COMMAND_KEYS =
   /\b(?:kind|type|command|payload|leaderboard|sortBy|field|constraint|faction|outcome|status|mode|tab|channel|queueName|folderName|technicalName)\s*:\s*"[^"]*"/g;
+
+// The first argument of a console call: a log line for a developer reading
+// the devtools, never shown in the client. Removed before scanning, so the
+// rest of the call (a translated message passed on, say) is still read.
+const DEVELOPER_ONLY =
+  /(\bconsole\.(?:log|info|warn|error|debug)\(\s*)(?:"[^"\n]*"|'[^'\n]*'|`[^`\n]*`)/g;
+
+// A CSS selector handed to the DOM (`closest("button, a")`), which reads like
+// a short list of words but is matched against markup, never displayed.
+const SELECTOR_CALLS =
+  /(\.(?:closest|matches|querySelector(?:All)?)(?:<[\w\s|]+>)?\(\s*)(?:"[^"\n]*"|'[^'\n]*'|`[^`\n]*`)/g;
 
 // KeyboardEvent.key values: compared against, never displayed, and sentence
 // cased, so without this list they dominate the report.
@@ -87,13 +98,21 @@ const NOT_PROSE = [
   /^[^a-zA-Z]*$/,                                 // no letters at all
   // Proper nouns: a generator, a league division and a release kind, all of
   // them matched against or printed verbatim rather than translated.
-  /^(?:faf|coop|nomads|fafbeta|fafdevelop|ladder1v1|global|en|de|UEF|Aeon|Cybran|Seraphim|Neroxis|Grandmaster|Hotfix)$/,
+  // Twitch is the streaming service's name on the badge of a stream link.
+  /^(?:faf|coop|nomads|fafbeta|fafdevelop|ladder1v1|global|en|de|UEF|Aeon|Cybran|Seraphim|Neroxis|Grandmaster|Hotfix|Twitch)$/,
   /^[a-z][\w-]*(?:\s+[a-z][\w-]*)+$/,             // a CSS class list
   /(?:\|\||&&|===|!==|=>|\)\.)/,                  // half of a split expression
   /^[A-Z][a-z]+(?:[A-Z][a-z]+)+$/,                // PascalCase type or slice name
   /^[,;:.]/,                                      // half of a concatenation
   /^\)/,                                          // starts mid-expression
   /[<>{}]/,                                       // contains markup or a brace
+  // TypeScript read between two braces by the JSX passes: the text after one
+  // declaration's closing brace up to the next generic's `<`.
+  /^export\s/,                                    // export function Select<
+  /^(?:class|function|interface|enum)\s+[A-Z]/,   // a declaration's head
+  /\bas const\b|\bsatisfies\s+[A-Z]/,             // as const satisfies Record<
+  // A CSS value in an ordinary string, e.g. a grid template or a colour.
+  /\b(?:minmax|repeat|calc|var|color-mix|translate[XY]?|rotate|scale|url|(?:linear|radial)-gradient|rgba?|hsla?)\(/,
 ];
 
 function isProse(value) {
@@ -105,6 +124,31 @@ function isProse(value) {
   if (!/[a-z]/.test(text)) return false;
   // Either a sentence-cased word or several words: both read as copy.
   return /^[A-Z][a-z]/.test(text) || /\s[a-z]/.test(text);
+}
+
+/**
+ * Every string and template literal, in source order.
+ *
+ * One pass over all three quote kinds, rather than one per kind, is what
+ * keeps the pairing right. Separate passes paired the closing quote of one
+ * literal with the opening quote of the next whenever an empty string or the
+ * other quote kind sat in between: `stored === "" ? [] : stored.split(",")`
+ * reported ` ? [] : stored.split(` as copy, and `after: "\`"` turned the
+ * code up to the next backtick into a "template".
+ *
+ * A template's `${...}` slots are searched for literals of their own, so
+ * `${n === 1 ? "player" : "players"}` is still read.
+ */
+function* stringLiterals(source) {
+  const pattern = /"((?:[^"\\\n]|\\.)*)"|'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g;
+  for (const match of source.matchAll(pattern)) {
+    if (match[3] === undefined) {
+      yield { kind: "string", value: match[1] ?? match[2] };
+      continue;
+    }
+    yield { kind: "template", value: match[3] };
+    for (const [, slot] of match[3].matchAll(/\$\{([^}]*)\}/g)) yield* stringLiterals(slot);
+  }
 }
 
 async function sourceFiles(directory) {
@@ -133,13 +177,20 @@ for (const path of (await sourceFiles(resolve(root, target))).sort()) {
     .replace(/\bt\(\s*"[^"]*"/g, "t(")
     .replace(/\bMessageKey\b[^;]*;/g, "")
     .replace(TECHNICAL_ATTRS, "")
-    .replace(COMMAND_KEYS, "");
+    .replace(COMMAND_KEYS, "")
+    .replace(DEVELOPER_ONLY, "$1")
+    .replace(SELECTOR_CALLS, "$1");
 
   const hits = new Set();
-  for (const [, value] of source.matchAll(/"([^"\\\n]{3,})"/g)) if (isProse(value)) hits.add(value);
-  for (const [, value] of source.matchAll(/'([^'\\\n]{3,})'/g)) if (isProse(value)) hits.add(value);
-  // JSX text nodes are not string literals, so they need their own pass.
-  for (const [, value] of source.matchAll(/>\s*([A-Z][A-Za-z0-9 ,.'\u2019!?()/&%:-]{2,})\s*</g)) {
+  const templates = [];
+  for (const literal of stringLiterals(source)) {
+    if (literal.kind === "template") templates.push(literal.value);
+    else if (literal.value.length >= 3 && isProse(literal.value)) hits.add(literal.value);
+  }
+  // JSX text nodes are not string literals, so they need their own pass. The
+  // `>` must close a tag: after `=` it is an arrow, and the "text" up to the
+  // next `<` is a function body with a comparison in it.
+  for (const [, value] of source.matchAll(/(?<![=-])>\s*([A-Z][A-Za-z0-9 ,.'\u2019!?()/&%:-]{2,})\s*</g)) {
     if (isProse(value)) hits.add(value);
   }
   // JSX text that touches an expression container on either side. Without
@@ -151,7 +202,7 @@ for (const path of (await sourceFiles(resolve(root, target))).sort()) {
   // braces from being read as a sentence.
   const JSX_WORDS = "[A-Za-z0-9 ,.'’!?/&%-]";
   const JSX_BESIDE_EXPRESSION = [
-    new RegExp(`>\\s*([A-Z]${JSX_WORDS}{2,}?)\\s*\\{`, "g"),
+    new RegExp(`(?<![=-])>\\s*([A-Z]${JSX_WORDS}{2,}?)\\s*\\{`, "g"),
     new RegExp(`\\}\\s*([A-Za-z]${JSX_WORDS}{2,}?)\\s*<`, "g"),
   ];
   for (const pattern of JSX_BESIDE_EXPRESSION) {
@@ -160,7 +211,10 @@ for (const path of (await sourceFiles(resolve(root, target))).sort()) {
   // Template literals whose fixed halves are prose. A class name is the
   // common false positive and is excluded by `isProse`, which refuses a
   // lower-case identifier list; what is left is copy with a number in it.
-  for (const [, value] of source.matchAll(/`([^`\\\n]{3,})`/g)) {
+  for (const value of templates) {
+    // Multi-line templates are markdown or CSS blocks, and escapes mean a
+    // regex source or a path; neither is copy this pass can judge.
+    if (value.length < 3 || /[\\\n]/.test(value)) continue;
     const fixed = value.replace(/\$\{[^}]*\}/g, " ").trim();
     if (CSS_VALUE.test(fixed)) continue;
     if (fixed.split(/\s+/).filter(Boolean).length >= 2 && isProse(fixed)) hits.add(`\`${value}\``);
@@ -179,7 +233,21 @@ for (const [file, hits] of perFile) {
 
 console.log(`\nUntranslated strings: ${total}`);
 
+// An ignore entry whose file has moved silently stops ignoring anything, and
+// the file's new path is then scanned under a reason nobody re-read. Two
+// entries had gone stale that way, so a dangling one now fails the gate.
+const staleIgnores = [];
+for (const file of IGNORED_FILES.keys()) {
+  try {
+    await access(resolve(root, file));
+  } catch {
+    staleIgnores.push(file);
+  }
+}
+for (const file of staleIgnores) console.error(`Ignored file does not exist: ${file}`);
+
 if (budget !== null && total > budget) {
   console.error(`\nBudget exceeded: ${total} > ${budget}`);
   process.exit(1);
 }
+if (budget !== null && staleIgnores.length > 0) process.exit(1);
