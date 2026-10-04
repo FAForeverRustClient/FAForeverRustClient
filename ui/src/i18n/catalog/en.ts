@@ -796,6 +796,7 @@ export const en = {
   "lobby.details.teams": "Teams",
   "lobby.details.observers": "Observers",
   "lobby.details.team": "Team {id}",
+  "lobby.details.teamStats": "Avg: {average} | Total: {total}",
   "lobby.details.selectGame": "Select a game to see its details.",
   "lobby.details.privateGame": "Private game",
 

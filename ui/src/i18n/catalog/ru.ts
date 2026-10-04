@@ -1930,6 +1930,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.details.teams": "Команды",
   "lobby.details.observers": "Наблюдатели",
   "lobby.details.team": "Команда {id}",
+  "lobby.details.teamStats": "Средний: {average} | Общий: {total}",
   "lobby.details.selectGame": "Выберите игру, чтобы увидеть подробности.",
   "lobby.details.privateGame": "Приватная игра",
   "lobby.details.joining": "Подключение…",

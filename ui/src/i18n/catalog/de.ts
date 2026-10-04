@@ -705,6 +705,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.details.teams": "Teams",
   "lobby.details.observers": "Beobachter",
   "lobby.details.team": "Team {id}",
+  "lobby.details.teamStats": "Schnitt: {average} | Gesamt: {total}",
   "lobby.details.selectGame": "Wähle eine Partie, um Details zu sehen.",
   "lobby.details.privateGame": "Private Partie",
 
