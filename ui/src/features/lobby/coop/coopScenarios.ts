@@ -104,3 +104,13 @@ export function displayScenarioName(
   }
   return scenario.name;
 }
+
+export function displayScenarioOptionLabel(
+  scenario: CoopScenario,
+  locale: Locale,
+  t: Translation["t"],
+): string {
+  const name = displayScenarioName(scenario, locale, t);
+  const badge = t(`lobby.coop.badge.${scenarioBadge(scenario)}`);
+  return name.includes(badge) ? name : `${name} (${badge})`;
+}
