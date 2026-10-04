@@ -180,16 +180,12 @@
   flex: none;
   align-items: center;
   gap: 4px;
-  padding: 2px 6px;
   color: var(--color-text);
   font-size: 12px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
   white-space: nowrap;
-  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
 }
 
 .map-rating svg {
@@ -203,12 +199,18 @@
 }
 
 /* On the vault artwork the rating takes the top-right corner, and "Featured"
-   moves down beneath it rather than covering it. */
+   moves down beneath it rather than covering it. Only there does it need a
+   plate behind it: over map art bare text is unreadable, while in the
+   installed list it sits on the card and reads as plain text. */
 .map-vault-image-wrap .map-rating {
   position: absolute;
   z-index: 1;
   top: 8px;
   right: 8px;
+  padding: 2px 6px;
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
 }
 
 .map-vault-image-wrap .map-rating + .vault-featured-badge {
