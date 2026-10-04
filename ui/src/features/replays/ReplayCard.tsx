@@ -2,6 +2,7 @@
 // share, and the map art both lead with.
 
 import { useState } from "react";
+import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import type { ReplayTeam, VaultReplay } from "../../ipc/bindings";
 import { formatAgeOrDate, formatDate, formatShortDateTime } from "../../shared/format/dates";
@@ -308,14 +309,20 @@ export function ReplayLibraryCard({
         <div className="replay-card-top">
           <div className="replay-card-header">
             <span className="replay-card-title" title={cardTitle.full} aria-label={cardTitle.full}>{cardTitle.display}</span>
-            <span className="replay-card-submap muted">{t("replays.card.onMap", { map: presentation.displayName || replay.map })}</span>
+            {/* The id at the end of the map line: it says which replay this
+                is, and kept under Watch it read as part of the button. */}
+            <span className="replay-card-submap muted">
+              {t("replays.card.onMap", { map: presentation.displayName || replay.map })}
+              {replay.idLabel && <span className="replay-card-id"> · {replay.idLabel}</span>}
+            </span>
           </div>
-          {/* The way in, in the top-right corner beside the title it plays,
-              and under it the id that says which replay this is. */}
-          <div className="replay-card-corner">
-            {watch && (
-              <button
-                type="button"
+          {/* The way in, in the top-right corner beside the title it plays:
+              the client's own primary button, as Watch is in the replay's
+              detail dialog, rather than a style of its own. */}
+          {watch && (
+            <div className="replay-card-corner">
+              <Button
+                variant="primary"
                 className="replay-card-watch"
                 disabled={watch.disabled}
                 aria-label={watch.ariaLabel}
@@ -328,12 +335,11 @@ export function ReplayLibraryCard({
                 }}
                 onDoubleClick={(event) => event.stopPropagation()}
               >
-                <Icon name="play" size={13} />
+                <Icon name="play" size={15} />
                 <span>{watch.label}</span>
-              </button>
-            )}
-            <span className="muted">{replay.idLabel}</span>
-          </div>
+              </Button>
+            </div>
+          )}
         </div>
         <ReplayCardRoster teams={replay.teams} onPlayerMenu={onPlayerMenu} />
         {replay.footerNote && (

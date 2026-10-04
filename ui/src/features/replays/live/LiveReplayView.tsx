@@ -204,12 +204,21 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   // list that refreshes itself every few seconds asks nothing the second time,
   // and only while this tab is open. The answers are shared with the detail
   // panel, which is why opening one costs nothing after this.
+  //
+  // "Asked" is remembered here as well as in state. The backend marks each
+  // game as being looked up with an event of its own, and every one of those
+  // re-ran this effect while the rest were still unmarked: a page of
+  // seventy-five cards sent about seventy overlapping requests, which filled
+  // every command slot the backend has, and a click on another tab waited
+  // behind them for as long as the vault took to answer.
+  const askedLookups = useRef(new Set<number>());
   useEffect(() => {
     if (viewMode !== "tiles") return;
     const unknown = visibleGames
       .map(({ game }) => game.id)
-      .filter((id) => !lookups?.[id]);
+      .filter((id) => !lookups?.[id] && !askedLookups.current.has(id));
     if (unknown.length === 0) return;
+    for (const id of unknown) askedLookups.current.add(id);
     ipc.send({ kind: "Replays", command: { type: "lookUpOnlineMany", payload: { uids: unknown } } });
   }, [lookups, viewMode, visibleGames]);
 

@@ -19,19 +19,39 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             // check belongs here, where a new caller cannot forget it.
             //
             // A previous failure is still retried: only "already loaded" and
-            // "already in flight" are reasons to do nothing.
-            if out.with_state(|state| {
-                matches!(
-                    state.maps.vault_status,
-                    MapListStatus::Loading | MapListStatus::Ready
-                )
-            }) {
+            // "already in flight" are reasons to do nothing. "In flight" is the
+            // flight, taken before the status is read, so two callers mounting
+            // together cannot both start a crawl.
+            let Some(_crawl) = ctx.map_vault_active.try_acquire() else {
+                return;
+            };
+            if out.with_state(|state| matches!(state.maps.vault_status, MapListStatus::Ready)) {
                 return;
             }
             out.emit(MapsEvent::VaultLoading);
+            // Logged both ways, with how long it took: the crawl is many pages,
+            // one failed page fails it, and every view that mounts afterwards
+            // starts it again. Without a line here a "Loading map vault" that
+            // keeps coming back left nothing to read afterwards.
+            let started = std::time::Instant::now();
+            tracing::info!("map vault: loading the catalogue");
             match ctx.ports.maps.list_vault().await {
-                Ok(maps) => out.emit(MapsEvent::VaultLoaded { maps }),
-                Err(reason) => out.emit(MapsEvent::VaultLoadFailed { reason }),
+                Ok(maps) => {
+                    tracing::info!(
+                        maps = maps.len(),
+                        seconds = started.elapsed().as_secs_f32(),
+                        "map vault: loaded"
+                    );
+                    out.emit(MapsEvent::VaultLoaded { maps })
+                }
+                Err(reason) => {
+                    tracing::warn!(
+                        %reason,
+                        seconds = started.elapsed().as_secs_f32(),
+                        "map vault: loading failed; the next view that needs it tries again"
+                    );
+                    out.emit(MapsEvent::VaultLoadFailed { reason })
+                }
             }
         }
         MapsCommand::SearchVault { query } => {

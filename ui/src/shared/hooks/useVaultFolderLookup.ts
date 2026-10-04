@@ -17,9 +17,29 @@ import { findVaultMapByFolder, isGeneratedMap, normalizeMapName } from "../mapPr
 /// request per tile per event.
 const requested = new Set<string>();
 
+/// Folders waiting for the next send. Every tile that runs out of art in the
+/// same moment (the catalogue arriving, a page of cards appearing) used to ask
+/// on its own: one request each, and one answer each, and every answer is a
+/// new catalogue, which redrew every card on the page and re-indexed nine
+/// thousand maps. The Live tab's tile view did that for dozens of cards at
+/// once, enough to keep the client busy for many seconds. Gathered here, they
+/// go out together and come back as one change.
+const pending = new Set<string>();
+let flushScheduled = false;
+
+function flush(): void {
+  flushScheduled = false;
+  if (pending.size === 0) return;
+  const folderNames = [...pending];
+  pending.clear();
+  ipc.send({ kind: "Maps", command: { type: "resolveVaultFolders", payload: { folderNames } } });
+}
+
 /** Test seam: the module-level guard would otherwise leak between cases. */
 export function resetVaultFolderLookups(): void {
   requested.clear();
+  pending.clear();
+  flushScheduled = false;
 }
 
 /**
@@ -37,9 +57,12 @@ export function useVaultFolderLookup(mapName: string, enabled: boolean): void {
   useEffect(() => {
     if (!enabled || !missing || !folder || isGeneratedMap(folder) || requested.has(folder)) return;
     requested.add(folder);
-    ipc.send({
-      kind: "Maps",
-      command: { type: "resolveVaultFolders", payload: { folderNames: [folder] } },
-    });
+    pending.add(folder);
+    // After this render's other effects, so the tiles drawn with this one
+    // join the same request.
+    if (!flushScheduled) {
+      flushScheduled = true;
+      setTimeout(flush, 0);
+    }
   }, [enabled, folder, missing]);
 }

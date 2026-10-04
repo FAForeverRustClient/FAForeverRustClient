@@ -659,10 +659,11 @@ export function LobbyView() {
   const detailStyle = useMemo(
     // The divider's track is the whole gap, as the chat roster's is, so the
     // two tabs space their side panel the same. Folded away (#370, #377), the
-    // gap stays and holds the tab that brings the panel back.
+    // list takes the whole width: the toolbar holds the button that brings the
+    // panel back, so the gap has nothing left to hold.
     () => ({
       gridTemplateColumns: detailHidden
-        ? "minmax(360px, 1fr) var(--space-3)"
+        ? "minmax(360px, 1fr)"
         : `minmax(360px, 1fr) var(--space-3) ${currentDetailWidth}px`,
     }),
     [currentDetailWidth, detailHidden],
@@ -818,6 +819,8 @@ export function LobbyView() {
               setCoopMissionToHost(null);
               setHostOpen(true);
             }}
+            detailHidden={detailHidden}
+            onToggleDetails={() => updateGameBrowser({ detailHidden: !detailHidden })}
           />
 
           <CustomGamesBrowser
@@ -832,30 +835,19 @@ export function LobbyView() {
             empty={emptyGames}
           />
           {/* The divider sits between the list and the panel rather than on
-              either, so dragging it reads as moving the boundary. The arrow
-              in it is a tab hanging off the panel's edge, which folds the
-              panel away and back (#370, #377); the choice is a setting, so it
-              holds across restarts. */}
-          <div className="custom-games-divider">
-            {!detailHidden && (
+              either, so dragging it reads as moving the boundary. The panel
+              folds away and back from the toolbar (#370, #377); the choice is
+              a setting, so it holds across restarts. */}
+          {!detailHidden && (
+            <div className="custom-games-divider">
               <ResizeHandle
                 label={t("lobby.browser.resizeDetails")}
                 onDrag={onDetailDrag}
                 onEnd={onDetailCommit}
                 onReset={onDetailReset}
               />
-            )}
-            <button
-              type="button"
-              className="custom-games-detail-toggle"
-              aria-expanded={!detailHidden}
-              aria-label={t(detailHidden ? "lobby.browser.showDetails" : "lobby.browser.hideDetails")}
-              title={t(detailHidden ? "lobby.browser.showDetails" : "lobby.browser.hideDetails")}
-              onClick={() => updateGameBrowser({ detailHidden: !detailHidden })}
-            >
-              <Icon name="chevronRight" size={12} />
-            </button>
-          </div>
+            </div>
+          )}
           {detailHidden ? null : selected ? (
             <GameDetails
               game={selected}

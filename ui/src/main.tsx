@@ -4,6 +4,7 @@ import { App } from "./App";
 import { AppErrorBoundary } from "./shared/components/ErrorBoundary";
 import { FAF_LOGO_URL } from "./shared/branding";
 import { installDesktopContextMenuPolicy } from "./shared/contextMenuPolicy";
+import { installStallReporter } from "./shared/stallReporter";
 import { loadSystemDatePattern } from "./shared/format/systemDate";
 import "./styles.css";
 import "./design-system/patterns.css";
@@ -16,6 +17,7 @@ const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
 if (favicon) favicon.href = FAF_LOGO_URL;
 
 installDesktopContextMenuPolicy(document);
+installStallReporter();
 
 // Fixed-viewport desktop app: lock document scroll coordinates to 0,0
 // to prevent any native browser focus actions from scrolling the root window.

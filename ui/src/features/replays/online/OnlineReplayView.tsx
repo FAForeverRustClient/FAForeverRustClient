@@ -4,7 +4,7 @@ import { StatusNotice } from "../../../design-system/StatusNotice";
 import type { ReplayQuery } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
-import { isUnknownVaultMap } from "../../../shared/mapPresentation";
+import { isSeedlessGeneratedMap, isUnknownVaultMap } from "../../../shared/mapPresentation";
 import { isoDaysAgo, personalReplayQuery } from "../../../shared/replayQuery";
 import { loadStoredSet, saveStoredSet } from "../../../shared/storage";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
@@ -142,10 +142,14 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   // instead: the first 64 KiB of each, which is the envelope and enough of the
   // stream to read the scenario the engine loaded. Once per game, because an
   // answer is remembered whether or not it found anything, and only for the
-  // rows this page actually turned up.
+  // rows this page actually turned up. A generated map the listing names
+  // without its seed is asked about too: the card cannot generate it without
+  // the seed, which is why most of them showed no generate button.
   useEffect(() => {
     const unread = vault
-      .filter((replay) => isUnknownVaultMap(replay.map) && !(replay.uid in resolvedMaps))
+      .filter((replay) =>
+        (isUnknownVaultMap(replay.map) || (isSeedlessGeneratedMap(replay.map) && replay.replayAvailable))
+        && !(replay.uid in resolvedMaps))
       .map((replay) => replay.uid);
     if (unread.length === 0) return;
     ipc.send({ kind: "Replays", command: { type: "resolveMaps", payload: { uids: unread } } });

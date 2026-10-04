@@ -132,8 +132,26 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// is wanted; the data already loaded stays on screen until this replaces it.
 async fn crawl_vault(ctx: &ServiceCtx, out: &EventSink) {
     out.emit(ModsEvent::VaultLoading);
+    // Logged both ways with its duration, as the map vault's is: the crawl is
+    // many pages, and the Live and Play tabs start it as they open.
+    let started = std::time::Instant::now();
+    tracing::info!("mod vault: loading the catalogue");
     match ctx.ports.mods.list_vault().await {
-        Ok(mods) => out.emit(ModsEvent::VaultLoaded { mods }),
-        Err(reason) => out.emit(ModsEvent::VaultLoadFailed { reason }),
+        Ok(mods) => {
+            tracing::info!(
+                mods = mods.len(),
+                seconds = started.elapsed().as_secs_f32(),
+                "mod vault: loaded"
+            );
+            out.emit(ModsEvent::VaultLoaded { mods })
+        }
+        Err(reason) => {
+            tracing::warn!(
+                %reason,
+                seconds = started.elapsed().as_secs_f32(),
+                "mod vault: loading failed"
+            );
+            out.emit(ModsEvent::VaultLoadFailed { reason })
+        }
     }
 }

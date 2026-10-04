@@ -131,6 +131,12 @@ pub struct ServiceCtx {
     /// both fetch the same index: the check on `ChangelogStatus::Ready` is a
     /// check-then-act, and commands run concurrently.
     pub changelog_active: SingleFlight,
+    /// One crawl of the whole map vault at a time. The service's "already
+    /// loading or loaded" check is a check-then-act, and commands run
+    /// concurrently: several views ask for the vault as they mount, and two
+    /// asking together both read a status that was not yet `Loading` and
+    /// both crawled every page.
+    pub map_vault_active: SingleFlight,
     /// Only the newest note may land. Clicking two releases in a row must not
     /// leave the first one's text on screen because it answered second, and a
     /// cached selection must not be overwritten by a slower earlier fetch.
@@ -335,6 +341,9 @@ struct QueuedCommand {
     completion: Option<oneshot::Sender<()>>,
     /// When it was dispatched, from [`ReleaseOrder::stamp`].
     seq: u64,
+    /// When it entered the queue, for the late-start warning in
+    /// [`spawn_command`].
+    queued_at: std::time::Instant,
 }
 
 /// Which half of a start/stop pair a command is, and what the pair acts on.
@@ -501,6 +510,7 @@ impl App {
             map_generator_active: SingleFlight::default(),
             tutorial_launch_active: SingleFlight::default(),
             changelog_active: SingleFlight::default(),
+            map_vault_active: SingleFlight::default(),
             changelog_entry_generation: LatestRequest::default(),
             guides_login_active: SingleFlight::default(),
             guides_verdict: SerialMutation::default(),
@@ -545,6 +555,7 @@ impl App {
     pub async fn dispatch(&self, cmd: AppCommand) -> Result<(), String> {
         self.queue_for(&cmd)
             .send(QueuedCommand {
+                queued_at: std::time::Instant::now(),
                 seq: self.order.stamp(&cmd),
                 command: cmd,
                 completion: None,
@@ -562,6 +573,7 @@ impl App {
         let (completion, finished) = oneshot::channel();
         self.queue_for(&cmd)
             .send(QueuedCommand {
+                queued_at: std::time::Instant::now(),
                 seq: self.order.stamp(&cmd),
                 command: cmd,
                 completion: Some(completion),
@@ -577,6 +589,7 @@ impl App {
     pub fn try_dispatch(&self, cmd: AppCommand) -> Result<(), String> {
         self.queue_for(&cmd)
             .try_send(QueuedCommand {
+                queued_at: std::time::Instant::now(),
                 seq: self.order.stamp(&cmd),
                 command: cmd,
                 completion: None,
@@ -754,19 +767,27 @@ const PRODUCTION_LIMITS: Limits = Limits {
 ///
 /// Matchmaker *stop* is here, *start* is not; the same goes for every pair.
 /// Only the half that releases something jumps the queue.
+///
+/// Navigation is here as well, for the same reason from the other side: a
+/// click on a tab only changes what is on screen and never waits on anything,
+/// so it must not wait behind the work it is moving away from. The Live tab
+/// once filled every ordinary slot with vault lookups, and a click on Online
+/// did nothing until they had all come back.
 fn is_urgent(command: &AppCommand) -> bool {
     use faf_domain::state::{
         AuthCommand, ChatCommand, GuidesCommand, LobbyCommand, MapGeneratorCommand, ReplayCommand,
     };
     matches!(
         command,
-        AppCommand::Lobby(
-            LobbyCommand::CancelJoin
-                | LobbyCommand::DeclineModReplacement
-                | LobbyCommand::TerminateGame
-                | LobbyCommand::Disconnect
-                | LobbyCommand::Matchmake { start: false, .. }
-        ) | AppCommand::Auth(AuthCommand::CancelLogin | AuthCommand::Logout)
+        AppCommand::Nav(_)
+            | AppCommand::Lobby(
+                LobbyCommand::CancelJoin
+                    | LobbyCommand::DeclineModReplacement
+                    | LobbyCommand::TerminateGame
+                    | LobbyCommand::Disconnect
+                    | LobbyCommand::Matchmake { start: false, .. }
+            )
+            | AppCommand::Auth(AuthCommand::CancelLogin | AuthCommand::Logout)
             | AppCommand::Chat(ChatCommand::Disconnect)
             | AppCommand::Guides(GuidesCommand::CancelSignIn)
             | AppCommand::MapGenerator(MapGeneratorCommand::Cancel)
@@ -799,6 +820,7 @@ async fn drive<H, F>(
 {
     let ordinary_permits = Arc::new(Semaphore::new(limits.ordinary));
     let urgent_permits = Arc::new(Semaphore::new(limits.urgent));
+    let running = Running::default();
     let mut ordinary_permit: Option<OwnedSemaphorePermit> = None;
     let mut urgent_permit: Option<OwnedSemaphorePermit> = None;
     let mut urgent_open = true;
@@ -812,7 +834,7 @@ async fn drive<H, F>(
                 urgent_permit = Some(acquired.expect("the urgent semaphore is never closed"));
             }
             queued = urgent.recv(), if urgent_open && urgent_permit.is_some() => match queued {
-                Some(queued) => spawn_command(queued, urgent_permit.take(), &handle),
+                Some(queued) => spawn_command(queued, urgent_permit.take(), &handle, &running),
                 None => urgent_open = false,
             },
             acquired = ordinary_permits.clone().acquire_owned(), if ordinary_permit.is_none() => {
@@ -827,24 +849,128 @@ async fn drive<H, F>(
                         let _ = completion.send(());
                     }
                 }
-                Some(queued) => spawn_command(queued, ordinary_permit.take(), &handle),
+                Some(queued) => spawn_command(queued, ordinary_permit.take(), &handle, &running),
                 None => break,
             },
         }
     }
 }
 
+/// How late a command may start before it is logged. A click is a command, so
+/// half a second of waiting is already a client that ignored somebody.
+const LATE_START: std::time::Duration = std::time::Duration::from_millis(500);
+
+/// The commands running now: a short name and when each started.
+///
+/// Only read when a command starts late, to say what it waited behind. A tab
+/// that would not change for ten seconds left nothing in the log to say why;
+/// this names the work that held every slot.
+#[derive(Default, Clone)]
+struct Running(Arc<std::sync::Mutex<RunningCommands>>);
+
+#[derive(Default)]
+struct RunningCommands {
+    next: u64,
+    commands: std::collections::HashMap<u64, (String, std::time::Instant)>,
+}
+
+impl Running {
+    fn lock(&self) -> std::sync::MutexGuard<'_, RunningCommands> {
+        self.0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn start(&self, name: String) -> u64 {
+        let mut running = self.lock();
+        running.next += 1;
+        let id = running.next;
+        running
+            .commands
+            .insert(id, (name, std::time::Instant::now()));
+        id
+    }
+
+    fn finish(&self, id: u64) {
+        self.lock().commands.remove(&id);
+    }
+
+    /// The longest-running few, as "Maps::LoadVault 12.3s".
+    fn longest(&self, limit: usize) -> (usize, Vec<String>) {
+        let running = self.lock();
+        let mut all: Vec<_> = running.commands.values().collect();
+        all.sort_by_key(|(_, started)| *started);
+        let listed = all
+            .iter()
+            .take(limit)
+            .map(|(name, started)| format!("{name} {:.1}s", started.elapsed().as_secs_f32()))
+            .collect();
+        (all.len(), listed)
+    }
+}
+
+/// A command's slice and variant, as "Nav::SelectReplaysSection", without its
+/// payload. Read from the `Debug` text, cut off after a few dozen characters
+/// so a command carrying a picture costs no more to name than one that does
+/// not.
+fn command_name(command: &AppCommand) -> String {
+    struct Capped(String);
+    impl std::fmt::Write for Capped {
+        fn write_str(&mut self, text: &str) -> std::fmt::Result {
+            let room = 96usize.saturating_sub(self.0.len());
+            self.0.extend(text.chars().take(room));
+            if self.0.len() >= 96 {
+                Err(std::fmt::Error)
+            } else {
+                Ok(())
+            }
+        }
+    }
+    let mut text = Capped(String::new());
+    let _ = std::fmt::write(&mut text, format_args!("{command:?}"));
+    let text = text.0;
+    let (slice, rest) = text.split_once('(').unwrap_or((text.as_str(), ""));
+    let variant: String = rest
+        .chars()
+        .take_while(|c| c.is_alphanumeric() || *c == '_')
+        .collect();
+    if variant.is_empty() {
+        slice.to_string()
+    } else {
+        format!("{slice}::{variant}")
+    }
+}
+
 /// Run one command on its own task, holding `permit` until it finishes.
-fn spawn_command<H, F>(queued: QueuedCommand, permit: Option<OwnedSemaphorePermit>, handle: &H)
-where
+fn spawn_command<H, F>(
+    queued: QueuedCommand,
+    permit: Option<OwnedSemaphorePermit>,
+    handle: &H,
+    running: &Running,
+) where
     H: Fn(AppCommand) -> F,
     F: std::future::Future<Output = ()> + Send + 'static,
 {
+    let name = command_name(&queued.command);
+    let waited = queued.queued_at.elapsed();
+    if waited >= LATE_START {
+        let (count, longest) = running.longest(12);
+        tracing::warn!(
+            command = %name,
+            waited_seconds = waited.as_secs_f32(),
+            running = count,
+            ?longest,
+            "a command waited for a free slot before it could start"
+        );
+    }
+    let id = running.start(name);
     let work = handle(queued.command);
     let completion = queued.completion;
+    let running = running.clone();
     tokio::spawn(async move {
         let _permit = permit;
         work.await;
+        running.finish(id);
         if let Some(completion) = completion {
             let _ = completion.send(());
         }
@@ -924,6 +1050,23 @@ mod tests {
     }
 
     #[test]
+    fn a_command_is_named_by_slice_and_variant_without_its_payload() {
+        assert_eq!(
+            command_name(&faf_domain::state::MapsCommand::LoadVault.into()),
+            "Maps::LoadVault"
+        );
+        let named = command_name(
+            &faf_domain::state::LobbyCommand::Join {
+                id: 42,
+                password: Some("secret".into()),
+                replace_mods: false,
+            }
+            .into(),
+        );
+        assert_eq!(named, "Lobby::Join");
+    }
+
+    #[test]
     fn only_the_releasing_half_of_a_command_pair_is_urgent() {
         use faf_domain::state::LobbyCommand;
 
@@ -944,6 +1087,13 @@ mod tests {
             .into()
         ));
         assert!(!is_urgent(&SessionCommand::Hello.into()));
+        // A tab click never waits behind work it is leaving.
+        assert!(is_urgent(
+            &faf_domain::state::NavCommand::SelectReplaysSection {
+                section: faf_domain::state::ReplaysSection::Online,
+            }
+            .into()
+        ));
     }
 
     /// Saturated work leaves later commands in the channel instead of piling
@@ -988,6 +1138,7 @@ mod tests {
         ));
 
         let queued = |command: AppCommand| QueuedCommand {
+            queued_at: std::time::Instant::now(),
             command,
             completion: None,
             seq: 0,
@@ -1016,6 +1167,7 @@ mod tests {
         let (completion, finished) = oneshot::channel();
         urgent_tx
             .send(QueuedCommand {
+                queued_at: std::time::Instant::now(),
                 command: LobbyCommand::CancelJoin.into(),
                 completion: Some(completion),
                 seq: 0,
@@ -1065,6 +1217,7 @@ mod tests {
             .into()
         };
         let queued = |command: AppCommand, completion| QueuedCommand {
+            queued_at: std::time::Instant::now(),
             seq: order.stamp(&command),
             command,
             completion,

@@ -68,6 +68,18 @@ export const ipc = {
     };
   },
 
+  /**
+   * Write a line to the client log saying the page was too busy to answer
+   * clicks for a while, and where. Diagnostics only: a failure is ignored.
+   */
+  reportStall(busyMilliseconds: number, longestMilliseconds: number, place: string): void {
+    void invoke("report_webview_stall", {
+      busyMilliseconds: Math.round(busyMilliseconds),
+      longestMilliseconds: Math.round(longestMilliseconds),
+      place,
+    }).catch(() => {});
+  },
+
   /** Backend → UI: consistent snapshot for initial hydration. */
   snapshot(): Promise<VersionedSnapshot> {
     return invoke<VersionedSnapshot>("snapshot");

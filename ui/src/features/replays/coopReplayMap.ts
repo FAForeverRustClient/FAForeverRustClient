@@ -30,6 +30,7 @@
 import type { CoopMission, VaultMap } from "../../ipc/bindings";
 import { t } from "../../i18n";
 import {
+  isSeedlessGeneratedMap,
   isUnknownVaultMap,
   mapPresentation,
   type MapPresentation,
@@ -86,12 +87,18 @@ export function coopMissionByTitle(
  * for co-op, the mission the title names. All three resolve to a map folder,
  * which is the key the vault lookup, the preview service and the mission
  * artwork all use.
+ *
+ * A generated map the listing names only as the generator is a hole of the
+ * same kind: the file's name for it has the seed, which is what the card needs
+ * to generate it. That listing name used to win, so most generated games
+ * showed no way to generate their map.
  */
 export function replayMapKey(
   missions: CoopMission[],
   replay: { map: string; title: string; modName: string },
   resolved?: string,
 ): string {
+  if (resolved && isSeedlessGeneratedMap(replay.map)) return resolved;
   if (!isUnknownVaultMap(replay.map)) return replay.map;
   if (resolved) return resolved;
   if (!isCoopReplay(replay.modName)) return replay.map;

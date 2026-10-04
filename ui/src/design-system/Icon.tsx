@@ -24,6 +24,7 @@ export type IconName =
   | "chevronRight"
   | "chevronDown"
   | "chevronUp"
+  | "panelRight"
   | "activity"
   | "search"
   | "filter"
@@ -102,6 +103,7 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
     chevronRight: <path d="m9 18 6-6-6-6" />,
     chevronDown: <path d="m6 9 6 6 6-6" />,
     chevronUp: <path d="m6 15 6-6 6 6" />,
+    panelRight: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></>,
     activity: <path d="M3 12h4l2.5-7 5 14 2.5-7h4" />,
     search: <><circle cx="10" cy="10" r="6" /><path d="m14.5 14.5 5 5" /></>,
     filter: <path d="M4 6h16M7 12h10M10 18h4" />,
