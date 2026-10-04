@@ -252,6 +252,13 @@ interface LeaderboardTableProps {
    * searched, only the drawing is held back. Unset draws everything.
    */
   rowBatch?: number;
+  /**
+   * Back to the top of the table whenever this changes, before any rows
+   * arrive. For a list loaded a page at a time: the query changes the moment
+   * a page is asked for, the rows only once the server has answered, and the
+   * old page sat scrolled to its bottom for that whole round trip.
+   */
+  scrollResetKey?: unknown;
 }
 
 const NO_CROSS_RATINGS: CrossRatings = new Map();
@@ -266,6 +273,7 @@ export function LeaderboardTable({
   crossRatings = NO_CROSS_RATINGS,
   onRankBy,
   rowBatch,
+  scrollResetKey,
 }: LeaderboardTableProps) {
   const { t } = useTranslation();
   const [sort, setSort] = useState<{ column: TableColumn; descending: boolean }>({
@@ -279,11 +287,12 @@ export function LeaderboardTable({
   // cannot reach this: it resets the nearest scrolling *ancestor* of the
   // pager, and the rows scroll in their own box beside it, so page two opened
   // wherever page one had been left. A layout effect, so the new rows are
-  // never painted at the old offset first.
+  // never painted at the old offset first; `scrollResetKey` makes it happen
+  // at the click rather than a round trip later.
   const scrollRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [entries, sort]);
+  }, [entries, sort, scrollResetKey]);
   const sorted = useMemo(
     () => sortLeaderboard(entries, sort.column, sort.descending, activeBoard, crossRatings),
     [activeBoard, crossRatings, entries, sort],
