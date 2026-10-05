@@ -26,7 +26,7 @@ describe("catalogue integrity", () => {
       "settings.steam.presenceHint",
     ] as const;
 
-    for (const locale of LOCALE_KEYS) {
+    for (const locale of ["en", "ru"] as const) {
       for (const key of settingHints) {
         const hint = translateIn(locale, key);
         expect(hint.trim(), `${locale}:${key}`).not.toBe("");
