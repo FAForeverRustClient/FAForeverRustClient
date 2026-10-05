@@ -13,6 +13,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { mayCheckRating, mayDeclineInvite } from "../../../shared/rules/tourneyRules";
 import { formatDay, RATING_KIND_LABELS } from "../tourneyPresentation";
 import { RATING_CHECK_ID } from "../overviewPresentation";
+import type { EntryActions } from "../tourneyActions";
 
 const BAN_SCOPES: Record<NonNullable<Tourney["myBan"]>["scope"], MessageKey> = {
   official: "tournaments.entry.banOfficial",
@@ -25,11 +26,10 @@ interface EntryNoticesProps {
   check: RatingCheck | null;
   checkStatus: TourneyLoadStatus;
   busy: boolean;
-  onDecline: () => void;
-  onCheckRating: () => void;
+  entry: Pick<EntryActions, "declineInvite" | "checkRating">;
 }
 
-export function EntryNotices({ event, check, checkStatus, busy, onDecline, onCheckRating }: EntryNoticesProps) {
+export function EntryNotices({ event, check, checkStatus, busy, entry }: EntryNoticesProps) {
   const { t } = useTranslation();
   const signedUp = event.viewer.signedUpPlayerId !== null;
   const ban = event.myBan;
@@ -59,7 +59,7 @@ export function EntryNotices({ event, check, checkStatus, busy, onDecline, onChe
         <section className="surface tournament-entry-notice is-invite">
           <h5>{t("tournaments.entry.invited")}</h5>
           <p className="muted">{t("tournaments.entry.invitedHint")}</p>
-          <Button disabled={busy} onClick={onDecline}>
+          <Button disabled={busy} onClick={entry.declineInvite}>
             {t("tournaments.entry.decline")}
           </Button>
         </section>
@@ -68,7 +68,7 @@ export function EntryNotices({ event, check, checkStatus, busy, onDecline, onChe
       {offerCheck && (
         <section className="surface tournament-entry-notice" id={RATING_CHECK_ID}>
           <div className="tournament-detail-actions">
-            <Button disabled={busy || checking} onClick={onCheckRating}>
+            <Button disabled={busy || checking} onClick={entry.checkRating}>
               {t(checking ? "tournaments.entry.checking" : "tournaments.entry.checkRating")}
             </Button>
             <span className="muted">{t("tournaments.entry.checkHint")}</span>

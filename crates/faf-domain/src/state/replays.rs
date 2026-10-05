@@ -4,7 +4,8 @@
 //! live watch fetches a WebSocket relay for an in-progress game, a file watch
 //! decompresses a recorded replay. Both converge on the same FA `/replay`
 //! launch; this slice only tracks the resulting status, the actual IO lives
-//! behind [`crate`]'s port boundary (`ReplayPort` in `faf-app`).
+//! behind [`crate`]'s port boundary (the replay ports in `faf-app`'s
+//! `ports::replay`).
 
 use std::cmp::Ordering;
 

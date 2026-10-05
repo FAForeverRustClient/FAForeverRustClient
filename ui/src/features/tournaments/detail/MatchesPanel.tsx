@@ -8,7 +8,7 @@
 // opens the match's details: both rosters, the score, the replays, and the
 // vetoes, with whatever the viewer may do about it.
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import type {
@@ -23,7 +23,8 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { byPlayOrder, feedersOf, matchLabel, matchRank, type Feeder } from "../bracket/matchLabels";
 import { MatchActions, TeamName, teamNameOf } from "../bracket/matchParts";
 import { isBye } from "../bracket/swissRecords";
-import { VetoPanel, type VetoHandlers } from "../bracket/VetoPanel";
+import { VetoPanel } from "../bracket/VetoPanel";
+import type { MatchActions as MatchCommands } from "../tourneyActions";
 import { hasVeto, myVetoSteps, vetoSettled } from "../bracket/vetoPresentation";
 import { hasGames, maySetMatchBestOf } from "../../../shared/rules/tourneyRules";
 import { matchPoolKey, poolForMatch } from "../bracket/poolPresentation";
@@ -39,11 +40,8 @@ interface MatchesPanelProps {
   vault: VaultMap[];
   assetBase: string;
   busyMatchId: string | null;
-  onReport: (entry: TourneyMatch) => void;
-  onAnswer: (entry: TourneyMatch, accept: boolean) => void;
-  onHost: (entry: TourneyMatch) => void;
-  onWatchReplay: (uid: number) => void;
-  veto: VetoHandlers;
+  /** Reporting, hosting, the replays and the vetoes. */
+  matches: MatchCommands;
   /** An organiser's single-call change: here, one match's length. */
   onAdmin: (change: TourneyAdmin) => void;
   /** Bind a pool to a key (`match:<id>`), or clear it with an empty id. */
@@ -80,7 +78,8 @@ export function listedMatches(event: Tourney): TourneyMatch[] {
   return event.matches.filter((entry) => entry.bracket !== "freeForAll" && !isBye(entry));
 }
 
-export function MatchesPanel(props: MatchesPanelProps) {
+/** Memoised for the same reason as `BracketView`, and with the same props. */
+export const MatchesPanel = memo(function MatchesPanel(props: MatchesPanelProps) {
   const { event } = props;
   const { t } = useTranslation();
   const display = useTourneyDisplay();
@@ -213,7 +212,7 @@ export function MatchesPanel(props: MatchesPanelProps) {
       )}
     </div>
   );
-}
+});
 
 /** "2:1", with "FF" for a side that forfeited, or a dash before any score. */
 function MatchScore({ entry }: { entry: TourneyMatch }) {
@@ -291,7 +290,7 @@ function MatchDetails({
               key={id}
               className="tournament-link-button mono"
               title={t("tournaments.matches.watchReplay")}
-              onClick={() => props.onWatchReplay(uid)}
+              onClick={() => props.matches.watchReplay(uid)}
             >
               {uid}
             </button>
@@ -358,7 +357,7 @@ function MatchDetails({
           assetBase={props.assetBase}
           profiles={props.profiles}
           busy={props.busyMatchId === entry.id}
-          handlers={props.veto}
+          handlers={props.matches.veto}
         />
       )}
       <div className="tournament-form-actions">
@@ -368,10 +367,10 @@ function MatchDetails({
           busy={props.busyMatchId === entry.id}
           onReport={() => {
             onClose();
-            props.onReport(entry);
+            props.matches.report(entry);
           }}
-          onAnswer={(accept) => props.onAnswer(entry, accept)}
-          onHost={() => props.onHost(entry)}
+          onAnswer={(accept) => props.matches.answer(entry, accept)}
+          onHost={() => props.matches.host(entry)}
           vetoOpen
           onToggleVeto={() => undefined}
           withVeto={false}

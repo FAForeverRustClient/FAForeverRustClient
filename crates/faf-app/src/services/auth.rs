@@ -5,19 +5,37 @@
 
 use faf_domain::state::{AuthCommand, AuthEvent, Player};
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, SerialMutation, ServiceCtx};
+
+/// The auth service's operational context: which sign-in or sign-out is
+/// current, how to call off a login in flight, and the lock that keeps them
+/// from interleaving. Owned by this service.
+#[derive(Default)]
+pub struct AuthContext {
+    /// Only the newest login, restore or logout may land. Commands run
+    /// concurrently, so one that was cancelled or superseded and answers late
+    /// must not sign the user in or out over the one now current.
+    generation: LatestRequest,
+    /// The in-flight login, so cancelling it, going offline or signing out can
+    /// stop it. Dropping the future is the only thing that actually stops work
+    /// that is several awaits deep inside a port.
+    cancellation: std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>,
+    /// Login, restore and logout act on the same session behind the auth
+    /// port, so one finishes before the next begins.
+    mutation: SerialMutation,
+}
 
 pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         AuthCommand::Login { remember } => {
             let token = tokio_util::sync::CancellationToken::new();
-            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+            if let Ok(mut slot) = ctx.auth.cancellation.lock() {
                 if let Some(prev) = slot.replace(token.clone()) {
                     prev.cancel();
                 }
             }
             let generation = next_generation(ctx);
-            let _guard = ctx.auth_mutation.acquire().await;
+            let _guard = ctx.auth.mutation.acquire().await;
             if !is_current(ctx, generation) || token.is_cancelled() {
                 return;
             }
@@ -41,7 +59,7 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         AuthCommand::CancelLogin => {
-            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+            if let Ok(mut slot) = ctx.auth.cancellation.lock() {
                 if let Some(token) = slot.take() {
                     token.cancel();
                 }
@@ -51,7 +69,7 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         AuthCommand::Restore => {
             let generation = next_generation(ctx);
-            let _guard = ctx.auth_mutation.acquire().await;
+            let _guard = ctx.auth.mutation.acquire().await;
             if !is_current(ctx, generation) {
                 return;
             }
@@ -71,7 +89,7 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             // Whatever the login was doing, it is not what the user asked for
             // any more: the same cancellation the test path performs, and then
             // a session that talks to nothing.
-            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+            if let Ok(mut slot) = ctx.auth.cancellation.lock() {
                 if let Some(token) = slot.take() {
                     token.cancel();
                 }
@@ -88,7 +106,7 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             // Java's `GameRunner.startOffline` answers a second press with
             // "game is running"; here it would have replaced the game, online
             // or not, because the game slot holds one process.
-            if ctx.ports.process.game_running() || ctx.running_game.id().is_some() {
+            if ctx.ports.process.game_running() || ctx.lobby.running_game_id().is_some() {
                 out.emit(AuthEvent::LoginFailed {
                     message: "Forged Alliance is already running.".into(),
                 });
@@ -115,7 +133,7 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         AuthCommand::LoginTest => {
-            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+            if let Ok(mut slot) = ctx.auth.cancellation.lock() {
                 if let Some(token) = slot.take() {
                     token.cancel();
                 }
@@ -130,13 +148,13 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
         }
         AuthCommand::Logout => {
-            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+            if let Ok(mut slot) = ctx.auth.cancellation.lock() {
                 if let Some(token) = slot.take() {
                     token.cancel();
                 }
             }
             let generation = next_generation(ctx);
-            let _guard = ctx.auth_mutation.acquire().await;
+            let _guard = ctx.auth.mutation.acquire().await;
             if !is_current(ctx, generation) {
                 return;
             }
@@ -147,7 +165,7 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
         }
         AuthCommand::LogoutTest => {
-            if let Ok(mut slot) = ctx.auth_cancellation.lock() {
+            if let Ok(mut slot) = ctx.auth.cancellation.lock() {
                 if let Some(token) = slot.take() {
                     token.cancel();
                 }
@@ -159,9 +177,9 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 fn next_generation(ctx: &ServiceCtx) -> u64 {
-    ctx.auth_generation.begin()
+    ctx.auth.generation.begin()
 }
 
 fn is_current(ctx: &ServiceCtx, generation: u64) -> bool {
-    ctx.auth_generation.is_current(generation)
+    ctx.auth.generation.is_current(generation)
 }

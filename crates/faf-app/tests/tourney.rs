@@ -9,17 +9,15 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use faf_app::infra::fake_ports;
-use faf_app::ports::{RequestError, TourneyPort};
+use faf_app::ports::{RequestError, TourneyEntryPort, TourneyMatchPort, TourneyReadPort};
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    Article, BracketConfig, ChatPost, ChatRoom, FfaReport, FormatDraft, HostingStatus, MapDraft,
-    MatchReport, MatchStatus, PoolDraft, QualifierKind, QualifierRule, SeedOrder, SeriesDetail,
-    SeriesDraft, Tourney, TourneyAction, TourneyCommand, TourneyDraft, TourneyEvent,
-    TourneyLoadStatus, TourneyPhase, TourneySeries, TourneyStatus,
+    BracketConfig, CopySource, EntrantRatings, FfaReport, FormatDraft, MapDraft, MatchReport,
+    MatchStatus, PoolDraft, QualifierKind, QualifierRule, RatingCheck, RenameCheck, SeedOrder,
+    SeriesDetail, SeriesDraft, Tourney, TourneyAction, TourneyDraft, TourneyEvent,
+    TourneyLoadStatus, TourneyPhase, TourneyPreset, TourneyRead, TourneySeries, TourneyStatus,
+    TourneyWrite,
 };
-use faf_domain::state::{CopySource, EntrantRatings, RatingCheck, TourneyPreset};
-use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFaction};
-use faf_domain::state::{SiteDocument, SiteRead, SiteWrite};
 use faf_domain::AppEvent;
 
 fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {
@@ -29,13 +27,14 @@ fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {
     }
 }
 
-/// A port that reads fine and refuses every write with the same error.
+/// Entry and match ports that refuse every write with the same error.
 ///
 /// Stands in for the case the whole tab has to survive: a signed-in account
 /// that is simply not entitled: not an organiser here, or below the rating
-/// gate. Reads work, writes come back 403 with a sentence worth showing.
+/// gate. Reads work, because every other tournament port is the offline fake;
+/// entering, team changes, results and the event's phase come back 403 with a
+/// sentence worth showing.
 struct RefusingTourney {
-    inner: faf_app::infra::FakeTourney,
     error: RequestError,
 }
 
@@ -46,66 +45,31 @@ impl RefusingTourney {
 }
 
 #[async_trait]
-impl TourneyPort for RefusingTourney {
-    fn asset_base(&self) -> String {
-        String::new()
-    }
-
-    async fn profile(&self) -> Result<String, RequestError> {
-        Ok(String::new())
-    }
-
-    async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
-        Ok(handle.trim().to_string())
-    }
-
-    async fn list(&self) -> Result<Vec<Tourney>, RequestError> {
-        self.inner.list().await
-    }
-    async fn detail(&self, tournament_id: &str) -> Result<Tourney, RequestError> {
-        self.inner.detail(tournament_id).await
-    }
-    async fn hosting(&self) -> Result<HostingStatus, RequestError> {
-        self.inner.hosting().await
-    }
-    async fn create(&self, _: &TourneyDraft) -> Result<String, RequestError> {
-        self.refused()
-    }
-    async fn edit_info(&self, _: &str, _: &TourneyDraft) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn publish(&self, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn advance(
-        &self,
-        _: &str,
-        _: TourneyPhase,
-        _: Option<&BracketConfig>,
-    ) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn archive(&self, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
+impl TourneyEntryPort for RefusingTourney {
     async fn sign_up(&self, _: &str, _: Option<i32>) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn withdraw(&self, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn add_player(&self, _: &str, _: &str, _: Option<i32>) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn respond_signup(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn set_captain(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn move_player(&self, _: &str, _: &str, _: Option<&str>) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn edit_player(
         &self,
         _: &str,
@@ -115,222 +79,96 @@ impl TourneyPort for RefusingTourney {
     ) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn invite_player(&self, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn uninvite(&self, _: &str, _: i32) -> Result<(), RequestError> {
         self.refused()
     }
-    async fn reseed(&self, _: &str, _: &SeedOrder) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn split_divisions(&self, _: &str, _: i32) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn set_division(&self, _: &str, _: &str, _: i32) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn post_news(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn delete_news(&self, _: &str, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
+
     async fn create_team(&self, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn request_join(&self, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn cancel_join(&self, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn respond_join(&self, _: &str, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn invite_to_team(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn respond_invite(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn leave_team(&self, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn disband_team(&self, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn rename_team(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn check_in(&self, _: &str, _: bool) -> Result<(), RequestError> {
         self.refused()
     }
-    async fn confirm_report(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn decide_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn faction_veto(
-        &self,
-        _: &str,
-        _: &str,
-        _: i32,
-        _: TourneyFaction,
-    ) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
-        self.refused()
-    }
+
     async fn decline_invite(&self, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
-    async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
-        self.refused()
-    }
-    async fn player_ratings(
-        &self,
-        _: &str,
-        _: &str,
-        _: bool,
-    ) -> Result<EntrantRatings, RequestError> {
-        self.refused()
-    }
-    async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
-        self.refused()
-    }
-    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
-        self.refused()
-    }
-    async fn upload_desc_image(&self, _: &str, _: &str) -> Result<String, RequestError> {
-        self.refused()
-    }
-    async fn site_read(&self, _: SiteRead) -> Result<SiteDocument, RequestError> {
-        self.refused()
-    }
-    async fn site_write(
-        &self,
-        _: &SiteWrite,
-    ) -> Result<(Option<String>, Option<String>), RequestError> {
-        self.refused()
-    }
-    async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
-        self.refused()
-    }
-    async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
-        self.inner.chat_rooms(tournament_id).await
-    }
-    async fn chat_read(&self, t: &str, room: &str) -> Result<Vec<ChatPost>, RequestError> {
-        self.inner.chat_read(t, room).await
-    }
-    async fn chat_post(
-        &self,
-        _: &str,
-        _: &str,
-        _: &str,
-        _: Option<&str>,
-    ) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn articles(&self) -> Result<Vec<Article>, RequestError> {
-        self.inner.articles().await
-    }
-    async fn assign_pool(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
+
     async fn draft_pick(&self, _: &str, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn draft_undo(&self, _: &str) -> Result<(), RequestError> {
         self.refused()
     }
+
     async fn set_captains(&self, _: &str, _: &[String]) -> Result<(), RequestError> {
         self.refused()
     }
+}
+
+#[async_trait]
+impl TourneyMatchPort for RefusingTourney {
+    async fn advance(
+        &self,
+        _: &str,
+        _: TourneyPhase,
+        _: Option<&BracketConfig>,
+    ) -> Result<(), RequestError> {
+        self.refused()
+    }
+
+    async fn confirm_report(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
+        self.refused()
+    }
+
+    async fn decide_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+        self.refused()
+    }
+
+    async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+        self.refused()
+    }
+
     async fn report_ffa(&self, _: &str, _: &FfaReport) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn veto_act(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn veto_set_sides(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn veto_undo(&self, _: &str, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn save_map(&self, _: &str, _: &MapDraft) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn publish_map(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn delete_map(&self, _: &str, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn publish_pool(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn delete_pool(&self, _: &str, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn save_pool(&self, _: &str, _: &PoolDraft) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn series(&self) -> Result<Vec<TourneySeries>, RequestError> {
-        self.inner.series().await
-    }
-    async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError> {
-        self.inner.series_detail(series_id).await
-    }
-    async fn save_series(&self, _: &SeriesDraft) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn delete_series(&self, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn set_series(&self, _: &str, _: Option<&str>) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn add_qualifier(&self, _: &str, _: &str, _: QualifierRule) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn remove_qualifier(&self, _: &str, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn edit_format(&self, _: &str, _: &FormatDraft, _: bool) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn mute_chat(&self, _: &str, _: i32, _: &str, _: bool) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn delete_chat_post(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn add_organiser(&self, _: &str, _: i32, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn set_organiser_visibility(&self, _: &str, _: i32, _: bool) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn abandon(&self, _: &str, _: bool) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn edit_news(&self, _: &str, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn mark_news_read(&self, _: &str) -> Result<(), RequestError> {
-        self.refused()
-    }
-    async fn set_caster(&self, _: &str, _: i32, _: &str, _: bool) -> Result<(), RequestError> {
         self.refused()
     }
 }
@@ -350,11 +188,10 @@ async fn app() -> App {
 }
 
 async fn app_refusing(error: RequestError) -> App {
+    let refusing = Arc::new(RefusingTourney { error });
     let ports = Ports {
-        tourney: Arc::new(RefusingTourney {
-            inner: faf_app::infra::FakeTourney::new(),
-            error,
-        }),
+        tourney_entry: refusing.clone(),
+        tourney_match: refusing,
         ..fake_ports()
     };
     let (app, app_loop) = App::new("test", ports);
@@ -409,7 +246,7 @@ async fn settle(app: &App) {
 /// Open one event and wait for its detail.
 async fn open(app: &App, tournament_id: &str) {
     app.dispatch(
-        TourneyCommand::Select {
+        TourneyRead::Select {
             tournament_id: tournament_id.into(),
         }
         .into(),
@@ -424,7 +261,7 @@ async fn loading_announces_itself_then_lands_a_sorted_list() {
     let app = app().await;
     let mut events = app.subscribe();
 
-    app.dispatch(TourneyCommand::Load.into()).await.unwrap();
+    app.dispatch(TourneyRead::Load.into()).await.unwrap();
 
     assert_eq!(next_event(&mut events).await, TourneyEvent::Loading);
     // Where the service lives, sent with every load: the tab resolves the
@@ -464,7 +301,7 @@ async fn loading_announces_itself_then_lands_a_sorted_list() {
 async fn the_list_carries_counts_and_the_detail_carries_the_people() {
     // The two endpoints answer differently, and the tab has to read both.
     let app = app().await;
-    app.dispatch(TourneyCommand::Load.into()).await.unwrap();
+    app.dispatch(TourneyRead::Load.into()).await.unwrap();
     settle(&app).await;
 
     let row = app
@@ -492,7 +329,7 @@ async fn entering_a_tournament_reloads_both_the_row_and_the_detail() {
     assert!(app.snapshot().tourney.detail.unwrap().may_sign_up());
 
     app.dispatch(
-        TourneyCommand::SignUp {
+        TourneyWrite::SignUp {
             tournament_id: "e1a2b".into(),
             rating: None,
         }
@@ -522,7 +359,7 @@ async fn withdrawing_uses_the_player_id_the_server_handed_out() {
     let app = app().await;
     open(&app, "e1a2b").await;
     app.dispatch(
-        TourneyCommand::SignUp {
+        TourneyWrite::SignUp {
             tournament_id: "e1a2b".into(),
             rating: None,
         }
@@ -533,7 +370,7 @@ async fn withdrawing_uses_the_player_id_the_server_handed_out() {
     settle(&app).await;
 
     app.dispatch(
-        TourneyCommand::Withdraw {
+        TourneyWrite::Withdraw {
             tournament_id: "e1a2b".into(),
         }
         .into(),
@@ -553,7 +390,7 @@ async fn withdrawing_without_an_entry_is_refused_before_a_request_is_made() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::Withdraw {
+        TourneyWrite::Withdraw {
             tournament_id: "e1a2b".into(),
         }
         .into(),
@@ -598,7 +435,7 @@ async fn a_confirmed_score_advances_the_winner_and_the_state_follows() {
     open(&app, "e9z9z").await;
 
     app.dispatch(
-        TourneyCommand::AnswerReport {
+        TourneyWrite::AnswerReport {
             tournament_id: "e9z9z".into(),
             match_id: "m1".into(),
             accept: true,
@@ -643,7 +480,7 @@ async fn an_organisers_forfeit_reaches_the_server() {
     let present = entry.team2.clone().expect("a side");
 
     app.dispatch(
-        TourneyCommand::DecideReport {
+        TourneyWrite::DecideReport {
             tournament_id: "e9z9z".into(),
             report: MatchReport {
                 match_id: entry.id.clone(),
@@ -682,7 +519,7 @@ async fn the_map_database_takes_maps_and_hides_them_until_published() {
         .len();
 
     app.dispatch(
-        TourneyCommand::SaveMap {
+        TourneyWrite::SaveMap {
             tournament_id: "e1a2b".into(),
             map: MapDraft {
                 id: String::new(),
@@ -708,7 +545,7 @@ async fn the_map_database_takes_maps_and_hides_them_until_published() {
 
     let map_id = added.id.clone();
     app.dispatch(
-        TourneyCommand::PublishMap {
+        TourneyWrite::PublishMap {
             tournament_id: "e1a2b".into(),
             map_id: map_id.clone(),
             published: true,
@@ -730,7 +567,7 @@ async fn the_map_database_takes_maps_and_hides_them_until_published() {
     // Deleting cascades: the service strips the map from every pool naming it,
     // and the fake has to, or the tab shows a pool entry it cannot name.
     app.dispatch(
-        TourneyCommand::DeleteMap {
+        TourneyWrite::DeleteMap {
             tournament_id: "e1a2b".into(),
             map_id: map_id.clone(),
         }
@@ -758,7 +595,7 @@ async fn publishing_a_pool_publishes_the_maps_in_it() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::SaveMap {
+        TourneyWrite::SaveMap {
             tournament_id: "e1a2b".into(),
             map: MapDraft {
                 id: String::new(),
@@ -786,7 +623,7 @@ async fn publishing_a_pool_publishes_the_maps_in_it() {
         .clone();
 
     app.dispatch(
-        TourneyCommand::SavePool {
+        TourneyWrite::SavePool {
             tournament_id: "e1a2b".into(),
             pool: PoolDraft {
                 id: String::new(),
@@ -814,7 +651,7 @@ async fn publishing_a_pool_publishes_the_maps_in_it() {
         .clone();
 
     app.dispatch(
-        TourneyCommand::PublishPool {
+        TourneyWrite::PublishPool {
             tournament_id: "e1a2b".into(),
             pool_id: pool_id.clone(),
             published: true,
@@ -867,7 +704,7 @@ async fn a_veto_walks_its_order_and_leaves_a_decider() {
 
     for map_id in ["map1", "map2", "map3"] {
         app.dispatch(
-            TourneyCommand::VetoAct {
+            TourneyWrite::VetoAct {
                 tournament_id: "e9z9z".into(),
                 match_id: "m2".into(),
                 map_id: map_id.into(),
@@ -908,7 +745,7 @@ async fn undoing_a_veto_step_puts_the_map_back() {
     open(&app, "e9z9z").await;
 
     app.dispatch(
-        TourneyCommand::VetoAct {
+        TourneyWrite::VetoAct {
             tournament_id: "e9z9z".into(),
             match_id: "m2".into(),
             map_id: "map1".into(),
@@ -920,7 +757,7 @@ async fn undoing_a_veto_step_puts_the_map_back() {
     settle(&app).await;
 
     app.dispatch(
-        TourneyCommand::VetoUndo {
+        TourneyWrite::VetoUndo {
             tournament_id: "e9z9z".into(),
             match_id: "m2".into(),
         }
@@ -954,7 +791,7 @@ async fn a_map_that_is_not_in_play_is_refused() {
     open(&app, "e9z9z").await;
 
     app.dispatch(
-        TourneyCommand::VetoAct {
+        TourneyWrite::VetoAct {
             tournament_id: "e9z9z".into(),
             match_id: "m2".into(),
             map_id: "map9".into(),
@@ -987,7 +824,7 @@ async fn the_sides_can_be_set_once_and_not_after_the_run_starts() {
 
     // Choosing again is refused once a step has been taken.
     app.dispatch(
-        TourneyCommand::VetoAct {
+        TourneyWrite::VetoAct {
             tournament_id: "e9z9z".into(),
             match_id: "m2".into(),
             map_id: "map1".into(),
@@ -999,7 +836,7 @@ async fn the_sides_can_be_set_once_and_not_after_the_run_starts() {
     settle(&app).await;
 
     app.dispatch(
-        TourneyCommand::VetoSetSides {
+        TourneyWrite::VetoSetSides {
             tournament_id: "e9z9z".into(),
             match_id: "m2".into(),
             team_a: "t3".into(),
@@ -1043,7 +880,7 @@ async fn a_scored_free_for_all_lobby_adds_to_the_table() {
     assert!(event.may_report_ffa(lobby));
 
     app.dispatch(
-        TourneyCommand::ReportFfa {
+        TourneyWrite::ReportFfa {
             tournament_id: "f4f4f".into(),
             report: FfaReport {
                 match_id: "f2".into(),
@@ -1076,7 +913,7 @@ async fn a_scored_lobby_needs_a_number_for_every_entrant() {
     open(&app, "f4f4f").await;
 
     app.dispatch(
-        TourneyCommand::ReportFfa {
+        TourneyWrite::ReportFfa {
             tournament_id: "f4f4f".into(),
             report: FfaReport {
                 match_id: "f2".into(),
@@ -1128,7 +965,7 @@ async fn a_captains_draft_runs_from_signups_to_full_teams() {
     assert_eq!(event.pending_captains.len(), 2);
 
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "d3d3d".into(),
             phase: TourneyPhase::StartDraft,
             config: None,
@@ -1153,7 +990,7 @@ async fn a_captains_draft_runs_from_signups_to_full_teams() {
 
     let first = event.undrafted()[0].id.clone();
     app.dispatch(
-        TourneyCommand::DraftPickPlayer {
+        TourneyWrite::DraftPickPlayer {
             tournament_id: "d3d3d".into(),
             player_id: first.clone(),
         }
@@ -1174,7 +1011,7 @@ async fn a_captains_draft_runs_from_signups_to_full_teams() {
 
     let second = event.undrafted()[0].id.clone();
     app.dispatch(
-        TourneyCommand::DraftPickPlayer {
+        TourneyWrite::DraftPickPlayer {
             tournament_id: "d3d3d".into(),
             player_id: second,
         }
@@ -1199,7 +1036,7 @@ async fn undoing_a_pick_puts_the_player_back_in_the_pool() {
     let app = app().await;
     open(&app, "d3d3d").await;
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "d3d3d".into(),
             phase: TourneyPhase::StartDraft,
             config: None,
@@ -1214,7 +1051,7 @@ async fn undoing_a_pick_puts_the_player_back_in_the_pool() {
         .id
         .clone();
     app.dispatch(
-        TourneyCommand::DraftPickPlayer {
+        TourneyWrite::DraftPickPlayer {
             tournament_id: "d3d3d".into(),
             player_id: picked.clone(),
         }
@@ -1225,7 +1062,7 @@ async fn undoing_a_pick_puts_the_player_back_in_the_pool() {
     settle(&app).await;
 
     app.dispatch(
-        TourneyCommand::DraftUndo {
+        TourneyWrite::DraftUndo {
             tournament_id: "d3d3d".into(),
         }
         .into(),
@@ -1259,7 +1096,7 @@ async fn a_draft_needs_two_captains_before_it_can_start() {
     open(&app, "d3d3d").await;
 
     app.dispatch(
-        TourneyCommand::SetCaptains {
+        TourneyWrite::SetCaptains {
             tournament_id: "d3d3d".into(),
             player_ids: vec!["c1".into()],
         }
@@ -1270,7 +1107,7 @@ async fn a_draft_needs_two_captains_before_it_can_start() {
     settle(&app).await;
 
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "d3d3d".into(),
             phase: TourneyPhase::StartDraft,
             config: None,
@@ -1296,7 +1133,7 @@ async fn a_refused_write_keeps_the_servers_sentence_and_clears_the_spinner() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::SignUp {
+        TourneyWrite::SignUp {
             tournament_id: "e1a2b".into(),
             rating: None,
         }
@@ -1315,7 +1152,7 @@ async fn a_refused_write_keeps_the_servers_sentence_and_clears_the_spinner() {
     // successful one.
     assert!(!state.detail.unwrap().viewer.is_signed_up());
 
-    app.dispatch(TourneyCommand::DismissActionError.into())
+    app.dispatch(TourneyRead::DismissActionError.into())
         .await
         .unwrap();
     settle(&app).await;
@@ -1328,7 +1165,7 @@ async fn opening_a_room_reads_it_and_clears_its_badge() {
     open(&app, "e9z9z").await;
 
     app.dispatch(
-        TourneyCommand::LoadChat {
+        TourneyRead::LoadChat {
             tournament_id: "e9z9z".into(),
         }
         .into(),
@@ -1340,7 +1177,7 @@ async fn opening_a_room_reads_it_and_clears_its_badge() {
     assert_eq!(rooms.first().map(|room| room.id.as_str()), Some("global"));
 
     app.dispatch(
-        TourneyCommand::OpenRoom {
+        TourneyRead::OpenRoom {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
         }
@@ -1361,7 +1198,7 @@ async fn posting_reloads_the_room_and_not_the_whole_tournament() {
     let app = app().await;
     open(&app, "e9z9z").await;
     app.dispatch(
-        TourneyCommand::OpenRoom {
+        TourneyRead::OpenRoom {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
         }
@@ -1372,7 +1209,7 @@ async fn posting_reloads_the_room_and_not_the_whole_tournament() {
     settle(&app).await;
 
     app.dispatch(
-        TourneyCommand::PostChat {
+        TourneyWrite::PostChat {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "  on my way  ".into(),
@@ -1390,7 +1227,7 @@ async fn posting_reloads_the_room_and_not_the_whole_tournament() {
 
     // An empty message is not a request at all.
     app.dispatch(
-        TourneyCommand::PostChat {
+        TourneyWrite::PostChat {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "   ".into(),
@@ -1409,7 +1246,7 @@ async fn switching_events_never_leaves_one_brackets_chat_under_another() {
     let app = app().await;
     open(&app, "e9z9z").await;
     app.dispatch(
-        TourneyCommand::OpenRoom {
+        TourneyRead::OpenRoom {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
         }
@@ -1441,7 +1278,7 @@ async fn adding_a_searched_account_gives_the_entrant_a_resolvable_profile() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::SearchAccounts {
+        TourneyRead::SearchAccounts {
             query: "Grace".into(),
         }
         .into(),
@@ -1459,7 +1296,7 @@ async fn adding_a_searched_account_gives_the_entrant_a_resolvable_profile() {
         .expect("the offline lookup knows this account");
 
     app.dispatch(
-        TourneyCommand::AddPlayer {
+        TourneyWrite::AddPlayer {
             tournament_id: "e1a2b".into(),
             name: picked.login.clone(),
             rating: None,
@@ -1498,7 +1335,7 @@ async fn a_one_letter_query_is_not_sent_to_the_api() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::SearchAccounts {
+        TourneyRead::SearchAccounts {
             query: "Grace".into(),
         }
         .into(),
@@ -1511,7 +1348,7 @@ async fn a_one_letter_query_is_not_sent_to_the_api() {
     // Deleting back down to one letter must not leave the longer word's matches
     // on screen: they are clickable, and clicking one would add somebody the
     // organiser is no longer looking at.
-    app.dispatch(TourneyCommand::SearchAccounts { query: "G".into() }.into())
+    app.dispatch(TourneyRead::SearchAccounts { query: "G".into() }.into())
         .await
         .unwrap();
     settle(&app).await;
@@ -1568,7 +1405,7 @@ async fn assigning_a_pool_to_a_round_survives_the_reload() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::SavePool {
+        TourneyWrite::SavePool {
             tournament_id: "e1a2b".into(),
             pool: PoolDraft {
                 id: String::new(),
@@ -1599,7 +1436,7 @@ async fn assigning_a_pool_to_a_round_survives_the_reload() {
         .expect("the pool was created");
 
     app.dispatch(
-        TourneyCommand::AssignPool {
+        TourneyWrite::AssignPool {
             tournament_id: "e1a2b".into(),
             round_key: "wb:2".into(),
             pool_id,
@@ -1621,7 +1458,7 @@ async fn assigning_a_pool_to_a_round_survives_the_reload() {
 async fn the_rules_pages_load_without_a_tournament_open() {
     // Site-wide, and fetched whole rather than by three hard-coded ids.
     let app = app().await;
-    app.dispatch(TourneyCommand::LoadArticles.into())
+    app.dispatch(TourneyRead::LoadArticles.into())
         .await
         .unwrap();
     settle(&app).await;
@@ -1636,163 +1473,23 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
     struct Offline;
 
     #[async_trait]
-    impl TourneyPort for Offline {
+    impl TourneyReadPort for Offline {
         fn asset_base(&self) -> String {
             String::new()
-        }
-
-        async fn profile(&self) -> Result<String, RequestError> {
-            Ok(String::new())
-        }
-
-        async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
-            Ok(handle.trim().to_string())
         }
 
         async fn list(&self) -> Result<Vec<Tourney>, RequestError> {
             Err(RequestError::offline("no route to host"))
         }
+
         async fn detail(&self, _: &str) -> Result<Tourney, RequestError> {
             Err(RequestError::offline("no route to host"))
         }
-        async fn hosting(&self) -> Result<HostingStatus, RequestError> {
-            Err(RequestError::offline("no route to host"))
-        }
-        async fn create(&self, _: &TourneyDraft) -> Result<String, RequestError> {
-            unreachable!()
-        }
-        async fn set_captain(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn move_player(&self, _: &str, _: &str, _: Option<&str>) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn edit_player(
-            &self,
-            _: &str,
-            _: &str,
-            _: &str,
-            _: Option<i32>,
-        ) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn edit_info(&self, _: &str, _: &TourneyDraft) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn publish(&self, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn advance(
-            &self,
-            _: &str,
-            _: TourneyPhase,
-            _: Option<&BracketConfig>,
-        ) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn archive(&self, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn sign_up(&self, _: &str, _: Option<i32>) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn withdraw(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn add_player(&self, _: &str, _: &str, _: Option<i32>) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn respond_signup(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn invite_player(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn uninvite(&self, _: &str, _: i32) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn reseed(&self, _: &str, _: &SeedOrder) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn split_divisions(&self, _: &str, _: i32) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn set_division(&self, _: &str, _: &str, _: i32) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn post_news(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn delete_news(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn create_team(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn request_join(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn cancel_join(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn respond_join(
-            &self,
-            _: &str,
-            _: &str,
-            _: &str,
-            _: bool,
-        ) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn invite_to_team(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn respond_invite(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn leave_team(&self, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn disband_team(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn rename_team(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn check_in(&self, _: &str, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn confirm_report(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn decide_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn faction_veto(
-            &self,
-            _: &str,
-            _: &str,
-            _: i32,
-            _: TourneyFaction,
-        ) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn set_faction_veto(
-            &self,
-            _: &str,
-            _: &FactionVetoConfig,
-        ) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn decline_invite(&self, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
+
         async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
             unreachable!()
         }
+
         async fn player_ratings(
             &self,
             _: &str,
@@ -1801,158 +1498,40 @@ async fn a_failed_list_says_so_rather_than_showing_an_empty_tab() {
         ) -> Result<EntrantRatings, RequestError> {
             unreachable!()
         }
+
         async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
             unreachable!()
         }
+
         async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
             unreachable!()
         }
-        async fn upload_desc_image(&self, _: &str, _: &str) -> Result<String, RequestError> {
-            unreachable!()
-        }
-        async fn site_read(&self, _: SiteRead) -> Result<SiteDocument, RequestError> {
-            unreachable!()
-        }
-        async fn site_write(
-            &self,
-            _: &SiteWrite,
-        ) -> Result<(Option<String>, Option<String>), RequestError> {
-            unreachable!()
-        }
+
         async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
             unreachable!()
         }
-        async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn chat_rooms(&self, _: &str) -> Result<Vec<ChatRoom>, RequestError> {
-            unreachable!()
-        }
-        async fn chat_read(&self, _: &str, _: &str) -> Result<Vec<ChatPost>, RequestError> {
-            unreachable!()
-        }
-        async fn chat_post(
-            &self,
-            _: &str,
-            _: &str,
-            _: &str,
-            _: Option<&str>,
-        ) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn articles(&self) -> Result<Vec<Article>, RequestError> {
-            unreachable!()
-        }
-        async fn assign_pool(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn draft_pick(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn draft_undo(&self, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn set_captains(&self, _: &str, _: &[String]) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn report_ffa(&self, _: &str, _: &FfaReport) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn veto_act(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn veto_set_sides(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn veto_undo(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn save_map(&self, _: &str, _: &MapDraft) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn publish_map(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn delete_map(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn publish_pool(&self, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn delete_pool(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn save_pool(&self, _: &str, _: &PoolDraft) -> Result<(), RequestError> {
-            unreachable!()
-        }
+
         async fn series(&self) -> Result<Vec<TourneySeries>, RequestError> {
             Err(RequestError::offline("no route to host"))
         }
+
         async fn series_detail(&self, _: &str) -> Result<SeriesDetail, RequestError> {
             Err(RequestError::offline("no route to host"))
         }
-        async fn save_series(&self, _: &SeriesDraft) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn delete_series(&self, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn set_series(&self, _: &str, _: Option<&str>) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn add_qualifier(
-            &self,
-            _: &str,
-            _: &str,
-            _: QualifierRule,
-        ) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn remove_qualifier(&self, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn edit_format(&self, _: &str, _: &FormatDraft, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn mute_chat(&self, _: &str, _: i32, _: &str, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn delete_chat_post(&self, _: &str, _: &str, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn add_organiser(&self, _: &str, _: i32, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn set_organiser_visibility(
-            &self,
-            _: &str,
-            _: i32,
-            _: bool,
-        ) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn abandon(&self, _: &str, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn edit_news(&self, _: &str, _: &str, _: &str, _: bool) -> Result<(), RequestError> {
-            unreachable!()
-        }
+
         async fn mark_news_read(&self, _: &str) -> Result<(), RequestError> {
-            unreachable!()
-        }
-        async fn set_caster(&self, _: &str, _: i32, _: &str, _: bool) -> Result<(), RequestError> {
             unreachable!()
         }
     }
 
     let ports = Ports {
-        tourney: Arc::new(Offline),
+        tourney_read: Arc::new(Offline),
         ..fake_ports()
     };
     let (app, app_loop) = App::new("test", ports);
     tokio::spawn(app_loop.run());
 
-    app.dispatch(TourneyCommand::Load.into()).await.unwrap();
+    app.dispatch(TourneyRead::Load.into()).await.unwrap();
     settle(&app).await;
 
     match app.snapshot().tourney.status {
@@ -1970,7 +1549,7 @@ async fn entering_one_tournament_never_enters_another() {
     let app = app().await;
     open(&app, "e1a2b").await;
     app.dispatch(
-        TourneyCommand::SignUp {
+        TourneyWrite::SignUp {
             tournament_id: "e1a2b".into(),
             rating: None,
         }
@@ -2009,12 +1588,12 @@ async fn a_created_tournament_becomes_the_open_one() {
     // The organiser lands inside the event they just made, rather than back at
     // a list that looks unchanged.
     let app = app().await;
-    app.dispatch(TourneyCommand::Load.into()).await.unwrap();
+    app.dispatch(TourneyRead::Load.into()).await.unwrap();
     settle(&app).await;
     let before = app.snapshot().tourney.events.len();
 
     app.dispatch(
-        TourneyCommand::Create {
+        TourneyWrite::Create {
             draft: TourneyDraft {
                 name: "  Spring Open  ".into(),
                 team_size: 1,
@@ -2046,11 +1625,11 @@ async fn publishing_is_what_makes_a_created_event_visible() {
     // alone, so an organiser who never publishes has an event taking signups
     // that nobody can find.
     let app = app().await;
-    app.dispatch(TourneyCommand::Load.into()).await.unwrap();
+    app.dispatch(TourneyRead::Load.into()).await.unwrap();
     settle(&app).await;
 
     app.dispatch(
-        TourneyCommand::Create {
+        TourneyWrite::Create {
             draft: TourneyDraft {
                 name: "Autumn Cup".into(),
                 team_size: 1,
@@ -2065,7 +1644,7 @@ async fn publishing_is_what_makes_a_created_event_visible() {
     let id = app.snapshot().tourney.selected_id.expect("the new event");
 
     app.dispatch(
-        TourneyCommand::Publish {
+        TourneyWrite::Publish {
             tournament_id: id.clone(),
         }
         .into(),
@@ -2095,7 +1674,7 @@ async fn an_event_walks_from_signups_to_a_drawn_bracket() {
 
     // Drawing a bracket before teams exist is refused, and says why.
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::StartBracket,
             config: None,
@@ -2109,7 +1688,7 @@ async fn an_event_walks_from_signups_to_a_drawn_bracket() {
     assert!(refused.reason.contains("Form teams first"));
 
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
             config: None,
@@ -2124,7 +1703,7 @@ async fn an_event_walks_from_signups_to_a_drawn_bracket() {
     assert_eq!(drafted.team_count, 2, "every entrant is in a team");
 
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::StartBracket,
             config: None,
@@ -2144,7 +1723,7 @@ async fn reopening_signups_gives_the_teams_back_to_their_players() {
     let app = app().await;
     open(&app, "e1a2b").await;
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
             config: None,
@@ -2156,7 +1735,7 @@ async fn reopening_signups_gives_the_teams_back_to_their_players() {
     settle(&app).await;
 
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::ReopenSignups,
             config: None,
@@ -2183,7 +1762,7 @@ async fn editing_an_event_leaves_its_entrants_alone() {
     let before = app.snapshot().tourney.detail.expect("open");
 
     app.dispatch(
-        TourneyCommand::EditInfo {
+        TourneyWrite::EditInfo {
             tournament_id: "e1a2b".into(),
             draft: TourneyDraft {
                 name: "Weekend Ladder Cup 2".into(),
@@ -2218,7 +1797,7 @@ async fn archiving_an_event_moves_the_selection_on() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::Archive {
+        TourneyWrite::Archive {
             tournament_id: "e1a2b".into(),
         }
         .into(),
@@ -2240,7 +1819,7 @@ async fn a_refused_lifecycle_write_leaves_the_event_untouched() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
             config: None,
@@ -2272,9 +1851,7 @@ async fn the_hosting_answer_gates_the_create_button() {
         "unknown until asked"
     );
 
-    app.dispatch(TourneyCommand::LoadHosting.into())
-        .await
-        .unwrap();
+    app.dispatch(TourneyRead::LoadHosting.into()).await.unwrap();
     settle(&app).await;
     assert!(app.snapshot().tourney.hosting.allowed);
 }
@@ -2282,7 +1859,7 @@ async fn the_hosting_answer_gates_the_create_button() {
 /// A 2v2 event in signups: the shape that had no way forward before teams.
 async fn team_event(app: &App) -> String {
     app.dispatch(
-        TourneyCommand::Create {
+        TourneyWrite::Create {
             draft: TourneyDraft {
                 name: "Duo Cup".into(),
                 team_size: 2,
@@ -2301,7 +1878,7 @@ async fn team_event(app: &App) -> String {
         .selected_id
         .expect("the new event is open");
     app.dispatch(
-        TourneyCommand::SignUp {
+        TourneyWrite::SignUp {
             tournament_id: id.clone(),
             rating: None,
         }
@@ -2326,7 +1903,7 @@ async fn a_team_event_offers_a_way_onto_a_team_after_signing_up() {
     assert!(before.may_create_team(), "but forming one is offered");
 
     app.dispatch(
-        TourneyCommand::CreateTeam {
+        TourneyWrite::CreateTeam {
             tournament_id: id.clone(),
             name: "  Blue  ".into(),
         }
@@ -2350,7 +1927,7 @@ async fn joining_a_team_is_a_request_the_captain_answers() {
     let app = app().await;
     let id = team_event(&app).await;
     app.dispatch(
-        TourneyCommand::CreateTeam {
+        TourneyWrite::CreateTeam {
             tournament_id: id.clone(),
             name: "Blue".into(),
         }
@@ -2371,7 +1948,7 @@ async fn joining_a_team_is_a_request_the_captain_answers() {
 
     // Leaving frees this account up to ask for a place again.
     app.dispatch(
-        TourneyCommand::LeaveTeam {
+        TourneyWrite::LeaveTeam {
             tournament_id: id.clone(),
         }
         .into(),
@@ -2396,7 +1973,7 @@ async fn a_captain_can_invite_an_entrant_who_has_no_team() {
     let app = app().await;
     open(&app, "e2v2b").await;
     app.dispatch(
-        TourneyCommand::SignUp {
+        TourneyWrite::SignUp {
             tournament_id: "e2v2b".into(),
             rating: None,
         }
@@ -2406,7 +1983,7 @@ async fn a_captain_can_invite_an_entrant_who_has_no_team() {
     .unwrap();
     settle(&app).await;
     app.dispatch(
-        TourneyCommand::CreateTeam {
+        TourneyWrite::CreateTeam {
             tournament_id: "e2v2b".into(),
             name: "Blue".into(),
         }
@@ -2425,7 +2002,7 @@ async fn a_captain_can_invite_an_entrant_who_has_no_team() {
         .expect("somebody without a team");
 
     app.dispatch(
-        TourneyCommand::InviteToTeam {
+        TourneyWrite::InviteToTeam {
             tournament_id: "e2v2b".into(),
             team_id: team_id.clone(),
             player_id: free.clone(),
@@ -2450,7 +2027,7 @@ async fn asking_a_team_for_a_place_shows_up_on_that_team() {
     let app = app().await;
     open(&app, "e2v2b").await;
     app.dispatch(
-        TourneyCommand::SignUp {
+        TourneyWrite::SignUp {
             tournament_id: "e2v2b".into(),
             rating: None,
         }
@@ -2465,7 +2042,7 @@ async fn asking_a_team_for_a_place_shows_up_on_that_team() {
     assert!(event.may_request_join(&theirs));
 
     app.dispatch(
-        TourneyCommand::RequestJoin {
+        TourneyWrite::RequestJoin {
             tournament_id: "e2v2b".into(),
             team_id: theirs.id.clone(),
         }
@@ -2483,7 +2060,7 @@ async fn asking_a_team_for_a_place_shows_up_on_that_team() {
     assert!(!asked.may_request_join(team));
 
     app.dispatch(
-        TourneyCommand::CancelJoin {
+        TourneyWrite::CancelJoin {
             tournament_id: "e2v2b".into(),
             team_id: theirs.id.clone(),
         }
@@ -2501,7 +2078,7 @@ async fn renaming_a_team_refuses_a_name_already_taken() {
     let app = app().await;
     let id = team_event(&app).await;
     app.dispatch(
-        TourneyCommand::CreateTeam {
+        TourneyWrite::CreateTeam {
             tournament_id: id.clone(),
             name: "Blue".into(),
         }
@@ -2521,7 +2098,7 @@ async fn renaming_a_team_refuses_a_name_already_taken() {
         .clone();
 
     app.dispatch(
-        TourneyCommand::RenameTeam {
+        TourneyWrite::RenameTeam {
             tournament_id: id.clone(),
             team_id: team_id.clone(),
             name: "  Red  ".into(),
@@ -2564,7 +2141,7 @@ async fn an_organiser_adds_an_entrant_by_faf_name() {
     let before = app.snapshot().tourney.detail.unwrap().player_count;
 
     app.dispatch(
-        TourneyCommand::AddPlayer {
+        TourneyWrite::AddPlayer {
             tournament_id: "e1a2b".into(),
             name: "  Alan  ".into(),
             rating: None,
@@ -2580,7 +2157,7 @@ async fn an_organiser_adds_an_entrant_by_faf_name() {
     assert!(event.players.iter().any(|player| player.name == "Alan"));
     // A blank name is not a request at all.
     app.dispatch(
-        TourneyCommand::AddPlayer {
+        TourneyWrite::AddPlayer {
             tournament_id: "e1a2b".into(),
             name: "   ".into(),
             rating: None,
@@ -2612,7 +2189,7 @@ async fn an_organiser_removes_an_entrant_through_the_same_route_as_a_withdrawal(
         .expect("an entrant");
 
     app.dispatch(
-        TourneyCommand::RemovePlayer {
+        TourneyWrite::RemovePlayer {
             tournament_id: "e1a2b".into(),
             player_id: victim.clone(),
         }
@@ -2632,7 +2209,7 @@ async fn inviting_and_uninviting_round_trips() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::InvitePlayer {
+        TourneyWrite::InvitePlayer {
             tournament_id: "e1a2b".into(),
             name: "Zep".into(),
         }
@@ -2646,7 +2223,7 @@ async fn inviting_and_uninviting_round_trips() {
     assert_eq!(invite.name, "Zep");
 
     app.dispatch(
-        TourneyCommand::Uninvite {
+        TourneyWrite::Uninvite {
             tournament_id: "e1a2b".into(),
             faf_id: invite.faf_id,
         }
@@ -2666,7 +2243,7 @@ async fn seeds_can_be_set_by_hand_and_only_between_teams_and_the_bracket() {
     assert!(!app.snapshot().tourney.detail.unwrap().may_reseed());
 
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
             config: None,
@@ -2686,7 +2263,7 @@ async fn seeds_can_be_set_by_hand_and_only_between_teams_and_the_bracket() {
         .collect();
 
     app.dispatch(
-        TourneyCommand::Reseed {
+        TourneyWrite::Reseed {
             tournament_id: "e1a2b".into(),
             order: SeedOrder::Explicit {
                 team_ids: order.clone(),
@@ -2705,7 +2282,7 @@ async fn seeds_can_be_set_by_hand_and_only_between_teams_and_the_bracket() {
     // An order that does not name every team exactly once is refused, the same
     // way the server refuses it.
     app.dispatch(
-        TourneyCommand::Reseed {
+        TourneyWrite::Reseed {
             tournament_id: "e1a2b".into(),
             order: SeedOrder::Explicit {
                 team_ids: vec![order[0].clone()],
@@ -2724,7 +2301,7 @@ async fn splitting_into_divisions_and_back_again() {
     let app = app().await;
     open(&app, "e1a2b").await;
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
             config: None,
@@ -2736,7 +2313,7 @@ async fn splitting_into_divisions_and_back_again() {
     settle(&app).await;
 
     app.dispatch(
-        TourneyCommand::SplitDivisions {
+        TourneyWrite::SplitDivisions {
             tournament_id: "e1a2b".into(),
             divisions: 2,
         }
@@ -2751,7 +2328,7 @@ async fn splitting_into_divisions_and_back_again() {
 
     // One division is the way back to a single field.
     app.dispatch(
-        TourneyCommand::SplitDivisions {
+        TourneyWrite::SplitDivisions {
             tournament_id: "e1a2b".into(),
             divisions: 1,
         }
@@ -2776,7 +2353,7 @@ async fn news_is_posted_newest_first_and_can_be_taken_down() {
 
     for body in ["Signups close Friday.", "  Start moved to 19:00 UTC.  "] {
         app.dispatch(
-            TourneyCommand::PostNews {
+            TourneyWrite::PostNews {
                 tournament_id: "e1a2b".into(),
                 body: body.into(),
                 important: body.contains("19:00"),
@@ -2798,7 +2375,7 @@ async fn news_is_posted_newest_first_and_can_be_taken_down() {
 
     let id = event.news[0].id.clone();
     app.dispatch(
-        TourneyCommand::DeleteNews {
+        TourneyWrite::DeleteNews {
             tournament_id: "e1a2b".into(),
             news_id: id.clone(),
         }
@@ -2813,7 +2390,7 @@ async fn news_is_posted_newest_first_and_can_be_taken_down() {
 
     // An empty post is not a request.
     app.dispatch(
-        TourneyCommand::PostNews {
+        TourneyWrite::PostNews {
             tournament_id: "e1a2b".into(),
             body: "   ".into(),
             important: false,
@@ -2861,9 +2438,7 @@ async fn a_series_counts_the_editions_filed_under_it() {
     // them is stored: the service derives every one from the tournaments. Filing
     // an event has to move them, or the list is a set of frozen numbers.
     let app = app().await;
-    app.dispatch(TourneyCommand::LoadSeries.into())
-        .await
-        .unwrap();
+    app.dispatch(TourneyRead::LoadSeries.into()).await.unwrap();
     settle_series(&app).await;
 
     let series = app.snapshot().tourney.series;
@@ -2879,7 +2454,7 @@ async fn a_series_counts_the_editions_filed_under_it() {
     // becomes the newer one.
     open(&app, "e9z9z").await;
     app.dispatch(
-        TourneyCommand::SetSeries {
+        TourneyWrite::SetSeries {
             tournament_id: "e9z9z".into(),
             series_id: Some("s0001".into()),
         }
@@ -2920,7 +2495,7 @@ async fn leaving_a_series_takes_the_label_with_it() {
     );
 
     app.dispatch(
-        TourneyCommand::SetSeries {
+        TourneyWrite::SetSeries {
             tournament_id: "e7f7f".into(),
             series_id: None,
         }
@@ -2956,12 +2531,10 @@ async fn deleting_a_series_unfiles_its_editions_rather_than_deleting_them() {
     // take a risk that does not exist.
     let app = app().await;
     open(&app, "e7f7f").await;
-    app.dispatch(TourneyCommand::LoadSeries.into())
-        .await
-        .unwrap();
+    app.dispatch(TourneyRead::LoadSeries.into()).await.unwrap();
     settle_series(&app).await;
     app.dispatch(
-        TourneyCommand::OpenSeries {
+        TourneyRead::OpenSeries {
             series_id: "s0001".into(),
         }
         .into(),
@@ -2980,7 +2553,7 @@ async fn deleting_a_series_unfiles_its_editions_rather_than_deleting_them() {
     );
 
     app.dispatch(
-        TourneyCommand::DeleteSeries {
+        TourneyWrite::DeleteSeries {
             series_id: "s0001".into(),
         }
         .into(),
@@ -3007,15 +2580,13 @@ async fn two_series_cannot_share_a_name() {
     // The one refusal an organiser meets by accident: a series per edition, all
     // called the same thing.
     let app = app().await;
-    app.dispatch(TourneyCommand::LoadSeries.into())
-        .await
-        .unwrap();
+    app.dispatch(TourneyRead::LoadSeries.into()).await.unwrap();
     settle_series(&app).await;
 
     // Trimmed and case-folded, the way the service compares them: the near-miss
     // is the one that would otherwise get through.
     app.dispatch(
-        TourneyCommand::SaveSeries {
+        TourneyWrite::SaveSeries {
             draft: SeriesDraft {
                 name: "  weekend ladder  ".into(),
                 ..SeriesDraft::default()
@@ -3040,7 +2611,7 @@ async fn two_series_cannot_share_a_name() {
     // A name of its own is taken, which is what says the refusal was about the
     // clash rather than about saving at all.
     app.dispatch(
-        TourneyCommand::SaveSeries {
+        TourneyWrite::SaveSeries {
             draft: SeriesDraft {
                 name: "Midweek Blitz".into(),
                 ..SeriesDraft::default()
@@ -3067,7 +2638,7 @@ async fn a_finished_qualifier_names_who_went_through_and_who_could_not_be_reache
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::AddQualifier {
+        TourneyWrite::AddQualifier {
             tournament_id: "e1a2b".into(),
             qualifier_id: "e7f7f".into(),
             rule: QualifierRule {
@@ -3100,7 +2671,7 @@ async fn a_finished_qualifier_names_who_went_through_and_who_could_not_be_reache
     // Removing it takes the link and leaves the invites, which is why it is not
     // an undo.
     app.dispatch(
-        TourneyCommand::RemoveQualifier {
+        TourneyWrite::RemoveQualifier {
             tournament_id: "e1a2b".into(),
             link_id: link.id.clone(),
         }
@@ -3126,7 +2697,7 @@ async fn a_link_that_would_make_a_cycle_is_refused_by_the_service() {
     let app = app().await;
     open(&app, "e1a2b").await;
     app.dispatch(
-        TourneyCommand::AddQualifier {
+        TourneyWrite::AddQualifier {
             tournament_id: "e1a2b".into(),
             qualifier_id: "e9z9z".into(),
             rule: QualifierRule::default(),
@@ -3141,7 +2712,7 @@ async fn a_link_that_would_make_a_cycle_is_refused_by_the_service() {
     // Now the other way round.
     open(&app, "e9z9z").await;
     app.dispatch(
-        TourneyCommand::AddQualifier {
+        TourneyWrite::AddQualifier {
             tournament_id: "e9z9z".into(),
             qualifier_id: "e1a2b".into(),
             rule: QualifierRule::default(),
@@ -3181,7 +2752,7 @@ async fn silencing_somebody_tells_them_before_they_type() {
     );
 
     app.dispatch(
-        TourneyCommand::MuteChat {
+        TourneyWrite::MuteChat {
             tournament_id: "e9z9z".into(),
             faf_id: 101,
             name: "Nuggets".into(),
@@ -3203,7 +2774,7 @@ async fn silencing_somebody_tells_them_before_they_type() {
     // Unmuting is the same command, not a second one that could disagree about
     // what the flag means.
     app.dispatch(
-        TourneyCommand::MuteChat {
+        TourneyWrite::MuteChat {
             tournament_id: "e9z9z".into(),
             faf_id: 101,
             name: "Nuggets".into(),
@@ -3226,7 +2797,7 @@ async fn a_deleted_post_is_gone_from_the_room_that_is_open() {
     let app = app().await;
     open(&app, "e9z9z").await;
     app.dispatch(
-        TourneyCommand::LoadChat {
+        TourneyRead::LoadChat {
             tournament_id: "e9z9z".into(),
         }
         .into(),
@@ -3235,7 +2806,7 @@ async fn a_deleted_post_is_gone_from_the_room_that_is_open() {
     .unwrap();
     settle(&app).await;
     app.dispatch(
-        TourneyCommand::OpenRoom {
+        TourneyRead::OpenRoom {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
         }
@@ -3250,7 +2821,7 @@ async fn a_deleted_post_is_gone_from_the_room_that_is_open() {
     assert!(posts.iter().any(|post| post.faf_id.is_some()));
 
     app.dispatch(
-        TourneyCommand::DeleteChatPost {
+        TourneyWrite::DeleteChatPost {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             post_id: victim.clone(),
@@ -3278,7 +2849,7 @@ async fn a_hidden_organiser_keeps_their_rights_and_loses_the_credit() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::AddOrganiser {
+        TourneyWrite::AddOrganiser {
             tournament_id: "e1a2b".into(),
             faf_id: 102,
             name: "Ada_Lovelace".into(),
@@ -3296,7 +2867,7 @@ async fn a_hidden_organiser_keeps_their_rights_and_loses_the_credit() {
     assert!(event.organisers.iter().any(|name| name == "Ada_Lovelace"));
 
     app.dispatch(
-        TourneyCommand::SetOrganiserVisibility {
+        TourneyWrite::SetOrganiserVisibility {
             tournament_id: "e1a2b".into(),
             faf_id: 102,
             hidden: true,
@@ -3324,7 +2895,7 @@ async fn a_hidden_organiser_keeps_their_rights_and_loses_the_credit() {
 
     // Adding the same account twice is the service's own refusal.
     app.dispatch(
-        TourneyCommand::AddOrganiser {
+        TourneyWrite::AddOrganiser {
             tournament_id: "e1a2b".into(),
             faf_id: 102,
             name: "Ada_Lovelace".into(),
@@ -3361,7 +2932,7 @@ async fn the_team_setup_locks_a_step_before_the_rest_of_the_format() {
         "a bracket change alone touches no teams"
     );
     app.dispatch(
-        TourneyCommand::EditFormat {
+        TourneyWrite::EditFormat {
             tournament_id: "e1a2b".into(),
             format: format.clone(),
         }
@@ -3383,7 +2954,7 @@ async fn the_team_setup_locks_a_step_before_the_rest_of_the_format() {
     let running = app.snapshot().tourney.detail.expect("the running event");
     assert!(!running.may_edit_format());
     app.dispatch(
-        TourneyCommand::EditFormat {
+        TourneyWrite::EditFormat {
             tournament_id: "e9z9z".into(),
             format: FormatDraft {
                 team_size: 3,
@@ -3417,7 +2988,7 @@ async fn reading_the_announcements_clears_the_badge_for_the_account() {
     );
 
     app.dispatch(
-        TourneyCommand::MarkNewsRead {
+        TourneyRead::MarkNewsRead {
             tournament_id: "e1a2b".into(),
         }
         .into(),
@@ -3449,7 +3020,7 @@ async fn correcting_an_announcement_marks_it_as_corrected() {
     assert!(post.edited_at.is_none());
 
     app.dispatch(
-        TourneyCommand::EditNews {
+        TourneyWrite::EditNews {
             tournament_id: "e1a2b".into(),
             news_id: post.id.clone(),
             body: "  Start moved to 20:00 UTC.  ".into(),
@@ -3476,7 +3047,7 @@ async fn correcting_an_announcement_marks_it_as_corrected() {
 
     // An empty correction is refused rather than blanking the post.
     app.dispatch(
-        TourneyCommand::EditNews {
+        TourneyWrite::EditNews {
             tournament_id: "e1a2b".into(),
             news_id: post.id.clone(),
             body: "   ".into(),
@@ -3504,7 +3075,7 @@ async fn abandoning_an_event_leaves_it_visible_and_is_reversible() {
     open(&app, "e1a2b").await;
 
     app.dispatch(
-        TourneyCommand::Abandon {
+        TourneyWrite::Abandon {
             tournament_id: "e1a2b".into(),
             abandoned: true,
         }
@@ -3523,7 +3094,7 @@ async fn abandoning_an_event_leaves_it_visible_and_is_reversible() {
     );
 
     app.dispatch(
-        TourneyCommand::Abandon {
+        TourneyWrite::Abandon {
             tournament_id: "e1a2b".into(),
             abandoned: false,
         }
@@ -3559,7 +3130,7 @@ async fn map_pools_can_be_bound_to_rounds_before_the_bracket_is_drawn() {
     // what the panel offers as a single control.
     for round in &plan.keys {
         app.dispatch(
-            TourneyCommand::AssignPool {
+            TourneyWrite::AssignPool {
                 tournament_id: "e1a2b".into(),
                 round_key: round.key.clone(),
                 pool_id: pool.clone(),
@@ -3628,7 +3199,7 @@ async fn a_match_gets_a_room_only_once_both_sides_are_known() {
     let app = app().await;
     open(&app, "e9z9z").await;
     app.dispatch(
-        TourneyCommand::LoadChat {
+        TourneyRead::LoadChat {
             tournament_id: "e9z9z".into(),
         }
         .into(),
@@ -3674,7 +3245,7 @@ async fn a_played_matchs_room_folds_into_the_completed_group() {
     let app = app().await;
     open(&app, "e9z9z").await;
     app.dispatch(
-        TourneyCommand::LoadChat {
+        TourneyRead::LoadChat {
             tournament_id: "e9z9z".into(),
         }
         .into(),
@@ -3699,7 +3270,7 @@ async fn a_played_matchs_room_folds_into_the_completed_group() {
 
     // Settle it, and its room should move.
     app.dispatch(
-        TourneyCommand::DecideReport {
+        TourneyWrite::DecideReport {
             tournament_id: "e9z9z".into(),
             report: MatchReport {
                 match_id: played.clone(),
@@ -3714,7 +3285,7 @@ async fn a_played_matchs_room_folds_into_the_completed_group() {
     .unwrap();
     settle(&app).await;
     app.dispatch(
-        TourneyCommand::LoadChat {
+        TourneyRead::LoadChat {
             tournament_id: "e9z9z".into(),
         }
         .into(),
@@ -3748,7 +3319,7 @@ async fn refreshing_a_room_brings_in_what_somebody_else_wrote() {
     let app = app().await;
     open(&app, "e9z9z").await;
     app.dispatch(
-        TourneyCommand::LoadChat {
+        TourneyRead::LoadChat {
             tournament_id: "e9z9z".into(),
         }
         .into(),
@@ -3757,7 +3328,7 @@ async fn refreshing_a_room_brings_in_what_somebody_else_wrote() {
     .unwrap();
     settle(&app).await;
     app.dispatch(
-        TourneyCommand::OpenRoom {
+        TourneyRead::OpenRoom {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
         }
@@ -3770,7 +3341,7 @@ async fn refreshing_a_room_brings_in_what_somebody_else_wrote() {
 
     // Somebody else posts. Nothing tells the tab, which is the whole point.
     app.dispatch(
-        TourneyCommand::PostChat {
+        TourneyWrite::PostChat {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
             body: "on my way".into(),
@@ -3783,7 +3354,7 @@ async fn refreshing_a_room_brings_in_what_somebody_else_wrote() {
     settle(&app).await;
 
     app.dispatch(
-        TourneyCommand::RefreshChat {
+        TourneyRead::RefreshChat {
             tournament_id: "e9z9z".into(),
             room_id: "global".into(),
         }
@@ -3818,7 +3389,7 @@ async fn a_caster_is_added_by_account_and_sees_the_whole_event() {
         .is_empty());
 
     app.dispatch(
-        TourneyCommand::SetCaster {
+        TourneyWrite::SetCaster {
             tournament_id: "e9z9z".into(),
             faf_id: 102,
             name: "Ada_Lovelace".into(),
@@ -3837,7 +3408,7 @@ async fn a_caster_is_added_by_account_and_sees_the_whole_event() {
     assert_eq!(event.casters[0].name, "Ada_Lovelace");
 
     app.dispatch(
-        TourneyCommand::SetCaster {
+        TourneyWrite::SetCaster {
             tournament_id: "e9z9z".into(),
             faf_id: 102,
             name: "Ada_Lovelace".into(),
@@ -3864,7 +3435,7 @@ async fn drawing_the_bracket_carries_the_best_of_plan() {
     let app = app().await;
     open(&app, "e1a2b").await;
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::FormTeams,
             config: None,
@@ -3882,7 +3453,7 @@ async fn drawing_the_bracket_carries_the_best_of_plan() {
     assert!(plan.is_submittable(event.teams.len() as i32));
 
     app.dispatch(
-        TourneyCommand::Advance {
+        TourneyWrite::Advance {
             tournament_id: "e1a2b".into(),
             phase: TourneyPhase::StartBracket,
             config: Some(plan),

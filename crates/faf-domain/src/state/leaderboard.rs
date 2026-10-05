@@ -364,6 +364,10 @@ pub fn reduce(state: &mut LeaderboardState, event: &LeaderboardEvent) {
             state.seasons.clear();
             state.season_entries.clear();
             state.tiers.clear();
+            // The board those entries belonged to is gone with them. Left at
+            // `Loading`, a league with no seasons (or whose seasons fail)
+            // never asks for a board, so nothing would ever end the spinner.
+            state.season_status = LeaderboardStatus::Idle;
         }
         LeaderboardEvent::SeasonsLoaded { league_id, seasons } => {
             state.selected_league_id = Some(*league_id);

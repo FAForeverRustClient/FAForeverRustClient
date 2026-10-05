@@ -1,9 +1,10 @@
 //! Replays service.
 //!
-//! Thin handler (like `services/nav.rs`): asks the [`ReplayPort`] to do the
-//! work, then emits `Connecting`/`Playing`/`Failed`. The actual protocol
-//! (WebSocket relay, file decompression, launching FA) lives entirely behind
-//! the port: see `infra/replay.rs`.
+//! Thin handler (like `services/nav.rs`): asks the replay ports (vault,
+//! library, details, playback; see [`crate::ports::replay`]) to do the work,
+//! then emits `Connecting`/`Playing`/`Failed`. The actual protocol (WebSocket
+//! relay, file decompression, launching FA) lives entirely behind the ports:
+//! see `infra/replay/`.
 
 use crate::ports::PreparationStep;
 use faf_domain::state::ReplayPreparation;
@@ -15,8 +16,26 @@ use faf_domain::state::{
 use std::collections::HashMap;
 use std::{path::PathBuf, time::Duration};
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
 use crate::services::notifications;
+
+/// The replay service's operational context: which vault and local listings
+/// may still land, and the replay launch in flight. Owned by this service.
+#[derive(Default)]
+pub struct ReplaysContext {
+    /// Only the newest vault search may land. Commands run concurrently, so
+    /// request order is not response order.
+    vault_generation: LatestRequest,
+    /// Only the newest local listing may land. Deleting a replay invalidates
+    /// it as well, so an older directory scan cannot restore the deleted row.
+    local_generation: LatestRequest,
+    /// The in-flight replay launch, so the overlay's Cancel button has
+    /// something to press. Same shape as the auth service's login
+    /// cancellation, and for the same reason: dropping the future is the only
+    /// thing that actually stops work that is several awaits deep inside a
+    /// port.
+    cancellation: std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>,
+}
 
 /// How many replay heads are fetched at the same time.
 const RESOLVE_MAPS_AT_ONCE: usize = 6;
@@ -51,7 +70,7 @@ async fn launch(
     out: &EventSink,
 ) {
     let token = tokio_util::sync::CancellationToken::new();
-    if let Ok(mut slot) = ctx.replay_cancellation.lock() {
+    if let Ok(mut slot) = ctx.replays.cancellation.lock() {
         // Replacing an armed token cancels it: two launches cannot be in
         // flight, and the older one is the one nobody is waiting for.
         if let Some(previous) = slot.replace(token.clone()) {
@@ -62,7 +81,7 @@ async fn launch(
     // What the preparation is doing, onto the starting dialog (#392).
     let sink = out.clone();
     ctx.ports
-        .replay
+        .replay_playback
         .set_preparation_progress(Some(std::sync::Arc::new(move |step: PreparationStep| {
             sink.emit(ReplayEvent::Preparing {
                 step: ReplayPreparation {
@@ -74,14 +93,14 @@ async fn launch(
     let result = tokio::select! {
         result = work => result,
         () = token.cancelled() => {
-            ctx.ports.replay.set_preparation_progress(None);
+            ctx.ports.replay_playback.set_preparation_progress(None);
             out.emit(ReplayEvent::Closed);
             return;
         }
     };
-    ctx.ports.replay.set_preparation_progress(None);
+    ctx.ports.replay_playback.set_preparation_progress(None);
 
-    if let Ok(mut slot) = ctx.replay_cancellation.lock() {
+    if let Ok(mut slot) = ctx.replays.cancellation.lock() {
         // Disarmed, so a Cancel pressed after the game is up cannot idle the
         // status of a replay that is playing.
         slot.take();
@@ -157,7 +176,7 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
     out.emit(ReplayEvent::Connecting);
     let uid = target.uid;
     launch(
-        ctx.ports.replay.watch_live(target, player),
+        ctx.ports.replay_playback.watch_live(target, player),
         Some(uid),
         ctx,
         out,
@@ -234,7 +253,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             cancel_live_tracking(out);
             out.emit(ReplayEvent::Connecting);
             launch(
-                ctx.ports.replay.play_file(PathBuf::from(path)),
+                ctx.ports.replay_playback.play_file(PathBuf::from(path)),
                 None,
                 ctx,
                 out,
@@ -242,17 +261,17 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
         ReplayCommand::CancelWatch => {
-            if let Ok(mut slot) = ctx.replay_cancellation.lock() {
+            if let Ok(mut slot) = ctx.replays.cancellation.lock() {
                 if let Some(token) = slot.take() {
                     token.cancel();
                 }
             }
         }
         ReplayCommand::SearchVault { query } => {
-            let generation = ctx.replay_vault_generation.begin();
+            let generation = ctx.replays.vault_generation.begin();
             out.emit(ReplayEvent::VaultLoading);
-            let result = ctx.ports.replay.search_vault((*query).clone()).await;
-            if !ctx.replay_vault_generation.is_current(generation) {
+            let result = ctx.ports.replay_vault.search_vault((*query).clone()).await;
+            if !ctx.replays.vault_generation.is_current(generation) {
                 return;
             }
             match result {
@@ -294,7 +313,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(ReplayEvent::RecentMatchmakerLoading);
             match ctx
                 .ports
-                .replay
+                .replay_vault
                 .search_vault(recent_matchmaker_query(login))
                 .await
             {
@@ -308,7 +327,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             // Best-effort: the filter falls back to a free-choice "any" when
             // the list can't be fetched, so a failure here isn't worth a
             // user-visible error of its own.
-            if let Ok(mods) = ctx.ports.replay.list_featured_mods().await {
+            if let Ok(mods) = ctx.ports.replay_vault.list_featured_mods().await {
                 out.emit(ReplayEvent::FeaturedModsLoaded { mods });
             }
         }
@@ -319,20 +338,26 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             // that work visible in the shared bottom status task, just like
             // the map and mod preparation done for a lobby join.
             out.emit(ReplayEvent::VaultDownloadStarted { uid });
-            launch(ctx.ports.replay.watch_vault(uid), Some(uid), ctx, out).await;
+            launch(
+                ctx.ports.replay_playback.watch_vault(uid),
+                Some(uid),
+                ctx,
+                out,
+            )
+            .await;
         }
         ReplayCommand::DownloadVault { uid } => {
             out.emit(ReplayEvent::VaultDownloadStarted { uid });
-            match ctx.ports.replay.download_vault(uid).await {
+            match ctx.ports.replay_vault.download_vault(uid).await {
                 Ok(replay) => out.emit(ReplayEvent::VaultDownloaded { uid, replay }),
                 Err(reason) => out.emit(ReplayEvent::VaultDownloadFailed { uid, reason }),
             }
         }
         ReplayCommand::LoadLocal { limit } => {
-            let generation = ctx.replay_local_generation.begin();
+            let generation = ctx.replays.local_generation.begin();
             out.emit(ReplayEvent::LocalLoading);
-            let result = ctx.ports.replay.list_local(limit as usize).await;
-            if !ctx.replay_local_generation.is_current(generation) {
+            let result = ctx.ports.replay_library.list_local(limit as usize).await;
+            if !ctx.replays.local_generation.is_current(generation) {
                 return;
             }
             match result {
@@ -342,8 +367,13 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         ReplayCommand::DeleteLocal { path } => {
             // Prevent an older directory scan from restoring the deleted row.
-            ctx.replay_local_generation.invalidate();
-            match ctx.ports.replay.delete_local(PathBuf::from(&path)).await {
+            ctx.replays.local_generation.invalidate();
+            match ctx
+                .ports
+                .replay_library
+                .delete_local(PathBuf::from(&path))
+                .await
+            {
                 Ok(()) => out.emit(ReplayEvent::LocalDeleted { path }),
                 Err(reason) => out.emit(ReplayEvent::LocalLoadFailed { reason }),
             }
@@ -351,7 +381,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
         ReplayCommand::LoadDetails { uid, local_path } => {
             out.emit(ReplayEvent::DetailsLoading { uid });
             let path_buf = local_path.map(PathBuf::from);
-            match ctx.ports.replay.load_details(uid, path_buf).await {
+            match ctx.ports.replay_details.load_details(uid, path_buf).await {
                 Ok(details) => out.emit(ReplayEvent::DetailsLoaded { uid, details }),
                 Err(reason) => out.emit(ReplayEvent::DetailsFailed { uid, reason }),
             }
@@ -359,7 +389,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
         ReplayCommand::LoadAnalysis { uid, local_path } => {
             out.emit(ReplayEvent::AnalysisLoading { uid });
             let path_buf = local_path.map(PathBuf::from);
-            match ctx.ports.replay.load_analysis(uid, path_buf).await {
+            match ctx.ports.replay_details.load_analysis(uid, path_buf).await {
                 Ok(analysis) => out.emit(ReplayEvent::AnalysisLoaded { analysis }),
                 Err(reason) => out.emit(ReplayEvent::AnalysisFailed { uid, reason }),
             }
@@ -383,7 +413,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                     // render is worse than a row that says it does not know.
                     let map = ctx
                         .ports
-                        .replay
+                        .replay_vault
                         .replay_map_name(**uid)
                         .await
                         .ok()
@@ -410,7 +440,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                 page_size: 1,
                 ..ReplayQuery::default()
             };
-            match ctx.ports.replay.search_vault(query).await {
+            match ctx.ports.replay_vault.search_vault(query).await {
                 Ok(search) => out.emit(ReplayEvent::OnlineLookupFinished {
                     uid,
                     replay: search
@@ -463,7 +493,7 @@ async fn look_up_many(uids: Vec<i32>, ctx: &ServiceCtx, out: &EventSink) {
             page_size: chunk.len() as u32,
             ..ReplayQuery::default()
         };
-        match ctx.ports.replay.search_vault(query).await {
+        match ctx.ports.replay_vault.search_vault(query).await {
             Ok(search) => {
                 let mut found: HashMap<i32, VaultReplay> = search
                     .replays

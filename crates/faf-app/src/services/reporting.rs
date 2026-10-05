@@ -1,8 +1,17 @@
 use faf_domain::state::{NotificationKind, ReportingCommand, ReportingEvent};
 
 use crate::ports::{GameParticipation, ReportPlayerRequest};
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
 use crate::services::notifications;
+
+/// The reporting service's request generation. Owned by this service.
+#[derive(Default)]
+pub struct ReportingContext {
+    /// Only the newest open, history load or submission may land. Closing the
+    /// dialog or opening it for another player must not let a slower answer
+    /// about the previous one fill it.
+    generation: LatestRequest,
+}
 
 pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -193,9 +202,9 @@ async fn load_history(ctx: &ServiceCtx, out: &EventSink, generation: u64) {
 }
 
 fn next_generation(ctx: &ServiceCtx) -> u64 {
-    ctx.reporting_generation.begin()
+    ctx.reporting.generation.begin()
 }
 
 fn is_current(ctx: &ServiceCtx, generation: u64) -> bool {
-    ctx.reporting_generation.is_current(generation)
+    ctx.reporting.generation.is_current(generation)
 }

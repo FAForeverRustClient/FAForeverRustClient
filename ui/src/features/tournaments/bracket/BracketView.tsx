@@ -25,7 +25,7 @@
 // brackets show it, and it is joined to nothing: its two players come from the
 // semi-finals' losers, and a line from there would cross the final's.
 
-import { useState, type CSSProperties } from "react";
+import { memo, useState, type CSSProperties } from "react";
 import { Button } from "../../../design-system/Button";
 import type {
   BracketSide,
@@ -38,7 +38,7 @@ import type {
 } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { FfaLobby } from "./FfaLobby";
-import { VetoPanel, type VetoHandlers } from "./VetoPanel";
+import { VetoPanel } from "./VetoPanel";
 import { MatchActions, TeamName, teamNameOf } from "./matchParts";
 import { feedersOf, matchLabel } from "./matchLabels";
 import { useTourneyDisplay } from "../display";
@@ -47,6 +47,7 @@ import { bracketPreview, columnLabel, divisionLabel, isPhantom, neverPlayed } fr
 import { SwissRounds } from "./SwissRounds";
 import { PickPhasePanel } from "./PickPhasePanel";
 import { RoundOneEditor } from "./RoundOneEditor";
+import type { MatchActions as MatchCommands } from "../tourneyActions";
 import { playoffOrigin } from "./swissPresentation";
 import { hasVeto } from "./vetoPresentation";
 import { BRACKET_LABELS, myTeamId } from "../tourneyPresentation";
@@ -177,24 +178,20 @@ interface BracketViewProps {
   event: Tourney;
   profiles: PlayerSummary[];
   busyMatchId: string | null;
-  onReport: (entry: TourneyMatch) => void;
-  onAnswer: (entry: TourneyMatch, accept: boolean) => void;
-  onHost: (entry: TourneyMatch) => void;
   vault: VaultMap[];
   /** Where the service lives, for the organisers' uploaded map pictures. */
   assetBase: string;
-  veto: VetoHandlers;
-  onReportFfa: (report: FfaReport) => void;
+  /**
+   * Reporting, hosting, the vetoes, a card's replay line, and reading the
+   * event again silently while seeds are picking.
+   */
+  matches: MatchCommands;
   /** An organiser's single-call change: the 3rd place match, a round's length. */
   onAdmin: (change: TourneyAdmin) => void;
   /** Whether any write is in flight, for the pick phase and round 1 editor. */
   busy?: boolean;
-  /** Read the event again silently, while seeds are picking. */
-  onRefresh?: () => void;
   /** Bind a pool to a round, from the round's map block. Organisers only. */
   onAssignPool?: (key: string, poolId: string) => void;
-  /** Play a FAF replay by its vault id, from a card's replay line. */
-  onWatchReplay?: (uid: number) => void;
 }
 
 /**
@@ -215,24 +212,27 @@ function missingArms(entry: TourneyMatch, feeders: ReturnType<typeof feedersOf>)
   return classes;
 }
 
-export function BracketView({
+/**
+ * Memoised: the pane above it redraws for a chat poll, a pinned room's posts
+ * and the tab's minute tick, none of which changes a bracket. Its props are
+ * the event, the store's own arrays and the open event's command groups, which
+ * keep their identity across those redraws.
+ */
+export const BracketView = memo(function BracketView({
   event,
   profiles,
   busyMatchId,
-  onReport,
-  onAnswer,
-  onHost,
   vault,
   assetBase,
-  veto,
-  onReportFfa,
+  matches,
   onAdmin,
   busy = false,
-  onRefresh = () => undefined,
   onAssignPool,
-  onWatchReplay,
 }: BracketViewProps) {
   const { t } = useTranslation();
+  const { report: onReport, answer: onAnswer, host: onHost, veto, reportFfa: onReportFfa, watchReplay: onWatchReplay } =
+    matches;
+  const onRefresh = matches.refresh;
   const rawThird = thirdPlaceMatch(event);
   // A 3rd place match nobody reaches is a bye like any other, and divisions
   // have none: each is its own bracket.
@@ -572,7 +572,7 @@ export function BracketView({
       )}
     </div>
   );
-}
+});
 
 interface MatchCardProps {
   event: Tourney;

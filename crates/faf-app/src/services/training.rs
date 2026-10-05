@@ -137,7 +137,7 @@ async fn ask_for_map_previews(ctx: &ServiceCtx, out: &EventSink) {
     if !needed {
         return;
     }
-    super::maps::handle(faf_domain::state::MapsCommand::LoadVault, ctx, out).await;
+    crate::runtime::run_command(faf_domain::state::MapsCommand::LoadVault.into(), ctx, out).await;
 }
 
 /// Load this account's ratings, if nobody has.
@@ -161,8 +161,8 @@ async fn ask_for_ratings(ctx: &ServiceCtx, out: &EventSink) {
     let Some((player_id, login)) = wanted else {
         return;
     };
-    super::player_card::handle(
-        faf_domain::state::PlayerCardCommand::LoadMatchmakerProfile { player_id, login },
+    crate::runtime::run_command(
+        faf_domain::state::PlayerCardCommand::LoadMatchmakerProfile { player_id, login }.into(),
         ctx,
         out,
     )
@@ -319,10 +319,11 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
     // holding the whole tab blank for it would trade the part that is useful
     // immediately for the part that is only a ranking.
     if out.with_state(|state| state.replays.local_status == VaultStatus::Idle) {
-        super::replays::handle(
+        crate::runtime::run_command(
             ReplayCommand::LoadLocal {
                 limit: PROFILE_REPLAY_REQUEST,
-            },
+            }
+            .into(),
             ctx,
             out,
         )

@@ -7,14 +7,23 @@
 //! roster held three relationships deep. A local simulation of any of those
 //! would be wrong within one action.
 //!
-//! Writes are serialised (`clan_mutation`) because command order is not
+//! Writes are serial in the command policy (`Key::ClanWrite`) because command order is not
 //! response order, and two overlapping edits would otherwise reload in the
 //! wrong order and leave the older answer standing.
 
 use faf_domain::state::{ClanAction, ClanCommand, ClanEvent, ClanIdentity, ClanInvitation};
 
 use crate::ports::RequestError;
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// The clan service's request generation. Owned by this service.
+#[derive(Default)]
+pub struct ClanContext {
+    /// Only the newest invite-field answer may land: the field searches per
+    /// keystroke, and an earlier prefix arriving late would replace the list
+    /// with matches for something no longer typed.
+    candidate_generation: LatestRequest,
+}
 
 /// Below this, a candidate search would return the first page of every account
 /// on FAF. The same floor the tournament entrant picker uses.
@@ -64,7 +73,7 @@ pub async fn handle(cmd: ClanCommand, ctx: &ServiceCtx, out: &EventSink) {
                     // reopen the list beside the token and invite a second
                     // click. Only on success, because a failed invite leaves
                     // the list open and the field still searching.
-                    ctx.clan_candidate_generation.invalidate();
+                    ctx.clan.candidate_generation.invalidate();
                     out.emit(ClanEvent::InvitationReady {
                         invitation: ClanInvitation {
                             token,
@@ -200,11 +209,15 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
 /// nothing changed: a 403 usually means somebody else already changed the
 /// thing being refused, and leaving the old answer on screen is how a player
 /// ends up pressing a button that cannot work any more.
+///
+/// One at a time: every command that comes here is serial in the command
+/// policy (`Key::ClanWrite`), so two overlapping edits cannot reload in
+/// response order and leave the older answer standing.
 async fn write<F>(action: ClanAction, ctx: &ServiceCtx, out: &EventSink, effect: F)
 where
     F: std::future::Future<Output = Result<(), RequestError>>,
 {
-    let _guard = ctx.clan_mutation.acquire().await;
+    crate::runtime::expect_admitted(crate::runtime::Key::ClanWrite);
     out.emit(ClanEvent::ActionStarted { action });
     match effect.await {
         Ok(()) => out.emit(ClanEvent::ActionSucceeded { action }),
@@ -219,7 +232,7 @@ async fn search_candidates(query: &str, ctx: &ServiceCtx, out: &EventSink) {
     // field is a newer answer too. Without it, a lookup for "Nu" still in
     // flight when the field is emptied would land after the empty list and
     // put its matches back under an empty field.
-    let generation = ctx.clan_candidate_generation.begin();
+    let generation = ctx.clan.candidate_generation.begin();
     if query.chars().count() < MIN_CANDIDATE_QUERY {
         out.emit(ClanEvent::CandidatesLoaded {
             candidates: Vec::new(),
@@ -231,7 +244,7 @@ async fn search_candidates(query: &str, ctx: &ServiceCtx, out: &EventSink) {
         .player_card
         .search_players(query, MAX_CANDIDATES)
         .await;
-    if !ctx.clan_candidate_generation.is_current(generation) {
+    if !ctx.clan.candidate_generation.is_current(generation) {
         // A later keystroke is already in flight; this answer is for a prefix
         // the field no longer holds.
         return;

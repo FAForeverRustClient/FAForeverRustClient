@@ -4085,7 +4085,7 @@ export type LobbyState = {
 	games: Game[],
 	/**
 	 *  Games currently in progress: not joinable, but watchable via a live
-	 *  replay (see `faf-app`'s `ReplayPort::watch_live`).
+	 *  replay (see `faf-app`'s `ReplayPlaybackPort::watch_live`).
 	 */
 	liveGames: Game[],
 	join: JoinState,
@@ -9763,593 +9763,21 @@ export type TourneyCategory =
 /**  Run by FAF itself; the site-wide rules pages apply. */
 "official" | "community";
 
-export type TourneyCommand = { type: "load" } | { type: "select"; payload: {
-	tournamentId: string,
-} } |
 /**
- *  Enter as the signed-in player. The primary action of the whole tab.
+ *  Everything the tournament tab can ask for, in two halves: the writes,
+ *  which the command policy runs one at a time, and the rest.
  *
- *  The rating is the player's own, and only an unrated event takes one:
- *  there the service refuses a signup without it. Everywhere else it is
- *  fetched from FAF and this is `None`.
- *  Read the open event again without saying so: a pick phase changes
- *  under the reader, and announcing a load every few seconds would blink
- *  the pane. The website polls the same way.
- */
-{ type: "refreshDetail"; payload: {
-	tournamentId: string,
-} } | { type: "signUp"; payload: {
-	tournamentId: string,
-	rating: number | null,
-} } |
-/**  Decline an invitation (`decline_invite`). */
-{ type: "declineInvite"; payload: {
-	tournamentId: string,
-} } |
-/**
- *  Ask whether this account would get in, without entering
- *  (`check_rating`).
- */
-{ type: "checkRating"; payload: {
-	tournamentId: string,
-} } |
-/**
- *  Read every leaderboard rating of one entrant (`player_ratings`),
- *  fetched from FAF again when `refresh` is set. Organiser only.
- */
-{ type: "loadPlayerRatings"; payload: {
-	tournamentId: string,
-	playerId: string,
-	refresh: boolean,
-} } |
-/**
- *  The events this account may import maps from (`my_tournaments`).
- *  The create form's "Copy from an existing tournament" reads the same.
- */
-{ type: "loadCopySources" } |
-/**  The named formats a director may host (`presets`). */
-{ type: "loadPresets" } |
-/**
- *  Attach a picture pasted into the event's text (`add_desc_image`); the
- *  answer's path is then inserted where it was pasted.
- */
-{ type: "uploadDescImage"; payload: {
-	tournamentId: string,
-	dataUrl: string,
-	/**  The form's id for this paste, handed back with the answer. */
-	requestId: number,
-} } |
-/**
- *  Read one of the site's documents: the account, the pending bar, the
- *  Hall of Fame, the console, or an access status.
- */
-{ type: "loadSite"; payload: {
-	read: SiteRead,
-} } |
-/**  One write to the site, then a reload of what it touched. */
-{ type: "siteWrite"; payload: {
-	write: SiteWrite,
-} } |
-/**
- *  Another event's whole document, to fill the create form from
- *  ("Fill from this"), read without opening it.
- */
-{ type: "loadTemplate"; payload: {
-	tournamentId: string,
-} } |
-/**  One of those events' maps and pools, to choose from. */
-{ type: "loadCopySource"; payload: {
-	tournamentId: string,
-} } |
-/**
- *  Ban an entrant from this event and, where the service still allows
- *  it, take them out in the same step: what an organiser means by "kick".
+ *  The split is in the type so that the set of writes is stated once. The
+ *  policy, the service's router and the write handler each match on
+ *  [`TourneyWrite`] whole, so a new write lands in all three by being added
+ *  there, and none of them needs a fallback arm for commands it never sees.
  *
- *  The ban goes first. If the removal then fails they are banned and still
- *  listed, which is visible and can be finished by hand; the other order
- *  could leave them removed and free to enter again.
+ *  Untagged, so the wire format is the one the two halves already have:
+ *  `{ type, payload }`, with no extra layer naming the half. Every `type`
+ *  belongs to exactly one of them, which is what lets the untagged
+ *  deserializer pick the right one.
  */
-{ type: "banPlayer"; payload: {
-	tournamentId: string,
-	playerId: string,
-	fafId: number,
-	name: string,
-	reason: string,
-	/**  Unix seconds. */
-	expires: number | null,
-	remove: boolean,
-} } |
-/**
- *  Leave again. Which entry to remove is read from the open event's viewer
- *  block rather than passed in: the server hands out that id, and a client
- *  that supplied its own could only ever be wrong about it.
- */
-{ type: "withdraw"; payload: {
-	tournamentId: string,
-} } |
-/**  Check this account's team in, or take it back. */
-{ type: "checkIn"; payload: {
-	tournamentId: string,
-	checkedIn: boolean,
-} } |
-/**
- *  Agree with, or refuse, the score the opponent submitted.
- *
- *  An organiser may answer for either side.
- */
-{ type: "answerReport"; payload: {
-	tournamentId: string,
-	matchId: string,
-	accept: boolean,
-} } |
-/**  Set a result as an organiser, which needs no confirmation. */
-{ type: "decideReport"; payload: {
-	tournamentId: string,
-	report: MatchReport,
-} } |
-/**
- *  Submit a score as a player, for the other side to confirm.
- *
- *  `report_submit`: the score only goes up, and every new game needs its
- *  replay id. The winner and forfeit of `report` are not sent. Submitting
- *  again replaces a submission nobody has answered yet.
- */
-{ type: "submitReport"; payload: {
-	tournamentId: string,
-	report: MatchReport,
-} } |
-/**  Load the room list for the open event. */
-{ type: "loadChat"; payload: {
-	tournamentId: string,
-} } |
-/**  Open one room and read it. */
-{ type: "openRoom"; payload: {
-	tournamentId: string,
-	roomId: string,
-} } | { type: "postChat"; payload: {
-	tournamentId: string,
-	roomId: string,
-	body: string,
-	/**
-	 *  The post this answers, by id. The service snapshots it into the
-	 *  reply, and quietly drops the link if the post is not in the room.
-	 */
-	replyTo?: string | null,
-} } |
-/**
- *  Re-read the open room and the room list, without saying so.
- *
- *  The service has no push of any kind: it is HTTP, and the website polls.
- *  Without this the tab can send a message and never receive one, which
- *  looks like a working chat until somebody else types.
- *
- *  Distinct from [`Self::OpenRoom`] because it must be silent: announcing a
- *  load every few seconds would blink the room out and back, and would
- *  fight the reader's scroll position.
- */
-{ type: "refreshChat"; payload: {
-	tournamentId: string,
-	roomId: string,
-} } |
-/**
- *  Keep one room open beside whatever section is showing, or let it go
- *  with `None`. Read at once, silently; it is kept fresh the way the open
- *  room is, with `RefreshChat`.
- */
-{ type: "pinRoom"; payload: {
-	tournamentId: string,
-	roomId: string | null,
-} } |
-/**  Start a team and captain it. */
-{ type: "createTeam"; payload: {
-	tournamentId: string,
-	name: string,
-} } |
-/**
- *  Ask a team for a place. The captain answers; there is no instant join,
- *  because the server removed that path.
- */
-{ type: "requestJoin"; payload: {
-	tournamentId: string,
-	teamId: string,
-} } |
-/**  Withdraw an outstanding request. */
-{ type: "cancelJoin"; payload: {
-	tournamentId: string,
-	teamId: string,
-} } |
-/**  Answer somebody's request, as the captain. */
-{ type: "respondJoin"; payload: {
-	tournamentId: string,
-	teamId: string,
-	playerId: string,
-	accept: boolean,
-} } |
-/**  Ask a player to join, as the captain. */
-{ type: "inviteToTeam"; payload: {
-	tournamentId: string,
-	teamId: string,
-	playerId: string,
-} } |
-/**  Answer an invitation addressed to this account. */
-{ type: "respondInvite"; payload: {
-	tournamentId: string,
-	teamId: string,
-	accept: boolean,
-} } |
-/**
- *  Leave the team. The last member out dissolves it, and a departing
- *  captain hands the armband to the next member.
- */
-{ type: "leaveTeam"; payload: {
-	tournamentId: string,
-} } |
-/**  Take the team apart, as its captain or an organiser. */
-{ type: "disbandTeam"; payload: {
-	tournamentId: string,
-	teamId: string,
-} } | { type: "renameTeam"; payload: {
-	tournamentId: string,
-	teamId: string,
-	name: string,
-} } |
-/**
- *  Add an entrant by FAF name, as the organiser.
- *
- *  The name is looked up against FAF server-side; there is no free-typed
- *  entrant, which is what keeps an entry attached to a real account.
- */
-{ type: "addPlayer"; payload: {
-	tournamentId: string,
-	name: string,
-	/**
-	 *  Only used by an unrated tournament, where the server has no rating
-	 *  to fetch and asks the organiser for one.
-	 */
-	rating: number | null,
-} } |
-/**  Approve or decline a signup that is waiting, in request mode. */
-{ type: "respondSignup"; payload: {
-	tournamentId: string,
-	playerId: string,
-	accept: boolean,
-} } |
-/**  Take an entrant out, as the organiser. */
-{ type: "removePlayer"; payload: {
-	tournamentId: string,
-	playerId: string,
-} } |
-/**  Hand the armband to another member of a team. */
-{ type: "setCaptain"; payload: {
-	tournamentId: string,
-	teamId: string,
-	playerId: string,
-} } |
-/**
- *  Move an entrant to another team, or off every team.
- *
- *  `team_id` of `None` takes them out without removing them from the event,
- *  which is how a substitute is parked. Emptying a team dissolves it, and a
- *  departing captain's armband passes to the next member: the server does
- *  both, so the client reloads rather than guessing.
- */
-{ type: "movePlayer"; payload: {
-	tournamentId: string,
-	playerId: string,
-	teamId: string | null,
-} } |
-/**
- *  Attach a note to an entrant, and set their rating where the event has none.
- *
- *  Renaming is deliberately absent: identity comes from FAF and the server
- *  refuses it outright. A note is how a substitute or a late arrival gets
- *  labelled. The rating is accepted only by an unrated event.
- */
-{ type: "editPlayer"; payload: {
-	tournamentId: string,
-	playerId: string,
-	note: string,
-	/**  Only sent by an unrated event; the server refuses it otherwise. */
-	rating: number | null,
-} } |
-/**  Ask somebody to enter, by FAF name. */
-{ type: "invitePlayer"; payload: {
-	tournamentId: string,
-	name: string,
-} } | { type: "uninvite"; payload: {
-	tournamentId: string,
-	fafId: number,
-} } |
-/**  Set the seeding, at random or in a given order. */
-{ type: "reseed"; payload: {
-	tournamentId: string,
-	order: SeedOrder,
-} } |
-/**
- *  Split the field into divisions by combined rating, or back to one with
- *  a count of 1.
- */
-{ type: "splitDivisions"; payload: {
-	tournamentId: string,
-	divisions: number,
-} } | { type: "setDivision"; payload: {
-	tournamentId: string,
-	teamId: string,
-	division: number,
-} } | { type: "postNews"; payload: {
-	tournamentId: string,
-	body: string,
-	important: boolean,
-} } | { type: "deleteNews"; payload: {
-	tournamentId: string,
-	newsId: string,
-} } | { type: "loadArticles" } |
-/**  Ask whether this account may host, which gates the create button. */
-{ type: "loadHosting" } |
-/**  Read this account's own Discord handle off the service. */
-{ type: "loadProfile" } |
-/**  Set or clear the Discord handle. Empty clears it. */
-{ type: "setDiscord"; payload: {
-	handle: string,
-} } |
-/**
- *  Find FAF accounts whose name starts with what has been typed.
- *
- *  Reuses the same batch account lookup the player card and the leaderboard
- *  read: an organiser adding an entrant is choosing a person, and the client
- *  already knows how to show one. A blank or too-short query clears the list
- *  instead of asking the API for everybody.
- */
-{ type: "searchAccounts"; payload: {
-	query: string,
-} } |
-/**  Drop the results: somebody was picked, or the field was left. */
-{ type: "clearAccountSearch" } |
-/**
- *  Create an event. It becomes the open one, so the organiser lands in it
- *  rather than back at an unchanged list.
- */
-{ type: "create"; payload: {
-	draft: TourneyDraft,
-} } |
-/**
- *  Change an existing event's settings. Only the fields a draft carries;
- *  the best-of plan and the veto configuration stay on the website.
- */
-{ type: "editInfo"; payload: {
-	tournamentId: string,
-	draft: TourneyDraft,
-} } |
-/**  Make a draft event visible to everyone. */
-{ type: "publish"; payload: {
-	tournamentId: string,
-} } |
-/**  Move the event along: form teams, draw the bracket, or go back. */
-{ type: "advance"; payload: {
-	tournamentId: string,
-	phase: TourneyPhase,
-	/**
-	 *  The best-of plan, on `start_bracket` alone. `None` everywhere else,
-	 *  and on a draw that takes the service's own defaults.
-	 */
-	config: BracketConfig | null,
-} } |
-/**
- *  Hide the event. Restorable by a site admin, which is why it is not
- *  called delete.
- */
-{ type: "archive"; payload: {
-	tournamentId: string,
-} } |
-/**  Bind a map pool to a round, or clear it with an empty `pool_id`. */
-{ type: "assignPool"; payload: {
-	tournamentId: string,
-	roundKey: string,
-	poolId: string,
-} } |
-/**  Take the draft pick that is due. */
-{ type: "draftPickPlayer"; payload: {
-	tournamentId: string,
-	playerId: string,
-} } |
-/**  Take back the last pick. */
-{ type: "draftUndo"; payload: {
-	tournamentId: string,
-} } |
-/**  Mark which entrants captain a team, before the draft starts. */
-{ type: "setCaptains"; payload: {
-	tournamentId: string,
-	playerIds: string[],
-} } |
-/**  Record a free-for-all lobby: either who went through, or the points. */
-{ type: "reportFfa"; payload: {
-	tournamentId: string,
-	report: FfaReport,
-} } |
-/**  Take the veto step that is due: ban or pick the named map. */
-{ type: "vetoAct"; payload: {
-	tournamentId: string,
-	matchId: string,
-	/**  A map id from the run's `remaining`. */
-	mapId: string,
-} } |
-/**  Say which of the two teams is A, before the run starts. */
-{ type: "vetoSetSides"; payload: {
-	tournamentId: string,
-	matchId: string,
-	teamA: string,
-} } |
-/**  Take back the last step. The organiser's, for a misclick. */
-{ type: "vetoUndo"; payload: {
-	tournamentId: string,
-	matchId: string,
-} } |
-/**
- *  Make the faction ban or pick that is due for one game (`fveto_action`).
- *
- *  The two players' own: an organiser cannot act for them, because the
- *  choices are secret until both sides are done.
- */
-{ type: "factionVeto"; payload: {
-	tournamentId: string,
-	matchId: string,
-	game: number,
-	faction: TourneyFaction,
-} } |
-/**
- *  Switch faction vetoes on or off, or change their numbers
- *  (`fveto_config`). Applied to every match that has no result yet.
- */
-{ type: "setFactionVeto"; payload: {
-	tournamentId: string,
-	config: FactionVetoConfig,
-} } |
-/**
- *  Ask FAF for the current name of every entrant (`check_renames`). Reads
- *  only; taking a new name is [`TourneyAdmin::ApplyRenames`].
- */
-{ type: "checkRenames"; payload: {
-	tournamentId: string,
-} } |
-/**  One of the organiser's single-call changes. See [`TourneyAdmin`]. */
-{ type: "administer"; payload: {
-	tournamentId: string,
-	change: TourneyAdmin,
-} } |
-/**  Add a map to the event's own database, or edit one already in it. */
-{ type: "saveMap"; payload: {
-	tournamentId: string,
-	map: MapDraft,
-} } |
-/**  Show or hide one map. */
-{ type: "publishMap"; payload: {
-	tournamentId: string,
-	mapId: string,
-	published: boolean,
-} } | { type: "deleteMap"; payload: {
-	tournamentId: string,
-	mapId: string,
-} } |
-/**  Show or hide one pool. Publishing also publishes the maps in it. */
-{ type: "publishPool"; payload: {
-	tournamentId: string,
-	poolId: string,
-	published: boolean,
-} } | { type: "deletePool"; payload: {
-	tournamentId: string,
-	poolId: string,
-} } | { type: "savePool"; payload: {
-	tournamentId: string,
-	pool: PoolDraft,
-} } |
-/**  Load every series, for the picker and the series list. */
-{ type: "loadSeries" } |
-/**  Open one series and read its editions. */
-{ type: "openSeries"; payload: {
-	seriesId: string,
-} } |
-/**  Close it again, back to the list. */
-{ type: "closeSeries" } |
-/**  Create a series, or rename one that exists. */
-{ type: "saveSeries"; payload: {
-	draft: SeriesDraft,
-} } |
-/**  Delete a series. Its editions are unfiled, not deleted. */
-{ type: "deleteSeries"; payload: {
-	seriesId: string,
-} } |
-/**  File this event under a series, or take it out with `None`. */
-{ type: "setSeries"; payload: {
-	tournamentId: string,
-	seriesId: string | null,
-} } |
-/**  Link an event whose result feeds entrants into this one. */
-{ type: "addQualifier"; payload: {
-	tournamentId: string,
-	/**  The child event. */
-	qualifierId: string,
-	rule: QualifierRule,
-} } |
-/**
- *  Unlink one. Invites it already sent are kept, which is why this is not
- *  an undo.
- */
-{ type: "removeQualifier"; payload: {
-	tournamentId: string,
-	/**  The link's own id, not the child's. */
-	linkId: string,
-} } |
-/**  Change the shape of the competition, before the bracket is drawn. */
-{ type: "editFormat"; payload: {
-	tournamentId: string,
-	format: FormatDraft,
-} } |
-/**  Silence an account in the event's chat, or let it speak again. */
-{ type: "muteChat"; payload: {
-	tournamentId: string,
-	fafId: number,
-	/**
-	 *  Carried so the muted list can name them: the service stores the name
-	 *  alongside the id, having no other way to resolve it afterwards.
-	 */
-	name: string,
-	muted: boolean,
-} } |
-/**  Take one post out of a room. */
-{ type: "deleteChatPost"; payload: {
-	tournamentId: string,
-	roomId: string,
-	postId: string,
-} } |
-/**
- *  Give a FAF account organiser rights here.
- *
- *  There is no counterpart: taking them away is the site admin's, and the
- *  client cannot tell whether this account is one.
- */
-{ type: "addOrganiser"; payload: {
-	tournamentId: string,
-	fafId: number,
-	name: string,
-} } |
-/**
- *  Let a FAF account cast this event, or take that back.
- *
- *  One command for both directions: the two service endpoints differ only
- *  in whether a name rides along, and a pair of commands could disagree
- *  about which way the flag pointed.
- */
-{ type: "setCaster"; payload: {
-	tournamentId: string,
-	fafId: number,
-	name: string,
-	casting: boolean,
-} } |
-/**
- *  Show or hide one organiser in the public list. They stay an organiser
- *  either way.
- */
-{ type: "setOrganiserVisibility"; payload: {
-	tournamentId: string,
-	fafId: number,
-	hidden: boolean,
-} } |
-/**  Mark the event as called off, or take that back. */
-{ type: "abandon"; payload: {
-	tournamentId: string,
-	abandoned: boolean,
-} } |
-/**  Correct an announcement already posted. */
-{ type: "editNews"; payload: {
-	tournamentId: string,
-	newsId: string,
-	body: string,
-	important: boolean,
-} } |
-/**  Clear this account's unread badge, on every device. */
-{ type: "markNewsRead"; payload: {
-	tournamentId: string,
-} } | { type: "dismissActionError" };
+export type TourneyCommand = TourneyRead | TourneyWrite;
 
 /**
  *  A tournament as the organiser filled it in.
@@ -10865,6 +10293,137 @@ export type TourneyPreset = {
 };
 
 /**
+ *  The tournament commands that are not serialised writes: reads, what the
+ *  pane shows, and the two account-level writes that touch no event (the
+ *  Discord handle and the news badge), which therefore run alongside anything.
+ */
+export type TourneyRead = { type: "load" } | { type: "select"; payload: {
+	tournamentId: string,
+} } |
+/**
+ *  Read the open event again without saying so: a pick phase changes
+ *  under the reader, and announcing a load every few seconds would blink
+ *  the pane. The website polls the same way.
+ */
+{ type: "refreshDetail"; payload: {
+	tournamentId: string,
+} } |
+/**
+ *  Ask whether this account would get in, without entering
+ *  (`check_rating`).
+ */
+{ type: "checkRating"; payload: {
+	tournamentId: string,
+} } |
+/**
+ *  Read every leaderboard rating of one entrant (`player_ratings`),
+ *  fetched from FAF again when `refresh` is set. Organiser only.
+ */
+{ type: "loadPlayerRatings"; payload: {
+	tournamentId: string,
+	playerId: string,
+	refresh: boolean,
+} } |
+/**
+ *  The events this account may import maps from (`my_tournaments`).
+ *  The create form's "Copy from an existing tournament" reads the same.
+ */
+{ type: "loadCopySources" } |
+/**  The named formats a director may host (`presets`). */
+{ type: "loadPresets" } |
+/**
+ *  Read one of the site's documents: the account, the pending bar, the
+ *  Hall of Fame, the console, or an access status.
+ */
+{ type: "loadSite"; payload: {
+	read: SiteRead,
+} } |
+/**
+ *  Another event's whole document, to fill the create form from
+ *  ("Fill from this"), read without opening it.
+ */
+{ type: "loadTemplate"; payload: {
+	tournamentId: string,
+} } |
+/**  One of those events' maps and pools, to choose from. */
+{ type: "loadCopySource"; payload: {
+	tournamentId: string,
+} } |
+/**  Load the room list for the open event. */
+{ type: "loadChat"; payload: {
+	tournamentId: string,
+} } |
+/**  Open one room and read it. */
+{ type: "openRoom"; payload: {
+	tournamentId: string,
+	roomId: string,
+} } |
+/**
+ *  Re-read the open room and the room list, without saying so.
+ *
+ *  The service has no push of any kind: it is HTTP, and the website polls.
+ *  Without this the tab can send a message and never receive one, which
+ *  looks like a working chat until somebody else types.
+ *
+ *  Distinct from [`Self::OpenRoom`] because it must be silent: announcing a
+ *  load every few seconds would blink the room out and back, and would
+ *  fight the reader's scroll position.
+ */
+{ type: "refreshChat"; payload: {
+	tournamentId: string,
+	roomId: string,
+} } |
+/**
+ *  Keep one room open beside whatever section is showing, or let it go
+ *  with `None`. Read at once, silently; it is kept fresh the way the open
+ *  room is, with `RefreshChat`.
+ */
+{ type: "pinRoom"; payload: {
+	tournamentId: string,
+	roomId: string | null,
+} } | { type: "loadArticles" } |
+/**  Ask whether this account may host, which gates the create button. */
+{ type: "loadHosting" } |
+/**  Read this account's own Discord handle off the service. */
+{ type: "loadProfile" } |
+/**  Set or clear the Discord handle. Empty clears it. */
+{ type: "setDiscord"; payload: {
+	handle: string,
+} } |
+/**
+ *  Find FAF accounts whose name starts with what has been typed.
+ *
+ *  Reuses the same batch account lookup the player card and the leaderboard
+ *  read: an organiser adding an entrant is choosing a person, and the client
+ *  already knows how to show one. A blank or too-short query clears the list
+ *  instead of asking the API for everybody.
+ */
+{ type: "searchAccounts"; payload: {
+	query: string,
+} } |
+/**  Drop the results: somebody was picked, or the field was left. */
+{ type: "clearAccountSearch" } |
+/**
+ *  Ask FAF for the current name of every entrant (`check_renames`). Reads
+ *  only; taking a new name is [`TourneyAdmin::ApplyRenames`].
+ */
+{ type: "checkRenames"; payload: {
+	tournamentId: string,
+} } |
+/**  Load every series, for the picker and the series list. */
+{ type: "loadSeries" } |
+/**  Open one series and read its editions. */
+{ type: "openSeries"; payload: {
+	seriesId: string,
+} } |
+/**  Close it again, back to the list. */
+{ type: "closeSeries" } |
+/**  Clear this account's unread badge, on every device. */
+{ type: "markNewsRead"; payload: {
+	tournamentId: string,
+} } | { type: "dismissActionError" };
+
+/**
  *  A named grouping of tournaments.
  *
  *  Only a label, and worth saying plainly because the name invites a stronger
@@ -11161,6 +10720,479 @@ export type TourneyViewer = {
 	 */
 	invited: boolean,
 };
+
+/**
+ *  Every tournament write: the commands that change an event, its entrants,
+ *  teams, matches, maps, chat or news, a series, or the site. Serial in the
+ *  command policy (`Key::TourneyWrite`), because the server recomputes the
+ *  bracket on each one, and each ends by reading back what it changed.
+ */
+export type TourneyWrite =
+/**
+ *  Enter as the signed-in player. The primary action of the whole tab.
+ *
+ *  The rating is the player's own, and only an unrated event takes one:
+ *  there the service refuses a signup without it. Everywhere else it is
+ *  fetched from FAF and this is `None`.
+ */
+{ type: "signUp"; payload: {
+	tournamentId: string,
+	rating: number | null,
+} } |
+/**  Decline an invitation (`decline_invite`). */
+{ type: "declineInvite"; payload: {
+	tournamentId: string,
+} } |
+/**
+ *  Attach a picture pasted into the event's text (`add_desc_image`); the
+ *  answer's path is then inserted where it was pasted.
+ */
+{ type: "uploadDescImage"; payload: {
+	tournamentId: string,
+	dataUrl: string,
+	/**  The form's id for this paste, handed back with the answer. */
+	requestId: number,
+} } |
+/**  One write to the site, then a reload of what it touched. */
+{ type: "siteWrite"; payload: {
+	write: SiteWrite,
+} } |
+/**
+ *  Ban an entrant from this event and, where the service still allows
+ *  it, take them out in the same step: what an organiser means by "kick".
+ *
+ *  The ban goes first. If the removal then fails they are banned and still
+ *  listed, which is visible and can be finished by hand; the other order
+ *  could leave them removed and free to enter again.
+ */
+{ type: "banPlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+	fafId: number,
+	name: string,
+	reason: string,
+	/**  Unix seconds. */
+	expires: number | null,
+	remove: boolean,
+} } |
+/**
+ *  Leave again. Which entry to remove is read from the open event's viewer
+ *  block rather than passed in: the server hands out that id, and a client
+ *  that supplied its own could only ever be wrong about it.
+ */
+{ type: "withdraw"; payload: {
+	tournamentId: string,
+} } |
+/**  Check this account's team in, or take it back. */
+{ type: "checkIn"; payload: {
+	tournamentId: string,
+	checkedIn: boolean,
+} } |
+/**
+ *  Agree with, or refuse, the score the opponent submitted.
+ *
+ *  An organiser may answer for either side.
+ */
+{ type: "answerReport"; payload: {
+	tournamentId: string,
+	matchId: string,
+	accept: boolean,
+} } |
+/**  Set a result as an organiser, which needs no confirmation. */
+{ type: "decideReport"; payload: {
+	tournamentId: string,
+	report: MatchReport,
+} } |
+/**
+ *  Submit a score as a player, for the other side to confirm.
+ *
+ *  `report_submit`: the score only goes up, and every new game needs its
+ *  replay id. The winner and forfeit of `report` are not sent. Submitting
+ *  again replaces a submission nobody has answered yet.
+ */
+{ type: "submitReport"; payload: {
+	tournamentId: string,
+	report: MatchReport,
+} } | { type: "postChat"; payload: {
+	tournamentId: string,
+	roomId: string,
+	body: string,
+	/**
+	 *  The post this answers, by id. The service snapshots it into the
+	 *  reply, and quietly drops the link if the post is not in the room.
+	 */
+	replyTo?: string | null,
+} } |
+/**  Start a team and captain it. */
+{ type: "createTeam"; payload: {
+	tournamentId: string,
+	name: string,
+} } |
+/**
+ *  Ask a team for a place. The captain answers; there is no instant join,
+ *  because the server removed that path.
+ */
+{ type: "requestJoin"; payload: {
+	tournamentId: string,
+	teamId: string,
+} } |
+/**  Withdraw an outstanding request. */
+{ type: "cancelJoin"; payload: {
+	tournamentId: string,
+	teamId: string,
+} } |
+/**  Answer somebody's request, as the captain. */
+{ type: "respondJoin"; payload: {
+	tournamentId: string,
+	teamId: string,
+	playerId: string,
+	accept: boolean,
+} } |
+/**  Ask a player to join, as the captain. */
+{ type: "inviteToTeam"; payload: {
+	tournamentId: string,
+	teamId: string,
+	playerId: string,
+} } |
+/**  Answer an invitation addressed to this account. */
+{ type: "respondInvite"; payload: {
+	tournamentId: string,
+	teamId: string,
+	accept: boolean,
+} } |
+/**
+ *  Leave the team. The last member out dissolves it, and a departing
+ *  captain hands the armband to the next member.
+ */
+{ type: "leaveTeam"; payload: {
+	tournamentId: string,
+} } |
+/**  Take the team apart, as its captain or an organiser. */
+{ type: "disbandTeam"; payload: {
+	tournamentId: string,
+	teamId: string,
+} } | { type: "renameTeam"; payload: {
+	tournamentId: string,
+	teamId: string,
+	name: string,
+} } |
+/**
+ *  Add an entrant by FAF name, as the organiser.
+ *
+ *  The name is looked up against FAF server-side; there is no free-typed
+ *  entrant, which is what keeps an entry attached to a real account.
+ */
+{ type: "addPlayer"; payload: {
+	tournamentId: string,
+	name: string,
+	/**
+	 *  Only used by an unrated tournament, where the server has no rating
+	 *  to fetch and asks the organiser for one.
+	 */
+	rating: number | null,
+} } |
+/**  Approve or decline a signup that is waiting, in request mode. */
+{ type: "respondSignup"; payload: {
+	tournamentId: string,
+	playerId: string,
+	accept: boolean,
+} } |
+/**  Take an entrant out, as the organiser. */
+{ type: "removePlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+} } |
+/**  Hand the armband to another member of a team. */
+{ type: "setCaptain"; payload: {
+	tournamentId: string,
+	teamId: string,
+	playerId: string,
+} } |
+/**
+ *  Move an entrant to another team, or off every team.
+ *
+ *  `team_id` of `None` takes them out without removing them from the event,
+ *  which is how a substitute is parked. Emptying a team dissolves it, and a
+ *  departing captain's armband passes to the next member: the server does
+ *  both, so the client reloads rather than guessing.
+ */
+{ type: "movePlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+	teamId: string | null,
+} } |
+/**
+ *  Attach a note to an entrant, and set their rating where the event has none.
+ *
+ *  Renaming is deliberately absent: identity comes from FAF and the server
+ *  refuses it outright. A note is how a substitute or a late arrival gets
+ *  labelled. The rating is accepted only by an unrated event.
+ */
+{ type: "editPlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+	note: string,
+	/**  Only sent by an unrated event; the server refuses it otherwise. */
+	rating: number | null,
+} } |
+/**  Ask somebody to enter, by FAF name. */
+{ type: "invitePlayer"; payload: {
+	tournamentId: string,
+	name: string,
+} } | { type: "uninvite"; payload: {
+	tournamentId: string,
+	fafId: number,
+} } |
+/**  Set the seeding, at random or in a given order. */
+{ type: "reseed"; payload: {
+	tournamentId: string,
+	order: SeedOrder,
+} } |
+/**
+ *  Split the field into divisions by combined rating, or back to one with
+ *  a count of 1.
+ */
+{ type: "splitDivisions"; payload: {
+	tournamentId: string,
+	divisions: number,
+} } | { type: "setDivision"; payload: {
+	tournamentId: string,
+	teamId: string,
+	division: number,
+} } | { type: "postNews"; payload: {
+	tournamentId: string,
+	body: string,
+	important: boolean,
+} } | { type: "deleteNews"; payload: {
+	tournamentId: string,
+	newsId: string,
+} } |
+/**
+ *  Create an event. It becomes the open one, so the organiser lands in it
+ *  rather than back at an unchanged list.
+ */
+{ type: "create"; payload: {
+	draft: TourneyDraft,
+} } |
+/**
+ *  Change an existing event's settings. Only the fields a draft carries;
+ *  the best-of plan and the veto configuration stay on the website.
+ */
+{ type: "editInfo"; payload: {
+	tournamentId: string,
+	draft: TourneyDraft,
+} } |
+/**  Make a draft event visible to everyone. */
+{ type: "publish"; payload: {
+	tournamentId: string,
+} } |
+/**  Move the event along: form teams, draw the bracket, or go back. */
+{ type: "advance"; payload: {
+	tournamentId: string,
+	phase: TourneyPhase,
+	/**
+	 *  The best-of plan, on `start_bracket` alone. `None` everywhere else,
+	 *  and on a draw that takes the service's own defaults.
+	 */
+	config: BracketConfig | null,
+} } |
+/**
+ *  Hide the event. Restorable by a site admin, which is why it is not
+ *  called delete.
+ */
+{ type: "archive"; payload: {
+	tournamentId: string,
+} } |
+/**  Bind a map pool to a round, or clear it with an empty `pool_id`. */
+{ type: "assignPool"; payload: {
+	tournamentId: string,
+	roundKey: string,
+	poolId: string,
+} } |
+/**  Take the draft pick that is due. */
+{ type: "draftPickPlayer"; payload: {
+	tournamentId: string,
+	playerId: string,
+} } |
+/**  Take back the last pick. */
+{ type: "draftUndo"; payload: {
+	tournamentId: string,
+} } |
+/**  Mark which entrants captain a team, before the draft starts. */
+{ type: "setCaptains"; payload: {
+	tournamentId: string,
+	playerIds: string[],
+} } |
+/**  Record a free-for-all lobby: either who went through, or the points. */
+{ type: "reportFfa"; payload: {
+	tournamentId: string,
+	report: FfaReport,
+} } |
+/**  Take the veto step that is due: ban or pick the named map. */
+{ type: "vetoAct"; payload: {
+	tournamentId: string,
+	matchId: string,
+	/**  A map id from the run's `remaining`. */
+	mapId: string,
+} } |
+/**  Say which of the two teams is A, before the run starts. */
+{ type: "vetoSetSides"; payload: {
+	tournamentId: string,
+	matchId: string,
+	teamA: string,
+} } |
+/**  Take back the last step. The organiser's, for a misclick. */
+{ type: "vetoUndo"; payload: {
+	tournamentId: string,
+	matchId: string,
+} } |
+/**
+ *  Make the faction ban or pick that is due for one game (`fveto_action`).
+ *
+ *  The two players' own: an organiser cannot act for them, because the
+ *  choices are secret until both sides are done.
+ */
+{ type: "factionVeto"; payload: {
+	tournamentId: string,
+	matchId: string,
+	game: number,
+	faction: TourneyFaction,
+} } |
+/**
+ *  Switch faction vetoes on or off, or change their numbers
+ *  (`fveto_config`). Applied to every match that has no result yet.
+ */
+{ type: "setFactionVeto"; payload: {
+	tournamentId: string,
+	config: FactionVetoConfig,
+} } |
+/**  One of the organiser's single-call changes. See [`TourneyAdmin`]. */
+{ type: "administer"; payload: {
+	tournamentId: string,
+	change: TourneyAdmin,
+} } |
+/**  Add a map to the event's own database, or edit one already in it. */
+{ type: "saveMap"; payload: {
+	tournamentId: string,
+	map: MapDraft,
+} } |
+/**  Show or hide one map. */
+{ type: "publishMap"; payload: {
+	tournamentId: string,
+	mapId: string,
+	published: boolean,
+} } | { type: "deleteMap"; payload: {
+	tournamentId: string,
+	mapId: string,
+} } |
+/**  Show or hide one pool. Publishing also publishes the maps in it. */
+{ type: "publishPool"; payload: {
+	tournamentId: string,
+	poolId: string,
+	published: boolean,
+} } | { type: "deletePool"; payload: {
+	tournamentId: string,
+	poolId: string,
+} } | { type: "savePool"; payload: {
+	tournamentId: string,
+	pool: PoolDraft,
+} } |
+/**  Create a series, or rename one that exists. */
+{ type: "saveSeries"; payload: {
+	draft: SeriesDraft,
+} } |
+/**  Delete a series. Its editions are unfiled, not deleted. */
+{ type: "deleteSeries"; payload: {
+	seriesId: string,
+} } |
+/**  File this event under a series, or take it out with `None`. */
+{ type: "setSeries"; payload: {
+	tournamentId: string,
+	seriesId: string | null,
+} } |
+/**  Link an event whose result feeds entrants into this one. */
+{ type: "addQualifier"; payload: {
+	tournamentId: string,
+	/**  The child event. */
+	qualifierId: string,
+	rule: QualifierRule,
+} } |
+/**
+ *  Unlink one. Invites it already sent are kept, which is why this is not
+ *  an undo.
+ */
+{ type: "removeQualifier"; payload: {
+	tournamentId: string,
+	/**  The link's own id, not the child's. */
+	linkId: string,
+} } |
+/**  Change the shape of the competition, before the bracket is drawn. */
+{ type: "editFormat"; payload: {
+	tournamentId: string,
+	format: FormatDraft,
+} } |
+/**  Silence an account in the event's chat, or let it speak again. */
+{ type: "muteChat"; payload: {
+	tournamentId: string,
+	fafId: number,
+	/**
+	 *  Carried so the muted list can name them: the service stores the name
+	 *  alongside the id, having no other way to resolve it afterwards.
+	 */
+	name: string,
+	muted: boolean,
+} } |
+/**  Take one post out of a room. */
+{ type: "deleteChatPost"; payload: {
+	tournamentId: string,
+	roomId: string,
+	postId: string,
+} } |
+/**
+ *  Give a FAF account organiser rights here.
+ *
+ *  There is no counterpart: taking them away is the site admin's, and the
+ *  client cannot tell whether this account is one.
+ */
+{ type: "addOrganiser"; payload: {
+	tournamentId: string,
+	fafId: number,
+	name: string,
+} } |
+/**
+ *  Let a FAF account cast this event, or take that back.
+ *
+ *  One command for both directions: the two service endpoints differ only
+ *  in whether a name rides along, and a pair of commands could disagree
+ *  about which way the flag pointed.
+ */
+{ type: "setCaster"; payload: {
+	tournamentId: string,
+	fafId: number,
+	name: string,
+	casting: boolean,
+} } |
+/**
+ *  Show or hide one organiser in the public list. They stay an organiser
+ *  either way.
+ */
+{ type: "setOrganiserVisibility"; payload: {
+	tournamentId: string,
+	fafId: number,
+	hidden: boolean,
+} } |
+/**  Mark the event as called off, or take that back. */
+{ type: "abandon"; payload: {
+	tournamentId: string,
+	abandoned: boolean,
+} } |
+/**  Correct an announcement already posted. */
+{ type: "editNews"; payload: {
+	tournamentId: string,
+	newsId: string,
+	body: string,
+	important: boolean,
+} };
 
 /**
  *  One member of FAF's training team.

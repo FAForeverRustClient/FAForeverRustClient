@@ -4,7 +4,7 @@ import { Modal } from "../../design-system/Modal";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs, sectionPanelProps } from "../../design-system/SectionTabs";
 import { ipc } from "../../ipc/client";
-import type { PlayerProfile, PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
+import type { PlayerCardProfile, PlayerProfile, PlayerRatingSummary, RatingHistoryPeriod } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { flagSrc } from "../../shared/countryFlags";
 import { useCountryLabel } from "../../shared/hooks/useCountryLabel";
@@ -398,6 +398,14 @@ export function PlayerCardModal() {
   const [tab, setTab] = useState<PlayerCardTab>("overview");
   const [ratingId, setRatingId] = useState<number | null>(null);
   const profile = state.profile;
+  // The profile `tab` was chosen for. The effect below chooses it a render
+  // after a new profile lands, and until then `tab` is still the previous
+  // player's: drawing it mounted that tab for the new player, so a card left
+  // on Maps started the new player's whole-history scan the moment another
+  // name was opened, and then switched to Overview anyway. Overview, which
+  // asks for nothing, stands in for that one render.
+  const [tabFor, setTabFor] = useState<PlayerCardProfile | null>(null);
+  const shownTab: PlayerCardTab = tabFor === profile ? tab : "overview";
   const knownPlayer = profile
     ? social.players.find((candidate) => candidate.id === profile.playerId)
       ?? social.players.find((candidate) => candidate.login.localeCompare(profile.login, undefined, { sensitivity: "base" }) === 0)
@@ -409,6 +417,7 @@ export function PlayerCardModal() {
     // Overview unless the click that opened the card asked for a tab (#361).
     setTab(takePlayerCardTab() ?? "overview");
     setRatingId(profile.ratings[0]?.leaderboardId ?? null);
+    setTabFor(profile);
   }, [profile]);
 
   if (!state.open) return null;
@@ -482,23 +491,23 @@ export function PlayerCardModal() {
               of pill buttons: these switch a view, they do not perform an
               action. */}
           <SectionTabs
-            active={tab}
+            active={shownTab}
             ariaLabel={t("playerCard.sections.aria")}
             className="player-card-tabs"
             items={TABS.map((item) => ({ id: item.id, label: t(item.label) }))}
             onChange={setTab}
             idPrefix="player-card"
           />
-          <div className="player-card-content" {...sectionPanelProps("player-card", tab)}>
-            {tab === "overview" && <PlayerOverview profile={profile} country={country} note={playerNote} onOpenHistory={openHistory} avatarsSelectable={Boolean(isMe)} />}
-            {tab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
-            {tab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}
-            {tab === "statistics" && <PlayerStatistics profile={profile} />}
-            {tab === "maps" && <PlayerMapStatistics playerId={profile.playerId} />}
-            {tab === "results" && <PlayerResults playerId={profile.playerId} />}
-            {tab === "achievements" && <PlayerAchievements achievements={profile.achievements} />}
-            {tab === "names" && <div className="player-names-view"><table className="surface-panel"><thead><tr><th>{t("playerCard.names.name")}</th><th>{t("playerCard.names.usedUntil")}</th></tr></thead><tbody>{profile.names.map((record) => <tr key={`${record.name}-${record.changeTime}`}><td>{record.name}</td><td>{formatDateTime(record.changeTime)}</td></tr>)}</tbody></table>{profile.names.length === 0 && <p className="muted">{t("playerCard.names.empty")}</p>}</div>}
-            {tab === "clan" && (
+          <div className="player-card-content" {...sectionPanelProps("player-card", shownTab)}>
+            {shownTab === "overview" && <PlayerOverview profile={profile} country={country} note={playerNote} onOpenHistory={openHistory} avatarsSelectable={Boolean(isMe)} />}
+            {shownTab === "ratings" && rating && <PlayerRatingHistory rating={rating} ratings={profile.ratings} onRatingChange={(next) => setRatingId(next.leaderboardId)} />}
+            {shownTab === "ratings" && !rating && <div className="player-card-empty muted">{t("playerCard.noRatingHistory")}</div>}
+            {shownTab === "statistics" && <PlayerStatistics profile={profile} />}
+            {shownTab === "maps" && <PlayerMapStatistics playerId={profile.playerId} />}
+            {shownTab === "results" && <PlayerResults playerId={profile.playerId} />}
+            {shownTab === "achievements" && <PlayerAchievements achievements={profile.achievements} />}
+            {shownTab === "names" && <div className="player-names-view"><table className="surface-panel"><thead><tr><th>{t("playerCard.names.name")}</th><th>{t("playerCard.names.usedUntil")}</th></tr></thead><tbody>{profile.names.map((record) => <tr key={`${record.name}-${record.changeTime}`}><td>{record.name}</td><td>{formatDateTime(record.changeTime)}</td></tr>)}</tbody></table>{profile.names.length === 0 && <p className="muted">{t("playerCard.names.empty")}</p>}</div>}
+            {shownTab === "clan" && (
               <PlayerClanView
                 clan={profile.clan}
                 selfLogin={me?.name ?? ""}

@@ -7,7 +7,7 @@
 //!
 //! # What is here, and what deliberately is not
 //!
-//! The service has over a hundred endpoints. This trait covers what a *player*
+//! The service has over a hundred endpoints. These traits cover what a *player*
 //! needs during a tournament, plus the one organiser task the client does
 //! better than the website:
 //!
@@ -24,8 +24,28 @@
 //! The site around the events is here too, since the client replaces the
 //! website: this account's roles, the pending bar, the Hall of Fame, access
 //! requests and the site administration and director console, through
-//! [`TourneyPort::site_read`] and [`TourneyPort::site_write`]. Nothing here
-//! decides who may do what: every role is the server's answer.
+//! [`TourneySitePort::site_read`] and [`TourneySitePort::site_write`]. Nothing
+//! here decides who may do what: every role is the server's answer.
+//!
+//! # Seven traits rather than one
+//!
+//! Cut along what each capability is for, so a service or a test that needs
+//! one of them does not have to supply the other eighty-odd methods:
+//!
+//! - [`TourneyReadPort`]: events and series as they are read.
+//! - [`TourneyEntryPort`]: who is in an event and on which team, the draft
+//!   included.
+//! - [`TourneyMatchPort`]: results and the event's phase.
+//! - [`TourneyMapsPort`]: the map database, pools, round assignments and
+//!   vetoes.
+//! - [`TourneyChatPort`]: the rooms and their moderation.
+//! - [`TourneyOrganiserPort`]: the event's settings, staff, seeding, news,
+//!   qualifiers and series.
+//! - [`TourneySitePort`]: the site around the events and this account on it.
+//!
+//! The real client and the offline fake implement all seven, and one instance
+//! fills every slot of [`crate::ports::Ports`], so a write through one trait
+//! is visible to a read through another.
 
 use async_trait::async_trait;
 use faf_domain::state::{
@@ -39,8 +59,16 @@ use faf_domain::state::{SiteDocument, SiteRead, SiteWrite};
 
 use super::RequestError;
 
+/// Reading events and series, and the reader's own news badge.
+///
+/// Everything the list, an event's page and the series pages show, plus the
+/// organiser's reads that answer a question without changing anything (the
+/// eligibility check, an entrant's ratings, the rename check, the copy
+/// sources and the presets). Clearing the unread badge is the one write: it
+/// is the reader's own state, not the event's, which is why it is here and
+/// not with the news an organiser posts.
 #[async_trait]
-pub trait TourneyPort: Send + Sync {
+pub trait TourneyReadPort: Send + Sync {
     /// Where the service lives, for resolving an image path against.
     ///
     /// Not a request: it is the deployment this client was pointed at, and the
@@ -48,56 +76,6 @@ pub trait TourneyPort: Send + Sync {
     /// from the port keeps the base where every other detail of the deployment
     /// already is, rather than teaching the service to read an environment.
     fn asset_base(&self) -> String;
-
-    /// Whether this account may host a tournament at all.
-    ///
-    /// Hosting is approval-only, granted per account by the site admin, so the
-    /// answer is a property of the session rather than of any one event.
-    async fn hosting(&self) -> Result<HostingStatus, RequestError>;
-
-    /// The Discord handle this account has given the tournament service, if any.
-    ///
-    /// A property of the account rather than of any tournament: the service
-    /// stores one handle per FAF id and shows it to the organisers and teammates
-    /// of every event that account enters.
-    async fn profile(&self) -> Result<String, RequestError>;
-
-    /// Set or clear the Discord handle, answering with what was stored.
-    async fn set_discord(&self, handle: &str) -> Result<String, RequestError>;
-
-    /// Create an event, answering with its new id.
-    async fn create(&self, draft: &TourneyDraft) -> Result<String, RequestError>;
-
-    /// Change an existing event's settings.
-    ///
-    /// A narrower set than creation: the format, the team size and the category
-    /// are welded to a bracket that may already exist, and the server keeps
-    /// separate endpoints for those.
-    async fn edit_info(
-        &self,
-        tournament_id: &str,
-        draft: &TourneyDraft,
-    ) -> Result<(), RequestError>;
-
-    /// Make a draft event visible to everyone.
-    async fn publish(&self, tournament_id: &str) -> Result<(), RequestError>;
-
-    /// Move the event along its own lifecycle.
-    ///
-    /// `config` is the best-of plan and is read on `start_bracket` alone. It is
-    /// optional because the service defaults every value from the event's own
-    /// plan: an absent config draws exactly the bracket it drew before this
-    /// existed.
-    async fn advance(
-        &self,
-        tournament_id: &str,
-        phase: TourneyPhase,
-        config: Option<&BracketConfig>,
-    ) -> Result<(), RequestError>;
-
-    /// Hide the event. A site admin can restore it, which is why this is not
-    /// called delete: for anyone else the server archives rather than removes.
-    async fn archive(&self, tournament_id: &str) -> Result<(), RequestError>;
 
     /// Every tournament the caller may see.
     ///
@@ -110,16 +88,6 @@ pub trait TourneyPort: Send + Sync {
     /// A single call by the server's design, which is worth keeping: three
     /// separate requests could return three views that disagree.
     async fn detail(&self, tournament_id: &str) -> Result<Tourney, RequestError>;
-
-    /// Enter the tournament as the signed-in player.
-    ///
-    /// The client's best reason to exist for a player: they are already
-    /// authenticated here, so entering is one click instead of a browser and a
-    /// second login.
-    async fn sign_up(&self, tournament_id: &str, rating: Option<i32>) -> Result<(), RequestError>;
-
-    /// Decline this account's invitation.
-    async fn decline_invite(&self, tournament_id: &str) -> Result<(), RequestError>;
 
     /// The verdict the signup gate would reach, without signing up.
     async fn check_rating(&self, tournament_id: &str) -> Result<RatingCheck, RequestError>;
@@ -136,27 +104,44 @@ pub trait TourneyPort: Send + Sync {
     /// The events this account organises, as places to import maps from.
     async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError>;
 
-    /// Attach a picture to an event's text, answering the path it is served
-    /// at (`add_desc_image`).
-    async fn upload_desc_image(
-        &self,
-        tournament_id: &str,
-        data_url: &str,
-    ) -> Result<String, RequestError>;
-
     /// The named formats, and whether this account may host each.
     async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError>;
 
-    /// One of the site's documents: this account, the pending bar, the Hall
-    /// of Fame, the administration console, an access status.
-    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError>;
+    /// Ask FAF for every entrant's current name. Writes nothing. Organiser
+    /// only, and it needs the organiser's own FAF login on the service.
+    async fn check_renames(&self, tournament_id: &str) -> Result<RenameCheck, RequestError>;
 
-    /// One write to the site. Answers the tournament an import created and
-    /// the path of an uploaded article picture, where the write made one.
-    async fn site_write(
-        &self,
-        write: &SiteWrite,
-    ) -> Result<(Option<String>, Option<String>), RequestError>;
+    /// Every series, already sorted by the service.
+    ///
+    /// Site-wide rather than per-tournament, like
+    /// [`TourneySitePort::articles`]: a series groups editions that are
+    /// otherwise independent events, so it cannot hang off any one of them.
+    async fn series(&self) -> Result<Vec<TourneySeries>, RequestError>;
+
+    /// One series with its editions.
+    async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError>;
+
+    /// Clear this account's unread badge for the event, on every device.
+    async fn mark_news_read(&self, tournament_id: &str) -> Result<(), RequestError>;
+}
+
+/// Who is in an event, and on which team.
+///
+/// A player entering, withdrawing and checking in; the team conversations
+/// (founding one, asking to join, inviting, answering); the organiser's side
+/// of the same field (adding, inviting, moving and annotating entrants); and
+/// the draft, which is how a field becomes teams by picking.
+#[async_trait]
+pub trait TourneyEntryPort: Send + Sync {
+    /// Enter the tournament as the signed-in player.
+    ///
+    /// The client's best reason to exist for a player: they are already
+    /// authenticated here, so entering is one click instead of a browser and a
+    /// second login.
+    async fn sign_up(&self, tournament_id: &str, rating: Option<i32>) -> Result<(), RequestError>;
+
+    /// Decline this account's invitation.
+    async fn decline_invite(&self, tournament_id: &str) -> Result<(), RequestError>;
 
     /// Withdraw from the tournament.
     ///
@@ -280,43 +265,50 @@ pub trait TourneyPort: Send + Sync {
     /// Withdraw an invitation.
     async fn uninvite(&self, tournament_id: &str, faf_id: i32) -> Result<(), RequestError>;
 
-    /// Set the seeding, at random or in a given order.
-    ///
-    /// Randomising is the server's shuffle rather than the client's, so nobody
-    /// can claim the draw was picked here.
-    async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError>;
-
-    /// Split the field into divisions by combined rating. A count of one puts
-    /// everyone back into a single field.
-    async fn split_divisions(
-        &self,
-        tournament_id: &str,
-        divisions: i32,
-    ) -> Result<(), RequestError>;
-
-    /// Move one team between divisions, after the automatic split.
-    async fn set_division(
-        &self,
-        tournament_id: &str,
-        team_id: &str,
-        division: i32,
-    ) -> Result<(), RequestError>;
-
-    /// Post an announcement.
-    async fn post_news(
-        &self,
-        tournament_id: &str,
-        body: &str,
-        important: bool,
-    ) -> Result<(), RequestError>;
-
-    async fn delete_news(&self, tournament_id: &str, news_id: &str) -> Result<(), RequestError>;
-
     /// Confirm attendance during the check-in window.
     ///
     /// Checks in the whole team: any member may do it, since the captain may be
     /// the one running late.
     async fn check_in(&self, tournament_id: &str, checked_in: bool) -> Result<(), RequestError>;
+
+    /// Take the draft pick that is due.
+    ///
+    /// Refused unless the caller captains the team on the clock, or organises
+    /// the event. The picked entrant must be teamless.
+    async fn draft_pick(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError>;
+
+    /// Take back the last pick. A captain may undo only their own, and only
+    /// while nobody has picked after them; an organiser at any point.
+    async fn draft_undo(&self, tournament_id: &str) -> Result<(), RequestError>;
+
+    /// Mark which entrants captain a team, before a draft starts.
+    async fn set_captains(
+        &self,
+        tournament_id: &str,
+        player_ids: &[String],
+    ) -> Result<(), RequestError>;
+}
+
+/// Results, and the event's phase.
+///
+/// Moving the event along (forming teams, drawing the bracket, reopening) and
+/// every way a match gets a result: a player's report, the other side's
+/// answer, an organiser's decision, and a free-for-all lobby. These are the
+/// writes the server answers by recomputing the bracket.
+#[async_trait]
+pub trait TourneyMatchPort: Send + Sync {
+    /// Move the event along its own lifecycle.
+    ///
+    /// `config` is the best-of plan and is read on `start_bracket` alone. It is
+    /// optional because the service defaults every value from the event's own
+    /// plan: an absent config draws exactly the bracket it drew before this
+    /// existed.
+    async fn advance(
+        &self,
+        tournament_id: &str,
+        phase: TourneyPhase,
+        config: Option<&BracketConfig>,
+    ) -> Result<(), RequestError>;
 
     /// Answer a result raised against this account's match, or, as an
     /// organiser, against either side's.
@@ -345,32 +337,19 @@ pub trait TourneyPort: Send + Sync {
         report: &MatchReport,
     ) -> Result<(), RequestError>;
 
-    /// The chat rooms the caller may see.
-    async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError>;
-
-    /// Read one room.
-    async fn chat_read(
-        &self,
-        tournament_id: &str,
-        room_id: &str,
-    ) -> Result<Vec<ChatPost>, RequestError>;
-
-    /// Post to one room, optionally as a reply to one of its posts.
-    async fn chat_post(
-        &self,
-        tournament_id: &str,
-        room_id: &str,
-        body: &str,
-        reply_to: Option<&str>,
-    ) -> Result<(), RequestError>;
-
-    /// The rules and FAQ pages, shown alongside official tournaments.
+    /// Record a free-for-all lobby.
     ///
-    /// Site-wide rather than per-tournament, and returned whole in the order the
-    /// editors put them in. Fetching all of them is what avoids hard-coding the
-    /// three article ids the website happens to use today.
-    async fn articles(&self) -> Result<Vec<Article>, RequestError>;
+    /// Separate from [`Self::decide_report`] because the body is a different
+    /// shape: a lobby has entrants rather than two sides, and is settled by a
+    /// set of winners or a points table.
+    async fn report_ffa(&self, tournament_id: &str, report: &FfaReport)
+        -> Result<(), RequestError>;
+}
 
+/// The event's maps: its own map database, the pools built from it, which
+/// pool a round plays, and the map and faction vetoes that pick from them.
+#[async_trait]
+pub trait TourneyMapsPort: Send + Sync {
     /// Bind a map pool to a round, or clear the binding with an empty `pool_id`.
     ///
     /// The one organiser task worth having in the client: picking maps is a
@@ -387,31 +366,6 @@ pub trait TourneyPort: Send + Sync {
         round_key: &str,
         pool_id: &str,
     ) -> Result<(), RequestError>;
-
-    /// Take the draft pick that is due.
-    ///
-    /// Refused unless the caller captains the team on the clock, or organises
-    /// the event. The picked entrant must be teamless.
-    async fn draft_pick(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError>;
-
-    /// Take back the last pick. A captain may undo only their own, and only
-    /// while nobody has picked after them; an organiser at any point.
-    async fn draft_undo(&self, tournament_id: &str) -> Result<(), RequestError>;
-
-    /// Mark which entrants captain a team, before a draft starts.
-    async fn set_captains(
-        &self,
-        tournament_id: &str,
-        player_ids: &[String],
-    ) -> Result<(), RequestError>;
-
-    /// Record a free-for-all lobby.
-    ///
-    /// Separate from [`Self::decide_report`] because the body is a different
-    /// shape: a lobby has entrants rather than two sides, and is settled by a
-    /// set of winners or a points table.
-    async fn report_ffa(&self, tournament_id: &str, report: &FfaReport)
-        -> Result<(), RequestError>;
 
     /// Take the veto step that is due.
     ///
@@ -451,17 +405,6 @@ pub trait TourneyPort: Send + Sync {
         config: &FactionVetoConfig,
     ) -> Result<(), RequestError>;
 
-    /// Ask FAF for every entrant's current name. Writes nothing. Organiser
-    /// only, and it needs the organiser's own FAF login on the service.
-    async fn check_renames(&self, tournament_id: &str) -> Result<RenameCheck, RequestError>;
-
-    /// One of the organiser's single-call changes. Organiser only, every one.
-    async fn administer(
-        &self,
-        tournament_id: &str,
-        change: &TourneyAdmin,
-    ) -> Result<(), RequestError>;
-
     /// Add a map to the event's own database, or edit one already there.
     ///
     /// Returns nothing: the service answers with the new id, but the tab reloads
@@ -493,16 +436,122 @@ pub trait TourneyPort: Send + Sync {
 
     /// Create or replace a map pool.
     async fn save_pool(&self, tournament_id: &str, pool: &PoolDraft) -> Result<(), RequestError>;
+}
 
-    /// Every series, already sorted by the service.
+/// The event's chat: its rooms, reading and posting, and the organiser's
+/// moderation of it.
+#[async_trait]
+pub trait TourneyChatPort: Send + Sync {
+    /// The chat rooms the caller may see.
+    async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError>;
+
+    /// Read one room.
+    async fn chat_read(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+    ) -> Result<Vec<ChatPost>, RequestError>;
+
+    /// Post to one room, optionally as a reply to one of its posts.
+    async fn chat_post(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+        body: &str,
+        reply_to: Option<&str>,
+    ) -> Result<(), RequestError>;
+
+    /// Silence an account in the event's chat, or let it speak again.
+    async fn mute_chat(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        name: &str,
+        muted: bool,
+    ) -> Result<(), RequestError>;
+
+    /// Take one post out of a room.
+    async fn delete_chat_post(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+        post_id: &str,
+    ) -> Result<(), RequestError>;
+}
+
+/// Running an event: creating it, its settings and format, publishing,
+/// archiving and calling it off, its staff, seeding and divisions, its
+/// announcements, the qualifiers that feed it and the series it is filed
+/// under. Organiser only, every one; the server decides who that is.
+#[async_trait]
+pub trait TourneyOrganiserPort: Send + Sync {
+    /// Create an event, answering with its new id.
+    async fn create(&self, draft: &TourneyDraft) -> Result<String, RequestError>;
+
+    /// Change an existing event's settings.
     ///
-    /// Site-wide rather than per-tournament, like [`Self::articles`]: a series
-    /// groups editions that are otherwise independent events, so it cannot hang
-    /// off any one of them.
-    async fn series(&self) -> Result<Vec<TourneySeries>, RequestError>;
+    /// A narrower set than creation: the format, the team size and the category
+    /// are welded to a bracket that may already exist, and the server keeps
+    /// separate endpoints for those.
+    async fn edit_info(
+        &self,
+        tournament_id: &str,
+        draft: &TourneyDraft,
+    ) -> Result<(), RequestError>;
 
-    /// One series with its editions.
-    async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError>;
+    /// Make a draft event visible to everyone.
+    async fn publish(&self, tournament_id: &str) -> Result<(), RequestError>;
+
+    /// Hide the event. A site admin can restore it, which is why this is not
+    /// called delete: for anyone else the server archives rather than removes.
+    async fn archive(&self, tournament_id: &str) -> Result<(), RequestError>;
+
+    /// Attach a picture to an event's text, answering the path it is served
+    /// at (`add_desc_image`).
+    async fn upload_desc_image(
+        &self,
+        tournament_id: &str,
+        data_url: &str,
+    ) -> Result<String, RequestError>;
+
+    /// Set the seeding, at random or in a given order.
+    ///
+    /// Randomising is the server's shuffle rather than the client's, so nobody
+    /// can claim the draw was picked here.
+    async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError>;
+
+    /// Split the field into divisions by combined rating. A count of one puts
+    /// everyone back into a single field.
+    async fn split_divisions(
+        &self,
+        tournament_id: &str,
+        divisions: i32,
+    ) -> Result<(), RequestError>;
+
+    /// Move one team between divisions, after the automatic split.
+    async fn set_division(
+        &self,
+        tournament_id: &str,
+        team_id: &str,
+        division: i32,
+    ) -> Result<(), RequestError>;
+
+    /// Post an announcement.
+    async fn post_news(
+        &self,
+        tournament_id: &str,
+        body: &str,
+        important: bool,
+    ) -> Result<(), RequestError>;
+
+    async fn delete_news(&self, tournament_id: &str, news_id: &str) -> Result<(), RequestError>;
+
+    /// One of the organiser's single-call changes. Organiser only, every one.
+    async fn administer(
+        &self,
+        tournament_id: &str,
+        change: &TourneyAdmin,
+    ) -> Result<(), RequestError>;
 
     /// Create a series, or rename one that exists.
     ///
@@ -553,23 +602,6 @@ pub trait TourneyPort: Send + Sync {
         structural: bool,
     ) -> Result<(), RequestError>;
 
-    /// Silence an account in the event's chat, or let it speak again.
-    async fn mute_chat(
-        &self,
-        tournament_id: &str,
-        faf_id: i32,
-        name: &str,
-        muted: bool,
-    ) -> Result<(), RequestError>;
-
-    /// Take one post out of a room.
-    async fn delete_chat_post(
-        &self,
-        tournament_id: &str,
-        room_id: &str,
-        post_id: &str,
-    ) -> Result<(), RequestError>;
-
     /// Give a FAF account organiser rights here.
     ///
     /// No counterpart: `remove_organizer` is site-admin-only, and nothing in the
@@ -605,9 +637,6 @@ pub trait TourneyPort: Send + Sync {
         important: bool,
     ) -> Result<(), RequestError>;
 
-    /// Clear this account's unread badge for the event, on every device.
-    async fn mark_news_read(&self, tournament_id: &str) -> Result<(), RequestError>;
-
     /// Let a FAF account cast this event, or take that back.
     ///
     /// A caster sees every match chat rather than only their own. This replaced
@@ -619,4 +648,44 @@ pub trait TourneyPort: Send + Sync {
         name: &str,
         casting: bool,
     ) -> Result<(), RequestError>;
+}
+
+/// The site around the events, and this account on it: whether it may host,
+/// its Discord handle, the rules pages, and the site's own documents and
+/// administration through [`Self::site_read`] and [`Self::site_write`].
+#[async_trait]
+pub trait TourneySitePort: Send + Sync {
+    /// Whether this account may host a tournament at all.
+    ///
+    /// Hosting is approval-only, granted per account by the site admin, so the
+    /// answer is a property of the session rather than of any one event.
+    async fn hosting(&self) -> Result<HostingStatus, RequestError>;
+
+    /// The Discord handle this account has given the tournament service, if any.
+    ///
+    /// A property of the account rather than of any tournament: the service
+    /// stores one handle per FAF id and shows it to the organisers and teammates
+    /// of every event that account enters.
+    async fn profile(&self) -> Result<String, RequestError>;
+
+    /// Set or clear the Discord handle, answering with what was stored.
+    async fn set_discord(&self, handle: &str) -> Result<String, RequestError>;
+
+    /// One of the site's documents: this account, the pending bar, the Hall
+    /// of Fame, the administration console, an access status.
+    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError>;
+
+    /// One write to the site. Answers the tournament an import created and
+    /// the path of an uploaded article picture, where the write made one.
+    async fn site_write(
+        &self,
+        write: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError>;
+
+    /// The rules and FAQ pages, shown alongside official tournaments.
+    ///
+    /// Site-wide rather than per-tournament, and returned whole in the order the
+    /// editors put them in. Fetching all of them is what avoids hard-coding the
+    /// three article ids the website happens to use today.
+    async fn articles(&self) -> Result<Vec<Article>, RequestError>;
 }

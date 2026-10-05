@@ -29,6 +29,7 @@ import { formatDate, formatDateTime } from "../../../shared/format/dates";
 import { usePlayerStyle } from "../../../shared/components/nameColors";
 import { openPlayerCard } from "../../../shared/playerCardActions";
 import { useAppStore } from "../../../store/store";
+import type { ChatActions } from "../tourneyActions";
 import { playersByNickname } from "../../../store/reducer";
 import {
   applyMention,
@@ -64,9 +65,8 @@ export interface ChatRoomViewProps {
   status: TourneyLoadStatus;
   busy: boolean;
   onPost: (body: string, replyTo: string | null) => void;
-  onDeletePost: (roomId: string, postId: string) => void;
-  onMute: (fafId: number, name: string, muted: boolean) => void;
-  onRefresh: (roomId: string) => void;
+  /** Moderating a post, and re-reading the room while it is on screen. */
+  chat: Pick<ChatActions, "deletePost" | "mute" | "refresh">;
   /** A shorter log, for the popup. */
   compact?: boolean;
 }
@@ -78,7 +78,8 @@ interface Reply {
 }
 
 export function ChatRoomView(props: ChatRoomViewProps) {
-  const { event, roomId, posts, status, busy, onRefresh } = props;
+  const { event, roomId, posts, status, busy } = props;
+  const onRefresh = props.chat.refresh;
   const { t } = useTranslation();
   // The Chat tab's own reading settings, so a line looks the same in both.
   const showTimestamps = useAppStore((store) => store.state.settings.chat.showTimestamps);
@@ -307,7 +308,7 @@ export function ChatRoomView(props: ChatRoomViewProps) {
                 disabled={busy}
                 aria-label={t("tournaments.chat.deletePost")}
                 title={t("tournaments.chat.deletePost")}
-                onClick={() => props.onDeletePost(roomId, post.id)}
+                onClick={() => props.chat.deletePost(roomId, post.id)}
               >
                 <Icon name="trash" size={13} />
               </button>
@@ -319,7 +320,7 @@ export function ChatRoomView(props: ChatRoomViewProps) {
                 disabled={busy}
                 aria-label={t("tournaments.chat.mute")}
                 title={t("tournaments.chat.mute")}
-                onClick={() => props.onMute(post.fafId as number, post.author, true)}
+                onClick={() => props.chat.mute(post.fafId as number, post.author, true)}
               >
                 <Icon name="userX" size={13} />
               </button>

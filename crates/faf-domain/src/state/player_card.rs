@@ -497,6 +497,11 @@ pub fn reduce(state: &mut PlayerCardState, event: &PlayerCardEvent) {
             state.profile_error.clear();
             state.history_query = None;
             state.history.clear();
+            // The peak goes with the points. The card draws it as the
+            // authoritative maximum, so leaving it showed the previous
+            // player's best rating under the new name until a history load
+            // happened to replace it.
+            state.history_maximum = None;
             state.history_status = PlayerCardStatus::Idle;
         }
         PlayerCardEvent::Loaded { profile } => {
@@ -784,6 +789,28 @@ mod tests {
         assert!(state.open);
         assert!(state.profile.is_none());
         assert!(state.history.is_empty());
+    }
+
+    #[test]
+    fn opening_a_different_player_drops_the_previous_peak() {
+        let peak = RatingHistoryPoint {
+            timestamp: "2020-01-01T00:00:00Z".into(),
+            rating: 2100.0,
+            mean: 2400.0,
+            deviation: 100.0,
+        };
+        let mut state = PlayerCardState {
+            history: vec![peak.clone()],
+            history_maximum: Some(peak),
+            ..PlayerCardState::default()
+        };
+        reduce(
+            &mut state,
+            &PlayerCardEvent::Loading {
+                login: "New".into(),
+            },
+        );
+        assert_eq!(state.history_maximum, None);
     }
 
     #[test]

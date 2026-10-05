@@ -10,7 +10,7 @@
 // the store and writes both back itself, so a dialog embedding it passes
 // nothing and cannot get the wiring subtly wrong.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
@@ -44,7 +44,11 @@ export function filterAndSortHostMods(
     .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.uid.localeCompare(b.uid));
 }
 
-export function HostModsColumn() {
+/**
+ * Memoised. It takes no props, so a dialog redrawing around it (every keystroke
+ * in the lobby title) never reaches it; its own store reads still do.
+ */
+export const HostModsColumn = memo(function HostModsColumn() {
   const { t } = useTranslation();
   const installedMods = useAppStore((state) => state.state.mods.installed);
   const presets = useAppStore((state) => state.state.settings.browsing.modPresets);
@@ -320,4 +324,4 @@ export function HostModsColumn() {
       )}
     </section>
   );
-}
+});

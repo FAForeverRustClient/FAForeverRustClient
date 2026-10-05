@@ -161,7 +161,8 @@ pub use tourney::{
     SeedOrder, Seeding, SignupMode, Standing, StandingOutcome, StandingsKind, TeamExit,
     TeamRequest, Tourney, TourneyAction, TourneyActionFailure, TourneyCategory, TourneyCommand,
     TourneyDraft, TourneyEvent, TourneyInvite, TourneyLoadStatus, TourneyMap, TourneyMatch,
-    TourneyPhase, TourneyPlayer, TourneyState, TourneyStatus, TourneyTeam, TourneyViewer,
+    TourneyPhase, TourneyPlayer, TourneyRead, TourneyState, TourneyStatus, TourneyTeam,
+    TourneyViewer, TourneyWrite,
 };
 pub use tourney::{
     AccessKind, AccessRequest, AccessStatus, AdminArticle, ArchivedTourney, ConsoleRole,
