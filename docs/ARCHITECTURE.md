@@ -462,12 +462,12 @@ Each feature = *new slice + new service + new port impl*. None can introduce spa
      conclusion: the client never even computes an opinion to be wrong about.
 
   A third point is about shape rather than policy. A submission's issue body is written by
-  the client and read back by it: prose for the reviewer, a delimited region for a guide
-  written in the client, and a fenced JSON block holding the catalogue entry. Because the
-  client authored it, accepting is a *copy* rather than a rewrite, which is what makes a
-  one-press accept honest rather than a form that reopens everything the author already
-  answered. An issue opened by hand has no block, is still listed and still readable, and
-  says so instead of offering a button that would do nothing.
+  the client and read back by it: a filled-in GitHub issue form, one `### ` heading per
+  field, the same shape GitHub writes for the repository's own issue form. There is no
+  JSON in it and no id; the id is derived from the title. Because the client authored the
+  form, accepting is a *copy* rather than a rewrite, which is what makes a one-press
+  accept honest rather than a form that reopens everything the author already answered.
+  Headings inside the guide text are part of the guide, not field boundaries.
 
 Remaining order: chat → vault → launcher/ICE → replay → social → updater.
 

@@ -29,10 +29,18 @@ import type {
   TrainingLevel,
   TrainingTopic,
 } from "../../ipc/bindings";
+import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { FACTION_NAMES, factionLabel } from "../../shared/factions";
 import { contributionProblem } from "../../shared/rules/trainingRules";
-import { sameDraft } from "./contributionDraft";
+import {
+  normaliseRatings,
+  parseRating,
+  ratingProblem,
+  sameDraft,
+  splitMaps,
+  type RatingProblem,
+} from "./contributionDraft";
 import { Markdown } from "./markdown";
 import { MarkdownField } from "./MarkdownField";
 import { PostPreview } from "./PostPreview";
@@ -48,6 +56,12 @@ import {
 } from "./trainingPresentation";
 
 const NO_LEVEL = "";
+
+const RATING_PROBLEM_LABELS: Record<RatingProblem, MessageKey> = {
+  ratingMinInvalid: "training.contribute.ratingProblem.minInvalid",
+  ratingMaxInvalid: "training.contribute.ratingProblem.maxInvalid",
+  ratingOrder: "training.contribute.ratingProblem.order",
+};
 
 /**
  * The catalogue stores factions as lowercase slugs of the game's own words;
@@ -96,6 +110,11 @@ export function ContributePanel({
   // Owned locally while it is being written: a controlled textarea driven
   // through the backend would round-trip every keystroke.
   const [draft, setDraft] = useState(prefilled);
+  // The maps field is edited as text and read as a list. Rebuilding the text
+  // from the list on every keystroke is what used to swallow a comma or a
+  // space the moment it was typed, so the raw text is its own state and only
+  // tidied up when the field is left.
+  const [mapsText, setMapsText] = useState(() => prefilled.maps.join(", "));
   // But not *only* here. Opening the library or another tab unmounts this
   // form, and a draft nobody else held used to vanish with it, bringing back
   // whatever the state had from the last Compose. So the draft is kept in the
@@ -117,6 +136,7 @@ export function ContributePanel({
     if (sameDraft(prefilled, sent.current)) return;
     sent.current = prefilled;
     setDraft(prefilled);
+    setMapsText(prefilled.maps.join(", "));
   }, [prefilled]);
 
   const cancelKeep = () => {
@@ -153,6 +173,29 @@ export function ContributePanel({
     timer.current = window.setTimeout(keepNow, KEEP_AFTER_MS);
   };
   const problem = contributionProblem(draft);
+  // Checked here rather than in the shared rule: a bound written "1,200+" is
+  // fine, it only has to be read as 1200 before it is composed.
+  const ratingIssue = ratingProblem(draft);
+  const blocked = problem !== null || ratingIssue !== null;
+
+  // After Create the post appears in the preview column, which may be off
+  // screen or scrolled down a long guide. Bringing it into view is the only
+  // sign the press did anything.
+  const postRef = useRef<HTMLDivElement>(null);
+  const awaitingPost = useRef(false);
+  useEffect(() => {
+    if (!post || !awaitingPost.current) return;
+    awaitingPost.current = false;
+    postRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [post]);
+
+  /** A bound that parses is shown back as bare digits once the field is left. */
+  const tidyRating = (key: "ratingMin" | "ratingMax") => {
+    const value = parseRating(draft[key]);
+    if (typeof value === "number" && String(value) !== draft[key]) {
+      onChange({ ...draft, [key]: String(value) });
+    }
+  };
 
   const kindOptions: SelectOption<string>[] = KINDS.filter((kind) => kind !== "lesson").map(
     // A lesson is something FAF publishes through its own tutorial API and
@@ -170,12 +213,16 @@ export function ContributePanel({
         className="training-form training-contribute-form"
         onSubmit={(event) => {
           event.preventDefault();
-          if (problem) return;
+          if (blocked) return;
           // Compose records the draft too, so a keep still waiting for its
           // pause would only repeat it, and clear the post it is about to get.
           cancelKeep();
-          sent.current = draft;
-          onCompose(draft);
+          const ready = normaliseRatings({ ...draft, maps: splitMaps(mapsText) });
+          setDraft(ready);
+          setMapsText(ready.maps.join(", "));
+          sent.current = ready;
+          awaitingPost.current = true;
+          onCompose(ready);
           setStale(false);
         }}
       >
@@ -242,8 +289,10 @@ export function ContributePanel({
             <input
               value={draft.ratingMin}
               onChange={(event) => onChange({ ...draft, ratingMin: event.target.value })}
+              onBlur={() => tidyRating("ratingMin")}
               placeholder="800"
               inputMode="numeric"
+              aria-invalid={ratingIssue === "ratingMinInvalid" || ratingIssue === "ratingOrder"}
             />
           </label>
           <label className="training-field">
@@ -251,11 +300,18 @@ export function ContributePanel({
             <input
               value={draft.ratingMax}
               onChange={(event) => onChange({ ...draft, ratingMax: event.target.value })}
+              onBlur={() => tidyRating("ratingMax")}
               placeholder="1200"
               inputMode="numeric"
+              aria-invalid={ratingIssue === "ratingMaxInvalid" || ratingIssue === "ratingOrder"}
             />
           </label>
         </div>
+        {ratingIssue && (
+          <p className="muted training-form-problem" role="alert">
+            {t(RATING_PROBLEM_LABELS[ratingIssue])}
+          </p>
+        )}
 
         <label className="training-field">
           <span>{t("training.contribute.url")}</span>
@@ -304,16 +360,14 @@ export function ContributePanel({
           <label className="training-field">
             <span>{t("training.contribute.maps")}</span>
             <input
-              value={draft.maps.join(", ")}
-              onChange={(event) =>
-                onChange({
-                  ...draft,
-                  maps: event.target.value
-                    .split(",")
-                    .map((map) => map.trim())
-                    .filter((map) => map !== ""),
-                })
-              }
+              value={mapsText}
+              onChange={(event) => {
+                // The list follows the text, so the preview and the kept draft
+                // stay current; the text itself is left exactly as typed.
+                setMapsText(event.target.value);
+                onChange({ ...draft, maps: splitMaps(event.target.value) });
+              }}
+              onBlur={() => setMapsText(splitMaps(mapsText).join(", "))}
               placeholder={t("training.contribute.mapsPlaceholder")}
             />
           </label>
@@ -324,7 +378,7 @@ export function ContributePanel({
         )}
 
         <div className="training-form-actions">
-          <Button type="submit" variant="primary" disabled={problem !== null}>
+          <Button type="submit" variant="primary" disabled={blocked}>
             <Icon name="edit" size={15} /> {t("training.contribute.compose")}
           </Button>
           <Button
@@ -346,6 +400,20 @@ export function ContributePanel({
           library will show; the rendered guide is what a reader will read. */}
       <aside className="training-contribute-preview">
         <h4>{t("training.contribute.preview")}</h4>
+
+        {/* The composed post leads the column rather than trailing the whole
+            guide: Send and Copy are what the author is looking for once it
+            exists, and below a long preview they were out of sight. */}
+        {post && !stale && (
+          <div ref={postRef} className="training-contribute-post">
+            <PostPreview
+              post={post}
+              destination="github"
+              submit={guides.submit}
+              onSubmit={onSubmit === null ? null : () => onSubmit(normaliseRatings(draft))}
+            />
+          </div>
+        )}
 
         <article className="training-preview-card">
           <strong>{draft.title || t("training.contribute.untitled")}</strong>
@@ -379,14 +447,6 @@ export function ContributePanel({
           <p className="muted training-preview-empty">{t("training.contribute.previewEmpty")}</p>
         )}
 
-        {post && !stale && (
-          <PostPreview
-            post={post}
-            destination="github"
-            submit={guides.submit}
-            onSubmit={onSubmit === null ? null : () => onSubmit(draft)}
-          />
-        )}
       </aside>
     </div>
   );

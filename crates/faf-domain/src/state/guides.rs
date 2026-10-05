@@ -7,12 +7,13 @@
 //!
 //! Three decisions shape everything here.
 //!
-//! **A submission is a GitHub issue whose body the client wrote.** The prose is
-//! for the human reading it; underneath sits a fenced JSON block holding the
-//! catalogue entry itself. Because the client authored it, accepting is a copy
-//! rather than a rewrite, which is the whole reason a trainer can accept in one
-//! step instead of retyping the tags. A human may edit the block by hand and it
-//! still parses.
+//! **A submission is a GitHub issue whose body the client wrote.** It is a
+//! filled-in issue form, one `### ` heading per field, the same shape GitHub
+//! writes for the guides repository's own issue form; there is no JSON in it.
+//! Because the client authored it, accepting is a copy rather than a rewrite,
+//! which is the whole reason a trainer can accept in one step instead of
+//! retyping the tags. A human may edit the answers by hand and they still
+//! parse.
 //!
 //! **GitHub enforces the permission, not this client.** The queue is public
 //! information (open issues on a public repository), so anybody may read it.
@@ -52,6 +53,42 @@ pub const SUBMISSION_LABEL: &str = "training-submission";
 /// What every submission's issue title starts with, so the queue's label is
 /// not the only thing distinguishing one from ordinary repository traffic.
 pub const SUBMISSION_PREFIX: &str = "Training submission:";
+
+/// The label an accepted submission's issue gains when it is closed.
+pub const ACCEPTED_LABEL: &str = "accepted";
+
+/// The label a declined submission's issue gains when it is closed.
+pub const DECLINED_LABEL: &str = "declined";
+
+/// The line every acceptance comment ends with.
+///
+/// Doubles as the record that the comment step of an accept already happened:
+/// an accept is several requests, and one that failed halfway is finished by
+/// pressing accept again, which must not post the same comment twice.
+pub const ACCEPT_MARKER: &str = "Accepted from the FAF client's Training tab.";
+
+/// The line every rejection comment ends with, for the same reason as
+/// [`ACCEPT_MARKER`]. It is also what stops a submission that was declined but
+/// never closed from being accepted afterwards.
+pub const DECLINE_MARKER: &str = "Declined from the FAF client's Training tab.";
+
+/// Whether an issue is a submission rather than ordinary repository traffic.
+///
+/// The label alone is not enough. A submission opened in a browser carries the
+/// label only when its author may set labels on the repository: GitHub drops
+/// the `labels=` parameter of a prefilled new-issue link without a word for
+/// anybody who is not a collaborator, which is exactly the player the link
+/// exists for. The title prefix is written by both paths (the client and the
+/// issue template) and survives, so either one is enough.
+pub fn is_submission_issue(title: &str, labels: &[&str]) -> bool {
+    if labels.iter().any(|label| *label == SUBMISSION_LABEL) {
+        return true;
+    }
+    let title = title.trim_start();
+    title
+        .get(..SUBMISSION_PREFIX.len())
+        .is_some_and(|head| head.eq_ignore_ascii_case(SUBMISSION_PREFIX))
+}
 
 /// Where a guide written in the client is committed.
 pub fn guide_file_path(id: &str) -> String {
@@ -429,14 +466,14 @@ fn checklist(values: impl Iterator<Item = String>) -> String {
         .join("\n")
 }
 
-/// Where `### label` starts, as a heading on a line of its own.
+/// Every place `### label` starts as a heading on a line of its own, in order.
 ///
 /// Line-anchored so a heading quoted inside an answer is not mistaken for a
 /// field, and whole-line so `### Link` does not match `### Linkage`.
-fn heading_offset(text: &str, label: &str) -> Option<usize> {
+fn heading_offsets(text: &str, label: &str) -> Vec<usize> {
     let heading = format!("### {label}");
     text.match_indices(&heading)
-        .find(|(index, _)| {
+        .filter(|(index, _)| {
             let at_line_start = *index == 0 || text[..*index].ends_with('\n');
             let line_ends = text[*index + heading.len()..]
                 .chars()
@@ -445,23 +482,75 @@ fn heading_offset(text: &str, label: &str) -> Option<usize> {
             at_line_start && line_ends
         })
         .map(|(index, _)| index)
+        .collect()
+}
+
+/// Where each field's heading sits in a body, by its position in
+/// [`field::ALL`], or `None` for a field the body does not carry.
+///
+/// Matching a label anywhere is not enough, because the guide is Markdown and
+/// may well contain `### Summary` or `### Type` as headings of its own. Either
+/// one used to end the guide there, and the fake heading then supplied the
+/// answer to the field it named. So the form's own shape decides instead: the
+/// fields always come in the same order, and the guide is the only long free
+/// text among them. Every field up to and including the guide is the *first*
+/// matching heading after the previous field, which a heading inside the guide
+/// cannot precede; every field after it is the *last* matching heading before
+/// the next field, searched from the end, which a heading inside the guide
+/// cannot follow. What the guide says between the two is left alone.
+fn field_positions(body: &str) -> [Option<usize>; field::ALL.len()] {
+    let mut positions = [None; field::ALL.len()];
+    let guide = field::ALL
+        .iter()
+        .position(|label| *label == field::GUIDE)
+        .unwrap_or(field::ALL.len() - 1);
+
+    let mut cursor = 0;
+    for (index, label) in field::ALL.iter().enumerate().take(guide + 1) {
+        if let Some(at) = heading_offsets(body, label)
+            .into_iter()
+            .find(|at| *at >= cursor)
+        {
+            positions[index] = Some(at);
+            cursor = at + label.len() + 4;
+        }
+    }
+
+    let floor = cursor;
+    let mut ceiling = body.len();
+    for index in (guide + 1..field::ALL.len()).rev() {
+        let label = field::ALL[index];
+        if let Some(at) = heading_offsets(body, label)
+            .into_iter()
+            .rev()
+            .find(|at| *at >= floor && *at < ceiling)
+        {
+            positions[index] = Some(at);
+            ceiling = at;
+        }
+    }
+    positions
 }
 
 /// One field's answer, or `None` when the body does not carry that field.
 fn section_of(body: &str, label: &str) -> Option<String> {
-    let start = heading_offset(body, label)? + label.len() + 4;
-    let rest = &body[start..];
+    let index = field::ALL.iter().position(|known| *known == label)?;
+    let positions = field_positions(body);
+    let at = positions[index]?;
+    let start = at + label.len() + 4;
 
-    // The answer runs to the next field, not to the next heading. A guide
-    // written here is Markdown with sections of its own, and ending at the
-    // first `###` truncated it at its first one.
-    let end = field::ALL
+    // The answer runs to the next field the body carries, not to the next
+    // heading: a guide written here is Markdown with sections of its own.
+    // Positions found by `field_positions` only ever increase, so the next one
+    // present is where this answer ends.
+    let end = positions[index + 1..]
         .iter()
-        .filter_map(|other| heading_offset(rest, other))
-        .min()
-        .unwrap_or(rest.len());
+        .flatten()
+        .next()
+        .copied()
+        .unwrap_or(body.len());
 
-    let answer = rest[..end].trim();
+    let answer = body[start..end].trim();
     if answer.is_empty() || answer == NO_RESPONSE {
         return None;
     }
@@ -578,6 +667,18 @@ pub fn entry_from_body(issue_title: &str, body: &str) -> Option<TrainingResource
     })
 }
 
+/// [`entry_from_body`] for an issue whose number is known, which is every
+/// issue the queue lists.
+///
+/// The number is the fallback id for a title with nothing addressable in it.
+/// Without it every such title became the same `untitled-guide`, so the second
+/// one accepted replaced the first one's entry and guide file.
+pub fn entry_from_issue(number: i32, issue_title: &str, body: &str) -> Option<TrainingResource> {
+    let mut entry = entry_from_body(issue_title, body)?;
+    entry.id = slug_or(&entry.title, &format!("guide-{number}"));
+    Some(entry)
+}
+
 /// A dropdown answer, back to the value it names.
 ///
 /// Derived from the same label functions the form is generated from, so a
@@ -631,8 +732,15 @@ pub fn rejection_comment(reason: RejectReason, note: &str) -> String {
         body.push_str(note.trim());
         body.push('\n');
     }
-    body.push_str("\nDeclined from the FAF client's Training tab.\n");
+    body.push('\n');
+    body.push_str(DECLINE_MARKER);
+    body.push('\n');
     body
+}
+
+/// The comment an accept leaves behind, naming the id it was published as.
+pub fn acceptance_comment(id: &str) -> String {
+    format!("Published to the catalogue as `{id}`. Thanks for the submission.\n\n{ACCEPT_MARKER}\n")
 }
 
 // ---------------------------------------------------------------------------
@@ -648,8 +756,11 @@ pub fn rejection_comment(reason: RejectReason, note: &str) -> String {
 /// and a round trip through the typed struct would delete them.
 ///
 /// An entry whose id is already present **replaces** it rather than appending
-/// a second one. Two entries with one id would make `related` ambiguous, and
-/// re-accepting a corrected resubmission is the ordinary case.
+/// a second one, because two entries with one id would make `related`
+/// ambiguous. That is not how a new submission gets in, though: accepting
+/// first picks an id nobody holds (see [`catalogue_claim`]), so the only entry
+/// ever replaced is this same submission's own, written by an accept that
+/// failed after its commit and is being finished.
 pub fn catalogue_with(current: &str, entry: &TrainingResource) -> Result<String, String> {
     let mut document: serde_json::Value = serde_json::from_str(current)
         .map_err(|error| format!("the catalogue is not valid JSON: {error}"))?;
@@ -686,6 +797,131 @@ pub fn catalogue_with(current: &str, entry: &TrainingResource) -> Result<String,
         .map_err(|error| format!("the catalogue cannot be written: {error}"))
 }
 
+/// Who holds an id in the catalogue, from the point of view of an entry that
+/// wants it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CatalogueClaim {
+    /// Nobody: the entry can have it.
+    Free,
+    /// An entry with the same title, summary and link: this submission,
+    /// committed by an earlier accept that failed at a later step. Writing it
+    /// again is a no-op rather than a second entry.
+    Ours,
+    /// Somebody else's entry. Taking the id would replace it.
+    Taken,
+}
+
+/// Whether `entry.id` is free in the catalogue document `current`.
+///
+/// Before this, the id was the title's slug and nothing more, and a second
+/// guide with the same title silently replaced the first one's entry and its
+/// guide file. The comparison is on what a reader sees (title, summary, link)
+/// rather than on every field, so a retry by a different maintainer, whose
+/// `approvedBy` differs, still recognises its own entry.
+pub fn catalogue_claim(current: &str, entry: &TrainingResource) -> Result<CatalogueClaim, String> {
+    let document: serde_json::Value = serde_json::from_str(current)
+        .map_err(|error| format!("the catalogue is not valid JSON: {error}"))?;
+    let held = document
+        .get("resources")
+        .and_then(serde_json::Value::as_array)
+        .and_then(|resources| {
+            resources.iter().find(|held| {
+                held.get("id").and_then(serde_json::Value::as_str) == Some(entry.id.as_str())
+            })
+        });
+    let Some(held) = held else {
+        return Ok(CatalogueClaim::Free);
+    };
+    let text = |key: &str| {
+        held.get(key)
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+    };
+    Ok(
+        if text("title") == entry.title
+            && text("summary") == entry.summary
+            && text("url") == entry.url
+        {
+            CatalogueClaim::Ours
+        } else {
+            CatalogueClaim::Taken
+        },
+    )
+}
+
+/// How many suffixed ids an accept tries before giving up on a title.
+const MAX_ID_SUFFIX: usize = 50;
+
+/// The ids an entry may be published under, in order of preference: the
+/// slug itself, then `slug-2`, `slug-3` and so on.
+pub fn id_candidates(base: &str) -> impl Iterator<Item = String> + '_ {
+    std::iter::once(base.to_string())
+        .chain((2..=MAX_ID_SUFFIX).map(move |suffix| format!("{base}-{suffix}")))
+}
+
+/// Why committing `entry` would break the catalogue repository's own check,
+/// if it would.
+///
+/// A mirror of the per-entry rules in `.github/validate.mjs` in the catalogue
+/// repository. Without it an accepted submission with no link, a plain `http`
+/// link or an inverted rating band went straight in, and the repository's CI
+/// went red for whoever pushed next. Checked before the first commit, so a
+/// refusal changes nothing. The rules the client cannot break by construction
+/// (a kind, level or topic outside the known set, `related` ids) are not
+/// repeated, and keeping the rest in step with that script is part of changing
+/// it.
+pub fn entry_problem(entry: &TrainingResource) -> Option<String> {
+    if entry.id.is_empty() {
+        return Some("the entry has no id".into());
+    }
+    let id_shape = entry
+        .id
+        .chars()
+        .next()
+        .is_some_and(|first| first.is_ascii_lowercase() || first.is_ascii_digit())
+        && entry
+            .id
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+    if !id_shape {
+        return Some(format!(
+            "the id \"{}\" should be lowercase letters, digits and hyphens",
+            entry.id
+        ));
+    }
+    if entry.title.trim().is_empty() {
+        return Some("the entry has no title".into());
+    }
+    if !entry.url.is_empty() && !ordinary_https(&entry.url) {
+        return Some(format!(
+            "the link \"{}\" must be an ordinary https:// address",
+            entry.url
+        ));
+    }
+    if entry.url.is_empty() && entry.kind != TrainingKind::Lesson && entry.tutorial_id.is_none() {
+        return Some(
+            "the entry has neither a link nor a guide, so nothing would happen when a reader opens it"
+                .into(),
+        );
+    }
+    if let (Some(min), Some(max)) = (entry.rating_min, entry.rating_max) {
+        if min > max {
+            return Some(format!("the rating range {min} to {max} is inverted"));
+        }
+    }
+    None
+}
+
+/// `^https://[^\s/][^\s]*$`, the validator's own test for a link.
+fn ordinary_https(url: &str) -> bool {
+    url.strip_prefix("https://").is_some_and(|rest| {
+        rest.chars()
+            .next()
+            .is_some_and(|first| first != '/' && !first.is_whitespace())
+            && !rest.chars().any(char::is_whitespace)
+    })
+}
+
 /// The commit message an accept writes.
 pub fn accept_commit_message(entry: &TrainingResource, number: i32) -> String {
     format!(
@@ -707,6 +943,55 @@ pub fn new_issue_url(repo: &str, title: &str, body: &str) -> String {
     )
 }
 
+/// The longest new-issue link handed to a browser, in bytes.
+///
+/// GitHub answers a prefilled link much past 8 KB with an error page, and some
+/// browsers and proxies give up sooner. The whole submission travels in the
+/// query string, percent-encoded at up to nine bytes per character of Cyrillic,
+/// so a guide of a few kilobytes was enough to make the link fail.
+pub const MAX_ISSUE_URL: usize = 6000;
+
+/// What stands in for the guide when the whole submission does not fit in a
+/// link. English, like everything else written into the repository.
+pub const GUIDE_TOO_LONG_NOTE: &str = "_The guide was too long to fit in a browser link. Replace this whole text with the post the FAF client copied for you, then submit._";
+
+/// A new-issue link that a browser can actually open.
+///
+/// The full body when it fits. Otherwise the same form with the guide replaced
+/// by [`GUIDE_TOO_LONG_NOTE`], so every other answer still arrives and the
+/// author pastes the post the client lets them copy; and if even that is too
+/// long (a summary with a whole guide pasted into it), the body is cut short
+/// and ends with the same note.
+fn browser_issue_url(repo: &str, title: &str, entry: &TrainingResource, body: &str) -> String {
+    let full = new_issue_url(repo, title, body);
+    if full.len() <= MAX_ISSUE_URL {
+        return full;
+    }
+
+    let short_body = submission_body(entry, GUIDE_TOO_LONG_NOTE);
+    let short = new_issue_url(repo, title, &short_body);
+    if short.len() <= MAX_ISSUE_URL {
+        return short;
+    }
+
+    let tail = format!("\n\n{GUIDE_TOO_LONG_NOTE}\n");
+    let budget = MAX_ISSUE_URL
+        .saturating_sub(new_issue_url(repo, title, "").len())
+        .saturating_sub(crate::state::percent_encode(&tail).len());
+    let mut cut = String::new();
+    let mut used = 0;
+    for character in short_body.chars() {
+        let cost = crate::state::percent_encode(character.encode_utf8(&mut [0; 4])).len();
+        if used + cost > budget {
+            break;
+        }
+        used += cost;
+        cut.push(character);
+    }
+    cut.push_str(&tail);
+    new_issue_url(repo, title, &cut)
+}
+
 /// The title an issue carries, so both submission paths agree on it.
 pub fn submission_title(entry: &TrainingResource) -> String {
     format!("{SUBMISSION_PREFIX} {}", entry.title.trim())
@@ -718,13 +1003,29 @@ pub fn submission_title(entry: &TrainingResource) -> String {
 /// the key `related` points at, so it has to survive both a filesystem and a
 /// URL. A title with nothing usable in it falls back to something addressable
 /// rather than to an empty id, which would be dropped on the way in.
+///
+/// Cyrillic and accented Latin letters are transliterated rather than dropped:
+/// a Russian title used to lose every letter and become `untitled-guide`, the
+/// same id as every other Russian title.
 pub fn slug(title: &str) -> String {
+    slug_or(title, "untitled-guide")
+}
+
+/// [`slug`], with the caller's fallback for a title with nothing usable in it.
+pub fn slug_or(title: &str, fallback: &str) -> String {
     let mut out = String::with_capacity(title.len());
     let mut last_dash = true;
-    for character in title.chars() {
+    for character in title.chars().flat_map(char::to_lowercase) {
         if character.is_ascii_alphanumeric() {
-            out.extend(character.to_lowercase());
+            out.push(character);
             last_dash = false;
+        } else if let Some(latin) = transliterate(character) {
+            // A hard or soft sign has no Latin letter and is simply skipped,
+            // without splitting the word around it.
+            if !latin.is_empty() {
+                out.push_str(latin);
+                last_dash = false;
+            }
         } else if !last_dash {
             out.push('-');
             last_dash = true;
@@ -732,7 +1033,7 @@ pub fn slug(title: &str) -> String {
     }
     let trimmed = out.trim_matches('-').to_string();
     if trimmed.is_empty() {
-        "untitled-guide".to_string()
+        fallback.to_string()
     } else {
         // Long enough for any real title, short enough to stay a sane file name.
         trimmed
@@ -742,6 +1043,64 @@ pub fn slug(title: &str) -> String {
             .trim_matches('-')
             .to_string()
     }
+}
+
+/// A lowercase letter's Latin spelling, for the alphabets the catalogue's
+/// authors actually write in (the client ships Russian, Polish, German, French
+/// and Spanish). Russian follows the common passport-style romanisation.
+/// `None` for anything else, which becomes a word break.
+fn transliterate(character: char) -> Option<&'static str> {
+    Some(match character {
+        'а' => "a",
+        'б' => "b",
+        'в' => "v",
+        'г' | 'ґ' => "g",
+        'д' => "d",
+        'е' | 'ё' | 'э' => "e",
+        'є' => "ye",
+        'ж' => "zh",
+        'з' => "z",
+        'и' | 'і' => "i",
+        'ї' => "yi",
+        'й' | 'ы' => "y",
+        'к' => "k",
+        'л' => "l",
+        'м' => "m",
+        'н' => "n",
+        'о' => "o",
+        'п' => "p",
+        'р' => "r",
+        'с' => "s",
+        'т' => "t",
+        'у' => "u",
+        'ф' => "f",
+        'х' => "kh",
+        'ц' => "ts",
+        'ч' => "ch",
+        'ш' => "sh",
+        'щ' => "shch",
+        'ъ' | 'ь' => "",
+        'ю' => "yu",
+        'я' => "ya",
+        'à' | 'á' | 'â' | 'ã' | 'ä' | 'å' | 'ā' | 'ą' => "a",
+        'æ' => "ae",
+        'ç' | 'ć' | 'č' => "c",
+        'ď' | 'đ' => "d",
+        'è' | 'é' | 'ê' | 'ë' | 'ē' | 'ę' | 'ě' => "e",
+        'ì' | 'í' | 'î' | 'ï' => "i",
+        'ł' => "l",
+        'ñ' | 'ń' | 'ň' => "n",
+        'ò' | 'ó' | 'ô' | 'õ' | 'ö' | 'ø' => "o",
+        'œ' => "oe",
+        'ř' => "r",
+        'ś' | 'š' => "s",
+        'ß' => "ss",
+        'ť' => "t",
+        'ù' | 'ú' | 'û' | 'ü' | 'ů' => "u",
+        'ý' | 'ÿ' => "y",
+        'ź' | 'ż' | 'ž' => "z",
+        _ => return None,
+    })
 }
 
 /// Turn what the submission form collected into a catalogue entry.
@@ -780,7 +1139,10 @@ pub fn entry_from_draft(draft: &ContributionDraft, author: &str) -> TrainingReso
 /// Compose the submission as a GitHub issue, prefilled.
 ///
 /// The same body the API path sends, so a submission opened in a browser is
-/// byte for byte one the queue can accept in a single step.
+/// byte for byte one the queue can accept in a single step. Unless it is too
+/// long for a link, in which case the link carries a shortened body and the
+/// post's own body stays whole, for the author to paste (see
+/// [`browser_issue_url`]).
 pub fn compose_submission(draft: &ContributionDraft, author: &str, repo: &str) -> ForumPost {
     let entry = entry_from_draft(draft, author);
     let title = submission_title(&entry);
@@ -789,7 +1151,7 @@ pub fn compose_submission(draft: &ContributionDraft, author: &str, repo: &str) -
         url: if repo.is_empty() {
             String::new()
         } else {
-            new_issue_url(repo, &title, &body)
+            browser_issue_url(repo, &title, &entry, &body)
         },
         title,
         body,
@@ -1169,6 +1531,22 @@ mod tests {
     }
 
     #[test]
+    fn a_guide_heading_that_names_a_field_neither_cuts_the_guide_nor_fills_the_field() {
+        // `### Summary` inside a guide used to end the guide there, and a
+        // `### Type` inside it answered the real Type field.
+        let guide = "Intro.\n\n### Summary\n\nWhat this guide covers.\n\n### Type\n\nVideo\n\n### FAF name\n\nNobody";
+        let body = submission_body(&entry(), guide);
+
+        assert_eq!(guide_from_body(&body).as_deref(), Some(guide));
+        let read = entry_from_body(&submission_title(&entry()), &body).expect("it parses");
+        assert_eq!(read.summary, "Four mexes, then land.");
+        assert_eq!(read.kind, TrainingKind::BuildOrder);
+        assert_eq!(read.author, "Someone");
+        assert_eq!(read.url, "https://example.invalid/guide");
+        assert_eq!(prose_from_body(&body), "Four mexes, then land.");
+    }
+
+    #[test]
     fn the_submission_form_becomes_an_entry_the_queue_can_accept() {
         let draft = ContributionDraft {
             title: "How to defend early T1 aggression".into(),
@@ -1250,9 +1628,11 @@ mod tests {
     }
 
     #[test]
-    fn re_accepting_a_corrected_submission_replaces_rather_than_duplicates() {
-        // Two entries under one id would make `related` ambiguous, and a
-        // corrected resubmission is the ordinary case, not an edge one.
+    fn writing_an_id_that_is_already_present_replaces_rather_than_duplicates() {
+        // Two entries under one id would make `related` ambiguous. Accepting
+        // picks a free id first (see `catalogue_claim`), so the only entry
+        // this ever replaces is the same submission's, written by an accept
+        // that failed after its commit.
         let current = r#"{"resources":[{"id":"setons-t1-build-order","title":"Old"}]}"#;
         let written = catalogue_with(current, &entry()).unwrap();
         let document: serde_json::Value = serde_json::from_str(&written).unwrap();
@@ -1303,6 +1683,193 @@ mod tests {
             accept_commit_message(&entry(), 12),
             "Add \"Seton's Clutch T1 build order\" to the training catalogue (#12)"
         );
+    }
+
+    #[test]
+    fn an_id_held_by_another_entry_is_taken_and_our_own_is_recognised() {
+        // The same title used to replace the first entry and its guide file.
+        let current = r#"{"resources":[
+            {"id":"setons-t1-build-order","title":"Somebody else's","summary":"x","url":"https://a.example/x"}
+        ]}"#;
+        assert_eq!(
+            catalogue_claim(current, &entry()),
+            Ok(CatalogueClaim::Taken)
+        );
+
+        let next = TrainingResource {
+            id: "setons-t1-build-order-2".into(),
+            ..entry()
+        };
+        assert_eq!(catalogue_claim(current, &next), Ok(CatalogueClaim::Free));
+
+        // An accept that committed and then failed at the comment finds its
+        // own entry on the retry and reuses the id instead of adding `-2`.
+        let written = catalogue_with(r#"{"resources":[]}"#, &entry()).unwrap();
+        assert_eq!(
+            catalogue_claim(&written, &entry()),
+            Ok(CatalogueClaim::Ours)
+        );
+        // Including when somebody else is the one finishing it.
+        let other_approver = TrainingResource {
+            approved_by: "someone-else".into(),
+            ..entry()
+        };
+        assert_eq!(
+            catalogue_claim(&written, &other_approver),
+            Ok(CatalogueClaim::Ours)
+        );
+
+        assert!(catalogue_claim("{not json", &entry()).is_err());
+    }
+
+    #[test]
+    fn suffixed_ids_follow_the_slug_in_order() {
+        let ids: Vec<String> = id_candidates("guide").take(3).collect();
+        assert_eq!(ids, vec!["guide", "guide-2", "guide-3"]);
+        assert_eq!(id_candidates("guide").count(), 50, "bounded");
+    }
+
+    #[test]
+    fn a_cyrillic_title_gets_an_id_of_its_own() {
+        // Every Russian title used to collapse to `untitled-guide`.
+        assert_eq!(slug("Гайд по модам"), "gayd-po-modam");
+        assert_eq!(slug("Щит и объём"), "shchit-i-obem");
+        assert_eq!(slug("Łódź für Anfänger"), "lodz-fur-anfanger");
+        assert_eq!(
+            slug("Modern UI Mods Guide 2026 [EN] [RU]"),
+            "modern-ui-mods-guide-2026-en-ru"
+        );
+        // Nothing usable at all still falls back to something addressable,
+        // and with an issue number the fallback is unique to the issue.
+        assert_eq!(slug("!!!"), "untitled-guide");
+        let read = entry_from_issue(42, "Training submission: !!!", "### Summary\n\nx\n")
+            .expect("it parses");
+        assert_eq!(read.id, "guide-42");
+        let named = entry_from_issue(42, "Training submission: Гайд", "### Summary\n\nx\n")
+            .expect("it parses");
+        assert_eq!(named.id, "gayd");
+    }
+
+    #[test]
+    fn an_entry_the_catalogue_check_would_refuse_is_refused_first() {
+        // Mirrors `.github/validate.mjs`: without this the repository's CI
+        // went red after an accept.
+        assert_eq!(entry_problem(&entry()), None);
+
+        let no_link = TrainingResource {
+            url: String::new(),
+            ..entry()
+        };
+        assert!(entry_problem(&no_link).unwrap().contains("neither a link"));
+
+        let plain_http = TrainingResource {
+            url: "http://example.invalid/guide".into(),
+            ..entry()
+        };
+        assert!(entry_problem(&plain_http).unwrap().contains("https://"));
+
+        let spaced = TrainingResource {
+            url: "https://example.invalid/a guide".into(),
+            ..entry()
+        };
+        assert!(entry_problem(&spaced).is_some());
+
+        let inverted = TrainingResource {
+            rating_min: Some(1500),
+            rating_max: Some(800),
+            ..entry()
+        };
+        assert!(entry_problem(&inverted).unwrap().contains("inverted"));
+
+        let bad_id = TrainingResource {
+            id: "-Bad".into(),
+            ..entry()
+        };
+        assert!(entry_problem(&bad_id).is_some());
+
+        let untitled = TrainingResource {
+            title: "  ".into(),
+            ..entry()
+        };
+        assert!(entry_problem(&untitled).is_some());
+
+        // A lesson is launched rather than opened and needs no link.
+        let lesson = TrainingResource {
+            url: String::new(),
+            kind: TrainingKind::Lesson,
+            ..entry()
+        };
+        assert_eq!(entry_problem(&lesson), None);
+    }
+
+    #[test]
+    fn a_submission_is_recognised_without_its_label() {
+        // GitHub drops `labels=` from a prefilled link for anybody who is not
+        // a collaborator, which is every player. Issues #10 and #11 on the
+        // catalogue repository arrived exactly like this and were invisible.
+        assert!(is_submission_issue(
+            "Training submission: Modern UI Mods Guide 2026 [EN] [RU]",
+            &[]
+        ));
+        assert!(is_submission_issue("  training submission: lower", &[]));
+        assert!(is_submission_issue("Something else", &[SUBMISSION_LABEL]));
+        assert!(!is_submission_issue("The catalogue has a typo", &["bug"]));
+        assert!(
+            !is_submission_issue("Тренировка", &[]),
+            "short multibyte title"
+        );
+    }
+
+    #[test]
+    fn the_comments_carry_the_markers_that_make_a_retry_safe() {
+        assert!(acceptance_comment("an-id").contains("`an-id`"));
+        assert!(acceptance_comment("an-id").contains(ACCEPT_MARKER));
+        assert!(rejection_comment(RejectReason::Duplicate, "").contains(DECLINE_MARKER));
+    }
+
+    #[test]
+    fn a_guide_too_long_for_a_link_still_opens_a_working_one() {
+        let draft = ContributionDraft {
+            title: "A long guide".into(),
+            summary: "Short pitch.".into(),
+            url: String::new(),
+            body: "Очень длинный гайд. ".repeat(400),
+            ..ContributionDraft::default()
+        };
+        let post = compose_submission(&draft, "someone", GUIDES_REPO);
+        assert!(post.url.len() <= MAX_ISSUE_URL, "{} bytes", post.url.len());
+        assert!(post
+            .url
+            .contains(&crate::state::percent_encode("Short pitch.")));
+        assert!(post
+            .url
+            .contains(&crate::state::percent_encode(GUIDE_TOO_LONG_NOTE)));
+        // The post the author copies is still the whole thing.
+        assert!(post.body.contains(draft.body.trim()));
+
+        // Even a summary that cannot fit is cut to a link that opens.
+        let huge = ContributionDraft {
+            summary: "Ж".repeat(5000),
+            ..draft.clone()
+        };
+        let post = compose_submission(&huge, "someone", GUIDES_REPO);
+        assert!(post.url.len() <= MAX_ISSUE_URL, "{} bytes", post.url.len());
+        assert!(post
+            .url
+            .contains(&crate::state::percent_encode(GUIDE_TOO_LONG_NOTE)));
+
+        // A short one is untouched.
+        let short = ContributionDraft {
+            body: "Four mexes.".into(),
+            ..draft
+        };
+        let post = compose_submission(&short, "someone", GUIDES_REPO);
+        assert!(post
+            .url
+            .contains(&crate::state::percent_encode("Four mexes.")));
+        assert!(!post
+            .url
+            .contains(&crate::state::percent_encode(GUIDE_TOO_LONG_NOTE)));
     }
 
     // -- rejections --------------------------------------------------------

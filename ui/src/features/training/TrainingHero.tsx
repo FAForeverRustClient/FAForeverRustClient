@@ -79,6 +79,13 @@ export function TrainingHero({
               <Icon name="chat" size={16} /> {t("training.hero.joinDiscord")}
             </Button>
           )}
+          {/* Reviews other players already asked for and got, which is often
+              the quickest answer and shows what a good request looks like. */}
+          {links.replayReviewUrl && (
+            <Button onClick={() => void openHttpsUrl(links.replayReviewUrl)}>
+              <Icon name="external" size={16} /> {t("training.hero.pastReviews")}
+            </Button>
+          )}
         </div>
 
         {hasRecommendations && (

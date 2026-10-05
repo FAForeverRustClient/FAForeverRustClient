@@ -11574,7 +11574,13 @@ export type TrainingSource =
 /**  Shipped with the client. */
 "bundled" |
 /**  Fetched from the configured manifest. */
-"remote";
+"remote" |
+/**
+ *  The last manifest this client fetched, read back from disk because the
+ *  configured one could not be reached. The community's catalogue, but
+ *  possibly not its newest version.
+ */
+"cached";
 
 export type TrainingState = {
 	resources: TrainingResource[],
@@ -11665,7 +11671,13 @@ export type TutorialLaunchStatus = { type: "idle" } | { type: "preparing"; paylo
 	detail: string,
 } } | { type: "launched"; payload: {
 	tutorialId: number,
-} } | { type: "failed"; payload: {
+} } |
+/**
+ *  Keyed by the lesson like the other two, so one lesson's failure is not
+ *  shown under every lesson the player opens afterwards.
+ */
+{ type: "failed"; payload: {
+	tutorialId: number,
 	reason: string,
 } };
 
@@ -11688,6 +11700,7 @@ export type TutorialsEvent = { type: "loading" } | { type: "loaded"; payload: {
 } } | { type: "launched"; payload: {
 	tutorialId: number,
 } } | { type: "launchFailed"; payload: {
+	tutorialId: number,
 	reason: string,
 } };
 

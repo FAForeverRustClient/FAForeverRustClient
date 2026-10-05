@@ -12,6 +12,23 @@
   overflow-y: auto;
 }
 
+/* Whatever the section tabs show, announced as their panel. */
+.training-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.training-panel:focus {
+  outline: none;
+}
+
+.training-panel:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .training-header {
   display: flex;
   align-items: center;
@@ -562,6 +579,14 @@
   color: var(--color-accent);
 }
 
+.training-card-copy small.training-card-reviewed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-ok);
+  font-size: 11px;
+}
+
 /* ── basics ────────────────────────────────────────────────────────── */
 
 .training-basics-grid {
@@ -719,6 +744,73 @@
   overflow: hidden;
   font-size: 11px;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The handle and its copy button, kept together when the footer wraps. */
+.training-trainer-discord {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.training-trainer-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.training-trainer-copy:hover,
+.training-trainer-copy:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-muted);
+}
+
+/* Topics, modes and languages: labelled lines, quieter than the note. */
+.training-trainer-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.training-trainer-meta > div {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.training-trainer-meta dt {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+}
+
+.training-trainer-meta dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Read by a screen reader, not drawn. */
+.training-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
@@ -1052,6 +1144,20 @@
   text-transform: uppercase;
 }
 
+/* The kind and, when somebody vouched for it, who. */
+.training-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.training-detail-kind.training-reviewed {
+  color: var(--color-ok);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .training-detail {
   display: flex;
   flex-direction: column;
@@ -1170,6 +1276,18 @@
   font-size: 13px;
 }
 
+/* A failed guide: the reason, then the way to read it anyway. */
+div.training-detail-guide-problem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+div.training-detail-guide-problem p {
+  margin: 0;
+}
+
 /* The recorded run: written order top left, flow under it, map down the right.
    Two columns rather than three, because the two drawn panes share a hover and
    reading one while pointing at the other is the whole point of the layout. The
@@ -1196,11 +1314,9 @@
 .training-run-prose {
   grid-area: prose;
   min-width: 0;
-  /* Capped rather than free: a long build order would otherwise push the flow
-     chart off the bottom of the pane, and the point of this layout is seeing
-     the three together. It scrolls on its own instead. */
-  max-height: 320px;
-  overflow-y: auto;
+  /* Free height. It was capped at 320px so the flow chart stayed in view, and
+     that turned the main thing on the page, the written order, into a small
+     box scrolling inside a page that scrolls too. The page scrolls instead. */
 }
 
 .training-run-flow {
@@ -1261,6 +1377,22 @@
 .training-flow-tick,
 .training-flow-label {
   fill: var(--color-muted);
+}
+
+.training-flow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.training-flow-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .training-run-canvas {
@@ -1506,6 +1638,11 @@
   font-size: 12px;
 }
 
+/* Scrolled to after Create; the margin keeps its top edge off the very rim. */
+.training-contribute-post {
+  scroll-margin-top: var(--space-4);
+}
+
 @media (max-width: 1100px) {
   /* Below this the two columns are each too narrow to write or read in, so
      the preview goes under the editor rather than beside it. */
@@ -1561,6 +1698,16 @@
 .training-queue-empty,
 .training-queue-note {
   margin: 0;
+  font-size: 12px;
+}
+
+/* The verdict that just settled, after its row has left the list. */
+.training-queue-settled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  color: var(--color-ok);
   font-size: 12px;
 }
 
@@ -1971,6 +2118,43 @@
   color: var(--color-text);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.training-markdown li > ul,
+.training-markdown li > ol {
+  margin: 2px 0 0;
+}
+
+.training-markdown-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+}
+
+/* A wide table scrolls inside the guide rather than widening its pane. */
+.training-markdown-table {
+  margin: 0 0 var(--space-2);
+  overflow-x: auto;
+}
+
+.training-markdown-table table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.training-markdown-table th,
+.training-markdown-table td {
+  padding: 4px var(--space-2);
+  border: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.training-markdown-table th {
+  background: var(--color-surface);
+  font-weight: 650;
 }
 
 /* ── composed post ─────────────────────────────────────────────────── */

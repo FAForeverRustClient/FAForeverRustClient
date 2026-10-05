@@ -318,6 +318,26 @@ pub(crate) fn env_or(key: &str, fallback: impl Into<String>) -> String {
         .unwrap_or_else(|| fallback.into())
 }
 
+/// [`env_or`] for a variable whose empty value means "off".
+///
+/// Unset falls back to `fallback`; set to an empty or blank value returns an
+/// empty string, which the caller reads as disabled; anything else is
+/// returned as written. [`env_or`] cannot express this, because it treats an
+/// empty value the same as an absent one.
+pub(crate) fn env_or_disabled(key: &str, fallback: impl Into<String>) -> String {
+    or_disabled(std::env::var(key).ok(), fallback)
+}
+
+/// The rule [`env_or_disabled`] applies, apart from the environment so it can
+/// be tested without mutating process-wide state.
+pub(crate) fn or_disabled(value: Option<String>, fallback: impl Into<String>) -> String {
+    match value {
+        Some(value) if value.trim().is_empty() => String::new(),
+        Some(value) => value,
+        None => fallback.into(),
+    }
+}
+
 /// [`env_or`] for a variable that decides where executable content comes from.
 ///
 /// Ignored outside a development build. The update download prefix, the

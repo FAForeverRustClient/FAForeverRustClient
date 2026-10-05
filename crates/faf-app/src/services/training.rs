@@ -12,18 +12,24 @@
 //!    an event. Not computed in the view: a recommendation is a rule, and this
 //!    codebase has already paid for a rule written once in Rust and again in
 //!    TypeScript. The view renders an ordered list of ids and nothing else.
+//!    Kept current by [`spawn`], which watches what the profile is read from.
 //!
 //! 3. **Compose a way out.** A replay review request and a content submission
 //!    both end as a forum post the *player* sends. The client's contribution is
 //!    knowing which replay, which map, which rating and which category, so that
 //!    the player is not asked for any of it.
 
+use std::sync::Arc;
+use std::time::Duration;
+
 use faf_domain::state::{
-    compose_contribution, compose_review_request, compose_submission, profile_from_state,
-    recommend, AppState, ContributionDraft, GuidesEvent, LocalReplay, ReplayCommand,
-    ReviewRequestDraft, Trainer, TrainingCommand, TrainingEvent, TrainingProfile, TrainingStatus,
-    VaultReplay, VaultStatus, RECOMMENDED_LIMIT,
+    compose_contribution, compose_review_request, compose_submission, contribution_problem,
+    official_map_name, own_row, profile_from, recommend, AppState, AuthEvent, ContributionDraft,
+    GuidesEvent, JoinState, LocalReplay, MatchmakerPlayerProfile, PlayerCardEvent, ReplayCommand,
+    ReplayEvent, ReviewRequestDraft, Trainer, TrainingCommand, TrainingEvent, TrainingProfile,
+    TrainingStatus, VaultReplay, VaultStatus, RECOMMENDED_LIMIT,
 };
+use faf_domain::AppEvent;
 
 use crate::runtime::{EventSink, ServiceCtx};
 
@@ -34,6 +40,13 @@ use crate::runtime::{EventSink, ServiceCtx};
 /// expensive part of that scan, and there is no reason to pay for more of them
 /// than the recommendation looks at.
 const PROFILE_REPLAY_REQUEST: u32 = faf_domain::state::PROFILE_REPLAY_WINDOW as u32;
+
+/// How long after a game ends the replay folder is read again.
+///
+/// The recorder writes the file once the game has closed its stream, a moment
+/// after the game itself ends. The replays tab waits the same moment for the
+/// same reason (`GAME_END_RESCAN_DELAY_MS`).
+const GAME_END_RESCAN_DELAY: Duration = Duration::from_secs(2);
 
 pub async fn handle(cmd: TrainingCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -49,7 +62,10 @@ pub async fn handle(cmd: TrainingCommand, ctx: &ServiceCtx, out: &EventSink) {
             replay_uid,
             local_path,
         } => {
-            let draft = out.with_state(|state| draft_for(state, replay_uid, local_path.as_deref()));
+            let own = own_profile(ctx);
+            let draft = out.with_state(|state| {
+                draft_for(state, own.as_ref(), replay_uid, local_path.as_deref())
+            });
             out.emit(TrainingEvent::ReviewOpened {
                 draft: Box::new(draft),
             });
@@ -95,6 +111,13 @@ pub async fn handle(cmd: TrainingCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(TrainingEvent::ContributionChanged { draft });
             let composed = out.with_state(|state| {
                 let draft = state.training.contribution.as_ref()?;
+                // A draft the form would refuse is recorded but not composed.
+                // The form disables its button on the same rule, so this only
+                // stops another caller from producing a post (and a browser
+                // link) for an issue titled "Training submission: " alone.
+                if contribution_problem(draft).is_some() {
+                    return None;
+                }
                 // Where the catalogue lives decides what a submission *is*. With
                 // a repository it is an issue the queue can accept in one step;
                 // without one it falls back to the forum, which is where FAF's
@@ -140,33 +163,61 @@ async fn ask_for_map_previews(ctx: &ServiceCtx, out: &EventSink) {
     super::maps::handle(faf_domain::state::MapsCommand::LoadVault, ctx, out).await;
 }
 
-/// Load this account's ratings, if nobody has.
+/// Load this account's ratings into the hub's own slot.
 ///
-/// Skipped when the card already holds them, because the player card is shared
-/// with the play tab and a second fetch of the same thing would only cost a
-/// request. A failure is silent: recommendations without a rating are still
-/// recommendations, and a rating is not worth an error banner on a tab that
-/// works without one.
-async fn ask_for_ratings(ctx: &ServiceCtx, out: &EventSink) {
-    let wanted = out.with_state(|state| {
-        let me = state.auth.player.as_ref()?;
-        let already = state
-            .player_card
-            .matchmaker_profile
+/// Not through the player card. That is one shared slot, and loading this
+/// account into it replaced whatever card the player had open from chat, so
+/// the hub asks the port itself and keeps the answer in
+/// [`ServiceCtx::training_own_profile`]. Skipped when that already holds this
+/// account, unless the player pressed refresh. A failure is silent:
+/// recommendations without a rating are still recommendations, and a rating
+/// is not worth an error banner on a tab that works without one.
+async fn ask_for_own_ratings(refresh: bool, ctx: &ServiceCtx, out: &EventSink) {
+    let Some((player_id, login)) = out.with_state(|state| {
+        state
+            .auth
+            .player
             .as_ref()
-            .is_some_and(|profile| profile.player_id == me.id);
-        (!already).then(|| (me.id, me.name.clone()))
-    });
-
-    let Some((player_id, login)) = wanted else {
+            .map(|me| (me.id, me.name.clone()))
+    }) else {
         return;
     };
-    super::player_card::handle(
-        faf_domain::state::PlayerCardCommand::LoadMatchmakerProfile { player_id, login },
-        ctx,
-        out,
-    )
-    .await;
+    let held = own_profile(ctx).is_some_and(|profile| profile.player_id == player_id);
+    if held && !refresh {
+        return;
+    }
+
+    match ctx
+        .ports
+        .player_card
+        .load_matchmaker_profile(player_id, &login)
+        .await
+    {
+        Ok(profile) => {
+            // Signed out, or into another account, while the request ran: the
+            // answer describes somebody who is no longer here.
+            let still_me = out.with_state(|state| {
+                state.auth.player.as_ref().map(|me| me.id) == Some(profile.player_id)
+            });
+            if still_me {
+                set_own_profile(ctx, Some(profile));
+            }
+        }
+        Err(error) => tracing::info!(%error, "could not read this account's ratings"),
+    }
+}
+
+fn own_profile(ctx: &ServiceCtx) -> Option<MatchmakerPlayerProfile> {
+    ctx.training_own_profile
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+}
+
+fn set_own_profile(ctx: &ServiceCtx, profile: Option<MatchmakerPlayerProfile>) {
+    *ctx.training_own_profile
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = profile;
 }
 
 /// Fill in each trainer's avatar from their FAF account.
@@ -282,33 +333,35 @@ async fn read_guide(resource_id: String, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
+    // One load at a time. The refresh button stays live while a load runs,
+    // and a second one used to repeat every request and the replay scan; the
+    // load in flight already ends with the state the second would produce.
+    let Some(_flight) = ctx.training_load_active.try_acquire() else {
+        return;
+    };
+    // A tab that has loaded before is asking again on purpose: the refresh
+    // button, or trying again after a failure. That is the one case worth
+    // going past the CDN's cache for.
+    let refresh = out.with_state(|state| state.training.status != TrainingStatus::Idle);
     out.emit(TrainingEvent::Loading);
 
-    // The five ratings come from the matchmaker profile, and until now only the
-    // play tab ever asked for it. So opening training first left the profile
-    // with no ratings at all, and opening it after a visit to play left it with
-    // whatever that visit happened to load. Both produced the same symptom: one
-    // number standing in for five, which is exactly the thing per-mode ratings
-    // exist to stop.
-    ask_for_ratings(ctx, out).await;
-    ask_for_map_previews(ctx, out).await;
-
-    let catalogue = match ctx.ports.training.list_catalogue().await {
-        Ok(catalogue) => catalogue,
-        Err(reason) => {
-            out.emit(TrainingEvent::LoadFailed { reason });
-            return;
-        }
-    };
-
-    let resources = catalogue.resources;
-    let trainers = with_avatars(catalogue.trainers, ctx).await;
-    out.emit(TrainingEvent::Loaded {
-        resources,
-        trainers,
-        links: catalogue.links,
-        source: catalogue.source,
-    });
+    // Three independent reads, side by side, and the library is published the
+    // moment it arrives. The catalogue used to be asked for only after the
+    // ratings and the whole map vault had loaded, which on a first visit is
+    // dozens of pages of maps before a few kilobytes of guides.
+    //
+    // The ratings come from the matchmaker profile, which only the play tab
+    // used to ask for, so opening training first left the profile with one
+    // number standing in for five. The map previews are what a build order's
+    // card shows.
+    let (loaded, (), ()) = tokio::join!(
+        publish_catalogue(refresh, ctx, out),
+        ask_for_own_ratings(refresh, ctx, out),
+        ask_for_map_previews(ctx, out),
+    );
+    if !loaded {
+        return;
+    }
 
     // The player's own recent games, which is what "recommended for you" is
     // read from. A bounded scan, and only when it has not happened yet: the
@@ -331,7 +384,32 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
 
     // Last, so the ids it names are ids the state now holds and the profile it
     // ranks against is the one the scan just produced.
-    recompute_recommendations(out);
+    recompute_recommendations(ctx, out, true);
+}
+
+/// Fetch the catalogue and put it on screen. `false` when it could not be had.
+async fn publish_catalogue(refresh: bool, ctx: &ServiceCtx, out: &EventSink) -> bool {
+    let catalogue = match ctx.ports.training.list_catalogue(refresh).await {
+        Ok(catalogue) => catalogue,
+        Err(reason) => {
+            out.emit(TrainingEvent::LoadFailed { reason });
+            return false;
+        }
+    };
+
+    let resources = catalogue.resources;
+    let trainers = with_avatars(catalogue.trainers, ctx).await;
+    out.emit(TrainingEvent::Loaded {
+        resources,
+        trainers,
+        links: catalogue.links,
+        source: catalogue.source,
+    });
+    // Ranked straight away against whatever is already known, so the rail is
+    // not empty while the ratings and the replay scan finish. The end of the
+    // load ranks again with everything.
+    recompute_recommendations(ctx, out, false);
+    true
 }
 
 // The library used to be the catalogue *plus* FAF's tutorial API, folded
@@ -346,16 +424,155 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
 // of FAF's worth keeping can be added there in a commit, where it gains the
 // tags that make it findable and somebody's name against the decision.
 
-fn recompute_recommendations(out: &EventSink) {
-    let (ids, profile) = out.with_state(|state| {
-        let profile = profile_from_state(state);
+/// Rank the library against the profile the state describes now.
+///
+/// `always` emits even when nothing changed, which a load wants so the tab
+/// learns the profile it was ranked against. The watcher passes `false`: it
+/// runs on every event that could matter, and most of them do not.
+fn recompute_recommendations(ctx: &ServiceCtx, out: &EventSink, always: bool) {
+    let own = own_profile(ctx);
+    let update = out.with_state(|state| {
+        let profile = profile_from(state, own.as_ref());
         let ids = recommend(&state.training.resources, &profile, RECOMMENDED_LIMIT);
-        (ids, profile)
+        let changed = ids != state.training.recommended || profile != state.training.profile;
+        (always || changed).then_some((ids, profile))
     });
-    out.emit(TrainingEvent::Recommended {
-        resource_ids: ids,
-        profile: Box::new(profile),
+    if let Some((ids, profile)) = update {
+        out.emit(TrainingEvent::Recommended {
+            resource_ids: ids,
+            profile: Box::new(profile),
+        });
+    }
+}
+
+/// Keep the recommendations in step with what they are read from.
+///
+/// They used to be computed once, at the end of a load, so signing in later,
+/// a replay scan finishing, or a game ending changed nothing until the player
+/// pressed refresh. Like Discord presence, this is driven by state rather than
+/// by a command, so it watches the event stream. Called once from the runtime
+/// loop; the task lives for the process.
+pub fn spawn(ctx: Arc<ServiceCtx>, sink: EventSink) {
+    let events = sink.subscribe();
+    tokio::spawn(async move { watch(events, ctx, sink).await });
+}
+
+async fn watch(
+    mut events: tokio::sync::broadcast::Receiver<AppEvent>,
+    ctx: Arc<ServiceCtx>,
+    sink: EventSink,
+) {
+    let mut was_playing = sink.with_state(is_playing);
+    loop {
+        // `None` is a lagged receiver: events were missed, and since the
+        // profile is derived from the whole state, recomputing is right.
+        let event = match events.recv().await {
+            Ok(event) => Some(event),
+            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => None,
+            Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+        };
+
+        let game_ended = if matches!(event, Some(AppEvent::Lobby(_)) | None) {
+            let playing = sink.with_state(is_playing);
+            let ended = was_playing && !playing;
+            was_playing = playing;
+            ended
+        } else {
+            false
+        };
+
+        let reaction = match &event {
+            // First, so a game that ended during a lag is still rescanned.
+            _ if game_ended => Reaction::Rescan,
+            Some(AppEvent::Auth(AuthEvent::LoggedIn { .. } | AuthEvent::TestLoggedIn { .. })) => {
+                Reaction::SignedIn
+            }
+            Some(AppEvent::Auth(AuthEvent::LoggedOut | AuthEvent::WentOffline)) => {
+                Reaction::SignedOut
+            }
+            Some(AppEvent::Replays(
+                ReplayEvent::LocalLoaded { .. } | ReplayEvent::LocalDeleted { .. },
+            ))
+            | Some(AppEvent::PlayerCard(PlayerCardEvent::MatchmakerProfileLoaded { .. }))
+            | None => Reaction::Recompute,
+            _ => continue,
+        };
+
+        // A sign-out forgets the account's ratings whether or not the tab
+        // was ever opened, so the next account cannot inherit them.
+        if matches!(reaction, Reaction::SignedOut) {
+            set_own_profile(&ctx, None);
+        }
+        // Nothing to keep current until the tab has loaded once; its first
+        // load computes everything from scratch.
+        if sink.with_state(|state| state.training.status == TrainingStatus::Idle) {
+            continue;
+        }
+
+        match reaction {
+            Reaction::SignedIn => {
+                let ctx = ctx.clone();
+                let sink = sink.clone();
+                tokio::spawn(async move {
+                    ask_for_own_ratings(false, &ctx, &sink).await;
+                    recompute_recommendations(&ctx, &sink, false);
+                });
+            }
+            Reaction::SignedOut | Reaction::Recompute => {
+                recompute_recommendations(&ctx, &sink, false);
+            }
+            Reaction::Rescan => {
+                // The game just played is the newest thing the profile could
+                // learn from. The scan's own `LocalLoaded` brings the
+                // recommendations up to date.
+                let ctx = ctx.clone();
+                let sink = sink.clone();
+                tokio::spawn(async move {
+                    tokio::time::sleep(GAME_END_RESCAN_DELAY).await;
+                    super::replays::handle(
+                        ReplayCommand::LoadLocal {
+                            limit: rescan_limit(&sink),
+                        },
+                        &ctx,
+                        &sink,
+                    )
+                    .await;
+                });
+            }
+        }
+    }
+}
+
+enum Reaction {
+    SignedIn,
+    SignedOut,
+    Recompute,
+    Rescan,
+}
+
+/// Whether Forged Alliance is running for this client, as the lobby sees it.
+fn is_playing(state: &AppState) -> bool {
+    matches!(
+        state.lobby.join,
+        JoinState::Launched { .. } | JoinState::InGame
+    )
+}
+
+/// How many headers a rescan reads: at least the profile's window, and never
+/// fewer than the replays tab already had read, so the rescan does not take
+/// detail away from rows that tab is showing.
+fn rescan_limit(sink: &EventSink) -> u32 {
+    let read = sink.with_state(|state| {
+        state
+            .replays
+            .local
+            .iter()
+            .filter(|replay| !replay.teams.is_empty())
+            .count()
     });
+    u32::try_from(read)
+        .unwrap_or(u32::MAX)
+        .max(PROFILE_REPLAY_REQUEST)
 }
 
 /// Fill in a review request from whichever replay the caller named.
@@ -366,10 +583,11 @@ fn recompute_recommendations(out: &EventSink) {
 /// part they alone can answer, which is what they want help with.
 fn draft_for(
     state: &AppState,
+    own: Option<&MatchmakerPlayerProfile>,
     replay_uid: Option<i32>,
     local_path: Option<&str>,
 ) -> ReviewRequestDraft {
-    let profile = profile_from_state(state);
+    let profile = profile_from(state, own);
     let base = ReviewRequestDraft {
         player: profile.player.clone(),
         rating: profile.rating.map(|r| r.to_string()).unwrap_or_default(),
@@ -410,16 +628,11 @@ fn from_local(
     profile: &TrainingProfile,
     base: ReviewRequestDraft,
 ) -> ReviewRequestDraft {
-    let me = if profile.player.is_empty() {
-        replay.recorder.clone()
-    } else {
-        profile.player.clone()
-    };
-    let mine = replay
-        .teams
-        .iter()
-        .flat_map(|team| team.players.iter())
-        .find(|player| player.name.eq_ignore_ascii_case(&me));
+    // This account's own row, and nobody else's. A replay downloaded to watch
+    // has no such row, and the request is then about a game the player was
+    // not in: naming them as its player, with their rating, would send a
+    // reviewer to watch the wrong army.
+    let mine = own_row(replay, &profile.player);
 
     let game_mode = faf_domain::state::game_mode_of(replay.num_players, &replay.mod_name);
 
@@ -427,21 +640,27 @@ fn from_local(
         replay_id: replay.uid,
         replay_link: replay.uid.map(replay_link).unwrap_or_default(),
         replay_file: replay.file_name.clone(),
-        player: me,
+        player: mine.map(|player| player.name.clone()).unwrap_or_default(),
         // The rating recorded in the header beats the account's current one:
         // it is what this player was when they played this game, which is the
         // number a reviewer needs. Failing that, the rating for *this game's*
         // mode rather than the account's headline one: telling a reviewer
         // "1800" about a ladder game played at 1200 sends them to watch for
         // the wrong mistakes.
-        rating: mine
-            .and_then(|player| player.rating)
-            .filter(|rating| *rating > 0)
-            .map(|rating| rating.to_string())
-            .or_else(|| profile.rating_in(&game_mode).map(|r| r.to_string()))
-            .unwrap_or_else(|| base.rating.clone()),
+        rating: match mine {
+            None => String::new(),
+            Some(mine) => mine
+                .rating
+                .filter(|rating| *rating > 0)
+                .map(|rating| rating.to_string())
+                .or_else(|| profile.rating_in(&game_mode).map(|r| r.to_string()))
+                .unwrap_or_else(|| base.rating.clone()),
+        },
         game_mode: game_mode.clone(),
-        map: replay.map.clone(),
+        // The name a reviewer reads rather than the folder the header records.
+        map: official_map_name(&replay.map)
+            .map(str::to_string)
+            .unwrap_or_else(|| replay.map.clone()),
         faction: mine
             .and_then(|player| player.faction)
             .and_then(faction_label)
@@ -464,19 +683,42 @@ fn from_vault(
             .sum(),
         &replay.mod_name,
     );
+    // The same rule as `from_local`: the player is named only in a game they
+    // played in. The vault lists accounts by their current name, which is the
+    // one the profile carries.
+    let mine = (!profile.player.is_empty())
+        .then(|| {
+            replay
+                .teams
+                .iter()
+                .flat_map(|team| team.players.iter())
+                .find(|player| player.name.eq_ignore_ascii_case(&profile.player))
+        })
+        .flatten();
 
     ReviewRequestDraft {
         replay_id: Some(replay.uid),
         replay_link: replay_link(replay.uid),
-        // The vault listing carries no per-player rating, so this is the
-        // account's rating in the mode the game was played in. Still better
-        // than the headline one, for the reason `from_local` gives.
-        rating: profile
-            .rating_in(&game_mode)
-            .map(|rating| rating.to_string())
-            .unwrap_or_else(|| base.rating.clone()),
+        player: mine.map(|player| player.name.clone()).unwrap_or_default(),
+        // The rating the listing recorded for this player in this game, and
+        // failing that the account's rating in the mode the game was played
+        // in. Still better than the headline one, for the reason `from_local`
+        // gives.
+        rating: match mine {
+            None => String::new(),
+            Some(mine) => mine
+                .rating
+                .filter(|rating| *rating > 0)
+                .map(|rating| rating.to_string())
+                .or_else(|| profile.rating_in(&game_mode).map(|r| r.to_string()))
+                .unwrap_or_else(|| base.rating.clone()),
+        },
         game_mode: game_mode.clone(),
         map: replay.map.clone(),
+        faction: mine
+            .and_then(|player| player.faction)
+            .and_then(faction_label)
+            .unwrap_or_default(),
         // The vault listing states when the game started, and a reviewer reads
         // it to know whether the request is about current form.
         played_at: replay.start_time.clone(),

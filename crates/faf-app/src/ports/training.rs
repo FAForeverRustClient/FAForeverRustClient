@@ -14,11 +14,15 @@ pub trait TrainingPort: Send + Sync {
     /// The catalogue of training material and the community destinations.
     ///
     /// Infallible in practice: an implementation that cannot reach its manifest
-    /// falls back to what shipped with the client and says so through
-    /// [`TrainingCatalogue::source`]. The `Result` is here for the case where
-    /// even that is unusable, which is a packaging bug rather than a runtime
-    /// condition.
-    async fn list_catalogue(&self) -> Result<TrainingCatalogue, String>;
+    /// falls back to the last copy it fetched, or to what shipped with the
+    /// client, and says which through [`TrainingCatalogue::source`]. The
+    /// `Result` is here for the case where even that is unusable, which is a
+    /// packaging bug rather than a runtime condition.
+    ///
+    /// `refresh` is the player asking for the newest document: an
+    /// implementation goes past any cache between it and the source, which an
+    /// ordinary visit does not.
+    async fn list_catalogue(&self, refresh: bool) -> Result<TrainingCatalogue, String>;
 
     /// The Markdown of a guide this build hosts, by its catalogue url.
     ///

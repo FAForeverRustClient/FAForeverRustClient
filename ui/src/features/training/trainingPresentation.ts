@@ -215,9 +215,14 @@ export function kindIcon(kind: TrainingKind): IconName {
   }
 }
 
-/** What a card's action does, which differs by kind rather than by url. */
+/**
+ * What a card's action does, which differs by kind rather than by url.
+ *
+ * A lesson's button opens its page. The client has no way to start one, so a
+ * label saying "start" promised something the button never did.
+ */
 export function actionLabel(resource: TrainingResource): MessageKey {
-  if (resource.kind === "lesson" && resource.tutorialId !== null) return "training.action.start";
+  if (resource.kind === "lesson" && resource.tutorialId !== null) return "training.action.openLesson";
   if (resource.kind === "video") return "training.action.watch";
   if (resource.kind === "community") return "training.action.visit";
   return "training.action.read";

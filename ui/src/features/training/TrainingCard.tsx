@@ -94,6 +94,15 @@ export function TrainingCard({ resource, reason, onSelect }: Props) {
       <span className="training-card-copy">
         <strong>{resource.title}</strong>
         {caption && <small className={reason ? "training-card-reason" : undefined}>{caption}</small>}
+        {/* Who vouched for it, when anyone has. The one fact beyond the
+            caption a card carries, because it is the one a reader weighs
+            before opening anything. */}
+        {resource.approvedBy && (
+          <small className="training-card-reviewed">
+            <Icon name="check" size={11} />
+            <span>{t("training.reviewedBy", { login: resource.approvedBy })}</span>
+          </small>
+        )}
       </span>
     </button>
   );

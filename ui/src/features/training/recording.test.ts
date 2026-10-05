@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { markerPaths, parseEnvelope, stallSpans, toLanes, type BoNode, type Envelope } from "./recording";
+import {
+  ellipsize,
+  markerPaths,
+  parseEnvelope,
+  runStalls,
+  stallSpans,
+  toLanes,
+  type BoNode,
+  type Envelope,
+} from "./recording";
 
 // A tiny run, written by hand rather than lifted from a real recording: the
 // derivations below are about shape, and a real envelope is 150 kB of noise
@@ -234,5 +243,50 @@ describe("stallSpans", () => {
       { from: 40_000, to: 60_000 },
     ]);
     expect(stallSpans(env, "notAField")).toEqual([]);
+  });
+
+  it("survives an envelope that names the field but carries no rows", () => {
+    // `eco` is not part of the envelope check, so this can arrive.
+    const env = envelope({
+      eco: { fields: ["massStored"], labels: {} } as unknown as Envelope["eco"],
+    });
+    expect(stallSpans(env, "massStored")).toEqual([]);
+  });
+
+  it("reads mass and energy under the recorder's own field names", () => {
+    const env = envelope({
+      eco: {
+        fields: ["massStored", "engStored"],
+        labels: {},
+        rows: [
+          [0, 100, 0],
+          [5_000, 100, 300],
+          [10_000, 0, 300],
+          [15_000, 50, 300],
+        ],
+      },
+    });
+    expect(runStalls(env)).toEqual({
+      mass: [{ from: 10_000, to: 15_000 }],
+      energy: [{ from: 0, to: 5_000 }],
+    });
+  });
+});
+
+describe("ellipsize", () => {
+  it("leaves a name that fits alone", () => {
+    expect(ellipsize("T1 Engineer", 20)).toBe("T1 Engineer");
+    expect(ellipsize("exact", 5)).toBe("exact");
+  });
+
+  it("cuts a long name to the limit, ellipsis included", () => {
+    const cut = ellipsize("Experimental Mobile Factory", 12);
+    expect(cut).toHaveLength(12);
+    expect(cut.endsWith("…")).toBe(true);
+    expect(cut.startsWith("Experimenta")).toBe(true);
+  });
+
+  it("does not leave a space in front of the ellipsis", () => {
+    expect(ellipsize("Land Factory HQ", 6)).toBe("Land…");
   });
 });

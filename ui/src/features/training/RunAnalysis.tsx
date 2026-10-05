@@ -15,7 +15,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "../../i18n/useTranslation";
 import { BuildFlow } from "./BuildFlow";
 import { RunMap } from "./RunMap";
-import { mmss, toLanes, type Envelope } from "./recording";
+import { mmss, runStalls, toLanes, type Envelope } from "./recording";
 
 interface Props {
   env: Envelope;
@@ -28,7 +28,15 @@ interface Props {
 export function RunAnalysis({ env, prose, previewUrl }: Props) {
   const { t } = useTranslation();
   const [hovered, setHovered] = useState<string | null>(null);
+  // A hover names an entity of one run. The next run can reuse the id for a
+  // different unit, so it starts with nothing highlighted.
+  const [hoveredRun, setHoveredRun] = useState(env);
+  if (hoveredRun !== env) {
+    setHoveredRun(env);
+    setHovered(null);
+  }
   const lanes = useMemo(() => toLanes(env.bo), [env]);
+  const stalls = useMemo(() => runStalls(env), [env]);
 
   return (
     <section className={prose ? "training-run" : "training-run training-run-no-prose"}>
@@ -44,6 +52,7 @@ export function RunAnalysis({ env, prose, previewUrl }: Props) {
           durationMs={env.meta.durationMs}
           hovered={hovered}
           onHover={setHovered}
+          stalls={stalls}
         />
       </div>
 

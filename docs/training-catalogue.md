@@ -179,7 +179,7 @@ row is not something a reader can act on.
 | `maps` | Map names as a player reads them. Matched case-insensitively and by substring, so `Setons Clutch`, `SCMP_009` and "Seton's" find each other. |
 | `ratingMin` / `ratingMax` | Either may be absent, and an absent bound is open. Stated numbers win over the band a `level` implies. |
 | `related` | Other resource ids. This is what makes the library a graph rather than a list: a guide about a mistake can point at the lesson that fixes it. Ids that no longer resolve are dropped rather than drawn as dead rows. |
-| `approvedBy` | Who vouched for it. Rendered as "Reviewed by", never "official": accepting a guide is not the same as having checked every sentence, and a label implying otherwise is worse than none. |
+| `approvedBy` | Who vouched for it. Rendered as "Reviewed by", never "official": accepting a guide is not the same as having checked every sentence, and a label implying otherwise is worse than none. Accepting a submission from the client sets it to the accepting GitHub login. |
 
 ### A video, a series, or a channel?
 
@@ -319,7 +319,12 @@ Both halves run inside the client. This section is the contract between them.
 
 ### What a submission looks like
 
-A submission is a GitHub issue labelled `training-submission`. Its body is a
+A submission is a GitHub issue whose title starts with `Training submission:`.
+The queue goes by that prefix, not by the `training-submission` label: GitHub
+silently drops the `labels` parameter of a prefilled new-issue link when the
+person opening it is not a collaborator, so a label filter hides exactly the
+submissions that come from players. The label is still added when the client
+closes an issue. Its body is a
 **filled-in form**, which is exactly what GitHub renders when somebody answers
 an issue form: a `### ` heading per field, then the answer.
 
@@ -393,8 +398,37 @@ client says so rather than offering a button that would do nothing.
 3. comments on the issue saying where it landed, and closes it.
 
 The commit is guarded by the file's content hash: if somebody committed in
-between, GitHub refuses rather than overwriting them, and the client re-reads
-and retries once. Declining comments the reason and closes the issue.
+between, GitHub refuses (409, or 422 for a stale hash) rather than overwriting
+them, and the client re-reads and retries once. The retry goes by the HTTP
+status, never by GitHub's wording. Declining comments the reason and closes the
+issue.
+
+Before anything is written the client checks three things, so a refusal
+leaves the repository as it was:
+
+- **Permission.** The account's permission on the repository is read first.
+  Accepting needs push, declining needs triage or more. Without it nothing is
+  committed and, in particular, no "declined" comment is posted.
+- **The entry is valid.** The same per-entry rules as the repository's
+  `.github/validate.mjs`: an id in the right shape, a title, a link that is
+  `https://`, and a rating band whose minimum is not above its maximum. An
+  entry that would turn the repository's CI red is refused with the reason.
+- **The id is free.** The id is the slug of the title (Cyrillic and accented
+  letters transliterated, `guide-<issue number>` when nothing usable is
+  left). If that id is already in the catalogue or under `guides/`, `-2`,
+  `-3` and so on are tried, so accepting never replaces an existing entry.
+
+Accepting and declining are safe to repeat. Each verdict comment carries a
+hidden marker, a write whose content is unchanged is skipped, and a closed
+issue that already carries the verdict is reported as done. If a step fails
+after the commit (the comment, say), the error says what landed and that
+pressing the same button again finishes it. An issue that was declined cannot
+be accepted, and the other way round.
+
+Closing changes the issue's state and adds labels. It never replaces the
+label set, so labels a maintainer put on the issue survive.
+
+The queue reads up to ten pages of 100 issues each.
 
 One cosmetic consequence worth knowing: the client re-serialises
 `catalogue.json` through a JSON parser, which sorts object keys. The first
@@ -464,7 +498,7 @@ with a GitHub app, so accepting has to happen on GitHub.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `FAF_TRAINING_CATALOGUE_URL` | none | Where the client reads `catalogue.json`. Unset, it uses the small catalogue shipped in the client. |
+| `FAF_TRAINING_CATALOGUE_URL` | `https://raw.githubusercontent.com/FAForeverRustClient/guides/main/catalogue.json` | Where the client reads `catalogue.json`. Unset, it reads this repository. Set to an empty value, the remote catalogue is off: no request is made and the snapshot shipped in the client is shown. |
 | `FAF_GUIDES_GITHUB_CLIENT_ID` | `Ov23li9p0m7RMbNfLUgv` | The OAuth app above. Set it empty to turn catalogue maintenance off in a build. |
 | `FAF_GUIDES_REPO` | `FAForeverRustClient/guides` | The repository submissions and commits go to. |
 | `FAF_GUIDES_API_BASE` | `https://api.github.com` | For a GitHub Enterprise host or a test double. |

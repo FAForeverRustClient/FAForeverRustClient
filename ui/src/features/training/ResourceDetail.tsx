@@ -11,6 +11,7 @@ import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { TrainingDocument, TrainingResource } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
+import { factionLabelFromName } from "../../shared/factions";
 import { relatedResources } from "../../shared/rules/trainingRules";
 import { Markdown } from "./markdown";
 import { RunAnalysis } from "./RunAnalysis";
@@ -107,9 +108,20 @@ export function ResourceDetail({
               absolutely positioned into a card's art corner as a 20px square,
               which pinned it to the page corner here and clipped the label off
               the moment this stopped being a dialog. */}
-          <span className="training-detail-kind">
-            <Icon name={kindIcon(resource.kind)} size={14} />
-            <span>{t(kindLabel(resource.kind))}</span>
+          <span className="training-detail-badges">
+            <span className="training-detail-kind">
+              <Icon name={kindIcon(resource.kind)} size={14} />
+              <span>{t(kindLabel(resource.kind))}</span>
+            </span>
+            {/* Who vouched for it, in those words: "reviewed", never
+                "official", because accepting an entry is not checking every
+                sentence of it. */}
+            {resource.approvedBy && (
+              <span className="training-detail-kind training-reviewed">
+                <Icon name="check" size={14} />
+                <span>{t("training.reviewedBy", { login: resource.approvedBy })}</span>
+              </span>
+            )}
           </span>
           <h3>{resource.title}</h3>
           {resource.summary && <p className="training-detail-summary">{resource.summary}</p>}
@@ -182,7 +194,7 @@ export function ResourceDetail({
           {resource.factions.length > 0 && (
             <div>
               <dt>{t("training.detail.factions")}</dt>
-              <dd>{resource.factions.join(", ")}</dd>
+              <dd>{resource.factions.map(factionLabelFromName).join(", ")}</dd>
             </div>
           )}
           {resource.durationMinutes !== null && (
@@ -213,12 +225,13 @@ export function ResourceDetail({
           {/* Only when there is somewhere left to go. A video plays on this
               page and a hosted guide is rendered on it, so an "open" button
               beside either was offering to send the reader away from the thing
-              they came for. A lesson still has a button, because launching one
-              is the whole point of it. */}
-          {(isPlayableLesson(resource) || (resource.url && !embed && !resource.readable)) && (
+              they came for. A lesson keeps its button whatever its address,
+              but what the button does is open that address: the client cannot
+              start a lesson, so it is labelled as the page it opens, and a
+              lesson with no address has no button at all. */}
+          {resource.url && (isPlayableLesson(resource) || (!embed && !resource.readable)) && (
             <Button variant="primary" onClick={() => onOpen(resource)}>
-              <Icon name={isPlayableLesson(resource) ? "play" : "external"} size={16} />{" "}
-              {t(actionLabel(resource))}
+              <Icon name="external" size={16} /> {t(actionLabel(resource))}
             </Button>
           )}
           {/* The other half of the graph: understanding a mistake is one thing,
@@ -236,12 +249,21 @@ export function ResourceDetail({
           <RunAnalysis
             env={run}
             previewUrl={previewUrl}
-            prose={resource.readable ? <GuideBody guide={guide} /> : null}
+            prose={
+              resource.readable ? (
+                <GuideBody guide={guide} onOpen={resource.url ? () => onOpen(resource) : null} />
+              ) : null
+            }
           />
         ) : (
           (resource.readable || resource.recordingUrl) && (
             <>
-              <GuideBody guide={guide} />
+              {/* Only an entry with prose has a guide to wait for. A recording
+                  on its own used to show "fetching the guide" forever, even
+                  beside the line saying the recording had failed. */}
+              {resource.readable && (
+                <GuideBody guide={guide} onOpen={resource.url ? () => onOpen(resource) : null} />
+              )}
               {resource.recordingUrl && <RunProblem guide={guide} />}
             </>
           )
@@ -273,11 +295,12 @@ export function ResourceDetail({
  * Only ever drawn for an entry the catalogue parser marked readable, which
  * means Markdown in the repository this build trusts. Everything else in the
  * library is somebody else's page behind their own styling and their own
- * login, and the honest thing to do with those is the button above.
+ * login, and the honest thing to do with those is to open a browser.
  *
- * A failure is stated rather than hidden: the reader still has that button,
- * and "this could not be fetched" is a different situation from "this entry is
- * a link", which they should be able to tell apart.
+ * A failure is stated rather than hidden, with a button that opens the guide
+ * in a browser right beside it. A readable entry gets no "open" button in the
+ * actions above, so the failure text used to point at a button that was not
+ * there.
  */
 /**
  * Why the recorded run is not on screen, when an entry says it has one.
@@ -302,18 +325,34 @@ function RunProblem({ guide }: { guide: TrainingDocument }) {
   return <p className="muted training-run-problem">{t("training.run.loading")}</p>;
 }
 
-function GuideBody({ guide }: { guide: TrainingDocument }) {
+function GuideBody({
+  guide,
+  onOpen,
+}: {
+  guide: TrainingDocument;
+  /** Open the guide in a browser instead, or `null` when it has no address. */
+  onOpen: (() => void) | null;
+}) {
   const { t } = useTranslation();
 
   if (guide.status.type === "failed") {
     return (
-      <p className="muted training-detail-guide-problem">
-        {t("training.detail.guideFailed", { reason: guide.status.payload.reason })}
-      </p>
+      <div className="training-detail-guide-problem">
+        <p className="muted">
+          {t("training.detail.guideFailed", { reason: guide.status.payload.reason })}
+        </p>
+        {onOpen && (
+          <Button onClick={onOpen}>
+            <Icon name="external" size={15} /> {t("training.detail.openInBrowser")}
+          </Button>
+        )}
+      </div>
     );
   }
-  if (guide.status.type !== "ready" || !guide.markdown) {
+  if (guide.status.type !== "ready") {
     return <p className="muted training-detail-guide-problem">{t("training.detail.guideLoading")}</p>;
   }
+  // Arrived and empty: nothing to show, and nothing still on its way either.
+  if (!guide.markdown) return null;
   return <Markdown source={guide.markdown} className="training-detail-guide" />;
 }

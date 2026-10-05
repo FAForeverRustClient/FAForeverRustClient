@@ -1,42 +1,1820 @@
 {
-  "//": "Seed training catalogue. Deliberately tiny: it is the fallback, not the library.",
-  "//sources": [
-    "FAF's tutorial API fills most of the library at runtime (see services/training.rs).",
-    "A published manifest fills the rest; point FAF_TRAINING_CATALOGUE_URL at it.",
-    "Only destinations this repository already relies on are listed here, because a",
-    "guessed URL in a shipped client is worse than a short catalogue."
+  "//bundled": [
+    "A snapshot of catalogue.json in FAForeverRustClient/guides, taken 2026-10-05.",
+    "Shipped so that a client which has never reached the repository (first start",
+    "offline, a blocked network) still opens to a library rather than an empty tab.",
+    "The client prefers the live document, then the last copy it fetched, then this.",
+    "Refresh it from the repository before a release; do not edit entries here."
+  ],
+  "//": "The FAF training catalogue. Read by the FAF client's Training tab.",
+  "//editing": [
+    "Accepting a submission from the client writes this file, so keep it valid JSON.",
+    "Every field of a resource is optional except id and title.",
+    "An id is a file name and the key `related` points at: lowercase, hyphens."
+  ],
+  "//format": "docs/training-catalogue.md in FAForeverRustClient/FAForeverRustClient",
+  "//links": [
+    "replayReviewChannel is where a replay review request is pasted, as a",
+    "https://discord.com/channels/<guild>/<channel> address. Discord's app follows",
+    "one straight to the channel and the client copies the request on the way out,",
+    "so the player lands in the right place with one paste left. Turn on Developer",
+    "Mode in Discord and use Copy Link on the channel. Empty falls back to discordUrl."
+  ],
+  "//resources": [
+    "Guides, videos, build orders and channels somebody vouched for.",
+    "Destinations belong in `links` rather than here.",
+    "A guide written as text lives in guides/ and is linked by its raw address:",
+    "the client fetches that itself and renders it in the tab. The button that",
+    "opens a browser instead rewrites it to the github.com/blob address.",
+    "A page held here keeps its author's name and a link to the original on its",
+    "first line. Everything else is a link to where it lives.",
+    "`custom` as a game mode means a game outside the matchmaker. It resolves",
+    "to the global leaderboard, which is the rating such material is written",
+    "for. Pair it with a team size so the entry still matches a player whose",
+    "recent games were that size."
+  ],
+  "//trainers": [
+    "The training team, shown as tiles in the client.",
+    "Only `name` is required. `accepting` defaults to true.",
+    "`fafId` is worth chasing: with it the tile opens the FAF player card,",
+    "resolves the real rating and avatar, and can be messaged from the client."
   ],
   "links": {
-    "discordUrl": "https://discord.gg/By9tNUAq8B",
-    "//replayReviewChannel": [
-      "The channel a replay review request is pasted into, as a",
-      "https://discord.com/channels/<guild>/<channel> address. Discord's app",
-      "follows one of these straight to the channel, so the player lands where",
-      "the request goes with it already on their clipboard. Get it by turning on",
-      "Developer Mode in Discord and using Copy Link on the channel. Empty falls",
-      "back to the invite above."
-    ],
-    "replayReviewChannel": "",
-    "replayReviewUrl": "https://forum.faforever.com/category/4/i-need-help",
-    "replayReviewCategory": 4,
-    "contributeUrl": "https://forum.faforever.com/category/4/i-need-help",
     "contributeCategory": 4,
+    "contributeUrl": "https://forum.faforever.com/category/4/i-need-help",
+    "discordUrl": "https://discord.gg/By9tNUAq8B",
+    "replayReviewCategory": 4,
+    "replayReviewChannel": "https://discord.com/channels/197033481883222026/1094904988788080641",
+    "replayReviewUrl": "https://forum.faforever.com/category/4/i-need-help",
     "wikiUrl": "https://wiki.faforever.com"
   },
-  "//trainers": [
-    "The training team, as tiles. Empty here on purpose: who coaches, and",
-    "whether they are still coaching, is theirs to state rather than this",
-    "client's to guess. A published manifest fills it; the shape is",
-    "{ name, fafId, role, topics, gameModes, ratingMin, ratingMax, languages,",
-    "discord, note, avatarUrl, accepting }, and only `name` is required."
+  "resources": [
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-1v1-zd-rasty-lite",
+      "kind": "buildOrder",
+      "maps": [
+        "Z-D Rasty Lite"
+      ],
+      "summary": "Bullydozer's ladder build order for Z-D Rasty Lite, on video.",
+      "title": "Z-D Rasty Lite",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=HV2_8J2Glp4&list=PL2KsYMs6o6iI7D87CBoDsUcQTQo7n5ula"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-1v1-twin-rivers",
+      "kind": "buildOrder",
+      "maps": [
+        "Twin Rivers"
+      ],
+      "summary": "Bullydozer's ladder build order for Twin Rivers, on video.",
+      "title": "Twin Rivers",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=TfdSLFr4Hmg&list=PL2KsYMs6o6iI7D87CBoDsUcQTQo7n5ula"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-1v1-setons-clutch",
+      "kind": "buildOrder",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "summary": "Bullydozer's ladder build order for the 1v1 version of Seton's Clutch.",
+      "title": "Seton's Clutch, as a 1v1",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=n0roKHPk14I&list=PL2KsYMs6o6iI7D87CBoDsUcQTQo7n5ula"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-1v1-the-cold-place",
+      "kind": "buildOrder",
+      "maps": [
+        "The Cold Place"
+      ],
+      "summary": "Bullydozer's ladder build order for The Cold Place, on video.",
+      "title": "The Cold Place",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=DL_WJll9sns&list=PL2KsYMs6o6iI7D87CBoDsUcQTQo7n5ula"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-1v1-cobalt-valley",
+      "kind": "buildOrder",
+      "maps": [
+        "Cobalt Valley"
+      ],
+      "summary": "Bullydozer's ladder build order for Cobalt Valley, on video. The video calls the map Cobal Vatelly.",
+      "title": "Cobalt Valley",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=waNcQdwpF7o&list=PL2KsYMs6o6iI7D87CBoDsUcQTQo7n5ula"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-1v1-cadmium-green",
+      "kind": "buildOrder",
+      "maps": [
+        "Cadmium Green"
+      ],
+      "summary": "Bullydozer's ladder build order for Cadmium Green, on video.",
+      "title": "Cadmium Green",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=1v9nodW8ap4&list=PL2KsYMs6o6iI7D87CBoDsUcQTQo7n5ula"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-1v1-frozenfoort",
+      "kind": "buildOrder",
+      "maps": [
+        "FrozenFoort"
+      ],
+      "summary": "Bullydozer's ladder build order for FrozenFoort, on video.",
+      "title": "FrozenFoort",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=Rgg48WKNFBI&list=PL2KsYMs6o6iI7D87CBoDsUcQTQo7n5ula"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-setons-air-eco",
+      "kind": "buildOrder",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "related": [
+        "seraphim-setons-air-aggressive",
+        "seraphim-setons-air-strat-rush"
+      ],
+      "summary": "The economic opening from the air position on Seton's Clutch.",
+      "title": "Seton's air slot: eco build",
+      "topics": [
+        "buildOrder",
+        "economy",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=o1quukujb5k&list=PL6dXnF6FpYLKdITm7CUplyfzrgwTkSw-p"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-setons-air-aggressive",
+      "kind": "buildOrder",
+      "level": "advanced",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "ratingMin": 1600,
+      "related": [
+        "seraphim-setons-air-eco",
+        "seraphim-setons-air-strat-rush"
+      ],
+      "summary": "The aggressive opening from the air position on Seton's Clutch. Written for 1600 and up.",
+      "title": "Seton's air slot: aggressive build",
+      "topics": [
+        "buildOrder",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=JiSz4Slz8YE&list=PL6dXnF6FpYLKdITm7CUplyfzrgwTkSw-p"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-setons-air-strat-rush",
+      "kind": "buildOrder",
+      "level": "advanced",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "ratingMin": 1800,
+      "related": [
+        "seraphim-setons-air-eco",
+        "seraphim-setons-air-aggressive"
+      ],
+      "summary": "Opening the air position on Seton's Clutch towards an early strategic bomber. Written for 1800 and up.",
+      "title": "Seton's air slot: strat rush",
+      "topics": [
+        "buildOrder",
+        "armyComposition",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=W0dhCKKHAFQ&list=PL6dXnF6FpYLKdITm7CUplyfzrgwTkSw-p"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-setons-beach-meta",
+      "kind": "buildOrder",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "related": [
+        "seraphim-setons-beach-eco"
+      ],
+      "summary": "The standard opening from the beach position on Seton's Clutch.",
+      "title": "Seton's beach slot: the meta build",
+      "topics": [
+        "buildOrder",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=5nr_OU10Hdw&list=PL6dXnF6FpYLKdITm7CUplyfzrgwTkSw-p"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-setons-beach-eco",
+      "kind": "buildOrder",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "related": [
+        "seraphim-setons-beach-meta"
+      ],
+      "summary": "The economic opening from the beach position on Seton's Clutch.",
+      "title": "Seton's beach slot: eco build",
+      "topics": [
+        "buildOrder",
+        "economy",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=93-2UoOu47Q&list=PL6dXnF6FpYLKdITm7CUplyfzrgwTkSw-p"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-setons-north-rock",
+      "kind": "buildOrder",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "summary": "The opening from the northern rock position on Seton's Clutch.",
+      "title": "Seton's north rock",
+      "topics": [
+        "buildOrder",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=vDBhwrPTtvk&list=PL6dXnF6FpYLKdITm7CUplyfzrgwTkSw-p"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-setons-front",
+      "kind": "buildOrder",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "summary": "The opening from the front position on Seton's Clutch.",
+      "title": "Seton's front build",
+      "topics": [
+        "buildOrder",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=d9RjBJEMlOM&list=PL6dXnF6FpYLKdITm7CUplyfzrgwTkSw-p"
+    },
+    {
+      "id": "new-to-faf-tutorial",
+      "kind": "video",
+      "level": "beginner",
+      "related": [
+        "wiki-beginners-guide"
+      ],
+      "summary": "A video introduction for a player opening Forged Alliance for the first time.",
+      "title": "New to FAF? A Supreme Commander tutorial",
+      "topics": [
+        "strategy",
+        "interface"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/watch?v=Nks9loE96ok"
+    },
+    {
+      "id": "wiki-beginners-guide",
+      "kind": "guide",
+      "level": "beginner",
+      "related": [
+        "new-to-faf-tutorial",
+        "wiki-beginner-1v1-guide"
+      ],
+      "summary": "The wiki's entry point for a new player.",
+      "title": "Beginner's guide to Forged Alliance",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/wiki-beginners-guide.md"
+    },
+    {
+      "id": "faf-guide-in-depth",
+      "kind": "guide",
+      "related": [
+        "eco-compendium"
+      ],
+      "summary": "A long-form explanation of the concepts FAF is played on.",
+      "title": "The FAF guide: basic concepts in depth",
+      "topics": [
+        "strategy",
+        "economy"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/faf-guide-in-depth.md"
+    },
+    {
+      "id": "wiki-unit-micro",
+      "kind": "guide",
+      "summary": "The wiki's page on controlling units well.",
+      "title": "Unit micro",
+      "topics": [
+        "micro"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/wiki-unit-micro.md"
+    },
+    {
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "wiki-beginner-1v1-guide",
+      "kind": "guide",
+      "level": "beginner",
+      "related": [
+        "forum-arma-ladder-1v1",
+        "wiki-beginners-guide"
+      ],
+      "summary": "The wiki's introduction to playing the ladder.",
+      "title": "Beginner 1v1 guide",
+      "topics": [
+        "strategy",
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/wiki-beginner-1v1-guide.md"
+    },
+    {
+      "id": "forum-six-laws",
+      "kind": "guide",
+      "summary": "A forum post on how to get better rather than on what to build.",
+      "title": "How to improve forever: the six laws",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/forum-six-laws.md"
+    },
+    {
+      "author": "arma473",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "forum-arma-ladder-1v1",
+      "kind": "guide",
+      "related": [
+        "arma-1v1-part-1-a-strong-start",
+        "arma-1v1-part-2-moving-out",
+        "arma-1v1-part-3-big-maps-and-turtles",
+        "arma-1v1-part-4-intermediate",
+        "arma-1v1-part-5-lessons-from-zock",
+        "wiki-beginner-1v1-guide"
+      ],
+      "summary": "The introduction to arma473's ladder guide. The five parts are here too.",
+      "title": "Ladder 1v1: beginner, intermediate and advanced topics",
+      "topics": [
+        "strategy",
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/forum-arma-ladder-1v1.md"
+    },
+    {
+      "id": "eco-compendium",
+      "kind": "guide",
+      "related": [
+        "faf-guide-in-depth"
+      ],
+      "summary": "A reference on economy: what to build, when, and why the numbers say so.",
+      "title": "The eco compendium",
+      "topics": [
+        "economy"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://docs.google.com/document/d/1T7iWUZtmVKdUQZKOdDSPCfIbHa5Pj2MzqBoBQJ9OK3Y/edit"
+    },
+    {
+      "id": "five-by-five-guide",
+      "kind": "guide",
+      "summary": "Playing the 5x5 map size.",
+      "title": "The 5x5 guide",
+      "topics": [
+        "strategy",
+        "mapControl"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/five-by-five-guide.md"
+    },
+    {
+      "id": "hotkey-guide",
+      "kind": "guide",
+      "level": "intermediate",
+      "related": [
+        "ui-mod-guide"
+      ],
+      "summary": "Setting up hotkeys, and which ones are worth the habit.",
+      "title": "Hotkey guide",
+      "topics": [
+        "interface"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://app.notion.com/p/Hotkey-Guide-22895eec16af8001a395c81153e6829b"
+    },
+    {
+      "id": "ui-mod-guide",
+      "kind": "guide",
+      "related": [
+        "forum-ui-mods-improving-player",
+        "hotkey-guide"
+      ],
+      "summary": "Which UI mods do what, and which ones to start with.",
+      "title": "UI mod guide",
+      "topics": [
+        "interface"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/ui-mod-guide.md"
+    },
+    {
+      "id": "forum-ui-mods-improving-player",
+      "kind": "guide",
+      "related": [
+        "ui-mod-guide"
+      ],
+      "summary": "The forum thread the UI mod guide grew out of.",
+      "title": "UI mods for the improving player",
+      "topics": [
+        "interface"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/forum-ui-mods-improving-player.md"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Bullydozer's series on climbing the ladder.",
+      "title": "Road to Grandmaster: introduction",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=02OFI7zZr_8&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-guide-playlist",
+      "kind": "video",
+      "summary": "An older video series. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "Heaven's guide playlist",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/playlist?list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Sheppy",
+      "id": "fa-companion-maps",
+      "kind": "community",
+      "summary": "A map directory with build orders attached to each map, kept outside FAF.",
+      "title": "FA Companion: build orders by map",
+      "topics": [
+        "buildOrder",
+        "mapControl"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://fa-companion.services.atlantishq.de/maps"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "channel-seraphim-com",
+      "kind": "community",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "summary": "Seton's Clutch, position by position.",
+      "title": "Seraphim-Com on YouTube",
+      "topics": [
+        "buildOrder",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/@Seraphim-Com"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "channel-bullydozer",
+      "kind": "community",
+      "summary": "Ladder 1v1, build orders and games with commentary.",
+      "title": "BullydozerFAF on YouTube",
+      "topics": [
+        "buildOrder",
+        "strategy"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/@BullydozerFAF"
+    },
+    {
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "channel-yudi1260",
+      "kind": "community",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "summary": "Seton's Clutch.",
+      "title": "yudi1260 on YouTube",
+      "topics": [
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/@yudi1260"
+    },
+    {
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "channel-foleybts",
+      "kind": "community",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "summary": "Seton's Clutch.",
+      "title": "FoleyBTS on YouTube",
+      "topics": [
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/@FoleyBTS"
+    },
+    {
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "channel-jaggedappliance",
+      "kind": "community",
+      "summary": "Ladder 1v1.",
+      "title": "JaggedAppliance on YouTube",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/@JaggedAppliance"
+    },
+    {
+      "author": "Farms",
+      "id": "channel-farmsletje",
+      "kind": "community",
+      "related": [
+        "twitch-stellartactician"
+      ],
+      "summary": "Team games. Games with commentary rather than lessons.",
+      "title": "FarmsletjeXY on YouTube",
+      "topics": [
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.youtube.com/@FarmsletjeXY"
+    },
+    {
+      "author": "Farms",
+      "id": "twitch-stellartactician",
+      "kind": "community",
+      "related": [
+        "channel-farmsletje"
+      ],
+      "summary": "Farms, live.",
+      "title": "stellartactician on Twitch",
+      "topics": [
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://www.twitch.tv/stellartactician"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-eye-of-the-storm",
+      "kind": "buildOrder",
+      "maps": [
+        "Eye of the Storm"
+      ],
+      "summary": "Land factory opening into air, aiming at an air-heavy game and T2 air.",
+      "title": "Eye of the Storm",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-eye-of-the-storm.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-tag-craftious-maximus",
+      "kind": "buildOrder",
+      "maps": [
+        "TAG Craftious Maximus"
+      ],
+      "summary": "The FAF version of the map. Land factory into hydro, with the ACU assisting the first engineer.",
+      "title": "TAG Craftious Maximus",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-tag-craftious-maximus.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-cadmium-green",
+      "kind": "buildOrder",
+      "maps": [
+        "Cadmium Green"
+      ],
+      "related": [
+        "bully-1v1-cadmium-green"
+      ],
+      "summary": "A double factory opening, to scale faster.",
+      "title": "Cadmium Green",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-cadmium-green.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-adaptive-point-of-reach",
+      "kind": "buildOrder",
+      "maps": [
+        "Adaptive Point of Reach"
+      ],
+      "summary": "Two openings: an air lock, or a land factory into a transport rush. Both end up wanting frigates.",
+      "title": "Adaptive Point of Reach",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-adaptive-point-of-reach.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-desert-arena",
+      "kind": "buildOrder",
+      "maps": [
+        "Desert Arena"
+      ],
+      "summary": "The FAF version of the map. Hydro rush, and a second air factory is not optional.",
+      "title": "Desert Arena",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-desert-arena.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-stickleback-ridge",
+      "kind": "buildOrder",
+      "maps": [
+        "Stickleback Ridge"
+      ],
+      "summary": "Factory first and a lot of power. Sladow marks this one as not yet optimal.",
+      "title": "Stickleback Ridge",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-stickleback-ridge.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-hargreven",
+      "kind": "buildOrder",
+      "maps": [
+        "Hargreven"
+      ],
+      "summary": "Not written down yet. What exists is the replays it should be read off.",
+      "title": "Hargreven",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-hargreven.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-red-rocks",
+      "kind": "buildOrder",
+      "maps": [
+        "Red Rocks"
+      ],
+      "summary": "Air factory first, base afterwards, and out to the middle early. A prototype.",
+      "title": "Red Rocks",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-red-rocks.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-serenity-desert-small",
+      "kind": "buildOrder",
+      "maps": [
+        "Serenity Desert Small"
+      ],
+      "summary": "The FAF version of the small map. Land factory, then walk the ACU to the hydro.",
+      "title": "Serenity Desert, small",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-serenity-desert-small.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-turtle-rocks",
+      "kind": "buildOrder",
+      "maps": [
+        "Turtle Rocks"
+      ],
+      "summary": "Hydro rush into the standard buildup, with a second hydro later.",
+      "title": "Turtle Rocks",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-turtle-rocks.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-crimson-feud",
+      "kind": "buildOrder",
+      "maps": [
+        "Crimson Feud"
+      ],
+      "summary": "Hydro rush from the bottom left spawn, with the ACU moving to the top.",
+      "title": "Crimson Feud",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-crimson-feud.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-crossfire-channel",
+      "kind": "buildOrder",
+      "maps": [
+        "Crossfire Channel"
+      ],
+      "summary": "Factory first on the island, leaving it after the second air factory.",
+      "title": "Crossfire Channel",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-crossfire-channel.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-arcane",
+      "kind": "buildOrder",
+      "maps": [
+        "Arcane"
+      ],
+      "summary": "Hydro rush into an early air factory, expanding both ways.",
+      "title": "Arcane",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-arcane.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-bermuda-locket",
+      "kind": "buildOrder",
+      "maps": [
+        "Bermuda Locket"
+      ],
+      "summary": "Factory, then ten power generators before air.",
+      "title": "Bermuda Locket",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-bermuda-locket.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-syrtis-major",
+      "kind": "buildOrder",
+      "maps": [
+        "Syrtis Major"
+      ],
+      "summary": "The FAF version of the map. Factory, four mexes, hydro.",
+      "title": "Syrtis Major",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-syrtis-major.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-diversity",
+      "kind": "buildOrder",
+      "maps": [
+        "Diversity"
+      ],
+      "summary": "Factory and heavy power from the top left spawn, played aggressively.",
+      "title": "Diversity",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-diversity.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "factions": [
+        "aeon"
+      ],
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-the-cold-place",
+      "kind": "buildOrder",
+      "maps": [
+        "The Cold Place"
+      ],
+      "related": [
+        "bully-1v1-the-cold-place"
+      ],
+      "summary": "Aeon, from the left spawn: labs, subs, second air, and the ACU through the water.",
+      "title": "The Cold Place",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-the-cold-place.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-zeuthea-valley",
+      "kind": "buildOrder",
+      "maps": [
+        "Zeuthea Valley"
+      ],
+      "summary": "Hydro rush or a factory opening from the bottom spawn, played aggressively with transports.",
+      "title": "Zeuthea Valley",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-zeuthea-valley.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-esgaroths-ruins",
+      "kind": "buildOrder",
+      "maps": [
+        "Esgaroth's Ruins"
+      ],
+      "summary": "Factory first, many labs and early raids, no second air.",
+      "title": "Esgaroth's Ruins",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-esgaroths-ruins.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-floralis",
+      "kind": "buildOrder",
+      "maps": [
+        "Floralis"
+      ],
+      "summary": "The top spawn. A raiding opening with the ACU leaving late.",
+      "title": "Floralis, top side",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-floralis.md"
+    },
+    {
+      "author": "Sladow-Noob",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "sladow-1v1-frithen",
+      "kind": "buildOrder",
+      "maps": [
+        "Frithen"
+      ],
+      "summary": "Factory, two mexes, two power, second factory, then walk.",
+      "title": "Frithen",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-05",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/sladow-1v1-frithen.md"
+    },
+    {
+      "author": "arma473",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "arma-1v1-part-1-a-strong-start",
+      "kind": "guide",
+      "ratingMax": 250,
+      "related": [
+        "forum-arma-ladder-1v1"
+      ],
+      "summary": "Part 1 of arma473's ladder guide, in the split he wrote it in.",
+      "title": "Ladder 1v1, part 1: a strong start",
+      "topics": [
+        "strategy",
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/arma-1v1-part-1-a-strong-start.md"
+    },
+    {
+      "author": "arma473",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "arma-1v1-part-2-moving-out",
+      "kind": "guide",
+      "ratingMax": 250,
+      "related": [
+        "forum-arma-ladder-1v1"
+      ],
+      "summary": "Part 2 of arma473's ladder guide, in the split he wrote it in.",
+      "title": "Ladder 1v1, part 2: moving out",
+      "topics": [
+        "strategy",
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/arma-1v1-part-2-moving-out.md"
+    },
+    {
+      "author": "arma473",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "arma-1v1-part-3-big-maps-and-turtles",
+      "kind": "guide",
+      "ratingMax": 500,
+      "ratingMin": 250,
+      "related": [
+        "forum-arma-ladder-1v1"
+      ],
+      "summary": "Part 3 of arma473's ladder guide, in the split he wrote it in.",
+      "title": "Ladder 1v1, part 3: big maps and master turtles",
+      "topics": [
+        "strategy",
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/arma-1v1-part-3-big-maps-and-turtles.md"
+    },
+    {
+      "author": "arma473",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "arma-1v1-part-4-intermediate",
+      "kind": "guide",
+      "ratingMax": 750,
+      "ratingMin": 250,
+      "related": [
+        "forum-arma-ladder-1v1"
+      ],
+      "summary": "Part 4 of arma473's ladder guide, in the split he wrote it in.",
+      "title": "Ladder 1v1, part 4: intermediate ladder concepts",
+      "topics": [
+        "strategy",
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/arma-1v1-part-4-intermediate.md"
+    },
+    {
+      "author": "arma473",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "arma-1v1-part-5-lessons-from-zock",
+      "kind": "guide",
+      "ratingMin": 750,
+      "related": [
+        "forum-arma-ladder-1v1"
+      ],
+      "summary": "Part 5 of arma473's ladder guide, in the split he wrote it in.",
+      "title": "Ladder 1v1, part 5: lessons from Zock",
+      "topics": [
+        "strategy",
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/arma-1v1-part-5-lessons-from-zock.md"
+    },
+    {
+      "author": "CheeseBerry",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "setons-ultimate-index",
+      "kind": "guide",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "related": [
+        "setons-ultimate-beginner",
+        "setons-ultimate-novice",
+        "setons-ultimate-intermediate"
+      ],
+      "summary": "An in-depth guide to everything Seton's, split by rating band.",
+      "title": "The Ultimate Seton's Guide",
+      "topics": [
+        "strategy",
+        "teamplay",
+        "economy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/setons-ultimate-index.md"
+    },
+    {
+      "author": "CheeseBerry",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "setons-ultimate-beginner",
+      "kind": "guide",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "ratingMax": 1000,
+      "related": [
+        "setons-ultimate-index"
+      ],
+      "summary": "Beginner Guide (<1k), from CheeseBerry's Seton's guide.",
+      "title": "Seton's: the beginner guide",
+      "topics": [
+        "strategy",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/setons-ultimate-beginner.md"
+    },
+    {
+      "author": "CheeseBerry",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "setons-ultimate-novice",
+      "kind": "guide",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "ratingMax": 1200,
+      "ratingMin": 800,
+      "related": [
+        "setons-ultimate-index"
+      ],
+      "summary": "Novice Guide (~1k), from CheeseBerry's Seton's guide.",
+      "title": "Seton's: the novice guide",
+      "topics": [
+        "strategy",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/setons-ultimate-novice.md"
+    },
+    {
+      "author": "CheeseBerry",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "setons-ultimate-intermediate",
+      "kind": "guide",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "ratingMax": 1500,
+      "ratingMin": 1000,
+      "related": [
+        "setons-ultimate-index"
+      ],
+      "summary": "Intermediate Guide (~1k-1.5k), from CheeseBerry's Seton's guide.",
+      "title": "Seton's: the intermediate guide",
+      "topics": [
+        "strategy",
+        "teamplay"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://raw.githubusercontent.com/FAForeverRustClient/guides/main/guides/setons-ultimate-intermediate.md"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-01",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 1 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 1",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=dK23Xvb7uKM&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-02",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 2 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 2",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=lxtvgxdYjOM&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-03",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 3 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 3",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=mSGip9AnzIk&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-04",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 4 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 4",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=1ip7zZ1gNnM&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-05",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 5 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 5",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=1xoJXMbi11A&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-06",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 6 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 6",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=9xWCzbWL1u4&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-07",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 7 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 7",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=0YiXNaDKWAY&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-08",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 8 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 8",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=gVjC9g4hw0Q&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-09",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 9 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 9",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=J4udSOkKEtE&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-10",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 10 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 10",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=xyvEgxaWSos&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-11",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 11 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 11",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=WKfmnMOarVk&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-road-to-gm-12",
+      "kind": "video",
+      "related": [
+        "channel-bullydozer"
+      ],
+      "summary": "Episode 12 of Bullydozer's climb.",
+      "title": "Road to Grandmaster, episode 12",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=0B-R7rnXqpU&list=PL2KsYMs6o6iKRasUUyaNnrVSjvLnaAQmL"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-review-1000",
+      "kind": "replayAnalysis",
+      "ratingMax": 1200,
+      "ratingMin": 800,
+      "summary": "A ladder game at about 1000, reviewed move by move.",
+      "title": "1v1 analysis: 1k ladder, Officer-Jailbait's point of view",
+      "topics": [
+        "strategy",
+        "buildOrder"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=LedpuAlBSVo"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-review-1700",
+      "kind": "replayAnalysis",
+      "ratingMax": 1900,
+      "ratingMin": 1500,
+      "summary": "A ladder game at about 1700, reviewed move by move.",
+      "title": "1v1 analysis: a lesson for 1700-rated Seraphim-Noob",
+      "topics": [
+        "strategy",
+        "mapControl"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=nPUZd8GrDL4"
+    },
+    {
+      "author": "Bullydozer",
+      "gameModes": [
+        "1v1"
+      ],
+      "id": "bully-review-2000",
+      "kind": "replayAnalysis",
+      "ratingMin": 1800,
+      "summary": "A ladder game at about 2000, reviewed move by move.",
+      "title": "1v1 analysis: a review for 2000-rated Swatoslav",
+      "topics": [
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=v2ureanSW0I"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-review-air-800",
+      "kind": "replayAnalysis",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "ratingMax": 1000,
+      "summary": "How to play the air position, reviewed on a game at about 800.",
+      "title": "Seton's air: a review of PatientOwl's game",
+      "topics": [
+        "teamplay",
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=AOTH7_NSPF8"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-review-air-1400",
+      "kind": "replayAnalysis",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "ratingMax": 1600,
+      "ratingMin": 1200,
+      "summary": "An air position reviewed on a game at about 1400.",
+      "title": "Seton's air: ASF, timeframes and decision-making",
+      "topics": [
+        "teamplay",
+        "armyComposition"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=imisszdLzJU"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-review-rock-1800",
+      "kind": "replayAnalysis",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "ratingMax": 2000,
+      "ratingMin": 1600,
+      "summary": "A rock position reviewed on a game at about 1800.",
+      "title": "Seton's rock: AkiraFAF's UEF navy in the mid-game",
+      "topics": [
+        "teamplay",
+        "armyComposition"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=swkQPjcmYPE"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-walkthrough-front",
+      "kind": "video",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "related": [
+        "seraphim-walkthrough-beach",
+        "seraphim-walkthrough-rock"
+      ],
+      "summary": "A front position played through, with the thinking said out loud.",
+      "title": "Seton's front: the hardest slot for decision-making?",
+      "topics": [
+        "teamplay",
+        "strategy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=7MyuQz_mvY4"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-walkthrough-beach",
+      "kind": "video",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "related": [
+        "seraphim-walkthrough-front",
+        "seraphim-walkthrough-rock"
+      ],
+      "summary": "A beach position played through, eco heavy, with the thinking said out loud.",
+      "title": "Seton's beach: what do I think while playing?",
+      "topics": [
+        "teamplay",
+        "economy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=jIowtV6-xIU"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "custom",
+        "4v4"
+      ],
+      "id": "seraphim-walkthrough-rock",
+      "kind": "video",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "related": [
+        "seraphim-walkthrough-front",
+        "seraphim-walkthrough-beach"
+      ],
+      "summary": "A rock position played through aggressively, with the thinking said out loud.",
+      "title": "Seton's rock: how to play aggressive navy",
+      "topics": [
+        "teamplay",
+        "armyComposition"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=OEXI6JJph6M"
+    },
+    {
+      "author": "Yudi",
+      "id": "yudi-lategame-navy",
+      "kind": "video",
+      "related": [
+        "channel-yudi1260"
+      ],
+      "summary": "Tips and the critical mistakes to avoid, read off a real fight.",
+      "title": "Analysing a late-game naval fight",
+      "topics": [
+        "armyComposition",
+        "micro"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=Gs9IeUF3f3w"
+    },
+    {
+      "author": "Yudi",
+      "id": "yudi-economy",
+      "kind": "video",
+      "related": [
+        "channel-yudi1260"
+      ],
+      "summary": "An economy explained over actual gameplay rather than in the abstract.",
+      "title": "How I manage my economy",
+      "topics": [
+        "economy"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=X7QvwsjvMUE"
+    },
+    {
+      "author": "FoleyBTS",
+      "id": "foley-mod-guide",
+      "kind": "video",
+      "related": [
+        "channel-foleybts"
+      ],
+      "summary": "Which mods to run and why.",
+      "title": "Mod guide",
+      "topics": [
+        "interface"
+      ],
+      "updatedAt": "2026-09-06",
+      "url": "https://www.youtube.com/watch?v=cpEJm-DAefw"
+    }
   ],
-  "trainers": [],
-  "//resources": [
-    "Empty on purpose. Everything a player reads comes from the catalogue",
-    "repository, so that adding, retagging or withdrawing a guide is a commit",
-    "there rather than a client release. What ships here is the set of",
-    "destinations the client falls back to when it cannot reach the manifest:",
-    "the Discord invite, the forum categories, the wiki."
-  ],
-  "resources": []
+  "trainers": [
+    {
+      "fafId": 362817,
+      "focus": "Runs the training team",
+      "name": "Strydxr",
+      "note": "Focuses on the organizing of the Team",
+      "role": "Team Lead"
+    },
+    {
+      "fafId": 62213,
+      "focus": "Team games",
+      "name": "FTXCommando",
+      "note": "Specializes in teamgames",
+      "role": "Veteran Trainer"
+    },
+    {
+      "fafId": 222894,
+      "focus": "Any rating, any map but Seton's",
+      "name": "Sladow-Noob",
+      "note": "Teaches any ranking in any scenario except Seton's",
+      "role": "Veteran Trainer"
+    },
+    {
+      "fafId": 294979,
+      "focus": "Any rating, any game mode",
+      "name": "Judoka",
+      "note": "Focuses on training all ratings in all gamemodes",
+      "role": "Experienced Trainer"
+    },
+    {
+      "fafId": 42707,
+      "focus": "Seton's Clutch",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "name": "Seraphim-Noob",
+      "note": "Specialized on Setons Clutch",
+      "role": "Experienced Trainer"
+    },
+    {
+      "fafId": 195232,
+      "focus": "1v1 up to 1800",
+      "gameModes": [
+        "1v1"
+      ],
+      "name": "Paradox_of_war",
+      "note": "Specializes in 1v1 up to 1800 rating",
+      "ratingMax": 1800,
+      "role": "Experienced Trainer"
+    },
+    {
+      "fafId": 459931,
+      "focus": "Team games and generated maps",
+      "name": "Mui",
+      "note": "Specialized on Mapgen and Teamgames",
+      "role": "Trainer"
+    },
+    {
+      "fafId": 373906,
+      "focus": "Dual Gap",
+      "maps": [
+        "Dual Gap"
+      ],
+      "name": "GodsMistake",
+      "note": "Specialized on Dual Gap",
+      "role": "Trainer"
+    },
+    {
+      "fafId": 195400,
+      "focus": "Team games and generated maps",
+      "name": "WilloWisppsi",
+      "note": "Specialized on Mapgen and Teamgames",
+      "role": "Trainer"
+    },
+    {
+      "fafId": 373105,
+      "focus": "1v1 from 1800",
+      "gameModes": [
+        "1v1"
+      ],
+      "name": "Grimplex",
+      "note": "Most competent in 1v1, 1800+ 1v1 rating required",
+      "ratingMin": 1800,
+      "role": "Trainer"
+    },
+    {
+      "fafId": 164973,
+      "focus": "Replay reviews: vs AI and low-rated TMM",
+      "name": "Maudlin27",
+      "note": "Replay reviews for Vs AI and sub-1k TMM games",
+      "ratingMax": 1000,
+      "role": "Trainer"
+    }
+  ]
 }

@@ -126,6 +126,15 @@ pub struct ServiceCtx {
     pub replay_cancellation: std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>,
     pub map_generator_active: SingleFlight,
     pub tutorial_launch_active: SingleFlight,
+    /// One training load at a time. The tab's refresh button is live while a
+    /// load runs, and a second load would repeat every request and the replay
+    /// scan; the one in flight already ends with what it would have produced.
+    pub training_load_active: SingleFlight,
+    /// This account's matchmaker profile, as the training hub fetched it for
+    /// its recommendations. Kept here rather than in the player card, which is
+    /// one shared slot: loading this account into it replaced whatever card
+    /// the player had open from chat.
+    pub training_own_profile: std::sync::Mutex<Option<faf_domain::state::MatchmakerPlayerProfile>>,
     /// The changelog tab re-mounts on every visit and asks for the index each
     /// time. Without this, two quick visits both read a not-ready status and
     /// both fetch the same index: the check on `ChangelogStatus::Ready` is a
@@ -509,6 +518,8 @@ impl App {
             replay_cancellation: std::sync::Mutex::new(None),
             map_generator_active: SingleFlight::default(),
             tutorial_launch_active: SingleFlight::default(),
+            training_load_active: SingleFlight::default(),
+            training_own_profile: std::sync::Mutex::new(None),
             changelog_active: SingleFlight::default(),
             map_vault_active: SingleFlight::default(),
             changelog_entry_generation: LatestRequest::default(),
@@ -712,6 +723,10 @@ impl AppLoop {
         // startup is the one the settings load performs; this is the one that
         // reaches a client nobody has restarted since Friday.
         services::client_update::spawn(ctx.clone(), self.sink.clone());
+
+        // And the training hub's recommendations follow what they are read
+        // from: a sign-in, a finished replay scan, a game that just ended.
+        services::training::spawn(ctx.clone(), self.sink.clone());
 
         let sink = self.sink.clone();
         let handle = move |command: AppCommand| {

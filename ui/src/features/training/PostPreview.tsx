@@ -33,9 +33,11 @@ interface Props {
   submit?: SubmitStatus;
   /** Send it from the client, or `null` when only the browser path exists. */
   onSubmit?: (() => void) | null;
+  /** The post's body reached the clipboard, which on Discord is the delivery. */
+  onDelivered?: () => void;
 }
 
-export function PostPreview({ post, destination, submit, onSubmit }: Props) {
+export function PostPreview({ post, destination, submit, onSubmit, onDelivered }: Props) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [copiedTitle, setCopiedTitle] = useState(false);
@@ -55,7 +57,11 @@ export function PostPreview({ post, destination, submit, onSubmit }: Props) {
       .then(() => mark(true))
       .catch(() => mark(false));
   };
-  const copy = () => copyText(toDiscord ? post.body : `${post.title}\n\n${post.body}`, setCopied);
+  const copy = () =>
+    copyText(toDiscord ? post.body : `${post.title}\n\n${post.body}`, (value) => {
+      setCopied(value);
+      if (value) onDelivered?.();
+    });
   const copyTitle = () => copyText(post.title, setCopiedTitle);
 
   return (

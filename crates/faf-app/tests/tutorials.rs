@@ -24,12 +24,17 @@ use tokio::sync::mpsc;
 struct RecordingProcess {
     offline: Arc<Mutex<Vec<(String, String)>>>,
     online: Arc<Mutex<u32>>,
+    /// Whether a game is already running, as the port reports it.
+    running: bool,
 }
 
 #[async_trait]
 impl ProcessPort for RecordingProcess {
     fn supports_live_launch(&self) -> bool {
         true
+    }
+    fn game_running(&self) -> bool {
+        self.running
     }
     async fn launch_game(&self, _params: GameLaunchParams) -> Result<(), String> {
         *self.online.lock().unwrap() += 1;
@@ -121,6 +126,10 @@ struct Harness {
 }
 
 fn harness(tutorials: Vec<Tutorial>, outcome: Result<(), String>) -> Harness {
+    harness_with(tutorials, outcome, false)
+}
+
+fn harness_with(tutorials: Vec<Tutorial>, outcome: Result<(), String>, running: bool) -> Harness {
     let offline = Arc::new(Mutex::new(Vec::new()));
     let online = Arc::new(Mutex::new(0));
     let prepared = Arc::new(Mutex::new(Vec::new()));
@@ -129,6 +138,7 @@ fn harness(tutorials: Vec<Tutorial>, outcome: Result<(), String>) -> Harness {
         process: Arc::new(RecordingProcess {
             offline: offline.clone(),
             online: online.clone(),
+            running,
         }),
         updater: Arc::new(ScriptedUpdater {
             seen: prepared.clone(),
@@ -222,7 +232,7 @@ async fn a_failed_preparation_stops_the_launch() {
         .unwrap();
 
     match h.settled().await {
-        TutorialLaunchStatus::Failed { reason } => assert!(reason.contains("tutorials")),
+        TutorialLaunchStatus::Failed { reason, .. } => assert!(reason.contains("tutorials")),
         other => panic!("expected a failure, got {other:?}"),
     }
     assert!(h.offline.lock().unwrap().is_empty());
@@ -247,13 +257,38 @@ async fn an_unplayable_lesson_is_refused_before_anything_is_downloaded() {
         .unwrap();
 
     match h.settled().await {
-        TutorialLaunchStatus::Failed { reason } => assert!(reason.contains("cannot be played")),
+        TutorialLaunchStatus::Failed { reason, .. } => assert!(reason.contains("cannot be played")),
         other => panic!("expected a refusal, got {other:?}"),
     }
     assert!(
         h.prepared.lock().unwrap().is_empty(),
         "nothing should be downloaded for a lesson that cannot start"
     );
+    assert!(h.offline.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn a_lesson_is_refused_while_the_game_is_running() {
+    // Launching would end the game in progress, and patching the tutorials
+    // mod under it is no better, so nothing is prepared at all.
+    let h = harness_with(vec![tutorial(7)], Ok(()), true);
+    h.load().await;
+    h.app
+        .dispatch(TutorialsCommand::Launch { tutorial_id: 7 }.into())
+        .await
+        .unwrap();
+
+    match h.settled().await {
+        TutorialLaunchStatus::Failed {
+            tutorial_id,
+            reason,
+        } => {
+            assert_eq!(tutorial_id, 7, "the failure names the lesson it is about");
+            assert!(reason.contains("already running"), "{reason}");
+        }
+        other => panic!("expected a refusal, got {other:?}"),
+    }
+    assert!(h.prepared.lock().unwrap().is_empty());
     assert!(h.offline.lock().unwrap().is_empty());
 }
 
@@ -267,7 +302,7 @@ async fn launching_an_unknown_lesson_fails_cleanly() {
         .unwrap();
 
     match h.settled().await {
-        TutorialLaunchStatus::Failed { reason } => assert!(reason.contains("no longer")),
+        TutorialLaunchStatus::Failed { reason, .. } => assert!(reason.contains("no longer")),
         other => panic!("expected a failure, got {other:?}"),
     }
     assert!(h.prepared.lock().unwrap().is_empty());

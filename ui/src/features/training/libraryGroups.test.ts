@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { collectionsOf } from "./libraryGroups";
+import { collectionsOf, modeOptions } from "./libraryGroups";
 import type { TrainingProfile, TrainingResource } from "../../ipc/bindings";
 
 const base: TrainingResource = {
@@ -145,5 +145,20 @@ describe("collectionsOf", () => {
     const once = collectionsOf([...team, ...ladder], profile());
     const twice = collectionsOf([...team, ...ladder], profile());
     expect(once.map((g) => g.key)).toEqual(twice.map((g) => g.key));
+  });
+});
+
+describe("modes that differ only in case", () => {
+  it("are one shelf, headed by the first spelling met", () => {
+    const shouting = entry({ title: "Shouting", gameModes: ["1V1"] });
+    const groups = collectionsOf([...ladder, shouting], profile());
+    expect(groups.map((group) => group.key)).toEqual(["1v1"]);
+    expect(groups[0].entries).toHaveLength(4);
+  });
+
+  it("are one chip, in the common list's spelling", () => {
+    const modes = modeOptions([entry({ gameModes: ["1V1", "Nomads"] }), entry({ gameModes: ["nomads "] })]);
+    expect(modes.filter((mode) => mode.toLowerCase() === "1v1")).toEqual(["1v1"]);
+    expect(modes.filter((mode) => mode.toLowerCase() === "nomads")).toEqual(["Nomads"]);
   });
 });

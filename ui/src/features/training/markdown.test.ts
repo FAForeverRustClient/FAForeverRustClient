@@ -3,7 +3,7 @@
 // prefix applied to the wrong line still renders as a working button.
 
 import { describe, expect, it } from "vitest";
-import { parseBlocks, parseSpans } from "./markdown";
+import { parseBlocks, parseSpans, tableCells } from "./markdown";
 import { applyAction } from "./MarkdownField";
 
 describe("markdown blocks", () => {
@@ -31,8 +31,22 @@ describe("markdown blocks", () => {
       { kind: "heading", level: 2, text: "Opening" },
       // Consecutive lines are one paragraph, the way Markdown reads them.
       { kind: "paragraph", text: "Build four mexes, then a land factory. Keep the queue full." },
-      { kind: "list", ordered: false, items: ["scout early", "expand second"] },
-      { kind: "list", ordered: true, items: ["first", "second"] },
+      {
+        kind: "list",
+        ordered: false,
+        items: [
+          { text: "scout early", children: [] },
+          { text: "expand second", children: [] },
+        ],
+      },
+      {
+        kind: "list",
+        ordered: true,
+        items: [
+          { text: "first", children: [] },
+          { text: "second", children: [] },
+        ],
+      },
       { kind: "quote", text: "A note from a trainer" },
       // Fenced code keeps its own whitespace: a build order pasted into a
       // guide is the main thing anyone puts in a fence, and reflowing it
@@ -136,5 +150,148 @@ describe("the toolbar's selection arithmetic", () => {
   it("prefixes the first line when the caret is at the very start", () => {
     const result = applyAction("only", 0, 0, { kind: "prefix", prefix: "## " });
     expect(result.value).toBe("## only");
+  });
+});
+
+describe("nested lists", () => {
+  it("puts an indented item under the item above it", () => {
+    const source = ["- opening", "  - four mexes", "  - land factory", "- mid game"].join("\n");
+    expect(parseBlocks(source)).toEqual([
+      {
+        kind: "list",
+        ordered: false,
+        items: [
+          {
+            text: "opening",
+            children: [
+              {
+                kind: "list",
+                ordered: false,
+                items: [
+                  { text: "four mexes", children: [] },
+                  { text: "land factory", children: [] },
+                ],
+              },
+            ],
+          },
+          { text: "mid game", children: [] },
+        ],
+      },
+    ]);
+  });
+
+  it("nests a bullet list under a numbered item, and three levels deep", () => {
+    const source = ["1. eco", "   - mex", "     - storage", "2. army"].join("\n");
+    const [list] = parseBlocks(source);
+    expect(list).toMatchObject({ kind: "list", ordered: true });
+    if (list.kind !== "list") throw new Error("expected a list");
+    expect(list.items.map((item) => item.text)).toEqual(["eco", "army"]);
+    const inner = list.items[0].children[0];
+    expect(inner).toMatchObject({ ordered: false, items: [{ text: "mex" }] });
+    expect(inner.items[0].children[0].items[0].text).toBe("storage");
+  });
+
+  it("reads a tab as indentation", () => {
+    const [list] = parseBlocks("- a\n\t- b");
+    if (list.kind !== "list") throw new Error("expected a list");
+    expect(list.items).toHaveLength(1);
+    expect(list.items[0].children[0].items[0].text).toBe("b");
+  });
+
+  it("starts a new list when bullets turn into numbers at the same depth", () => {
+    expect(parseBlocks("- a\n1. b").map((block) => block.kind)).toEqual(["list", "list"]);
+  });
+});
+
+describe("tables", () => {
+  it("reads a GFM table with alignment, padding short rows and cutting long ones", () => {
+    const source = [
+      "| Unit | Mass | Time |",
+      "| :--- | ---: | :--: |",
+      "| Engineer | 52 | 0:20 |",
+      "| Mex | 36 |",
+      "| Pgen | 75 | 0:15 | extra |",
+    ].join("\n");
+    expect(parseBlocks(source)).toEqual([
+      {
+        kind: "table",
+        align: ["left", "right", "center"],
+        header: ["Unit", "Mass", "Time"],
+        rows: [
+          ["Engineer", "52", "0:20"],
+          ["Mex", "36", ""],
+          ["Pgen", "75", "0:15"],
+        ],
+      },
+    ]);
+  });
+
+  it("accepts a table without the outer pipes, and ends it at a blank line", () => {
+    const blocks = parseBlocks("a | b\n--- | ---\n1 | 2\n\nafter");
+    expect(blocks[0]).toEqual({
+      kind: "table",
+      align: [null, null],
+      header: ["a", "b"],
+      rows: [["1", "2"]],
+    });
+    expect(blocks[1]).toEqual({ kind: "paragraph", text: "after" });
+  });
+
+  it("does not mistake a line with a pipe for a table without a delimiter row", () => {
+    expect(parseBlocks("left | right\nmore text")).toEqual([
+      { kind: "paragraph", text: "left | right more text" },
+    ]);
+  });
+
+  it("keeps an escaped pipe inside a cell", () => {
+    expect(tableCells("| a \\| b | c |")).toEqual(["a | b", "c"]);
+  });
+});
+
+describe("images", () => {
+  it("keeps an image whose address is ordinary HTTPS, with its alt text", () => {
+    expect(parseSpans("![The opening](https://example.com/bo.png)")).toEqual([
+      { kind: "image", text: "The opening", src: "https://example.com/bo.png" },
+    ]);
+  });
+
+  it("shows an image it will not fetch as the text that was typed", () => {
+    for (const bad of ["http://example.com/a.png", "javascript:alert(1)", "data:image/png;base64,AAAA"]) {
+      const spans = parseSpans(`![x](${bad})`);
+      expect(spans.every((span) => span.kind !== "image")).toBe(true);
+      expect(spans.map((span) => span.text).join("")).toBe(`![x](${bad})`);
+    }
+  });
+});
+
+describe("underscores inside words", () => {
+  it("does not italicise snake_case", () => {
+    expect(parseSpans("set unit_cap_max now")).toEqual([
+      { kind: "text", text: "set unit_cap_max now" },
+    ]);
+  });
+
+  it("does not embolden double underscores inside a word", () => {
+    expect(parseSpans("foo__bar__baz")).toEqual([{ kind: "text", text: "foo__bar__baz" }]);
+  });
+
+  it("still reads underscore emphasis that stands on its own", () => {
+    expect(parseSpans("an _italic_ word, a __bold__ one, (_paren_)")).toEqual([
+      { kind: "text", text: "an " },
+      { kind: "em", text: "italic" },
+      { kind: "text", text: " word, a " },
+      { kind: "strong", text: "bold" },
+      { kind: "text", text: " one, (" },
+      { kind: "em", text: "paren" },
+      { kind: "text", text: ")" },
+    ]);
+  });
+
+  it("keeps asterisk emphasis working inside a word", () => {
+    expect(parseSpans("un*frigging*believable")).toEqual([
+      { kind: "text", text: "un" },
+      { kind: "em", text: "frigging" },
+      { kind: "text", text: "believable" },
+    ]);
   });
 });

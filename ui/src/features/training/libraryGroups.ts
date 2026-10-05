@@ -17,8 +17,8 @@
 
 import type { MessageKey } from "../../i18n";
 import type { TrainingProfile, TrainingResource } from "../../ipc/bindings";
-import { normaliseMap } from "../../shared/rules/trainingRules";
-import { kindLabel } from "./trainingPresentation";
+import { asciiLower, normaliseMap } from "../../shared/rules/trainingRules";
+import { COMMON_MODES, kindLabel } from "./trainingPresentation";
 
 /**
  * How the reader asked for the shelves to be arranged.
@@ -68,7 +68,29 @@ const LOBBY_TYPES = ["custom"];
  */
 function shelfMode(resource: TrainingResource): string {
   const modes = resource.gameModes.map((mode) => mode.trim()).filter(Boolean);
-  return modes.find((mode) => !LOBBY_TYPES.includes(mode.toLowerCase())) ?? modes[0] ?? "";
+  return modes.find((mode) => !LOBBY_TYPES.includes(asciiLower(mode))) ?? modes[0] ?? "";
+}
+
+/**
+ * The modes the mode row offers: the common ones, then whatever the catalogue
+ * carries, once each.
+ *
+ * Folded the way the filter folds them (ASCII case, as in Rust), so "1V1" in
+ * one entry and "1v1" in another are one chip rather than two that select the
+ * same thing. The first spelling met wins, which puts the common list's
+ * lowercase ahead of whatever a manifest typed.
+ */
+export function modeOptions(resources: TrainingResource[]): string[] {
+  const seen = new Set<string>();
+  const modes: string[] = [];
+  for (const mode of [...COMMON_MODES, ...resources.flatMap((entry) => entry.gameModes)]) {
+    const trimmed = mode.trim();
+    const key = asciiLower(trimmed);
+    if (trimmed === "" || seen.has(key)) continue;
+    seen.add(key);
+    modes.push(trimmed);
+  }
+  return modes;
 }
 
 /** Whether this entry is on ground the player has been playing. */
@@ -133,8 +155,8 @@ function comparatorFor(
   }
   // For you: the modes this player has actually been playing, then the fuller
   // shelf, which is the closest thing to authority the catalogue carries.
-  const mine = profile.gameModes.map((mode) => mode.toLowerCase());
-  const plays = (collection: Collection) => Number(mine.includes(collection.key.toLowerCase()));
+  const mine = profile.gameModes.map(asciiLower);
+  const plays = (collection: Collection) => Number(mine.includes(asciiLower(collection.key)));
   return (a, b) =>
     plays(b) - plays(a) || b.entries.length - a.entries.length || byName(a, b);
 }
@@ -151,7 +173,9 @@ export function collectionsOf(
   profile: TrainingProfile,
   sort: LibrarySort = "forYou",
 ): Collection[] {
-  const shelves = new Map<string, TrainingResource[]>();
+  // Keyed by the folded mode, so "1V1" and "1v1" are one shelf, as they are
+  // one chip and one filter; headed by the first spelling met.
+  const shelves = new Map<string, { key: string; entries: TrainingResource[] }>();
   const loose: TrainingResource[] = [];
 
   for (const resource of resources) {
@@ -160,12 +184,12 @@ export function collectionsOf(
       loose.push(resource);
       continue;
     }
-    const shelf = shelves.get(mode);
-    if (shelf) shelf.push(resource);
-    else shelves.set(mode, [resource]);
+    const shelf = shelves.get(asciiLower(mode));
+    if (shelf) shelf.entries.push(resource);
+    else shelves.set(asciiLower(mode), { key: mode, entries: [resource] });
   }
 
-  const collections: Collection[] = [...shelves].map(([key, entries]) => ({
+  const collections: Collection[] = [...shelves.values()].map(({ key, entries }) => ({
     key,
     entries: orderEntries(entries, sort, profile),
   }));

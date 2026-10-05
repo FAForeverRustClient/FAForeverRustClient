@@ -20,6 +20,7 @@ import type { GuideSubmission, GuidesCommand, GuidesState } from "../../ipc/bind
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { settledNotice, writeFailure } from "./queueNotices";
 import { Markdown } from "./markdown";
 import { RejectDialog } from "./RejectDialog";
 import { levelLabel, topicLabel } from "./trainingPresentation";
@@ -38,7 +39,8 @@ export function GuidesQueue({ state, discordUrl }: Props) {
   const [rejecting, setRejecting] = useState<GuideSubmission | null>(null);
 
   const busy = busyNumber(state);
-  const failure = state.write.type === "failed" ? state.write.payload : null;
+  const failure = writeFailure(state);
+  const settled = settledNotice(state);
   const me = state.auth.type === "signedIn" ? state.auth.payload.identity : null;
 
   // The gate is being signed in, not being a collaborator.
@@ -98,6 +100,20 @@ export function GuidesQueue({ state, discordUrl }: Props) {
             number: failure.number,
             reason: failure.reason,
           })}
+        </p>
+      )}
+
+      {settled && (
+        // The row a verdict settles leaves the list at once, so without a
+        // word here a working accept looked exactly like nothing happening.
+        <p className="training-queue-settled" role="status">
+          <Icon name="check" size={14} />{" "}
+          {t(
+            settled.verdict === "accepted"
+              ? "training.queue.acceptedNotice"
+              : "training.queue.declinedNotice",
+            { number: settled.number },
+          )}
         </p>
       )}
 
@@ -252,6 +268,7 @@ function NoAccess({ state, discordUrl }: { state: GuidesState; discordUrl: strin
               <code>{userCode}</code>
               <Button
                 title={t("training.queue.copyCode")}
+                aria-label={t("training.queue.copyCode")}
                 onClick={() => void navigator.clipboard?.writeText(userCode)}
               >
                 <Icon name="copy" size={14} />
