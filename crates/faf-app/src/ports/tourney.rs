@@ -1,6 +1,6 @@
 //! faf-tournaments API boundary.
 //!
-//! FAF's own tournament service (`tournaments.doodlepros.com`), which replaced
+//! FAF's own tournament service (`tournaments.faforever.com`), which replaced
 //! the Challonge bridge this client first shipped against. Every endpoint
 //! accepts `Authorization: Bearer <FAF access token>`, so the same
 //! `TokenStore` that feeds every other adapter feeds this one.

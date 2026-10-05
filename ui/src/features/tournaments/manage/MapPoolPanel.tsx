@@ -304,7 +304,7 @@ export function ManageLink({ event, onOpen }: ManageLinkProps) {
       <p className="muted">{t("tournaments.manage.explanation")}</p>
       <Button
         onClick={() =>
-          onOpen(`https://tournaments.doodlepros.com/t/${encodeURIComponent(event.id)}`)
+          onOpen(`https://tournaments.faforever.com/t/${encodeURIComponent(event.id)}`)
         }
       >
         {t("tournaments.manage.open")}
