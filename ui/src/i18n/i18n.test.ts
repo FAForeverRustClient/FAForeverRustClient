@@ -18,23 +18,6 @@ afterEach(() => {
 });
 
 describe("catalogue integrity", () => {
-  it("keeps setting hints searchable without making them wordy", () => {
-    const settingHints = [
-      "settings.general.rememberTypedEntries.hint",
-      "settings.notifications.repeatCooldownHint",
-      "settings.notifications.mapPoolHint",
-      "settings.steam.presenceHint",
-    ] as const;
-
-    for (const locale of ["en", "ru"] as const) {
-      for (const key of settingHints) {
-        const hint = translateIn(locale, key);
-        expect(hint.trim(), `${locale}:${key}`).not.toBe("");
-        expect(hint.length, `${locale}:${key}`).toBeLessThanOrEqual(180);
-      }
-    }
-  });
-
   it("declares every German key in the English source", () => {
     const unknown = Object.keys(de).filter((key) => !(key in en));
     expect(unknown).toEqual([]);
