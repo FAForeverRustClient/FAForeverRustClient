@@ -575,7 +575,7 @@ export const en = {
     "Automatically sign in with your saved account whenever the client starts.",
   "settings.general.rememberTypedEntries.label": "Suggest what you typed before",
   "settings.general.rememberTypedEntries.hint":
-    "Suggests previous entries, such as lobby titles. Off by default; the client restores your last title.",
+    "Lets the window offer entries you have typed into a field before, such as the host dialog's game title. Off by default: the client already puts your last title back in that field.",
   "settings.general.language.label": "Language",
   "settings.general.language.hint":
     "Applies immediately. Untranslated text stays in English.",
@@ -1423,9 +1423,9 @@ export const en = {
   "settings.notifications.volumeHint": "Adjust alert volume without changing game audio.",
   "settings.notifications.volumeAria": "Notification sound volume",
   "settings.notifications.repeatCooldown": "Repeat after (seconds)",
-  "settings.notifications.repeatCooldownHint": "Repeated alerts stay in the list without popping up or playing a sound. 0 repeats every alert.",
+  "settings.notifications.repeatCooldownHint": "Another notification of the same kind within this time stays in the list but does not pop up or play a sound. 0 announces every one.",
   "settings.notifications.mapPool": "New map pools",
-  "settings.notifications.mapPoolHint": "Announced at login when a queue's map pool changes. Uncheck a queue to mute these notices.",
+  "settings.notifications.mapPoolHint": "Announced at login when a matchmaker queue has a new map pool. Untick a queue to stop hearing about it.",
   // The shipped tones, quietest first. Synthesised rather than sampled, so
   // "shipped" costs no files: see notificationSound.ts.
   "settings.notifications.sound.silent": "Silent",
@@ -1718,7 +1718,7 @@ export const en = {
   "settings.discord.disallowJoinsVia": "Disallow joins via Discord",
   "settings.discord.disallowJoinsViaHint": "Keep the status visible, but remove the Join button so nobody can enter your lobby from Discord.",
   "settings.steam.presence": "Steam status",
-  "settings.steam.presenceHint": "During a game, Steam shows Forged Alliance and counts playtime; the open client does not. Requires Steam and Forged Alliance in your library. Off by default.",
+  "settings.steam.presenceHint": "While you are in a game, Steam shows you playing Forged Alliance and counts the hours; having the client open does not count. Needs Steam running and Forged Alliance in your Steam library. Off unless you turn it on.",
   "settings.steam.confirmButton": "Turn on",
   "settings.steam.confirmTitle": "Turn on the Steam status?",
   "settings.steam.confirmBody": "The client will load Valve's closed-source Steamworks library while you play. It tells Steam when you play Forged Alliance on FAF, and we cannot verify what else the library itself might send to Valve.",
