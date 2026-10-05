@@ -81,7 +81,7 @@ pub const DECLINE_MARKER: &str = "Declined from the FAF client's Training tab.";
 /// exists for. The title prefix is written by both paths (the client and the
 /// issue template) and survives, so either one is enough.
 pub fn is_submission_issue(title: &str, labels: &[&str]) -> bool {
-    if labels.iter().any(|label| *label == SUBMISSION_LABEL) {
+    if labels.contains(&SUBMISSION_LABEL) {
         return true;
     }
     let title = title.trim_start();
