@@ -8672,6 +8672,13 @@ fn writes_the_frontend_conformance_fixture() {
         cases: cases(),
         helpers: helper_fixture(),
     };
+    // Through `Value` on the way out, whose objects keep their keys sorted.
+    // Several slices hold `HashMap`s (generated map previews, replay details,
+    // resolved maps), which serialise in an order that changes with every
+    // process, so the file differed on every run and CI's drift check failed
+    // on a fixture nobody had changed. The frontend compares with `toEqual`,
+    // which does not care about key order.
+    let fixture = serde_json::to_value(&fixture).expect("the fixture must serialise");
     let json = serde_json::to_string_pretty(&fixture).expect("the fixture must serialise");
 
     let target =
