@@ -36,9 +36,12 @@ use crate::infra::jsonapi::{bounded_document_body, request_error};
 use crate::infra::session::TokenStore;
 use crate::ports::{RequestError, TourneyPort};
 
-/// The tournament team's deployment. Overridable so a developer can point at a
-/// local `node server.js` without rebuilding.
-const DEFAULT_API_BASE: &str = "https://tournaments.doodlepros.com";
+/// The tournament site as FAF hosts it (FAForever/gitops-stack,
+/// `apps/faf-tournaments`); it ran on `tournaments.doodlepros.com` until
+/// October 2026. Overridable so a developer can point at a local
+/// `node server.js`, or at the test cluster's `tournaments.faforever.xyz`,
+/// without rebuilding.
+const DEFAULT_API_BASE: &str = "https://tournaments.faforever.com";
 
 #[derive(Debug, Clone)]
 pub struct TourneyConfig {
@@ -1270,10 +1273,10 @@ mod tests {
 
     #[test]
     fn paths_hang_off_the_configured_base() {
-        let deployed = client("https://tournaments.doodlepros.com");
+        let deployed = client("https://tournaments.faforever.com");
         assert_eq!(
             deployed.url("t/e1a2b/signup").unwrap().as_str(),
-            "https://tournaments.doodlepros.com/api/t/e1a2b/signup"
+            "https://tournaments.faforever.com/api/t/e1a2b/signup"
         );
         // A base with a trailing slash is the same base.
         assert_eq!(
@@ -1309,7 +1312,7 @@ mod tests {
     #[test]
     fn an_id_cannot_escape_its_path_segment() {
         // Ids reach this layer from state that has been through TypeScript.
-        let url = client("https://tournaments.doodlepros.com")
+        let url = client("https://tournaments.faforever.com")
             .url(&format!("t/{}/signup", encode("../../admin")))
             .unwrap();
         assert_eq!(url.path(), "/api/t/..%2F..%2Fadmin/signup");
@@ -1319,7 +1322,7 @@ mod tests {
     async fn every_route_needs_a_session() {
         // The service shows an anonymous caller nothing, so failing here is
         // better than a request that can only come back empty.
-        let error = client("https://tournaments.doodlepros.com")
+        let error = client("https://tournaments.faforever.com")
             .list()
             .await
             .expect_err("no token");
