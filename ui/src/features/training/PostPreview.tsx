@@ -123,7 +123,7 @@ export function PostPreview({ post, destination, submit, onSubmit, onDelivered }
               void openHttpsUrl(post.url);
             }}
           >
-            <Icon name="external" size={15} />{" "}
+            <Icon name={toDiscord ? "discord" : "external"} size={15} />{" "}
             {t(toDiscord ? "training.post.openDiscord" : "training.post.open")}
           </Button>
         ) : sent ? null : (

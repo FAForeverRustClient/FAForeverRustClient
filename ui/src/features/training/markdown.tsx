@@ -32,8 +32,8 @@ export type ListItem = { text: string; children: ListBlock[] };
 
 export type Align = "left" | "center" | "right" | null;
 
-type Block =
-  | { kind: "heading"; level: 1 | 2 | 3; text: string }
+export type Block =
+  | { kind: "heading"; level: 1 | 2 | 3 | 4; text: string }
   | { kind: "paragraph"; text: string }
   | ListBlock
   | { kind: "quote"; text: string }
@@ -155,16 +155,18 @@ export function parseBlocks(source: string): Block[] {
     const heading = /^(#{1,6})\s+(.*)$/.exec(line);
     if (heading) {
       flushParagraph();
-      // Three levels. `#` used to collapse into `##`, which was defensible
+      // Four levels. `#` used to collapse into `##`, which was defensible
       // while the destination was a forum post whose title was a separate
       // field: there was nothing for the top level to mean. A guide is a
       // document of its own, so its sections need to look like sections and a
-      // `#` has to outrank a `##`. Deeper than three still flattens, because a
-      // preview pane is not a document outline.
+      // `#` has to outrank a `##`. The wiki's guides go one deeper than that
+      // (`### Basics`, then `#### Mass` and `#### Energy` under it), and
+      // flattening the fourth into the third put a topic and its own parts at
+      // the same rank. Deeper than four still flattens.
       const depth = heading[1].length;
       blocks.push({
         kind: "heading",
-        level: depth === 1 ? 1 : depth === 2 ? 2 : 3,
+        level: Math.min(depth, 4) as 1 | 2 | 3 | 4,
         text: heading[2].trim(),
       });
       index += 1;
@@ -226,22 +228,54 @@ export function parseBlocks(source: string): Block[] {
   return blocks;
 }
 
-/** Inline spans: bold, italic, code, images and links. */
+/** Inline spans: bold, italic, code, images, links and line breaks. */
 type Span =
   | { kind: "text"; text: string }
   | { kind: "strong"; text: string }
   | { kind: "em"; text: string }
   | { kind: "code"; text: string }
-  | { kind: "image"; text: string; src: string }
-  | { kind: "link"; text: string; href: string };
+  | { kind: "image"; text: string; src: string; icon?: boolean }
+  | { kind: "link"; text: string; href: string }
+  | { kind: "break" };
 
+/**
+ * The inline syntax read, in the order it is tried. The last two are the only
+ * HTML ever honoured, because they are the two the wiki's own pages use and
+ * Markdown has no way to say either: a line break inside a table cell, and an
+ * image at a stated size (the resource icons in front of "Mass" and "Energy").
+ * Both become React elements; nothing here is ever parsed as markup.
+ */
 const INLINE =
-  /(`[^`]+`)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(!\[[^\]]*\]\([^)\s]+\))|(\[[^\]]+\]\([^)\s]+\))/;
+  /(`[^`]+`)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(!\[[^\]]*\]\([^)\s]+\))|(\[[^\]]+\]\([^)\s]+\))|(<\/?br\s*\/?>)|(<img\s[^>]*>)/i;
+
+/** An HTML image tag's `src`, its `width` when it states one, and its `alt`. */
+const IMG_SRC = /\ssrc\s*=\s*["']([^"']+)["']/i;
+const IMG_WIDTH = /\swidth\s*=\s*["']?(\d+)/i;
+const IMG_ALT = /\salt\s*=\s*["']([^"']*)["']/i;
+
+/**
+ * An address as the guide wrote it, made absolute.
+ *
+ * Guides copied from a site keep that site's own relative links (the wiki's
+ * `/Play/Windows-Install`), which mean nothing in the client. With the page
+ * the guide came from as the base they point back where they always did.
+ * Without a base, or for anything that does not resolve to ordinary HTTPS,
+ * the answer is `null` and the caller leaves the text as typed.
+ */
+export function resolveAddress(address: string, base?: string): string | null {
+  const direct = optionalHttpsUrl(address);
+  if (direct || !base) return direct;
+  try {
+    return optionalHttpsUrl(new URL(address, base).toString());
+  } catch {
+    return null;
+  }
+}
 
 /** A character that makes an underscore next to it part of a word. */
 const WORD_CHAR = /[\p{L}\p{N}_]/u;
 
-export function parseSpans(text: string): Span[] {
+export function parseSpans(text: string, base?: string): Span[] {
   const spans: Span[] = [];
   let rest = text;
   // Adjacent text is kept as one span, so declining a marker below does not
@@ -277,7 +311,24 @@ export function parseSpans(text: string): Span[] {
     if (match.index > 0) {
       pushText(rest.slice(0, match.index));
     }
-    if (token.startsWith("`")) {
+    if (/^<\/?br/i.test(token)) {
+      spans.push({ kind: "break" });
+    } else if (/^<img/i.test(token)) {
+      const src = IMG_SRC.exec(token);
+      const resolved = src ? resolveAddress(src[1], base) : null;
+      if (resolved) {
+        const width = Number(IMG_WIDTH.exec(token)?.[1] ?? 0);
+        spans.push({
+          kind: "image",
+          text: IMG_ALT.exec(token)?.[1] ?? "",
+          src: resolved,
+          // A picture sized like a glyph is one, and sits in the line.
+          icon: width > 0 && width <= 32,
+        });
+      } else {
+        pushText(token);
+      }
+    } else if (token.startsWith("`")) {
       spans.push({ kind: "code", text: token.slice(1, -1) });
     } else if (token.startsWith("**") || token.startsWith("__")) {
       spans.push({ kind: "strong", text: token.slice(2, -2) });
@@ -285,7 +336,7 @@ export function parseSpans(text: string): Span[] {
       const image = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(token);
       // The same rule as a link: only ordinary HTTPS is fetched. Anything
       // else stays as typed, so the author sees it was not taken.
-      const src = image ? optionalHttpsUrl(image[2]) : null;
+      const src = image ? resolveAddress(image[2], base) : null;
       if (image && src) {
         spans.push({ kind: "image", text: image[1], src });
       } else {
@@ -297,7 +348,7 @@ export function parseSpans(text: string): Span[] {
       // loses its href: the same rule the rest of the client applies to a URL
       // it did not write, and the reason this preview never produces an
       // anchor it has not validated.
-      const href = link ? optionalHttpsUrl(link[2]) : null;
+      const href = link ? resolveAddress(link[2], base) : null;
       if (link && href) {
         spans.push({ kind: "link", text: link[1], href });
       } else {
@@ -312,9 +363,11 @@ export function parseSpans(text: string): Span[] {
   return spans;
 }
 
-function renderSpans(text: string): ReactNode[] {
-  return parseSpans(text).map((span, index) => {
+export function renderSpans(text: string, base?: string): ReactNode[] {
+  return parseSpans(text, base).map((span, index) => {
     switch (span.kind) {
+      case "break":
+        return <br key={index} />;
       case "strong":
         return <strong key={index}>{span.text}</strong>;
       case "em":
@@ -333,7 +386,7 @@ function renderSpans(text: string): ReactNode[] {
             title={span.text || undefined}
             loading="lazy"
             referrerPolicy="no-referrer"
-            className="training-markdown-image"
+            className={span.icon ? "training-markdown-icon" : "training-markdown-image"}
           />
         );
       case "link": {
@@ -369,14 +422,95 @@ function renderSpans(text: string): ReactNode[] {
   });
 }
 
-function renderList(block: ListBlock, key: number): ReactNode {
+function renderList(block: ListBlock, key: number, base?: string): ReactNode {
   const items = block.items.map((item, itemIndex) => (
     <li key={itemIndex}>
-      {renderSpans(item.text)}
-      {item.children.map((child, childIndex) => renderList(child, childIndex))}
+      {renderSpans(item.text, base)}
+      {item.children.map((child, childIndex) => renderList(child, childIndex, base))}
     </li>
   ));
   return block.ordered ? <ol key={key}>{items}</ol> : <ul key={key}>{items}</ul>;
+}
+
+/**
+ * A paragraph that is nothing but one picture, as a figure.
+ *
+ * That is how a guide puts a screenshot between two paragraphs, and drawn
+ * inline it sat on a text line with a line's spacing around it. As a figure it
+ * gets the room of a block and its alt text as the caption under it, which is
+ * where the guide's author put the explanation.
+ */
+function soleImage(text: string, base?: string) {
+  const spans = parseSpans(text.trim(), base);
+  const only = spans.length === 1 ? spans[0] : null;
+  return only && only.kind === "image" && !only.icon ? only : null;
+}
+
+/**
+ * One block as React nodes. Headings start at h3, because this renders inside
+ * a panel that already has a heading of its own and starting at h1 would claim
+ * the page's outline; the third and fourth levels share h5, since a preview
+ * pane is not an outline. The guide reader draws its own headings.
+ */
+export function renderBlock(block: Block, key: number, base?: string): ReactNode {
+  switch (block.kind) {
+    case "heading": {
+      if (block.level === 1) return <h3 key={key}>{renderSpans(block.text, base)}</h3>;
+      if (block.level === 2) return <h4 key={key}>{renderSpans(block.text, base)}</h4>;
+      return <h5 key={key}>{renderSpans(block.text, base)}</h5>;
+    }
+    case "paragraph": {
+      const figure = soleImage(block.text, base);
+      if (figure) {
+        return (
+          <figure key={key} className="training-markdown-figure">
+            <img src={figure.src} alt={figure.text} loading="lazy" referrerPolicy="no-referrer" />
+            {/* A file name is what an editor fills the alt text with when
+                nobody wrote one, and it is not a caption. */}
+            {figure.text && !/\.(png|jpe?g|gif|webp)$/i.test(figure.text) && (
+              <figcaption>{figure.text}</figcaption>
+            )}
+          </figure>
+        );
+      }
+      return <p key={key}>{renderSpans(block.text, base)}</p>;
+    }
+    case "quote":
+      return <blockquote key={key}>{renderSpans(block.text, base)}</blockquote>;
+    case "code":
+      return <pre key={key}>{block.text}</pre>;
+    case "list":
+      return renderList(block, key, base);
+    case "table":
+      // Wrapped so a wide table scrolls inside the guide instead of widening
+      // the pane it sits in.
+      return (
+        <div key={key} className="training-markdown-table">
+          <table>
+            <thead>
+              <tr>
+                {block.header.map((cell, column) => (
+                  <th key={column} style={{ textAlign: block.align[column] ?? undefined }}>
+                    {renderSpans(cell, base)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {row.map((cell, column) => (
+                    <td key={column} style={{ textAlign: block.align[column] ?? undefined }}>
+                      {renderSpans(cell, base)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+  }
 }
 
 /** Render the supported subset of `source` as React nodes. */
@@ -384,55 +518,7 @@ export function Markdown({ source, className }: { source: string; className?: st
   const blocks = parseBlocks(source);
   return (
     <div className={className ? `training-markdown ${className}` : "training-markdown"}>
-      {blocks.map((block, index) => {
-        switch (block.kind) {
-          case "heading": {
-            // h3/h4/h5 rather than h1/h2/h3: this renders inside a panel that
-            // already has a heading of its own, so starting at h1 would claim
-            // the page's outline.
-            if (block.level === 1) return <h3 key={index}>{renderSpans(block.text)}</h3>;
-            if (block.level === 2) return <h4 key={index}>{renderSpans(block.text)}</h4>;
-            return <h5 key={index}>{renderSpans(block.text)}</h5>;
-          }
-          case "paragraph":
-            return <p key={index}>{renderSpans(block.text)}</p>;
-          case "quote":
-            return <blockquote key={index}>{renderSpans(block.text)}</blockquote>;
-          case "code":
-            return <pre key={index}>{block.text}</pre>;
-          case "list":
-            return renderList(block, index);
-          case "table":
-            // Wrapped so a wide table scrolls inside the guide instead of
-            // widening the pane it sits in.
-            return (
-              <div key={index} className="training-markdown-table">
-                <table>
-                  <thead>
-                    <tr>
-                      {block.header.map((cell, column) => (
-                        <th key={column} style={{ textAlign: block.align[column] ?? undefined }}>
-                          {renderSpans(cell)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {block.rows.map((row, rowIndex) => (
-                      <tr key={rowIndex}>
-                        {row.map((cell, column) => (
-                          <td key={column} style={{ textAlign: block.align[column] ?? undefined }}>
-                            {renderSpans(cell)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            );
-        }
-      })}
+      {blocks.map((block, index) => renderBlock(block, index))}
     </div>
   );
 }

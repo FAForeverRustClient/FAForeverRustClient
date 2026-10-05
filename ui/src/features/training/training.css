@@ -29,30 +29,75 @@
   outline-offset: 2px;
 }
 
-.training-header {
+/* The section tabs are the top of the page, with the catalogue's state at the
+   far end of their rule. One line across the page, as the library's kind tabs
+   and their tally are: the strip's own border is dropped so the rule does not
+   stop where the last tab does. */
+.training-tabs-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.training-header h2 {
-  margin: var(--space-1) 0 0;
-  font-size: 20px;
-  letter-spacing: -0.02em;
-}
-
-.training-header-actions {
-  display: flex;
-  align-items: center;
   gap: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
 }
 
+.training-section-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.training-tabs-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: 6px;
+}
+
+/* A square ghost button for one glyph: refresh, here. */
+.training-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.training-icon-button:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.training-icon-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.training-icon-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+@media (max-width: 900px) {
+  .training-tabs-tools .training-source {
+    display: none;
+  }
+}
+
+/* The replay detail's eyebrow: small capitals with tracking, over a title. */
 .training-eyebrow {
   color: var(--color-muted);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 650;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
@@ -78,23 +123,33 @@
 
 /* ── hero ──────────────────────────────────────────────────────────── */
 
+/* The replay detail's hero: the headline and the way in on top, and under a
+   hairline the facts it rests on, bleeding to the panel's edges. */
 .training-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  gap: clamp(20px, 4vw, 44px);
-  padding: clamp(20px, 3vw, 36px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.training-hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: clamp(20px, 3vw, 32px) clamp(20px, 3vw, 32px) 24px;
 }
 
 .training-hero-copy h2 {
-  margin: var(--space-2) 0 var(--space-3);
-  font-size: clamp(22px, 2.4vw, 30px);
+  margin: 6px 0 10px;
+  font-size: 30px;
+  font-weight: 700;
   line-height: 1.15;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.01em;
 }
 
 .training-hero-lead {
   margin: 0;
-  max-width: 62ch;
+  max-width: 64ch;
   color: var(--color-muted);
   font-size: 14px;
   line-height: 1.6;
@@ -103,12 +158,24 @@
 .training-hero-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
+  gap: var(--space-2) var(--space-3);
+  margin-top: 20px;
+}
+
+.training-hero-actions .btn-primary {
+  min-height: 40px;
+  padding-inline: 18px;
+  font-size: 14px;
+}
+
+/* Says the button leaves the client, small and after the label, the way a
+   link to another site is marked anywhere else. */
+.training-hero-external {
+  color: var(--color-subtle);
 }
 
 .training-hero-nudge {
-  margin-top: var(--space-3);
+  margin-top: 14px;
   padding: 0;
   color: var(--color-muted);
   font: inherit;
@@ -124,75 +191,134 @@
   color: var(--color-text);
 }
 
-.training-hero-profile {
-  padding: var(--space-4);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+/* What the recommendations rest on: a heading line, then the facts strip. */
+.training-basis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 16px clamp(20px, 3vw, 32px) 20px;
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+  border-top: 1px solid var(--color-border);
 }
 
-.training-hero-profile h3 {
-  margin: 0 0 var(--space-3);
+.training-basis-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px var(--space-4);
+}
+
+.training-basis-head h3 {
+  margin: 0;
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 650;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
-.training-profile-block + .training-profile-block {
-  margin-top: var(--space-3);
+.training-basis-head > span {
+  font-size: 12px;
 }
 
-.training-profile-block h4 {
-  margin: 0 0 6px;
+/* Label over value, a hairline between each, no padding at the strip's start:
+   the replay detail's facts, one row of them. */
+.training-basis-facts {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: var(--space-3);
+  margin: 0;
+}
+
+.training-basis-facts > div {
+  min-width: 0;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--color-border);
+}
+
+.training-basis-facts > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.training-basis-facts dt,
+.training-basis-label {
+  margin-bottom: 3px;
   color: var(--color-subtle);
   font-size: 11px;
   font-weight: 650;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
-/* Five numbers a reader compares against each other. A row of them ran off the
-   panel and the ellipsis hid the queue ratings, which are the interesting half:
-   global says what somebody is called, the queue ratings say what they are. */
-.training-rating-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-  gap: 6px var(--space-3);
+.training-basis-facts dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.training-basis-facts dd.is-unknown {
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* The maps as the replay list shows a map: the preview, then the name. */
+.training-basis-maps {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
+.training-basis-maps .training-basis-label {
+  margin: 0;
+}
+
+.training-basis-maps > .muted {
+  font-size: 13px;
+}
+
+.training-basis-maps ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.training-rating-grid li {
-  display: flex;
-  flex-direction: column;
+.training-basis-maps li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   min-width: 0;
-}
-
-.training-rating-grid span {
-  color: var(--color-muted);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.training-rating-grid strong {
-  font-size: 15px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-}
-
-.training-profile-empty {
-  margin: 0;
+  max-width: 260px;
+  padding: 3px 10px 3px 3px;
   font-size: 13px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
-.training-hero-basis {
-  margin: var(--space-4) 0 0;
-  font-size: 11px;
-  line-height: 1.5;
+.training-basis-maps li > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.training-basis-map-thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  object-fit: cover;
+  color: var(--color-muted);
+  border-radius: var(--radius-sm);
 }
 
 /* ── sections ──────────────────────────────────────────────────────── */
@@ -484,50 +610,93 @@
   outline-offset: -2px;
 }
 
-/* The tile's shape follows what goes in it.
+/* One frame for every picture: 16:9, whatever goes in it.
 
-   Square by default, because FAF map previews are square and they are what a
-   build order is recognised by. A video frame is 16:9 and gets a tile that is.
-   One shape for both meant one of them was always framed in grey: the 4:3 box
-   this started as drew a bar down each side of every map preview in the grid,
-   which is a border made of nothing on the majority of the cards. */
-.training-card-art {
+   The library holds two shapes of picture, square map previews and 16:9
+   video stills, and a grid of two tile shapes is ragged however it is lined
+   up. So the frame is fixed and the picture is shown whole inside it: a still
+   fills it exactly, and a map preview sits in the middle with a blurred,
+   dimmed copy of itself filling the sides. Nothing is cropped, and the sides
+   are the map's own colours rather than a grey border. */
+.training-art {
   position: relative;
+  isolation: isolate;
   display: block;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
 }
 
-.training-card-art.is-wide {
-  aspect-ratio: 16 / 9;
+.training-art-backdrop {
+  position: absolute;
+  inset: -12px;
+  z-index: -1;
+  width: calc(100% + 24px);
+  height: calc(100% + 24px);
+  object-fit: cover;
+  filter: blur(14px) saturate(1.1);
+  opacity: 0.55;
 }
 
-/* `cover` rather than `contain`. A map preview meets this box exactly and is
-   not touched; a 16:9 video still gives up its far edges, which carry the
-   channel's furniture rather than the subject. Either way the card is a
-   picture rather than a picture inside a frame of grey. */
-.training-card-image {
+.training-art-image {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
-/* Nothing to show. Half the catalogue is a link with no picture behind it, and
-   at this tile size a filled grey slab under a small glyph turns the shelf
-   into a wall of grey rectangles. An outline on the page's own ground still
-   says where the card is without painting an absence as a panel. */
-.training-card-empty {
+/* No picture, or every one tried has gone: a drawn cover. Its title on a tint
+   shared by everything one author wrote, so a series reads as one. */
+.training-art.is-cover {
+  container-type: inline-size;
   display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  color: var(--color-border-strong);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 4px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  text-align: left;
+  background:
+    radial-gradient(120% 90% at 100% 0%, hsl(var(--cover-hue) 55% 42% / 0.55), transparent 60%),
+    linear-gradient(160deg, hsl(var(--cover-hue) 35% 24%), hsl(var(--cover-hue) 30% 13%));
+  border: 1px solid hsl(var(--cover-hue) 30% 30% / 0.6);
+}
+
+.training-art-cover-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: hsl(var(--cover-hue) 40% 82%);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* Sized to the tile rather than the page, and two lines at most: the full
+   title is in the caption under the card, and a third line pushed the author
+   into it on the narrowest tiles. */
+.training-art-cover-title {
+  display: -webkit-box;
+  align-self: end;
+  overflow: hidden;
+  color: hsl(var(--cover-hue) 25% 96%);
+  font-size: clamp(13px, 7.4cqi, 20px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  text-wrap: balance;
+}
+
+.training-art-cover-author {
+  overflow: hidden;
+  color: hsl(var(--cover-hue) 30% 78%);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* What a click costs, before the click.
@@ -1079,13 +1248,12 @@
 
 /* ── detail ────────────────────────────────────────────────────────── */
 
-/* An entry is a page in the tab, not a dialog over it. The prose keeps a
-   reading measure of its own further down; what the page gives back is the
-   width the three-pane run layout needs, which a dialog never had. */
+/* An entry is a page in the tab, not a dialog over it: the header card, then
+   the entry itself (video, run, guide), then what to read next. */
 .training-detail-page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .training-detail-back {
@@ -1093,6 +1261,7 @@
   align-items: center;
   gap: var(--space-2);
   align-self: flex-start;
+  margin-bottom: calc(-1 * var(--space-2));
   padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
@@ -1108,13 +1277,256 @@
   color: var(--color-text);
 }
 
-/* Without a dialog around it the prose would run the full width of the tab,
-   which is unreadable at this size. The panes that want the width (the flow
-   and the map) set their own. */
-.training-detail-page > .training-detail > header,
-.training-detail-page > .training-detail > .training-detail-guide,
-.training-detail-page > .training-detail > .training-detail-guide-problem {
+/* The replay detail, as a card: hero, facts strip, toolbar floor. */
+.training-detail-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* The entry's picture behind everything, dimmed from the left so the text in
+   front of it reads, and the picture itself in front of it, whole. */
+.training-detail-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4) 24px;
+  padding: 24px 28px;
+  overflow: hidden;
+}
+
+.training-detail-hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+/* The backdrop is the same art covering the hero, not framed in it. */
+.training-detail-hero-image.training-art {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+
+.training-detail-hero-image .training-art-image {
+  object-fit: cover;
+  opacity: 0.55;
+}
+
+.training-detail-hero-image .training-art-backdrop {
+  display: none;
+}
+
+.training-detail-hero-image.is-cover > * {
+  display: none;
+}
+
+.training-detail-hero-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-surface) 94%, transparent) 0%,
+      color-mix(in srgb, var(--color-surface) 82%, transparent) 45%,
+      color-mix(in srgb, var(--color-surface) 45%, transparent) 100%
+    ),
+    linear-gradient(0deg, color-mix(in srgb, var(--color-surface) 60%, transparent), transparent 55%);
+}
+
+.training-detail-art {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-bg) 60%, transparent);
+}
+
+/* An entry with no picture has nothing to show beside its title but its
+   title again, so the hero drops the frame and keeps the cover's tint behind
+   the text. */
+.training-detail-art.is-cover {
+  display: none;
+}
+
+.training-detail-hero:has(.training-detail-art.is-cover) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.training-detail-headtext {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.training-detail-headtext h2 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.training-detail-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--space-3);
+  min-height: 22px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.training-detail-kind,
+.training-detail-reviewed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.training-detail-reviewed {
+  color: var(--color-ok);
+  letter-spacing: normal;
+  text-transform: none;
+  font-size: 12px;
+}
+
+.training-detail-summary {
+  margin: 0;
   max-width: 70ch;
+  color: var(--color-text);
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.training-detail-byline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.training-detail-hero-action {
+  min-width: 180px;
+  min-height: 48px;
+  font-size: 15px;
+}
+
+/* Label over value, hairlines between, the replay detail's facts. */
+.training-detail-facts {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: var(--space-3);
+  margin: 0;
+  padding: 16px 28px;
+  border-top: 1px solid var(--color-border);
+}
+
+.training-detail-facts > div {
+  min-width: 0;
+  max-width: 360px;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--color-border);
+}
+
+.training-detail-facts > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.training-detail-facts dt {
+  margin-bottom: 3px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.training-detail-facts dd {
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The floor: every other action as a flat button in one row, hairlines
+   between them. */
+.training-detail-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 4px var(--space-2);
+  border-top: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-bg) 55%, var(--color-surface));
+}
+
+.training-detail-tool {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.training-detail-tool + .training-detail-tool::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 1px;
+  background: var(--color-border);
+}
+
+.training-detail-tool:hover {
+  background: var(--color-surface-hover);
+}
+
+.training-detail-tool:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.training-detail-tool > svg {
+  flex: none;
+  color: var(--color-muted);
+}
+
+@media (max-width: 1000px) {
+  .training-detail-hero {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+
+  .training-detail-hero-action {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
 }
 
 /* A replay link plays the game here rather than opening a browser, so it is
@@ -1126,56 +1538,15 @@
 }
 
 .training-markdown-replay::before {
-  content: "B6";
+  content: "\25B6";
   font-size: 11px;
   opacity: 0.7;
-}
-
-.training-detail-kind {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 3px var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-muted);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/* The kind and, when somebody vouched for it, who. */
-.training-detail-badges {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.training-detail-kind.training-reviewed {
-  color: var(--color-ok);
-  text-transform: none;
-  letter-spacing: 0;
 }
 
 .training-detail {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-.training-detail h3 {
-  margin: var(--space-2) 0 0;
-  font-size: clamp(18px, 2vw, 24px);
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-}
-
-.training-detail-summary {
-  margin: var(--space-3) 0 0;
-  color: var(--color-muted);
-  font-size: 14px;
-  line-height: 1.6;
 }
 
 /* Player and queue, the way a series is watched: what is playing on the left,
@@ -1259,14 +1630,6 @@
   width: 100%;
   height: 100%;
   border: 0;
-}
-
-.training-detail-guide {
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
-  font-size: 14px;
-  line-height: 1.7;
 }
 
 .training-detail-guide-problem {
@@ -1447,6 +1810,7 @@ div.training-detail-guide-problem p {
   }
 }
 
+/* A submission's tags, in the queue. */
 .training-detail-meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -1467,51 +1831,26 @@ div.training-detail-guide-problem p {
   font-size: 13px;
 }
 
-.training-detail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+/* What to read next: the library's own cards, on the library's own grid. */
+.training-related {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
 }
 
 .training-related h4 {
-  margin: 0 0 var(--space-2);
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  margin: 0 0 var(--space-3);
+  font-size: 15px;
+  letter-spacing: -0.01em;
 }
 
-.training-related ul {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.training-related-grid {
+  display: grid;
+  align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
 }
 
-.training-related button {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: 7px var(--space-2);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 13px;
-  background: none;
-  border: 0;
-  border-radius: var(--radius-sm);
-  text-align: left;
-  cursor: pointer;
-}
-
-.training-related button:hover {
-  background: var(--color-surface-hover);
-}
-
-/* Three heading levels that actually look like three. */
+/* Heading levels that look like the levels they are, in the editor preview. */
 .training-markdown h3 {
   margin: var(--space-4) 0 var(--space-2);
   font-size: 18px;
@@ -1536,6 +1875,279 @@ div.training-detail-guide-problem p {
 
 .training-markdown > :first-child {
   margin-top: 0;
+}
+
+/* ── the guide reader: the changelog's reading surface ─────────────── */
+
+/* The text at a reading measure, and its sections as a column beside it when
+   the reading area is wide enough for both: the changelog's layout, decided
+   by the area's own width rather than the window's, because the run layout
+   puts a guide in a column of its own. */
+.training-guide-frame {
+  container-type: inline-size;
+  container-name: training-guide;
+  min-width: 0;
+}
+
+.training-guide {
+  display: grid;
+  grid-template-columns: minmax(0, 80ch);
+  justify-content: space-between;
+  gap: 48px;
+  padding: 8px 4px 32px;
+}
+
+.training-markdown.training-guide-copy {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.training-markdown.training-guide-copy p,
+.training-markdown.training-guide-copy ul,
+.training-markdown.training-guide-copy ol {
+  margin: 0 0 14px;
+}
+
+.training-markdown.training-guide-copy li {
+  margin-bottom: 4px;
+}
+
+.training-markdown.training-guide-copy li::marker {
+  color: var(--color-subtle);
+}
+
+.training-markdown.training-guide-copy strong {
+  font-weight: 650;
+}
+
+.training-guide-copy .training-guide-heading {
+  margin: 36px 0 12px;
+  color: var(--color-text);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  scroll-margin-top: 16px;
+}
+
+.training-markdown.training-guide-copy > .training-guide-heading:first-child,
+.training-guide-jump + .training-guide-heading {
+  margin-top: 0;
+}
+
+/* A section: the size the changelog gives one, and a hairline over it so the
+   eye sees where the last one ended before it reads the next one's name. */
+.training-guide-copy .training-guide-heading.is-rank-1 {
+  padding-top: 28px;
+  font-size: 22px;
+  border-top: 1px solid var(--color-border);
+}
+
+.training-markdown.training-guide-copy > .training-guide-heading.is-rank-1:first-child,
+.training-guide-jump + .training-guide-heading.is-rank-1 {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.training-guide-copy .training-guide-heading.is-rank-2 {
+  margin-top: 28px;
+  font-size: 17px;
+}
+
+/* Anything deeper is a run-in label over its paragraph. */
+.training-guide-copy .training-guide-heading.is-rank-3 {
+  margin: 22px 0 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.training-guide-heading .training-markdown-icon {
+  margin-right: 6px;
+}
+
+/* A screenshot as a figure: the width of the text, its caption under it. */
+.training-markdown-figure {
+  margin: 20px 0 22px;
+}
+
+.training-markdown-figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.training-markdown-figure figcaption {
+  margin-top: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* A picture sized like a glyph sits in the line, at the line's size. */
+.training-markdown-icon {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  margin: 0 2px;
+  object-fit: contain;
+  vertical-align: -0.2em;
+}
+
+/* Quotes and callouts read as an aside, not as body text in grey. */
+.training-markdown.training-guide-copy blockquote {
+  margin: 18px 0;
+  padding: 10px 14px;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 0;
+  border-left: 3px solid var(--color-border-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.training-markdown.training-guide-copy .training-markdown-table {
+  margin: 16px 0 20px;
+}
+
+.training-markdown.training-guide-copy .training-markdown-table table {
+  min-width: 60%;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.training-markdown.training-guide-copy .training-markdown-table th,
+.training-markdown.training-guide-copy .training-markdown-table td {
+  padding: 7px 12px;
+}
+
+.training-markdown.training-guide-copy pre {
+  margin: 16px 0;
+  line-height: 1.55;
+}
+
+/* Sections as jump links above the text, when there is no room for a column. */
+.training-guide-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 24px;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.training-guide-jump-item {
+  min-height: 28px;
+  padding: 0 10px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease;
+}
+
+.training-guide-jump-item:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.training-guide-jump-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.training-guide-toc {
+  display: none;
+}
+
+@container training-guide (min-width: 940px) {
+  .training-guide.has-toc {
+    grid-template-columns: minmax(0, 80ch) 240px;
+  }
+
+  .training-guide.has-toc .training-guide-jump {
+    display: none;
+  }
+
+  /* Pinned beside the text as it scrolls, no taller than the tab. */
+  .training-guide-toc {
+    position: sticky;
+    top: 16px;
+    display: block;
+    align-self: start;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+}
+
+/* Lined up with the entries' text, not with the rail they hang from. */
+.training-guide-toc-title {
+  margin: 0 0 var(--space-2);
+  padding-left: 13px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.training-guide-toc ol {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--color-border);
+}
+
+/* The section being read is marked on the rail the list hangs from. */
+.training-guide-toc-item {
+  display: block;
+  width: 100%;
+  margin-left: -1px;
+  padding: 4px 0 4px 12px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  overflow-wrap: anywhere;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid transparent;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.training-guide-toc-item.is-part {
+  padding-left: 24px;
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.training-guide-toc-item:hover {
+  color: var(--color-text);
+}
+
+.training-guide-toc-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.training-guide-toc-item.is-active {
+  color: var(--color-text);
+  font-weight: 600;
+  border-left-color: var(--color-text);
 }
 
 /* ── contribute: editor beside its preview ─────────────────────────── */
@@ -2234,14 +2846,4 @@ div.training-detail-guide-problem p {
 
 .training-post-note {
   font-size: 11px;
-}
-
-@media (max-width: 900px) {
-  .training-hero {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .training-hero-profile {
-    order: -1;
-  }
 }

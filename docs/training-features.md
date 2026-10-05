@@ -270,14 +270,18 @@ and a game ending (which rescans local replays a moment later).
 Two values live in the catalogue's `links` block rather than in code, because
 neither should need a client release to change:
 
-- `discordUrl`: the training community's invite, `https://discord.gg/By9tNUAq8B`
-  in the seed. A manifest may replace it and inherits the seed's when it says
+- `discordUrl`: the invite to FAF's Discord, `https://discord.gg/By9tNUAq8B`
+  in the seed. It is the whole community server, so the hero's button is
+  labelled as Discord and as FAF's, not as a training community. A manifest may replace it and inherits the seed's when it says
   nothing; an empty value hides the button rather than sending anyone to a
   guess.
 - `trainers`: the training team's tiles (a top-level block, not part of
   `links`). Who coaches and whether they still coach is theirs to state.
-- `replayReviewUrl`: the forum category of past reviews, behind the hero's
-  "Read past reviews" button. `wikiUrl` is linked from the lessons section.
+- `replayReviewChannel`: the Discord review channel, behind the hero's
+  "past reviews on Discord" button as well as the request: reviews live there
+  and nowhere else. `replayReviewUrl` is read but no longer shown; it named a
+  forum help category that holds no reviews. `wikiUrl` is linked from the
+  lessons section.
 - `contributeUrl`: read but not used anywhere. Submissions go to the guides
   repository; only `contributeCategory` is still used, by the forum composer
   fallback for a build with no repository configured.

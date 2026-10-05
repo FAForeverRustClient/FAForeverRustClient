@@ -6,12 +6,19 @@
 // read the pinned template, fill it in, dig out the replay id). And the
 // community itself, because the client is a discovery layer over it and not a
 // replacement for it: the human half of training is not something a tab can do.
+//
+// Built the way the replay detail is: a headline block with the way in on it,
+// and under a hairline the facts it rests on, as one strip of labelled values
+// rather than a box of lists beside it.
 
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import type { TrainingLinks, TrainingProfile } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { MapThumbnail } from "../../shared/components/MapThumbnail";
+import { mapPresentation } from "../../shared/mapPresentation";
+import { useAppStore } from "../../store/store";
 
 interface Props {
   links: TrainingLinks;
@@ -19,8 +26,6 @@ interface Props {
   onRequestReview: () => void;
   /** Jump to the recommendation rail, for the "not sure where to start" line. */
   onShowRecommended: () => void;
-  /** Jump to the trainer tiles, or `null` when the catalogue names none. */
-  onFindTrainer: (() => void) | null;
   hasRecommendations: boolean;
 }
 
@@ -48,11 +53,14 @@ export function TrainingHero({
   profile,
   onRequestReview,
   onShowRecommended,
-  onFindTrainer,
   hasRecommendations,
 }: Props) {
   const { t } = useTranslation();
   const ratings = ratingEntries(profile, t);
+  // Past reviews live in the review channel itself: that is where they are
+  // asked for and answered, and there is no archive of them anywhere else.
+  // The invite is the fallback, for a catalogue that names no channel.
+  const reviewsUrl = links.replayReviewChannel || links.discordUrl;
 
   return (
     <section className="surface-panel training-hero">
@@ -65,25 +73,23 @@ export function TrainingHero({
           <Button variant="primary" onClick={onRequestReview}>
             <Icon name="replays" size={16} /> {t("training.hero.requestReview")}
           </Button>
-          {/* Only when there are tiles to scroll to. A button that jumps to an
-              empty section is worse than no button. */}
-          {onFindTrainer && (
-            <Button onClick={onFindTrainer}>
-              <Icon name="users" size={16} /> {t("training.hero.findTrainer")}
-            </Button>
-          )}
-          {/* Only drawn when the catalogue names an invite. An empty one would
-              be a button that goes nowhere, and a guessed one is worse. */}
+          {/* Named for where it goes. This is FAF's whole community server,
+              not a training room, and a button that only reveals it opens
+              Discord once it has been pressed is a surprise. Only drawn when
+              the catalogue names an invite: a guessed one is worse than none. */}
           {links.discordUrl && (
-            <Button onClick={() => void openHttpsUrl(links.discordUrl)}>
-              <Icon name="chat" size={16} /> {t("training.hero.joinDiscord")}
+            <Button
+              onClick={() => void openHttpsUrl(links.discordUrl)}
+              title={t("training.hero.openDiscordHint")}
+            >
+              <Icon name="discord" size={16} /> {t("training.hero.openDiscord")}
+              <Icon name="external" size={12} className="training-hero-external" />
             </Button>
           )}
-          {/* Reviews other players already asked for and got, which is often
-              the quickest answer and shows what a good request looks like. */}
-          {links.replayReviewUrl && (
-            <Button onClick={() => void openHttpsUrl(links.replayReviewUrl)}>
-              <Icon name="external" size={16} /> {t("training.hero.pastReviews")}
+          {reviewsUrl && (
+            <Button onClick={() => void openHttpsUrl(reviewsUrl)}>
+              <Icon name="discord" size={16} /> {t("training.hero.pastReviews")}
+              <Icon name="external" size={12} className="training-hero-external" />
             </Button>
           )}
         </div>
@@ -99,71 +105,84 @@ export function TrainingHero({
           recommendations below more than a random list. Shown rather than
           implied: a rail nobody can account for reads as noise.
 
-          Laid out as blocks rather than a description list, because the
-          contents are lists themselves. Five ratings and three map names on
-          one clipped line each was unreadable, and the ellipsis hid exactly
-          the part that differs between accounts. */}
-      <aside className="training-hero-profile">
-        <h3>{t("training.profile.title")}</h3>
+          The replay detail's facts strip: a label over each value, hairlines
+          between them, and the sentence saying where it was read from on the
+          strip's own heading line. */}
+      <section className="training-basis" aria-labelledby="training-basis-title">
+        <header className="training-basis-head">
+          <h3 id="training-basis-title">{t("training.profile.title")}</h3>
+          <span className="muted">
+            {profile.gamesSeen === 0
+              ? t("training.profile.noGames")
+              : t("training.profile.basis", { count: profile.gamesSeen })}
+          </span>
+        </header>
 
-        <section className="training-profile-block">
-          <h4>{t("training.profile.rating")}</h4>
+        <dl className="training-basis-facts">
           {ratings.length > 0 ? (
-            // A grid, because these are five separate numbers a reader
-            // compares against each other, not a sentence.
-            <ul className="training-rating-grid">
-              {ratings.map(([label, value]) => (
-                <li key={label}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
-                </li>
+            ratings.map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))
+          ) : (
+            <div>
+              <dt>{t("training.profile.rating")}</dt>
+              <dd className={profile.rating === null ? "is-unknown" : undefined}>
+                {profile.rating === null ? t("training.profile.unknown") : profile.rating}
+              </dd>
+            </div>
+          )}
+          <div className="training-basis-modes">
+            <dt>{t("training.profile.modes")}</dt>
+            <dd className={profile.gameModes.length === 0 ? "is-unknown" : undefined}>
+              {profile.gameModes.length === 0
+                ? t("training.profile.unknown")
+                : profile.gameModes.slice(0, 4).join(" · ")}
+            </dd>
+          </div>
+        </dl>
+
+        <div className="training-basis-maps">
+          <span className="training-basis-label">{t("training.profile.maps")}</span>
+          {profile.maps.length === 0 ? (
+            <span className="muted">{t("training.profile.unknown")}</span>
+          ) : (
+            <ul>
+              {profile.maps.slice(0, 3).map((map) => (
+                <RecentMap key={map} map={map} />
               ))}
             </ul>
-          ) : (
-            <p className="muted training-profile-empty">
-              {profile.rating === null ? t("training.profile.unknown") : profile.rating}
-            </p>
           )}
-        </section>
-
-        <section className="training-profile-block">
-          <h4>{t("training.profile.modes")}</h4>
-          {profile.gameModes.length === 0 ? (
-            <p className="muted training-profile-empty">{t("training.profile.unknown")}</p>
-          ) : (
-            <div className="training-card-tags">
-              {profile.gameModes.slice(0, 4).map((mode) => (
-                <span className="training-tag" key={mode}>
-                  {mode}
-                </span>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="training-profile-block">
-          <h4>{t("training.profile.maps")}</h4>
-          {profile.maps.length === 0 ? (
-            <p className="muted training-profile-empty">{t("training.profile.unknown")}</p>
-          ) : (
-            // Wrapped, not clipped. A map name is what a reader recognises the
-            // entry by, and half of one recognises nothing.
-            <div className="training-card-tags">
-              {profile.maps.slice(0, 3).map((map) => (
-                <span className="training-tag" key={map}>
-                  {map}
-                </span>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <p className="muted training-hero-basis">
-          {profile.gamesSeen === 0
-            ? t("training.profile.noGames")
-            : t("training.profile.basis", { count: profile.gamesSeen })}
-        </p>
-      </aside>
+        </div>
+      </section>
     </section>
+  );
+}
+
+/**
+ * One map the player has been on, as the replay list shows a map: its preview
+ * and its name.
+ *
+ * The profile names a vault map by the folder its replay recorded
+ * (`setons_clutch_-_faf_version.v0004`), which is an address rather than a
+ * name. The vault and the base-game table turn it into the one a player reads,
+ * the same lookup every other map label in the client goes through.
+ */
+function RecentMap({ map }: { map: string }) {
+  const vault = useAppStore((store) => store.state.maps.vault);
+  const name = mapPresentation(vault, map).displayName;
+  return (
+    <li title={name}>
+      <MapThumbnail
+        mapName={map}
+        vault={vault}
+        className="training-basis-map-thumb"
+        placeholderClassName="training-basis-map-thumb is-empty"
+        iconSize={14}
+      />
+      <span>{name}</span>
+    </li>
   );
 }

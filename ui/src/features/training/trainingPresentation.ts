@@ -55,12 +55,17 @@ export const BASIC_TOPICS: TrainingTopic[] = ["economy", "buildOrder", "micro", 
 /**
  * The modes the mode filter offers.
  *
- * The catalogue's modes are free text (a manifest can say `coop` or `nomads`),
- * so this is a convenience list rather than the set of legal values. The filter
+ * A mode is a matchmaker queue: "4v4" means the 4v4 queue, not any game with
+ * eight players in it. Seton's Clutch is its own tag beside them rather than
+ * a kind of 4v4, because it is a community format with its own slots, build
+ * orders and meta, and a player looking for it is not looking for the queue.
+ *
+ * The catalogue's modes are still free text (a manifest can say `nomads`), so
+ * this is a convenience list rather than the set of legal values. The filter
  * also accepts whatever the catalogue itself carries, which is where anything
  * not listed here comes from.
  */
-export const COMMON_MODES = ["1v1", "2v2", "3v3", "4v4", "custom", "coop"];
+export const COMMON_MODES = ["1v1", "2v2", "3v3", "4v4", "Seton's Clutch"];
 
 /**
  * The embedded player for a video, when the address is one that can be.
@@ -167,6 +172,73 @@ export function mapPreviewUrl(vault: VaultMap[], maps: string[]): string {
   if (!name) return "";
   const { thumbnailUrl } = mapPresentation(vault, name);
   return isGeneratedMapPlaceholderUrl(thumbnailUrl) ? "" : thumbnailUrl;
+}
+
+/**
+ * The map art an entry is about, at the size a tile or a run map wants.
+ *
+ * The catalogue's own picture first, when the entry is about one piece of
+ * ground: a build order names its map the way a player reads it ("Setons
+ * Clutch"), and that name can resolve to the wrong vault folder entirely. More
+ * than one vault map is called Seton's, and the one the name finds is a yellow
+ * remake rather than the map the build was played on. An `imageUrl` in the
+ * catalogue is the exact preview of the folder the author's replays were
+ * recorded on, so nothing has to guess.
+ */
+export function mapArtUrl(vault: VaultMap[], resource: TrainingResource): string {
+  // The backend fills an empty `imageUrl` with the video's still, so a build
+  // order on video carries one it never stated. That is a face cam, not ground.
+  const stated = resource.imageUrl && !isVideoStill(resource.imageUrl) ? resource.imageUrl : "";
+  if (stated && resource.maps.length > 0) return stated;
+  return mapPreviewUrl(vault, resource.maps);
+}
+
+/** Whether an address is a still YouTube publishes for a video. */
+function isVideoStill(url: string): boolean {
+  return /^https:\/\/(?:img\.youtube\.com|i\.ytimg\.com)\/vi\//.test(url);
+}
+
+/**
+ * Every picture a card could lead with, best first.
+ *
+ * A list rather than one address, because most of the library is a link to
+ * somebody else's video or page and any one of these can be gone: the card
+ * steps down the list as each fails, and lands on its drawn cover rather than
+ * on the browser's broken-picture glyph.
+ *
+ * A build order shows its map and never a video frame, even when its address
+ * is a video, which seven of them are: a still of somebody's face cam
+ * identifies the author, which the caption already says, while the map is
+ * what a reader recognises the entry by. Everything else leads with its own
+ * picture, then the frame YouTube publishes for it. A map is not guessed for
+ * those from the names they list: a channel that mostly plays Seton's is not a
+ * picture of Seton's, and a guide that should carry its map says so with an
+ * `imageUrl`.
+ */
+export function artCandidates(vault: VaultMap[], resource: TrainingResource): string[] {
+  const ordered =
+    resource.kind === "buildOrder"
+      ? [mapArtUrl(vault, resource)]
+      : [resource.imageUrl, videoThumbnailUrl(resource.url)];
+  return [...new Set(ordered.filter((url) => url !== ""))];
+}
+
+/**
+ * The hue a drawn cover is tinted with, the same for everything one author
+ * or source wrote.
+ *
+ * A series then reads as a series on the shelf (five parts of arma473's
+ * ladder guide in one colour, the wiki's three in another) without anybody
+ * maintaining a palette. Hashed rather than looked up, so a new author gets a
+ * colour of their own on the day they are catalogued.
+ */
+export function coverHue(resource: TrainingResource): number {
+  // An entry naming no author is keyed by its id's first word, which is the
+  // source the catalogue files it under (`wiki-…`, `forum-…`).
+  const source = resource.author || resource.id.split("-")[0];
+  let hash = 0;
+  for (const char of source) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return hash % 360;
 }
 
 export function kindLabel(kind: TrainingKind): MessageKey {

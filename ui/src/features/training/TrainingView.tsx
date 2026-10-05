@@ -269,12 +269,26 @@ export function TrainingView() {
 
   return (
     <div className="training-view" ref={viewRef} onScroll={onScroll}>
-      <header className="training-header">
-        <div>
-          <span className="training-eyebrow">{t("training.eyebrow")}</span>
-          <h2>{t("training.title")}</h2>
-        </div>
-        <div className="training-header-actions">
+      {/* No page title above the tabs. No other tab carries one, and the
+          sidebar already says where the reader is; the section tabs are the
+          top of the page, with the catalogue's state at the far end of their
+          rule, the way the library's tally rides its kind tabs. */}
+      <div className="training-tabs-row">
+        <SectionTabs
+          active={section}
+          ariaLabel={t("training.title")}
+          className="training-section-tabs"
+          idPrefix={SECTION_TABS_ID}
+          items={sections}
+          onChange={(next) => {
+            // An open entry belongs to the section it was opened from. Carrying
+            // it across to another tab would show a build order under
+            // "Trainers".
+            closeDetail();
+            setSection(next);
+          }}
+        />
+        <div className="training-tabs-tools">
           {/* Says which catalogue is on screen. A client running on the
               shipped seed shows a fraction of what a published manifest
               carries, and looking thin for no stated reason is worse than
@@ -288,25 +302,22 @@ export function TrainingView() {
                   : "training.source.bundled",
             )}
           </span>
-          <Button onClick={() => send({ type: "load" })} disabled={state.status.type === "loading"}>
-            <Icon name="refresh" size={15} /> {t("training.refresh")}
-          </Button>
+          <button
+            type="button"
+            className="training-icon-button"
+            onClick={() => send({ type: "load" })}
+            disabled={state.status.type === "loading"}
+            title={t("training.refresh")}
+            aria-label={t("training.refresh")}
+          >
+            <Icon
+              name="refresh"
+              size={15}
+              className={state.status.type === "loading" ? "spin" : undefined}
+            />
+          </button>
         </div>
-      </header>
-
-      <SectionTabs
-        active={section}
-        ariaLabel={t("training.title")}
-        idPrefix={SECTION_TABS_ID}
-        items={sections}
-        onChange={(next) => {
-          // An open entry belongs to the section it was opened from. Carrying
-          // it across to another tab would show a build order under
-          // "Trainers".
-          closeDetail();
-          setSection(next);
-        }}
-      />
+      </div>
 
       {failed && (
         <p className="surface training-state muted">
@@ -346,9 +357,6 @@ export function TrainingView() {
               onRequestReview={openBlankReview}
               onShowRecommended={() =>
                 railRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-              }
-              onFindTrainer={
-                state.trainers.length === 0 ? null : () => setSection("trainers")
               }
             />
 

@@ -72,7 +72,7 @@ export function TrainerTiles({ trainers, discordUrl, loading }: Props) {
         {!loading && openDiscord && (
           <div className="training-queue-actions">
             <Button variant="primary" onClick={openDiscord}>
-              <Icon name="chat" size={15} /> {t("training.trainers.openDiscord")}
+              <Icon name="discord" size={15} /> {t("training.trainers.openDiscord")}
             </Button>
           </div>
         )}
@@ -91,7 +91,7 @@ export function TrainerTiles({ trainers, discordUrl, loading }: Props) {
             with no link left the reader to find the server themselves. */}
         {openDiscord && (
           <Button onClick={openDiscord}>
-            <Icon name="chat" size={15} /> {t("training.trainers.openDiscord")}
+            <Icon name="discord" size={15} /> {t("training.trainers.openDiscord")}
           </Button>
         )}
       </header>

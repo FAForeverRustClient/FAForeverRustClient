@@ -3,7 +3,7 @@
 // prefix applied to the wrong line still renders as a working button.
 
 import { describe, expect, it } from "vitest";
-import { parseBlocks, parseSpans, tableCells } from "./markdown";
+import { parseBlocks, parseSpans, resolveAddress, tableCells } from "./markdown";
 import { applyAction } from "./MarkdownField";
 
 describe("markdown blocks", () => {
@@ -65,10 +65,14 @@ describe("markdown blocks", () => {
     expect(parseBlocks("### Deeper")).toEqual([{ kind: "heading", level: 3, text: "Deeper" }]);
   });
 
-  it("flattens anything deeper than three, because a preview is not an outline", () => {
-    for (const source of ["#### Four", "##### Five", "###### Six"]) {
+  it("keeps a fourth level, which the wiki's guides use under their third", () => {
+    expect(parseBlocks("#### Mass")).toEqual([{ kind: "heading", level: 4, text: "Mass" }]);
+  });
+
+  it("flattens anything deeper than four", () => {
+    for (const source of ["##### Five", "###### Six"]) {
       expect(parseBlocks(source)).toEqual([
-        { kind: "heading", level: 3, text: source.replace(/^#+ /, "") },
+        { kind: "heading", level: 4, text: source.replace(/^#+ /, "") },
       ]);
     }
   });
@@ -111,7 +115,7 @@ describe("markdown spans", () => {
     for (const bad of ["javascript:alert(1)", "http://example.invalid", "file:///etc/passwd"]) {
       const spans = parseSpans(`[click](${bad})`);
       expect(spans.every((span) => span.kind !== "link")).toBe(true);
-      expect(spans.map((span) => span.text).join("")).toBe(`[click](${bad})`);
+      expect(spans.map((span) => ("text" in span ? span.text : "")).join("")).toBe(`[click](${bad})`);
     }
   });
 
@@ -259,7 +263,7 @@ describe("images", () => {
     for (const bad of ["http://example.com/a.png", "javascript:alert(1)", "data:image/png;base64,AAAA"]) {
       const spans = parseSpans(`![x](${bad})`);
       expect(spans.every((span) => span.kind !== "image")).toBe(true);
-      expect(spans.map((span) => span.text).join("")).toBe(`![x](${bad})`);
+      expect(spans.map((span) => ("text" in span ? span.text : "")).join("")).toBe(`![x](${bad})`);
     }
   });
 });
@@ -293,5 +297,57 @@ describe("underscores inside words", () => {
       { kind: "em", text: "frigging" },
       { kind: "text", text: "believable" },
     ]);
+  });
+});
+
+describe("what the wiki's guides write in HTML", () => {
+  it("breaks a line on <br>, however it is spelled", () => {
+    for (const tag of ["<br>", "<br/>", "<br />", "</br>"]) {
+      expect(parseSpans(`one${tag}two`)).toEqual([
+        { kind: "text", text: "one" },
+        { kind: "break" },
+        { kind: "text", text: "two" },
+      ]);
+    }
+  });
+
+  it("reads an <img> tag as a picture, and a glyph-sized one as an icon", () => {
+    expect(parseSpans('<img src="https://example.com/mass.png" width="20"/> Mass')).toEqual([
+      { kind: "image", text: "", src: "https://example.com/mass.png", icon: true },
+      { kind: "text", text: " Mass" },
+    ]);
+    expect(parseSpans('<img src="https://example.com/big.jpg" width="1000"/>')).toEqual([
+      { kind: "image", text: "", src: "https://example.com/big.jpg", icon: false },
+    ]);
+  });
+
+  it("leaves an <img> it will not fetch as the text that was typed", () => {
+    const tag = '<img src="javascript:alert(1)">';
+    expect(parseSpans(tag)).toEqual([{ kind: "text", text: tag }]);
+  });
+});
+
+describe("relative addresses", () => {
+  const base = "https://wiki.faforever.com/Play/Learning-SupCom/Beginners-Guide";
+
+  it("resolve against the page the guide came from", () => {
+    expect(resolveAddress("/Play/Windows-Install", base)).toBe(
+      "https://wiki.faforever.com/Play/Windows-Install",
+    );
+    expect(parseSpans("[Windows](/Play/Windows-Install)", base)).toEqual([
+      { kind: "link", text: "Windows", href: "https://wiki.faforever.com/Play/Windows-Install" },
+    ]);
+  });
+
+  it("stay as typed without a base, as in the editor's preview", () => {
+    expect(resolveAddress("/Play/Windows-Install")).toBeNull();
+    expect(parseSpans("[Windows](/Play/Windows-Install)")).toEqual([
+      { kind: "text", text: "[Windows](/Play/Windows-Install)" },
+    ]);
+  });
+
+  it("never resolve to anything but HTTPS", () => {
+    expect(resolveAddress("javascript:alert(1)", base)).toBeNull();
+    expect(resolveAddress("http://example.com/x", base)).toBeNull();
   });
 });

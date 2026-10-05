@@ -55,6 +55,7 @@
         "1v1"
       ],
       "id": "bully-1v1-zd-rasty-lite",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/z-d_rasty_lite.v0001.png",
       "kind": "buildOrder",
       "maps": [
         "Z-D Rasty Lite"
@@ -73,6 +74,7 @@
         "1v1"
       ],
       "id": "bully-1v1-twin-rivers",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/twin%20rivers.v0001.png",
       "kind": "buildOrder",
       "maps": [
         "Twin Rivers"
@@ -91,6 +93,7 @@
         "1v1"
       ],
       "id": "bully-1v1-setons-clutch",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "buildOrder",
       "maps": [
         "Setons Clutch"
@@ -109,6 +112,7 @@
         "1v1"
       ],
       "id": "bully-1v1-the-cold-place",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/the%20cold%20place.v0001.png",
       "kind": "buildOrder",
       "maps": [
         "The Cold Place"
@@ -127,6 +131,7 @@
         "1v1"
       ],
       "id": "bully-1v1-cobalt-valley",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/cobalt%20valley%20v1.png",
       "kind": "buildOrder",
       "maps": [
         "Cobalt Valley"
@@ -145,6 +150,7 @@
         "1v1"
       ],
       "id": "bully-1v1-cadmium-green",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/cadmium_green.v0001.png",
       "kind": "buildOrder",
       "maps": [
         "Cadmium Green"
@@ -163,6 +169,7 @@
         "1v1"
       ],
       "id": "bully-1v1-frozenfoort",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/frozenfoort.v0010.png",
       "kind": "buildOrder",
       "maps": [
         "FrozenFoort"
@@ -178,10 +185,10 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-setons-air-eco",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "buildOrder",
       "maps": [
         "Setons Clutch"
@@ -203,10 +210,10 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-setons-air-aggressive",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "buildOrder",
       "level": "advanced",
       "maps": [
@@ -229,10 +236,10 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-setons-air-strat-rush",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "buildOrder",
       "level": "advanced",
       "maps": [
@@ -256,10 +263,10 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-setons-beach-meta",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "buildOrder",
       "maps": [
         "Setons Clutch"
@@ -279,10 +286,10 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-setons-beach-eco",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "buildOrder",
       "maps": [
         "Setons Clutch"
@@ -303,10 +310,10 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-setons-north-rock",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "buildOrder",
       "maps": [
         "Setons Clutch"
@@ -323,10 +330,10 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-setons-front",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "buildOrder",
       "maps": [
         "Setons Clutch"
@@ -569,8 +576,7 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "channel-seraphim-com",
       "kind": "community",
@@ -604,8 +610,7 @@
     },
     {
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "channel-yudi1260",
       "kind": "community",
@@ -622,8 +627,7 @@
     },
     {
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "channel-foleybts",
       "kind": "community",
@@ -688,6 +692,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-eye-of-the-storm",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/eye_of_the_storm_-_faf_version.v0002.png",
       "kind": "buildOrder",
       "maps": [
         "Eye of the Storm"
@@ -706,6 +711,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-tag-craftious-maximus",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/tag_craftious_maximus_-_faf_version.v0004.png",
       "kind": "buildOrder",
       "maps": [
         "TAG Craftious Maximus"
@@ -724,6 +730,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-cadmium-green",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/cadmium_green.v0001.png",
       "kind": "buildOrder",
       "maps": [
         "Cadmium Green"
@@ -745,6 +752,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-adaptive-point-of-reach",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/adaptive_point_of_reach.v0002.png",
       "kind": "buildOrder",
       "maps": [
         "Adaptive Point of Reach"
@@ -763,6 +771,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-desert-arena",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/desert_arena_-_faf_version.v0002.png",
       "kind": "buildOrder",
       "maps": [
         "Desert Arena"
@@ -781,6 +790,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-stickleback-ridge",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/stickleback_ridge.v0003.png",
       "kind": "buildOrder",
       "maps": [
         "Stickleback Ridge"
@@ -799,6 +809,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-hargreven",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/hargreven.v0012.png",
       "kind": "buildOrder",
       "maps": [
         "Hargreven"
@@ -817,6 +828,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-red-rocks",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/red%20rocks.png",
       "kind": "buildOrder",
       "maps": [
         "Red Rocks"
@@ -835,6 +847,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-serenity-desert-small",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/serenity_desert_small_-_faf_version.v0001.png",
       "kind": "buildOrder",
       "maps": [
         "Serenity Desert Small"
@@ -853,6 +866,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-turtle-rocks",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/turtle_rocks.v0002.png",
       "kind": "buildOrder",
       "maps": [
         "Turtle Rocks"
@@ -871,6 +885,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-crimson-feud",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/crimson_feud.png",
       "kind": "buildOrder",
       "maps": [
         "Crimson Feud"
@@ -889,12 +904,13 @@
         "1v1"
       ],
       "id": "sladow-1v1-crossfire-channel",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/crossfire_canal_-_faf_version.v0002.png",
       "kind": "buildOrder",
       "maps": [
-        "Crossfire Channel"
+        "Crossfire Canal"
       ],
       "summary": "Factory first on the island, leaving it after the second air factory.",
-      "title": "Crossfire Channel",
+      "title": "Crossfire Canal",
       "topics": [
         "buildOrder"
       ],
@@ -907,6 +923,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-arcane",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/arcane.v0001.png",
       "kind": "buildOrder",
       "maps": [
         "Arcane"
@@ -925,6 +942,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-bermuda-locket",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/the_bermuda_locket_-_faf_version.v0001.png",
       "kind": "buildOrder",
       "maps": [
         "Bermuda Locket"
@@ -943,6 +961,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-syrtis-major",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/syrtis_major_-_faf_version.v0002.png",
       "kind": "buildOrder",
       "maps": [
         "Syrtis Major"
@@ -961,6 +980,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-diversity",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/diversity.v0008.png",
       "kind": "buildOrder",
       "maps": [
         "Diversity"
@@ -982,6 +1002,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-the-cold-place",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/the%20cold%20place.v0001.png",
       "kind": "buildOrder",
       "maps": [
         "The Cold Place"
@@ -1003,6 +1024,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-zeuthea-valley",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/zeuthea_valley.v0005.png",
       "kind": "buildOrder",
       "maps": [
         "Zeuthea Valley"
@@ -1021,6 +1043,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-esgaroths-ruins",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/esgaroths_ruins_-_faf_version.v0002.png",
       "kind": "buildOrder",
       "maps": [
         "Esgaroth's Ruins"
@@ -1039,6 +1062,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-floralis",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/floralis.v0003.png",
       "kind": "buildOrder",
       "maps": [
         "Floralis"
@@ -1057,6 +1081,7 @@
         "1v1"
       ],
       "id": "sladow-1v1-frithen",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/frithen.v0004.png",
       "kind": "buildOrder",
       "maps": [
         "Frithen"
@@ -1174,10 +1199,10 @@
     {
       "author": "CheeseBerry",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "setons-ultimate-index",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "guide",
       "maps": [
         "Setons Clutch"
@@ -1200,10 +1225,10 @@
     {
       "author": "CheeseBerry",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "setons-ultimate-beginner",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "guide",
       "maps": [
         "Setons Clutch"
@@ -1224,10 +1249,10 @@
     {
       "author": "CheeseBerry",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "setons-ultimate-novice",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "guide",
       "maps": [
         "Setons Clutch"
@@ -1249,10 +1274,10 @@
     {
       "author": "CheeseBerry",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "setons-ultimate-intermediate",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "guide",
       "maps": [
         "Setons Clutch"
@@ -1542,8 +1567,7 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-review-air-800",
       "kind": "replayAnalysis",
@@ -1563,8 +1587,7 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-review-air-1400",
       "kind": "replayAnalysis",
@@ -1585,8 +1608,7 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-review-rock-1800",
       "kind": "replayAnalysis",
@@ -1607,8 +1629,7 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-walkthrough-front",
       "kind": "video",
@@ -1631,8 +1652,7 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-walkthrough-beach",
       "kind": "video",
@@ -1655,8 +1675,7 @@
     {
       "author": "Seraphim-Noob",
       "gameModes": [
-        "custom",
-        "4v4"
+        "Seton's Clutch"
       ],
       "id": "seraphim-walkthrough-rock",
       "kind": "video",

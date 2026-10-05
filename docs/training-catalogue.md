@@ -142,9 +142,9 @@ client.
 
 | Field | Meaning |
 | --- | --- |
-| `discordUrl` | The training community's invite. An empty value hides the hero's Discord button rather than sending anyone to a guess. |
+| `discordUrl` | The invite to FAF's Discord, which is the whole community server and not a training room; the button says so. An empty value hides the hero's Discord button rather than sending anyone to a guess. |
 | `replayReviewChannel` | The channel a replay review is asked in, as a `https://discord.com/channels/<guild>/<channel>` address. Discord's desktop application follows one straight there, and the client copies the request on the way, so the player lands in the right place with one paste left to do. Turn on Developer Mode in Discord and use *Copy Link* on the channel. Empty falls back to the invite. |
-| `replayReviewUrl` | Where replay reviews are discussed, for a reader who wants to browse them. The request itself goes to `discordUrl`: Discord is where they are answered, and it cannot take a prefilled message, so the client writes the request and the player pastes it. |
+| `replayReviewUrl` | Read but not shown. It named the forum's "I need help" category, which has nothing to do with replay reviews: those are asked for and answered in the Discord review channel and nowhere else, so the hero's "past reviews" button opens `replayReviewChannel`. |
 | `replayReviewCategory` | That category as a NodeBB id. Only used for the forum link; a request needs neither. |
 | `contributeUrl` / `contributeCategory` | The forum fallback for submissions, used only by a build with no catalogue repository configured. Otherwise a submission is an issue. |
 | `wikiUrl` | The wiki's entry point. |
@@ -175,8 +175,9 @@ row is not something a reader can act on.
 | `kind` | `video`, `guide`, `buildOrder`, `replayAnalysis`, `lesson`, `community`. Defaults to `guide`. |
 | `level` | `beginner`, `intermediate`, `advanced`, or absent. |
 | `topics` | `economy`, `buildOrder`, `micro`, `strategy`, `armyComposition`, `mapControl`, `scouting`, `factions`, `teamplay`, `interface`. A closed set on purpose: free tags produce forty near-synonyms nobody can filter by. |
-| `gameModes` | Free text (`1v1`, `4v4`, `custom`, `coop`, a mod's own queue). The filter offers whatever the catalogue contains. `custom` means a game outside the matchmaker and is the one word with a rule behind it: see below. |
+| `gameModes` | The matchmaker queues (`1v1`, `2v2`, `3v3`, `4v4`), plus `Seton's Clutch` as a tag of its own: see below. Free text, so a mod's own queue works too, and the filter offers whatever the catalogue contains. |
 | `maps` | Map names as a player reads them. Matched case-insensitively and by substring, so `Setons Clutch`, `SCMP_009` and "Seton's" find each other. |
+| `imageUrl` | The picture the entry's tile and page lead with. For a build order, the exact preview of the vault folder its replays were recorded on, `https://content.faforever.com/maps/previews/large/<folder>.png`: a map name alone can resolve to the wrong folder (two vault maps are called Seton's Clutch, and the one the name finds is a remake). Read the folder off a replay's header, `mapname`. Leave it out on a video: the still is derived from the address. |
 | `ratingMin` / `ratingMax` | Either may be absent, and an absent bound is open. Stated numbers win over the band a `level` implies. |
 | `related` | Other resource ids. This is what makes the library a graph rather than a list: a guide about a mistake can point at the lesson that fixes it. Ids that no longer resolve are dropped rather than drawn as dead rows. |
 | `approvedBy` | Who vouched for it. Rendered as "Reviewed by", never "official": accepting a guide is not the same as having checked every sentence, and a label implying otherwise is worse than none. Accepting a submission from the client sets it to the accepting GitHub login. |
@@ -241,31 +242,27 @@ Two things the envelope decides, worth knowing before recording:
   the map's real vault preview with no transform. A recording of a map that is
   not in the vault still draws its routes, just without the terrain under them.
 
-### `custom`, and why most team material needs it
+### Seton's Clutch is not 4v4
 
-FAF keeps five ratings, and the client judges an entry by the one its modes
-name. `4v4` is the *matchmaker* 4v4 leaderboard. Most of what the community
-teaches is not matchmaker material at all: Seton's, Dual Gap and the rest are
-lobby games, rated on the leaderboard FAF calls `global`. An entry tagged only
-`4v4` is therefore measured against a queue its reader may never have entered,
-and often against no rating at all.
+A mode is a matchmaker queue: `4v4` is the 4v4 queue and its leaderboard. FAF
+keeps five ratings, and the client judges an entry by the one its modes name,
+so a Seton's build order tagged `4v4` was measured against a queue its reader
+may never have entered. Seton's is a lobby format with its own slots, builds
+and meta, and a player looking for it is not looking for the queue.
 
-So the catalogue says `custom`, which is the word used in a lobby, and the
-client resolves it to the `global` leaderboard. The two are interchangeable
-everywhere: choosing either in the filter finds both.
-
-**Pair it with a team size, `custom` first:**
+So Seton's material says so, as a tag of its own:
 
 ```json
-{ "gameModes": ["custom", "4v4"] }
+{ "gameModes": ["Seton's Clutch"], "maps": ["Setons Clutch"] }
 ```
 
-The order decides the rating, because the first mode that resolves wins, and
-`custom` resolving first is the point. The size is still worth stating second:
-the profile is read from local replay headers, and a replay header records how
-many players were in the game and not whether the matchmaker put them there. So
-`4v4` is what actually matches a Seton's player's recent games, while `custom`
-is what picks the right rating for them.
+It gets its own shelf and its own chip beside the queues. No leaderboard is
+called that, so the entry is judged by the reader's overall rating, which is
+the one a lobby game is rated on. The map is what puts it in front of a
+Seton's player: the profile's recent maps come from their replays.
+
+`custom` still resolves to the `global` leaderboard for anything else played
+outside the matchmaker, so an older entry tagged that way keeps working.
 
 ### Reading a guide inside the client
 
