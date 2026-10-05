@@ -18,6 +18,23 @@ afterEach(() => {
 });
 
 describe("catalogue integrity", () => {
+  it("keeps setting hints searchable without making them wordy", () => {
+    const settingHints = [
+      "settings.general.rememberTypedEntries.hint",
+      "settings.notifications.repeatCooldownHint",
+      "settings.notifications.mapPoolHint",
+      "settings.steam.presenceHint",
+    ] as const;
+
+    for (const locale of LOCALE_KEYS) {
+      for (const key of settingHints) {
+        const hint = translateIn(locale, key);
+        expect(hint.trim(), `${locale}:${key}`).not.toBe("");
+        expect(hint.length, `${locale}:${key}`).toBeLessThanOrEqual(180);
+      }
+    }
+  });
+
   it("declares every German key in the English source", () => {
     const unknown = Object.keys(de).filter((key) => !(key in en));
     expect(unknown).toEqual([]);
@@ -106,6 +123,13 @@ const COOP_MAP_FOLDERS = [
   "faf_coop_operation_yath_aez", "faf_coop_prothyon_16", "faf_coop_theta_civilian_rescue",
 ] as const;
 
+const COOP_MAP_FOLDERS_USING_API_BRIEFINGS: readonly string[] = [
+  "faf_coop_operation_trident",
+  "faf_coop_operation_blockade",
+  "faf_coop_operation_holy_raid",
+  "faf_coop_operation_golden_crystals",
+] as const;
+
 describe("co-op mission catalogue lookup", () => {
   beforeEach(() => setLocale("ru"));
 
@@ -114,10 +138,20 @@ describe("co-op mission catalogue lookup", () => {
       .not.toBe("API mission title");
   });
 
-  it.each(COOP_MAP_FOLDERS)("resolves the %s description by map folder", (folder) => {
+  it.each(COOP_MAP_FOLDERS.filter(
+    (folder) => !COOP_MAP_FOLDERS_USING_API_BRIEFINGS.includes(folder),
+  ))("resolves the %s description by map folder", (folder) => {
     expect(translateCoopMissionDescription(folder, "API mission description"))
       .not.toBe("API mission description");
   });
+
+  it.each(COOP_MAP_FOLDERS_USING_API_BRIEFINGS)(
+    "keeps the API briefing for %s when Russian catalogue text is not a briefing",
+    (folder) => {
+      const apiBriefing = `API briefing for ${folder}`;
+      expect(translateCoopMissionDescription(folder, apiBriefing)).toBe(apiBriefing);
+    },
+  );
 
   it("normalizes folder paths and version suffixes", () => {
     expect(translateCoopMissionName("maps/SCCA_Coop_R03.v0021", "Renamed by API"))
@@ -135,11 +169,13 @@ describe("co-op mission catalogue lookup", () => {
       .toBe("New briefing");
   });
 
-  it("falls back to the English catalogue when the active locale has no translation", () => {
+  it("uses the name catalogue and API briefing when the active locale has no translation", () => {
     setLocale("de");
     expect(translateCoopMissionName("scca_coop_a01.v0001", "API title")).toBe("Joust");
     expect(translateCoopMissionDescription("faf_coop_operation_trident", "API description"))
-      .toBe("Operation Trident");
+      .toBe("API description");
+    expect(translateCoopMissionDescription("faf_coop_operation_blockade", "API briefing"))
+      .toBe("API briefing");
   });
 
   it("uses catalogue names that include the original English text in Russian", () => {

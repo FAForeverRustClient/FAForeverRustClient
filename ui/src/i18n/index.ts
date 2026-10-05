@@ -19,7 +19,7 @@ import { getLocale } from "./store";
 
 const CATALOGUES: Record<Locale, Partial<Record<MessageKey, Message>>> = CATALOGUE_REGISTRY;
 
-const COOP_MISSION_MESSAGE_KEYS: Record<string, { name: MessageKey; description: MessageKey }> = {
+const COOP_MISSION_MESSAGE_KEYS: Record<string, { name: MessageKey; description?: MessageKey }> = {
   scca_coop_a01: { name: "lobby.coop.mission.scca_coop_a01.name", description: "lobby.coop.mission.scca_coop_a01.description" },
   scca_coop_a02: { name: "lobby.coop.mission.scca_coop_a02.name", description: "lobby.coop.mission.scca_coop_a02.description" },
   scca_coop_a03: { name: "lobby.coop.mission.scca_coop_a03.name", description: "lobby.coop.mission.scca_coop_a03.description" },
@@ -57,7 +57,7 @@ const COOP_MISSION_MESSAGE_KEYS: Record<string, { name: MessageKey; description:
   faf_coop_operation_rescue: { name: "lobby.coop.mission.faf_coop_operation_rescue.name", description: "lobby.coop.mission.faf_coop_operation_rescue.description" },
   faf_coop_operation_tha_atha_aez: { name: "lobby.coop.mission.faf_coop_operation_tha_atha_aez.name", description: "lobby.coop.mission.faf_coop_operation_tha_atha_aez.description" },
   faf_coop_operation_tight_spot: { name: "lobby.coop.mission.faf_coop_operation_tight_spot.name", description: "lobby.coop.mission.faf_coop_operation_tight_spot.description" },
-  faf_coop_operation_trident: { name: "lobby.coop.mission.faf_coop_operation_trident.name", description: "lobby.coop.mission.faf_coop_operation_trident.description" },
+  faf_coop_operation_trident: { name: "lobby.coop.mission.faf_coop_operation_trident.name" },
   faf_coop_operation_uhthe_thuum_qai: { name: "lobby.coop.mission.faf_coop_operation_uhthe_thuum_qai.name", description: "lobby.coop.mission.faf_coop_operation_uhthe_thuum_qai.description" },
   faf_coop_operation_yath_aez: { name: "lobby.coop.mission.faf_coop_operation_yath_aez.name", description: "lobby.coop.mission.faf_coop_operation_yath_aez.description" },
   faf_coop_prothyon_16: { name: "lobby.coop.mission.faf_coop_prothyon_16.name", description: "lobby.coop.mission.faf_coop_prothyon_16.description" },
@@ -130,8 +130,9 @@ export function translateCoopMissionDescription(
   mapFolderName: string,
   source: string,
 ): string {
-  const messages = COOP_MISSION_MESSAGE_KEYS[coopMissionFolderKey(mapFolderName)];
-  return messages ? t(messages.description) : source;
+  const messageKey = COOP_MISSION_MESSAGE_KEYS[coopMissionFolderKey(mapFolderName)]?.description;
+  if (!messageKey) return source;
+  return CATALOGUES[getLocale()][messageKey] === undefined ? source : t(messageKey);
 }
 
 /** Translate a co-op mission name, keeping the API name as fallback. */
