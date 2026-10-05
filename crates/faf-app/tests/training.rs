@@ -425,8 +425,9 @@ async fn a_review_of_someone_else_s_game_does_not_name_the_player_in_it() {
     // watch an army nobody in the request played.
     let h = harness(vec![foreign(31, "SCMP_009")]);
     h.sign_in().await;
+    // No recommendations to wait for: the only replay is someone else's, so
+    // the profile is empty by design. The load already waits for the scan.
     h.load().await;
-    h.recommended().await;
 
     h.app
         .dispatch(
