@@ -202,17 +202,31 @@ jobs:
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
 
-      - name: Regenerate reducer conformance fixture
+      # Both fixtures come out of the same test run: the case fixture and the
+      # ordering fixture built from it. The frontend job reads them as checked
+      # in, so either one going stale would leave the TypeScript twins tested
+      # against expectations Rust no longer has.
+      - name: Regenerate reducer conformance fixtures
         run: |
-          if ! git ls-files --error-unmatch ui/src/store/__fixtures__/reducer-conformance.json >/dev/null; then
-            echo "::error file=ui/src/store/__fixtures__/reducer-conformance.json::Reducer conformance fixture is not tracked. Add it before relying on this job."
-            exit 1
-          fi
+          for fixture in reducer-conformance.json reducer-conformance-orderings.json; do
+            if ! git ls-files --error-unmatch "ui/src/store/__fixtures__/$fixture" >/dev/null; then
+              echo "::error file=ui/src/store/__fixtures__/$fixture::Reducer conformance fixture is not tracked. Add it before relying on this job."
+              exit 1
+            fi
+          done
           cargo test -p faf-domain --test conformance_fixtures
 
-      - name: Fail if the fixture is out of date
+      # `--stat` rather than the diff itself: the ordering fixture is one
+      # compact line of a few megabytes, and printing it helps nobody.
+      - name: Fail if a fixture is out of date
         run: |
-          if ! git diff --exit-code ui/src/store/__fixtures__/reducer-conformance.json; then
-            echo "::error file=ui/src/store/__fixtures__/reducer-conformance.json::Reducer conformance fixture is out of date. Run 'cargo test -p faf-domain --test conformance_fixtures' and commit the result."
-            exit 1
-          fi
+          stale=0
+          for fixture in reducer-conformance.json reducer-conformance-orderings.json; do
+            path="ui/src/store/__fixtures__/$fixture"
+            if ! git diff --quiet -- "$path"; then
+              git diff --stat -- "$path"
+              echo "::error file=$path::Reducer conformance fixture is out of date. Run 'cargo test -p faf-domain --test conformance_fixtures' and commit the result."
+              stale=1
+            fi
+          done
+          exit $stale

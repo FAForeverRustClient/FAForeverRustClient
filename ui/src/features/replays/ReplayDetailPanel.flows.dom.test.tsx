@@ -257,6 +257,90 @@ describe("Replay detail flows, mounted from the Replays workspace", () => {
     expect(screen.queryAllByRole("dialog")).toEqual([]);
   });
 
+  it("keeps the second replay's insights when the first replay's reads finish after them", async () => {
+    const user = userEvent.setup();
+    mountVault();
+    const first = await openCard(user, "Ladder night");
+    await user.click(within(first).getByRole("button", { name: "More info" }));
+    replayEvent({ type: "detailsLoading", payload: { uid: 4242 } });
+    replayEvent({ type: "analysisLoading", payload: { uid: 4242 } });
+    await user.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
+
+    const second = await openCard(user, "Team game");
+    clearSentCommands();
+    await user.click(within(second).getByRole("button", { name: "More info" }));
+    expect(sent("loadDetails").length + sent("loadAnalysis").length).toBe(2);
+    replayEvent({ type: "detailsLoading", payload: { uid: 5151 } });
+    replayEvent({ type: "analysisLoading", payload: { uid: 5151 } });
+    replayEvent({
+      type: "detailsLoaded",
+      payload: { uid: 5151, details: { gameOptions: [], chatMessages: [], gameVersion: null } },
+    });
+    replayEvent({
+      type: "analysisLoaded",
+      payload: {
+        analysis: {
+          uid: 5151,
+          ticks: 3_000,
+          gameVersion: "",
+          armies: [],
+          observers: [],
+          scenario: { name: "", description: "", mapFolder: "", width: 0, height: 0, options: [] },
+          activity: [],
+          orders: [],
+          points: [],
+          notices: [],
+          stats: [],
+        },
+      },
+    });
+
+    const insights = screen.getByRole("dialog", { name: "What the replay file says about Team game" });
+    await user.click(within(insights).getByRole("tab", { name: /Game stats/ }));
+    expect(within(insights).queryByText(/^Reading the/)).toBeNull();
+
+    // The first replay's reads finish last, one way or the other.
+    replayEvent({
+      type: "analysisLoaded",
+      payload: {
+        analysis: {
+          uid: 4242,
+          ticks: 1_000,
+          gameVersion: "",
+          armies: [],
+          observers: [],
+          scenario: { name: "", description: "", mapFolder: "", width: 0, height: 0, options: [] },
+          activity: [],
+          orders: [],
+          points: [],
+          notices: [],
+          stats: [],
+        },
+      },
+    });
+    replayEvent({ type: "analysisFailed", payload: { uid: 4242, reason: "file gone" } });
+    replayEvent({ type: "detailsFailed", payload: { uid: 4242, reason: "file gone" } });
+
+    expect(within(insights).queryByText(/^Reading the/)).toBeNull();
+    expect(screen.queryByText("file gone")).toBeNull();
+  });
+
+  it("does not show the last replay's failed read in the next replay's panel", async () => {
+    const user = userEvent.setup();
+    mountVault();
+    const first = await openCard(user, "Ladder night");
+    await user.click(within(first).getByRole("button", { name: "More info" }));
+    replayEvent({ type: "detailsLoading", payload: { uid: 4242 } });
+    replayEvent({ type: "detailsFailed", payload: { uid: 4242, reason: "file gone" } });
+    expect(within(first).getAllByText("file gone").length).toBeGreaterThan(0);
+    await user.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
+
+    await openCard(user, "Team game");
+    expect(screen.queryByText("file gone")).toBeNull();
+  });
+
   it("offers Retry on a failed vault search and sends the same search again", async () => {
     const user = userEvent.setup();
     mountVault();

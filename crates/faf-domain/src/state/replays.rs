@@ -714,6 +714,19 @@ pub enum ReplayDownloadStatus {
     },
 }
 
+/// Why reading one replay file failed, and which replay it was.
+///
+/// The detail panel reads the details and the analysis on demand, and a reader
+/// who opens one replay and then another has two reads in flight at once. A
+/// bare reason in the state could not say whose it was, so the second panel
+/// showed the first one's failure as its own.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayReadError {
+    pub uid: i32,
+    pub reason: String,
+}
+
 /// What the vault knows about one game id, looked up for a replay the client
 /// only has as a file on disk.
 ///
@@ -779,21 +792,28 @@ pub struct ReplayState {
     /// when requested because parsing the command stream can be expensive.
     #[serde(default)]
     pub replay_details: std::collections::HashMap<i32, ReplayDetails>,
+    /// The replay whose details were asked for last, while that read runs.
+    /// Only its failure is recorded: an older read still finishing describes a
+    /// panel nobody is looking at.
     #[serde(default)]
     pub details_loading: Option<i32>,
     #[serde(default)]
-    pub details_error: Option<String>,
-    /// The analysed replay, and only the most recent one.
+    pub details_error: Option<ReplayReadError>,
+    /// The analysed replay, and only the one asked for last.
     ///
     /// One of these is megabytes of orders and targets. Keeping a map of them
     /// the way the details are kept would grow the state by a replay every
-    /// time somebody opened a panel, so the newest answer replaces the last.
+    /// time somebody opened a panel, so only the answer to the newest request
+    /// is held. An older request finishing later is dropped rather than
+    /// allowed to replace it: the newer panel would otherwise reject the
+    /// stranger's analysis and sit on "reading" with nothing left coming.
     #[serde(default)]
     pub analysis: Option<ReplayAnalysis>,
+    /// The replay whose analysis was asked for last, while that read runs.
     #[serde(default)]
     pub analysis_loading: Option<i32>,
     #[serde(default)]
-    pub analysis_error: Option<String>,
+    pub analysis_error: Option<ReplayReadError>,
     /// Vault answers for single game ids, keyed by that id. Filled by
     /// [`ReplayCommand::LookUpOnline`] on behalf of local replays; see
     /// [`OnlineLookup`].
@@ -1177,17 +1197,31 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
             state.details_error = None;
         }
         ReplayEvent::DetailsLoaded { uid, details } => {
+            // Stored whoever asked: details are kept per replay, so a late
+            // answer fills in its own entry and cannot overwrite another's.
+            state.replay_details.insert(*uid, details.clone());
             if state.details_loading == Some(*uid) {
                 state.details_loading = None;
             }
-            state.replay_details.insert(*uid, details.clone());
-            state.details_error = None;
+            if state
+                .details_error
+                .as_ref()
+                .is_some_and(|error| error.uid == *uid)
+            {
+                state.details_error = None;
+            }
         }
         ReplayEvent::DetailsFailed { uid, reason } => {
+            // Only the newest request's failure is shown. A late one for a
+            // replay no longer asked about would sit in the error slot of the
+            // panel that is open, or push out that panel's own failure.
             if state.details_loading == Some(*uid) {
                 state.details_loading = None;
+                state.details_error = Some(ReplayReadError {
+                    uid: *uid,
+                    reason: reason.clone(),
+                });
             }
-            state.details_error = Some(reason.clone());
         }
         ReplayEvent::AnalysisLoading { uid } => {
             state.analysis_loading = Some(*uid);
@@ -1198,17 +1232,24 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
             }
         }
         ReplayEvent::AnalysisLoaded { analysis } => {
+            // One analysis is held, so only the newest request's answer may
+            // take the slot. An older read finishing last would replace it,
+            // and the open panel, seeing another replay's uid, would go back
+            // to "reading" with nothing more on the way.
             if state.analysis_loading == Some(analysis.uid) {
                 state.analysis_loading = None;
+                state.analysis = Some(analysis.clone());
+                state.analysis_error = None;
             }
-            state.analysis = Some(analysis.clone());
-            state.analysis_error = None;
         }
         ReplayEvent::AnalysisFailed { uid, reason } => {
             if state.analysis_loading == Some(*uid) {
                 state.analysis_loading = None;
+                state.analysis_error = Some(ReplayReadError {
+                    uid: *uid,
+                    reason: reason.clone(),
+                });
             }
-            state.analysis_error = Some(reason.clone());
         }
         ReplayEvent::OnlineLookupStarted { uid } => {
             state.online_lookups.insert(*uid, OnlineLookup::Loading);
@@ -1781,6 +1822,175 @@ mod tests {
             VaultStatus::Failed {
                 reason: "folder missing".into()
             }
+        );
+    }
+
+    fn analysis(uid: i32) -> ReplayAnalysis {
+        ReplayAnalysis {
+            uid,
+            ticks: 3_000,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_late_analysis_never_replaces_the_newer_requests_answer() {
+        // The reader opens replay 1, then replay 2 before 1 has been walked.
+        // Both reads run at once and 2 is the shorter file.
+        let mut s = ReplayState::default();
+        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 1 });
+        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 2 });
+        reduce(
+            &mut s,
+            &ReplayEvent::AnalysisLoaded {
+                analysis: analysis(2),
+            },
+        );
+        assert_eq!(s.analysis, Some(analysis(2)));
+        assert_eq!(s.analysis_loading, None);
+
+        reduce(
+            &mut s,
+            &ReplayEvent::AnalysisLoaded {
+                analysis: analysis(1),
+            },
+        );
+        assert_eq!(
+            s.analysis,
+            Some(analysis(2)),
+            "replay 2's panel would reject 1's analysis and wait for nothing"
+        );
+        assert_eq!(s.analysis_loading, None);
+    }
+
+    #[test]
+    fn an_older_analysis_landing_first_leaves_the_newer_one_loading() {
+        let mut s = ReplayState::default();
+        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 1 });
+        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 2 });
+        reduce(
+            &mut s,
+            &ReplayEvent::AnalysisLoaded {
+                analysis: analysis(1),
+            },
+        );
+        assert_eq!(s.analysis, None);
+        assert_eq!(s.analysis_loading, Some(2));
+
+        reduce(
+            &mut s,
+            &ReplayEvent::AnalysisLoaded {
+                analysis: analysis(2),
+            },
+        );
+        assert_eq!(s.analysis, Some(analysis(2)));
+        assert_eq!(s.analysis_loading, None);
+    }
+
+    #[test]
+    fn a_late_analysis_failure_never_shows_for_the_newer_request() {
+        let mut s = ReplayState::default();
+        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 1 });
+        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 2 });
+        reduce(
+            &mut s,
+            &ReplayEvent::AnalysisLoaded {
+                analysis: analysis(2),
+            },
+        );
+        reduce(
+            &mut s,
+            &ReplayEvent::AnalysisFailed {
+                uid: 1,
+                reason: "the replay file could not be read".into(),
+            },
+        );
+        assert_eq!(s.analysis_error, None);
+        assert_eq!(s.analysis, Some(analysis(2)));
+
+        // While 2 is still being walked, 1's failure is not 2's either.
+        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 1 });
+        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 2 });
+        reduce(
+            &mut s,
+            &ReplayEvent::AnalysisFailed {
+                uid: 1,
+                reason: "late".into(),
+            },
+        );
+        assert_eq!(s.analysis_error, None);
+        assert_eq!(s.analysis_loading, Some(2));
+
+        // The newest request's own failure is recorded, with its uid.
+        reduce(
+            &mut s,
+            &ReplayEvent::AnalysisFailed {
+                uid: 2,
+                reason: "truncated".into(),
+            },
+        );
+        assert_eq!(
+            s.analysis_error,
+            Some(ReplayReadError {
+                uid: 2,
+                reason: "truncated".into(),
+            })
+        );
+        assert_eq!(s.analysis_loading, None);
+    }
+
+    #[test]
+    fn a_late_details_failure_never_shows_for_the_newer_request() {
+        let mut s = ReplayState::default();
+        reduce(&mut s, &ReplayEvent::DetailsLoading { uid: 1 });
+        reduce(&mut s, &ReplayEvent::DetailsLoading { uid: 2 });
+        reduce(
+            &mut s,
+            &ReplayEvent::DetailsLoaded {
+                uid: 2,
+                details: ReplayDetails::default(),
+            },
+        );
+        reduce(
+            &mut s,
+            &ReplayEvent::DetailsFailed {
+                uid: 1,
+                reason: "the replay body is truncated".into(),
+            },
+        );
+        assert_eq!(s.details_error, None);
+        assert!(s.replay_details.contains_key(&2));
+        assert_eq!(s.details_loading, None);
+    }
+
+    #[test]
+    fn a_late_details_answer_keeps_the_newer_requests_failure() {
+        // 2 failed; 1 finishing afterwards is stored under its own uid and
+        // must not wipe the failure the open panel is showing.
+        let mut s = ReplayState::default();
+        reduce(&mut s, &ReplayEvent::DetailsLoading { uid: 1 });
+        reduce(&mut s, &ReplayEvent::DetailsLoading { uid: 2 });
+        reduce(
+            &mut s,
+            &ReplayEvent::DetailsFailed {
+                uid: 2,
+                reason: "not uploaded yet".into(),
+            },
+        );
+        reduce(
+            &mut s,
+            &ReplayEvent::DetailsLoaded {
+                uid: 1,
+                details: ReplayDetails::default(),
+            },
+        );
+        assert!(s.replay_details.contains_key(&1));
+        assert_eq!(
+            s.details_error,
+            Some(ReplayReadError {
+                uid: 2,
+                reason: "not uploaded yet".into(),
+            })
         );
     }
 

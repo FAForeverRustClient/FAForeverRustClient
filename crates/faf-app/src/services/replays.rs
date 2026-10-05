@@ -33,8 +33,33 @@ pub struct ReplaysContext {
     /// something to press. Same shape as the auth service's login
     /// cancellation, and for the same reason: dropping the future is the only
     /// thing that actually stops work that is several awaits deep inside a
-    /// port.
-    cancellation: std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>,
+    /// port. See [`LaunchSlot`] for which launch may settle it.
+    launch: std::sync::Mutex<LaunchSlot>,
+}
+
+/// Which replay launch is the current one, and its cancellation while armed.
+#[derive(Default)]
+struct LaunchSlot {
+    /// Bumped by every launch. A launch whose number is no longer here was
+    /// replaced, and from then on owns nothing: not the progress sink, not
+    /// the cancellation, not the status line. All three belong to its
+    /// replacement.
+    current: u64,
+    cancellation: Option<tokio_util::sync::CancellationToken>,
+}
+
+impl ReplaysContext {
+    fn launch_slot(&self) -> std::sync::MutexGuard<'_, LaunchSlot> {
+        self.launch
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
+
+/// One replay launch, from the moment it became the current one.
+struct LaunchTicket {
+    id: u64,
+    cancelled: tokio_util::sync::CancellationToken,
 }
 
 /// How many replay heads are fetched at the same time.
@@ -47,6 +72,43 @@ fn describe(seconds: u32) -> String {
     match seconds {
         0..=59 => format!("{seconds}s"),
         _ => format!("{}m {}s", seconds / 60, seconds % 60),
+    }
+}
+
+/// Make a new replay launch the current one: cancel the launch it replaces and
+/// point the preparation progress at this one's starting dialog.
+///
+/// Called before anything about the new launch is emitted, which is the point.
+/// The launch it replaces settles under the same lock and only while it is
+/// still current (see [`launch`]), so once this has returned nothing the older
+/// one does can land on top of this one's `Connecting`. Its cancellation
+/// branch used to clear this launch's progress sink and emit `Closed` after
+/// it, idling the dialog of the launch that was actually starting.
+fn begin_launch(ctx: &ServiceCtx, out: &EventSink) -> LaunchTicket {
+    let cancelled = tokio_util::sync::CancellationToken::new();
+    let mut slot = ctx.replays.launch_slot();
+    slot.current = slot.current.wrapping_add(1);
+    // Replacing an armed token cancels it: two launches cannot be in flight,
+    // and the older one is the one nobody is waiting for.
+    if let Some(previous) = slot.cancellation.replace(cancelled.clone()) {
+        previous.cancel();
+    }
+
+    // What the preparation is doing, onto the starting dialog (#392).
+    let sink = out.clone();
+    ctx.ports
+        .replay_playback
+        .set_preparation_progress(Some(std::sync::Arc::new(move |step: PreparationStep| {
+            sink.emit(ReplayEvent::Preparing {
+                step: ReplayPreparation {
+                    detail: step.detail,
+                    progress: step.progress,
+                },
+            });
+        })));
+    LaunchTicket {
+        id: slot.current,
+        cancelled,
     }
 }
 
@@ -63,48 +125,36 @@ fn describe(seconds: u32) -> String {
 /// you can start another one" this uses when a replay session ends of its own
 /// accord. A cancelled start is not a failure and must not be reported as one:
 /// the overlay would turn into an error nobody asked about.
+///
+/// A launch that another one replaced settles nothing at all, however it
+/// ended: the progress sink, the cancellation and the status line are its
+/// replacement's by then.
 async fn launch(
+    ticket: LaunchTicket,
     work: impl std::future::Future<Output = Result<Option<String>, String>>,
     uid: Option<i32>,
     ctx: &ServiceCtx,
     out: &EventSink,
 ) {
-    let token = tokio_util::sync::CancellationToken::new();
-    if let Ok(mut slot) = ctx.replays.cancellation.lock() {
-        // Replacing an armed token cancels it: two launches cannot be in
-        // flight, and the older one is the one nobody is waiting for.
-        if let Some(previous) = slot.replace(token.clone()) {
-            previous.cancel();
-        }
-    }
-
-    // What the preparation is doing, onto the starting dialog (#392).
-    let sink = out.clone();
-    ctx.ports
-        .replay_playback
-        .set_preparation_progress(Some(std::sync::Arc::new(move |step: PreparationStep| {
-            sink.emit(ReplayEvent::Preparing {
-                step: ReplayPreparation {
-                    detail: step.detail,
-                    progress: step.progress,
-                },
-            });
-        })));
     let result = tokio::select! {
-        result = work => result,
-        () = token.cancelled() => {
-            ctx.ports.replay_playback.set_preparation_progress(None);
-            out.emit(ReplayEvent::Closed);
-            return;
-        }
+        result = work => Some(result),
+        () = ticket.cancelled.cancelled() => None,
     };
-    ctx.ports.replay_playback.set_preparation_progress(None);
 
-    if let Ok(mut slot) = ctx.replays.cancellation.lock() {
-        // Disarmed, so a Cancel pressed after the game is up cannot idle the
-        // status of a replay that is playing.
-        slot.take();
+    // Checked and settled under one lock, with the events emitted inside it,
+    // so a replacement cannot begin between the check and what follows it.
+    let mut slot = ctx.replays.launch_slot();
+    if slot.current != ticket.id {
+        return;
     }
+    ctx.ports.replay_playback.set_preparation_progress(None);
+    let Some(result) = result else {
+        out.emit(ReplayEvent::Closed);
+        return;
+    };
+    // Disarmed, so a Cancel pressed after the game is up cannot idle the
+    // status of a replay that is playing.
+    slot.cancellation = None;
     match result {
         Ok(warning) => out.emit(ReplayEvent::Playing { uid, warning }),
         Err(reason) => fail(out, reason),
@@ -135,6 +185,23 @@ fn fail(out: &EventSink, reason: String) {
     out.emit(ReplayEvent::Failed { reason });
 }
 
+/// Report a live replay that was refused before it became a launch: still
+/// inside the anti-ghosting delay, or a game whose start is unknown.
+///
+/// Such a refusal owns no launch, so while another replay is starting it only
+/// says why, and leaves the status to that launch. As `fail` alone it set the
+/// status to `Failed` and closed the starting dialog of a replay that was
+/// still on its way. Checked under the launch lock, so a launch cannot begin
+/// or settle between the check and the event.
+fn refuse(ctx: &ServiceCtx, out: &EventSink, reason: String) {
+    let slot = ctx.replays.launch_slot();
+    if slot.cancellation.is_some() {
+        notifications::add_required(out, NotificationKind::Error, "Replay failed", reason, None);
+    } else {
+        fail(out, reason);
+    }
+}
+
 pub(crate) fn cancel_live_tracking(out: &EventSink) {
     if out.with_state(|state| state.replays.live_tracking.is_some()) {
         out.emit(ReplayEvent::LiveTrackingCleared);
@@ -162,7 +229,8 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
         (waiting, player)
     });
     if waiting > 0 {
-        fail(
+        refuse(
+            ctx,
             out,
             format!(
                 "Live replays are delayed by five minutes so nobody can watch \
@@ -173,9 +241,11 @@ async fn watch_live(target: LiveReplayTarget, ctx: &ServiceCtx, out: &EventSink)
         return;
     }
 
+    let ticket = begin_launch(ctx, out);
     out.emit(ReplayEvent::Connecting);
     let uid = target.uid;
     launch(
+        ticket,
         ctx.ports.replay_playback.watch_live(target, player),
         Some(uid),
         ctx,
@@ -201,7 +271,8 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                     .map(|game| (game.title.clone(), game.launched_at))
             });
             let Some((title, Some(launched_at))) = game else {
-                fail(
+                refuse(
+                    ctx,
                     out,
                     "That live game no longer has a known start time.".into(),
                 );
@@ -251,8 +322,10 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
         ReplayCommand::CancelLiveTracking => out.emit(ReplayEvent::LiveTrackingCleared),
         ReplayCommand::OpenFile { path } => {
             cancel_live_tracking(out);
+            let ticket = begin_launch(ctx, out);
             out.emit(ReplayEvent::Connecting);
             launch(
+                ticket,
                 ctx.ports.replay_playback.play_file(PathBuf::from(path)),
                 None,
                 ctx,
@@ -261,10 +334,8 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             .await;
         }
         ReplayCommand::CancelWatch => {
-            if let Ok(mut slot) = ctx.replays.cancellation.lock() {
-                if let Some(token) = slot.take() {
-                    token.cancel();
-                }
+            if let Some(token) = ctx.replays.launch_slot().cancellation.take() {
+                token.cancel();
             }
         }
         ReplayCommand::SearchVault { query } => {
@@ -333,12 +404,14 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         ReplayCommand::WatchVault { uid } => {
             cancel_live_tracking(out);
+            let ticket = begin_launch(ctx, out);
             out.emit(ReplayEvent::Connecting);
             // Watching a vault replay downloads it before launching FA. Keep
             // that work visible in the shared bottom status task, just like
             // the map and mod preparation done for a lobby join.
             out.emit(ReplayEvent::VaultDownloadStarted { uid });
             launch(
+                ticket,
                 ctx.ports.replay_playback.watch_vault(uid),
                 Some(uid),
                 ctx,

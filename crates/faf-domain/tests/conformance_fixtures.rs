@@ -5988,6 +5988,52 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "a late replay analysis never replaces the newer request's answer",
+            vec![
+                // Two panels opened in turn, both reads running at once.
+                ReplayEvent::AnalysisLoading { uid: 21 }.into(),
+                ReplayEvent::AnalysisLoading { uid: 22 }.into(),
+                // The older answer landing first does not take the slot.
+                ReplayEvent::AnalysisLoaded {
+                    analysis: faf_domain::state::ReplayAnalysis {
+                        uid: 21,
+                        ticks: 1_000,
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                ReplayEvent::AnalysisLoaded {
+                    analysis: faf_domain::state::ReplayAnalysis {
+                        uid: 22,
+                        ticks: 2_000,
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                // Nor does it landing last, and its failure is not 22's.
+                ReplayEvent::AnalysisLoaded {
+                    analysis: faf_domain::state::ReplayAnalysis {
+                        uid: 21,
+                        ticks: 1_000,
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                ReplayEvent::AnalysisFailed {
+                    uid: 21,
+                    reason: "late".into(),
+                }
+                .into(),
+                // The newest request's own failure carries its uid.
+                ReplayEvent::AnalysisLoading { uid: 23 }.into(),
+                ReplayEvent::AnalysisFailed {
+                    uid: 23,
+                    reason: "the replay body is truncated".into(),
+                }
+                .into(),
+            ],
+        ),
         // ── leaderboard ──────────────────────────────────────────────────
         case(
             "the other boards land only for the page that is on screen",
@@ -7243,7 +7289,7 @@ fn transition_cases() -> Vec<Case> {
                 }
                 .into(),
                 // A failure for something no longer asked about keeps the
-                // newer request's spinner.
+                // newer request's spinner, and is not shown as its failure.
                 ReplayEvent::DetailsLoading { uid: 13 }.into(),
                 ReplayEvent::DetailsFailed {
                     uid: 12,
@@ -7252,6 +7298,18 @@ fn transition_cases() -> Vec<Case> {
                 .into(),
                 ReplayEvent::DetailsLoaded {
                     uid: 13,
+                    details: ReplayDetails::default(),
+                }
+                .into(),
+                // 14 fails; 11 answering again afterwards keeps 14's failure.
+                ReplayEvent::DetailsLoading { uid: 14 }.into(),
+                ReplayEvent::DetailsFailed {
+                    uid: 14,
+                    reason: "not uploaded yet".into(),
+                }
+                .into(),
+                ReplayEvent::DetailsLoaded {
+                    uid: 11,
                     details: ReplayDetails::default(),
                 }
                 .into(),

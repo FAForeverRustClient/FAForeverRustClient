@@ -11,7 +11,7 @@ import type { LeaderboardColumn, TableColumn } from "./LeaderboardTable";
 import { crossRatingIndex, LeaderboardTable } from "./LeaderboardTable";
 import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
 import { ipc } from "../../ipc/client";
-import type { LeaderboardEntry, RatingQuery } from "../../ipc/bindings";
+import type { RatingQuery } from "../../ipc/bindings";
 import { formatNumber, type MessageKey } from "../../i18n";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -48,6 +48,17 @@ function dayEnd(day: string): string | null {
   return day ? new Date(`${day}T23:59:59.999`).toISOString() : null;
 }
 
+/** The executed query's values for the fields the search form edits. */
+function searchFieldsKey(query: RatingQuery): string {
+  return JSON.stringify([
+    query.player,
+    query.activeOnly,
+    query.updatedAfter,
+    query.updatedBefore,
+    query.pageSize,
+  ]);
+}
+
 function load(query: RatingQuery) {
   ipc.send({ kind: "Leaderboard", command: { type: "loadRatings", payload: { query } } });
 }
@@ -82,7 +93,10 @@ export function RatingLeaderboardPanel() {
   const visibleColumns = (browsing.leaderboardRatingColumns ?? [
     "games", "updated",
   ]) as LeaderboardColumn[];
-  const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
+  // The player, not the row: holding the `LeaderboardEntry` itself kept the
+  // details panel on the rank, rating and games count of the page it was
+  // clicked on, while a refresh had already put new numbers in the table.
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   // One column and a direction, applied by the backend to the list it holds:
   // a list rebuilt from this render lost a column when two boxes were ticked
@@ -107,8 +121,9 @@ export function RatingLeaderboardPanel() {
     if (preferred) void load({ ...state.ratingQuery, leaderboard: preferred.technicalName, page: 1 });
   }, [state.catalogStatus.type, state.ratingLeaderboards, state.ratingQuery, state.ratingsStatus.type]);
 
+  // A player no longer on the page is no longer selected.
   useEffect(() => {
-    setSelected((current) => current && state.ratingPage.entries.some((entry) => entry.playerId === current.playerId)
+    setSelectedId((current) => current !== null && state.ratingPage.entries.some((entry) => entry.playerId === current)
       ? current
       : null);
   }, [state.ratingPage.entries]);
@@ -117,7 +132,15 @@ export function RatingLeaderboardPanel() {
     setIncludeFormerNames(savedIncludeFormerNames);
   }, [savedIncludeFormerNames]);
 
+  // The search fields follow the executed query only when its values for
+  // those fields change. Paging, Refresh and ranking by another board each
+  // re-run the executed query, and copying it back on every answer threw away
+  // a player name or a date typed but not searched for yet.
+  const syncedSearch = useRef<string | null>(null);
   useEffect(() => {
+    const search = searchFieldsKey(state.ratingQuery);
+    if (search === syncedSearch.current) return;
+    syncedSearch.current = search;
     setPlayer(state.ratingQuery.player);
     setActiveOnly(state.ratingQuery.activeOnly);
     setAfter(dayValue(state.ratingQuery.updatedAfter));
@@ -143,6 +166,7 @@ export function RatingLeaderboardPanel() {
 
   const currentBoard = state.ratingLeaderboards.find((board) => board.technicalName === state.ratingQuery.leaderboard);
   const entries = state.ratingPage.entries;
+  const selected = entries.find((entry) => entry.playerId === selectedId) ?? null;
   // Every board gets a column. Which of them the page is ranked by is the
   // column header that was last pressed, not a tab above the table.
   const boardColumns: TableColumn[] = state.ratingLeaderboards.map(
@@ -300,8 +324,8 @@ export function RatingLeaderboardPanel() {
               activeBoard={state.ratingQuery.leaderboard}
               crossRatings={crossRatings}
               scrollResetKey={state.ratingQuery}
-              selectedPlayerId={selected?.playerId ?? null}
-              onSelect={setSelected}
+              selectedPlayerId={selectedId}
+              onSelect={(entry) => setSelectedId(entry.playerId)}
               onRankBy={(leaderboard) => void load({ ...state.ratingQuery, leaderboard, page: 1 })}
               emptyMessage={t("leaderboard.ratings.empty")}
             />

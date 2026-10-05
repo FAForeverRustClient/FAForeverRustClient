@@ -16,9 +16,14 @@ use faf_domain::state::{ClanAction, ClanCommand, ClanEvent, ClanIdentity, ClanIn
 use crate::ports::RequestError;
 use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
 
-/// The clan service's request generation. Owned by this service.
+/// The clan service's request generations. Owned by this service.
 #[derive(Default)]
 pub struct ClanContext {
+    /// Only the newest load may land. Loads overlap: opening the screen again,
+    /// or the reload at the end of a write, can start while an earlier read is
+    /// still out, and an older answer arriving last would put back the
+    /// identity, roster or status from before the newer one.
+    load_generation: LatestRequest,
     /// Only the newest invite-field answer may land: the field searches per
     /// keystroke, and an earlier prefix arriving late would replace the list
     /// with matches for something no longer typed.
@@ -152,9 +157,19 @@ pub async fn handle(cmd: ClanCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// Two requests rather than one because they answer different questions and
 /// only the first is cheap: `me` is the identity every screen needs, and the
 /// roster is only wanted by the screen that draws it.
+///
+/// Each answer is checked against the newest load, the reload after a write
+/// included, because it begins after the write has finished and so is the
+/// only read guaranteed to see it. A refusal is checked as well: a stale
+/// failure would mark a screen failed that a newer read has already filled.
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
+    let generation = ctx.clan.load_generation.begin();
     out.emit(ClanEvent::Loading);
-    let identity = match ctx.ports.clan.me().await {
+    let identity = ctx.ports.clan.me().await;
+    if !ctx.clan.load_generation.is_current(generation) {
+        return;
+    }
+    let identity = match identity {
         Ok(identity) => identity,
         Err(error) => {
             out.emit(ClanEvent::LoadFailed {
@@ -172,7 +187,13 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
         return;
     }
 
-    match ctx.ports.clan.clan(identity.player_id).await {
+    let clan = ctx.ports.clan.clan(identity.player_id).await;
+    if !ctx.clan.load_generation.is_current(generation) {
+        // A newer load overtook this one between its two reads; its identity
+        // is as stale as its roster, so neither is worth emitting.
+        return;
+    }
+    match clan {
         Ok(clan) => {
             // Resolved here rather than by the adapter, because it is a join
             // between two answers: `/clans/me` names the clan and the clan

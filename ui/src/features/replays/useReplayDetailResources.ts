@@ -20,10 +20,10 @@ export function useReplayDetailResources({ replay, initialLocalPath, isLocal }: 
   const localReplays = useAppStore((state) => state.state.replays.local);
   const replayDetails = useAppStore((state) => state.state.replays.replayDetails);
   const detailsLoading = useAppStore((state) => state.state.replays.detailsLoading);
-  const detailsError = useAppStore((state) => state.state.replays.detailsError);
+  const heldDetailsError = useAppStore((state) => state.state.replays.detailsError);
   const heldAnalysis = useAppStore((state) => state.state.replays.analysis);
   const analysisLoading = useAppStore((state) => state.state.replays.analysisLoading);
-  const analysisError = useAppStore((state) => state.state.replays.analysisError);
+  const heldAnalysisError = useAppStore((state) => state.state.replays.analysisError);
   const onlineLookups = useAppStore((state) => state.state.replays.onlineLookups);
 
   const localMatch = localReplays.find(
@@ -52,6 +52,9 @@ export function useReplayDetailResources({ replay, initialLocalPath, isLocal }: 
   const localPath = initialLocalPath || localMatch?.path;
   const details = replay.uid ? replayDetails?.[replay.uid] : undefined;
   const isLoadingDetails = detailsLoading === replay.uid;
+  // Only this replay's failure. Two panels opened in turn can both have a
+  // read in flight, and the other one's failure is not this replay's.
+  const detailsError = heldDetailsError?.uid === replay.uid ? heldDetailsError.reason : null;
 
   const loadDetails = () => {
     ipc.send({
@@ -69,6 +72,7 @@ export function useReplayDetailResources({ replay, initialLocalPath, isLocal }: 
   // Only this replay's answer. The store holds one analysis at a time, so a
   // panel opened after another must not draw the last one's orders.
   const analysis = heldAnalysis?.uid === replay.uid ? heldAnalysis : null;
+  const analysisError = heldAnalysisError?.uid === replay.uid ? heldAnalysisError.reason : null;
   const loadAnalysis = () => {
     ipc.send({
       kind: "Replays",

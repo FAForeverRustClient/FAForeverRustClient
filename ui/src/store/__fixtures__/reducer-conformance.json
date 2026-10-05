@@ -46430,7 +46430,774 @@
           },
           "expected": {
             "analysis": null,
-            "analysisError": "the replay file could not be read",
+            "analysisError": {
+              "reason": "the replay file could not be read",
+              "uid": 12
+            },
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "a late replay analysis never replaces the newer request's answer",
+      "steps": [
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoading",
+              "payload": {
+                "uid": 21
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": 21,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoading",
+              "payload": {
+                "uid": 22
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": 22,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoaded",
+              "payload": {
+                "analysis": {
+                  "uid": 21,
+                  "ticks": 1000,
+                  "gameVersion": "",
+                  "armies": [],
+                  "observers": [],
+                  "scenario": {
+                    "name": "",
+                    "description": "",
+                    "mapFolder": "",
+                    "width": 0,
+                    "height": 0,
+                    "options": []
+                  },
+                  "activity": [],
+                  "orders": [],
+                  "points": [],
+                  "notices": [],
+                  "stats": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": 22,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoaded",
+              "payload": {
+                "analysis": {
+                  "uid": 22,
+                  "ticks": 2000,
+                  "gameVersion": "",
+                  "armies": [],
+                  "observers": [],
+                  "scenario": {
+                    "name": "",
+                    "description": "",
+                    "mapFolder": "",
+                    "width": 0,
+                    "height": 0,
+                    "options": []
+                  },
+                  "activity": [],
+                  "orders": [],
+                  "points": [],
+                  "notices": [],
+                  "stats": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": {
+              "activity": [],
+              "armies": [],
+              "gameVersion": "",
+              "notices": [],
+              "observers": [],
+              "orders": [],
+              "points": [],
+              "scenario": {
+                "description": "",
+                "height": 0,
+                "mapFolder": "",
+                "name": "",
+                "options": [],
+                "width": 0
+              },
+              "stats": [],
+              "ticks": 2000,
+              "uid": 22
+            },
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoaded",
+              "payload": {
+                "analysis": {
+                  "uid": 21,
+                  "ticks": 1000,
+                  "gameVersion": "",
+                  "armies": [],
+                  "observers": [],
+                  "scenario": {
+                    "name": "",
+                    "description": "",
+                    "mapFolder": "",
+                    "width": 0,
+                    "height": 0,
+                    "options": []
+                  },
+                  "activity": [],
+                  "orders": [],
+                  "points": [],
+                  "notices": [],
+                  "stats": []
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": {
+              "activity": [],
+              "armies": [],
+              "gameVersion": "",
+              "notices": [],
+              "observers": [],
+              "orders": [],
+              "points": [],
+              "scenario": {
+                "description": "",
+                "height": 0,
+                "mapFolder": "",
+                "name": "",
+                "options": [],
+                "width": 0
+              },
+              "stats": [],
+              "ticks": 2000,
+              "uid": 22
+            },
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisFailed",
+              "payload": {
+                "uid": 21,
+                "reason": "late"
+              }
+            }
+          },
+          "expected": {
+            "analysis": {
+              "activity": [],
+              "armies": [],
+              "gameVersion": "",
+              "notices": [],
+              "observers": [],
+              "orders": [],
+              "points": [],
+              "scenario": {
+                "description": "",
+                "height": 0,
+                "mapFolder": "",
+                "name": "",
+                "options": [],
+                "width": 0
+              },
+              "stats": [],
+              "ticks": 2000,
+              "uid": 22
+            },
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisLoading",
+              "payload": {
+                "uid": 23
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": 23,
+            "detailsError": null,
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {},
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "analysisFailed",
+              "payload": {
+                "uid": 23,
+                "reason": "the replay body is truncated"
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": {
+              "reason": "the replay body is truncated",
+              "uid": 23
+            },
             "analysisLoading": null,
             "detailsError": null,
             "detailsLoading": null,
@@ -63916,7 +64683,10 @@
             "analysis": null,
             "analysisError": null,
             "analysisLoading": null,
-            "detailsError": "the replay body is truncated",
+            "detailsError": {
+              "reason": "the replay body is truncated",
+              "uid": 12
+            },
             "detailsLoading": null,
             "downloadStatus": {
               "type": "idle"
@@ -64095,7 +64865,7 @@
             "analysis": null,
             "analysisError": null,
             "analysisLoading": null,
-            "detailsError": "late",
+            "detailsError": null,
             "detailsLoading": 13,
             "downloadStatus": {
               "type": "idle"
@@ -64218,6 +64988,312 @@
                 "gameVersion": 3810,
                 "simMods": [],
                 "simSeconds": 1200
+              },
+              "13": {
+                "chatMessages": [],
+                "commandStats": [],
+                "gameOptions": [],
+                "gameVersion": null,
+                "simMods": [],
+                "simSeconds": 0
+              }
+            },
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "detailsLoading",
+              "payload": {
+                "uid": 14
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": null,
+            "detailsLoading": 14,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {
+              "11": {
+                "chatMessages": [],
+                "commandStats": [],
+                "gameOptions": [],
+                "gameVersion": 3810,
+                "simMods": [],
+                "simSeconds": 1200
+              },
+              "13": {
+                "chatMessages": [],
+                "commandStats": [],
+                "gameOptions": [],
+                "gameVersion": null,
+                "simMods": [],
+                "simSeconds": 0
+              }
+            },
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "detailsFailed",
+              "payload": {
+                "uid": 14,
+                "reason": "not uploaded yet"
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": {
+              "reason": "not uploaded yet",
+              "uid": 14
+            },
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {
+              "11": {
+                "chatMessages": [],
+                "commandStats": [],
+                "gameOptions": [],
+                "gameVersion": 3810,
+                "simMods": [],
+                "simSeconds": 1200
+              },
+              "13": {
+                "chatMessages": [],
+                "commandStats": [],
+                "gameOptions": [],
+                "gameVersion": null,
+                "simMods": [],
+                "simSeconds": 0
+              }
+            },
+            "resolvedMaps": {},
+            "status": {
+              "type": "idle"
+            },
+            "vault": [],
+            "vaultHasMore": false,
+            "vaultQuery": {
+              "after": "",
+              "before": "",
+              "exactPlayer": true,
+              "factions": [],
+              "featuredMods": [],
+              "host": "",
+              "leaderboards": [],
+              "map": "",
+              "mapAuthor": "",
+              "mapMaxPlayers": null,
+              "mapMaxSizeKm": null,
+              "mapMinPlayers": null,
+              "mapMinSizeKm": null,
+              "maxDurationMinutes": null,
+              "maxPlayers": null,
+              "maxRating": null,
+              "maxReviewScore": null,
+              "minDurationMinutes": null,
+              "minPlayers": null,
+              "minRating": null,
+              "minReviewScore": null,
+              "onlyRanked": false,
+              "page": 1,
+              "pageSize": 50,
+              "player": "",
+              "rankedMapOnly": false,
+              "replayId": "",
+              "replayIds": [],
+              "sortBy": "startTime",
+              "sortDescending": true,
+              "title": "",
+              "victoryConditions": []
+            },
+            "vaultStatus": {
+              "type": "idle"
+            },
+            "vaultTotalPages": null,
+            "vaultTotalRecords": null
+          }
+        },
+        {
+          "event": {
+            "kind": "Replays",
+            "event": {
+              "type": "detailsLoaded",
+              "payload": {
+                "uid": 11,
+                "details": {
+                  "gameOptions": [],
+                  "chatMessages": [],
+                  "commandStats": [],
+                  "simSeconds": 0,
+                  "simMods": [],
+                  "gameVersion": null
+                }
+              }
+            }
+          },
+          "expected": {
+            "analysis": null,
+            "analysisError": null,
+            "analysisLoading": null,
+            "detailsError": {
+              "reason": "not uploaded yet",
+              "uid": 14
+            },
+            "detailsLoading": null,
+            "downloadStatus": {
+              "type": "idle"
+            },
+            "featuredMods": [],
+            "lastWarning": null,
+            "liveTracking": null,
+            "local": [],
+            "localStatus": {
+              "type": "idle"
+            },
+            "onlineLookups": {},
+            "preparing": null,
+            "recentMatchmaker": [],
+            "recentMatchmakerStatus": {
+              "type": "idle"
+            },
+            "replayDetails": {
+              "11": {
+                "chatMessages": [],
+                "commandStats": [],
+                "gameOptions": [],
+                "gameVersion": null,
+                "simMods": [],
+                "simSeconds": 0
               },
               "13": {
                 "chatMessages": [],
@@ -72222,46 +73298,46 @@
               "type": "previewsLoaded",
               "payload": {
                 "previews": {
-                  "neroxis_map_generator_1.22.1_first_23": "data:image/png;base64,first23",
-                  "neroxis_map_generator_1.22.1_first_12": "data:image/png;base64,first12",
-                  "neroxis_map_generator_1.22.1_first_31": "data:image/png;base64,first31",
-                  "neroxis_map_generator_1.22.1_first_1": "data:image/png;base64,first1",
-                  "neroxis_map_generator_1.22.1_first_21": "data:image/png;base64,first21",
-                  "neroxis_map_generator_1.22.1_first_35": "data:image/png;base64,first35",
-                  "neroxis_map_generator_1.22.1_first_37": "data:image/png;base64,first37",
-                  "neroxis_map_generator_1.22.1_first_30": "data:image/png;base64,first30",
-                  "neroxis_map_generator_1.22.1_first_26": "data:image/png;base64,first26",
-                  "neroxis_map_generator_1.22.1_first_0": "data:image/png;base64,first0",
-                  "neroxis_map_generator_1.22.1_first_14": "data:image/png;base64,first14",
-                  "neroxis_map_generator_1.22.1_first_19": "data:image/png;base64,first19",
-                  "neroxis_map_generator_1.22.1_first_36": "data:image/png;base64,first36",
-                  "neroxis_map_generator_1.22.1_first_11": "data:image/png;base64,first11",
-                  "neroxis_map_generator_1.22.1_first_7": "data:image/png;base64,first7",
-                  "neroxis_map_generator_1.22.1_first_17": "data:image/png;base64,first17",
-                  "neroxis_map_generator_1.22.1_first_33": "data:image/png;base64,first33",
-                  "neroxis_map_generator_1.22.1_first_18": "data:image/png;base64,first18",
-                  "neroxis_map_generator_1.22.1_first_3": "data:image/png;base64,first3",
-                  "neroxis_map_generator_1.22.1_first_20": "data:image/png;base64,first20",
-                  "neroxis_map_generator_1.22.1_first_28": "data:image/png;base64,first28",
-                  "neroxis_map_generator_1.22.1_first_34": "data:image/png;base64,first34",
-                  "neroxis_map_generator_1.22.1_first_6": "data:image/png;base64,first6",
-                  "neroxis_map_generator_1.22.1_first_9": "data:image/png;base64,first9",
-                  "neroxis_map_generator_1.22.1_first_13": "data:image/png;base64,first13",
+                  "neroxis_map_generator_1.22.1_first_10": "data:image/png;base64,first10",
                   "neroxis_map_generator_1.22.1_first_8": "data:image/png;base64,first8",
                   "neroxis_map_generator_1.22.1_first_25": "data:image/png;base64,first25",
-                  "neroxis_map_generator_1.22.1_first_29": "data:image/png;base64,first29",
-                  "neroxis_map_generator_1.22.1_first_5": "data:image/png;base64,first5",
-                  "neroxis_map_generator_1.22.1_first_16": "data:image/png;base64,first16",
-                  "neroxis_map_generator_1.22.1_first_32": "data:image/png;base64,first32",
-                  "neroxis_map_generator_1.22.1_first_27": "data:image/png;base64,first27",
-                  "neroxis_map_generator_1.22.1_first_2": "data:image/png;base64,first2",
-                  "neroxis_map_generator_1.22.1_first_22": "data:image/png;base64,first22",
-                  "neroxis_map_generator_1.22.1_first_10": "data:image/png;base64,first10",
-                  "neroxis_map_generator_1.22.1_first_4": "data:image/png;base64,first4",
-                  "neroxis_map_generator_1.22.1_first_24": "data:image/png;base64,first24",
+                  "neroxis_map_generator_1.22.1_first_14": "data:image/png;base64,first14",
+                  "neroxis_map_generator_1.22.1_first_37": "data:image/png;base64,first37",
                   "neroxis_map_generator_1.22.1_first_38": "data:image/png;base64,first38",
+                  "neroxis_map_generator_1.22.1_first_2": "data:image/png;base64,first2",
+                  "neroxis_map_generator_1.22.1_first_4": "data:image/png;base64,first4",
+                  "neroxis_map_generator_1.22.1_first_5": "data:image/png;base64,first5",
+                  "neroxis_map_generator_1.22.1_first_20": "data:image/png;base64,first20",
+                  "neroxis_map_generator_1.22.1_first_22": "data:image/png;base64,first22",
+                  "neroxis_map_generator_1.22.1_first_27": "data:image/png;base64,first27",
+                  "neroxis_map_generator_1.22.1_first_29": "data:image/png;base64,first29",
+                  "neroxis_map_generator_1.22.1_first_36": "data:image/png;base64,first36",
                   "neroxis_map_generator_1.22.1_first_39": "data:image/png;base64,first39",
-                  "neroxis_map_generator_1.22.1_first_15": "data:image/png;base64,first15"
+                  "neroxis_map_generator_1.22.1_first_16": "data:image/png;base64,first16",
+                  "neroxis_map_generator_1.22.1_first_30": "data:image/png;base64,first30",
+                  "neroxis_map_generator_1.22.1_first_7": "data:image/png;base64,first7",
+                  "neroxis_map_generator_1.22.1_first_13": "data:image/png;base64,first13",
+                  "neroxis_map_generator_1.22.1_first_17": "data:image/png;base64,first17",
+                  "neroxis_map_generator_1.22.1_first_0": "data:image/png;base64,first0",
+                  "neroxis_map_generator_1.22.1_first_12": "data:image/png;base64,first12",
+                  "neroxis_map_generator_1.22.1_first_24": "data:image/png;base64,first24",
+                  "neroxis_map_generator_1.22.1_first_6": "data:image/png;base64,first6",
+                  "neroxis_map_generator_1.22.1_first_28": "data:image/png;base64,first28",
+                  "neroxis_map_generator_1.22.1_first_31": "data:image/png;base64,first31",
+                  "neroxis_map_generator_1.22.1_first_32": "data:image/png;base64,first32",
+                  "neroxis_map_generator_1.22.1_first_35": "data:image/png;base64,first35",
+                  "neroxis_map_generator_1.22.1_first_19": "data:image/png;base64,first19",
+                  "neroxis_map_generator_1.22.1_first_21": "data:image/png;base64,first21",
+                  "neroxis_map_generator_1.22.1_first_1": "data:image/png;base64,first1",
+                  "neroxis_map_generator_1.22.1_first_9": "data:image/png;base64,first9",
+                  "neroxis_map_generator_1.22.1_first_34": "data:image/png;base64,first34",
+                  "neroxis_map_generator_1.22.1_first_33": "data:image/png;base64,first33",
+                  "neroxis_map_generator_1.22.1_first_11": "data:image/png;base64,first11",
+                  "neroxis_map_generator_1.22.1_first_3": "data:image/png;base64,first3",
+                  "neroxis_map_generator_1.22.1_first_15": "data:image/png;base64,first15",
+                  "neroxis_map_generator_1.22.1_first_26": "data:image/png;base64,first26",
+                  "neroxis_map_generator_1.22.1_first_18": "data:image/png;base64,first18",
+                  "neroxis_map_generator_1.22.1_first_23": "data:image/png;base64,first23"
                 }
               }
             }
@@ -72468,26 +73544,26 @@
               "type": "previewsLoaded",
               "payload": {
                 "previews": {
+                  "neroxis_map_generator_1.22.1_second_16": "data:image/png;base64,second16",
+                  "neroxis_map_generator_1.22.1_second_17": "data:image/png;base64,second17",
                   "neroxis_map_generator_1.22.1_second_3": "data:image/png;base64,second3",
-                  "neroxis_map_generator_1.22.1_second_10": "data:image/png;base64,second10",
-                  "neroxis_map_generator_1.22.1_second_11": "data:image/png;base64,second11",
-                  "neroxis_map_generator_1.22.1_second_13": "data:image/png;base64,second13",
+                  "neroxis_map_generator_1.22.1_second_15": "data:image/png;base64,second15",
+                  "neroxis_map_generator_1.22.1_second_9": "data:image/png;base64,second9",
+                  "neroxis_map_generator_1.22.1_second_6": "data:image/png;base64,second6",
+                  "neroxis_map_generator_1.22.1_second_4": "data:image/png;base64,second4",
                   "neroxis_map_generator_1.22.1_second_5": "data:image/png;base64,second5",
+                  "neroxis_map_generator_1.22.1_second_10": "data:image/png;base64,second10",
+                  "neroxis_map_generator_1.22.1_second_14": "data:image/png;base64,second14",
+                  "neroxis_map_generator_1.22.1_second_12": "data:image/png;base64,second12",
                   "neroxis_map_generator_1.22.1_second_0": "data:image/png;base64,second0",
+                  "neroxis_map_generator_1.22.1_second_7": "data:image/png;base64,second7",
                   "neroxis_map_generator_1.22.1_second_18": "data:image/png;base64,second18",
                   "neroxis_map_generator_1.22.1_second_2": "data:image/png;base64,second2",
-                  "neroxis_map_generator_1.22.1_second_9": "data:image/png;base64,second9",
-                  "neroxis_map_generator_1.22.1_second_12": "data:image/png;base64,second12",
-                  "neroxis_map_generator_1.22.1_second_15": "data:image/png;base64,second15",
-                  "neroxis_map_generator_1.22.1_second_1": "data:image/png;base64,second1",
-                  "neroxis_map_generator_1.22.1_second_4": "data:image/png;base64,second4",
-                  "neroxis_map_generator_1.22.1_second_14": "data:image/png;base64,second14",
-                  "neroxis_map_generator_1.22.1_second_17": "data:image/png;base64,second17",
-                  "neroxis_map_generator_1.22.1_second_6": "data:image/png;base64,second6",
-                  "neroxis_map_generator_1.22.1_second_7": "data:image/png;base64,second7",
                   "neroxis_map_generator_1.22.1_second_8": "data:image/png;base64,second8",
-                  "neroxis_map_generator_1.22.1_second_16": "data:image/png;base64,second16",
-                  "neroxis_map_generator_1.22.1_second_19": "data:image/png;base64,second19"
+                  "neroxis_map_generator_1.22.1_second_19": "data:image/png;base64,second19",
+                  "neroxis_map_generator_1.22.1_second_1": "data:image/png;base64,second1",
+                  "neroxis_map_generator_1.22.1_second_11": "data:image/png;base64,second11",
+                  "neroxis_map_generator_1.22.1_second_13": "data:image/png;base64,second13"
                 }
               }
             }
@@ -72714,16 +73790,16 @@
               "type": "previewsLoaded",
               "payload": {
                 "previews": {
-                  "neroxis_map_generator_1.22.1_third_2": "data:image/png;base64,third2",
-                  "neroxis_map_generator_1.22.1_third_5": "data:image/png;base64,third5",
-                  "neroxis_map_generator_1.22.1_third_4": "data:image/png;base64,third4",
-                  "neroxis_map_generator_1.22.1_third_0": "data:image/png;base64,third0",
-                  "neroxis_map_generator_1.22.1_third_9": "data:image/png;base64,third9",
                   "neroxis_map_generator_1.22.1_third_3": "data:image/png;base64,third3",
-                  "neroxis_map_generator_1.22.1_third_6": "data:image/png;base64,third6",
                   "neroxis_map_generator_1.22.1_third_1": "data:image/png;base64,third1",
+                  "neroxis_map_generator_1.22.1_third_4": "data:image/png;base64,third4",
+                  "neroxis_map_generator_1.22.1_third_5": "data:image/png;base64,third5",
+                  "neroxis_map_generator_1.22.1_third_2": "data:image/png;base64,third2",
+                  "neroxis_map_generator_1.22.1_third_7": "data:image/png;base64,third7",
+                  "neroxis_map_generator_1.22.1_third_9": "data:image/png;base64,third9",
+                  "neroxis_map_generator_1.22.1_third_6": "data:image/png;base64,third6",
                   "neroxis_map_generator_1.22.1_third_8": "data:image/png;base64,third8",
-                  "neroxis_map_generator_1.22.1_third_7": "data:image/png;base64,third7"
+                  "neroxis_map_generator_1.22.1_third_0": "data:image/png;base64,third0"
                 }
               }
             }

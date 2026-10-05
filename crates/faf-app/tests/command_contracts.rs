@@ -1331,6 +1331,10 @@ impl AuthPort for HeldAuth {
         self.gates.pass("restore").await;
         Ok(Some(Player::new(7, "Ada")))
     }
+    fn commit_session(&self) -> bool {
+        true
+    }
+    fn discard_pending_session(&self) {}
     async fn logout(&self) -> AuthResult<()> {
         self.logouts.fetch_add(1, Ordering::SeqCst);
         Ok(())

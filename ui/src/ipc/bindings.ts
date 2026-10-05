@@ -7658,6 +7658,19 @@ export type ReplayQuery = {
 	pageSize: number,
 };
 
+/**
+ *  Why reading one replay file failed, and which replay it was.
+ *
+ *  The detail panel reads the details and the analysis on demand, and a reader
+ *  who opens one replay and then another has two reads in flight at once. A
+ *  bare reason in the state could not say whose it was, so the second panel
+ *  showed the first one's failure as its own.
+ */
+export type ReplayReadError = {
+	uid: number,
+	reason: string,
+};
+
 /**  One resource flow, for one player. */
 export type ReplayResourceStat = {
 	/**  `massin`, `massout`, `energyin`, `energyout`, `storage`. */
@@ -7743,18 +7756,27 @@ export type ReplayState = {
 	 *  when requested because parsing the command stream can be expensive.
 	 */
 	replayDetails?: { [key in number]: ReplayDetails },
-	detailsLoading?: number | null,
-	detailsError?: string | null,
 	/**
-	 *  The analysed replay, and only the most recent one.
+	 *  The replay whose details were asked for last, while that read runs.
+	 *  Only its failure is recorded: an older read still finishing describes a
+	 *  panel nobody is looking at.
+	 */
+	detailsLoading?: number | null,
+	detailsError?: ReplayReadError | null,
+	/**
+	 *  The analysed replay, and only the one asked for last.
 	 *
 	 *  One of these is megabytes of orders and targets. Keeping a map of them
 	 *  the way the details are kept would grow the state by a replay every
-	 *  time somebody opened a panel, so the newest answer replaces the last.
+	 *  time somebody opened a panel, so only the answer to the newest request
+	 *  is held. An older request finishing later is dropped rather than
+	 *  allowed to replace it: the newer panel would otherwise reject the
+	 *  stranger's analysis and sit on "reading" with nothing left coming.
 	 */
 	analysis?: ReplayAnalysis | null,
+	/**  The replay whose analysis was asked for last, while that read runs. */
 	analysisLoading?: number | null,
-	analysisError?: string | null,
+	analysisError?: ReplayReadError | null,
 	/**
 	 *  Vault answers for single game ids, keyed by that id. Filled by
 	 *  [`ReplayCommand::LookUpOnline`] on behalf of local replays; see

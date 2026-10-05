@@ -18,20 +18,21 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use faf_app::infra::{fake_ports, FakeAuth, FakeGuides, FakeLeaderboard, FakePlayerCard};
+use faf_app::infra::{fake_ports, FakeAuth, FakeClan, FakeGuides, FakeLeaderboard, FakePlayerCard};
 use faf_app::ports::{
-    CoopPort, DeviceCode, GuidesPort, LeaderboardPort, PlayerCardPort, RequestError, ReviewPage,
-    ReviewsPort,
+    ClanPort, CoopPort, DeviceCode, GuidesPort, LeaderboardPort, PlayerCardPort, RequestError,
+    ReviewPage, ReviewsPort,
 };
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    AuthCommand, BoardRating, CoopCommand, CoopMission, CoopResult, CoopScenario, CoopStatus,
-    GuideSubmission, GuidesCommand, GuidesIdentity, GuidesStatus, LeaderboardCommand,
-    LeaderboardEntry, LeaderboardStatus, League, LeagueSeason, MatchmakerPlayerProfile, Player,
-    PlayerCardCommand, PlayerCardProfile, PlayerCardStatus, PlayerLeaguePlacement, PlayerMapStats,
-    PlayerRatings, PlayerSummary, RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint,
-    RatingHistoryQuery, RatingLeaderboard, RatingPage, RatingQuery, RejectReason, Review,
-    ReviewKind, ReviewSubmitStatus, ReviewTarget, ReviewsCommand, ReviewsState, ReviewsStatus,
+    AuthCommand, BoardRating, ClanActionStatus, ClanCommand, ClanDraft, ClanIdentity, ClanStatus,
+    CoopCommand, CoopMission, CoopResult, CoopScenario, CoopStatus, GuideSubmission, GuidesCommand,
+    GuidesIdentity, GuidesStatus, LeaderboardCommand, LeaderboardEntry, LeaderboardStatus, League,
+    LeagueSeason, MatchmakerPlayerProfile, Player, PlayerCardCommand, PlayerCardProfile,
+    PlayerCardStatus, PlayerClan, PlayerLeaguePlacement, PlayerMapStats, PlayerRatings,
+    PlayerSummary, RatingHistoryPage, RatingHistoryPeriod, RatingHistoryPoint, RatingHistoryQuery,
+    RatingLeaderboard, RatingPage, RatingQuery, RejectReason, Review, ReviewKind,
+    ReviewSubmitStatus, ReviewTarget, ReviewsCommand, ReviewsState, ReviewsStatus,
     SeasonLeaderboard, TrainingResource,
 };
 use faf_domain::AppCommand;
@@ -1229,5 +1230,173 @@ async fn the_re_read_after_a_write_never_lands_on_the_next_subject() {
         reviews.submit,
         ReviewSubmitStatus::Idle,
         "the previous map's write was reported on this one"
+    );
+}
+
+// ── Clan ────────────────────────────────────────────────────────────────────
+
+/// The offline clan service, except that this account is in a clan whose
+/// identity is named after the `me` read and whose roster is named after the
+/// `clan` read, and an invitation is redeemed at once.
+struct GatedClan(Gates);
+
+#[async_trait]
+impl ClanPort for GatedClan {
+    async fn me(&self) -> Result<ClanIdentity, RequestError> {
+        let call = self.0.pass("me").await;
+        if call.refused {
+            return Err(RequestError::unexpected(refusal(&call)));
+        }
+        Ok(ClanIdentity {
+            player_id: 7,
+            login: "Sheikah".into(),
+            clan_id: "42".into(),
+            clan_name: call.key,
+            clan_tag: "BRO".into(),
+            is_leader: false,
+        })
+    }
+    async fn clan(&self, _player_id: i32) -> Result<PlayerClan, RequestError> {
+        let call = self.0.pass("clan").await;
+        if call.refused {
+            return Err(RequestError::unexpected(refusal(&call)));
+        }
+        Ok(PlayerClan {
+            id: "42".into(),
+            name: call.key,
+            tag: "BRO".into(),
+            description: String::new(),
+            website_url: String::new(),
+            requires_invitation: true,
+            created_at: String::new(),
+            joined_at: String::new(),
+            leader: "Sheikah".into(),
+            founder: "Sheikah".into(),
+            members: Vec::new(),
+        })
+    }
+    async fn create(&self, draft: &ClanDraft) -> Result<String, RequestError> {
+        FakeClan.create(draft).await
+    }
+    async fn edit(&self, clan_id: &str, draft: &ClanDraft) -> Result<(), RequestError> {
+        FakeClan.edit(clan_id, draft).await
+    }
+    async fn hand_over(&self, clan_id: &str, player_id: i32) -> Result<(), RequestError> {
+        FakeClan.hand_over(clan_id, player_id).await
+    }
+    async fn invite(&self, clan_id: &str, player_id: i32) -> Result<String, RequestError> {
+        FakeClan.invite(clan_id, player_id).await
+    }
+    async fn accept_invitation(&self, _token: &str) -> Result<(), RequestError> {
+        Ok(())
+    }
+    async fn remove_membership(&self, membership_id: &str) -> Result<(), RequestError> {
+        FakeClan.remove_membership(membership_id).await
+    }
+    async fn disband(&self, clan_id: &str) -> Result<(), RequestError> {
+        FakeClan.disband(clan_id).await
+    }
+}
+
+fn with_gated_clan() -> (Arc<App>, Gates) {
+    let gates = Gates::default();
+    let app = start(Ports {
+        clan: Arc::new(GatedClan(gates.clone())),
+        ..fake_ports()
+    });
+    (app, gates)
+}
+
+fn load_clan() -> AppCommand {
+    ClanCommand::Load.into()
+}
+
+/// The clan screen loads every time it opens, so loads overlap. Two older
+/// ones, one held before its identity answers and one held between its
+/// identity and its roster, are overtaken by a third. Neither may replace the
+/// newest identity or roster when it answers, and the first may not go on to
+/// read a roster at all.
+#[tokio::test]
+async fn an_older_clan_load_never_replaces_a_newer_one() {
+    let (app, gates) = with_gated_clan();
+    gates.hold("me #1");
+    gates.hold("clan #1");
+
+    let before_identity = start_held(&app, &gates, load_clan(), "me #1").await;
+    let before_roster = start_held(&app, &gates, load_clan(), "clan #1").await;
+    run(&app, load_clan()).await;
+    release_all(
+        &gates,
+        &["me #1", "clan #1"],
+        vec![before_identity, before_roster],
+    )
+    .await;
+
+    let clan = app.snapshot().clan;
+    assert_eq!(clan.identity.clan_name, "me #3");
+    assert_eq!(clan.clan.map(|clan| clan.name).as_deref(), Some("clan #2"));
+    assert_eq!(clan.status, ClanStatus::Ready);
+    assert_eq!(
+        gates.calls("clan"),
+        2,
+        "the stale load went on to read the roster"
+    );
+}
+
+/// The same overlap, but both older loads are refused: one at its identity,
+/// one at its roster. A refusal for a screen the newest load has already
+/// filled must not mark it failed, nor take the roster away.
+#[tokio::test]
+async fn an_older_clan_load_failure_never_fails_a_newer_one() {
+    let (app, gates) = with_gated_clan();
+    gates.hold_refused("me #1");
+    gates.hold_refused("clan #1");
+
+    let refused_identity = start_held(&app, &gates, load_clan(), "me #1").await;
+    let refused_roster = start_held(&app, &gates, load_clan(), "clan #1").await;
+    run(&app, load_clan()).await;
+    release_all(
+        &gates,
+        &["me #1", "clan #1"],
+        vec![refused_identity, refused_roster],
+    )
+    .await;
+
+    let clan = app.snapshot().clan;
+    assert_eq!(clan.status, ClanStatus::Ready);
+    assert_eq!(clan.identity.clan_name, "me #3");
+    assert_eq!(clan.clan.map(|clan| clan.name).as_deref(), Some("clan #2"));
+}
+
+/// Two loads, one that will answer and one that will be refused, are still in
+/// flight when a write finishes and reloads. Both predate the write, so the
+/// reload is the only read that has seen it: neither may replace it or mark
+/// the screen failed.
+#[tokio::test]
+async fn an_older_clan_load_never_replaces_the_reload_after_a_write() {
+    let (app, gates) = with_gated_clan();
+    gates.hold("me #1");
+    gates.hold_refused("me #2");
+
+    let stale_ok = start_held(&app, &gates, load_clan(), "me #1").await;
+    let stale_err = start_held(&app, &gates, load_clan(), "me #2").await;
+    run(
+        &app,
+        ClanCommand::AcceptInvitation {
+            token: "token".into(),
+        }
+        .into(),
+    )
+    .await;
+    release_all(&gates, &["me #1", "me #2"], vec![stale_ok, stale_err]).await;
+
+    let clan = app.snapshot().clan;
+    assert_eq!(clan.identity.clan_name, "me #3");
+    assert_eq!(clan.clan.map(|clan| clan.name).as_deref(), Some("clan #1"));
+    assert_eq!(clan.status, ClanStatus::Ready);
+    assert_eq!(
+        clan.action,
+        ClanActionStatus::Idle,
+        "the reload after the write ends its announcement"
     );
 }

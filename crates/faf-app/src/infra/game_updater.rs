@@ -32,7 +32,9 @@
 //! - `maps`: staging a map from the vault CDN for a replay or a live game.
 //! - `content_store`: the content-addressed store underneath all of them.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 mod cache;
 mod content_store;
@@ -62,6 +64,68 @@ async fn off_runtime<T: Send + 'static>(
     tokio::task::spawn_blocking(work)
         .await
         .map_err(|error| format!("file task failed: {error}"))
+}
+
+/// Exclusive use of one install directory, for as long as anything is still
+/// writing into it.
+///
+/// An install pass is a chain of awaits, and dropping it is how a replay
+/// launch is called off. Work already handed to the blocking pool cannot be
+/// dropped, though: a staging that was cancelled kept replacing files,
+/// stamping the executable and writing `fa_path.lua` while the next launch
+/// prepared the same directory beside it. So the lock is not held by the
+/// async pass alone. Every blocking worker that writes into the install holds
+/// a clone (see [`off_runtime_leased`]), and the directory is free again only
+/// once the last of them has returned.
+#[derive(Clone)]
+pub(super) struct InstallLease {
+    _held: Arc<tokio::sync::OwnedMutexGuard<()>>,
+}
+
+type InstallLocks = HashMap<PathBuf, Arc<tokio::sync::Mutex<()>>>;
+
+/// One lock per install directory, so a replay install and the game install
+/// do not wait on each other.
+static INSTALL_LOCKS: std::sync::Mutex<Option<InstallLocks>> = std::sync::Mutex::new(None);
+
+/// Wait until nothing else is writing into `target_dir`, then hold it.
+pub(super) async fn lease_install(target_dir: &Path) -> InstallLease {
+    let lock = {
+        let mut locks = INSTALL_LOCKS
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        locks
+            .get_or_insert_with(HashMap::new)
+            .entry(target_dir.to_path_buf())
+            .or_default()
+            .clone()
+    };
+    let guard = match lock.clone().try_lock_owned() {
+        Ok(guard) => guard,
+        Err(_) => {
+            #[cfg(test)]
+            test_support::probe::waiting_for_install(target_dir);
+            lock.lock_owned().await
+        }
+    };
+    InstallLease {
+        _held: Arc::new(guard),
+    }
+}
+
+/// [`off_runtime`] for work that writes into a leased install. The worker
+/// keeps the lease until it returns, even after the caller has stopped
+/// waiting for it.
+async fn off_runtime_leased<T: Send + 'static>(
+    lease: &InstallLease,
+    work: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, String> {
+    let lease = lease.clone();
+    off_runtime(move || {
+        let _lease = lease;
+        work()
+    })
+    .await
 }
 
 fn safe_join_file(root: &Path, group: &str, name: &str) -> Result<PathBuf, String> {

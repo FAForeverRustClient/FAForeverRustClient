@@ -16,7 +16,7 @@ use crate::ports::{PreparationPhase, PreparationStep};
 use super::cache::{save_cache_manifest_entry, CacheManifestEntry, CachedFileInfo};
 use super::content_store::{self, replace_with_copy, ContentStore};
 use super::install::{finish_install, patch_exe_version};
-use super::{off_runtime, safe_join_file};
+use super::{lease_install, off_runtime, off_runtime_leased, safe_join_file, InstallLease};
 
 /// One file from `GET /featuredMods/{mod_id}/files/{version}`. `group` is the
 /// subdirectory under the target install root (`bin`, `gamedata`, …).
@@ -107,6 +107,38 @@ pub async fn ensure_game_version(
     exe_name: &str,
     progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<(), String> {
+    let lease = lease_install(target_dir).await;
+    ensure_game_version_leased(
+        http,
+        token,
+        api_base,
+        cache_dir,
+        target_dir,
+        featured_mod,
+        version,
+        overlay_version,
+        exe_name,
+        progress,
+        &lease,
+    )
+    .await
+}
+
+/// [`ensure_game_version`] into an install the caller already holds.
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn ensure_game_version_leased(
+    http: &reqwest::Client,
+    token: &str,
+    api_base: &str,
+    cache_dir: &Path,
+    target_dir: &Path,
+    featured_mod: &str,
+    version: i32,
+    overlay_version: Option<i32>,
+    exe_name: &str,
+    progress: &(dyn Fn(PreparationStep) + Sync),
+    lease: &InstallLease,
+) -> Result<(), String> {
     // An overlay ships only its own changed files, so it needs `faf` under
     // it here as much as for a live game. The replay names both: its body
     // carries the engine build, which is the `faf` build, and its header the
@@ -130,6 +162,7 @@ pub async fn ensure_game_version(
                 false,
                 progress,
                 None,
+                lease,
             )
             .await?,
         );
@@ -151,6 +184,7 @@ pub async fn ensure_game_version(
         false,
         progress,
         base.map(|base| base.version),
+        lease,
     )
     .await?;
 
@@ -205,6 +239,36 @@ pub async fn ensure_latest_game_version(
     cache_rolling_branches: bool,
     progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<i32, String> {
+    let lease = lease_install(target_dir).await;
+    ensure_latest_game_version_leased(
+        http,
+        token,
+        api_base,
+        cache_dir,
+        target_dir,
+        featured_mod,
+        exe_name,
+        cache_rolling_branches,
+        progress,
+        &lease,
+    )
+    .await
+}
+
+/// [`ensure_latest_game_version`] into an install the caller already holds.
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn ensure_latest_game_version_leased(
+    http: &reqwest::Client,
+    token: &str,
+    api_base: &str,
+    cache_dir: &Path,
+    target_dir: &Path,
+    featured_mod: &str,
+    exe_name: &str,
+    cache_rolling_branches: bool,
+    progress: &(dyn Fn(PreparationStep) + Sync),
+    lease: &InstallLease,
+) -> Result<i32, String> {
     let mut base = None;
     if !BASE_FEATURED_MODS.contains(&featured_mod) {
         base = Some(
@@ -220,6 +284,7 @@ pub async fn ensure_latest_game_version(
                 cache_rolling_branches,
                 progress,
                 None,
+                lease,
             )
             .await?,
         );
@@ -237,6 +302,7 @@ pub async fn ensure_latest_game_version(
         cache_rolling_branches,
         progress,
         base.map(|base| base.version),
+        lease,
     )
     .await?;
 
@@ -336,6 +402,7 @@ async fn install_featured_mod(
     cache_rolling_branches: bool,
     progress: &(dyn Fn(PreparationStep) + Sync),
     base_version: Option<i32>,
+    lease: &InstallLease,
 ) -> Result<InstalledMod, String> {
     // `Updater.run` sets "Requesting files from API..." before anything else
     // happens, for the same reason it is here: two API round trips on a slow
@@ -400,6 +467,7 @@ async fn install_featured_mod(
                 done,
                 pending,
                 progress,
+                lease,
             )
             .await?;
         }
@@ -751,6 +819,9 @@ const MAX_FEATURED_FILE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 /// The MD5 of a file, read a block at a time, or `None` when it cannot be
 /// read. Featured-mod files run to hundreds of megabytes, and hashing one
 /// used to mean holding all of it in memory first.
+///
+/// Not leased: it only reads, so one left running after a cancel changes
+/// nothing the next install pass could trip over.
 async fn file_md5(path: &Path) -> Option<String> {
     let path = path.to_path_buf();
     off_runtime(move || content_store::md5_of_file(&path))
@@ -823,6 +894,7 @@ async fn update_file(
     done: usize,
     total: usize,
     progress: &(dyn Fn(PreparationStep) + Sync),
+    lease: &InstallLease,
 ) -> Result<(), String> {
     let target_path = safe_join_file(target_dir, &file.group, &file.name)?;
     if !is_allowed_download_host(&file.cacheable_url, api_base) {
@@ -871,9 +943,13 @@ async fn update_file(
         );
         off_runtime(move || ContentStore::new(&root).verified(&group, &md5)).await??
     };
+    // The writes into the install hold its lease until they return, so one
+    // left running by a cancelled launch still keeps the next one out. The
+    // store calls around them only touch the cache, which no install lease
+    // covers.
     if let Some(entry) = cached {
         let target = target_path.clone();
-        off_runtime(move || replace_with_copy(&entry, &target))
+        off_runtime_leased(lease, move || replace_with_copy(&entry, &target))
             .await?
             .map_err(|e| format!("could not copy cached {}: {e}", file.name))?;
         progress(PreparationStep::counted(
@@ -958,7 +1034,7 @@ async fn update_file(
     };
     {
         let target = target_path.clone();
-        off_runtime(move || replace_with_copy(&entry, &target))
+        off_runtime_leased(lease, move || replace_with_copy(&entry, &target))
             .await?
             .map_err(|e| format!("could not write {}: {e}", target_path.display()))?;
     }
@@ -1277,6 +1353,7 @@ mod tests {
             0,
             1,
             &|_| {},
+            &crate::infra::game_updater::lease_install(&target).await,
         )
         .await
         .unwrap();
@@ -1289,6 +1366,79 @@ mod tests {
             std::fs::read(cache.join("gamedata").join(&old)).unwrap(),
             b"units for build 3837",
             "the store entry must keep the bytes its checksum names"
+        );
+    }
+
+    /// The download path's half of a cancelled launch: its write into the
+    /// install runs on the blocking pool and outlives the dropped update. The
+    /// next update of the same install used to write the same file beside it,
+    /// and whichever finished last won. It has to wait for that write instead.
+    #[tokio::test]
+    async fn a_cancelled_update_holds_the_install_until_its_write_has_finished() {
+        use crate::infra::game_updater::lease_install;
+        use crate::infra::game_updater::test_support::probe::{self, Event};
+
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        let old = put_in_store(&cache, "gamedata", b"units for build 3837");
+        let new = put_in_store(&cache, "gamedata", b"units for build 3838");
+
+        let (mut events, release) = probe::watch(&target);
+        // One update pass writing `units.nx2` at `md5`, served from the store
+        // (so no network), holding the install the way a whole pass does.
+        let update = |md5: String, version: i32| {
+            let (cache, target) = (cache.clone(), target.clone());
+            tokio::spawn(async move {
+                let file = FeaturedModFile {
+                    group: "gamedata".into(),
+                    name: "units.nx2".into(),
+                    md5,
+                    version: Some(version),
+                    cacheable_url: "https://content.faforever.com/faf/updaterNew/units.nx2".into(),
+                    hmac_token: "tok".into(),
+                    hmac_parameter: "verify".into(),
+                };
+                let lease = lease_install(&target).await;
+                update_file(
+                    &reqwest::Client::new(),
+                    "https://api.faforever.com",
+                    &cache,
+                    &target,
+                    &file,
+                    "faf",
+                    version,
+                    0,
+                    1,
+                    &|_| {},
+                    &lease,
+                )
+                .await
+            })
+        };
+
+        // The first update's write is held part-way, and the update is
+        // called off around it.
+        let cancelled = update(old, 3837);
+        assert_eq!(events.recv().await, Some(Event::Writing));
+        cancelled.abort();
+        assert!(cancelled.await.unwrap_err().is_cancelled());
+
+        let replacement = update(new, 3838);
+        assert_eq!(
+            events.recv().await,
+            Some(Event::WaitingForInstall),
+            "the next update wrote into the install while the cancelled one's \
+             write was still running"
+        );
+
+        release.send(()).unwrap();
+        assert_eq!(events.recv().await, Some(Event::Writing));
+        replacement.await.unwrap().unwrap();
+        assert_eq!(
+            std::fs::read(target.join("gamedata").join("units.nx2")).unwrap(),
+            b"units for build 3838",
+            "the replacement's write is the one that lands last"
         );
     }
 }

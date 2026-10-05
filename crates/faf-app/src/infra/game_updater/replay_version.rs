@@ -12,8 +12,10 @@ use crate::ports::PreparationStep;
 use super::cache::{load_cache_manifest, CacheManifest, CacheManifestEntry};
 use super::content_store::{link_into, replace_with_copy, ContentStore};
 use super::install::{finish_install, patch_exe_version};
-use super::update::{ensure_game_version, ensure_latest_game_version, BASE_FEATURED_MODS};
-use super::{off_runtime, safe_join_file};
+use super::update::{
+    ensure_game_version_leased, ensure_latest_game_version_leased, BASE_FEATURED_MODS,
+};
+use super::{lease_install, off_runtime_leased, safe_join_file, InstallLease};
 
 /// Extract the engine version from a decompressed `.scfareplay` body's
 /// leading NUL-terminated string, e.g. `"Supreme Commander v1.50.3684"` →
@@ -175,9 +177,13 @@ fn stage_cached_version(
     // mod revision like `5`, and stamping that into the executable and
     // `fa_path.lua` is the mistake `ensure_latest_game_version` describes.
     let engine_version = base_entry.map_or(entry.resolved_version, |base| base.resolved_version);
+    // A failed stamp fails the staging, as it fails a fresh install: an
+    // executable left on the previous build's number is the wrong engine for
+    // this replay, and this used to report it staged anyway. Both callers take
+    // the error as "fetch it instead", which rewrites and stamps the file.
     let exe_path = target_dir.join("bin").join("ForgedAlliance.exe");
     if exe_path.is_file() {
-        let _ = patch_exe_version(&exe_path, engine_version);
+        patch_exe_version(&exe_path, engine_version)?;
     }
 
     finish_install(target_dir, &entry.featured_mod, engine_version)?;
@@ -200,15 +206,24 @@ fn stage_cached_version(
 
 /// [`stage_cached_version`] on the blocking pool: it now hashes the build's
 /// store entries, which is too much disk work for an async worker thread.
+///
+/// The worker holds `lease` until it returns. Cancelling the launch drops
+/// this future but not the staging under it, which goes on replacing files,
+/// stamping the executable and writing `fa_path.lua`; the next preparation of
+/// the same install has to wait for that rather than run beside it.
 async fn stage_cached_version_off_runtime(
     cache_dir: &Path,
     target_dir: &Path,
     entry: &CacheManifestEntry,
     manifest: &CacheManifest,
+    lease: &InstallLease,
 ) -> Result<i32, String> {
     let (cache_dir, target_dir) = (cache_dir.to_path_buf(), target_dir.to_path_buf());
     let (entry, manifest) = (entry.clone(), manifest.clone());
-    off_runtime(move || stage_cached_version(&cache_dir, &target_dir, &entry, &manifest)).await?
+    off_runtime_leased(lease, move || {
+        stage_cached_version(&cache_dir, &target_dir, &entry, &manifest)
+    })
+    .await?
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -222,6 +237,10 @@ pub async fn resolve_and_stage_replay_version(
     exe_name: &str,
     progress: &(dyn Fn(PreparationStep) + Sync),
 ) -> Result<Option<String>, String> {
+    // Held for the whole pass, and by every blocking worker it starts: see
+    // `InstallLease`. A launch called off part-way keeps the next one out of
+    // this directory until its last write has landed.
+    let lease = lease_install(target_dir).await;
     let mod_name = &replay_info.mod_name;
     let is_rolling = mod_name == "fafdevelop" || mod_name == "fafbeta";
     let manifest = load_cache_manifest(cache_dir);
@@ -269,7 +288,9 @@ pub async fn resolve_and_stage_replay_version(
         };
 
         if let Some(entry) = chosen {
-            match stage_cached_version_off_runtime(cache_dir, target_dir, entry, &manifest).await {
+            match stage_cached_version_off_runtime(cache_dir, target_dir, entry, &manifest, &lease)
+                .await
+            {
                 Ok(_) => {
                     tracing::info!(mod_name, name = %entry.name, "restored replay environment from local cache snapshot");
                     return Ok(None);
@@ -281,8 +302,9 @@ pub async fn resolve_and_stage_replay_version(
         }
 
         // Rolling mod has no working cache snapshot: update from server latest
-        ensure_latest_game_version(
+        ensure_latest_game_version_leased(
             http, token, api_base, cache_dir, target_dir, mod_name, exe_name, true, progress,
+            &lease,
         )
         .await?;
 
@@ -309,7 +331,7 @@ pub async fn resolve_and_stage_replay_version(
                     e.resolved_version == version
                 }
         }) {
-            if stage_cached_version_off_runtime(cache_dir, target_dir, entry, &manifest)
+            if stage_cached_version_off_runtime(cache_dir, target_dir, entry, &manifest, &lease)
                 .await
                 .is_ok()
             {
@@ -323,7 +345,7 @@ pub async fn resolve_and_stage_replay_version(
         }
 
         // Cache miss: download from server API
-        ensure_game_version(
+        ensure_game_version_leased(
             http,
             token,
             api_base,
@@ -334,14 +356,15 @@ pub async fn resolve_and_stage_replay_version(
             replay_info.featured_mod_version,
             exe_name,
             progress,
+            &lease,
         )
         .await?;
         return Ok(None);
     }
 
     // Fallback if version was unknown
-    ensure_latest_game_version(
-        http, token, api_base, cache_dir, target_dir, mod_name, exe_name, false, progress,
+    ensure_latest_game_version_leased(
+        http, token, api_base, cache_dir, target_dir, mod_name, exe_name, false, progress, &lease,
     )
     .await?;
     Ok(None)
@@ -351,7 +374,8 @@ pub async fn resolve_and_stage_replay_version(
 mod tests {
     use super::*;
     use crate::infra::game_updater::cache::save_cache_manifest_entry;
-    use crate::infra::game_updater::test_support::{build_entry, put_in_store};
+    use crate::infra::game_updater::read_exe_version;
+    use crate::infra::game_updater::test_support::{build_entry, put_in_store, EXE_BYTES};
     use crate::infra::game_updater::CachedFileInfo;
 
     #[test]
@@ -420,9 +444,10 @@ mod tests {
             .unwrap();
         tokio::fs::create_dir_all(&target_dir).await.unwrap();
 
-        // 10000-byte fake exe (large enough for version offset). Entries are
-        // stored under their real checksums: staging verifies them.
-        let exe_md5 = put_in_store(&temp_dir, "bin", &[0u8; 10000]);
+        // A fake exe large enough for every version offset: staging stamps
+        // it and fails when it cannot. Entries are stored under their real
+        // checksums: staging verifies them.
+        let exe_md5 = put_in_store(&temp_dir, "bin", &vec![0u8; EXE_BYTES]);
         let lua_md5 = put_in_store(&temp_dir, "gamedata", b"lua_content_3837");
         let dev_md5 = put_in_store(&temp_dir, "gamedata", b"lua_content_develop");
 
@@ -478,7 +503,11 @@ mod tests {
             .unwrap();
         stage_cached_version(&temp_dir, &target_dir, e_3837, &manifest).unwrap();
 
-        assert!(target_dir.join("bin").join("ForgedAlliance.exe").is_file());
+        assert_eq!(
+            read_exe_version(&target_dir.join("bin").join("ForgedAlliance.exe")),
+            Some(3837),
+            "the staged executable is stamped with the staged build"
+        );
         assert!(target_dir.join("gamedata").join("lua.nx2").is_file());
         assert_eq!(
             tokio::fs::read(target_dir.join("gamedata").join("lua.nx2"))
@@ -663,6 +692,152 @@ mod tests {
         stage_cached_version(&cache, &target, &overlay, &manifest).unwrap();
         let fa_path = std::fs::read_to_string(target.join("fa_path.lua")).unwrap();
         assert!(fa_path.contains("GameVersion = \"3837\""), "{fa_path}");
+    }
+
+    /// The cached path used to ignore the stamp's result, so an executable
+    /// that could not be stamped was reported staged and the replay launched
+    /// against whatever build number it still carried. A fresh install fails
+    /// on the same error, and staging has to as well.
+    #[tokio::test]
+    async fn a_cached_build_whose_executable_cannot_be_stamped_is_not_staged() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        // Far too small for the version offsets: the stamp refuses it.
+        let exe = put_in_store(&cache, "bin", &[0u8; 10_000]);
+        let lua = put_in_store(&cache, "gamedata", b"lua for build 3837");
+        let entry = build_entry(
+            3837,
+            &[
+                ("bin", "ForgedAlliance.exe", &exe),
+                ("gamedata", "lua.nx2", &lua),
+            ],
+        );
+        let manifest = CacheManifest {
+            entries: vec![entry.clone()],
+        };
+
+        let error = stage_cached_version(&cache, &target, &entry, &manifest)
+            .expect_err("an unstamped executable is not a staged build");
+        assert!(error.contains("too small"), "{error}");
+
+        // And through the preparation itself: the failed staging is not
+        // reported as staged from the cache. It falls back to the API, which
+        // is unreachable here, so the preparation fails rather than launching.
+        std::fs::write(
+            cache.join("cache_manifest.json"),
+            serde_json::to_string(&manifest).unwrap(),
+        )
+        .unwrap();
+        let replay = ReplayVersionInfo {
+            mod_name: "faf".into(),
+            game_version: Some(3837),
+            ..Default::default()
+        };
+        let result = resolve_and_stage_replay_version(
+            &reqwest::Client::new(),
+            "token",
+            "http://127.0.0.1:1",
+            &cache,
+            &target,
+            &replay,
+            "ForgedAlliance.exe",
+            &|_| {},
+        )
+        .await;
+        assert!(
+            result.is_err(),
+            "a cached build that could not be stamped must not prepare the replay: {result:?}"
+        );
+    }
+
+    /// A launch called off while its cached staging runs on the blocking
+    /// pool. Dropping the preparation does not stop that worker, and the next
+    /// preparation of the same install used to start staging right beside it:
+    /// the cancelled build's files, executable stamp and `fa_path.lua` then
+    /// landed on top of the replacement's. The next one has to wait until the
+    /// worker has finished, and its own build is what is left.
+    #[tokio::test]
+    async fn a_cancelled_staging_holds_the_install_until_its_worker_has_finished() {
+        use crate::infra::game_updater::test_support::probe::{self, Event};
+
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("replaydata");
+        let exe = put_in_store(&cache, "bin", &vec![0u8; EXE_BYTES]);
+        let lua_3837 = put_in_store(&cache, "gamedata", b"lua for build 3837");
+        let lua_3838 = put_in_store(&cache, "gamedata", b"lua for build 3838");
+        let build = |version: i32, lua: &str| {
+            build_entry(
+                version,
+                &[
+                    ("bin", "ForgedAlliance.exe", &exe),
+                    ("gamedata", "lua.nx2", lua),
+                ],
+            )
+        };
+        let manifest = CacheManifest {
+            entries: vec![build(3837, &lua_3837), build(3838, &lua_3838)],
+        };
+        std::fs::write(
+            cache.join("cache_manifest.json"),
+            serde_json::to_string(&manifest).unwrap(),
+        )
+        .unwrap();
+
+        let (mut events, release) = probe::watch(&target);
+        let prepare = |version: i32| {
+            let (cache, target) = (cache.clone(), target.clone());
+            tokio::spawn(async move {
+                let replay = ReplayVersionInfo {
+                    mod_name: "faf".into(),
+                    game_version: Some(version),
+                    ..Default::default()
+                };
+                resolve_and_stage_replay_version(
+                    &reqwest::Client::new(),
+                    "token",
+                    "http://127.0.0.1:1",
+                    &cache,
+                    &target,
+                    &replay,
+                    "ForgedAlliance.exe",
+                    &|_| {},
+                )
+                .await
+            })
+        };
+
+        // The first preparation reaches its blocking worker, which is held
+        // there part-way, and is then called off.
+        let cancelled = prepare(3837);
+        assert_eq!(events.recv().await, Some(Event::Writing));
+        cancelled.abort();
+        assert!(cancelled.await.unwrap_err().is_cancelled());
+
+        // The replacement waits for the install instead of staging into it.
+        let replacement = prepare(3838);
+        assert_eq!(
+            events.recv().await,
+            Some(Event::WaitingForInstall),
+            "the next preparation started on the install while the cancelled \
+             one's worker was still writing into it"
+        );
+
+        // Only once that worker has finished does the replacement stage.
+        release.send(()).unwrap();
+        assert_eq!(events.recv().await, Some(Event::Writing));
+        assert_eq!(replacement.await.unwrap(), Ok(None));
+        assert_eq!(
+            std::fs::read(target.join("gamedata").join("lua.nx2")).unwrap(),
+            b"lua for build 3838"
+        );
+        assert_eq!(
+            read_exe_version(&target.join("bin").join("ForgedAlliance.exe")),
+            Some(3838)
+        );
+        let fa_path = std::fs::read_to_string(target.join("fa_path.lua")).unwrap();
+        assert!(fa_path.contains("GameVersion = \"3838\""), "{fa_path}");
     }
 
     /// An overlay replay names its engine build in the body and the overlay's

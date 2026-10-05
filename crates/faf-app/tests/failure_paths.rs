@@ -51,11 +51,12 @@ use faf_domain::state::settings::GamePreferencesPatch;
 use faf_domain::state::{
     CoopCommand, CoopMission, CoopResult, CoopScenario, CoopStatus, CopySource, EntrantRatings,
     EventsCommand, GeneratorOptionQuery, GeneratorOptions, GeneratorPreset, GeneratorStatus,
-    InstalledMod, LiveReplayTarget, LocalReplay, MapGeneratorCommand, MatchmakerPlayerProfile,
-    ModDownloadSize, ModDownloadTarget, ModListStatus, ModsCommand, PlayerCardCommand,
-    PlayerCardProfile, PlayerLeaguePlacement, PlayerMapStats, PlayerSummary, RatingCheck,
-    RatingHistoryPage, RatingHistoryQuery, RenameCheck, ReplayCommand, ReplayQuery, ReplayStatus,
-    SeriesDetail, SettingsCommand, Tourney, TourneyPreset, TourneySeries, VaultMod, VaultReplay,
+    InstalledMod, LiveReplayTarget, LiveReplayTrackingAction, LocalReplay, MapGeneratorCommand,
+    MatchmakerPlayerProfile, ModDownloadSize, ModDownloadTarget, ModListStatus, ModsCommand,
+    PlayerCardCommand, PlayerCardProfile, PlayerLeaguePlacement, PlayerMapStats, PlayerSummary,
+    RatingCheck, RatingHistoryPage, RatingHistoryQuery, RenameCheck, ReplayCommand, ReplayQuery,
+    ReplayStatus, SeriesDetail, SettingsCommand, Tourney, TourneyPreset, TourneySeries, VaultMod,
+    VaultReplay,
 };
 use faf_domain::AppCommand;
 use tokio::sync::{mpsc, watch, Semaphore};
@@ -381,6 +382,103 @@ async fn a_cancel_after_the_replay_launched_leaves_it_playing() {
         "a replay already playing is not cancelled"
     );
     assert_eq!(h.process.replay_launches.load(Ordering::SeqCst), 1);
+}
+
+/// A second replay started while the first is still downloading replaces it.
+/// The first is cancelled by the second, and settles only after the second
+/// has started. It used to settle as if it were still the current launch:
+/// clearing the second's progress sink and emitting `Closed`, which idled the
+/// starting dialog of the replay that was actually on its way.
+#[tokio::test]
+async fn a_replaced_replay_launch_leaves_its_replacement_starting() {
+    const REPLACEMENT: i32 = REPLAY + 1;
+    let h = replay_harness();
+
+    let replaced = spawn_command(&h.app, ReplayCommand::WatchVault { uid: REPLAY }.into());
+    h.gates.wait_entered("download").await;
+
+    // Only the replacement can cancel the first launch, so once the first
+    // command has finished the replacement has started, and the first
+    // settled after it.
+    let replacement = spawn_command(
+        &h.app,
+        ReplayCommand::WatchVault { uid: REPLACEMENT }.into(),
+    );
+    finished(replaced, "the replaced WatchVault").await;
+    let replays = h.app.snapshot().replays;
+    assert_eq!(
+        replays.status,
+        ReplayStatus::Connecting,
+        "the replaced launch idled the one that replaced it"
+    );
+    assert_eq!(
+        replays.download_status,
+        ReplayDownloadStatus::Downloading { uid: REPLACEMENT }
+    );
+
+    // The replacement's own preparation still reaches its dialog.
+    h.gates.release("download");
+    h.gates.wait_entered("prepare").await;
+    let preparing = h.app.snapshot().replays.preparing;
+    assert_eq!(
+        preparing.map(|step| step.detail),
+        Some(format!("engine build for {REPLACEMENT}")),
+        "the replaced launch took the replacement's progress sink with it"
+    );
+
+    h.gates.release("prepare");
+    finished(replacement, "the replacement WatchVault").await;
+    assert_eq!(
+        h.app.snapshot().replays.status,
+        ReplayStatus::Playing {
+            uid: Some(REPLACEMENT)
+        }
+    );
+    assert_eq!(h.process.replay_launches.load(Ordering::SeqCst), 1);
+    assert!(!notification_titles(&h.app).contains(&"Replay failed".to_string()));
+}
+
+/// A live replay refused before it became a launch, here a game whose start
+/// is unknown, while another replay is starting. The refusal is reported, but
+/// it owns no launch: the starting replay keeps its dialog and still plays.
+#[tokio::test]
+async fn a_refused_live_replay_leaves_a_starting_replay_alone() {
+    let h = replay_harness();
+
+    let starting = spawn_command(&h.app, ReplayCommand::WatchVault { uid: REPLAY }.into());
+    h.gates.wait_entered("download").await;
+
+    run_promptly(
+        &h.app,
+        ReplayCommand::TrackLive {
+            target: LiveReplayTarget {
+                uid: 999_999,
+                mod_name: "faf".into(),
+                map: "scmp_009".into(),
+            },
+            action: LiveReplayTrackingAction::Watch,
+        }
+        .into(),
+        "the refused TrackLive",
+    )
+    .await;
+    assert_eq!(
+        h.app.snapshot().replays.status,
+        ReplayStatus::Connecting,
+        "a refusal that started nothing closed the dialog of a replay that is starting"
+    );
+    assert!(
+        notification_titles(&h.app).contains(&"Replay failed".to_string()),
+        "the refusal itself is still reported"
+    );
+
+    h.gates.release("download");
+    h.gates.release("prepare");
+    finished(starting, "the starting WatchVault").await;
+    assert_eq!(
+        h.app.snapshot().replays.status,
+        ReplayStatus::Playing { uid: Some(REPLAY) }
+    );
 }
 
 // ── Cancelling a map generation ─────────────────────────────────────────────

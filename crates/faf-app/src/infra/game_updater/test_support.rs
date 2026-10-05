@@ -38,3 +38,89 @@ pub(super) fn build_entry(version: i32, files: &[(&str, &str, &str)]) -> CacheMa
         base_version: None,
     }
 }
+
+/// The smallest file the version stamp accepts as an executable: the last of
+/// its three offsets plus the four bytes written there. A fake executable any
+/// smaller makes every stamp fail, which hides whether a caller checks it.
+pub(super) const EXE_BYTES: usize = 0x476666 + 4;
+
+/// Watching, and holding, the writes into one install directory from inside
+/// the real write path, so a test can catch a blocking worker part-way
+/// through an install pass and see what the next pass does meanwhile.
+///
+/// Keyed by directory, so tests running in parallel never see each other's
+/// passes. A write nobody watches costs a look through the watched few.
+pub(super) mod probe {
+    use std::collections::HashMap;
+    use std::path::{Path, PathBuf};
+    use std::sync::Mutex;
+
+    use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+
+    /// What a pass into a watched directory reported.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(in crate::infra::game_updater) enum Event {
+        /// A file is about to be replaced inside the install.
+        Writing,
+        /// A pass found the install held by another and is waiting for it.
+        WaitingForInstall,
+    }
+
+    struct Probe {
+        events: UnboundedSender<Event>,
+        /// Taken by the first write, which then waits on its blocking worker
+        /// until the test sends or drops the other end.
+        hold: Option<std::sync::mpsc::Receiver<()>>,
+    }
+
+    static PROBES: Mutex<Option<HashMap<PathBuf, Probe>>> = Mutex::new(None);
+
+    /// Watch `dir`. The first write into it is held until the returned
+    /// sender sends, or is dropped by a test that failed before it could.
+    pub(in crate::infra::game_updater) fn watch(
+        dir: &Path,
+    ) -> (UnboundedReceiver<Event>, std::sync::mpsc::Sender<()>) {
+        let (events, received) = unbounded_channel();
+        let (release, hold) = std::sync::mpsc::channel();
+        PROBES
+            .lock()
+            .unwrap()
+            .get_or_insert_with(HashMap::new)
+            .insert(
+                dir.to_path_buf(),
+                Probe {
+                    events,
+                    hold: Some(hold),
+                },
+            );
+        (received, release)
+    }
+
+    /// Report `event` for `path`, anywhere inside a watched directory,
+    /// handing back the hold when this is the first write into it.
+    fn report(path: &Path, event: Event) -> Option<std::sync::mpsc::Receiver<()>> {
+        let mut probes = PROBES.lock().unwrap();
+        let probe = probes
+            .as_mut()?
+            .iter_mut()
+            .find(|(dir, _)| path.starts_with(dir))
+            .map(|(_, probe)| probe)?;
+        let _ = probe.events.send(event);
+        (event == Event::Writing)
+            .then(|| probe.hold.take())
+            .flatten()
+    }
+
+    /// Called by the write itself, on its blocking worker, with the file it
+    /// is about to replace.
+    pub(in crate::infra::game_updater) fn writing(file: &Path) {
+        if let Some(hold) = report(file, Event::Writing) {
+            let _ = hold.recv();
+        }
+    }
+
+    /// Called by a pass that has to wait for the install.
+    pub(in crate::infra::game_updater) fn waiting_for_install(dir: &Path) {
+        report(dir, Event::WaitingForInstall);
+    }
+}
