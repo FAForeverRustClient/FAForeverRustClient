@@ -18,16 +18,6 @@ const CAMPAIGN_NAME_KEYS: Record<string, MessageKey> = {
   "standalone missions": "lobby.coop.standaloneMissionsName",
 };
 
-const CAMPAIGN_OPTION_KEYS: Record<string, MessageKey> = {
-  "vanilla uef campaign": "lobby.coop.campaignOption.vanillaUef",
-  "vanilla cybran campaign": "lobby.coop.campaignOption.vanillaCybran",
-  "vanilla aeon campaign": "lobby.coop.campaignOption.vanillaAeon",
-  "forged alliance campaign": "lobby.coop.campaignOption.scfa",
-  "coalition campaign": "lobby.coop.campaignOption.coalition",
-  "seraphim campaign": "lobby.coop.campaignOption.seraphim",
-  "standalone missions": "lobby.coop.campaignOption.standalone",
-};
-
 /**
  * Which game a campaign came from, and the primary sort key.
  *
@@ -102,10 +92,12 @@ export function displayScenarioOptionLabel(
   scenario: CoopScenario,
   t: Translation["t"],
 ): string {
-  const name = scenario.name.trim().toLowerCase();
-  const optionKey = CAMPAIGN_OPTION_KEYS[name];
-  if (optionKey) return t(optionKey);
-  return t("lobby.coop.unknownCampaignOption", {
+  const key = scenario.faction !== "custom"
+    ? "lobby.coop.factionCampaignOption"
+    : scenario.category === "custom"
+      ? "lobby.coop.communityCampaignOption"
+      : "lobby.coop.officialCampaignOption";
+  return t(key, {
     name: displayScenarioName(scenario, t),
     badge: t(`lobby.coop.badge.${scenarioBadge(scenario)}`),
   });

@@ -575,7 +575,7 @@ export const en = {
     "Automatically sign in with your saved account whenever the client starts.",
   "settings.general.rememberTypedEntries.label": "Suggest what you typed before",
   "settings.general.rememberTypedEntries.hint":
-    "Lets the window offer entries you have typed into a field before, such as the host dialog's game title. Off by default: the client already puts your last title back in that field.",
+    "Suggests previous entries, such as lobby titles. Off by default; the client restores your last title.",
   "settings.general.language.label": "Language",
   "settings.general.language.hint":
     "Applies immediately. Untranslated text stays in English.",
@@ -615,6 +615,10 @@ export const en = {
   "lobby.galacticWar.cycle.days": { one: "{count} day", other: "{count} days" },
   "lobby.galacticWar.factions.title": "Factions",
   "lobby.galacticWar.faction.territory": "Territory",
+  "lobby.galacticWar.faction.name.uef": "United Earth Federation",
+  "lobby.galacticWar.faction.name.aeon": "Aeon Illuminate",
+  "lobby.galacticWar.faction.name.cybran": "Cybran Nation",
+  "lobby.galacticWar.faction.name.seraphim": "Seraphim Army",
   "lobby.galacticWar.stat.players": "Players",
   "lobby.galacticWar.stat.online": "Online now",
   "lobby.galacticWar.stat.battles": "Battles",
@@ -1013,7 +1017,6 @@ export const en = {
   "lobby.coop.mission.faf_coop_operation_rescue.description": "A group of UEF scientists are trapped on a planet and a Cybran Commander gated near them quite a while back. They managed to send a distress signal before the Cybran built a long-range Jammer. We've managed to locate the scientists. Commander, you will gate in and help those scientists.",
   "lobby.coop.mission.faf_coop_theta_civilian_rescue.description": "Some Cybran scum has kidnapped civilians from one of our settlements. Our intelligence officers were able to roughly pinpoint their current location. It is your job to go in and rescue them. We don't want to give them reason to retaliate later on, so the weaponry available to you, will be restricted. Good luck out there, Commander. Bring them home safe.",
   "lobby.coop.mission.faf_coop_operation_tight_spot.description": "Coalition scouting mission in the QAI's controlled territory that went wrong. Fight the QAI's forces to survive and escape from the planet.",
-  "lobby.coop.mission.faf_coop_operation_trident.description": "Operation Trident",
   "lobby.coop.mission.scca_coop_r02.description": "I have a special mission for you. Oh yes. QAI needs to accelerate its development of the Quantum Virus. Must finish before Black Sun is deployed. QAI requires a specific piece of Seraphim technology, a Quantum Interface Device. Its...core is Seraphim tech. Amazing technology. Oh yes. The Seraphim were the precursors to the Aeon.",
   "lobby.coop.mission.faf_coop_operation_blockade.description": "The Seraphim and their Order allies are attempting to flee into open space. This is one of the planet they are using as a fallback location. We must not let the Seraphim leave this planet, destroy them all.",
   "lobby.coop.mission.scca_coop_e01.description": "Intel reports that two Cybran Commanders gated to Capella over an hour ago.\nWe presume they're attempting to inflame the Symbiont population.",
@@ -1420,9 +1423,9 @@ export const en = {
   "settings.notifications.volumeHint": "Adjust alert volume without changing game audio.",
   "settings.notifications.volumeAria": "Notification sound volume",
   "settings.notifications.repeatCooldown": "Repeat after (seconds)",
-  "settings.notifications.repeatCooldownHint": "Another notification of the same kind within this time stays in the list but does not pop up or play a sound. 0 announces every one.",
+  "settings.notifications.repeatCooldownHint": "Repeated alerts stay in the list without popping up or playing a sound. 0 repeats every alert.",
   "settings.notifications.mapPool": "New map pools",
-  "settings.notifications.mapPoolHint": "Announced at login when a matchmaker queue has a new map pool. Untick a queue to stop hearing about it.",
+  "settings.notifications.mapPoolHint": "Announced at login when a queue's map pool changes. Uncheck a queue to mute these notices.",
   // The shipped tones, quietest first. Synthesised rather than sampled, so
   // "shipped" costs no files: see notificationSound.ts.
   "settings.notifications.sound.silent": "Silent",
@@ -1715,7 +1718,7 @@ export const en = {
   "settings.discord.disallowJoinsVia": "Disallow joins via Discord",
   "settings.discord.disallowJoinsViaHint": "Keep the status visible, but remove the Join button so nobody can enter your lobby from Discord.",
   "settings.steam.presence": "Steam status",
-  "settings.steam.presenceHint": "While you are in a game, Steam shows you playing Forged Alliance and counts the hours; having the client open does not count. Needs Steam running and Forged Alliance in your Steam library. Off unless you turn it on.",
+  "settings.steam.presenceHint": "During a game, Steam shows Forged Alliance and counts playtime; the open client does not. Requires Steam and Forged Alliance in your library. Off by default.",
   "settings.steam.confirmButton": "Turn on",
   "settings.steam.confirmTitle": "Turn on the Steam status?",
   "settings.steam.confirmBody": "The client will load Valve's closed-source Steamworks library while you play. It tells Steam when you play Forged Alliance on FAF, and we cannot verify what else the library itself might send to Valve.",

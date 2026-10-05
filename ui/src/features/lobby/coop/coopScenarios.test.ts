@@ -69,17 +69,17 @@ describe("co-op campaign ordering", () => {
     it.each([
       [
         scenario("Coalition Campaign", "custom", "custom", 1),
-        "Кампания Коалиции (От сообщества)",
+        "Кампания Коалиции",
         "custom",
       ],
       [
         scenario("Standalone missions", "custom", "custom", 2),
-        "Отдельные миссии (От сообщества)",
+        "Отдельные миссии",
         "custom",
       ],
       [
         scenario("Seraphim Campaign", "seraphim", "custom", 3),
-        "Кампания Серафим (От сообщества)",
+        "Кампания Серафим",
         "seraphim",
       ],
     ])("localizes community catalog label %s and keeps its badge", (entry, expected, badge) => {
@@ -114,9 +114,9 @@ describe("co-op campaign ordering", () => {
         "Кампания Кибран (SC)",
         "Кампания Эон (SC)",
         "Кампания SCFA (Forged Alliance)",
-        "Кампания Коалиции (От сообщества)",
-        "Кампания Серафим (От сообщества)",
-        "Отдельные миссии (От сообщества)",
+        "Кампания Коалиции",
+        "Кампания Серафим",
+        "Отдельные миссии",
       ]);
     });
 
@@ -135,7 +135,7 @@ describe("co-op campaign ordering", () => {
           scenario("Seraphim Campaign", "seraphim", "custom", 2),
           t,
         ),
-      ).toBe("Кампания Серафим (От сообщества)");
+      ).toBe("Кампания Серафим");
       expect(
         displayScenarioOptionLabel(
           scenario("Forged Alliance Campaign", "custom", "scfa", 3),
@@ -150,7 +150,25 @@ describe("co-op campaign ordering", () => {
       ).toBe("Кампания Коалиции (От сообщества)");
     });
 
-    it("shows the Seraphim faction badge in English, not a community suffix", () => {
+    it("chooses campaign option wording by campaign kind", () => {
+      const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
+        translateIn("en", key, values);
+
+      expect(displayScenarioOptionLabel(
+        scenario("Forged Alliance Campaign", "custom", "scfa", 1),
+        t,
+      )).toBe("Forged Alliance Campaign (Official)");
+      expect(displayScenarioOptionLabel(
+        scenario("Coalition Campaign", "custom", "custom", 2),
+        t,
+      )).toBe("Coalition Campaign (Custom)");
+      expect(displayScenarioOptionLabel(
+        scenario("Seraphim Campaign", "seraphim", "custom", 3),
+        t,
+      )).toBe("Seraphim Campaign");
+    });
+
+    it("uses the campaign name for a faction campaign option", () => {
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
         translateIn("en", key, values);
 
@@ -161,7 +179,7 @@ describe("co-op campaign ordering", () => {
       expect(displayScenarioOptionLabel(
         scenario("Seraphim Campaign", "seraphim", "custom", 1),
         t,
-      )).toBe("Seraphim Campaign (Seraphim)");
+      )).toBe("Seraphim Campaign");
     });
   });
 
