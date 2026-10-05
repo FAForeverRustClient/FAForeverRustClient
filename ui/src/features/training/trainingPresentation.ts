@@ -53,19 +53,15 @@ export const TOPICS: TrainingTopic[] = [
 export const BASIC_TOPICS: TrainingTopic[] = ["economy", "buildOrder", "micro", "mapControl"];
 
 /**
- * The modes the mode filter offers.
+ * The modes the mode filter offers before the catalogue has said anything.
  *
  * A mode is a matchmaker queue: "4v4" means the 4v4 queue, not any game with
- * eight players in it. Seton's Clutch is its own tag beside them rather than
- * a kind of 4v4, because it is a community format with its own slots, build
- * orders and meta, and a player looking for it is not looking for the queue.
- *
- * The catalogue's modes are still free text (a manifest can say `nomads`), so
- * this is a convenience list rather than the set of legal values. The filter
- * also accepts whatever the catalogue itself carries, which is where anything
- * not listed here comes from.
+ * eight players in it. A community format such as Seton's Clutch is a tag of
+ * its own beside them rather than a kind of 4v4, and it comes from the
+ * catalogue, which is where its name is written: the filter and the
+ * contribution form both offer every mode the catalogue carries after these.
  */
-export const COMMON_MODES = ["1v1", "2v2", "3v3", "4v4", "Seton's Clutch"];
+export const COMMON_MODES = ["1v1", "2v2", "3v3", "4v4"];
 
 /**
  * The embedded player for a video, when the address is one that can be.

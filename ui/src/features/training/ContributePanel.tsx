@@ -45,7 +45,6 @@ import { Markdown } from "./markdown";
 import { MarkdownField } from "./MarkdownField";
 import { PostPreview } from "./PostPreview";
 import {
-  COMMON_MODES,
   KINDS,
   LEVELS,
   contributionProblemLabel,
@@ -89,6 +88,8 @@ interface Props {
   prefilled: ContributionDraft;
   post: ForumPost | null;
   guides: GuidesState;
+  /** The modes to tag with: the queues, then whatever the catalogue carries. */
+  modes: string[];
   onCompose: (draft: ContributionDraft) => void;
   /** Hand the draft to the state without composing anything. */
   onKeep: (draft: ContributionDraft) => void;
@@ -101,6 +102,7 @@ export function ContributePanel({
   prefilled,
   post,
   guides,
+  modes,
   onCompose,
   onKeep,
   onSubmit,
@@ -347,7 +349,7 @@ export function ContributePanel({
           />
           <MultiSelect
             label={t("training.contribute.modes")}
-            options={COMMON_MODES.map((mode) => ({ value: mode, label: mode }))}
+            options={modes.map((mode) => ({ value: mode, label: mode }))}
             selected={draft.gameModes}
             onChange={(gameModes) => onChange({ ...draft, gameModes })}
           />

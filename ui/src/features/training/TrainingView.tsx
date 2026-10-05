@@ -55,6 +55,7 @@ import { TrainingHero } from "./TrainingHero";
 import { TrainingLibrary } from "./TrainingLibrary";
 import { TrainerTiles } from "./TrainerTiles";
 import { GuidesQueue } from "./GuidesQueue";
+import { modeOptions } from "./libraryGroups";
 import { BASIC_TOPICS, renderedPage, topicHint, topicLabel } from "./trainingPresentation";
 import { useTrainingView, type TrainingSection } from "./trainingViewState";
 import "./training.css";
@@ -489,6 +490,7 @@ export function TrainingView() {
             prefilled={state.contribution}
             post={state.contributionPost}
             guides={guides}
+            modes={modeOptions(state.resources)}
             onCompose={(draft) => send({ type: "composeContribution", payload: { draft } })}
             onKeep={(draft) => send({ type: "changeContribution", payload: { draft } })}
             onSubmit={
