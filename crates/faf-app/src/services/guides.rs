@@ -17,7 +17,9 @@
 //! service does the same: the response says nothing about what else changed,
 //! and a list that disagrees with the server is worse than a slow one.
 
-use faf_domain::state::{contribution_problem, ContributionProblem, GuidesCommand, GuidesEvent};
+use faf_domain::state::{
+    contribution_problem, read_draft_images, ContributionProblem, GuidesCommand, GuidesEvent,
+};
 
 use crate::ports::guides::LOGIN_CANCELLED;
 use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
@@ -50,7 +52,7 @@ pub async fn handle(cmd: GuidesCommand, ctx: &ServiceCtx, out: &EventSink) {
             reason,
             note,
         } => reject(number, reason, note, ctx, out).await,
-        GuidesCommand::Submit { draft } => {
+        GuidesCommand::Submit { draft, images } => {
             // Checked here as well as by the form, because the form is not the
             // only thing that can send this command, and a draft with no title
             // opened an issue called "Training submission: " with nothing
@@ -61,6 +63,17 @@ pub async fn handle(cmd: GuidesCommand, ctx: &ServiceCtx, out: &EventSink) {
                 });
                 return;
             }
+            // The pictures are checked here, before anything is sent, and the
+            // ones the text no longer shows are dropped. The form checks the
+            // same limits as a file is picked; this is the answer for a
+            // caller that skipped it, and the one that decides.
+            let images = match read_draft_images(&draft.body, &images) {
+                Ok(images) => images,
+                Err(reason) => {
+                    out.emit(GuidesEvent::SubmitFailed { reason });
+                    return;
+                }
+            };
             out.emit(GuidesEvent::Submitting);
             // The author is this client's FAF account, which is what a reader
             // of the catalogue will see credited. GitHub knows who opened the
@@ -74,7 +87,11 @@ pub async fn handle(cmd: GuidesCommand, ctx: &ServiceCtx, out: &EventSink) {
                     .unwrap_or_default()
             });
             let entry = faf_domain::state::entry_from_draft(&draft, &author);
-            let answer = ctx.ports.guides.submit(entry, draft.body.clone()).await;
+            let answer = ctx
+                .ports
+                .guides
+                .submit(entry, draft.body.clone(), images)
+                .await;
             report_lost_session(ctx, out);
             match answer {
                 Ok(url) => {
@@ -227,10 +244,17 @@ async fn accept(number: i32, ctx: &ServiceCtx, out: &EventSink) {
         return;
     };
     if !submission.is_acceptable() {
-        out.emit(GuidesEvent::WriteFailed {
-            number,
-            reason: "this submission carries no catalogue entry to publish".into(),
-        });
+        let reason = match &submission.pull {
+            Some(pull) if !pull.foreign.is_empty() => format!(
+                "this pull request changes more than its guide and pictures ({}), so it has to be reviewed on GitHub",
+                pull.foreign.join(", ")
+            ),
+            Some(_) if submission.guide.is_none() => {
+                "this pull request's guide could not be read; refresh the queue and try again".into()
+            }
+            _ => "this submission carries no catalogue entry to publish".into(),
+        };
+        out.emit(GuidesEvent::WriteFailed { number, reason });
         return;
     }
 

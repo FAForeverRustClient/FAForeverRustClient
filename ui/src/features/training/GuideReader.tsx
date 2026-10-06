@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "../../i18n/useTranslation";
-import { parseBlocks, renderBlock, renderSpans, type Block } from "./markdown";
+import { parseBlocks, renderBlock, renderSpans, type Addresses, type Block } from "./markdown";
 
 /** A guide's body, with what the page around it already says taken out. */
 export interface GuideOutline {
@@ -86,10 +86,24 @@ function plainHeading(text: string): string {
     .trim();
 }
 
-export function GuideReader({ outline }: { outline: GuideOutline }) {
+export function GuideReader({
+  outline,
+  documentUrl,
+}: {
+  outline: GuideOutline;
+  /**
+   * Where the guide itself is read from. A picture committed beside it is
+   * written relative to it, as `images/<id>/map.png`; links and rooted paths
+   * still mean the page the guide was copied from.
+   */
+  documentUrl?: string;
+}) {
   const { t } = useTranslation();
   const { blocks, source } = outline;
-  const base = source ?? undefined;
+  const base = useMemo<Addresses>(
+    () => ({ page: source ?? undefined, document: documentUrl }),
+    [source, documentUrl],
+  );
 
   // The guide's own top level, whatever it wrote it as: a guide whose
   // sections are `##` and one whose sections are `#` read the same.

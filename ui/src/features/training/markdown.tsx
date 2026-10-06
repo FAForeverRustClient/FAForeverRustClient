@@ -274,20 +274,67 @@ const IMG_ALT = /\salt\s*=\s*["']([^"']*)["']/i;
  * Without a base, or for anything that does not resolve to ordinary HTTPS,
  * the answer is `null` and the caller leaves the text as typed.
  */
-export function resolveAddress(address: string, base?: string): string | null {
+export function resolveAddress(address: string, base?: Addresses): string | null {
   const direct = optionalHttpsUrl(address);
-  if (direct || !base) return direct;
+  const page = typeof base === "string" ? base : base?.page;
+  if (direct || !page) return direct;
   try {
-    return optionalHttpsUrl(new URL(address, base).toString());
+    return optionalHttpsUrl(new URL(address, page).toString());
   } catch {
     return null;
   }
 }
 
+/**
+ * What a guide's relative addresses are relative to.
+ *
+ * A plain string is the page the guide was copied from, which is all a guide
+ * ever had. The object form adds the two things a guide written in the client
+ * needs for its pictures:
+ *
+ * - `document`, where the guide's own file is read from. A picture written as
+ *   `images/<id>/map.png` sits beside the guide in the repository, which is
+ *   how GitHub and every Markdown viewer read a relative path.
+ * - `local`, pictures the author attached and has not sent yet, by the path
+ *   the editor wrote (`images/map.png`), as addresses this client made for
+ *   them.
+ */
+export type Addresses =
+  | string
+  | { page?: string; document?: string; local?: ReadonlyMap<string, string> };
+
+/** A path relative to the file it is written in: no scheme, not rooted. */
+const DOCUMENT_RELATIVE = /^(?![a-z][a-z0-9+.-]*:)(?!\/)[^\s]+$/i;
+
+/**
+ * A picture's address made absolute.
+ *
+ * A picture the author attached is shown from the client's own copy until it
+ * is sent. A relative path names a file beside the guide, so it is resolved
+ * against the guide's own address; a rooted one (`/images/...`, what a copied
+ * wiki page writes) means the site the guide came from, exactly as a link
+ * does. Only ordinary HTTPS is ever fetched.
+ */
+export function resolveImage(address: string, base?: Addresses): string | null {
+  if (typeof base === "object") {
+    const local = base.local?.get(address);
+    if (local) return local;
+    if (base.document && DOCUMENT_RELATIVE.test(address)) {
+      try {
+        const resolved = optionalHttpsUrl(new URL(address, base.document).toString());
+        if (resolved) return resolved;
+      } catch {
+        // Falls through to the page, like any other address that did not resolve.
+      }
+    }
+  }
+  return resolveAddress(address, base);
+}
+
 /** A character that makes an underscore next to it part of a word. */
 const WORD_CHAR = /[\p{L}\p{N}_]/u;
 
-export function parseSpans(text: string, base?: string): Span[] {
+export function parseSpans(text: string, base?: Addresses): Span[] {
   const spans: Span[] = [];
   let rest = text;
   // Adjacent text is kept as one span, so declining a marker below does not
@@ -327,7 +374,7 @@ export function parseSpans(text: string, base?: string): Span[] {
       spans.push({ kind: "break" });
     } else if (/^<img/i.test(token)) {
       const src = IMG_SRC.exec(token);
-      const resolved = src ? resolveAddress(src[1], base) : null;
+      const resolved = src ? resolveImage(src[1], base) : null;
       if (resolved) {
         const width = Number(IMG_WIDTH.exec(token)?.[1] ?? 0);
         spans.push({
@@ -350,7 +397,7 @@ export function parseSpans(text: string, base?: string): Span[] {
       const image = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(token);
       // The same rule as a link: only ordinary HTTPS is fetched. Anything
       // else stays as typed, so the author sees it was not taken.
-      const src = image ? resolveAddress(image[2], base) : null;
+      const src = image ? resolveImage(image[2], base) : null;
       if (image && src) {
         spans.push({ kind: "image", text: image[1], src });
       } else {
@@ -377,7 +424,7 @@ export function parseSpans(text: string, base?: string): Span[] {
   return spans;
 }
 
-export function renderSpans(text: string, base?: string): ReactNode[] {
+export function renderSpans(text: string, base?: Addresses): ReactNode[] {
   return parseSpans(text, base).map((span, index) => {
     switch (span.kind) {
       case "break":
@@ -438,7 +485,7 @@ export function renderSpans(text: string, base?: string): ReactNode[] {
   });
 }
 
-function renderList(block: ListBlock, key: number, base?: string): ReactNode {
+function renderList(block: ListBlock, key: number, base?: Addresses): ReactNode {
   const items = block.items.map((item, itemIndex) => (
     <li key={itemIndex}>
       {renderSpans(item.text, base)}
@@ -456,7 +503,7 @@ function renderList(block: ListBlock, key: number, base?: string): ReactNode {
  * gets the room of a block and its alt text as the caption under it, which is
  * where the guide's author put the explanation.
  */
-function soleImage(text: string, base?: string) {
+function soleImage(text: string, base?: Addresses) {
   const spans = parseSpans(text.trim(), base);
   const only = spans.length === 1 ? spans[0] : null;
   return only && only.kind === "image" && !only.icon ? only : null;
@@ -468,7 +515,7 @@ function soleImage(text: string, base?: string) {
  * the page's outline; the third and fourth levels share h5, since a preview
  * pane is not an outline. The guide reader draws its own headings.
  */
-export function renderBlock(block: Block, key: number, base?: string): ReactNode {
+export function renderBlock(block: Block, key: number, base?: Addresses): ReactNode {
   switch (block.kind) {
     case "heading": {
       if (block.level === 1) return <h3 key={key}>{renderSpans(block.text, base)}</h3>;
@@ -532,11 +579,20 @@ export function renderBlock(block: Block, key: number, base?: string): ReactNode
 }
 
 /** Render the supported subset of `source` as React nodes. */
-export function Markdown({ source, className }: { source: string; className?: string }) {
+export function Markdown({
+  source,
+  className,
+  base,
+}: {
+  source: string;
+  className?: string;
+  /** What its relative addresses are relative to: see [`Addresses`]. */
+  base?: Addresses;
+}) {
   const blocks = parseBlocks(source);
   return (
     <div className={className ? `training-markdown ${className}` : "training-markdown"}>
-      {blocks.map((block, index) => renderBlock(block, index))}
+      {blocks.map((block, index) => renderBlock(block, index, base))}
     </div>
   );
 }

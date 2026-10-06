@@ -16,7 +16,7 @@
 // id is a file name and a key other entries point at, which is not something to
 // ask an author to invent.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { MultiSelect } from "../../design-system/MultiSelect";
@@ -42,6 +42,17 @@ import {
   splitMaps,
   type RatingProblem,
 } from "./contributionDraft";
+import {
+  ACCEPTED_TYPES,
+  attach,
+  clearAttachments,
+  detach,
+  imageMarkdown,
+  localImages,
+  useAttachments,
+  withoutImage,
+  type AttachProblem,
+} from "./contributionImages";
 import { Markdown } from "./markdown";
 import { MarkdownField } from "./MarkdownField";
 import { PostPreview } from "./PostPreview";
@@ -64,6 +75,20 @@ const RATING_PROBLEM_LABELS: Record<RatingProblem, MessageKey> = {
   ratingMaxInvalid: "training.contribute.ratingProblem.maxInvalid",
   ratingOrder: "training.contribute.ratingProblem.order",
 };
+
+const ATTACH_PROBLEM_LABELS: Record<AttachProblem, MessageKey> = {
+  type: "training.contribute.imageProblem.type",
+  size: "training.contribute.imageProblem.size",
+  count: "training.contribute.imageProblem.count",
+  total: "training.contribute.imageProblem.total",
+};
+
+/** A file size the way a person reads one. */
+function fileSize(bytes: number): string {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
 
 /**
  * The catalogue stores factions as lowercase slugs of the game's own words;
@@ -173,6 +198,12 @@ export function ContributePanel({
     },
     [],
   );
+
+  // The pictures attached to this draft, and the addresses the previews show
+  // them from until they are sent.
+  const attached = useAttachments();
+  const local = useMemo(() => localImages(attached), [attached]);
+  const [attachProblem, setAttachProblem] = useState<AttachProblem | null>(null);
 
   const [stale, setStale] = useState(false);
   const onChange = (next: ContributionDraft) => {
@@ -417,8 +448,54 @@ export function ContributePanel({
               placeholder={t("training.contribute.bodyPlaceholder")}
               ownPreview={false}
               rows={16}
+              accept={ACCEPTED_TYPES}
+              onAttach={(files) => {
+                const inserted: string[] = [];
+                let problem: AttachProblem | null = null;
+                for (const file of files) {
+                  const result = attach(file);
+                  if ("problem" in result) problem = result.problem;
+                  else inserted.push(imageMarkdown(result.attachment.name));
+                }
+                setAttachProblem(problem);
+                return inserted.join("\n\n");
+              }}
             />
           </div>
+          <p className="muted training-form-hint">{t("training.contribute.imagesHint")}</p>
+          {attachProblem && (
+            <p className="muted training-form-problem" role="alert">
+              {t(ATTACH_PROBLEM_LABELS[attachProblem])}
+            </p>
+          )}
+
+          {/* What is attached, so a picture can be taken out again without
+              hunting for its line in the text. */}
+          {attached.length > 0 && (
+            <ul className="training-attachments" aria-label={t("training.contribute.images")}>
+              {attached.map((attachment) => (
+                <li key={attachment.name} className="training-attachment">
+                  <img src={attachment.url} alt="" aria-hidden />
+                  <span className="training-attachment-name" title={attachment.name}>
+                    {attachment.name}
+                  </span>
+                  <span className="muted training-attachment-size">{fileSize(attachment.size)}</span>
+                  <button
+                    type="button"
+                    className="training-attachment-remove"
+                    title={t("training.contribute.removeImage", { name: attachment.name })}
+                    aria-label={t("training.contribute.removeImage", { name: attachment.name })}
+                    onClick={() => {
+                      detach(attachment.name);
+                      onChange({ ...draft, body: withoutImage(draft.body, attachment.name) });
+                    }}
+                  >
+                    <Icon name="close" size={13} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </fieldset>
 
         {problem && (
@@ -436,6 +513,8 @@ export function ContributePanel({
               // the last one kept (an author who had emptied every field).
               cancelKeep();
               sent.current = null;
+              clearAttachments();
+              setAttachProblem(null);
               onReset();
             }}
           >
@@ -454,10 +533,18 @@ export function ContributePanel({
             exists, and below a long preview they were out of sight. */}
         {post && !stale && (
           <div ref={postRef} className="training-contribute-post">
+            {/* A browser link carries text and nothing else, so pictures only
+                travel when the client sends the guide itself. */}
+            {onSubmit === null && attached.length > 0 && (
+              <p className="muted training-form-problem">
+                {t("training.contribute.imagesNeedSignIn")}
+              </p>
+            )}
             <PostPreview
               post={post}
               destination="github"
               submit={guides.submit}
+              base={{ local }}
               onSubmit={onSubmit === null ? null : () => onSubmit(normaliseRatings(draft))}
             />
           </div>
@@ -493,7 +580,7 @@ export function ContributePanel({
 
         {draft.body.trim() ? (
           <div className="training-preview-body">
-            <Markdown source={draft.body} />
+            <Markdown source={draft.body} base={{ local }} />
           </div>
         ) : (
           <p className="muted training-preview-empty">{t("training.contribute.previewEmpty")}</p>

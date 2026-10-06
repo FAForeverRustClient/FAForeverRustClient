@@ -7,13 +7,19 @@
 //!
 //! Three decisions shape everything here.
 //!
-//! **A submission is a GitHub issue whose body the client wrote.** It is a
-//! filled-in issue form, one `### ` heading per field, the same shape GitHub
-//! writes for the guides repository's own issue form; there is no JSON in it.
-//! Because the client authored it, accepting is a copy rather than a rewrite,
-//! which is the whole reason a trainer can accept in one step instead of
-//! retyping the tags. A human may edit the answers by hand and they still
-//! parse.
+//! **A submission is a GitHub issue or pull request whose body the client
+//! wrote.** The body is a filled-in issue form, one `### ` heading per field,
+//! the same shape GitHub writes for the guides repository's own issue form;
+//! there is no JSON in it. Because the client authored it, accepting is a copy
+//! rather than a rewrite, which is the whole reason a trainer can accept in one
+//! step instead of retyping the tags. A human may edit the answers by hand and
+//! they still parse.
+//!
+//! A link needs nothing but that body, so it is an issue. A guide written in
+//! the client is a pull request: it is a file, it can carry pictures, and an
+//! issue can carry neither (its body is capped at 65,536 characters, and the
+//! API takes no attachments). Accepting one merges it, so the guide and its
+//! pictures arrive in the repository exactly as the trainer read them.
 //!
 //! **GitHub enforces the permission, not this client.** The queue is public
 //! information (open issues on a public repository), so anybody may read it.
@@ -109,6 +115,259 @@ pub fn guide_raw_url(repo: &str, id: &str) -> String {
     )
 }
 
+// ---------------------------------------------------------------------------
+// Pictures: what a guide written in the client may carry
+// ---------------------------------------------------------------------------
+
+/// How the editor refers to a picture the author attached: `images/<name>`,
+/// relative to the guide, which is how GitHub and every Markdown viewer read a
+/// relative path too.
+pub const DRAFT_IMAGE_DIR: &str = "images";
+
+/// The largest picture a submission may carry. A full-HD screenshot as a PNG
+/// is two to three megabytes; anything past this is a photo of a monitor or a
+/// mistake, and it goes into a repository every maintainer clones.
+pub const MAX_IMAGE_BYTES: usize = 5 * 1024 * 1024;
+
+/// How many pictures one submission may carry.
+pub const MAX_IMAGES: usize = 20;
+
+/// All of a submission's pictures together.
+pub const MAX_IMAGES_TOTAL_BYTES: usize = 25 * 1024 * 1024;
+
+/// A picture as the form hands it over: its name in the guide, and its bytes
+/// as base64, which is what survives the trip through IPC as JSON.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DraftImage {
+    pub name: String,
+    pub data: String,
+}
+
+/// A picture that passed [`read_draft_images`], ready to commit.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GuideImage {
+    pub name: String,
+    pub bytes: Vec<u8>,
+}
+
+/// What a picture's bytes say it is, as the extension its name must carry.
+///
+/// Read off the file's own signature rather than its name: the name is
+/// whatever the author's file was called, and a repository that serves these
+/// to every client should hold exactly the four formats a browser draws.
+pub fn image_kind(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
+        Some("png")
+    } else if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some("jpg")
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        Some("gif")
+    } else if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        Some("webp")
+    } else {
+        None
+    }
+}
+
+/// Why a picture's name is not one the repository can hold as it stands, if
+/// it is not: lowercase letters, digits and hyphens, then the extension its
+/// bytes call for. The form names files this way; checking rather than
+/// renaming here keeps the name the guide's text refers to and the file's name
+/// one thing.
+fn image_name_problem(name: &str, kind: &str) -> Option<String> {
+    let Some((stem, extension)) = name.rsplit_once('.') else {
+        return Some(format!("the picture \"{name}\" has no file extension"));
+    };
+    let stem_ok = !stem.is_empty()
+        && stem.len() <= 80
+        && stem
+            .chars()
+            .next()
+            .is_some_and(|first| first.is_ascii_lowercase() || first.is_ascii_digit())
+        && stem
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+    if !stem_ok {
+        return Some(format!(
+            "the picture name \"{name}\" should be lowercase letters, digits and hyphens"
+        ));
+    }
+    if extension != kind {
+        return Some(format!(
+            "\"{name}\" is a {} picture, so its name should end in .{kind}",
+            kind.to_uppercase()
+        ));
+    }
+    None
+}
+
+/// Decode and check the pictures a draft carries, keeping only the ones its
+/// text refers to.
+///
+/// A picture the author attached and then deleted from the text is dropped
+/// rather than committed: nothing would ever show it, and the repository is
+/// cloned by every maintainer.
+pub fn read_draft_images(body: &str, images: &[DraftImage]) -> Result<Vec<GuideImage>, String> {
+    use base64::Engine as _;
+
+    if images.len() > MAX_IMAGES {
+        return Err(format!(
+            "a submission can carry at most {MAX_IMAGES} pictures"
+        ));
+    }
+    let mut read: Vec<GuideImage> = Vec::with_capacity(images.len());
+    let mut total = 0;
+    for image in images {
+        if read.iter().any(|held| held.name == image.name) {
+            return Err(format!("two pictures are called \"{}\"", image.name));
+        }
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(image.data.as_bytes())
+            .map_err(|_| format!("the picture \"{}\" could not be read", image.name))?;
+        if bytes.len() > MAX_IMAGE_BYTES {
+            return Err(format!(
+                "the picture \"{}\" is larger than {} MB",
+                image.name,
+                MAX_IMAGE_BYTES / (1024 * 1024)
+            ));
+        }
+        let kind = image_kind(&bytes)
+            .ok_or_else(|| format!("\"{}\" is not a PNG, JPEG, GIF or WebP picture", image.name))?;
+        if let Some(problem) = image_name_problem(&image.name, kind) {
+            return Err(problem);
+        }
+        if !refers_to_image(body, &image.name) {
+            continue;
+        }
+        total += bytes.len();
+        read.push(GuideImage {
+            name: image.name.clone(),
+            bytes,
+        });
+    }
+    if total > MAX_IMAGES_TOTAL_BYTES {
+        return Err(format!(
+            "the pictures add up to more than {} MB",
+            MAX_IMAGES_TOTAL_BYTES / (1024 * 1024)
+        ));
+    }
+    Ok(read)
+}
+
+/// The ways a guide's text points at an attached picture: Markdown's
+/// `](images/<name>)` and the `<img src="images/<name>">` the wiki writes.
+fn image_references(name: &str) -> [String; 3] {
+    [
+        format!("]({DRAFT_IMAGE_DIR}/{name})"),
+        format!("src=\"{DRAFT_IMAGE_DIR}/{name}\""),
+        format!("src='{DRAFT_IMAGE_DIR}/{name}'"),
+    ]
+}
+
+/// Whether `body` shows the attached picture `name` anywhere.
+pub fn refers_to_image(body: &str, name: &str) -> bool {
+    image_references(name)
+        .iter()
+        .any(|reference| body.contains(reference.as_str()))
+}
+
+/// Where a submission's pictures are committed: a folder of their own beside
+/// the guides, named after the guide, so two guides that both call a picture
+/// `map.png` do not overwrite each other.
+pub fn guide_image_path(id: &str, name: &str) -> String {
+    format!("guides/{DRAFT_IMAGE_DIR}/{id}/{name}")
+}
+
+/// The guide's text with every attached picture pointing at the folder it is
+/// committed to.
+///
+/// The editor writes `images/<name>` because the id is not known until the
+/// submission is sent; the committed file sits at `guides/<id>.md`, so the
+/// path relative to it becomes `images/<id>/<name>`. Only the names in
+/// `names` are rewritten: any other relative path is the author's own, and
+/// is left as typed.
+pub fn place_images(body: &str, id: &str, names: &[String]) -> String {
+    let mut placed = body.to_string();
+    for name in names {
+        let from = format!("{DRAFT_IMAGE_DIR}/{name}");
+        let to = format!("{DRAFT_IMAGE_DIR}/{id}/{name}");
+        for reference in image_references(name) {
+            placed = placed.replace(&reference, &reference.replace(&from, &to));
+        }
+    }
+    placed
+}
+
+// ---------------------------------------------------------------------------
+// A submission as a pull request
+// ---------------------------------------------------------------------------
+
+/// The branch a submission is proposed from. The stamp keeps a second attempt
+/// at the same title from colliding with a first one that is still open.
+pub fn submission_branch(id: &str, stamp: u64) -> String {
+    format!("submission/{id}-{stamp}")
+}
+
+/// The id of the one guide a pull request adds, read off its files.
+///
+/// `None` when it adds no guide, or more than one: a submission is one guide,
+/// and a pull request carrying two is somebody editing the repository rather
+/// than submitting through the client.
+pub fn submitted_guide_id(files: &[String]) -> Option<String> {
+    let mut ids = files.iter().filter_map(|path| {
+        let id = path.strip_prefix("guides/")?.strip_suffix(".md")?;
+        (!id.is_empty() && !id.contains('/')).then(|| id.to_string())
+    });
+    let id = ids.next()?;
+    ids.next().is_none().then_some(id)
+}
+
+/// The files of a pull request that are not the guide `id` or its pictures.
+///
+/// Accepting merges the pull request, and a merge takes every file in it. So
+/// anything outside the guide and its picture folder (the catalogue, the
+/// repository's checks, somebody else's guide) turns the one-press accept off:
+/// a trainer reading a guide is not reviewing a change to the workflow that
+/// runs on every push.
+pub fn foreign_files(id: Option<&str>, files: &[String]) -> Vec<String> {
+    files
+        .iter()
+        .filter(|path| {
+            let Some(id) = id else {
+                return true;
+            };
+            if path.as_str() == guide_file_path(id) {
+                return false;
+            }
+            let Some(name) = path.strip_prefix(&format!("guides/{DRAFT_IMAGE_DIR}/{id}/")) else {
+                return true;
+            };
+            let extension = name
+                .rsplit_once('.')
+                .map(|(_, ext)| ext)
+                .unwrap_or_default();
+            !(["png", "jpg", "gif", "webp"].contains(&extension)
+                && image_name_problem(name, extension).is_none())
+        })
+        .cloned()
+        .collect()
+}
+
+/// What stands in the body's guide field of a pull request: the guide is the
+/// file, and the body says where it is rather than repeating it.
+pub fn pull_guide_note(id: &str) -> String {
+    format!("`{}` in this pull request.", guide_file_path(id))
+}
+
+/// The commit message of the squash that accepting a pull request makes.
+pub fn merge_commit_message(entry: &TrainingResource, number: i32) -> String {
+    format!(
+        "Add the guide \"{}\" and its pictures (#{number})",
+        entry.title.trim()
+    )
+}
+
 /// Who the client is signed in to GitHub as.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -167,7 +426,8 @@ pub enum GuidesAuthStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GuideSubmission {
-    /// The issue number, which is what accept and reject address.
+    /// The issue or pull request number, which is what accept and reject
+    /// address. GitHub numbers both from one sequence, so it is unambiguous.
     pub number: i32,
     pub title: String,
     /// The prose half, with the JSON block removed: what a reviewer reads.
@@ -188,12 +448,37 @@ pub struct GuideSubmission {
     /// one somewhere else. Accepting commits it as a file and points the
     /// catalogue entry at it.
     pub guide: Option<String>,
+    /// Set when the submission is a pull request rather than an issue: a guide
+    /// written in the client, committed with its pictures. `None` for an
+    /// issue, which carries a link or a guide in its body and no files.
+    pub pull: Option<SubmissionPull>,
+}
+
+/// The files half of a submission that arrived as a pull request.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmissionPull {
+    /// The commit the queue read. Accepting merges exactly this one and is
+    /// refused if the pull request has moved on since, so what a trainer read
+    /// is what goes in.
+    pub head_sha: String,
+    /// Where the guide is read at that commit. Its pictures are relative to
+    /// it, so this is also what the queue resolves them against.
+    pub guide_url: String,
+    /// The pictures it adds, as repository paths.
+    pub images: Vec<String>,
+    /// Files that are neither the guide nor its pictures. Any at all and it
+    /// cannot be accepted in one step: see [`foreign_files`].
+    pub foreign: Vec<String>,
 }
 
 impl GuideSubmission {
     /// Whether accepting this can be done in one step.
     pub fn is_acceptable(&self) -> bool {
         self.entry.is_some()
+            && self.pull.as_ref().is_none_or(|pull| {
+                pull.foreign.is_empty() && !pull.head_sha.is_empty() && self.guide.is_some()
+            })
     }
 }
 
@@ -1189,8 +1474,14 @@ pub enum GuidesCommand {
     /// The draft travels rather than a finished entry: deriving one from the
     /// other (the id from the title, the numbers out of text fields) is a rule,
     /// and a rule the frontend also knew would be a rule written twice.
+    ///
+    /// The pictures travel beside it and only here, once: the draft is handed
+    /// to the state after every pause in typing, and megabytes of base64 on
+    /// each of those would be the whole cost of the form.
     Submit {
         draft: Box<ContributionDraft>,
+        #[serde(default)]
+        images: Vec<DraftImage>,
     },
 }
 
@@ -2131,5 +2422,169 @@ mod tests {
         );
         reduce(&mut state, &GuidesEvent::SubmitReset);
         assert_eq!(state.submit, SubmitStatus::Idle);
+    }
+
+    // -- pictures and pull requests ----------------------------------------
+
+    const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13];
+
+    fn draft_image(name: &str, bytes: &[u8]) -> DraftImage {
+        use base64::Engine as _;
+        DraftImage {
+            name: name.into(),
+            data: base64::engine::general_purpose::STANDARD.encode(bytes),
+        }
+    }
+
+    #[test]
+    fn a_picture_is_what_its_bytes_say_not_what_its_name_says() {
+        assert_eq!(image_kind(PNG), Some("png"));
+        assert_eq!(image_kind(&[0xFF, 0xD8, 0xFF, 0xE0]), Some("jpg"));
+        assert_eq!(image_kind(b"GIF89a...."), Some("gif"));
+        assert_eq!(image_kind(b"RIFF\0\0\0\0WEBPVP8 "), Some("webp"));
+        assert_eq!(image_kind(b"<svg xmlns="), None, "no SVG: it is a document");
+        assert_eq!(image_kind(b""), None);
+
+        let body = "![a](images/map.jpg)";
+        let refused = read_draft_images(body, &[draft_image("map.jpg", PNG)]).unwrap_err();
+        assert!(refused.contains(".png"), "{refused}");
+    }
+
+    #[test]
+    fn only_the_pictures_the_guide_shows_are_committed() {
+        // Attached, then deleted from the text: nothing would ever show it.
+        let body = "Intro\n\n![The opening](images/opening.png)\n\n<img src=\"images/icon.png\" width=\"20\"/>";
+        let read = read_draft_images(
+            body,
+            &[
+                draft_image("opening.png", PNG),
+                draft_image("icon.png", PNG),
+                draft_image("forgotten.png", PNG),
+            ],
+        )
+        .expect("they read");
+        assert_eq!(
+            read.iter()
+                .map(|image| image.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["opening.png", "icon.png"]
+        );
+    }
+
+    #[test]
+    fn a_picture_name_has_to_be_one_a_repository_and_a_url_survive() {
+        let body = "![x](images/Map Shot.png)";
+        assert!(read_draft_images(body, &[draft_image("Map Shot.png", PNG)]).is_err());
+        assert!(read_draft_images("", &[draft_image("../catalogue.png", PNG)]).is_err());
+        assert!(read_draft_images("", &[draft_image("noextension", PNG)]).is_err());
+        let twice = [draft_image("a.png", PNG), draft_image("a.png", PNG)];
+        assert!(read_draft_images("![](images/a.png)", &twice).is_err());
+    }
+
+    #[test]
+    fn too_many_or_too_large_pictures_are_refused_before_anything_is_sent() {
+        let many: Vec<DraftImage> = (0..=MAX_IMAGES)
+            .map(|index| draft_image(&format!("p{index}.png"), PNG))
+            .collect();
+        assert!(read_draft_images("", &many).is_err());
+
+        let mut large = PNG.to_vec();
+        large.resize(MAX_IMAGE_BYTES + 1, 0);
+        let refused = read_draft_images("![](images/big.png)", &[draft_image("big.png", &large)])
+            .unwrap_err();
+        assert!(refused.contains("MB"), "{refused}");
+    }
+
+    #[test]
+    fn placing_pictures_points_them_at_the_guide_s_own_folder() {
+        let body = "![The opening](images/opening.png) and images/opening.png in prose, \
+                    <img src=\"images/icon.png\" width=\"20\"/>, ![own](images/elsewhere.png)";
+        let placed = place_images(
+            body,
+            "setons-air",
+            &["opening.png".to_string(), "icon.png".to_string()],
+        );
+        assert_eq!(
+            placed,
+            "![The opening](images/setons-air/opening.png) and images/opening.png in prose, \
+             <img src=\"images/setons-air/icon.png\" width=\"20\"/>, ![own](images/elsewhere.png)"
+        );
+        assert_eq!(
+            guide_image_path("setons-air", "opening.png"),
+            "guides/images/setons-air/opening.png"
+        );
+    }
+
+    #[test]
+    fn a_pull_request_is_one_guide_and_its_pictures_or_it_needs_a_hand() {
+        let files = |paths: &[&str]| paths.iter().map(|p| p.to_string()).collect::<Vec<_>>();
+
+        let clean = files(&[
+            "guides/setons-air.md",
+            "guides/images/setons-air/opening.png",
+            "guides/images/setons-air/push.jpg",
+        ]);
+        let id = submitted_guide_id(&clean);
+        assert_eq!(id.as_deref(), Some("setons-air"));
+        assert!(foreign_files(id.as_deref(), &clean).is_empty());
+
+        // A merge takes every file, so anything else turns the one press off.
+        let sneaky = files(&[
+            "guides/setons-air.md",
+            ".github/workflows/validate.yml",
+            "catalogue.json",
+            "guides/images/other-guide/x.png",
+            "guides/images/setons-air/script.js",
+        ]);
+        assert_eq!(
+            foreign_files(Some("setons-air"), &sneaky),
+            files(&[
+                ".github/workflows/validate.yml",
+                "catalogue.json",
+                "guides/images/other-guide/x.png",
+                "guides/images/setons-air/script.js",
+            ])
+        );
+
+        // Two guides, or none, is not a submission.
+        assert_eq!(
+            submitted_guide_id(&files(&["guides/a.md", "guides/b.md"])),
+            None
+        );
+        assert_eq!(submitted_guide_id(&files(&["guides/images/a/x.png"])), None);
+        assert_eq!(foreign_files(None, &files(&["guides/a.md"])).len(), 1);
+    }
+
+    #[test]
+    fn a_pull_request_with_foreign_files_or_no_guide_is_not_acceptable_in_one_press() {
+        let mut row = GuideSubmission {
+            number: 9,
+            entry: Some(entry()),
+            guide: Some("# Guide\n".into()),
+            pull: Some(SubmissionPull {
+                head_sha: "abc".into(),
+                ..SubmissionPull::default()
+            }),
+            ..GuideSubmission::default()
+        };
+        assert!(row.is_acceptable());
+
+        if let Some(pull) = row.pull.as_mut() {
+            pull.foreign = vec!["catalogue.json".into()];
+        }
+        assert!(!row.is_acceptable());
+
+        if let Some(pull) = row.pull.as_mut() {
+            pull.foreign.clear();
+        }
+        row.guide = None;
+        assert!(!row.is_acceptable(), "the guide could not be read");
+
+        // An issue needs only its entry, as before.
+        let issue = GuideSubmission {
+            entry: Some(entry()),
+            ..GuideSubmission::default()
+        };
+        assert!(issue.is_acceptable());
     }
 }

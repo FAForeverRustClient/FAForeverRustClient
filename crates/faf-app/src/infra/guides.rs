@@ -29,6 +29,15 @@
 //! is in the catalogue, the comment is on the issue, the issue is closed), so a
 //! verdict that failed halfway is finished by giving it again, with no second
 //! commit and no second comment.
+//!
+//! **A written guide travels as a pull request.** It is a file, it may carry
+//! pictures, and an issue can hold neither. Submitting builds one commit
+//! through the Git data API (a blob per file, one tree, one commit on top of
+//! the catalogue's `main`) on a branch of the author's fork, or of the
+//! repository itself for somebody who may push to it, and proposes it.
+//! Accepting merges exactly the commit the queue read, and only when the pull
+//! request holds nothing but that guide and its pictures, then adds the entry
+//! to the catalogue the way an issue's is added.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -37,16 +46,19 @@ use std::time::Duration;
 use async_trait::async_trait;
 use base64::Engine as _;
 use faf_domain::state::guides::{
-    acceptance_comment, catalogue_claim, entry_from_issue, entry_problem, id_candidates,
-    is_submission_issue, CatalogueClaim, ACCEPTED_LABEL, ACCEPT_MARKER, DECLINED_LABEL,
-    DECLINE_MARKER,
+    acceptance_comment, catalogue_claim, entry_from_issue, entry_problem, foreign_files,
+    guide_image_path, id_candidates, is_submission_issue, merge_commit_message, place_images,
+    pull_guide_note, submission_branch, submitted_guide_id, CatalogueClaim, ACCEPTED_LABEL,
+    ACCEPT_MARKER, DECLINED_LABEL, DECLINE_MARKER, GUIDES_BRANCH,
 };
 use faf_domain::state::{
     accept_commit_message, catalogue_with, guide_file_path, guide_from_body, guide_raw_url,
-    prose_from_body, rejection_comment, submission_body, submission_title, GuideSubmission,
-    GuidesIdentity, RejectReason, TrainingResource, CATALOGUE_PATH, GUIDES_REPO, SUBMISSION_LABEL,
+    prose_from_body, rejection_comment, submission_body, submission_title, GuideImage,
+    GuideSubmission, GuidesIdentity, RejectReason, SubmissionPull, TrainingResource,
+    CATALOGUE_PATH, GUIDES_REPO, SUBMISSION_LABEL,
 };
 use reqwest::{Method, StatusCode};
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde_json::json;
 use tokio::sync::Notify;
@@ -71,6 +83,23 @@ const QUEUE_PAGE: u32 = 100;
 /// beyond what this repository will see; the cap exists so a runaway cannot
 /// spend an anonymous reader's whole hourly allowance on one refresh.
 const MAX_QUEUE_PAGES: u32 = 10;
+
+/// A guide is prose somebody wrote. Anything past this, read off a pull
+/// request, is not one; the same ceiling the library's reader keeps.
+const MAX_GUIDE_BYTES: usize = 512 * 1024;
+
+/// How long to wait between asking a fork that is still being made whether it
+/// is ready. GitHub forks asynchronously and says so: "Forking a Repository
+/// happens asynchronously. You may have to wait a short period of time before
+/// you can access the git objects."
+const FORK_PAUSE: Duration = if cfg!(test) {
+    Duration::from_millis(1)
+} else {
+    Duration::from_secs(2)
+};
+
+/// How many times a fork that is not ready yet is asked again: a minute.
+const FORK_ATTEMPTS: u32 = 30;
 
 /// A guard on the polling loop, independent of GitHub's `expires_in`, so a
 /// wedged login cannot poll for the rest of the session.
@@ -97,6 +126,10 @@ pub struct GuidesConfig {
     /// Where the device flow happens. Separate from `api_base` because GitHub
     /// serves the OAuth endpoints from `github.com`, not from `api.github.com`.
     pub oauth_base: String,
+    /// Where a file is read at a commit: a pull request's guide, at the commit
+    /// the queue lists it at. Not the API, which would spend the anonymous
+    /// reader's hourly allowance on every guide in the queue.
+    pub raw_base: String,
     /// The OS keyring service the token is stored under. Empty keeps the token
     /// in memory only, which is what the tests use so they never read or
     /// delete anything in the developer's own credential store.
@@ -110,6 +143,7 @@ impl GuidesConfig {
             client_id: env_or("FAF_GUIDES_GITHUB_CLIENT_ID", CLIENT_ID),
             api_base: env_or("FAF_GUIDES_API_BASE", "https://api.github.com"),
             oauth_base: env_or("FAF_GUIDES_OAUTH_BASE", "https://github.com"),
+            raw_base: env_or("FAF_GUIDES_RAW_BASE", "https://raw.githubusercontent.com"),
             keyring_service: crate::infra::APP_SLUG.into(),
         }
     }
@@ -500,18 +534,40 @@ impl GuidesClient {
             "close the submission",
         )
         .await?;
+        self.add_labels(number, &[SUBMISSION_LABEL, label]).await;
+        Ok(())
+    }
+
+    /// [`Self::close`] for a pull request, which GitHub closes through its own
+    /// endpoint and which has no `state_reason`.
+    async fn close_pull(&self, number: i32, label: &str) -> Result<(), Failure> {
+        self.send(
+            Method::PATCH,
+            &format!("/repos/{}/pulls/{number}", self.config.repo),
+            Some(&json!({ "state": "closed" })),
+            "close the submission",
+        )
+        .await?;
+        self.add_labels(number, &[SUBMISSION_LABEL, label]).await;
+        Ok(())
+    }
+
+    /// Add labels to an issue or pull request, best effort. A missing label is
+    /// not worth reporting a verdict or a submission as failed, and an author
+    /// who is not a collaborator may not label anything: the title prefix is
+    /// what marks a submission for them (see [`is_submission_issue`]).
+    async fn add_labels(&self, number: i32, labels: &[&str]) {
         if let Err(failure) = self
             .send(
                 Method::POST,
                 &format!("/repos/{}/issues/{number}/labels", self.config.repo),
-                Some(&json!({ "labels": [SUBMISSION_LABEL, label] })),
+                Some(&json!({ "labels": labels })),
                 "label the submission",
             )
             .await
         {
-            tracing::warn!(number, reason = %failure, "closed the submission but could not label it");
+            tracing::info!(number, reason = %failure, "could not label the submission");
         }
-        Ok(())
     }
 
     /// What the current token may do on the catalogue repository.
@@ -699,6 +755,554 @@ impl GuidesClient {
             }
         }
     }
+
+    /// Every page of a list the queue reads, up to [`MAX_QUEUE_PAGES`]. `path`
+    /// carries its query already; the page is appended.
+    async fn read_pages<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        what: &str,
+    ) -> Result<Vec<T>, Failure> {
+        let mut rows = Vec::new();
+        for page in 1..=MAX_QUEUE_PAGES {
+            let answer = self
+                .read_public(&format!("{path}&page={page}"), what)
+                .await?;
+            let batch: Vec<T> = serde_json::from_str(&answer.body)
+                .map_err(|error| Failure::unreadable(what, error))?;
+            rows.extend(batch);
+            if !answer.more {
+                break;
+            }
+            if page == MAX_QUEUE_PAGES {
+                tracing::warn!(
+                    pages = MAX_QUEUE_PAGES,
+                    what,
+                    "the catalogue repository has more open items than the queue reads"
+                );
+            }
+        }
+        Ok(rows)
+    }
+
+    /// A file at a commit, as text, from the raw host rather than the API.
+    async fn read_raw(&self, url: &str) -> Result<String, String> {
+        let response = self
+            .http
+            .get(url)
+            .send()
+            .await
+            .map_err(|error| format!("could not read {url}: {error}"))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(format!("{url} answered {status}"));
+        }
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|error| format!("could not read {url}: {error}"))?;
+        if bytes.len() > MAX_GUIDE_BYTES {
+            return Err(format!("{url} is too large to be a guide"));
+        }
+        String::from_utf8(bytes.to_vec()).map_err(|_| format!("{url} is not text"))
+    }
+
+    /// One open pull request as a row of the queue.
+    ///
+    /// Never fails the queue: a pull request whose files or guide cannot be
+    /// read is still listed, with nothing to accept in one press, because a
+    /// row that says it needs a hand is better than a queue that will not load.
+    async fn pull_submission(&self, pull: Pull) -> GuideSubmission {
+        let number = pull.number;
+        let files: Vec<PullFile> = match self
+            .read_pages(
+                &format!(
+                    "/repos/{}/pulls/{number}/files?per_page={QUEUE_PAGE}",
+                    self.config.repo
+                ),
+                "read a proposed guide's files",
+            )
+            .await
+        {
+            Ok(files) => files,
+            Err(failure) => {
+                tracing::warn!(number, reason = %failure, "could not read a proposed guide's files");
+                Vec::new()
+            }
+        };
+        let paths: Vec<String> = files.iter().map(|file| file.filename.clone()).collect();
+        let id = submitted_guide_id(&paths);
+        let mut foreign = foreign_files(id.as_deref(), &paths);
+        // Only what the pull request adds goes in with one press. A changed,
+        // renamed or removed file is an edit to something already published,
+        // and that is a review on GitHub rather than a guide in a queue.
+        for file in files.iter().filter(|file| file.status != "added") {
+            for path in std::iter::once(&file.filename).chain(file.previous_filename.as_ref()) {
+                if !foreign.contains(path) {
+                    foreign.push(path.clone());
+                }
+            }
+        }
+        let images = match &id {
+            Some(id) => {
+                let folder = guide_image_path(id, "");
+                paths
+                    .iter()
+                    .filter(|path| path.starts_with(&folder) && !foreign.contains(*path))
+                    .cloned()
+                    .collect()
+            }
+            None => Vec::new(),
+        };
+
+        let guide_url = match (&id, &pull.head.repo) {
+            (Some(id), Some(repo)) => format!(
+                "{}/{}/{}/{}",
+                self.config.raw_base,
+                repo.full_name,
+                pull.head.sha,
+                guide_file_path(id)
+            ),
+            _ => String::new(),
+        };
+        let guide = if guide_url.is_empty() {
+            None
+        } else {
+            match self.read_raw(&guide_url).await {
+                Ok(text) => Some(text),
+                Err(reason) => {
+                    tracing::warn!(number, %reason, "could not read a proposed guide");
+                    None
+                }
+            }
+        };
+
+        let body = pull.body.unwrap_or_default();
+        let mut entry = entry_from_issue(number, &pull.title, &body);
+        // The id the files were committed under, not one derived again from
+        // the title: a maintainer may have retitled the pull request, and the
+        // file is where the entry has to point.
+        if let (Some(entry), Some(id)) = (entry.as_mut(), id.as_ref()) {
+            entry.id = id.clone();
+        }
+        GuideSubmission {
+            number,
+            summary: prose_from_body(&body),
+            entry,
+            author: pull
+                .user
+                .as_ref()
+                .map(|user| user.login.clone())
+                .unwrap_or_default(),
+            author_avatar_url: pull
+                .user
+                .and_then(|user| user.avatar_url)
+                .unwrap_or_default(),
+            created_at: pull.created_at.unwrap_or_default(),
+            url: pull.html_url.unwrap_or_default(),
+            title: pull.title,
+            guide,
+            pull: Some(SubmissionPull {
+                head_sha: pull.head.sha,
+                guide_url,
+                images,
+                foreign,
+            }),
+        }
+    }
+
+    async fn pull(&self, number: i32) -> Result<Pull, Failure> {
+        let what = format!("read #{number}");
+        let body = self
+            .send(
+                Method::GET,
+                &format!("/repos/{}/pulls/{number}", self.config.repo),
+                None,
+                &what,
+            )
+            .await?;
+        serde_json::from_str(&body).map_err(|error| Failure::unreadable(&what, error))
+    }
+
+    /// Merge exactly `sha`, as one squashed commit. GitHub refuses if the pull
+    /// request has moved on since, which is the guarantee that what a trainer
+    /// read is what goes in.
+    async fn merge(&self, number: i32, sha: &str, message: &str) -> Result<(), Failure> {
+        self.send(
+            Method::PUT,
+            &format!("/repos/{}/pulls/{number}/merge", self.config.repo),
+            Some(&json!({ "merge_method": "squash", "sha": sha, "commit_title": message })),
+            "merge the proposed guide",
+        )
+        .await
+        .map(|_| ())
+    }
+
+    /// Remove a decided submission's branch when it lives in this repository.
+    /// Best effort: a branch left behind costs nothing, and one in the
+    /// author's fork is theirs to remove.
+    async fn drop_branch(&self, head: &PullHead) {
+        let ours = head
+            .repo
+            .as_ref()
+            .is_some_and(|repo| repo.full_name == self.config.repo);
+        if !ours || !head.ref_name.starts_with("submission/") {
+            return;
+        }
+        if let Err(failure) = self
+            .send(
+                Method::DELETE,
+                &format!(
+                    "/repos/{}/git/refs/heads/{}",
+                    self.config.repo, head.ref_name
+                ),
+                None,
+                "remove the submission's branch",
+            )
+            .await
+        {
+            tracing::info!(reason = %failure, "left the submission's branch in place");
+        }
+    }
+
+    /// Accept a pull request: merge it, then publish its entry.
+    async fn accept_pull(
+        &self,
+        submission: GuideSubmission,
+        pull: SubmissionPull,
+    ) -> Result<(), String> {
+        let number = submission.number;
+        let mut entry = submission
+            .entry
+            .clone()
+            .ok_or_else(|| "this submission carries no catalogue entry to publish".to_string())?;
+        let guide = submission.guide.clone().ok_or_else(|| {
+            format!("the guide in #{number} could not be read, so it was not published")
+        })?;
+        if !pull.foreign.is_empty() {
+            return Err(format!(
+                "#{number} changes more than its guide and pictures ({}), so it was not merged",
+                pull.foreign.join(", ")
+            ));
+        }
+        entry.approved_by = self.may_decide(true).await?;
+
+        let current = self.pull(number).await?;
+        if current.is_closed() && !current.merged {
+            return Err(format!(
+                "#{number} is already closed on GitHub, so it was not published"
+            ));
+        }
+        let comments = self.comments(number).await?;
+        if comments
+            .iter()
+            .any(|comment| comment.contains(DECLINE_MARKER))
+        {
+            return Err(format!(
+                "#{number} was already declined, so it was not published"
+            ));
+        }
+
+        // The merge before the catalogue, for the reason an issue's guide file
+        // is written first: an entry pointing at a file that is not there yet
+        // is a dead link on everybody's screen.
+        if !current.merged {
+            if current.head.sha != pull.head_sha {
+                return Err(format!(
+                    "#{number} has changed since the queue read it, so it was not merged. Refresh the queue and read it again before accepting"
+                ));
+            }
+            self.merge(
+                number,
+                &pull.head_sha,
+                &merge_commit_message(&entry, number),
+            )
+            .await?;
+        }
+
+        if !comments
+            .iter()
+            .any(|comment| comment.contains(ACCEPT_MARKER))
+        {
+            self.publish(number, Some(&guide), &mut entry)
+                .await
+                .map_err(|reason| {
+                    format!(
+                        "#{number} was merged, but {reason}. Accepting again finishes it without merging twice"
+                    )
+                })?;
+            self.comment(number, &acceptance_comment(&entry.id))
+                .await
+                .map_err(|failure| {
+                    format!(
+                        "#{number} was published as `{}`, but {failure}. Accepting again finishes it without publishing twice",
+                        entry.id
+                    )
+                })?;
+        }
+        self.add_labels(number, &[SUBMISSION_LABEL, ACCEPTED_LABEL])
+            .await;
+        self.drop_branch(&current.head).await;
+        Ok(())
+    }
+
+    /// The commit `main` points at, and that commit's tree: what a submission
+    /// is built on top of.
+    async fn main_commit(&self) -> Result<(String, String), Failure> {
+        let what = "read the catalogue's latest commit";
+        let body = self
+            .send(
+                Method::GET,
+                &format!("/repos/{}/git/ref/heads/{GUIDES_BRANCH}", self.config.repo),
+                None,
+                what,
+            )
+            .await?;
+        let reference: GitRef =
+            serde_json::from_str(&body).map_err(|error| Failure::unreadable(what, error))?;
+        let body = self
+            .send(
+                Method::GET,
+                &format!(
+                    "/repos/{}/git/commits/{}",
+                    self.config.repo, reference.object.sha
+                ),
+                None,
+                what,
+            )
+            .await?;
+        let commit: GitCommit =
+            serde_json::from_str(&body).map_err(|error| Failure::unreadable(what, error))?;
+        Ok((reference.object.sha, commit.tree.sha))
+    }
+
+    /// An id for a new guide that neither the catalogue nor a guide file holds.
+    async fn free_id(&self, entry: &TrainingResource) -> Result<String, String> {
+        let (current, _) = self.read_catalogue().await?;
+        for candidate in id_candidates(&entry.id) {
+            let mut attempt = entry.clone();
+            attempt.id = candidate.clone();
+            if catalogue_claim(&current, &attempt)? != CatalogueClaim::Free {
+                continue;
+            }
+            if self
+                .read_file(&guide_file_path(&candidate))
+                .await?
+                .is_some()
+            {
+                continue;
+            }
+            return Ok(candidate);
+        }
+        Err(format!(
+            "every id from `{0}` to `{0}-50` is already taken; choose another title",
+            entry.id
+        ))
+    }
+
+    /// The author's fork of the catalogue repository, made if there is none.
+    ///
+    /// Asking GitHub for a fork that exists answers with that fork, so this is
+    /// safe to call every time. An old fork is brought up to the catalogue's
+    /// `main` on the way, best effort: the submission's commit is built on the
+    /// catalogue's own `main` either way.
+    async fn fork(&self) -> Result<String, Failure> {
+        let what = "fork the catalogue repository";
+        let body = self
+            .send(
+                Method::POST,
+                &format!("/repos/{}/forks", self.config.repo),
+                Some(&json!({ "default_branch_only": true })),
+                what,
+            )
+            .await?;
+        let fork: RepositoryName =
+            serde_json::from_str(&body).map_err(|error| Failure::unreadable(what, error))?;
+        if let Err(failure) = self
+            .send(
+                Method::POST,
+                &format!("/repos/{}/merge-upstream", fork.full_name),
+                Some(&json!({ "branch": GUIDES_BRANCH })),
+                "bring the fork up to date",
+            )
+            .await
+        {
+            tracing::info!(reason = %failure, "the fork was not brought up to date");
+        }
+        Ok(fork.full_name)
+    }
+
+    /// `POST /repos/{repo}/git/{kind}`, answering with the new object's sha.
+    async fn create(
+        &self,
+        repo: &str,
+        kind: &str,
+        payload: &serde_json::Value,
+        what: &str,
+    ) -> Result<String, Failure> {
+        let body = self
+            .send(
+                Method::POST,
+                &format!("/repos/{repo}/git/{kind}"),
+                Some(payload),
+                what,
+            )
+            .await?;
+        serde_json::from_str::<GitObject>(&body)
+            .map(|object| object.sha)
+            .map_err(|error| Failure::unreadable(what, error))
+    }
+
+    /// Upload one file's bytes. A fork GitHub is still making answers 404, or
+    /// 409 while it has no objects yet, so those are asked again for a while.
+    async fn blob(&self, repo: &str, bytes: &[u8]) -> Result<String, Failure> {
+        let payload = json!({
+            "content": base64::engine::general_purpose::STANDARD.encode(bytes),
+            "encoding": "base64",
+        });
+        let mut attempts = 0;
+        loop {
+            attempts += 1;
+            match self
+                .create(repo, "blobs", &payload, "upload the submission's files")
+                .await
+            {
+                Err(failure)
+                    if repo != self.config.repo
+                        && attempts < FORK_ATTEMPTS
+                        && matches!(
+                            failure.status,
+                            Some(StatusCode::NOT_FOUND | StatusCode::CONFLICT)
+                        ) =>
+                {
+                    tokio::time::sleep(FORK_PAUSE).await;
+                }
+                other => return other,
+            }
+        }
+    }
+
+    /// Propose a guide written in the client as a pull request: the guide and
+    /// its pictures in one commit on top of the catalogue's `main`.
+    async fn open_pull(
+        &self,
+        mut entry: TrainingResource,
+        guide: &str,
+        images: &[GuideImage],
+    ) -> Result<String, String> {
+        if self.stored_token().is_none() {
+            return Err("not signed in to GitHub".into());
+        }
+        // Where the branch goes: the repository itself for somebody who may
+        // push to it, otherwise the author's own fork, which is how anybody
+        // proposes a change to a repository they cannot write.
+        let can_push = match self.permissions().await {
+            Ok(permissions) => permissions.push,
+            Err(reason) => {
+                tracing::info!(%reason, "could not read this account's repository permissions; proposing from a fork");
+                false
+            }
+        };
+
+        let (main, base_tree) = self.main_commit().await?;
+        entry.id = self.free_id(&entry).await?;
+        let id = entry.id.clone();
+        let names: Vec<String> = images.iter().map(|image| image.name.clone()).collect();
+        let text = format!("{}\n", place_images(guide, &id, &names).trim());
+
+        let head_repo = if can_push {
+            self.config.repo.clone()
+        } else {
+            self.fork().await?
+        };
+        let mut files = vec![(guide_file_path(&id), text.into_bytes())];
+        files.extend(
+            images
+                .iter()
+                .map(|image| (guide_image_path(&id, &image.name), image.bytes.clone())),
+        );
+        let mut tree = Vec::with_capacity(files.len());
+        for (path, bytes) in &files {
+            let sha = self.blob(&head_repo, bytes).await?;
+            tree.push(json!({ "path": path, "mode": "100644", "type": "blob", "sha": sha }));
+        }
+        let tree = self
+            .create(
+                &head_repo,
+                "trees",
+                &json!({ "base_tree": base_tree, "tree": tree }),
+                "build the submission's files",
+            )
+            .await?;
+        let commit = self
+            .create(
+                &head_repo,
+                "commits",
+                &json!({
+                    "message": format!("Submit \"{}\"", entry.title.trim()),
+                    "tree": tree,
+                    "parents": [main],
+                }),
+                "commit the submission",
+            )
+            .await?;
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|elapsed| elapsed.as_secs())
+            .unwrap_or_default();
+        let branch = submission_branch(&id, stamp);
+        self.send(
+            Method::POST,
+            &format!("/repos/{head_repo}/git/refs"),
+            Some(&json!({ "ref": format!("refs/heads/{branch}"), "sha": commit })),
+            "create the submission's branch",
+        )
+        .await?;
+
+        let owner = head_repo.split('/').next().unwrap_or_default();
+        let mut proposal = json!({
+            "title": submission_title(&entry),
+            "head": if can_push { branch.clone() } else { format!("{owner}:{branch}") },
+            "base": GUIDES_BRANCH,
+            "body": submission_body(&entry, &pull_guide_note(&id)),
+        });
+        if !can_push {
+            // So a maintainer can fix a typo in the guide before accepting
+            // rather than declining it over one.
+            proposal["maintainer_can_modify"] = json!(true);
+        }
+        let body = self
+            .send(
+                Method::POST,
+                &format!("/repos/{}/pulls", self.config.repo),
+                Some(&proposal),
+                "propose the guide",
+            )
+            .await?;
+        let created: Pull = serde_json::from_str(&body)
+            .map_err(|error| format!("GitHub's pull request response was unreadable: {error}"))?;
+        self.add_labels(created.number, &[SUBMISSION_LABEL]).await;
+        Ok(created.html_url.unwrap_or_default())
+    }
+
+    /// Open a submission that carries no file, a link, as an issue.
+    async fn open_issue(&self, entry: TrainingResource, guide: String) -> Result<String, String> {
+        let body = self
+            .send(
+                Method::POST,
+                &format!("/repos/{}/issues", self.config.repo),
+                Some(&json!({
+                    "title": submission_title(&entry),
+                    "body": submission_body(&entry, &guide),
+                    "labels": [SUBMISSION_LABEL],
+                })),
+                "open the submission",
+            )
+            .await?;
+        let issue: Issue = serde_json::from_str(&body)
+            .map_err(|error| format!("GitHub's issue response was unreadable: {error}"))?;
+        Ok(issue.html_url.unwrap_or_default())
+    }
 }
 
 #[async_trait]
@@ -833,37 +1437,46 @@ impl GuidesPort for GuidesClient {
     }
 
     async fn list_submissions(&self) -> Result<Vec<GuideSubmission>, String> {
-        let mut issues = Vec::new();
-        for page in 1..=MAX_QUEUE_PAGES {
-            // No `labels=` filter: see `is_submission_issue` for why the label
-            // cannot be what makes an issue a submission.
-            let what = "list the submissions";
-            let answer = self
-                .read_public(
-                    &format!(
-                        "/repos/{}/issues?state=open&per_page={QUEUE_PAGE}&page={page}",
-                        self.config.repo
-                    ),
-                    what,
-                )
-                .await?;
-            let batch: Vec<Issue> = serde_json::from_str(&answer.body)
-                .map_err(|error| Failure::unreadable(what, error))?;
-            issues.extend(batch);
-            if !answer.more {
-                break;
-            }
-            if page == MAX_QUEUE_PAGES {
-                tracing::warn!(
-                    pages = MAX_QUEUE_PAGES,
-                    "the catalogue repository has more open issues than the queue reads"
-                );
+        // No `labels=` filter: see `is_submission_issue` for why the label
+        // cannot be what makes an issue a submission.
+        let issues: Vec<Issue> = self
+            .read_pages(
+                &format!(
+                    "/repos/{}/issues?state=open&per_page={QUEUE_PAGE}",
+                    self.config.repo
+                ),
+                "list the submissions",
+            )
+            .await?;
+        let mut rows = submissions_from(issues);
+
+        let pulls: Vec<Pull> = self
+            .read_pages(
+                &format!(
+                    "/repos/{}/pulls?state=open&per_page={QUEUE_PAGE}",
+                    self.config.repo
+                ),
+                "list the proposed guides",
+            )
+            .await?;
+        for pull in pulls {
+            let labels: Vec<&str> = pull
+                .labels
+                .iter()
+                .map(|label| label.name.as_str())
+                .collect();
+            if is_submission_issue(&pull.title, &labels) {
+                rows.push(self.pull_submission(pull).await);
             }
         }
-        Ok(submissions_from(issues))
+        rows.sort_by_key(|row| row.number);
+        Ok(rows)
     }
 
     async fn accept(&self, submission: GuideSubmission) -> Result<(), String> {
+        if let Some(pull) = submission.pull.clone() {
+            return self.accept_pull(submission, pull).await;
+        }
         let number = submission.number;
         let mut entry = submission
             .entry
@@ -937,6 +1550,7 @@ impl GuidesPort for GuidesClient {
                 Err(format!("#{number} is already closed on GitHub"))
             };
         }
+        let is_pull = issue.pull_request.is_some();
         let comments = self.comments(number).await?;
         if comments
             .iter()
@@ -957,31 +1571,36 @@ impl GuidesPort for GuidesClient {
             self.comment(number, &rejection_comment(reason, &note))
                 .await?;
         }
-        self.close(number, DECLINED_LABEL, "not_planned")
-            .await
-            .map_err(|failure| {
-                format!(
-                    "the reason is on #{number}, but {failure}. Declining again finishes it without a second comment"
-                )
-            })
+        let closed = if is_pull {
+            self.close_pull(number, DECLINED_LABEL).await
+        } else {
+            self.close(number, DECLINED_LABEL, "not_planned").await
+        };
+        closed.map_err(|failure| {
+            format!(
+                "the reason is on #{number}, but {failure}. Declining again finishes it without a second comment"
+            )
+        })?;
+        if is_pull {
+            if let Ok(pull) = self.pull(number).await {
+                self.drop_branch(&pull.head).await;
+            }
+        }
+        Ok(())
     }
 
-    async fn submit(&self, entry: TrainingResource, guide: String) -> Result<String, String> {
-        let body = self
-            .send(
-                Method::POST,
-                &format!("/repos/{}/issues", self.config.repo),
-                Some(&json!({
-                    "title": submission_title(&entry),
-                    "body": submission_body(&entry, &guide),
-                    "labels": [SUBMISSION_LABEL],
-                })),
-                "open the submission",
-            )
-            .await?;
-        let issue: Issue = serde_json::from_str(&body)
-            .map_err(|error| format!("GitHub's issue response was unreadable: {error}"))?;
-        Ok(issue.html_url.unwrap_or_default())
+    async fn submit(
+        &self,
+        entry: TrainingResource,
+        guide: String,
+        images: Vec<GuideImage>,
+    ) -> Result<String, String> {
+        // A link has no file to carry, so it stays an issue. Anything written
+        // here is a file, and a file is a pull request.
+        if guide.trim().is_empty() {
+            return self.open_issue(entry, guide).await;
+        }
+        self.open_pull(entry, &guide, &images).await
     }
 }
 
@@ -1023,6 +1642,7 @@ fn submissions_from(issues: Vec<Issue>) -> Vec<GuideSubmission> {
                 created_at: issue.created_at.unwrap_or_default(),
                 url: issue.html_url.unwrap_or_default(),
                 guide: guide_from_body(&body),
+                pull: None,
             }
         })
         .collect()
@@ -1202,6 +1822,69 @@ impl Issue {
     }
 }
 
+#[derive(Debug, Deserialize)]
+struct Pull {
+    number: i32,
+    title: String,
+    body: Option<String>,
+    user: Option<GitHubUser>,
+    created_at: Option<String>,
+    html_url: Option<String>,
+    #[serde(default)]
+    state: Option<String>,
+    /// Only on a single pull request's own answer; a list leaves it out.
+    #[serde(default)]
+    merged: bool,
+    #[serde(default)]
+    labels: Vec<Label>,
+    head: PullHead,
+}
+
+impl Pull {
+    fn is_closed(&self) -> bool {
+        self.state.as_deref() == Some("closed")
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PullHead {
+    sha: String,
+    #[serde(rename = "ref", default)]
+    ref_name: String,
+    /// `None` once the fork it came from has been deleted.
+    repo: Option<RepositoryName>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RepositoryName {
+    full_name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct PullFile {
+    filename: String,
+    /// `added`, `modified`, `removed`, `renamed` and a few rarer ones.
+    #[serde(default)]
+    status: String,
+    #[serde(default)]
+    previous_filename: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitObject {
+    sha: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitRef {
+    object: GitObject,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitCommit {
+    tree: GitObject,
+}
+
 /// Inert catalogue repository: used offline and in tests.
 ///
 /// Reports itself unconfigured, so the UI offers no sign-in rather than a
@@ -1253,7 +1936,12 @@ impl GuidesPort for FakeGuides {
         Err("not signed in to GitHub".into())
     }
 
-    async fn submit(&self, _entry: TrainingResource, _guide: String) -> Result<String, String> {
+    async fn submit(
+        &self,
+        _entry: TrainingResource,
+        _guide: String,
+        _images: Vec<GuideImage>,
+    ) -> Result<String, String> {
         Err("not signed in to GitHub".into())
     }
 }
@@ -1432,6 +2120,7 @@ mod tests {
             client_id: CLIENT_ID.into(),
             api_base: "https://api.github.com".into(),
             oauth_base: "https://github.com".into(),
+            raw_base: "https://raw.githubusercontent.com".into(),
             keyring_service: String::new(),
         })
         .configured());
@@ -1451,6 +2140,7 @@ mod tests {
             client_id: String::new(),
             api_base: "https://api.invalid".into(),
             oauth_base: "https://github.invalid".into(),
+            raw_base: "https://raw.invalid".into(),
             keyring_service: String::new(),
         });
         assert!(!client.configured());
@@ -1561,6 +2251,7 @@ mod tests {
             client_id: CLIENT_ID.into(),
             api_base: base.into(),
             oauth_base: base.into(),
+            raw_base: base.into(),
             keyring_service: String::new(),
         })
     }
@@ -1593,7 +2284,9 @@ mod tests {
     #[tokio::test]
     async fn the_queue_reads_every_page_without_a_label_filter() {
         let (base, seen) = serve(Arc::new(|request: &Seen| {
-            if request.target.ends_with("&page=1") {
+            if request.target.contains("/pulls") {
+                reply(200, "[]")
+            } else if request.target.ends_with("&page=1") {
                 (
                     200,
                     r####"[{"number":1,"title":"Training submission: One","body":"### Summary\n\nx\n"}]"####.to_string(),
@@ -1614,7 +2307,11 @@ mod tests {
             vec![1, 2]
         );
         let seen = seen.lock().unwrap();
-        assert_eq!(seen.len(), 2, "both pages, and no third");
+        let issue_pages = seen
+            .iter()
+            .filter(|request| request.target.contains("/issues?"))
+            .count();
+        assert_eq!(issue_pages, 2, "both pages, and no third");
         assert!(seen
             .iter()
             .all(|request| !request.target.contains("labels=")));
@@ -1639,7 +2336,9 @@ mod tests {
             .take_lost_session()
             .is_some_and(|reason| reason.contains("Bad credentials")));
         assert_eq!(client.take_lost_session(), None, "said once");
-        assert_eq!(seen.lock().unwrap().len(), 2);
+        // The refused read, its anonymous repeat, and the pull requests, read
+        // anonymously from the start because the token is gone by then.
+        assert_eq!(seen.lock().unwrap().len(), 3);
     }
 
     #[tokio::test]
@@ -1822,5 +2521,363 @@ mod tests {
         let refused = client.accept(plain_http).await.expect_err("refused");
         assert!(refused.contains("https://"), "{refused}");
         assert!(seen.lock().unwrap().iter().all(|r| r.method == "GET"));
+    }
+
+    // -- guides proposed as pull requests -----------------------------------
+
+    const GUIDE_TEXT: &str = "# Setons air\n\n![The opening](images/setons-air/opening.png)\n";
+    const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13];
+
+    fn pull_json(sha: &str, head_repo: &str) -> serde_json::Value {
+        json!({
+            "number": 7,
+            "title": "Training submission: Setons air",
+            "body": "### Summary\n\nAir slot.\n\n### Guide\n\n`guides/setons-air.md` in this pull request.\n",
+            "user": { "login": "author" },
+            "state": "open",
+            "head": { "sha": sha, "ref": "submission/setons-air-1", "repo": { "full_name": head_repo } },
+        })
+    }
+
+    fn proposed() -> GuideSubmission {
+        GuideSubmission {
+            number: 7,
+            title: "Training submission: Setons air".into(),
+            entry: Some(TrainingResource {
+                id: "setons-air".into(),
+                title: "Setons air".into(),
+                summary: "Air slot.".into(),
+                ..TrainingResource::default()
+            }),
+            guide: Some(GUIDE_TEXT.into()),
+            pull: Some(SubmissionPull {
+                head_sha: "abc".into(),
+                guide_url: "http://raw/o/r/abc/guides/setons-air.md".into(),
+                images: vec!["guides/images/setons-air/opening.png".into()],
+                foreign: Vec::new(),
+            }),
+            ..GuideSubmission::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn a_proposed_guide_is_listed_with_its_guide_read_at_the_listed_commit() {
+        let (base, seen) = serve(Arc::new(|request: &Seen| {
+            match request.target.as_str() {
+                "/repos/o/r/pulls?state=open&per_page=100&page=1" => reply(
+                    200,
+                    &json!([
+                        pull_json("abc", "author/r"),
+                        // Not a submission: ordinary traffic on the repository.
+                        { "number": 8, "title": "Fix a typo", "head": { "sha": "x", "repo": null } },
+                    ])
+                    .to_string(),
+                ),
+                "/repos/o/r/pulls/7/files?per_page=100&page=1" => reply(
+                    200,
+                    r#"[{"filename":"guides/setons-air.md","status":"added"},
+                        {"filename":"guides/images/setons-air/opening.png","status":"added"}]"#,
+                ),
+                "/author/r/abc/guides/setons-air.md" => reply(200, GUIDE_TEXT),
+                _ => reply(200, "[]"),
+            }
+        }))
+        .await;
+
+        let rows = client_at(&base).list_submissions().await.expect("it lists");
+        assert_eq!(rows.len(), 1, "{rows:?}");
+        let row = &rows[0];
+        assert_eq!(row.number, 7);
+        assert_eq!(row.guide.as_deref(), Some(GUIDE_TEXT));
+        assert_eq!(
+            row.entry.as_ref().map(|entry| entry.id.as_str()),
+            Some("setons-air")
+        );
+        let pull = row.pull.as_ref().expect("a pull request");
+        assert_eq!(pull.head_sha, "abc");
+        assert_eq!(
+            pull.images,
+            vec!["guides/images/setons-air/opening.png".to_string()]
+        );
+        assert!(pull.foreign.is_empty());
+        assert!(pull
+            .guide_url
+            .ends_with("/author/r/abc/guides/setons-air.md"));
+        assert!(row.is_acceptable());
+        // The guide came from the raw host, never through the API's allowance.
+        assert!(seen
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|request| !request.target.contains("/contents/")));
+    }
+
+    #[tokio::test]
+    async fn a_proposed_guide_that_edits_anything_else_is_listed_but_not_acceptable() {
+        let (base, _) = serve(Arc::new(|request: &Seen| match request.target.as_str() {
+            "/repos/o/r/pulls?state=open&per_page=100&page=1" => {
+                reply(200, &json!([pull_json("abc", "author/r")]).to_string())
+            }
+            "/repos/o/r/pulls/7/files?per_page=100&page=1" => reply(
+                200,
+                r#"[{"filename":"guides/setons-air.md","status":"added"},
+                        {"filename":".github/workflows/validate.yml","status":"modified"}]"#,
+            ),
+            "/author/r/abc/guides/setons-air.md" => reply(200, GUIDE_TEXT),
+            _ => reply(200, "[]"),
+        }))
+        .await;
+
+        let rows = client_at(&base).list_submissions().await.expect("it lists");
+        let pull = rows[0].pull.as_ref().expect("a pull request");
+        assert_eq!(
+            pull.foreign,
+            vec![".github/workflows/validate.yml".to_string()]
+        );
+        assert!(!rows[0].is_acceptable());
+    }
+
+    /// GitHub as a maintainer sees it around pull request #7, whose head is
+    /// `head_sha` now.
+    fn merging_route(head_sha: &'static str) -> Route {
+        Arc::new(
+            move |request: &Seen| match (request.method.as_str(), request.target.as_str()) {
+                ("GET", "/user") => reply(200, r#"{"login":"maintainer"}"#),
+                ("GET", "/repos/o/r") => reply(200, r#"{"permissions":{"push":true}}"#),
+                ("GET", "/repos/o/r/pulls/7") => {
+                    reply(200, &pull_json(head_sha, "o/r").to_string())
+                }
+                ("GET", "/repos/o/r/issues/7/comments?per_page=100") => reply(200, "[]"),
+                ("PUT", "/repos/o/r/pulls/7/merge") => reply(200, r#"{"merged":true}"#),
+                ("GET", "/repos/o/r/contents/catalogue.json") => {
+                    reply(200, &contents(r#"{"resources":[]}"#, "sha1"))
+                }
+                // There after the merge, exactly as the pull request had it.
+                ("GET", "/repos/o/r/contents/guides/setons-air.md") => {
+                    reply(200, &contents(GUIDE_TEXT, "g1"))
+                }
+                ("DELETE", _) => reply(204, ""),
+                _ => reply(200, "{}"),
+            },
+        )
+    }
+
+    #[tokio::test]
+    async fn accepting_a_proposed_guide_merges_exactly_the_commit_that_was_read() {
+        let (base, seen) = serve(merging_route("abc")).await;
+        let client = client_at(&base);
+        holding(&client, "token");
+
+        client.accept(proposed()).await.expect("accepted");
+
+        let seen = seen.lock().unwrap();
+        let merge = seen
+            .iter()
+            .position(|r| r.method == "PUT" && r.target.ends_with("/merge"))
+            .expect("merged");
+        assert!(
+            seen[merge].body.contains(r#""sha":"abc""#),
+            "{}",
+            seen[merge].body
+        );
+        assert!(seen[merge].body.contains("squash"));
+
+        // One commit after the merge: the catalogue. The guide file is already
+        // there byte for byte, so it is not written a second time.
+        let puts: Vec<usize> = seen
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.method == "PUT" && r.target.contains("/contents/"))
+            .map(|(index, _)| index)
+            .collect();
+        assert_eq!(puts.len(), 1, "{seen:?}");
+        assert!(seen[puts[0]].target.ends_with("/contents/catalogue.json"));
+        assert!(
+            puts[0] > merge,
+            "the file is in before the entry points at it"
+        );
+        let catalogue: serde_json::Value =
+            serde_json::from_str(&committed(&seen[puts[0]])).unwrap();
+        let entry = &catalogue["resources"][0];
+        assert_eq!(entry["id"], "setons-air");
+        assert_eq!(
+            entry["url"],
+            "https://raw.githubusercontent.com/o/r/main/guides/setons-air.md"
+        );
+        assert_eq!(entry["approvedBy"], "maintainer");
+
+        // The branch lived in this repository, so it is tidied away.
+        assert!(seen.iter().any(|r| r.method == "DELETE"
+            && r.target == "/repos/o/r/git/refs/heads/submission/setons-air-1"));
+    }
+
+    #[tokio::test]
+    async fn a_proposed_guide_that_moved_on_since_it_was_read_is_not_merged() {
+        let (base, seen) = serve(merging_route("def")).await;
+        let client = client_at(&base);
+        holding(&client, "token");
+
+        let refused = client.accept(proposed()).await.expect_err("refused");
+        assert!(refused.contains("changed since"), "{refused}");
+        assert!(
+            seen.lock().unwrap().iter().all(|r| r.method == "GET"),
+            "nothing written"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_guide_from_somebody_without_push_access_is_proposed_from_their_fork() {
+        let blobs = Arc::new(Mutex::new(0_u32));
+        let counter = blobs.clone();
+        let (base, seen) = serve(Arc::new(move |request: &Seen| {
+            match (request.method.as_str(), request.target.as_str()) {
+                ("GET", "/repos/o/r") => reply(200, r#"{"permissions":{"pull":true}}"#),
+                ("GET", "/repos/o/r/git/ref/heads/main") => {
+                    reply(200, r#"{"object":{"sha":"m1"}}"#)
+                }
+                ("GET", "/repos/o/r/git/commits/m1") => reply(200, r#"{"tree":{"sha":"t1"}}"#),
+                ("GET", "/repos/o/r/contents/catalogue.json") => {
+                    reply(200, &contents(r#"{"resources":[]}"#, "c1"))
+                }
+                ("GET", "/repos/o/r/contents/guides/setons-air.md") => {
+                    reply(404, r#"{"message":"Not Found"}"#)
+                }
+                ("POST", "/repos/o/r/forks") => reply(202, r#"{"full_name":"author/r"}"#),
+                ("POST", "/repos/author/r/git/blobs") => {
+                    let mut count = counter.lock().unwrap();
+                    *count += 1;
+                    if *count == 1 {
+                        // GitHub is still making the fork.
+                        reply(404, r#"{"message":"Not Found"}"#)
+                    } else {
+                        reply(201, &json!({ "sha": format!("b{count}") }).to_string())
+                    }
+                }
+                ("POST", "/repos/author/r/git/trees") => reply(201, r#"{"sha":"t2"}"#),
+                ("POST", "/repos/author/r/git/commits") => reply(201, r#"{"sha":"c2"}"#),
+                ("POST", "/repos/o/r/pulls") => reply(
+                    201,
+                    r#"{"number":9,"title":"Training submission: Setons air","html_url":"https://github.com/o/r/pull/9","head":{"sha":"c2","repo":{"full_name":"author/r"}}}"#,
+                ),
+                ("POST", "/repos/o/r/issues/9/labels") => {
+                    reply(403, r#"{"message":"Must have push access"}"#)
+                }
+                _ => reply(201, "{}"),
+            }
+        }))
+        .await;
+        let client = client_at(&base);
+        holding(&client, "token");
+
+        let url = client
+            .submit(
+                TrainingResource {
+                    id: "setons-air".into(),
+                    title: "Setons air".into(),
+                    summary: "Air slot.".into(),
+                    ..TrainingResource::default()
+                },
+                "# Setons air\n\n![The opening](images/opening.png)".into(),
+                vec![GuideImage {
+                    name: "opening.png".into(),
+                    bytes: PNG.to_vec(),
+                }],
+            )
+            .await
+            .expect("proposed, though the label was refused");
+        assert_eq!(url, "https://github.com/o/r/pull/9");
+
+        let seen = seen.lock().unwrap();
+        let body_of = |method: &str, target: &str| -> serde_json::Value {
+            let request = seen
+                .iter()
+                .find(|r| r.method == method && r.target == target)
+                .unwrap_or_else(|| panic!("no {method} {target}: {seen:?}"));
+            serde_json::from_str(&request.body).unwrap()
+        };
+
+        // The guide's pictures point at the folder they are committed to.
+        let guide = seen
+            .iter()
+            .filter(|r| r.target == "/repos/author/r/git/blobs")
+            .map(|r| {
+                let payload: serde_json::Value = serde_json::from_str(&r.body).unwrap();
+                base64::engine::general_purpose::STANDARD
+                    .decode(payload["content"].as_str().unwrap())
+                    .unwrap()
+            })
+            .find_map(|bytes| {
+                String::from_utf8(bytes)
+                    .ok()
+                    .filter(|text| text.starts_with('#'))
+            })
+            .expect("the guide was uploaded");
+        assert_eq!(
+            guide,
+            "# Setons air\n\n![The opening](images/setons-air/opening.png)\n"
+        );
+
+        let tree = body_of("POST", "/repos/author/r/git/trees");
+        assert_eq!(tree["base_tree"], "t1");
+        let paths: Vec<&str> = tree["tree"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|file| file["path"].as_str().unwrap())
+            .collect();
+        assert_eq!(
+            paths,
+            vec![
+                "guides/setons-air.md",
+                "guides/images/setons-air/opening.png"
+            ]
+        );
+        assert_eq!(
+            body_of("POST", "/repos/author/r/git/commits")["parents"],
+            json!(["m1"])
+        );
+
+        let proposal = body_of("POST", "/repos/o/r/pulls");
+        assert!(proposal["head"]
+            .as_str()
+            .unwrap()
+            .starts_with("author:submission/setons-air-"));
+        assert_eq!(proposal["base"], "main");
+        assert_eq!(proposal["maintainer_can_modify"], true);
+        assert!(proposal["body"]
+            .as_str()
+            .unwrap()
+            .contains("`guides/setons-air.md` in this pull request."));
+    }
+
+    #[tokio::test]
+    async fn a_link_with_nothing_written_is_still_an_issue() {
+        let (base, seen) = serve(Arc::new(|_: &Seen| {
+            reply(
+                201,
+                r#"{"number":3,"title":"t","html_url":"https://github.com/o/r/issues/3"}"#,
+            )
+        }))
+        .await;
+        let client = client_at(&base);
+        holding(&client, "token");
+
+        let url = client
+            .submit(
+                TrainingResource {
+                    id: "a-video".into(),
+                    title: "A video".into(),
+                    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ".into(),
+                    ..TrainingResource::default()
+                },
+                String::new(),
+                Vec::new(),
+            )
+            .await
+            .expect("opened");
+        assert!(url.ends_with("/issues/3"));
+        let seen = seen.lock().unwrap();
+        assert_eq!(seen.len(), 1);
+        assert_eq!(seen[0].target, "/repos/o/r/issues");
     }
 }

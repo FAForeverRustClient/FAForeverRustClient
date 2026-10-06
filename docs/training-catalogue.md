@@ -26,10 +26,11 @@ The alternatives, and why this one:
   are prose, not relational data.
 - **A Git repository**: no service, no auth to read, CDN-fast, versioned and
   cacheable offline, with the commit log as the audit trail and the
-  collaborator list as the trainer list. Note that a submission is an *issue*
-  and accepting it commits straight to `main`: there is no pull request in the
-  loop, because what needed reviewing was the guide and that already happened
-  on the issue.
+  collaborator list as the trainer list. A link is submitted as an *issue*,
+  and accepting it commits the entry straight to `main`. A guide written in
+  the client is a *pull request*, because it is a file and may carry
+  pictures, and an issue can hold neither: accepting merges exactly the
+  commit the trainer read, then adds the entry the same way.
 
 The repository is `FAForeverRustClient/guides`.
 
@@ -47,7 +48,9 @@ guides/                           FAForeverRustClient/guides
 ├─ catalogue.json                 THE manifest the client fetches
 ├─ guides/
 │  ├─ setons-t1-build-order.md    long-form guides, one file each
-│  └─ economy-fundamentals.md
+│  ├─ economy-fundamentals.md
+│  └─ images/
+│     └─ setons-t1-build-order/   a guide's pictures, in a folder named after it
 └─ .github/
    ├─ ISSUE_TEMPLATE/
    │  └─ training-submission.yml  the form a submission by hand is filled in on
@@ -386,6 +389,69 @@ An issue somebody typed freehand carries no form at all. It is still listed and
 still readable in the queue; it just cannot be accepted in one step, and the
 client says so rather than offering a button that would do nothing.
 
+### A guide with pictures: a pull request
+
+A guide written in the client is not an issue but a pull request, because it is
+a file and may carry pictures. An issue's body is capped at 65,536 characters
+and the API takes no attachments, so neither a long guide nor a screenshot
+could travel that way. A link alone, with nothing written, is still an issue.
+
+Sending one builds a single commit through the Git data API, on top of the
+catalogue's `main`:
+
+```
+guides/<id>.md                    the guide
+guides/images/<id>/<name>.png     each picture it shows
+```
+
+The editor writes a picture as `images/<name>`, relative to the guide, because
+the id is not known until the guide is sent. Sending rewrites those references
+to `images/<id>/<name>`, which is where the file sits relative to
+`guides/<id>.md`; that is also how GitHub's own Markdown view reads the path,
+so the pull request shows the pictures in place. A picture that was attached
+and then deleted from the text is not committed.
+
+Pictures are PNG, JPEG, GIF or WebP, recognised by their bytes rather than
+their names; at most 5 MB each, 20 per guide and 25 MB together. A picture's
+name is lowercase letters, digits and hyphens plus its extension. The form
+names files that way, and the backend refuses anything else rather than
+renaming it, so the name the text refers to and the file's name stay one thing.
+
+The commit goes on a branch `submission/<id>-<time>`: in the repository itself
+for somebody who may push to it, otherwise in the author's own fork, which the
+client creates if there is none and allows maintainers to edit. The pull
+request's body is the same filled-in form as an issue's, with the guide field
+pointing at the file.
+
+The queue lists open pull requests whose title starts with
+`Training submission:` next to the issues. For each one it reads the changed
+files and the guide itself at the head commit, from the raw host rather than
+through the API. The guide's pictures resolve against that address, so a
+trainer sees them before anything is merged.
+
+**What may be accepted in one press.** A pull request that adds exactly one
+`guides/<id>.md` and pictures under `guides/images/<id>/`, and nothing else.
+Accepting merges, and a merge takes every file: a pull request that also
+changes the catalogue, the repository's checks or anybody else's guide is
+listed with the files named and has to be reviewed on GitHub. So does one that
+modifies or renames a file rather than adding it.
+
+**What accepting a pull request does.**
+
+1. Checks the pull request still points at the commit the queue read, and
+   refuses if it has moved on: what the trainer read is what goes in.
+2. Squash-merges exactly that commit (`sha` is sent with the merge, so GitHub
+   refuses too if it moved in between).
+3. Adds the entry to `catalogue.json` exactly as for an issue, with its `url`
+   pointing at the guide's raw address. The guide file is already there byte
+   for byte, so it is not written again.
+4. Comments where it landed, labels it, and removes the branch if it lived in
+   the repository itself.
+
+It is as safe to repeat as an issue's accept: a merged pull request is not
+merged again, and the comment marker says whether the catalogue step is done.
+Declining comments the reason and closes the pull request.
+
 ### What accepting does
 
 1. commits `guides/<id>.md`, if the submission carried a written guide, and
@@ -425,7 +491,8 @@ be accepted, and the other way round.
 Closing changes the issue's state and adds labels. It never replaces the
 label set, so labels a maintainer put on the issue survive.
 
-The queue reads up to ten pages of 100 issues each.
+The queue reads up to ten pages of 100 issues each, and as many of open pull
+requests.
 
 One cosmetic consequence worth knowing: the client re-serialises
 `catalogue.json` through a JSON parser, which sorts object keys. The first

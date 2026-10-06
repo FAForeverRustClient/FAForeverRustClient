@@ -314,7 +314,12 @@ export function ResourceDetail({
             previewUrl={previewUrl}
             prose={
               resource.readable ? (
-                <GuideBody guide={guide} outline={outline} onOpen={openOutside} />
+                <GuideBody
+                  guide={guide}
+                  outline={outline}
+                  documentUrl={resource.url}
+                  onOpen={openOutside}
+                />
               ) : null
             }
           />
@@ -325,7 +330,12 @@ export function ResourceDetail({
                   on its own used to show "fetching the guide" forever, even
                   beside the line saying the recording had failed. */}
               {resource.readable && (
-                <GuideBody guide={guide} outline={outline} onOpen={openOutside} />
+                <GuideBody
+                  guide={guide}
+                  outline={outline}
+                  documentUrl={resource.url}
+                  onOpen={openOutside}
+                />
               )}
               {resource.recordingUrl && <RunProblem guide={guide} />}
             </>
@@ -389,11 +399,14 @@ function RunProblem({ guide }: { guide: TrainingDocument }) {
 function GuideBody({
   guide,
   outline,
+  documentUrl,
   onOpen,
 }: {
   guide: TrainingDocument;
   /** The guide split for reading, once it has arrived. */
   outline: GuideOutline | null;
+  /** Where the guide is read from, which its own pictures are relative to. */
+  documentUrl: string;
   /** Open the guide in a browser instead, or `null` when it has no address. */
   onOpen: (() => void) | null;
 }) {
@@ -418,5 +431,5 @@ function GuideBody({
   }
   // Arrived and empty: nothing to show, and nothing still on its way either.
   if (outline.blocks.length === 0) return null;
-  return <GuideReader outline={outline} />;
+  return <GuideReader outline={outline} documentUrl={documentUrl} />;
 }

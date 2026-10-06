@@ -2106,6 +2106,15 @@ export type Draft = {
 	lastPick: DraftPick | null,
 };
 
+/**
+ *  A picture as the form hands it over: its name in the guide, and its bytes
+ *  as base64, which is what survives the trip through IPC as JSON.
+ */
+export type DraftImage = {
+	name: string,
+	data: string,
+};
+
 export type DraftPick = {
 	playerId: string,
 	teamId: string,
@@ -3151,7 +3160,10 @@ export type GeneratorStatus = { type: "idle" } |
 
 /**  One pending submission, as the queue lists it. */
 export type GuideSubmission = {
-	/**  The issue number, which is what accept and reject address. */
+	/**
+	 *  The issue or pull request number, which is what accept and reject
+	 *  address. GitHub numbers both from one sequence, so it is unambiguous.
+	 */
 	number: number,
 	title: string,
 	/**  The prose half, with the JSON block removed: what a reviewer reads. */
@@ -3176,6 +3188,12 @@ export type GuideSubmission = {
 	 *  catalogue entry at it.
 	 */
 	guide: string | null,
+	/**
+	 *  Set when the submission is a pull request rather than an issue: a guide
+	 *  written in the client, committed with its pictures. `None` for an
+	 *  issue, which carries a link or a guide in its body and no files.
+	 */
+	pull: SubmissionPull | null,
 };
 
 export type GuidesAuthStatus = { type: "signedOut" } |
@@ -3222,9 +3240,14 @@ export type GuidesCommand =
  *  The draft travels rather than a finished entry: deriving one from the
  *  other (the id from the title, the numbers out of text fields) is a rule,
  *  and a rule the frontend also knew would be a rule written twice.
+ *
+ *  The pictures travel beside it and only here, once: the draft is handed
+ *  to the state after every pause in typing, and megabytes of base64 on
+ *  each of those would be the whole cost of the form.
  */
 { type: "submit"; payload: {
 	draft: ContributionDraft,
+	images?: DraftImage[],
 } };
 
 export type GuidesEvent =
@@ -8810,6 +8833,28 @@ export type StyleConstraints = {
 	maxSpawnCount: number,
 	minNumTeams: number,
 	maxNumTeams: number,
+};
+
+/**  The files half of a submission that arrived as a pull request. */
+export type SubmissionPull = {
+	/**
+	 *  The commit the queue read. Accepting merges exactly this one and is
+	 *  refused if the pull request has moved on since, so what a trainer read
+	 *  is what goes in.
+	 */
+	headSha: string,
+	/**
+	 *  Where the guide is read at that commit. Its pictures are relative to
+	 *  it, so this is also what the queue resolves them against.
+	 */
+	guideUrl: string,
+	/**  The pictures it adds, as repository paths. */
+	images: string[],
+	/**
+	 *  Files that are neither the guide nor its pictures. Any at all and it
+	 *  cannot be accepted in one step: see [`foreign_files`].
+	 */
+	foreign: string[],
 };
 
 /**  Where a submission of our own ended up. */

@@ -15,7 +15,9 @@
 //! verdict.
 
 use async_trait::async_trait;
-use faf_domain::state::{GuideSubmission, GuidesIdentity, RejectReason, TrainingResource};
+use faf_domain::state::{
+    GuideImage, GuideSubmission, GuidesIdentity, RejectReason, TrainingResource,
+};
 
 /// What a login that was cancelled fails with, so the service can tell a
 /// cancellation (already announced by the cancel itself) from a failure worth
@@ -92,11 +94,14 @@ pub trait GuidesPort: Send + Sync {
         None
     }
 
-    /// The open submissions. Needs no token: they are issues on a public
-    /// repository, so the queue is readable before anybody signs in.
+    /// The open submissions. Needs no token: they are issues and pull requests
+    /// on a public repository, so the queue is readable before anybody signs
+    /// in. A pull request's guide is read at the commit it was listed at.
     async fn list_submissions(&self) -> Result<Vec<GuideSubmission>, String>;
 
-    /// Publish a submission's entry into the catalogue and close its issue.
+    /// Publish a submission's entry into the catalogue and close its issue,
+    /// or, for a pull request, merge it first (exactly the commit the queue
+    /// read, and only when it holds nothing but the guide and its pictures).
     ///
     /// Refused by GitHub for an account that may not commit, and that refusal
     /// is the authorisation: this client's own sense of who may moderate only
@@ -112,12 +117,20 @@ pub trait GuidesPort: Send + Sync {
     /// accepting, it is safe to call again after a failure.
     async fn reject(&self, number: i32, reason: RejectReason, note: String) -> Result<(), String>;
 
-    /// Open a submission of our own. Returns the issue's address.
+    /// Open a submission of our own. Returns the issue's or the pull
+    /// request's address.
     ///
     /// `guide` is the guide's own text when the author wrote one here rather
-    /// than linking to one; accepting commits it as a file and points the
-    /// catalogue entry at it. There is no covering note beside it: the form
-    /// asks for a summary and a guide, and a third free-text field with no
-    /// place in the catalogue would be words nobody reads twice.
-    async fn submit(&self, entry: TrainingResource, guide: String) -> Result<String, String>;
+    /// than linking to one, and `images` the pictures it shows, already
+    /// checked. A guide is proposed as a pull request carrying the file and
+    /// its pictures; a link alone, which has no file to carry, is an issue.
+    /// There is no covering note beside either: the form asks for a summary
+    /// and a guide, and a third free-text field with no place in the catalogue
+    /// would be words nobody reads twice.
+    async fn submit(
+        &self,
+        entry: TrainingResource,
+        guide: String,
+        images: Vec<GuideImage>,
+    ) -> Result<String, String>;
 }

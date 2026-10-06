@@ -103,8 +103,9 @@ which is the maintenance burden the rest of this tab exists to avoid.
 ### The submission queue, and accepting
 
 Built, and it writes. The catalogue lives in `FAForeverRustClient/guides`, so a
-submission is a GitHub issue and a verdict is a commit; the format of both is
-[training-catalogue.md](training-catalogue.md).
+submission is a GitHub issue (a link) or pull request (a guide written in the
+client, with its pictures) and a verdict is a commit or a merge; the format of
+all of it is [training-catalogue.md](training-catalogue.md).
 
 - **The queue is its own tab, and a closed one.** A player who cannot act on it
   has no use for a list of other people's unreviewed guides, so the tab explains
@@ -118,9 +119,12 @@ submission is a GitHub issue and a verdict is a commit; the format of both is
   can commit to a public repository.
 - **Accepting is one press.** The submission is already in the catalogue's own
   terms, because the client wrote the form it came in on, so accepting is a copy
-  rather than a rewrite. It commits the guide file when the author wrote one, adds the entry to `catalogue.json`, comments where it landed and closes
-  the issue. Guarded by the file's content hash, so two trainers working at
-  once get a refusal and a retry rather than a lost commit.
+  rather than a rewrite. For an issue it commits the guide file when the author wrote one, adds the entry to `catalogue.json`, comments where it landed and closes
+  the issue. For a pull request it merges exactly the commit the trainer read
+  (refused if it has moved on, and refused outright if it changes anything but
+  the guide and its pictures), then adds the entry the same way. Guarded by the
+  catalogue's content hash, so two trainers working at once get a refusal and
+  a retry rather than a lost commit.
 - **Declining takes a reason** from a closed set, plus an optional note, and
   both go into the issue where the author reads them.
 
@@ -178,15 +182,23 @@ Includes a small dependency-free Markdown editor with a toolbar and preview
 HTML, which is the same posture the rest of the client takes towards markup it
 did not write.
 
+Pictures go in through the toolbar, by pasting a screenshot or by dragging a
+file into the text, and are shown in the preview straight away. They stay on
+the form's side (`contributionImages.ts`) until the guide is sent, and travel
+once, with the submission, rather than with every pause in typing. A browser
+link carries text only, so pictures need the GitHub sign-in, and the form says
+so when the author has attached some without one.
+
 ### How both forms leave the client
 
 **The client composes; the player posts.** Both paths end in a post shown in
 full before it goes anywhere.
 
-A **guide submission** goes to the catalogue's repository as an issue: sent
-directly when the author is signed in to GitHub, and otherwise through a
-prefilled new-issue link, which produces a byte-identical issue so the queue can
-accept either in one step. A **replay review request** goes to the training Discord, which is where FAF
+A **guide submission** goes to the catalogue's repository. Sent directly when
+the author is signed in to GitHub: a link as an issue, a written guide as a
+pull request with its pictures. Without a sign-in it goes through a prefilled
+new-issue link, which produces a byte-identical issue so the queue can accept
+either in one step, but carries no pictures. A **replay review request** goes to the training Discord, which is where FAF
 actually answers them. Discord cannot be handed a prefilled message, so there
 the client's job ends at writing the request: copying is the action and the
 link only opens the server. The value was never the paste, it is not having to

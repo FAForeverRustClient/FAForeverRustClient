@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { settledNotice, writeFailure } from "./queueNotices";
+import { isAcceptable, settledNotice, writeFailure } from "./queueNotices";
 import type { GuideSubmission, GuidesState } from "../../ipc/bindings";
 
 const row = (number: number): GuideSubmission => ({
@@ -13,6 +13,7 @@ const row = (number: number): GuideSubmission => ({
   createdAt: "",
   url: "",
   guide: null,
+  pull: null,
 });
 
 const state = (over: Partial<GuidesState>): GuidesState => ({
@@ -55,5 +56,50 @@ describe("the queue's word on the last verdict", () => {
     });
     expect(settledNotice(state({ write: { type: "accepting", payload: { number: 4 } } }))).toBeNull();
     expect(settledNotice(state({}))).toBeNull();
+  });
+});
+
+describe("whether a submission can be accepted in one press", () => {
+  const entry = {
+    id: "setons-air",
+    title: "Setons air",
+    summary: "",
+    kind: "guide" as const,
+    level: null,
+    url: "",
+    imageUrl: "",
+    tutorialId: null,
+    author: "",
+    ratingMin: null,
+    ratingMax: null,
+    gameModes: [],
+    topics: [],
+    maps: [],
+    factions: [],
+    durationMinutes: null,
+    related: [],
+    approvedBy: "",
+    updatedAt: "",
+    recordingUrl: "",
+    readable: false,
+  };
+  const pull = { headSha: "abc", guideUrl: "", images: [], foreign: [] };
+
+  it("needs an entry, as an issue always did", () => {
+    expect(isAcceptable(row(1))).toBe(false);
+    expect(isAcceptable({ ...row(1), entry })).toBe(true);
+  });
+
+  it("needs a pull request's guide to have been read, and nothing else in it", () => {
+    expect(isAcceptable({ ...row(1), entry, guide: "# Guide", pull })).toBe(true);
+    expect(isAcceptable({ ...row(1), entry, guide: null, pull })).toBe(false);
+    expect(
+      isAcceptable({
+        ...row(1),
+        entry,
+        guide: "# Guide",
+        pull: { ...pull, foreign: [".github/workflows/validate.yml"] },
+      }),
+    ).toBe(false);
   });
 });

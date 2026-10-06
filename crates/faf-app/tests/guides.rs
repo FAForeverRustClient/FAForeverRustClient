@@ -15,8 +15,8 @@ use faf_app::ports::guides::LOGIN_CANCELLED;
 use faf_app::ports::{DeviceCode, GuidesPort};
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    ContributionDraft, GuideSubmission, GuidesAuthStatus, GuidesCommand, GuidesIdentity,
-    RejectReason, SubmitStatus, TrainingResource,
+    ContributionDraft, DraftImage, GuideImage, GuideSubmission, GuidesAuthStatus, GuidesCommand,
+    GuidesIdentity, RejectReason, SubmitStatus, TrainingResource,
 };
 use tokio::sync::Semaphore;
 
@@ -114,8 +114,21 @@ impl GuidesPort for Stub {
         Ok(())
     }
 
-    async fn submit(&self, _entry: TrainingResource, _guide: String) -> Result<String, String> {
+    async fn submit(
+        &self,
+        _entry: TrainingResource,
+        _guide: String,
+        images: Vec<GuideImage>,
+    ) -> Result<String, String> {
         self.record("submit");
+        self.record(format!(
+            "images {}",
+            images
+                .iter()
+                .map(|image| image.name.as_str())
+                .collect::<Vec<_>>()
+                .join(",")
+        ));
         Ok("https://github.com/o/r/issues/1".into())
     }
 }
@@ -177,6 +190,7 @@ async fn a_draft_with_no_title_is_refused_before_anything_reaches_github() {
     app.dispatch_and_wait(
         GuidesCommand::Submit {
             draft: Box::new(draft),
+            images: Vec::new(),
         }
         .into(),
     )
@@ -185,6 +199,76 @@ async fn a_draft_with_no_title_is_refused_before_anything_reaches_github() {
 
     match app.snapshot().guides.submit {
         SubmitStatus::Failed { reason } => assert!(reason.contains("title"), "{reason}"),
+        other => panic!("expected a refusal, got {other:?}"),
+    }
+    assert!(!stub.called("submit"));
+}
+
+fn draft_image(name: &str, bytes: &[u8]) -> DraftImage {
+    use base64::Engine as _;
+    DraftImage {
+        name: name.into(),
+        data: base64::engine::general_purpose::STANDARD.encode(bytes),
+    }
+}
+
+const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13];
+
+#[tokio::test]
+async fn only_the_pictures_a_guide_still_shows_are_sent() {
+    // Attached, then deleted from the text: committing it would put a file in
+    // the repository that nothing ever shows.
+    let stub = Arc::new(Stub::default());
+    let app = harness(stub.clone());
+
+    let draft = ContributionDraft {
+        title: "Setons air".into(),
+        body: "![The opening](images/opening.png)".into(),
+        ..ContributionDraft::default()
+    };
+    app.dispatch_and_wait(
+        GuidesCommand::Submit {
+            draft: Box::new(draft),
+            images: vec![
+                draft_image("opening.png", PNG),
+                draft_image("unused.png", PNG),
+            ],
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    assert!(stub.called("submit"));
+    assert!(
+        stub.called("images opening.png"),
+        "{:?}",
+        stub.calls.lock().unwrap()
+    );
+}
+
+#[tokio::test]
+async fn a_file_that_is_not_a_picture_is_refused_before_anything_reaches_github() {
+    let stub = Arc::new(Stub::default());
+    let app = harness(stub.clone());
+
+    let draft = ContributionDraft {
+        title: "Setons air".into(),
+        body: "![x](images/notes.png)".into(),
+        ..ContributionDraft::default()
+    };
+    app.dispatch_and_wait(
+        GuidesCommand::Submit {
+            draft: Box::new(draft),
+            images: vec![draft_image("notes.png", b"just some text")],
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    match app.snapshot().guides.submit {
+        SubmitStatus::Failed { reason } => assert!(reason.contains("PNG"), "{reason}"),
         other => panic!("expected a refusal, got {other:?}"),
     }
     assert!(!stub.called("submit"));

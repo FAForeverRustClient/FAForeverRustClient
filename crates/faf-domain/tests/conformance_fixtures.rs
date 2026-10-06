@@ -8586,6 +8586,7 @@ fn submission(number: i32) -> GuideSubmission {
         created_at: "2026-09-04T18:00:00Z".into(),
         url: format!("https://github.com/FAForeverRustClient/guides/issues/{number}"),
         guide: None,
+        pull: None,
     }
 }
 

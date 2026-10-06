@@ -3,8 +3,54 @@
 // prefix applied to the wrong line still renders as a working button.
 
 import { describe, expect, it } from "vitest";
-import { parseBlocks, parseSpans, resolveAddress, tableCells } from "./markdown";
-import { applyAction } from "./MarkdownField";
+import { parseBlocks, parseSpans, resolveAddress, resolveImage, tableCells } from "./markdown";
+import { applyAction, paragraphBreak } from "./MarkdownField";
+
+describe("a guide's own pictures", () => {
+  const document = "https://raw.githubusercontent.com/o/guides/main/guides/setons-air.md";
+  const page = "https://wiki.faforever.com/Play/Learning/Unit-Micro";
+
+  it("resolve beside the guide when the path is relative to it", () => {
+    expect(resolveImage("images/setons-air/opening.png", { document })).toBe(
+      "https://raw.githubusercontent.com/o/guides/main/guides/images/setons-air/opening.png",
+    );
+    expect(parseSpans("![The opening](images/setons-air/opening.png)", { document, page })).toEqual([
+      {
+        kind: "image",
+        text: "The opening",
+        src: "https://raw.githubusercontent.com/o/guides/main/guides/images/setons-air/opening.png",
+      },
+    ]);
+  });
+
+  it("still mean the copied page's site when rooted, like a link", () => {
+    expect(resolveImage("/images/learning/hold_fire.png", { document, page })).toBe(
+      "https://wiki.faforever.com/images/learning/hold_fire.png",
+    );
+    // A link is never resolved against the guide's file.
+    expect(resolveAddress("other.md", { document })).toBeNull();
+  });
+
+  it("show an attached picture from the client's own copy until it is sent", () => {
+    const local = new Map([["images/opening.png", "blob:http://localhost/1234"]]);
+    expect(resolveImage("images/opening.png", { local })).toBe("blob:http://localhost/1234");
+    // Anything not attached is not fetched from a guessed address.
+    expect(resolveImage("images/other.png", { local })).toBeNull();
+    expect(resolveImage("javascript:alert(1)", { local, document })).toBeNull();
+  });
+});
+
+describe("inserting a picture", () => {
+  it("puts it in a paragraph of its own", () => {
+    expect(paragraphBreak("", "end")).toBe("");
+    expect(paragraphBreak("A sentence.", "end")).toBe("\n\n");
+    expect(paragraphBreak("A sentence.\n", "end")).toBe("\n");
+    expect(paragraphBreak("A sentence.\n\n", "end")).toBe("");
+    expect(paragraphBreak("Next.", "start")).toBe("\n\n");
+    expect(paragraphBreak("\nNext.", "start")).toBe("\n");
+    expect(paragraphBreak("\n\nNext.", "start")).toBe("");
+  });
+});
 
 describe("markdown blocks", () => {
   it("reads the shapes a guide is actually written in", () => {

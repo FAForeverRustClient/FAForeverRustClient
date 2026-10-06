@@ -2579,6 +2579,72 @@ div.training-detail-guide-problem p {
   resize: vertical;
 }
 
+/* Pictures attached to the draft: a small picture, its name, its size, and
+   the way out. A row of tiles rather than a list, because a guide with a
+   picture per step has a dozen of them. */
+.training-attachments {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.training-attachment {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-2);
+  align-items: center;
+  padding: 6px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.training-attachment img {
+  grid-row: 1 / span 2;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.training-attachment-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.training-attachment-size {
+  grid-column: 2;
+  font-size: 11px;
+}
+
+.training-attachment-remove {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.training-attachment-remove:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
 .training-contribute-preview {
   display: flex;
   flex-direction: column;
@@ -2835,6 +2901,23 @@ div.training-detail-guide-problem p {
   color: var(--color-muted);
   font-size: 12px;
   cursor: pointer;
+}
+
+/* What keeps a proposed guide from going in with one press, named. */
+.training-queue-foreign {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.training-queue-foreign p,
+.training-queue-foreign ul {
+  margin: 0;
+}
+
+.training-queue-foreign ul {
+  padding-left: var(--space-4);
 }
 
 .training-queue-actions {

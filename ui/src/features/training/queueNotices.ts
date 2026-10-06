@@ -1,7 +1,7 @@
 // What the submission queue says about the last verdict, read off the guides
 // slice. Kept apart from the component so the rules are tested without React.
 
-import type { GuidesState } from "../../ipc/bindings";
+import type { GuideSubmission, GuidesState } from "../../ipc/bindings";
 
 /**
  * The failed write worth showing, if any.
@@ -30,4 +30,18 @@ export function settledNotice(
     return { verdict: "declined", number: state.write.payload.number };
   }
   return null;
+}
+
+/**
+ * Twin of `GuideSubmission::is_acceptable`: an entry to publish, and for a
+ * pull request a guide that was read and nothing in it besides that guide and
+ * its pictures.
+ */
+export function isAcceptable(submission: GuideSubmission): boolean {
+  if (submission.entry === null) return false;
+  const pull = submission.pull;
+  return (
+    pull === null ||
+    (pull.foreign.length === 0 && pull.headSha !== "" && submission.guide !== null)
+  );
 }

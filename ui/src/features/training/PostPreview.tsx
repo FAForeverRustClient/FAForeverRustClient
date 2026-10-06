@@ -19,7 +19,7 @@ import { Icon } from "../../design-system/Icon";
 import type { ForumPost, SubmitStatus } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { openHttpsUrl } from "../../shared/externalLinks";
-import { Markdown } from "./markdown";
+import { Markdown, type Addresses } from "./markdown";
 
 interface Props {
   post: ForumPost;
@@ -35,9 +35,11 @@ interface Props {
   onSubmit?: (() => void) | null;
   /** The post's body reached the clipboard, which on Discord is the delivery. */
   onDelivered?: () => void;
+  /** What the body's pictures resolve against: the ones attached, unsent. */
+  base?: Addresses;
 }
 
-export function PostPreview({ post, destination, submit, onSubmit, onDelivered }: Props) {
+export function PostPreview({ post, destination, submit, onSubmit, onDelivered, base }: Props) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [copiedTitle, setCopiedTitle] = useState(false);
@@ -85,7 +87,7 @@ export function PostPreview({ post, destination, submit, onSubmit, onDelivered }
         ) : (
           <strong className="training-post-subject">{post.title}</strong>
         )}
-        <Markdown source={post.body} />
+        <Markdown source={post.body} base={base} />
       </div>
 
       <div className="training-post-actions">

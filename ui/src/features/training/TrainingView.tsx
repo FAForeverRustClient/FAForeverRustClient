@@ -48,6 +48,7 @@ import { EMPTY_TRAINING_QUERY } from "../../shared/trainingQuery";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ContributePanel } from "./ContributePanel";
+import { draftImages } from "./contributionImages";
 import { ReplayReviewDialog } from "./ReplayReviewDialog";
 import { ResourceDetail } from "./ResourceDetail";
 import { TrainingCard } from "./TrainingCard";
@@ -495,12 +496,17 @@ export function TrainingView() {
             onCompose={(draft) => send({ type: "composeContribution", payload: { draft } })}
             onKeep={(draft) => send({ type: "changeContribution", payload: { draft } })}
             onSubmit={
-              // Only offered when the client can actually open the issue.
-              // Everybody else gets the same submission prefilled in a browser,
-              // which produces a byte-identical issue.
+              // Only offered when the client can actually send it. Everybody
+              // else gets the same submission prefilled in a browser, which
+              // carries the text but not the pictures.
               guides.auth.type === "signedIn"
                 ? (draft) =>
-                    ipc.send({ kind: "Guides", command: { type: "submit", payload: { draft } } })
+                    void draftImages(draft.body).then((images) =>
+                      ipc.send({
+                        kind: "Guides",
+                        command: { type: "submit", payload: { draft, images } },
+                      }),
+                    )
                 : null
             }
             onReset={() => {

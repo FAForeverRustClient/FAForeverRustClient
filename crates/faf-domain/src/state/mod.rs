@@ -70,9 +70,10 @@ pub use galactic_war::{
 pub use guides::{
     accept_commit_message, catalogue_with, compose_submission, entry_from_body, entry_from_draft,
     guide_file_path, guide_from_body, guide_raw_url, new_issue_url, prose_from_body,
-    rejection_comment, slug, submission_body, submission_title, DeviceLogin, GuideSubmission,
-    GuidesAuthStatus, GuidesCommand, GuidesEvent, GuidesIdentity, GuidesState, GuidesStatus,
-    GuidesWrite, RejectReason, SubmitStatus, CATALOGUE_PATH, GUIDES_REPO, SUBMISSION_LABEL,
+    read_draft_images, rejection_comment, slug, submission_body, submission_title, DeviceLogin,
+    DraftImage, GuideImage, GuideSubmission, GuidesAuthStatus, GuidesCommand, GuidesEvent,
+    GuidesIdentity, GuidesState, GuidesStatus, GuidesWrite, RejectReason, SubmissionPull,
+    SubmitStatus, CATALOGUE_PATH, GUIDES_REPO, SUBMISSION_LABEL,
 };
 pub use install::{InstallEvent, InstallState, ResolvedPaths};
 pub use leaderboard::{
