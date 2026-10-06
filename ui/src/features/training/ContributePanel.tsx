@@ -32,7 +32,7 @@ import type {
 } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
-import { FACTION_NAMES, factionLabel } from "../../shared/factions";
+import { FACTION_NAMES, factionLabel, factionLabelFromName } from "../../shared/factions";
 import { contributionProblem } from "../../shared/rules/trainingRules";
 import {
   normaliseRatings,
@@ -62,6 +62,7 @@ import {
   KINDS,
   LEVELS,
   contributionProblemLabel,
+  kindIcon,
   kindLabel,
   levelLabel,
   topicLabel,
@@ -271,6 +272,41 @@ export function ContributePanel({
     recordingUrl: "",
     readable: false,
   };
+
+  // The facts the entry's page will show, in its order and its words. Only
+  // what the author has answered: an empty field is not a fact.
+  const previewFacts: Array<[string, string]> = [];
+  if (draft.level) previewFacts.push([t("training.detail.level"), t(levelLabel(draft.level))]);
+  const min = parseRating(draft.ratingMin);
+  const max = parseRating(draft.ratingMax);
+  const from = typeof min === "number" ? min : null;
+  const to = typeof max === "number" ? max : null;
+  if (from !== null || to !== null) {
+    previewFacts.push([
+      t("training.detail.rating"),
+      from === null
+        ? t("training.band.upTo", { max: to as number })
+        : to === null
+          ? t("training.band.from", { min: from })
+          : t("training.band.between", { min: from, max: to }),
+    ]);
+  }
+  if (draft.gameModes.length > 0) {
+    previewFacts.push([t("training.detail.modes"), draft.gameModes.join(", ")]);
+  }
+  if (draft.maps.length > 0) previewFacts.push([t("training.detail.maps"), draft.maps.join(", ")]);
+  if (draft.factions.length > 0) {
+    previewFacts.push([
+      t("training.detail.factions"),
+      draft.factions.map(factionLabelFromName).join(", "),
+    ]);
+  }
+  if (draft.topics.length > 0) {
+    previewFacts.push([
+      t("training.detail.topics"),
+      draft.topics.map((topic) => t(topicLabel(topic))).join(", "),
+    ]);
+  }
 
   return (
     <div className="training-contribute-page">
@@ -556,26 +592,26 @@ export function ContributePanel({
         <div className="training-contribute-card">
           <TrainingCard resource={previewResource} onOpen={ignore} onSelect={ignore} />
         </div>
+        {/* The tags as the entry's own page will state them: what it is as
+            the eyebrow, and everything else as label over value, so the
+            preview is the page and not a pile of pills. */}
         <div className="training-preview-tags">
-          <div className="training-card-tags">
-            <span className="training-chip">{t(kindLabel(draft.kind))}</span>
-            {draft.level && <span className="training-chip">{t(levelLabel(draft.level))}</span>}
-            {draft.topics.map((topic) => (
-              <span className="training-tag" key={topic}>
-                {t(topicLabel(topic))}
-              </span>
-            ))}
-            {draft.gameModes.map((mode) => (
-              <span className="training-tag" key={`mode-${mode}`}>
-                {mode}
-              </span>
-            ))}
-            {draft.maps.map((map) => (
-              <span className="training-tag" key={`map-${map}`}>
-                {map}
-              </span>
-            ))}
-          </div>
+          <span className="training-detail-eyebrow">
+            <span className="training-detail-kind">
+              <Icon name={kindIcon(draft.kind)} size={13} />
+              <span>{t(kindLabel(draft.kind))}</span>
+            </span>
+          </span>
+          {previewFacts.length > 0 && (
+            <dl className="training-detail-facts training-preview-facts">
+              {previewFacts.map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
 
         {draft.body.trim() ? (

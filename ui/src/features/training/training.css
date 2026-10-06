@@ -560,14 +560,6 @@
 /* Restored after a card rewrite deleted them along with the card block they
    happened to sit next to: without them the tags on a trainer tile rendered as
    bare inline spans and ran together into one word. */
-.training-card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
 /* The louder one: a claim about who this is for. */
 .training-chip {
   padding: 2px 8px;
@@ -2815,8 +2807,28 @@ div.training-detail-guide-problem p {
   pointer-events: none;
 }
 
-.training-preview-tags .training-card-tags:empty {
-  display: none;
+/* The entry page's eyebrow and fact strip, in a column a third its width.
+   The strip loses the page's own padding and rule (the column has neither
+   room nor a card edge to rule against) and wraps a long value rather than
+   cutting it: a preview that hid the map an author typed would be no preview. */
+.training-preview-tags {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.training-preview-facts {
+  padding: 0;
+  border-top: 0;
+}
+
+.training-preview-facts > div {
+  margin-bottom: 2px;
+}
+
+.training-preview-facts dd {
+  font-size: 13px;
+  white-space: normal;
 }
 
 .training-preview-body {
