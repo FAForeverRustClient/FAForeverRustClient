@@ -32,6 +32,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type RefObject,
@@ -53,14 +54,17 @@ import {
   rustTrim,
 } from "../../shared/rules/trainingRules";
 import { EMPTY_TRAINING_QUERY, trainingQueryIsEmpty } from "../../shared/trainingQuery";
-import { TrainingCard } from "./TrainingCard";
+import { CreatorTile, TrainingCard } from "./TrainingCard";
 import {
   collectionsOf,
+  CREATOR_KINDS,
   LIBRARY_SORTS,
+  isQueueMode,
   modeOptions,
   sortLabel,
   type Collection,
 } from "./libraryGroups";
+import { foldSeries, seriesIndex, type Series } from "./trainingSeries";
 import {
   KINDS,
   LEVELS,
@@ -323,17 +327,43 @@ export function TrainingLibrary({
   const { draft, effective, send, edit } = useQueryDraft(query, onQuery);
 
   const found = filterResources(resources, effective, profile);
+  // Kind is navigation rather than a filter (see the tabs below), so it is
+  // neither something "clear" removes nor a reason to stop previewing shelves.
+  const narrowedBeyondKind = !trainingQueryIsEmpty({ ...effective, kind: null });
   // Counted with the kind cleared, so a tab says how many entries it *would*
   // show. A count that collapsed to zero on every tab but the open one would
   // be a fact about the filter rather than about the catalogue.
   const acrossKinds = filterResources(resources, { ...effective, kind: null }, profile);
 
+  // The whole library is shelved by mode and by kind at once ("1v1 · Build
+  // orders"); under a kind tab the kind is already chosen and the mode is the
+  // shelf. Channels and community pages are not material and are not shelved
+  // with it: they are a row of creators of their own, under the shelves.
+  const wholeLibrary = effective.kind === null;
+  const isCreator = (entry: TrainingResource) => CREATOR_KINDS.includes(entry.kind);
+  const creators = wholeLibrary || effective.kind === "community" ? found.filter(isCreator) : [];
+  const material = found.filter((entry) => !isCreator(entry));
+
+  // An untouched library is an overview: a series is one card there, and its
+  // episodes or parts are listed where it is opened. The moment the reader
+  // narrows the library it is a result, and every match stands on its own,
+  // or a search for episode seven would answer with episode one's card.
+  const series = useMemo(() => seriesIndex(resources), [resources]);
+  const fold = !narrowedBeyondKind;
+
   // Shelved rather than listed. Recomputed per keystroke on purpose: narrowing
   // the filter changes which shelves survive it, and stale headings over a
   // filtered grid would be worse than none.
-  const collections = collectionsOf(found, profile, sort);
+  const collections = collectionsOf(material, profile, sort, wholeLibrary).map((collection) =>
+    fold ? { ...collection, entries: foldSeries(collection.entries, series) } : collection,
+  );
 
   const modes = modeOptions(resources);
+  // The matchmaker's queues on one row, the custom-game formats the catalogue
+  // names (Seton's Clutch) on their own: one is a queue a player joins, the
+  // other a map a community plays its own way, and "4v4" answers neither.
+  const queueModes = modes.filter(isQueueMode);
+  const customGames = modes.filter((mode) => !isQueueMode(mode));
   // The chip that is on, in the row's own spelling, however the query spells it.
   const activeMode =
     effective.gameMode === ""
@@ -350,9 +380,6 @@ export function TrainingLibrary({
   const wouldFind = (narrowed: TrainingQuery) =>
     filterResources(resources, narrowed, profile).length > 0;
 
-  // Kind is navigation rather than a filter (see the tabs below), so it is
-  // neither something "clear" removes nor a reason to stop previewing shelves.
-  const narrowedBeyondKind = !trainingQueryIsEmpty({ ...effective, kind: null });
   const clearFilters = () => send({ ...EMPTY_TRAINING_QUERY, kind: effective.kind });
 
   const kindTabs: SectionTab<TrainingKind | "all">[] = [
@@ -420,7 +447,6 @@ export function TrainingLibrary({
       <header className="training-section-head">
         <div>
           <h3>{t("training.library.title")}</h3>
-          <p className="muted">{t("training.library.lead")}</p>
         </div>
         <div className="training-toolbar-tools">
           <label className="training-search">
@@ -491,13 +517,27 @@ export function TrainingLibrary({
         <ChipRow
           label={t("training.filter.mode")}
           value={activeMode}
-          options={modes.map((mode) => ({
+          options={queueModes.map((mode) => ({
             value: mode,
             label: mode,
             empty: !wouldFind({ ...effective, gameMode: mode }),
           }))}
           onChange={(mode) => send({ ...effective, gameMode: mode ?? "" })}
         />
+        {/* The same filter as the row above, so pressing one here lets go of
+            a queue there: an entry is for one or the other, never both. */}
+        {customGames.length > 0 && (
+          <ChipRow
+            label={t("training.filter.customGames")}
+            value={activeMode}
+            options={customGames.map((mode) => ({
+              value: mode,
+              label: mode,
+              empty: !wouldFind({ ...effective, gameMode: mode }),
+            }))}
+            onChange={(mode) => send({ ...effective, gameMode: mode ?? "" })}
+          />
+        )}
       </div>
 
       {/* Folded by default, and honestly so: six of ninety entries state a
@@ -588,9 +628,10 @@ export function TrainingLibrary({
           <div className="training-collections">
             {collections.map((collection) => (
               <CollectionShelf
-                key={collection.key}
+                key={`${collection.key}|${collection.kind ?? ""}`}
                 collection={collection}
-                shelf={shelfKey(effective.kind, collection.key)}
+                series={fold ? series : null}
+                shelf={shelfKey(effective.kind, `${collection.key}|${collection.kind ?? ""}`)}
                 // An untouched library is an overview and gives every shelf one
                 // row; the moment the reader narrows it, it is a result and
                 // shows all of it. Ninety cards under twelve headings is four
@@ -603,6 +644,21 @@ export function TrainingLibrary({
                 onSelect={onSelect}
               />
             ))}
+            {creators.length > 0 && (
+              <section className="training-collection training-creators">
+                <header className="training-collection-head">
+                  <div className="training-collection-name">
+                    <h4>{t("training.library.creators")}</h4>
+                  </div>
+                  <span className="training-collection-count">{creators.length}</span>
+                </header>
+                <div className="training-creator-grid">
+                  {creators.map((creator) => (
+                    <CreatorTile key={creator.id} resource={creator} onSelect={onSelect} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
@@ -620,12 +676,15 @@ export function TrainingLibrary({
  */
 function CollectionShelf({
   collection,
+  series,
   shelf,
   clip,
   onOpen,
   onSelect,
 }: {
   collection: Collection;
+  /** The catalogue's series, when they are folded into one card each. */
+  series: Map<string, Series> | null;
   /** Which shelf this is across visits, for remembering that it was opened. */
   shelf: string;
   /** Whether to show one row and offer the rest, or lay the whole shelf out. */
@@ -651,7 +710,15 @@ function CollectionShelf({
               "4v4" are the same in every language the client speaks, and the
               bucket for entries naming none is the only heading here that is
               a sentence rather than a name. */}
-          <h4>{collection.isRemainder ? t("training.library.noMode") : collection.key}</h4>
+          <h4>
+            {collection.kind === null
+              ? collection.isRemainder
+                ? t("training.library.noMode")
+                : collection.key
+              : collection.isRemainder
+                ? t(kindPluralLabel(collection.kind))
+                : `${collection.key} \u00b7 ${t(kindPluralLabel(collection.kind))}`}
+          </h4>
         </div>
         <span className="training-collection-count">
           {clip && (hidden > 0 || open) ? (
@@ -670,7 +737,13 @@ function CollectionShelf({
       </header>
       <div className="training-grid" ref={grid}>
         {shown.map((resource) => (
-          <TrainingCard key={resource.id} resource={resource} onOpen={onOpen} onSelect={onSelect} />
+          <TrainingCard
+            key={resource.id}
+            resource={resource}
+            series={series?.get(resource.id)}
+            onOpen={onOpen}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     </section>

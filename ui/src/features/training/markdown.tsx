@@ -38,6 +38,7 @@ export type Block =
   | ListBlock
   | { kind: "quote"; text: string }
   | { kind: "code"; text: string }
+  | { kind: "rule" }
   | { kind: "table"; align: Align[]; header: string[]; rows: string[][] };
 
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
@@ -167,8 +168,19 @@ export function parseBlocks(source: string): Block[] {
       blocks.push({
         kind: "heading",
         level: Math.min(depth, 4) as 1 | 2 | 3 | 4,
-        text: heading[2].trim(),
+        // A trailing attribute block (`## Early Game{.tabset}`) is an
+        // instruction to the wiki's renderer, not part of the title.
+        text: heading[2].replace(/\s*\{[.#][^}]*\}\s*$/, "").trim(),
       });
+      index += 1;
+      continue;
+    }
+
+    // A rule on its own line. Read after headings, so a `---` under a line of
+    // text is still a paragraph followed by a rule rather than a heading.
+    if (/^\s*(?:-\s*){3,}$|^\s*(?:\*\s*){3,}$|^\s*(?:_\s*){3,}$/.test(line)) {
+      flushParagraph();
+      blocks.push({ kind: "rule" });
       index += 1;
       continue;
     }
@@ -231,7 +243,7 @@ export function parseBlocks(source: string): Block[] {
 /** Inline spans: bold, italic, code, images, links and line breaks. */
 type Span =
   | { kind: "text"; text: string }
-  | { kind: "strong"; text: string }
+  | { kind: "strong"; text: string; em?: boolean }
   | { kind: "em"; text: string }
   | { kind: "code"; text: string }
   | { kind: "image"; text: string; src: string; icon?: boolean }
@@ -246,7 +258,7 @@ type Span =
  * Both become React elements; nothing here is ever parsed as markup.
  */
 const INLINE =
-  /(`[^`]+`)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(!\[[^\]]*\]\([^)\s]+\))|(\[[^\]]+\]\([^)\s]+\))|(<\/?br\s*\/?>)|(<img\s[^>]*>)/i;
+  /(`[^`]+`)|(\*\*\*[^*]+\*\*\*)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(!\[[^\]]*\]\([^)\s]+\))|(\[[^\]]+\]\([^)\s]+\))|(<\/?br\s*\/?>)|(<img\s[^>]*>)/i;
 
 /** An HTML image tag's `src`, its `width` when it states one, and its `alt`. */
 const IMG_SRC = /\ssrc\s*=\s*["']([^"']+)["']/i;
@@ -330,6 +342,8 @@ export function parseSpans(text: string, base?: string): Span[] {
       }
     } else if (token.startsWith("`")) {
       spans.push({ kind: "code", text: token.slice(1, -1) });
+    } else if (token.startsWith("***")) {
+      spans.push({ kind: "strong", text: token.slice(3, -3), em: true });
     } else if (token.startsWith("**") || token.startsWith("__")) {
       spans.push({ kind: "strong", text: token.slice(2, -2) });
     } else if (token.startsWith("![")) {
@@ -369,7 +383,9 @@ export function renderSpans(text: string, base?: string): ReactNode[] {
       case "break":
         return <br key={index} />;
       case "strong":
-        return <strong key={index}>{span.text}</strong>;
+        return (
+          <strong key={index}>{span.em ? <em>{span.text}</em> : span.text}</strong>
+        );
       case "em":
         return <em key={index}>{span.text}</em>;
       case "code":
@@ -479,6 +495,8 @@ export function renderBlock(block: Block, key: number, base?: string): ReactNode
       return <blockquote key={key}>{renderSpans(block.text, base)}</blockquote>;
     case "code":
       return <pre key={key}>{block.text}</pre>;
+    case "rule":
+      return <hr key={key} />;
     case "list":
       return renderList(block, key, base);
     case "table":

@@ -351,3 +351,27 @@ describe("relative addresses", () => {
     expect(resolveAddress("http://example.com/x", base)).toBeNull();
   });
 });
+
+describe("what the copied guides carry from their old homes", () => {
+  it("reads a line of dashes, stars or underscores as a rule", () => {
+    for (const rule of ["---", "***", "___", "- - -"]) {
+      expect(parseBlocks(`above\n\n${rule}\n\nbelow`)).toEqual([
+        { kind: "paragraph", text: "above" },
+        { kind: "rule" },
+        { kind: "paragraph", text: "below" },
+      ]);
+    }
+  });
+
+  it("drops the wiki's attribute block from a heading", () => {
+    expect(parseBlocks("## Early Game{.tabset}")).toEqual([
+      { kind: "heading", level: 2, text: "Early Game" },
+    ]);
+  });
+
+  it("reads three stars as bold and italic at once", () => {
+    expect(parseSpans("***Therefore, fundamentals.***")).toEqual([
+      { kind: "strong", text: "Therefore, fundamentals.", em: true },
+    ]);
+  });
+});

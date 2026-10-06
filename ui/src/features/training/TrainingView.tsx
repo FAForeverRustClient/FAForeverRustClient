@@ -56,7 +56,12 @@ import { TrainingLibrary } from "./TrainingLibrary";
 import { TrainerTiles } from "./TrainerTiles";
 import { GuidesQueue } from "./GuidesQueue";
 import { modeOptions } from "./libraryGroups";
-import { BASIC_TOPICS, renderedPage, topicHint, topicLabel } from "./trainingPresentation";
+import {
+  BASIC_TOPICS,
+  renderedPage,
+  topicHint,
+  topicLabel,
+} from "./trainingPresentation";
 import { useTrainingView, type TrainingSection } from "./trainingViewState";
 import "./training.css";
 
@@ -81,7 +86,6 @@ export function TrainingView() {
   const section = useTrainingView((view) => view.section);
   const setSection = useTrainingView((view) => view.setSection);
   const rememberScroll = useTrainingView((view) => view.rememberScroll);
-  const railRef = useRef<HTMLElement>(null);
   // The view is its own scroller (`overflow-y: auto` in training.css).
   const viewRef = useRef<HTMLDivElement>(null);
 
@@ -354,18 +358,13 @@ export function TrainingView() {
             <TrainingHero
               links={state.links}
               profile={state.profile}
-              hasRecommendations={recommended.length > 0}
               onRequestReview={openBlankReview}
-              onShowRecommended={() =>
-                railRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-              }
             />
 
-            <section className="training-rail-section" ref={railRef}>
+            <section className="training-rail-section">
               <header className="training-section-head">
                 <div>
                   <h3>{t("training.recommended.title")}</h3>
-                  <p className="muted">{t("training.recommended.lead")}</p>
                 </div>
               </header>
               {recommended.length === 0 ? (
@@ -400,7 +399,6 @@ export function TrainingView() {
               <header className="training-section-head">
                 <div>
                   <h3>{t("training.basics.title")}</h3>
-                  <p className="muted">{t("training.basics.lead")}</p>
                 </div>
               </header>
               <div className="training-basics-grid">
@@ -413,6 +411,7 @@ export function TrainingView() {
                       type="button"
                       key={topic}
                       className="training-basic-card"
+                      data-topic={topic}
                       onClick={() => {
                         // A fresh query holding only the topic, so the library
                         // shows exactly the entries this tile counted. Keeping
@@ -425,11 +424,13 @@ export function TrainingView() {
                         setSection("library");
                       }}
                     >
-                      <strong>{t(topicLabel(topic))}</strong>
-                      <span className="muted">{t(topicHint(topic))}</span>
-                      <span className="training-basic-count">
-                        {t("training.basics.count", { count })}
+                      <span className="training-basic-title">
+                        <strong>{t(topicLabel(topic))}</strong>
+                        <span className="training-basic-count">
+                          {t("training.basics.count", { count })}
+                        </span>
                       </span>
+                      <span className="muted">{t(topicHint(topic))}</span>
                     </button>
                   );
                 })}

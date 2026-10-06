@@ -27,6 +27,7 @@ import type {
   GuidesState,
   TrainingKind,
   TrainingLevel,
+  TrainingResource,
   TrainingTopic,
 } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
@@ -44,6 +45,8 @@ import {
 import { Markdown } from "./markdown";
 import { MarkdownField } from "./MarkdownField";
 import { PostPreview } from "./PostPreview";
+import { TrainingCard } from "./TrainingCard";
+import { useAppStore } from "../../store/store";
 import {
   KINDS,
   LEVELS,
@@ -98,6 +101,9 @@ interface Props {
   onReset: () => void;
 }
 
+/** The preview card is a picture of a card: pressing it goes nowhere. */
+const ignore = () => {};
+
 export function ContributePanel({
   prefilled,
   post,
@@ -109,6 +115,8 @@ export function ContributePanel({
   onReset,
 }: Props) {
   const { t } = useTranslation();
+  // The author, as the card will name them once the entry is accepted.
+  const author = useAppStore((store) => store.state.auth.player?.name ?? "");
   // Owned locally while it is being written: a controlled textarea driven
   // through the backend would round-trip every keystroke.
   const [draft, setDraft] = useState(prefilled);
@@ -209,6 +217,30 @@ export function ContributePanel({
     ...LEVELS.map((level) => ({ value: level, label: t(levelLabel(level)) })),
   ];
 
+  const previewResource: TrainingResource = {
+    id: "contribution-preview",
+    title: draft.title || t("training.contribute.untitled"),
+    summary: draft.summary,
+    kind: draft.kind,
+    level: draft.level,
+    url: draft.url,
+    imageUrl: "",
+    tutorialId: null,
+    author,
+    ratingMin: null,
+    ratingMax: null,
+    gameModes: draft.gameModes,
+    topics: draft.topics,
+    maps: draft.maps,
+    factions: draft.factions,
+    durationMinutes: null,
+    related: [],
+    approvedBy: "",
+    updatedAt: "",
+    recordingUrl: "",
+    readable: false,
+  };
+
   return (
     <div className="training-contribute-page">
       <form
@@ -231,149 +263,163 @@ export function ContributePanel({
         <header className="training-section-head">
           <div>
             <h3>{t("training.contribute.title")}</h3>
-            <p className="muted">{t("training.contribute.lead")}</p>
           </div>
         </header>
 
-        <label className="training-field">
-          <span>
-            {t("training.contribute.name")} <em>{t("training.required")}</em>
-          </span>
-          <input
-            value={draft.title}
-            onChange={(event) => onChange({ ...draft, title: event.target.value })}
-            placeholder={t("training.contribute.namePlaceholder")}
-            maxLength={120}
-          />
-        </label>
-
-        {/* One line, and it is what a card in the library shows under the
-            title. Without it an accepted entry has nothing to say for itself
-            and a maintainer ends up writing one on the author's behalf. */}
-        <label className="training-field">
-          <span>{t("training.contribute.summary")}</span>
-          <input
-            value={draft.summary}
-            onChange={(event) => onChange({ ...draft, summary: event.target.value })}
-            placeholder={t("training.contribute.summaryPlaceholder")}
-            maxLength={160}
-          />
-        </label>
-
-        <div className="training-field-grid">
+        {/* Three questions in the order an author answers them: what it is,
+            who it is for, and the thing itself. Grouped, a reader sees how far
+            through the form they are instead of a column of equal fields. */}
+        <fieldset className="training-contribute-section">
+          <legend>{t("training.contribute.section.what")}</legend>
           <label className="training-field">
-            <span>{t("training.contribute.kind")}</span>
-            <Select
-              value={draft.kind}
-              options={kindOptions}
-              onChange={(value) => onChange({ ...draft, kind: value as TrainingKind })}
-              label={t("training.contribute.kind")}
-            />
-          </label>
-          <label className="training-field">
-            <span>{t("training.contribute.level")}</span>
-            <Select
-              value={draft.level ?? NO_LEVEL}
-              options={levelOptions}
-              onChange={(value) =>
-                onChange({
-                  ...draft,
-                  level: value === NO_LEVEL ? null : (value as TrainingLevel),
-                })
-              }
-              label={t("training.contribute.level")}
-            />
-          </label>
-          {/* Text fields, not number ones, for the same reason the review
-              form's rating is: a number input is empty mid-edit. */}
-          <label className="training-field">
-            <span>{t("training.contribute.ratingMin")}</span>
+            <span>
+              {t("training.contribute.name")} <em>{t("training.required")}</em>
+            </span>
             <input
-              value={draft.ratingMin}
-              onChange={(event) => onChange({ ...draft, ratingMin: event.target.value })}
-              onBlur={() => tidyRating("ratingMin")}
-              placeholder="800"
-              inputMode="numeric"
-              aria-invalid={ratingIssue === "ratingMinInvalid" || ratingIssue === "ratingOrder"}
+              value={draft.title}
+              onChange={(event) => onChange({ ...draft, title: event.target.value })}
+              placeholder={t("training.contribute.namePlaceholder")}
+              maxLength={120}
             />
           </label>
+
+          {/* One line, and it is what a card in the library shows under the
+              title. Without it an accepted entry has nothing to say for itself
+              and a maintainer ends up writing one on the author's behalf. */}
           <label className="training-field">
-            <span>{t("training.contribute.ratingMax")}</span>
+            <span>{t("training.contribute.summary")}</span>
             <input
-              value={draft.ratingMax}
-              onChange={(event) => onChange({ ...draft, ratingMax: event.target.value })}
-              onBlur={() => tidyRating("ratingMax")}
-              placeholder="1200"
-              inputMode="numeric"
-              aria-invalid={ratingIssue === "ratingMaxInvalid" || ratingIssue === "ratingOrder"}
+              value={draft.summary}
+              onChange={(event) => onChange({ ...draft, summary: event.target.value })}
+              placeholder={t("training.contribute.summaryPlaceholder")}
+              maxLength={160}
             />
           </label>
-        </div>
-        {ratingIssue && (
-          <p className="muted training-form-problem" role="alert">
-            {t(RATING_PROBLEM_LABELS[ratingIssue])}
-          </p>
-        )}
 
-        <label className="training-field">
-          <span>{t("training.contribute.url")}</span>
-          <input
-            value={draft.url}
-            onChange={(event) => onChange({ ...draft, url: event.target.value })}
-            placeholder="https://www.youtube.com/watch?v=..."
-          />
-        </label>
-        <p className="muted training-form-hint">{t("training.contribute.urlHint")}</p>
+          <div className="training-field-grid">
+            <label className="training-field">
+              <span>{t("training.contribute.kind")}</span>
+              <Select
+                value={draft.kind}
+                options={kindOptions}
+                onChange={(value) => onChange({ ...draft, kind: value as TrainingKind })}
+                label={t("training.contribute.kind")}
+              />
+            </label>
+            <label className="training-field">
+              <span>{t("training.contribute.level")}</span>
+              <Select
+                value={draft.level ?? NO_LEVEL}
+                options={levelOptions}
+                onChange={(value) =>
+                  onChange({
+                    ...draft,
+                    level: value === NO_LEVEL ? null : (value as TrainingLevel),
+                  })
+                }
+                label={t("training.contribute.level")}
+              />
+            </label>
+          </div>
+        </fieldset>
 
-        {/* The same editor the dialogs use, minus its preview tab: the preview
-            is permanently on screen beside it here, so the toggle would only
-            ever hide it. The formatting toolbar stays, because that is a
-            different thing and an author writing a guide wants it. */}
-        <div className="training-editor">
-          <MarkdownField
-            label={t("training.contribute.body")}
-            value={draft.body}
-            onChange={(body) => onChange({ ...draft, body })}
-            placeholder={t("training.contribute.bodyPlaceholder")}
-            ownPreview={false}
-            rows={16}
-          />
-        </div>
+        <fieldset className="training-contribute-section">
+          <legend>{t("training.contribute.section.audience")}</legend>
+          <div className="training-field-grid">
+            {/* Text fields, not number ones, for the same reason the review
+                form's rating is: a number input is empty mid-edit. */}
+            <label className="training-field">
+              <span>{t("training.contribute.ratingMin")}</span>
+              <input
+                value={draft.ratingMin}
+                onChange={(event) => onChange({ ...draft, ratingMin: event.target.value })}
+                onBlur={() => tidyRating("ratingMin")}
+                placeholder="800"
+                inputMode="numeric"
+                aria-invalid={ratingIssue === "ratingMinInvalid" || ratingIssue === "ratingOrder"}
+              />
+            </label>
+            <label className="training-field">
+              <span>{t("training.contribute.ratingMax")}</span>
+              <input
+                value={draft.ratingMax}
+                onChange={(event) => onChange({ ...draft, ratingMax: event.target.value })}
+                onBlur={() => tidyRating("ratingMax")}
+                placeholder="1200"
+                inputMode="numeric"
+                aria-invalid={ratingIssue === "ratingMaxInvalid" || ratingIssue === "ratingOrder"}
+              />
+            </label>
+          </div>
+          {ratingIssue && (
+            <p className="muted training-form-problem" role="alert">
+              {t(RATING_PROBLEM_LABELS[ratingIssue])}
+            </p>
+          )}
 
-        <div className="training-tag-row">
-          <MultiSelect
-            label={t("training.contribute.topics")}
-            options={TOPICS.map((topic) => ({ value: topic, label: t(topicLabel(topic)) }))}
-            selected={draft.topics}
-            onChange={(topics) => onChange({ ...draft, topics: topics as TrainingTopic[] })}
-          />
-          <MultiSelect
-            label={t("training.contribute.modes")}
-            options={modes.map((mode) => ({ value: mode, label: mode }))}
-            selected={draft.gameModes}
-            onChange={(gameModes) => onChange({ ...draft, gameModes })}
-          />
-          <MultiSelect
-            label={t("training.contribute.factions")}
-            options={catalogueFactions()}
-            selected={draft.factions}
-            onChange={(factions) => onChange({ ...draft, factions })}
-          />
+          <div className="training-tag-row">
+            <MultiSelect
+              label={t("training.contribute.topics")}
+              options={TOPICS.map((topic) => ({ value: topic, label: t(topicLabel(topic)) }))}
+              selected={draft.topics}
+              onChange={(topics) => onChange({ ...draft, topics: topics as TrainingTopic[] })}
+            />
+            <MultiSelect
+              label={t("training.contribute.modes")}
+              options={modes.map((mode) => ({ value: mode, label: mode }))}
+              selected={draft.gameModes}
+              onChange={(gameModes) => onChange({ ...draft, gameModes })}
+            />
+            <MultiSelect
+              label={t("training.contribute.factions")}
+              options={catalogueFactions()}
+              selected={draft.factions}
+              onChange={(factions) => onChange({ ...draft, factions })}
+            />
+            <label className="training-field">
+              <span>{t("training.contribute.maps")}</span>
+              <input
+                value={mapsText}
+                onChange={(event) => {
+                  // The list follows the text, so the preview and the kept draft
+                  // stay current; the text itself is left exactly as typed.
+                  setMapsText(event.target.value);
+                  onChange({ ...draft, maps: splitMaps(event.target.value) });
+                }}
+                onBlur={() => setMapsText(splitMaps(mapsText).join(", "))}
+                placeholder={t("training.contribute.mapsPlaceholder")}
+              />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset className="training-contribute-section">
+          <legend>{t("training.contribute.section.content")}</legend>
           <label className="training-field">
-            <span>{t("training.contribute.maps")}</span>
+            <span>{t("training.contribute.url")}</span>
             <input
-              value={mapsText}
-              onChange={(event) => {
-                // The list follows the text, so the preview and the kept draft
-                // stay current; the text itself is left exactly as typed.
-                setMapsText(event.target.value);
-                onChange({ ...draft, maps: splitMaps(event.target.value) });
-              }}
-              onBlur={() => setMapsText(splitMaps(mapsText).join(", "))}
-              placeholder={t("training.contribute.mapsPlaceholder")}
+              value={draft.url}
+              onChange={(event) => onChange({ ...draft, url: event.target.value })}
+              placeholder="https://www.youtube.com/watch?v=..."
             />
           </label>
-        </div>
+          <p className="muted training-form-hint">{t("training.contribute.urlHint")}</p>
+
+          {/* The same editor the dialogs use, minus its preview tab: the preview
+              is permanently on screen beside it here, so the toggle would only
+              ever hide it. The formatting toolbar stays, because that is a
+              different thing and an author writing a guide wants it. */}
+          <div className="training-editor">
+            <MarkdownField
+              label={t("training.contribute.body")}
+              value={draft.body}
+              onChange={(body) => onChange({ ...draft, body })}
+              placeholder={t("training.contribute.bodyPlaceholder")}
+              ownPreview={false}
+              rows={16}
+            />
+          </div>
+        </fieldset>
 
         {problem && (
           <p className="muted training-form-problem">{t(contributionProblemLabel(problem))}</p>
@@ -417,9 +463,13 @@ export function ContributePanel({
           </div>
         )}
 
-        <article className="training-preview-card">
-          <strong>{draft.title || t("training.contribute.untitled")}</strong>
-          {draft.summary && <p className="muted">{draft.summary}</p>}
+        {/* The card exactly as the library will draw it: the same component,
+            so a build order shows its map and anything else its kind's
+            cover. What the author sees is what a reader will see. */}
+        <div className="training-contribute-card">
+          <TrainingCard resource={previewResource} onOpen={ignore} onSelect={ignore} />
+        </div>
+        <div className="training-preview-tags">
           <div className="training-card-tags">
             <span className="training-chip">{t(kindLabel(draft.kind))}</span>
             {draft.level && <span className="training-chip">{t(levelLabel(draft.level))}</span>}
@@ -439,7 +489,7 @@ export function ContributePanel({
               </span>
             ))}
           </div>
-        </article>
+        </div>
 
         {draft.body.trim() ? (
           <div className="training-preview-body">

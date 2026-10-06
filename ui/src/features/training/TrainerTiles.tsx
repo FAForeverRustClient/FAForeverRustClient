@@ -85,7 +85,6 @@ export function TrainerTiles({ trainers, discordUrl, loading }: Props) {
       <header className="training-section-head">
         <div>
           <h3>{t("training.trainers.title")}</h3>
-          <p className="muted">{t("training.trainers.lead")}</p>
         </div>
         {/* A way in rather than a claim: "reachable in the training Discord"
             with no link left the reader to find the server themselves. */}
@@ -110,10 +109,10 @@ export function TrainerTiles({ trainers, discordUrl, loading }: Props) {
                 ) : (
                   <span className="training-trainer-avatar is-empty" aria-hidden />
                 )}
-                <div>
+                <div className="training-trainer-ident">
                   <strong>{trainer.name}</strong>
+                  {trainer.role && <span className="training-trainer-role">{trainer.role}</span>}
                 </div>
-                {trainer.role && <span className="training-chip is-role">{trainer.role}</span>}
               </header>
 
               {/* The role is the only tag. Everything else a tile used to

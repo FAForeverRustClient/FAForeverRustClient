@@ -228,13 +228,8 @@ export function artCandidates(vault: VaultMap[], resource: TrainingResource): st
  * maintaining a palette. Hashed rather than looked up, so a new author gets a
  * colour of their own on the day they are catalogued.
  */
-export function coverHue(resource: TrainingResource): number {
-  // An entry naming no author is keyed by its id's first word, which is the
-  // source the catalogue files it under (`wiki-…`, `forum-…`).
-  const source = resource.author || resource.id.split("-")[0];
-  let hash = 0;
-  for (const char of source) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return hash % 360;
+export function coverColor(kind: TrainingKind): string {
+  return `var(--color-training-${kind})`;
 }
 
 export function kindLabel(kind: TrainingKind): MessageKey {

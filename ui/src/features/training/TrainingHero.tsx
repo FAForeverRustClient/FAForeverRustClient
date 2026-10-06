@@ -24,9 +24,6 @@ interface Props {
   links: TrainingLinks;
   profile: TrainingProfile;
   onRequestReview: () => void;
-  /** Jump to the recommendation rail, for the "not sure where to start" line. */
-  onShowRecommended: () => void;
-  hasRecommendations: boolean;
 }
 
 /**
@@ -52,8 +49,6 @@ export function TrainingHero({
   links,
   profile,
   onRequestReview,
-  onShowRecommended,
-  hasRecommendations,
 }: Props) {
   const { t } = useTranslation();
   const ratings = ratingEntries(profile, t);
@@ -93,12 +88,6 @@ export function TrainingHero({
             </Button>
           )}
         </div>
-
-        {hasRecommendations && (
-          <button type="button" className="training-hero-nudge" onClick={onShowRecommended}>
-            {t("training.hero.nudge")}
-          </button>
-        )}
       </div>
 
       {/* What the client knows about this player, which is what makes the

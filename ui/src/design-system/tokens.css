@@ -64,6 +64,16 @@
   --color-event-ladderPool: var(--color-league-diamond);
   --color-event-other: var(--color-subtle);
 
+  /* Training kinds, on a cover that has no picture: what a click opens, read
+     before the title. Aliases again, chosen for what they evoke rather than
+     for any faction: engineers build, YouTube is red, reading is blue. */
+  --color-training-buildOrder: var(--color-unit-engineer);
+  --color-training-video: var(--color-faction-cybran);
+  --color-training-guide: var(--color-faction-uef);
+  --color-training-replayAnalysis: var(--color-unit-transportation);
+  --color-training-lesson: var(--color-faction-aeon);
+  --color-training-community: var(--color-subtle);
+
   /* The number a player card is opened for.
      Its own token rather than `--color-accent`, because in this theme the
      accent *is* the text colour: a rating drawn in it would be the white it

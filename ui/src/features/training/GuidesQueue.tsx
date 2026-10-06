@@ -60,11 +60,6 @@ export function GuidesQueue({ state, discordUrl }: Props) {
       <header className="training-section-head">
         <div>
           <h3>{t("training.queue.title")}</h3>
-          <p className="muted">
-            {state.repo
-              ? t("training.queue.lead", { repo: state.repo })
-              : t("training.queue.leadUnknown")}
-          </p>
         </div>
         <div className="training-queue-account">
           <Button

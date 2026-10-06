@@ -4159,8 +4159,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.post.sent": "Gesendet, \u00f6ffnen",
 
   "training.queue.title": "Offene Einreichungen",
-  "training.queue.lead": "Guides, die noch in {repo} aufgenommen werden wollen.",
-  "training.queue.leadUnknown": "Guides, die noch in den Katalog aufgenommen werden wollen.",
   "training.queue.loading": "Warteschlange wird gelesen\u2026",
   "training.queue.empty": "Nichts offen. Einreichungen aus dem Client erscheinen hier.",
   "training.queue.loadFailed": "Die Warteschlange konnte nicht gelesen werden: {reason}",
@@ -4219,7 +4217,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.queue.requestAccess": "Zugriff auf Discord anfragen",
 
   "training.trainers.title": "Das Trainer-Team",
-  "training.trainers.lead": "Leute, die FAF-Spieler trainieren. Melde dich und klärt es direkt untereinander.",
   "training.trainers.openDiscord": "FAF-Discord öffnen",
   "training.trainers.forYou": "Für dich",
   "training.trainers.band.from": "Trainiert ab {min}",
@@ -4244,8 +4241,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.hero.openDiscord": "FAF-Discord öffnen",
   "training.hero.openDiscordHint": "Der Community-Server von FAF auf Discord: Trainingskanäle, Replay-Reviews und alles andere.",
   "training.hero.pastReviews": "Frühere Reviews auf Discord",
-  "training.hero.nudge": "Du weißt nicht, wo du anfangen sollst? Sieh dir an, was für dich empfohlen wird.",
-
   "training.profile.title": "Grundlage der Empfehlungen",
   "training.profile.global": "Global",
   "training.profile.rating": "Rating",
@@ -4256,7 +4251,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.profile.noGames": "Spiel eine Partie oder öffne den Replays-Tab, dann werden die Empfehlungen unten genauer.",
 
   "training.recommended.title": "Für dich empfohlen",
-  "training.recommended.lead": "Ausgewählt nach deinem Rating und den Modi und Karten, die du gespielt hast.",
   "training.recommended.empty": "Noch nichts zu empfehlen. In der Bibliothek steht alles, was der Katalog hat.",
   "training.recommended.pending": "Deine letzten Spiele werden gelesen, um etwas für dich auszuwählen…",
   "training.recommended.browse": "Bibliothek durchsuchen",
@@ -4266,16 +4260,18 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.reason.ratingIn": "Für deine {mode}-Wertung geschrieben ({rating}).",
 
   "training.basics.title": "Grundlagen lernen",
-  "training.basics.lead": "Die vier Dinge, die jedem neuen Spieler zuerst empfohlen werden.",
   "training.basics.count": { one: "{count} Eintrag", other: "{count} Einträge" },
 
   "training.library.title": "Trainingsbibliothek",
-  "training.library.lead": "Alles im Katalog, nach Art und Spielmodus geordnet.",
   "training.library.count": "{count} von {total}",
   "training.library.allKinds": "Alles",
   "training.library.showAll": "Alle {count} zeigen",
   "training.library.showFewer": "Weniger zeigen",
   "training.library.noMode": "Modusunabhängig",
+  "training.library.creators": "Creator und Kanäle",
+  "training.series.episodes": { one: "{count} Folge", other: "{count} Folgen" },
+  "training.series.parts": { one: "{count} Teil", other: "{count} Teile" },
+  "training.series.overview": "Übersicht",
   "training.library.noMatches": "Nichts passt zu diesen Filtern.",
   "training.library.emptyCatalogue": "Der Trainingskatalog konnte nicht geladen werden, daher gibt es nichts anzuzeigen. Prüfe deine Verbindung und versuch es erneut.",
 
@@ -4292,6 +4288,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.filter.kind": "Art",
   "training.filter.topic": "Thema",
   "training.filter.mode": "Spielmodus",
+  "training.filter.customGames": "Custom Games",
   "training.filter.map": "Karte",
   "training.filter.mapPlaceholder": "Alle Karten",
   "training.filter.anyLevel": "Jedes Niveau",
@@ -4397,7 +4394,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.review.problem.noGoal": "Sag, wobei du Hilfe möchtest. Eine Anfrage ohne Frage ist der häufigste Grund, warum Reviews unbeantwortet bleiben.",
 
   "training.contribute.title": "Trainingsmaterial einreichen",
-  "training.contribute.lead": "Die Tags sind so wichtig wie der Inhalt: sie sind der Grund, warum ein Spieler auf dem passenden Niveau das hier findet.",
+  "training.contribute.section.what": "Was es ist",
+  "training.contribute.section.audience": "Für wen",
+  "training.contribute.section.content": "Inhalt",
   "training.contribute.name": "Titel",
   "training.contribute.namePlaceholder": "Wie man frühe T1-Aggression abwehrt",
   "training.contribute.kind": "Art",

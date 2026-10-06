@@ -298,7 +298,8 @@
 .content.content-tab-play,
 .content.content-tab-leaderboard,
 .content.content-tab-changelog,
-.content.content-tab-settings {
+.content.content-tab-settings,
+.content.content-tab-training {
   overflow: hidden;
 }
 
@@ -313,7 +314,8 @@
 .content-inner.content-play,
 .content-inner.content-leaderboard,
 .content-inner.content-changelog,
-.content-inner.content-settings {
+.content-inner.content-settings,
+.content-inner.content-training {
   height: 100%;
   overflow: hidden;
 }

@@ -10,6 +10,10 @@
   min-height: 0;
   height: 100%;
   overflow-y: auto;
+  /* Scrolling one way makes the other `auto` too, so the 6px the rail reaches
+     past its edges for its focus rings put a horizontal scrollbar under the
+     whole hub. Nothing here is meant to scroll sideways. */
+  overflow-x: hidden;
 }
 
 /* Whatever the section tabs show, announced as their panel. */
@@ -174,23 +178,6 @@
   color: var(--color-subtle);
 }
 
-.training-hero-nudge {
-  margin-top: 14px;
-  padding: 0;
-  color: var(--color-muted);
-  font: inherit;
-  font-size: 12px;
-  background: none;
-  border: 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.training-hero-nudge:hover {
-  color: var(--color-text);
-}
-
 /* What the recommendations rest on: a heading line, then the facts strip. */
 .training-basis {
   display: flex;
@@ -266,12 +253,13 @@
   font-weight: 500;
 }
 
-/* The maps as the replay list shows a map: the preview, then the name. */
+/* The maps as the replay list shows a map: the preview, then the name. The
+   label sits over them, as every fact in the strip above has its label. */
 .training-basis-maps {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
 
 .training-basis-maps .training-basis-label {
@@ -346,11 +334,20 @@
 /* The rail and the library shelves share a track size on purpose: the same
    card, the same size, so a reader who has learned to read one has learned
    the tab. */
+/* One row, however wide the window: what does not fit is dropped rather than
+   left alone on a second row. Rows after the first are sized to nothing and
+   clipped, so the rail stays a rail at every width. */
 .training-rail {
   display: grid;
   align-items: start;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--space-3);
+  grid-template-rows: auto;
+  grid-auto-rows: 0;
+  gap: 0 var(--space-3);
+  /* Room for a focus ring and a hover shadow inside the clip. */
+  margin: -6px;
+  padding: 6px;
+  overflow: hidden;
 }
 
 /* A heading per collection, and air between them: the point of the grouping
@@ -469,17 +466,19 @@
 .training-chip-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
   width: 100%;
 }
 
+/* A label column every row shares, so the chips of all rows start on one
+   line: the eye runs down the labels and across the choices. */
 .training-chip-row-label {
-  min-width: 68px;
+  flex: 0 0 112px;
   color: var(--color-subtle);
   font-size: 11px;
   font-weight: 650;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -491,21 +490,44 @@
   min-width: 0;
 }
 
+/* Quiet at rest: a hairline edge and a faint light on the top rim, which is
+   what makes a flat pill read as an object rather than a box. */
 .training-filter-chip {
-  padding: 4px 10px;
+  padding: 5px 13px;
   color: var(--color-muted);
   font: inherit;
   font-size: 12px;
+  font-weight: 550;
   line-height: 1.4;
-  background: var(--color-surface-raised);
+  letter-spacing: 0.01em;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-surface-raised) 100%, var(--color-text) 4%),
+    var(--color-surface-raised)
+  );
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--color-text) 7%, transparent),
+    var(--shadow-sm);
   cursor: pointer;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .training-filter-chip:hover {
   color: var(--color-text);
+  border-color: var(--color-border-strong);
   background: var(--color-surface-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-filter-chip {
+    transition: none;
+  }
 }
 
 .training-filter-chip:focus-visible {
@@ -520,12 +542,17 @@
   color: var(--color-subtle);
   background: none;
   border-style: dashed;
+  box-shadow: none;
 }
 
+/* Chosen: filled with the accent, the one solid pill on the rows, with a soft
+   halo so it reads as the current answer and not as one more option. */
 .training-filter-chip.is-on {
-  color: var(--color-text);
-  background: var(--color-accent-glow);
+  color: var(--color-accent-contrast);
+  font-weight: 650;
+  background: var(--color-accent);
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 /* ── chips and tags ────────────────────────────────────────────────── */
@@ -647,8 +674,9 @@
   object-fit: contain;
 }
 
-/* No picture, or every one tried has gone: a drawn cover. Its title on a tint
-   shared by everything one author wrote, so a series reads as one. */
+/* No picture, or every one tried has gone: a drawn cover. Its title on its
+   kind's colour (`--color-training-*`), mixed into the theme's surfaces so a
+   cover sits in a light theme as well as a dark one. */
 .training-art.is-cover {
   container-type: inline-size;
   display: grid;
@@ -658,16 +686,20 @@
   box-sizing: border-box;
   text-align: left;
   background:
-    radial-gradient(120% 90% at 100% 0%, hsl(var(--cover-hue) 55% 42% / 0.55), transparent 60%),
-    linear-gradient(160deg, hsl(var(--cover-hue) 35% 24%), hsl(var(--cover-hue) 30% 13%));
-  border: 1px solid hsl(var(--cover-hue) 30% 30% / 0.6);
+    radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--cover-color) 42%, transparent), transparent 62%),
+    linear-gradient(
+      160deg,
+      color-mix(in oklab, var(--cover-color) 24%, var(--color-surface-raised)),
+      color-mix(in oklab, var(--cover-color) 8%, var(--color-surface))
+    );
+  border: 1px solid color-mix(in oklab, var(--cover-color) 36%, var(--color-border));
 }
 
 .training-art-cover-kind {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: hsl(var(--cover-hue) 40% 82%);
+  color: color-mix(in oklab, var(--cover-color) 72%, var(--color-text));
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.09em;
@@ -681,7 +713,7 @@
   display: -webkit-box;
   align-self: end;
   overflow: hidden;
-  color: hsl(var(--cover-hue) 25% 96%);
+  color: var(--color-text);
   font-size: clamp(13px, 7.4cqi, 20px);
   font-weight: 700;
   line-height: 1.2;
@@ -693,7 +725,7 @@
 
 .training-art-cover-author {
   overflow: hidden;
-  color: hsl(var(--cover-hue) 30% 78%);
+  color: var(--color-muted);
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -715,6 +747,189 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
+}
+
+/* A series' count, bottom left over its picture, where a streaming shelf
+   marks one. The kind glyph keeps the bottom right. */
+.training-art-badge {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 7px;
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.training-art.is-cover .training-art-badge {
+  top: 9px;
+  right: 9px;
+  bottom: auto;
+  left: auto;
+  background: color-mix(in oklab, var(--color-surface) 82%, transparent);
+  border-color: color-mix(in oklab, var(--cover-color) 30%, var(--color-border));
+  backdrop-filter: blur(6px);
+}
+
+/* ── creators: a face and a name, as every platform shows a channel ─── */
+
+.training-creator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: var(--space-3);
+}
+
+.training-creator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 8px;
+  color: var(--color-text);
+  font: inherit;
+  text-align: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.training-creator:hover {
+  background: var(--color-surface-hover);
+}
+
+.training-creator:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.training-creator-avatar {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 34px;
+  font-weight: 700;
+  background: linear-gradient(
+    160deg,
+    color-mix(in oklab, var(--cover-color) 30%, var(--color-surface-raised)),
+    color-mix(in oklab, var(--cover-color) 10%, var(--color-surface))
+  );
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--color-border);
+}
+
+.training-creator-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.training-creator strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.training-creator small {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* ── the parts of a written series, above the text ─────────────────── */
+
+.training-parts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.training-parts-title {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.training-parts ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.training-parts button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  max-width: 340px;
+  padding: 0 12px 0 4px;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease, color 100ms ease;
+}
+
+.training-parts button > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.training-parts button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.training-parts button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.training-parts button.is-current {
+  color: var(--color-text);
+  font-weight: 600;
+  background: var(--color-surface-raised);
+  border-color: var(--color-text);
+}
+
+.training-parts-number {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-surface-raised);
+  border-radius: 999px;
 }
 
 .training-card-copy {
@@ -760,26 +975,54 @@
 
 .training-basics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--space-3);
 }
 
+/* The tile is drawn the way the replay detail draws a team panel: the
+   raised surface, a hairline border, nothing else. It stays neutral at rest,
+   so four tiles in four colours do not compete with the covers above them.
+   Each basic's colour only appears on hover, as a faint tint and a border of
+   it, which is the replay panel's revealed state. Build orders share the
+   build-order kind's colour, so the tile and the shelf it opens match. */
 .training-basic-card {
+  --topic-color: var(--color-subtle);
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
+  min-width: 0;
   padding: var(--space-4);
   color: var(--color-text);
   font: inherit;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
   text-align: left;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.training-basic-card[data-topic="economy"] {
+  --topic-color: var(--color-league-gold);
+}
+
+.training-basic-card[data-topic="buildOrder"] {
+  --topic-color: var(--color-training-buildOrder);
+}
+
+.training-basic-card[data-topic="micro"] {
+  --topic-color: var(--color-faction-uef);
+}
+
+.training-basic-card[data-topic="mapControl"] {
+  --topic-color: var(--color-faction-aeon);
 }
 
 .training-basic-card:hover {
-  background: var(--color-surface-hover);
+  background: color-mix(in srgb, var(--topic-color) 4%, var(--color-surface-raised));
+  border-color: color-mix(in srgb, var(--topic-color) 40%, transparent);
 }
 
 .training-basic-card:focus-visible {
@@ -787,38 +1030,85 @@
   outline-offset: 2px;
 }
 
-.training-basic-card strong {
-  font-size: 14px;
+/* Name at the start, how much is behind it at the end, on one line. */
+.training-basic-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
-.training-basic-card span {
-  font-size: 12px;
-  line-height: 1.45;
+.training-basic-title strong {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
 }
 
 .training-basic-count {
-  margin-top: var(--space-2);
+  flex: none;
   color: var(--color-subtle);
-  font-size: 11px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  transition: color 120ms ease;
+}
+
+.training-basic-card:hover .training-basic-count {
+  color: var(--color-muted);
+}
+
+.training-basic-card > span.muted {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-basic-card,
+  .training-basic-count {
+    transition: none;
+  }
 }
 
 /* ── trainers ──────────────────────────────────────────────────────── */
 
 .training-trainer-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-3);
 }
 
+/* A card with a faint light on its top rim and a deeper face below it: the
+   same quiet depth as the filter chips, so the tab reads as one piece. */
 .training-trainer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
   min-width: 0;
-  padding: var(--space-4);
-  background: var(--color-surface);
+  padding: 18px var(--space-4) 14px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-surface-raised) 65%, var(--color-surface)),
+    var(--color-surface) 70%
+  );
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-text) 6%, transparent);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.training-trainer:hover {
+  border-color: var(--color-border-strong);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--color-text) 8%, transparent),
+    var(--shadow-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-trainer {
+    transition: none;
+  }
 }
 
 /* Still listed, visibly quieter: a trainer who is not taking students now is
@@ -827,67 +1117,69 @@
   opacity: 0.72;
 }
 
-/* The role chip is allowed to drop onto its own line rather than squeeze the
-   name: with the avatar taking a fixed 40px, a chip that keeps its share of a
-   260px tile leaves the name about a hundred pixels, which is where the
-   truncation came from. Wrapping the header costs one line on a narrow tile
-   and never costs a name. */
+/* Avatar, then the name with the role always under it. A role that sat beside
+   the name dropped below it whenever the name was long, so two tiles side by
+   side never matched; stacked, every tile has the same shape. */
 .training-trainer header {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-3);
   min-width: 0;
 }
 
-/* A FAF avatar is 40x20, not a portrait. A circle with `cover` cropped away
-   most of one and squashed the rest, which is a poor way to treat the one
-   picture a player chose for themselves. Native size, natural shape, `contain`
-   so nothing is cut: the wide frame is the correct one here. */
+/* A FAF avatar is 40x20, not a portrait. Native size, natural shape,
+   `contain` so nothing is cut, on a small framed plate. */
 .training-trainer header img,
 .training-trainer-avatar {
+  box-sizing: content-box;
   width: 40px;
   height: 20px;
-  flex: 0 0 auto;
+  padding: 5px;
   object-fit: contain;
   background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
 
 /* The placeholder keeps the same footprint, so a tile with no avatar lines up
    with the ones that have one. */
 .training-trainer-avatar.is-empty {
-  border: 1px dashed var(--color-border);
+  border-style: dashed;
 }
 
-.training-trainer header div {
+.training-trainer-ident {
   display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
   flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 /* A trainer whose name you cannot read is a trainer you cannot look up, so the
    name wraps rather than ending in an ellipsis. `anywhere` because FAF names
    are single tokens: a 20-character nickname has no space to break at. */
-.training-trainer header strong {
-  font-size: 14px;
-  line-height: 1.3;
+.training-trainer-ident strong {
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
-.training-trainer header small {
+/* The role as a line of small capitals in the rating gold rather than one more
+   pill: a title is said, not tagged. */
+.training-trainer-role {
+  color: var(--color-rating);
   font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 /* The area of responsibility: the line that answers "what is this person
    for". The note under it is the longer version. */
 .training-trainer-focus {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
   margin: 0;
   font-size: 13px;
   font-weight: 600;
@@ -898,7 +1190,38 @@
   margin: 0;
   color: var(--color-muted);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.55;
+}
+
+/* Topics, modes and languages: a two-column table of labels and values under
+   a hairline, so the facts line up from tile to tile. */
+.training-trainer-meta {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 5px var(--space-3);
+  margin: 0;
+  padding-top: var(--space-3);
+  font-size: 12px;
+  line-height: 1.4;
+  border-top: 1px solid var(--color-border);
+}
+
+.training-trainer-meta > div {
+  display: contents;
+}
+
+.training-trainer-meta dt {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.training-trainer-meta dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .training-trainer-paused {
@@ -906,12 +1229,19 @@
   font-size: 11px;
 }
 
+/* The actions on their own strip at the foot of the tile. */
+.training-trainer .training-card-actions {
+  justify-content: space-between;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
 .training-trainer-handle {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -929,47 +1259,20 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: transparent;
   color: var(--color-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
   cursor: pointer;
 }
 
 .training-trainer-copy:hover,
 .training-trainer-copy:focus-visible {
   color: var(--color-text);
-  border-color: var(--color-muted);
-}
-
-/* Topics, modes and languages: labelled lines, quieter than the note. */
-.training-trainer-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.training-trainer-meta > div {
-  display: flex;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.training-trainer-meta dt {
-  flex: 0 0 auto;
-  color: var(--color-muted);
-}
-
-.training-trainer-meta dd {
-  margin: 0;
-  min-width: 0;
-  overflow-wrap: anywhere;
+  border-color: var(--color-border-strong);
 }
 
 /* Read by a screen reader, not drawn. */
@@ -981,20 +1284,6 @@
   clip: rect(0 0 0 0);
   clip-path: inset(50%);
   white-space: nowrap;
-}
-
-/* The title. Quieter than the bands beside it: it names what somebody is, and
-   the chips after it are what they do. */
-.training-chip.is-role {
-  color: var(--color-muted);
-  background: transparent;
-  border-color: var(--color-border);
-}
-
-/* Keeps its own width: the header wraps it onto the next line when the tile is
-   narrow instead of shrinking it into the name. */
-.training-trainer header .training-chip.is-role {
-  flex: 0 0 auto;
 }
 
 /* The one chip that is about the reader rather than about the entry. */
@@ -1118,8 +1407,19 @@
 .training-facets {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
   margin-bottom: var(--space-4);
+  padding: 2px var(--space-4);
+  background: color-mix(in oklab, var(--color-surface) 72%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.training-facets > .training-chip-row {
+  padding: 10px 0;
+}
+
+.training-facets > .training-chip-row + .training-chip-row {
+  border-top: 1px solid var(--color-border);
 }
 
 /* What is narrowing the shelf, said back, whether or not the panel that set it
@@ -1136,19 +1436,24 @@
 .training-active-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px 4px 10px;
+  gap: 8px;
+  padding: 3px 4px 3px 12px;
   color: var(--color-text);
   font: inherit;
   font-size: 12px;
-  background: var(--color-accent-glow);
-  border: 1px solid var(--color-accent);
-  border-radius: 999px;
+  font-weight: 550;
+  background: color-mix(in oklab, var(--color-accent) 9%, var(--color-surface-raised));
+  border: 1px solid color-mix(in oklab, var(--color-accent) 32%, var(--color-border));
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-text) 7%, transparent);
   cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
 }
 
 .training-active-chip:hover {
-  background: var(--color-surface-hover);
+  border-color: color-mix(in oklab, var(--color-accent) 60%, var(--color-border));
 }
 
 .training-active-chip:focus-visible,
@@ -1157,24 +1462,49 @@
   outline-offset: 1px;
 }
 
+/* The remove mark as its own small target, so it reads as "take this off". */
 .training-active-chip svg {
-  opacity: 0.7;
+  box-sizing: content-box;
+  padding: 3px;
+  color: var(--color-muted);
+  background: color-mix(in oklab, var(--color-text) 8%, transparent);
+  border-radius: 50%;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease;
+}
+
+.training-active-chip:hover svg {
+  color: var(--color-text);
+  background: color-mix(in oklab, var(--color-text) 16%, transparent);
 }
 
 .training-clear-all {
-  padding: 4px 2px;
+  padding: 4px 10px;
   color: var(--color-muted);
   font: inherit;
   font-size: 12px;
+  font-weight: 550;
   background: none;
   border: 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease;
 }
 
 .training-clear-all:hover {
   color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-active-chip,
+  .training-active-chip svg,
+  .training-clear-all {
+    transition: none;
+  }
 }
 
 /* ── library filters ───────────────────────────────────────────────── */
@@ -2029,6 +2359,13 @@ div.training-detail-guide-problem p {
   line-height: 1.55;
 }
 
+.training-markdown.training-guide-copy hr {
+  height: 1px;
+  margin: 28px 0;
+  background: var(--color-border);
+  border: 0;
+}
+
 /* Sections as jump links above the text, when there is no room for a column. */
 .training-guide-jump {
   display: flex;
@@ -2177,11 +2514,62 @@ div.training-detail-guide-problem p {
   overflow: visible;
 }
 
-.training-contribute-form {
-  padding: var(--space-4) clamp(16px, 2.5vw, 28px);
-  background: var(--color-surface);
+.training-contribute-form,
+.training-contribute-preview {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-surface-raised) 55%, var(--color-surface)),
+    var(--color-surface) 240px
+  );
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-text) 6%, transparent);
+}
+
+.training-contribute-form {
+  gap: 0;
+  padding: var(--space-4) clamp(16px, 2.5vw, 28px) var(--space-3);
+}
+
+/* One question per section: a small-caps heading, a hairline above every one
+   after the first, and room between them so each reads as a step. */
+.training-contribute-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4) 0;
+  border: 0;
+}
+
+.training-contribute-section + .training-contribute-section {
+  border-top: 1px solid var(--color-border);
+}
+
+.training-contribute-section legend {
+  float: left;
+  width: 100%;
+  margin-bottom: var(--space-1);
+  padding: 0;
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* `float` on a legend is what lets it sit inside the flex column like any
+   other child; the next element then clears it. */
+.training-contribute-section legend + * {
+  clear: both;
+}
+
+/* The actions as the foot of the form, under a hairline. */
+.training-contribute-form .training-form-actions {
+  margin-top: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
 }
 
 /* The editor is the tallest thing in the column, so it gets the room rather
@@ -2205,9 +2593,6 @@ div.training-detail-guide-problem p {
   max-height: calc(100vh - 150px);
   overflow-y: auto;
   padding: var(--space-4) clamp(16px, 2.5vw, 28px);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
 }
 
 .training-contribute-preview h4 {
@@ -2219,24 +2604,20 @@ div.training-detail-guide-problem p {
   text-transform: uppercase;
 }
 
-.training-preview-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+.training-contribute-card {
+  width: min(100%, 300px);
 }
 
-.training-preview-card strong {
-  font-size: 15px;
+/* A card that goes nowhere: shown, not pressed. As wide as its frame, the
+   way a shelf track sizes it: a button sizes to its content, and a short
+   title shrank the card until its cover label sat on the title. */
+.training-contribute-card .training-card {
+  width: 100%;
+  pointer-events: none;
 }
 
-.training-preview-card p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
+.training-preview-tags .training-card-tags:empty {
+  display: none;
 }
 
 .training-preview-body {
@@ -2561,20 +2942,48 @@ div.training-detail-guide-problem p {
 
 .training-field input,
 .training-field textarea {
-  padding: 8px var(--space-3);
+  padding: 9px var(--space-3);
   color: var(--color-text);
   font: inherit;
   font-size: 13px;
-  background: var(--color-surface-raised);
+  background: color-mix(in oklab, var(--color-surface-raised) 80%, var(--color-bg));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-bg) 40%, transparent);
   resize: vertical;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
+.training-field input:hover,
+.training-field textarea:hover {
+  border-color: var(--color-border-strong);
+}
+
+.training-field input::placeholder,
+.training-field textarea::placeholder {
+  color: var(--color-subtle);
+}
+
+/* A ring rather than an outline: the field keeps its own edge and gains a
+   soft halo, which is how a focused control reads everywhere else now. */
 .training-field input:focus-visible,
 .training-field textarea:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -1px;
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
+}
+
+.training-field input[aria-invalid="true"] {
+  border-color: var(--color-warn);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-field input,
+  .training-field textarea {
+    transition: none;
+  }
 }
 
 .training-form-hint {

@@ -4477,8 +4477,6 @@ export const en = {
   "training.post.sent": "Submitted, open it",
 
   "training.queue.title": "Pending submissions",
-  "training.queue.lead": "Guides waiting to be added to {repo}.",
-  "training.queue.leadUnknown": "Guides waiting to be added to the catalogue.",
   "training.queue.loading": "Reading the queue\u2026",
   "training.queue.empty": "Nothing is waiting. Submissions from the client appear here.",
   "training.queue.loadFailed": "Could not read the queue: {reason}",
@@ -4537,7 +4535,6 @@ export const en = {
   "training.queue.requestAccess": "Ask for access on Discord",
 
   "training.trainers.title": "The training team",
-  "training.trainers.lead": "People who coach FAF players. Get in touch and arrange it with them directly.",
   "training.trainers.openDiscord": "Open the FAF Discord",
   "training.trainers.forYou": "For you",
   "training.trainers.band.from": "Coaches {min}+",
@@ -4562,8 +4559,6 @@ export const en = {
   "training.hero.openDiscord": "Open the FAF Discord",
   "training.hero.openDiscordHint": "FAF's community server on Discord: training channels, replay reviews and everything else.",
   "training.hero.pastReviews": "Past reviews on Discord",
-  "training.hero.nudge": "Not sure where to start? Look at what is recommended for you.",
-
   "training.profile.title": "What this is based on",
   "training.profile.global": "Global",
   "training.profile.rating": "Rating",
@@ -4574,7 +4569,6 @@ export const en = {
   "training.profile.noGames": "Play a game, or open the replays tab, and the recommendations below get more specific.",
 
   "training.recommended.title": "Recommended for you",
-  "training.recommended.lead": "Chosen from your rating, and the modes and maps you have been playing.",
   "training.recommended.empty": "Nothing to recommend yet. The library has everything the catalogue carries.",
   "training.recommended.pending": "Reading your recent games to choose something for you…",
   "training.recommended.browse": "Browse the library",
@@ -4584,16 +4578,18 @@ export const en = {
   "training.reason.ratingIn": "Written for your {mode} rating ({rating}).",
 
   "training.basics.title": "Learn the basics",
-  "training.basics.lead": "The four things every new player is told to learn first.",
   "training.basics.count": { one: "{count} entry", other: "{count} entries" },
 
   "training.library.title": "Training library",
-  "training.library.lead": "Everything in the catalogue, by what it is and what it is for.",
   "training.library.count": "{count} of {total}",
   "training.library.allKinds": "Everything",
   "training.library.showAll": "Show all {count}",
   "training.library.showFewer": "Show fewer",
   "training.library.noMode": "Not tied to a mode",
+  "training.library.creators": "Creators and channels",
+  "training.series.episodes": { one: "{count} episode", other: "{count} episodes" },
+  "training.series.parts": { one: "{count} part", other: "{count} parts" },
+  "training.series.overview": "Overview",
   "training.library.noMatches": "Nothing matches these filters.",
   "training.library.emptyCatalogue": "The training catalogue could not be loaded, so there is nothing to show. Check your connection and try again.",
 
@@ -4610,6 +4606,7 @@ export const en = {
   "training.filter.kind": "Type",
   "training.filter.topic": "Topic",
   "training.filter.mode": "Game mode",
+  "training.filter.customGames": "Custom games",
   "training.filter.map": "Map",
   "training.filter.mapPlaceholder": "Any map",
   "training.filter.anyLevel": "Any level",
@@ -4718,7 +4715,9 @@ export const en = {
   "training.review.problem.noGoal": "Say what you would like help with. A request without a question is the main reason reviews go unanswered.",
 
   "training.contribute.title": "Submit training material",
-  "training.contribute.lead": "The tags matter as much as the content: they are what lets a player at the right level find this.",
+  "training.contribute.section.what": "What it is",
+  "training.contribute.section.audience": "Who it is for",
+  "training.contribute.section.content": "Content",
   "training.contribute.name": "Title",
   "training.contribute.namePlaceholder": "How to defend early T1 aggression",
   "training.contribute.kind": "Type",

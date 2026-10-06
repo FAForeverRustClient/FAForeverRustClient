@@ -19,6 +19,7 @@ import { GuideReader, guideOutline, type GuideOutline } from "./GuideReader";
 import { RunAnalysis } from "./RunAnalysis";
 import { TrainingArt, TrainingCard } from "./TrainingCard";
 import { parseEnvelope } from "./recording";
+import { partTitle, seriesIndex } from "./trainingSeries";
 import {
   actionLabel,
   bandKey,
@@ -58,7 +59,13 @@ export function ResourceDetail({
 }: Props) {
   const { t } = useTranslation();
   const band = bandKey(resource);
-  const related = relatedResources(resources, resource);
+  // The series this entry is a part of, when it is one. Its other parts are
+  // listed as the series rather than again as "read next".
+  const seriesMap = useMemo(() => seriesIndex(resources), [resources]);
+  const partOf = seriesMap.get(resource.id);
+  const related = relatedResources(resources, resource).filter(
+    (other) => partOf === undefined || seriesMap.get(other.id) !== partOf,
+  );
   // Whether the address is a video decides this, not what the entry calls
   // itself. Most of the catalogue's videos are build orders, and gating the
   // player on `kind === "video"` meant the one entry filed as a video played
@@ -228,6 +235,35 @@ export function ResourceDetail({
           )}
         </div>
       </div>
+
+      {/* The parts of a written series, in order, with this one marked. A
+          video series has its queue beside the player instead. */}
+      {partOf && !embed && (
+        <nav className="training-parts" aria-label={partOf.title}>
+          <span className="training-parts-title">{partOf.title}</span>
+          <ol>
+            {partOf.parts.map((part, index) => (
+              <li key={part.id}>
+                <button
+                  type="button"
+                  className={part.id === resource.id ? "is-current" : undefined}
+                  aria-current={part.id === resource.id ? "page" : undefined}
+                  onClick={() => onSelect(part)}
+                >
+                  {index === 0 ? (
+                    <span className="training-parts-number">
+                      <Icon name="list" size={12} />
+                    </span>
+                  ) : (
+                    <span className="training-parts-number">{index}</span>
+                  )}
+                  <span>{index === 0 ? t("training.series.overview") : partTitle(partOf, part)}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
 
       <div className="training-detail">
         {embed && (

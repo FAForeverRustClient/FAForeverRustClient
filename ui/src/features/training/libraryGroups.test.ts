@@ -162,3 +162,33 @@ describe("modes that differ only in case", () => {
     expect(modes.filter((mode) => mode.toLowerCase() === "nomads")).toEqual(["Nomads"]);
   });
 });
+
+describe("collectionsOf, the whole library", () => {
+  it("splits every mode's shelf by kind, build orders first", () => {
+    const groups = collectionsOf(
+      [
+        entry({ title: "Road to GM", kind: "video", gameModes: ["1v1"] }),
+        entry({ title: "Arcane", kind: "buildOrder", gameModes: ["1v1"] }),
+        entry({ title: "Ladder guide", kind: "guide", gameModes: ["1v1"] }),
+      ],
+      profile(),
+      "forYou",
+      true,
+    );
+    expect(groups.map((group) => [group.key, group.kind])).toEqual([
+      ["1v1", "buildOrder"],
+      ["1v1", "guide"],
+      ["1v1", "video"],
+    ]);
+  });
+
+  it("leaves channels off the shelves: they are a row of creators of their own", () => {
+    const groups = collectionsOf(
+      [entry({ title: "A channel", kind: "community", gameModes: ["1v1"] })],
+      profile(),
+      "forYou",
+      true,
+    );
+    expect(groups).toEqual([]);
+  });
+});
