@@ -1,13 +1,18 @@
-import { useMemo, useState, memo } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
+import { RangeSlider } from "../../../design-system/RangeSlider";
 import { ipc } from "../../../ipc/client";
 import type { PartyMember, PartyState, PlayerLeaguePlacement, PlayerProfile, SocialState } from "../../../ipc/bindings";
+import { formatNumber } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { ProfileAvatar } from "../../../shared/components/ProfileAvatar";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
+import { flagSrc } from "../../../shared/countryFlags";
+import { useCountryLabel } from "../../../shared/hooks/useCountryLabel";
+import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { placementLabel } from "../../../shared/leagueNames";
 import { factionIdFromName, factionLabelFromName, orderFactionNames } from "../../../shared/factions";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
@@ -19,21 +24,105 @@ interface InviteModalProps {
   onClose: () => void;
 }
 
+type QueueRating = "1v1" | "2v2" | "3v3" | "4v4";
+type InviteSort = "friend" | "name" | "clan" | QueueRating;
+type RatingRange = { low: number | null; high: number | null };
+
+const QUEUE_RATINGS: QueueRating[] = ["1v1", "2v2", "3v3", "4v4"];
+const RATING_MIN = -1000;
+const RATING_MAX = 4000;
+
+const RATING_BOARDS: Record<QueueRating, string[]> = {
+  "1v1": ["ladder_1v1", "ladder1v1"],
+  "2v2": ["tmm_2v2", "tmm2v2", "ladder2v2"],
+  "3v3": ["tmm_3v3", "tmm3v3", "ladder3v3"],
+  "4v4": ["tmm_4v4", "tmm4v4", "tmm_4v4_full_share", "ladder4v4", "4v4_full_share"],
+};
+
+/** A matchmaker rating only; global deliberately has no place in this dialog. */
+export function inviteQueueRating(player: PlayerProfile, queue: QueueRating): number | null {
+  const boards = RATING_BOARDS[queue];
+  return player.ratings.find((rating) => boards.includes(rating.leaderboard))?.rating ?? null;
+}
+
 function InvitePlayerModal({ social, selfId, partyMemberIds, onClose }: InviteModalProps) {
   const { t } = useTranslation();
+  const countryOf = useCountryLabel();
+  const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
   const [query, setQuery] = useState("");
   const [invited, setInvited] = useState<Set<number>>(() => new Set());
+  const [sortBy, setSortBy] = useState<InviteSort>("friend");
+  const [sortDescending, setSortDescending] = useState(true);
+  const [country, setCountry] = useState("*");
+  const [clan, setClan] = useState("*");
+  const [friendsOnly, setFriendsOnly] = useState(false);
+  const [ratingRanges, setRatingRanges] = useState<Record<QueueRating, RatingRange>>(() => ({
+    "1v1": { low: null, high: null },
+    "2v2": { low: null, high: null },
+    "3v3": { low: null, high: null },
+    "4v4": { low: null, high: null },
+  }));
+  const [appliedRatingRanges, setAppliedRatingRanges] = useState(ratingRanges);
+
+  // Small debounce for rating range updates
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setAppliedRatingRanges(ratingRanges), 500);
+    return () => window.clearTimeout(timeout);
+  }, [ratingRanges]);
+
   const friendNames = useMemo(() => new Set(social.friends.map((name) => name.toLocaleLowerCase())), [social.friends]);
+  const countries = useMemo(() => {
+    const codes = [...new Set(social.players.map((player) => player.country.trim().toLocaleLowerCase()).filter(Boolean))];
+    return codes.sort((left, right) => countryOf(left).localeCompare(countryOf(right)));
+  }, [countryOf, social.players]);
+  const clans = useMemo(() => [...new Set(social.players.map((player) => player.clan.trim()).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" })), [social.players]);
   const candidates = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return social.players
       .filter((player) => player.id !== selfId && !partyMemberIds.has(player.id))
       .filter((player) => !normalized || player.login.toLocaleLowerCase().includes(normalized))
+      .filter((player) => country === "*" || player.country.toLocaleLowerCase() === country)
+      .filter((player) => clan === "*" || (clan === "" ? !player.clan : player.clan === clan))
+      .filter((player) => !friendsOnly || friendNames.has(player.login.toLocaleLowerCase()))
+      .filter((player) => QUEUE_RATINGS.every((queue) => {
+        const range = appliedRatingRanges[queue];
+        if (range.low === null && range.high === null) return true;
+        const rating = inviteQueueRating(player, queue);
+        return rating !== null
+          && (range.low === null || rating >= range.low)
+          && (range.high === null || rating <= range.high);
+      }))
       .sort((left, right) => {
-        const friendDelta = Number(friendNames.has(right.login.toLocaleLowerCase())) - Number(friendNames.has(left.login.toLocaleLowerCase()));
-        return friendDelta || left.login.localeCompare(right.login);
+        let comparison = 0;
+        if (sortBy === "friend") {
+          comparison = Number(friendNames.has(left.login.toLocaleLowerCase()))
+            - Number(friendNames.has(right.login.toLocaleLowerCase()));
+        } else if (sortBy === "name") {
+          comparison = left.login.localeCompare(right.login, undefined, { sensitivity: "base" });
+        } else if (sortBy === "clan") {
+          if (!left.clan || !right.clan) {
+            comparison = left.clan ? -1 : right.clan ? 1 : 0;
+            return comparison || left.login.localeCompare(right.login);
+          }
+          comparison = left.clan.localeCompare(right.clan, undefined, { sensitivity: "base" });
+        } else {
+          const leftRating = inviteQueueRating(left, sortBy);
+          const rightRating = inviteQueueRating(right, sortBy);
+          if (leftRating === null || rightRating === null) {
+            comparison = leftRating === null ? (rightRating === null ? 0 : 1) : -1;
+            return comparison || left.login.localeCompare(right.login);
+          }
+          comparison = leftRating - rightRating;
+        }
+        return (sortDescending ? -comparison : comparison)
+          || left.login.localeCompare(right.login, undefined, { sensitivity: "base" });
       });
-  }, [friendNames, partyMemberIds, query, selfId, social.players]);
+  }, [appliedRatingRanges, clan, country, friendNames, friendsOnly, partyMemberIds, query, selfId, social.players, sortBy, sortDescending]);
+
+  const sortDirectionLabel = sortBy === "friend"
+    ? t(sortDescending ? "lobby.party.invite.sort.friendsFirst" : "lobby.party.invite.sort.friendsLast")
+    : t(sortDescending ? "lobby.party.invite.sort.descending" : "lobby.party.invite.sort.ascending");
 
   // Sending again is allowed, and has to be: an invitation is a notification the
   // other side can dismiss, miss, or let expire, and the only recourse is to
@@ -46,28 +135,130 @@ function InvitePlayerModal({ social, selfId, partyMemberIds, onClose }: InviteMo
   };
 
   return (
-    <Modal onClose={onClose}>
+    <>
+      <Modal onClose={onClose} className="matchmaker-invite-modal">
       <div className="play-dialog-head">
         <div><h2>{t("lobby.party.invite.title")}</h2><p>{t("lobby.party.invite.subtitle")}</p></div>
       </div>
-      <label className="search-field matchmaker-invite-search">
-        <Icon name="search" size={16} />
-        <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("lobby.party.invite.placeholder")} />
-      </label>
+      <div className="matchmaker-invite-controls">
+        <label className="search-field matchmaker-invite-search">
+          <Icon name="search" size={16} />
+          <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("lobby.party.invite.placeholder")} />
+        </label>
+        <div className="matchmaker-invite-field matchmaker-invite-sort">
+          <span>{t("lobby.party.invite.sort.label")}</span>
+          <span>
+            <select aria-label={t("lobby.party.invite.sort.label")} value={sortBy} onChange={(event) => setSortBy(event.target.value as InviteSort)}>
+              <option value="friend">{t("lobby.party.invite.sort.friend")}</option>
+              <option value="name">{t("lobby.party.invite.sort.name")}</option>
+              <option value="clan">{t("lobby.party.invite.sort.clan")}</option>
+              {QUEUE_RATINGS.map((queue) => <option key={queue} value={queue}>{queue}</option>)}
+            </select>
+            <button
+              type="button"
+              className="matchmaker-invite-sort-direction"
+              aria-label={sortDirectionLabel}
+              title={sortDirectionLabel}
+              onClick={() => setSortDescending((current) => !current)}
+            >
+              {sortDescending ? "↓" : "↑"}
+            </button>
+          </span>
+        </div>
+        <label className="matchmaker-invite-field">
+          <span>{t("lobby.party.invite.country")}</span>
+          <select value={country} onChange={(event) => setCountry(event.target.value)}>
+            <option value="*">{t("common.any")}</option>
+            {countries.map((code) => <option key={code} value={code}>{countryOf(code)}</option>)}
+          </select>
+        </label>
+        <label className="matchmaker-invite-field">
+          <span>{t("lobby.party.invite.clan")}</span>
+          <select value={clan} onChange={(event) => setClan(event.target.value)}>
+            <option value="*">{t("common.any")}</option>
+            <option value="">{t("lobby.party.invite.clanNone")}</option>
+            {clans.map((tag) => <option key={tag} value={tag}>[{tag}]</option>)}
+          </select>
+        </label>
+        <label className="matchmaker-invite-field">
+          <span>{t("lobby.party.invite.relation")}</span>
+          <select value={friendsOnly ? "friends" : "all"} onChange={(event) => setFriendsOnly(event.target.value === "friends")}>
+            <option value="all">{t("lobby.party.invite.allPlayers")}</option>
+            <option value="friends">{t("lobby.party.invite.friendsOnly")}</option>
+          </select>
+        </label>
+      </div>
+      <div className="matchmaker-invite-rating-filters">
+        {QUEUE_RATINGS.map((queue) => (
+          <RangeSlider
+            key={queue}
+            label={t("lobby.party.invite.rating", { queue })}
+            min={RATING_MIN}
+            max={RATING_MAX}
+            step={50}
+            low={ratingRanges[queue].low}
+            high={ratingRanges[queue].high}
+            format={formatNumber}
+            onChange={(low, high) => setRatingRanges((current) => ({ ...current, [queue]: { low, high } }))}
+          />
+        ))}
+      </div>
       <div className="matchmaker-invite-list surface">
         {candidates.length === 0 ? <p className="play-empty">{t("lobby.party.invite.empty")}</p> : candidates.map((player) => {
           const wasInvited = invited.has(player.id);
           const isFriend = friendNames.has(player.login.toLocaleLowerCase());
+          const queueRatings = QUEUE_RATINGS
+            .map((queue) => [queue, inviteQueueRating(player, queue)] as const)
+            .filter((entry): entry is readonly [QueueRating, number] => entry[1] !== null).filter(([queue, rating]) =>
+              // No idea why but for 1v1 queue a rating of 0 displays even if there shouldn't be a rating
+              !(rating === 0 && queue === "1v1"));
           return (
-            <div className="matchmaker-invite-row" key={player.id}>
+            <div className={`matchmaker-invite-row${isFriend ? " is-friend" : ""}`} key={player.id}>
               <ProfileAvatar name={player.login} avatarUrl={player.avatarUrl} tooltip={player.avatarTooltip} />
-              <span><strong>{player.login}</strong><small>{isFriend ? t("lobby.party.friend") : player.clan ? `[${player.clan}]` : t("lobby.party.player")}</small></span>
+              <span className="matchmaker-invite-player">
+                <span className="matchmaker-invite-name">
+                  {player.country && (
+                    <img
+                      src={flagSrc(player.country)}
+                      alt={countryOf(player.country)}
+                      title={countryOf(player.country)}
+                      width={18}
+                      height={12}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className={`matchmaker-invite-name-button${playerMenuTarget === player.login ? " is-menu-open" : ""}`}
+                    aria-haspopup="menu"
+                    aria-expanded={playerMenuTarget === player.login}
+                    onClick={(event) => openPlayerMenu(player.login, event)}
+                    onContextMenu={(event) => openPlayerMenu(player.login, event)}
+                  >
+                    <strong>{player.login}</strong>
+                  </button>
+                  {isFriend && (
+                    <span className="matchmaker-invite-friend" title={t("lobby.party.friend")}>
+                      <Icon name="star" size={12} /> {t("lobby.party.friend")}
+                    </span>
+                  )}
+                  {player.clan && <small>[{player.clan}]</small>}
+                </span>
+                {queueRatings.length > 0 && (
+                  <span className="matchmaker-invite-ratings">
+                    {queueRatings.map(([queue, rating]) => (
+                      <span key={queue}><small>{queue}</small> {formatNumber(rating)}</span>
+                    ))}
+                  </span>
+                )}
+              </span>
               <Button onClick={() => invite(player)}>{t(wasInvited ? "lobby.party.inviteAgain" : "lobby.party.invite")}</Button>
             </div>
           );
         })}
       </div>
-    </Modal>
+      </Modal>
+      {playerMenu}
+    </>
   );
 }
 
@@ -214,7 +405,7 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
   const members = useMemo(() => party.members.length > 0
     ? party.members
     : playerId === null ? [] : [{ playerId, name: playerName, factions: selectedFactions ?? [] }],
-  [party.members, playerId, playerName, selectedFactions]);
+    [party.members, playerId, playerName, selectedFactions]);
   const memberIds = useMemo(() => new Set(members.map((member) => member.playerId)), [members]);
 
   // One placeholder, not one per free seat. Three identical empty tiles beside a
