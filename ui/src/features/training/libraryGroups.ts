@@ -88,6 +88,28 @@ function shelfMode(resource: TrainingResource): string {
 }
 
 /**
+ * The channels that make more of a mode than the library holds.
+ *
+ * The library carries the videos somebody picked out of a channel, not the
+ * whole channel, so a reader at the end of "Seton's Clutch" is pointed at where
+ * the rest lives. Read off the channel entries' own modes rather than listed
+ * per chapter: a channel is tagged once, with the modes it is about, and shows
+ * under each of them. Nobody keeps a second list in step with the first.
+ */
+export function channelsForMode(resources: TrainingResource[], mode: string): TrainingResource[] {
+  const wanted = asciiLower(mode.trim());
+  if (wanted === "") return [];
+  return resources
+    .filter(
+      (entry) =>
+        entry.kind === "community" &&
+        entry.url !== "" &&
+        entry.gameModes.some((held) => asciiLower(held.trim()) === wanted),
+    )
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/**
  * The modes the mode row offers: the common ones, then whatever the catalogue
  * carries, once each.
  *

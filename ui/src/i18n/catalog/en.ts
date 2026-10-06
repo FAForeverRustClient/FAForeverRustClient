@@ -4581,7 +4581,7 @@ export const en = {
   "training.reason.ratingIn": "Written for your {mode} rating ({rating}).",
 
   "training.basics.title": "Learn the basics",
-  "training.basics.count": { one: "{count} entry", other: "{count} entries" },
+  "training.basics.entries": { one: "entry", other: "entries" },
 
   "training.library.title": "Training library",
   "training.library.count": "{count} of {total}",
@@ -4590,6 +4590,11 @@ export const en = {
   "training.library.showFewer": "Show fewer",
   "training.library.noMode": "Not tied to a mode",
   "training.library.creators": "Creators and channels",
+  "training.library.channels.eyebrow": "Channels",
+  "training.library.channels.title": "More {mode}",
+  "training.library.channels.count": { one: "{count} channel", other: "{count} channels" },
+  "training.library.channels.dialogTitle": "Channels for {mode}",
+  "training.library.channels.dialogLead": "Creators who make more {mode} than the library holds. Each one opens their channel.",
   "training.series.episodes": { one: "{count} episode", other: "{count} episodes" },
   "training.series.parts": { one: "{count} part", other: "{count} parts" },
   "training.series.overview": "Overview",

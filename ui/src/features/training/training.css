@@ -779,6 +779,86 @@
   backdrop-filter: blur(6px);
 }
 
+/* ── the end of a chapter: where more of it lives ─────────────────── */
+
+/* The chapter's last card. The same 16:9 frame as every other card on the
+   shelf, so it reads as part of the row, but no picture of its own: the
+   channels' faces, overlapping, on the plain raised surface, and a small
+   eyebrow saying what they are. Neutral, like the shelf around it. */
+.training-channels-art {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+}
+
+.training-channels-eyebrow {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.training-channels-faces {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Each face overlaps the one before it by a quarter, which is how a
+     platform shows a group rather than a list. */
+  padding-left: 12px;
+}
+
+.training-channels-face {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: clamp(40px, 30%, 76px);
+  aspect-ratio: 1;
+  margin-left: -12px;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 650;
+  background: var(--color-surface);
+  border: 2px solid var(--color-surface-raised);
+  border-radius: 50%;
+}
+
+.training-channels-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.training-channels-face.is-more {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The grid of channels behind the card: the creators row's tiles, with room
+   around them. */
+.training-channels-dialog {
+  width: min(640px, 94vw);
+}
+
+.training-channels-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.training-channels-dialog-body header h4 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.training-channels-dialog-body header p {
+  margin: 0;
+  font-size: 13px;
+}
+
 /* ── creators: a face and a name, as every platform shows a channel ─── */
 
 .training-creator-grid {
@@ -973,25 +1053,48 @@
 
 /* ── basics ────────────────────────────────────────────────────────── */
 
+/* Four in a row, or two by two: never three and an orphan, which is what an
+   auto-fit track made of four tiles at a middling width. Asked of the
+   section's own width, since the sidebar decides how much of the window that
+   is. */
+.training-basics {
+  container-type: inline-size;
+}
+
 .training-basics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
-/* The tile is drawn the way the replay detail draws a team panel: the
-   raised surface, a hairline border, nothing else. It stays neutral at rest,
-   so four tiles in four colours do not compete with the covers above them.
-   Each basic's colour only appears on hover, as a faint tint and a border of
-   it, which is the replay panel's revealed state. Build orders share the
-   build-order kind's colour, so the tile and the shelf it opens match. */
+@container (max-width: 900px) {
+  .training-basics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 420px) {
+  .training-basics-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A tile in the replay detail's terms: the raised surface, a hairline, an
+   eyebrow over a title, and a fact stated as label over value at the foot.
+   Neutral at rest, so four tiles do not compete with the covers above them;
+   each basic's colour arrives only on hover, as a faint tint, its border and
+   its number. Build orders share the build-order kind's colour, so the tile
+   and the shelf it opens match.
+
+   Every tile has the same shape whatever its text: the description is held
+   to two lines and the foot sits on the bottom edge, so the four line up as a
+   row rather than as four boxes of different heights. */
 .training-basic-card {
   --topic-color: var(--color-subtle);
   display: flex;
   flex-direction: column;
-  gap: 6px;
   min-width: 0;
-  padding: var(--space-4);
+  padding: 18px 20px 16px;
   color: var(--color-text);
   font: inherit;
   text-align: left;
@@ -1000,8 +1103,8 @@
   border-radius: var(--radius-md);
   cursor: pointer;
   transition:
-    background-color 120ms ease,
-    border-color 120ms ease;
+    background-color 140ms ease,
+    border-color 140ms ease;
 }
 
 .training-basic-card[data-topic="economy"] {
@@ -1022,7 +1125,7 @@
 
 .training-basic-card:hover {
   background: color-mix(in srgb, var(--topic-color) 4%, var(--color-surface-raised));
-  border-color: color-mix(in srgb, var(--topic-color) 40%, transparent);
+  border-color: color-mix(in srgb, var(--topic-color) 45%, transparent);
 }
 
 .training-basic-card:focus-visible {
@@ -1030,41 +1133,71 @@
   outline-offset: 2px;
 }
 
-/* Name at the start, how much is behind it at the end, on one line. */
-.training-basic-title {
+/* The eyebrow: where the basic stands in the order. */
+.training-basic-index {
+  margin-bottom: 10px;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.09em;
+  transition: color 140ms ease;
+}
+
+.training-basic-card:hover .training-basic-index {
+  color: var(--topic-color);
+}
+
+.training-basic-name {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+/* Two lines, always: one line of text leaves a tile half empty next to a
+   neighbour with two, and a third would push its foot out of line. */
+.training-basic-hint {
+  display: -webkit-box;
+  min-height: calc(2 * 1.5em);
+  margin: 6px 0 16px;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* The foot: how much is behind the tile, as a figure with its unit, on the
+   bottom edge whatever the text above it says. */
+.training-basic-foot {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
 }
 
-.training-basic-title strong {
-  min-width: 0;
-  font-size: 14px;
+.training-basic-figure {
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.005em;
-}
-
-.training-basic-count {
-  flex: none;
-  color: var(--color-subtle);
-  font-size: 12px;
   font-variant-numeric: tabular-nums;
-  transition: color 120ms ease;
+  line-height: 1;
 }
 
-.training-basic-card:hover .training-basic-count {
-  color: var(--color-muted);
-}
-
-.training-basic-card > span.muted {
-  font-size: 12px;
-  line-height: 1.5;
+.training-basic-unit {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .training-basic-card,
-  .training-basic-count {
+  .training-basic-index {
     transition: none;
   }
 }

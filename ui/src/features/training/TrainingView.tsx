@@ -403,7 +403,7 @@ export function TrainingView() {
                 </div>
               </header>
               <div className="training-basics-grid">
-                {BASIC_TOPICS.map((topic) => {
+                {BASIC_TOPICS.map((topic, index) => {
                   const count = state.resources.filter((resource) =>
                     resource.topics.includes(topic),
                   ).length;
@@ -425,13 +425,21 @@ export function TrainingView() {
                         setSection("library");
                       }}
                     >
-                      <span className="training-basic-title">
-                        <strong>{t(topicLabel(topic))}</strong>
-                        <span className="training-basic-count">
-                          {t("training.basics.count", { count })}
+                      {/* The four are an order, not a set: the first thing a
+                          new player is told to learn, then the next. */}
+                      <span className="training-basic-index" aria-hidden>
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <strong className="training-basic-name">{t(topicLabel(topic))}</strong>
+                      <span className="training-basic-hint">{t(topicHint(topic))}</span>
+                      {/* Label over value, the way the profile strip above
+                          states its numbers. */}
+                      <span className="training-basic-foot">
+                        <span className="training-basic-figure">{count}</span>
+                        <span className="training-basic-unit">
+                          {t("training.basics.entries", { count })}
                         </span>
                       </span>
-                      <span className="muted">{t(topicHint(topic))}</span>
                     </button>
                   );
                 })}

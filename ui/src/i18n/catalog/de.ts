@@ -4263,7 +4263,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.reason.ratingIn": "Für deine {mode}-Wertung geschrieben ({rating}).",
 
   "training.basics.title": "Grundlagen lernen",
-  "training.basics.count": { one: "{count} Eintrag", other: "{count} Einträge" },
+  "training.basics.entries": { one: "Eintrag", other: "Einträge" },
 
   "training.library.title": "Trainingsbibliothek",
   "training.library.count": "{count} von {total}",
@@ -4272,6 +4272,11 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "training.library.showFewer": "Weniger zeigen",
   "training.library.noMode": "Modusunabhängig",
   "training.library.creators": "Creator und Kanäle",
+  "training.library.channels.eyebrow": "Kanäle",
+  "training.library.channels.title": "Mehr {mode}",
+  "training.library.channels.count": { one: "{count} Kanal", other: "{count} Kanäle" },
+  "training.library.channels.dialogTitle": "Kanäle für {mode}",
+  "training.library.channels.dialogLead": "Creator, die mehr {mode} machen, als die Bibliothek enthält. Jeder öffnet seinen Kanal.",
   "training.series.episodes": { one: "{count} Folge", other: "{count} Folgen" },
   "training.series.parts": { one: "{count} Teil", other: "{count} Teile" },
   "training.series.overview": "Übersicht",

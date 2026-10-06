@@ -35,10 +35,12 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type RefObject,
 } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
+import { Modal } from "../../design-system/Modal";
 import { SectionTabs, sectionPanelProps, type SectionTab } from "../../design-system/SectionTabs";
 import { Select } from "../../design-system/Select";
 import type {
@@ -49,13 +51,15 @@ import type {
 } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import {
+  asciiLower,
   eqIgnoreAsciiCase,
   filterResources,
   rustTrim,
 } from "../../shared/rules/trainingRules";
 import { EMPTY_TRAINING_QUERY, trainingQueryIsEmpty } from "../../shared/trainingQuery";
-import { CreatorTile, TrainingCard } from "./TrainingCard";
+import { ChannelsCard, CreatorTile, TrainingCard } from "./TrainingCard";
 import {
+  channelsForMode,
   collectionsOf,
   CREATOR_KINDS,
   LIBRARY_SORTS,
@@ -321,6 +325,8 @@ export function TrainingLibrary({
   // reset both. The query itself lives in the slice, because the hub's topic
   // tiles set it from another section and it has to survive that crossing.
   const sort = useTrainingView((view) => view.sort);
+  // The chapter whose channels are open as a grid, if one is.
+  const [channelsOf, setChannelsOf] = useState<string | null>(null);
   const setSort = useTrainingView((view) => view.setSort);
   const refining = useTrainingView((view) => view.refining);
   const setRefining = useTrainingView((view) => view.setRefining);
@@ -626,24 +632,45 @@ export function TrainingLibrary({
           </p>
         ) : (
           <div className="training-collections">
-            {collections.map((collection) => (
-              <CollectionShelf
-                key={`${collection.key}|${collection.kind ?? ""}`}
-                collection={collection}
-                series={fold ? series : null}
-                shelf={shelfKey(effective.kind, `${collection.key}|${collection.kind ?? ""}`)}
-                // An untouched library is an overview and gives every shelf one
-                // row; the moment the reader narrows it, it is a result and
-                // shows all of it. Ninety cards under twelve headings is four
-                // screens of scrolling before the second heading, which is the
-                // same flat list the grouping exists to undo. A kind tab is not
-                // narrowing: it is where the reader is standing, and it used to
-                // unfold every shelf under it.
-                clip={!narrowedBeyondKind}
-                onOpen={onOpen}
-                onSelect={onSelect}
-              />
-            ))}
+            {collections.map((collection, index) => {
+              // The last shelf of a mode is where its chapter ends, and where
+              // the reader is pointed at the channels that hold more of it.
+              // Only in the overview: a filtered result is an answer, and a
+              // card of channels in it would be an answer to something else.
+              const next = collections[index + 1];
+              const endsChapter =
+                !collection.isRemainder &&
+                (next === undefined || asciiLower(next.key) !== asciiLower(collection.key));
+              const more =
+                endsChapter && !narrowedBeyondKind ? channelsForMode(resources, collection.key) : [];
+              return (
+                <CollectionShelf
+                  key={`${collection.key}|${collection.kind ?? ""}`}
+                  collection={collection}
+                  series={fold ? series : null}
+                  shelf={shelfKey(effective.kind, `${collection.key}|${collection.kind ?? ""}`)}
+                  // An untouched library is an overview and gives every shelf one
+                  // row; the moment the reader narrows it, it is a result and
+                  // shows all of it. Ninety cards under twelve headings is four
+                  // screens of scrolling before the second heading, which is the
+                  // same flat list the grouping exists to undo. A kind tab is not
+                  // narrowing: it is where the reader is standing, and it used to
+                  // unfold every shelf under it.
+                  clip={!narrowedBeyondKind}
+                  onOpen={onOpen}
+                  onSelect={onSelect}
+                  last={
+                    more.length > 0 ? (
+                      <ChannelsCard
+                        mode={collection.key}
+                        channels={more}
+                        onOpen={() => setChannelsOf(collection.key)}
+                      />
+                    ) : null
+                  }
+                />
+              );
+            })}
             {creators.length > 0 && (
               <section className="training-collection training-creators">
                 <header className="training-collection-head">
@@ -662,6 +689,15 @@ export function TrainingLibrary({
           </div>
         )}
       </div>
+
+      {channelsOf !== null && (
+        <ChannelsDialog
+          mode={channelsOf}
+          channels={channelsForMode(resources, channelsOf)}
+          onOpen={onOpen}
+          onClose={() => setChannelsOf(null)}
+        />
+      )}
     </section>
   );
 }
@@ -681,6 +717,7 @@ function CollectionShelf({
   clip,
   onOpen,
   onSelect,
+  last = null,
 }: {
   collection: Collection;
   /** The catalogue's series, when they are folded into one card each. */
@@ -691,6 +728,12 @@ function CollectionShelf({
   clip: boolean;
   onOpen: (resource: TrainingResource) => void;
   onSelect: (resource: TrainingResource) => void;
+  /**
+   * A card that closes the shelf, after its entries: the chapter's channels.
+   * It keeps its place in the first row when the shelf is clipped, so the
+   * entries give way to it rather than it to them.
+   */
+  last?: ReactNode;
 }) {
   const { t } = useTranslation();
   // Remembered outside the component, so a shelf opened before reading one of
@@ -698,7 +741,8 @@ function CollectionShelf({
   const open = useTrainingView((view) => view.openShelves.includes(shelf));
   const toggleShelf = useTrainingView((view) => view.toggleShelf);
   const grid = useRef<HTMLDivElement>(null);
-  const limit = useRowLength(grid) ?? SHELF_PREVIEW;
+  const row = useRowLength(grid) ?? SHELF_PREVIEW;
+  const limit = last ? Math.max(1, row - 1) : row;
   const hidden = clip && !open ? Math.max(0, collection.entries.length - limit) : 0;
   const shown = hidden === 0 ? collection.entries : collection.entries.slice(0, limit);
 
@@ -745,7 +789,46 @@ function CollectionShelf({
             onSelect={onSelect}
           />
         ))}
+        {last}
       </div>
     </section>
+  );
+}
+
+/**
+ * The channels behind a chapter's last card, as a grid of faces: each opens
+ * its channel. The same tile the creators row draws, so a channel looks like
+ * itself wherever it appears.
+ */
+function ChannelsDialog({
+  mode,
+  channels,
+  onOpen,
+  onClose,
+}: {
+  mode: string;
+  channels: TrainingResource[];
+  onOpen: (resource: TrainingResource) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Modal
+      onClose={onClose}
+      ariaLabel={t("training.library.channels.dialogTitle", { mode })}
+      className="training-dialog training-channels-dialog"
+    >
+      <div className="training-channels-dialog-body">
+        <header>
+          <h4>{t("training.library.channels.dialogTitle", { mode })}</h4>
+          <p className="muted">{t("training.library.channels.dialogLead", { mode })}</p>
+        </header>
+        <div className="training-creator-grid">
+          {channels.map((channel) => (
+            <CreatorTile key={channel.id} resource={channel} onSelect={onOpen} />
+          ))}
+        </div>
+      </div>
+    </Modal>
   );
 }

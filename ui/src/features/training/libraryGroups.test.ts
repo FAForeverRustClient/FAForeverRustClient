@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { collectionsOf, modeOptions } from "./libraryGroups";
+import { channelsForMode, collectionsOf, modeOptions } from "./libraryGroups";
 import type { TrainingProfile, TrainingResource } from "../../ipc/bindings";
 
 const base: TrainingResource = {
@@ -190,5 +190,26 @@ describe("collectionsOf, the whole library", () => {
       true,
     );
     expect(groups).toEqual([]);
+  });
+});
+
+describe("the channels a chapter points at for more", () => {
+  const catalogue = [
+    entry({ id: "a", title: "Seraphim-Com on YouTube", kind: "community", url: "https://www.youtube.com/@Seraphim-Com", gameModes: ["Seton's Clutch"] }),
+    entry({ id: "b", title: "FoleyBTS on YouTube", kind: "community", url: "https://www.youtube.com/@FoleyBTS", gameModes: ["seton's clutch"] }),
+    entry({ id: "c", title: "Bullydozer on YouTube", kind: "community", url: "https://www.youtube.com/@BullydozerFAF", gameModes: ["1v1"] }),
+    entry({ id: "d", title: "A Seton's video", kind: "video", url: "https://www.youtube.com/watch?v=x", gameModes: ["Seton's Clutch"] }),
+    entry({ id: "e", title: "A channel with no address", kind: "community", gameModes: ["Seton's Clutch"] }),
+  ];
+
+  it("are the channels tagged with the chapter's mode, however it is spelt", () => {
+    expect(channelsForMode(catalogue, "Seton's Clutch").map((channel) => channel.id)).toEqual(["b", "a"]);
+    expect(channelsForMode(catalogue, "1V1").map((channel) => channel.id)).toEqual(["c"]);
+  });
+
+  it("are never material, and never somewhere nothing can be opened", () => {
+    expect(channelsForMode(catalogue, "Seton's Clutch").some((channel) => channel.kind !== "community")).toBe(false);
+    expect(channelsForMode(catalogue, "4v4")).toEqual([]);
+    expect(channelsForMode(catalogue, "")).toEqual([]);
   });
 });

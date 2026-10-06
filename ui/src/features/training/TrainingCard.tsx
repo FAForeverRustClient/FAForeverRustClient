@@ -227,6 +227,75 @@ export function CreatorTile({
   );
 }
 
+/**
+ * The last card of a chapter: the channels that hold more of it.
+ *
+ * The library carries the videos somebody picked out of a channel, not the
+ * whole channel, so a chapter ends by pointing at where the rest lives. Drawn
+ * as one more card on the shelf rather than a line under it, so it is read
+ * where the reader is already looking: the frame shows the channels' own
+ * faces, overlapping, the way a platform shows who is in a group. A press
+ * opens them as a grid.
+ */
+export function ChannelsCard({
+  mode,
+  channels,
+  onOpen,
+}: {
+  mode: string;
+  channels: TrainingResource[];
+  onOpen: () => void;
+}) {
+  const { t } = useTranslation();
+  // Four faces say "several" as well as twelve do, and stay legible on the
+  // narrowest tile.
+  const faces = channels.slice(0, 4);
+  return (
+    <button type="button" className="training-card training-channels-card" onClick={onOpen}>
+      <span className="training-art training-channels-art">
+        <span className="training-channels-eyebrow" aria-hidden>
+          {t("training.library.channels.eyebrow")}
+        </span>
+        <span className="training-channels-faces" aria-hidden>
+          {faces.map((channel) => (
+            <ChannelFace key={channel.id} channel={channel} />
+          ))}
+          {channels.length > faces.length && (
+            <span className="training-channels-face is-more">+{channels.length - faces.length}</span>
+          )}
+        </span>
+      </span>
+      <span className="training-card-copy">
+        <strong>{t("training.library.channels.title", { mode })}</strong>
+        <small>{t("training.library.channels.count", { count: channels.length })}</small>
+      </span>
+    </button>
+  );
+}
+
+/** One channel's picture in a circle, or its initial when it has none. */
+function ChannelFace({ channel }: { channel: TrainingResource }) {
+  const [broken, setBroken] = useState("");
+  const picture = channel.imageUrl && channel.imageUrl !== broken ? channel.imageUrl : "";
+  const name = channel.title.replace(/\s+on\s+(YouTube|Twitch)$/i, "");
+  return (
+    <span className="training-channels-face">
+      {picture ? (
+        <img
+          src={picture}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(picture)}
+        />
+      ) : (
+        name.trim().charAt(0).toUpperCase()
+      )}
+    </span>
+  );
+}
+
 /** Where a creator's link goes, named as its owner names it. */
 function platformOf(url: string): string {
   try {
