@@ -550,27 +550,243 @@
     },
     {
       "author": "Heaven",
-      "id": "heaven-guide-playlist",
+      "id": "heaven-faf-tutorial-01",
       "kind": "video",
-      "summary": "An older video series. Parts of it predate the current balance, so read it as background rather than as current practice.",
-      "title": "Heaven's guide playlist",
-      "topics": [
-        "strategy"
+      "related": [
+        "channel-heaven"
       ],
-      "updatedAt": "2026-09-05",
-      "url": "https://www.youtube.com/playlist?list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+      "summary": "Heaven's FAF tutorial 1, from 2018. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 1: Generic build orders",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=_6uE1-xS2uk&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-02",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 2, from 2016. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 2: Generic T1 unit compositions",
+      "topics": [
+        "armyComposition"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=u4F6DmQmp_k&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-03",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 3, from 2018. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 3: Modified hydro rush",
+      "topics": [
+        "buildOrder"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=FjWL8iXg6uM&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-04",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 4, from 2018. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 4: Power-boosted builds",
+      "topics": [
+        "buildOrder",
+        "economy"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=x4qCcnS0TgQ&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-05",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 5, from 2018. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 5: Mass-boosted builds",
+      "topics": [
+        "buildOrder",
+        "economy"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=vzmgmtBqkb8&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-06",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 6, from 2016. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 6: How to eco",
+      "topics": [
+        "economy"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=h-GzOhDQwA8&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-07",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 6a, from 2016. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 6a: How to eco: power",
+      "topics": [
+        "economy"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=P0qtOfPcBfg&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-08",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 6b, from 2016. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 6b: How to eco: reclaim",
+      "topics": [
+        "economy"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=0mi2j2z1dIc&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-09",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 6c, from 2017. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 6c: How to eco: reclaim while expanding",
+      "topics": [
+        "economy",
+        "mapControl"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=D3FHM-XYJFQ&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-10",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 7, from 2016. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 7: Three tips for better eco",
+      "topics": [
+        "economy"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=lvRYxvk6EzE&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-11",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 8, from 2016. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 8: How to micro",
+      "topics": [
+        "micro"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=bgdtF63mkvA&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-12",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 9, from 2016. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 9: How to use transports",
+      "topics": [
+        "micro"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=-GQuFgutQLQ&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-13",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 10, from 2017. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 10: Hotkey guide for competitive play",
+      "topics": [
+        "interface"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=UgfkRF8VZ7M&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-14",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 3, from 2016. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 3: Map control: chokes and rally points",
+      "topics": [
+        "mapControl"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=yXOVsI-I5P8&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
+    },
+    {
+      "author": "Heaven",
+      "id": "heaven-faf-tutorial-15",
+      "kind": "video",
+      "related": [
+        "channel-heaven"
+      ],
+      "summary": "Heaven's FAF tutorial 6, from 2016. Parts of it predate the current balance, so read it as background rather than as current practice.",
+      "title": "FAF Tutorials 6: Land units comparison chart",
+      "topics": [
+        "armyComposition"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=ePFfw0p3Xd8&list=PLxH0oefiZR_VrY6qtvv4iIHfn6i6ipnaS"
     },
     {
       "author": "Sheppy",
       "id": "fa-companion-maps",
-      "kind": "community",
+      "kind": "guide",
       "summary": "A map directory with build orders attached to each map, kept outside FAF.",
       "title": "FA Companion: build orders by map",
       "topics": [
         "buildOrder",
         "mapControl"
       ],
-      "updatedAt": "2026-09-05",
+      "updatedAt": "2026-10-06",
       "url": "https://fa-companion.services.atlantishq.de/maps"
     },
     {
@@ -579,6 +795,7 @@
         "Seton's Clutch"
       ],
       "id": "channel-seraphim-com",
+      "imageUrl": "https://yt3.googleusercontent.com/yqP4LfNBAs673SIO8Hw9AMG6Uy6oRVpAJKcHgDn-55aTxilTbHLwMglMGRC681TvA3gpunpP=s176-c-k-c0x00ffffff-no-rj",
       "kind": "community",
       "maps": [
         "Setons Clutch"
@@ -598,6 +815,7 @@
         "1v1"
       ],
       "id": "channel-bullydozer",
+      "imageUrl": "https://yt3.googleusercontent.com/ytc/AIdro_nKGMRJYYnlUnWtYTYLJzCqOSFyGbMo_rPOLHzh6POdn60=s176-c-k-c0x00ffffff-no-rj",
       "kind": "community",
       "summary": "Ladder 1v1, build orders and games with commentary.",
       "title": "BullydozerFAF on YouTube",
@@ -613,6 +831,7 @@
         "Seton's Clutch"
       ],
       "id": "channel-yudi1260",
+      "imageUrl": "https://yt3.googleusercontent.com/ytc/AIdro_k2R4gOzj0DsreLUb4kJ-3QT_RJonCM46s3u0VdSDzVQ_aqrvfIIZb1V__Snx8UK1XO4A=s176-c-k-c0x00ffffff-no-rj",
       "kind": "community",
       "maps": [
         "Setons Clutch"
@@ -630,6 +849,7 @@
         "Seton's Clutch"
       ],
       "id": "channel-foleybts",
+      "imageUrl": "https://yt3.googleusercontent.com/ytc/AIdro_nf9pWLe51EbSJRSN_GC4yLLftnolZEIcHg-iWqqLX1xP0=s176-c-k-c0x00ffffff-no-rj",
       "kind": "community",
       "maps": [
         "Setons Clutch"
@@ -647,6 +867,7 @@
         "1v1"
       ],
       "id": "channel-jaggedappliance",
+      "imageUrl": "https://yt3.googleusercontent.com/ytc/AIdro_lcl0kacYHfDgut-rbWkArMv_st9kXH3IzKBkWodJtGTg=s176-c-k-c0x00ffffff-no-rj",
       "kind": "community",
       "summary": "Ladder 1v1.",
       "title": "JaggedAppliance on YouTube",
@@ -659,6 +880,7 @@
     {
       "author": "Farms",
       "id": "channel-farmsletje",
+      "imageUrl": "https://yt3.googleusercontent.com/ytc/AIdro_npfrbaKS8lUKLfiRpdecD_wRXTz9rQHJ8L1qR1t9BHIHw=s176-c-k-c0x00ffffff-no-rj",
       "kind": "community",
       "related": [
         "twitch-stellartactician"
@@ -674,6 +896,7 @@
     {
       "author": "Farms",
       "id": "twitch-stellartactician",
+      "imageUrl": "https://static-cdn.jtvnw.net/jtv_user_pictures/37ba142b-0603-4afd-8dc9-6a8ad8aba29f-profile_image-300x300.png",
       "kind": "community",
       "related": [
         "channel-farmsletje"
@@ -685,6 +908,20 @@
       ],
       "updatedAt": "2026-09-05",
       "url": "https://www.twitch.tv/stellartactician"
+    },
+    {
+      "author": "Heaven",
+      "id": "channel-heaven",
+      "imageUrl": "https://yt3.googleusercontent.com/OUWKFl4De2UYr89ktDlgP2B4jsnjznst_yYS2fQYyqjVCcbPOmKhKvMS9LYf_3XR75gcnCqZ=s176-c-k-c0x00ffffff-no-rj",
+      "kind": "community",
+      "summary": "Heaven's channel, home of the FAF Tutorials series.",
+      "title": "Heaven aka. Penemue on YouTube",
+      "topics": [
+        "buildOrder",
+        "economy"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/channel/UCJYYaFbqPqbNkvgJAqrhC2A"
     },
     {
       "author": "Sladow-Noob",
