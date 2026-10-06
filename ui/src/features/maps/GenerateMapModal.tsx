@@ -730,7 +730,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                   <div className="generate-map-grid-2col">
                     <Row label={t("maps.generate.diagnostics")}>
                       <div className="generate-map-checks-group">
-                        <label className="generate-map-check">
+                        <label className="option-check generate-map-check">
                           <input
                             type="checkbox"
                             checked={form.visualize}
@@ -740,7 +740,7 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                             {t("maps.generate.visualize")}
                           </span>
                         </label>
-                        <label className="generate-map-check">
+                        <label className="option-check generate-map-check">
                           <input
                             type="checkbox"
                             checked={form.debug}
