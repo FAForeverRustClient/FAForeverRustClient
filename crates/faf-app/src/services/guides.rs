@@ -230,7 +230,8 @@ async fn load_queue(ctx: &ServiceCtx, out: &EventSink) {
 
 /// Accepting and rejecting are serial in the command policy
 /// (`Key::GuidesVerdict`): two accepts would each read the catalogue, patch
-/// their own copy, and one would be refused by the content hash.
+/// their own copy, and one would be refused by the content hash. Only the
+/// write is serial: each verdict ends its turn before the reloads that follow.
 async fn accept(number: i32, ctx: &ServiceCtx, out: &EventSink) {
     crate::runtime::expect_admitted(crate::runtime::Key::GuidesVerdict);
     // Read back rather than carried on the command: the queue may have been
@@ -260,6 +261,10 @@ async fn accept(number: i32, ctx: &ServiceCtx, out: &EventSink) {
 
     out.emit(GuidesEvent::Accepting { number });
     let answer = ctx.ports.guides.accept(submission).await;
+    // The write is what must not overtake another; the reloads after it are
+    // reads. Holding the verdict order across them made the next verdict wait
+    // for a whole catalogue reload it has nothing to do with.
+    crate::runtime::end_turn();
     report_lost_session(ctx, out);
     match answer {
         Ok(()) => {
@@ -285,6 +290,8 @@ async fn reject(
     crate::runtime::expect_admitted(crate::runtime::Key::GuidesVerdict);
     out.emit(GuidesEvent::Rejecting { number });
     let answer = ctx.ports.guides.reject(number, reason, note).await;
+    // As for an accept: the queue reload after the write is not part of it.
+    crate::runtime::end_turn();
     report_lost_session(ctx, out);
     match answer {
         Ok(()) => {

@@ -20,7 +20,7 @@ use crate::services;
 mod census;
 mod command_policy;
 mod policies;
-pub(crate) use command_policy::{expect_admitted, Key};
+pub(crate) use command_policy::{end_turn, expect_admitted, Key};
 use command_policy::{CommandAdmission, Lane};
 pub use policies::{
     AutoReconnect, LatestRequest, LoadedFromDisk, LobbyOperation, LobbyOperations, RunningGame,
@@ -573,8 +573,7 @@ impl AppLoop {
                     return;
                 };
                 turn.ready().await;
-                command_policy::run_admitted(admission, dispatch(command, &ctx, &sink)).await;
-                drop(turn);
+                command_policy::run_admitted(admission, turn, dispatch(command, &ctx, &sink)).await;
             }
         };
         drive(
@@ -832,8 +831,7 @@ pub(crate) fn run_command<'a>(
             return;
         };
         turn.ready().await;
-        command_policy::run_admitted(admission, dispatch(command, ctx, out)).await;
-        drop(turn);
+        command_policy::run_admitted(admission, turn, dispatch(command, ctx, out)).await;
     })
 }
 

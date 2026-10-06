@@ -238,7 +238,9 @@ export function MarkdownField({
             attachAtCaret(pictures);
           }}
           onDragOver={(event) => {
-            if (onAttach && event.dataTransfer?.types.includes("Files")) event.preventDefault();
+            // "Files" is the drag's type for files from the system, not text.
+            const files = event.dataTransfer?.types.some((type) => type === "Files");
+            if (onAttach && files) event.preventDefault();
           }}
           onDrop={(event) => {
             const pictures = onAttach ? picturesIn(event.dataTransfer?.files) : [];

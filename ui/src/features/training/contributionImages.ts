@@ -172,7 +172,8 @@ function base64Of(file: Blob): Promise<string> {
       const result = typeof reader.result === "string" ? reader.result : "";
       resolve(result.slice(result.indexOf(",") + 1));
     };
-    reader.onerror = () => reject(reader.error ?? new Error("the picture could not be read"));
+    // An identifier rather than a sentence: it is never shown, only logged.
+    reader.onerror = () => reject(reader.error ?? new Error("picture-unreadable"));
     reader.readAsDataURL(file);
   });
 }
