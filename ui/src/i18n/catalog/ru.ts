@@ -2846,6 +2846,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "playerCard.results.noRating": "Нет данных о рейтинге",
   "playerCard.results.empty": "Нет игр с известным результатом.",
   "playerCard.results.note": "Показаны только игры с известной победой, поражением или ничьей. Пропущено: {hidden}.",
+  "playerCard.results.shownSummary": { one: "Из {count} показанной игры:", few: "Из {count} показанных игр:", many: "Из {count} показанных игр:", other: "Из {count} показанных игр:" },
   "playerCard.results.showMore": "Показать ещё ({shown}/{total})",
   "playerCard.maps.map": "Карта",
   "playerCard.maps.games": "Игр",

@@ -2520,6 +2520,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "playerCard.results.noRating": "Pas de données de classement",
   "playerCard.results.empty": "Aucune partie au résultat connu.",
   "playerCard.results.note": "Seules les parties avec une victoire, une défaite ou un match nul connus sont listées. Omises : {hidden}.",
+  "playerCard.results.shownSummary": { one: "Sur la {count} partie affichée :", other: "Sur les {count} parties affichées :" },
   "playerCard.results.showMore": "Afficher plus ({shown}/{total})",
   "playerCard.maps.map": "Carte",
   "playerCard.maps.games": "Parties",

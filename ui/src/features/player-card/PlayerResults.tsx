@@ -8,7 +8,7 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { ipc } from "../../ipc/client";
-import { formatNumber } from "../../i18n";
+import { formatDecimal, formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { formatDateTime } from "../../shared/format/dates";
 import { closePlayerCard } from "../../shared/playerCardActions";
@@ -39,6 +39,27 @@ function ratingChange(hundredths: number): string {
   return hundredths > 0 ? `+${value}` : hundredths < 0 ? `-${value}` : value;
 }
 
+/** Wins, losses and draws among `games`. */
+function tally(games: readonly { outcome: string }[]) {
+  const record = { wins: 0, losses: 0, draws: 0 };
+  for (const game of games) {
+    if (game.outcome === "win") record.wins += 1;
+    else if (game.outcome === "loss") record.losses += 1;
+    else if (game.outcome === "draw") record.draws += 1;
+  }
+  return record;
+}
+
+/**
+ * Percent of the decided games won, draws left out: the Maps tab's rule, so
+ * the two tabs give the same figure for the same games. Unrounded for the
+ * same reason as there.
+ */
+function winRate(wins: number, losses: number): number | null {
+  const decided = wins + losses;
+  return decided > 0 ? (wins / decided) * 100 : null;
+}
+
 export function PlayerResults({ playerId }: { playerId: number }) {
   const { t } = useTranslation();
   const { stats, status, error } = usePlayerHistory(playerId);
@@ -56,6 +77,9 @@ export function PlayerResults({ playerId }: { playerId: number }) {
   }
 
   const hidden = stats.totalGames - games.length;
+  const rows = games.slice(0, shown);
+  const record = tally(rows);
+  const rate = winRate(record.wins, record.losses);
 
   return (
     <div className="player-results-view">
@@ -65,6 +89,21 @@ export function PlayerResults({ playerId }: { playerId: number }) {
             accident. */}
         <p className="player-maps-note muted">
           {t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}
+        </p>
+        {/* The rows on screen, not the whole history: the Maps tab already
+            gives the record over everything, and this follows "Show more". */}
+        <p className="player-results-summary" aria-live="polite">
+          <span className="muted">{t("playerCard.results.shownSummary", { count: rows.length })}</span>{" "}
+          {t("playerCard.maps.recordSplit", {
+            wins: formatNumber(record.wins),
+            losses: formatNumber(record.losses),
+            draws: formatNumber(record.draws),
+          })}
+          {rate !== null && (
+            <>
+              <span className="muted"> · {t("playerCard.maps.winRate")}</span> <strong>{formatDecimal(rate)}%</strong>
+            </>
+          )}
         </p>
       </div>
 
@@ -80,7 +119,7 @@ export function PlayerResults({ playerId }: { playerId: number }) {
           </tr>
         </thead>
         <tbody>
-          {games.slice(0, shown).map((game) => {
+          {rows.map((game) => {
             const map = game.generated ? t("playerCard.maps.generated") : game.map;
             const outcomeKey = OUTCOME_KEYS[game.outcome as keyof typeof OUTCOME_KEYS];
             return (

@@ -1556,6 +1556,36 @@
   margin: var(--space-3) 0 0;
 }
 
+/* No games to list: the heading, the state and the profile link on one line.
+   The state takes the room between them and gives way first. */
+.matchmaker-recent.is-compact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) 20px;
+}
+
+.matchmaker-recent.is-compact h2 {
+  flex: none;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.matchmaker-recent.is-compact .matchmaker-recent-state {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matchmaker-recent.is-compact .btn-ghost {
+  flex: none;
+}
+
 .matchmaker-recent-table-wrap {
   min-width: 0;
   margin-top: var(--space-3);

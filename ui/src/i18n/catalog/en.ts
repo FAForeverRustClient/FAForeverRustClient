@@ -1873,6 +1873,7 @@ export const en = {
   "playerCard.results.noRating": "No rating data",
   "playerCard.results.empty": "No games with a known result.",
   "playerCard.results.note": "Only games with a known win, loss or draw are listed. Left out: {hidden}.",
+  "playerCard.results.shownSummary": { one: "Of the {count} game shown:", other: "Of the {count} games shown:" },
   "playerCard.results.showMore": "Show more ({shown}/{total})",
   "playerCard.maps.map": "Map",
   "playerCard.maps.games": "Games",

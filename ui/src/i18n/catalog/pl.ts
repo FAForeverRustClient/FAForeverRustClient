@@ -2550,6 +2550,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "playerCard.results.noRating": "Brak danych rankingu",
   "playerCard.results.empty": "Brak gier ze znanym wynikiem.",
   "playerCard.results.note": "Wyświetlane są tylko gry ze znaną wygraną, przegraną lub remisem. Pominięte: {hidden}.",
+  "playerCard.results.shownSummary": { one: "Z {count} wyświetlonej gry:", few: "Z {count} wyświetlonych gier:", many: "Z {count} wyświetlonych gier:", other: "Z {count} wyświetlonych gier:" },
   "playerCard.results.showMore": "Pokaż więcej ({shown}/{total})",
   "playerCard.maps.map": "Mapa",
   "playerCard.maps.games": "Gry",
