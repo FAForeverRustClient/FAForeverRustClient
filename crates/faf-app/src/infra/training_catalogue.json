@@ -332,6 +332,26 @@
       "gameModes": [
         "Seton's Clutch"
       ],
+      "id": "seraphim-setons-south-rock",
+      "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
+      "kind": "buildOrder",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "summary": "The opening from the southern rock position on Seton's Clutch.",
+      "title": "Seton's south rock",
+      "topics": [
+        "buildOrder",
+        "teamplay"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=AT1YVPlQbgc&list=PL6dXnF6FpYLKdITm7CUplyfzrgwTkSw-p"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "Seton's Clutch"
+      ],
       "id": "seraphim-setons-front",
       "imageUrl": "https://content.faforever.com/maps/previews/large/setons_clutch_-_faf_version.v0004.png",
       "kind": "buildOrder",
@@ -1820,6 +1840,26 @@
       ],
       "updatedAt": "2026-09-06",
       "url": "https://www.youtube.com/watch?v=AOTH7_NSPF8"
+    },
+    {
+      "author": "Seraphim-Noob",
+      "gameModes": [
+        "Seton's Clutch"
+      ],
+      "id": "seraphim-review-front-800",
+      "kind": "replayAnalysis",
+      "maps": [
+        "Setons Clutch"
+      ],
+      "ratingMax": 1000,
+      "summary": "How to play the front position, reviewed on a game at about 800.",
+      "title": "Seton's front: a review of PatientOwl's game",
+      "topics": [
+        "teamplay",
+        "strategy"
+      ],
+      "updatedAt": "2026-10-06",
+      "url": "https://www.youtube.com/watch?v=buslaeAV2Qk"
     },
     {
       "author": "Seraphim-Noob",
