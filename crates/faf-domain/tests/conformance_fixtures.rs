@@ -21,6 +21,11 @@ use faf_domain::{reduce, AppEvent, AppState};
 use serde::Serialize;
 use serde_json::Value;
 
+// The ordering fixture: these cases' events in other orders and from other
+// states. A test crate root resolves `mod` next to itself, hence the path.
+#[path = "conformance_fixtures/orderings.rs"]
+mod orderings;
+
 /// One scenario: a sequence of events applied to the default state, with the
 /// state recorded after each.
 ///
@@ -3471,7 +3476,7 @@ fn live_stream(id: &str) -> LiveStream {
 }
 
 fn cases() -> Vec<Case> {
-    vec![
+    let mut cases = vec![
         // ── streams: FAF's own channels going live ──────────────────────
         case(
             "a channel goes live, is announced once, and goes off air",
@@ -5983,6 +5988,52 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "a late replay analysis never replaces the newer request's answer",
+            vec![
+                // Two panels opened in turn, both reads running at once.
+                ReplayEvent::AnalysisLoading { uid: 21 }.into(),
+                ReplayEvent::AnalysisLoading { uid: 22 }.into(),
+                // The older answer landing first does not take the slot.
+                ReplayEvent::AnalysisLoaded {
+                    analysis: faf_domain::state::ReplayAnalysis {
+                        uid: 21,
+                        ticks: 1_000,
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                ReplayEvent::AnalysisLoaded {
+                    analysis: faf_domain::state::ReplayAnalysis {
+                        uid: 22,
+                        ticks: 2_000,
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                // Nor does it landing last, and its failure is not 22's.
+                ReplayEvent::AnalysisLoaded {
+                    analysis: faf_domain::state::ReplayAnalysis {
+                        uid: 21,
+                        ticks: 1_000,
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                ReplayEvent::AnalysisFailed {
+                    uid: 21,
+                    reason: "late".into(),
+                }
+                .into(),
+                // The newest request's own failure carries its uid.
+                ReplayEvent::AnalysisLoading { uid: 23 }.into(),
+                ReplayEvent::AnalysisFailed {
+                    uid: 23,
+                    reason: "the replay body is truncated".into(),
+                }
+                .into(),
+            ],
+        ),
         // ── leaderboard ──────────────────────────────────────────────────
         case(
             "the other boards land only for the page that is on screen",
@@ -6694,7 +6745,1470 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+    ];
+    cases.extend(transition_cases());
+    cases
+}
+
+/// Cases that reach a variant from a state where its arm has something to
+/// decide: a load that fails after one that succeeded, an answer for a request
+/// that has since been replaced, a write whose field another arm reads.
+///
+/// These replaced entries in `UNCOVERED_EVENT_VARIANTS`. A single event from
+/// the default state would have proved only that a field was assigned, which
+/// is the one thing a twin rarely gets wrong.
+fn transition_cases() -> Vec<Case> {
+    vec![
+        // ── lobby ────────────────────────────────────────────────────────
+        case(
+            "a join the server refused is forgotten on reconnect, a launch is not",
+            vec![
+                LobbyEvent::Connected.into(),
+                LobbyEvent::Joining {
+                    id: 7,
+                    prepared: false,
+                }
+                .into(),
+                LobbyEvent::JoinFailed {
+                    id: 7,
+                    reason: "wrong password".into(),
+                }
+                .into(),
+                // A cancel has nothing to call off once the server has said no.
+                LobbyEvent::JoinCancelled.into(),
+                LobbyEvent::Connecting.into(),
+                LobbyEvent::Connected.into(),
+                LobbyEvent::Joining {
+                    id: 8,
+                    prepared: true,
+                }
+                .into(),
+                LobbyEvent::Launching {
+                    launch: game_launch(8),
+                }
+                .into(),
+                // The launch order outlives the socket, like a running game.
+                LobbyEvent::Connecting.into(),
+                // And a cancel cannot take it back: it is past preparation.
+                LobbyEvent::JoinCancelled.into(),
+                LobbyEvent::Connected.into(),
+                LobbyEvent::InGame.into(),
+                LobbyEvent::GameTerminated.into(),
+            ],
+        ),
+        case(
+            "the open and live lists take a snapshot, then changes, and survive a reconnect",
+            vec![
+                LobbyEvent::Connected.into(),
+                LobbyEvent::GamesUpdated {
+                    games: vec![lobby_game(1, "Setons 4v4", 6), lobby_game(3, "Gap 1v1", 1)],
+                }
+                .into(),
+                // An insert lands in id order, an update replaces in place, and
+                // a removal of a lobby this client never saw is not an error.
+                LobbyEvent::GamesChanged {
+                    upserted: vec![lobby_game(2, "Dual Gap", 2), lobby_game(3, "Gap 1v1", 2)],
+                    removed: vec![1, 99],
+                }
+                .into(),
+                LobbyEvent::LiveGamesUpdated {
+                    games: vec![lobby_game(5, "Running", 8)],
+                }
+                .into(),
+                LobbyEvent::LiveGamesChanged {
+                    upserted: vec![lobby_game(4, "Just launched", 4)],
+                    removed: vec![5],
+                }
+                .into(),
+                // A blip keeps both lists for the replacement socket to resend.
+                LobbyEvent::Connecting.into(),
+                // A snapshot replaces whatever the changes built.
+                LobbyEvent::GamesUpdated {
+                    games: vec![lobby_game(6, "Fresh", 1)],
+                }
+                .into(),
+                LobbyEvent::Disconnected.into(),
+            ],
+        ),
+        case(
+            "a party and its vetoes outlive a reconnect but not a disconnect",
+            vec![
+                LobbyEvent::Connected.into(),
+                LobbyEvent::PartyUpdated {
+                    party: PartyState {
+                        owner_id: Some(7),
+                        members: vec![
+                            PartyMember {
+                                player_id: 7,
+                                name: "Ada".into(),
+                                factions: vec!["uef".into(), "cybran".into()],
+                            },
+                            PartyMember {
+                                player_id: 9,
+                                name: "Bob".into(),
+                                factions: vec!["aeon".into()],
+                            },
+                        ],
+                    },
+                }
+                .into(),
+                LobbyEvent::VetoesUpdated {
+                    vetoes: vec![PlayerVeto {
+                        matchmaker_queue_map_pool_id: 4,
+                        map_pool_map_version_id: 91,
+                        veto_tokens_applied: 2,
+                    }],
+                }
+                .into(),
+                LobbyEvent::MatchmakingUpdated {
+                    state: MatchmakingState::Searching {
+                        queue_names: vec!["tmm2v2".into()],
+                    },
+                }
+                .into(),
+                // The search ends with the socket; the party is the server's
+                // to resend, so it stays for the blip.
+                LobbyEvent::Connecting.into(),
+                LobbyEvent::Connected.into(),
+                // A party of one is still a snapshot: replaced, not merged.
+                LobbyEvent::PartyUpdated {
+                    party: PartyState {
+                        owner_id: Some(7),
+                        members: vec![PartyMember {
+                            player_id: 7,
+                            name: "Ada".into(),
+                            factions: vec!["uef".into()],
+                        }],
+                    },
+                }
+                .into(),
+                LobbyEvent::VetoesUpdated { vetoes: vec![] }.into(),
+                LobbyEvent::VetoesUpdated {
+                    vetoes: vec![PlayerVeto {
+                        matchmaker_queue_map_pool_id: 4,
+                        map_pool_map_version_id: 92,
+                        veto_tokens_applied: 1,
+                    }],
+                }
+                .into(),
+                LobbyEvent::Disconnected.into(),
+            ],
+        ),
+        case(
+            "an avatar list that failed and a refused selection both clear on the next load",
+            vec![
+                LobbyEvent::AvatarsLoading.into(),
+                LobbyEvent::AvatarsLoadFailed {
+                    reason: "not authenticated".into(),
+                }
+                .into(),
+                LobbyEvent::AvatarSelectionStarted.into(),
+                LobbyEvent::AvatarSelectionFailed {
+                    reason: "avatar is not yours".into(),
+                }
+                .into(),
+                // A fresh load resets the selection status too: the refusal
+                // was about a list that has just been replaced.
+                LobbyEvent::AvatarsLoading.into(),
+                LobbyEvent::AvatarsLoaded {
+                    avatars: vec![AvailableAvatar {
+                        url: "https://content.test/cup.png".into(),
+                        tooltip: "Cup winner".into(),
+                    }],
+                }
+                .into(),
+                LobbyEvent::AvatarSelectionStarted.into(),
+                LobbyEvent::AvatarSelectionFailed {
+                    reason: "timed out".into(),
+                }
+                .into(),
+                // A failed reload keeps the list it already has.
+                LobbyEvent::AvatarsLoadFailed {
+                    reason: "offline".into(),
+                }
+                .into(),
+                LobbyEvent::Disconnected.into(),
+            ],
+        ),
+        // ── leaderboard ──────────────────────────────────────────────────
+        case(
+            "the board catalogue fails, then loads over the failure",
+            vec![
+                LeaderboardEvent::CatalogLoading.into(),
+                LeaderboardEvent::CatalogLoadFailed {
+                    reason: "503".into(),
+                }
+                .into(),
+                LeaderboardEvent::CatalogLoading.into(),
+                LeaderboardEvent::CatalogLoaded {
+                    rating_leaderboards: vec![RatingLeaderboard {
+                        id: 1,
+                        technical_name: "global".into(),
+                        description: String::new(),
+                    }],
+                    leagues: vec![League {
+                        id: 3,
+                        technical_name: "1v1_league".into(),
+                        description: String::new(),
+                    }],
+                }
+                .into(),
+                // A failed refresh keeps the boards it already has.
+                LeaderboardEvent::CatalogLoadFailed {
+                    reason: "offline".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a page that fails to load keeps the last page and takes the new query",
+            vec![
+                LeaderboardEvent::RatingsLoading {
+                    query: RatingQuery::default(),
+                }
+                .into(),
+                LeaderboardEvent::RatingsLoaded {
+                    query: RatingQuery::default(),
+                    page: RatingPage {
+                        entries: vec![leaderboard_entry(11, 1), leaderboard_entry(12, 2)],
+                        page: 1,
+                        page_size: 100,
+                        total_pages: 40,
+                        total_results: Some(3_987),
+                    },
+                }
+                .into(),
+                LeaderboardEvent::CrossRatingsLoaded {
+                    query: RatingQuery::default(),
+                    ratings: vec![PlayerRatings {
+                        player_id: 11,
+                        ratings: vec![BoardRating {
+                            leaderboard: "ladder_1v1".into(),
+                            rating: 1_900,
+                            games_played: 400,
+                        }],
+                    }],
+                }
+                .into(),
+                // Paging on clears the other boards; the failure that follows
+                // leaves the first page drawn under the second page's query,
+                // which is what the pager reads to offer a retry.
+                LeaderboardEvent::RatingsLoading {
+                    query: RatingQuery {
+                        page: 2,
+                        ..RatingQuery::default()
+                    },
+                }
+                .into(),
+                LeaderboardEvent::RatingsLoadFailed {
+                    reason: "timed out".into(),
+                }
+                .into(),
+                LeaderboardEvent::RatingsLoaded {
+                    query: RatingQuery {
+                        page: 2,
+                        ..RatingQuery::default()
+                    },
+                    page: RatingPage {
+                        entries: vec![leaderboard_entry(13, 101)],
+                        page: 2,
+                        page_size: 100,
+                        total_pages: 40,
+                        total_results: Some(3_987),
+                    },
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a league's seasons load, one season is opened, and a late answer moves the selection",
+            vec![
+                LeaderboardEvent::ModeChanged {
+                    mode: LeaderboardMode::Leagues,
+                }
+                .into(),
+                LeaderboardEvent::SeasonsLoading { league_id: 3 }.into(),
+                LeaderboardEvent::SeasonsLoaded {
+                    league_id: 3,
+                    seasons: vec![league_season(31, 3, 11), league_season(32, 3, 12)],
+                }
+                .into(),
+                LeaderboardEvent::SeasonLoading { season_id: 32 }.into(),
+                LeaderboardEvent::SeasonLoaded {
+                    season_id: 32,
+                    leaderboard: SeasonLeaderboard {
+                        entries: vec![leaderboard_entry(11, 1)],
+                        tiers: vec![LeaderboardTier {
+                            division: "gold".into(),
+                            subdivision: "I".into(),
+                            division_order: 31,
+                            highest_score: 10,
+                            image_url: None,
+                            medium_image_url: None,
+                        }],
+                    },
+                }
+                .into(),
+                // The next season is asked for and fails: the last one's table
+                // stays rather than an empty page.
+                LeaderboardEvent::SeasonLoading { season_id: 31 }.into(),
+                LeaderboardEvent::SeasonLoadFailed {
+                    reason: "503".into(),
+                }
+                .into(),
+                // An answer is not checked against the request: the season it
+                // names becomes the selection. Pinned so both twins agree.
+                LeaderboardEvent::SeasonLoading { season_id: 31 }.into(),
+                LeaderboardEvent::SeasonLoaded {
+                    season_id: 32,
+                    leaderboard: SeasonLeaderboard {
+                        entries: vec![],
+                        tiers: vec![],
+                    },
+                }
+                .into(),
+                // Changing league drops all of it.
+                LeaderboardEvent::SeasonsLoading { league_id: 4 }.into(),
+            ],
+        ),
+        // ── maps ─────────────────────────────────────────────────────────
+        case(
+            "a map install fails, then lands and forgets the preview markers",
+            vec![
+                MapsEvent::InstalledLoading.into(),
+                MapsEvent::InstalledLoaded {
+                    maps: vec![installed_map("scmp_009")],
+                }
+                .into(),
+                MapsEvent::LocalPreviewsLoaded {
+                    previews: [
+                        (
+                            "scmp_009".to_string(),
+                            LocalMapPreview {
+                                small: Some("data:image/png;base64,c21hbGw=".into()),
+                                large: None,
+                            },
+                        ),
+                        // "Looked, found nothing", for a folder that is about
+                        // to get art.
+                        ("setons_clutch".to_string(), LocalMapPreview::default()),
+                    ]
+                    .into_iter()
+                    .collect(),
+                }
+                .into(),
+                MapsEvent::Installing {
+                    folder_name: "setons_clutch.v0003".into(),
+                }
+                .into(),
+                MapsEvent::InstallFailed {
+                    reason: "the download was cut off".into(),
+                }
+                .into(),
+                MapsEvent::Installing {
+                    folder_name: "setons_clutch.v0003".into(),
+                }
+                .into(),
+                MapsEvent::Installed {
+                    installed: vec![installed_map("scmp_009"), installed_map("setons_clutch.v0003")],
+                }
+                .into(),
+                MapsEvent::LocalPreviewsLoaded {
+                    previews: [(
+                        "setons_clutch".to_string(),
+                        LocalMapPreview {
+                            small: Some("data:image/png;base64,c2V0b25z".into()),
+                            large: None,
+                        },
+                    )]
+                    .into_iter()
+                    .collect(),
+                }
+                .into(),
+                MapsEvent::UninstallFailed {
+                    reason: "the folder is in use".into(),
+                }
+                .into(),
+                MapsEvent::Uninstalled {
+                    installed: vec![installed_map("setons_clutch.v0003")],
+                }
+                .into(),
+                // A failed rescan keeps the folder list it has.
+                MapsEvent::InstalledLoading.into(),
+                MapsEvent::InstalledLoadFailed {
+                    reason: "the maps folder is gone".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "matchmaker pools accumulate per queue and survive a failed fetch",
+            vec![
+                MapsEvent::MatchmakerPoolsLoading.into(),
+                MapsEvent::MatchmakerPoolsLoaded {
+                    queue_name: "ladder1v1".into(),
+                    pools: vec![matchmaker_pool(1, "Ladder 0-1300")],
+                }
+                .into(),
+                MapsEvent::MatchmakerPoolsLoading.into(),
+                MapsEvent::MatchmakerPoolsLoaded {
+                    queue_name: "tmm2v2".into(),
+                    pools: vec![matchmaker_pool(2, "2v2 all ratings")],
+                }
+                .into(),
+                MapsEvent::MatchmakerPoolsLoading.into(),
+                MapsEvent::MatchmakerPoolsLoadFailed {
+                    reason: "503".into(),
+                }
+                .into(),
+                // A queue's pools are replaced whole on the next answer.
+                MapsEvent::MatchmakerPoolsLoaded {
+                    queue_name: "ladder1v1".into(),
+                    pools: vec![],
+                }
+                .into(),
+            ],
+        ),
+        // ── mods ─────────────────────────────────────────────────────────
+        case(
+            "the mod catalogue loads, and a failed reload keeps it beside the browsed page",
+            vec![
+                ModsEvent::VaultLoading.into(),
+                ModsEvent::VaultLoaded {
+                    mods: vec![vault_mod(1, "AAA"), vault_mod(2, "BBB")],
+                }
+                .into(),
+                ModsEvent::VaultSearched {
+                    mods: vec![vault_mod(2, "BBB")],
+                    query: faf_domain::protocol::vault_query::ModVaultQuery::default(),
+                    total_pages: Some(1),
+                    total_records: Some(1),
+                }
+                .into(),
+                ModsEvent::VaultLoading.into(),
+                ModsEvent::VaultLoadFailed {
+                    reason: "503".into(),
+                }
+                .into(),
+                ModsEvent::VaultLoaded {
+                    mods: vec![vault_mod(1, "AAA")],
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a mod is installed after a failure, toggled after a failure, and removed",
+            vec![
+                ModsEvent::InstalledLoading.into(),
+                ModsEvent::InstalledLoaded {
+                    mods: vec![installed_mod("AAA", true)],
+                }
+                .into(),
+                ModsEvent::Installing { uid: "BBB".into() }.into(),
+                ModsEvent::InstallFailed {
+                    reason: "the archive is corrupt".into(),
+                }
+                .into(),
+                ModsEvent::Installing { uid: "BBB".into() }.into(),
+                ModsEvent::Installed {
+                    installed: vec![installed_mod("AAA", true), installed_mod("BBB", false)],
+                }
+                .into(),
+                // Toggling has its own status: the install outcome stays.
+                ModsEvent::Toggling { uid: "AAA".into() }.into(),
+                ModsEvent::ToggleFailed {
+                    reason: "game.prefs is read-only".into(),
+                }
+                .into(),
+                ModsEvent::Toggling { uid: "AAA".into() }.into(),
+                ModsEvent::Toggled {
+                    installed: vec![installed_mod("AAA", false), installed_mod("BBB", false)],
+                }
+                .into(),
+                ModsEvent::UninstallFailed {
+                    reason: "the folder is in use".into(),
+                }
+                .into(),
+                ModsEvent::Uninstalled {
+                    installed: vec![installed_mod("BBB", false)],
+                }
+                .into(),
+            ],
+        ),
+        // ── replays ──────────────────────────────────────────────────────
+        case(
+            "the local library loads, takes a download at the top, and loses a deleted file",
+            vec![
+                ReplayEvent::LocalLoading.into(),
+                ReplayEvent::LocalLoaded {
+                    replays: vec![local_replay(30), local_replay(20)],
+                }
+                .into(),
+                // The same file again moves to the front rather than doubling.
+                ReplayEvent::VaultDownloadStarted { uid: 20 }.into(),
+                ReplayEvent::VaultDownloaded {
+                    uid: 20,
+                    replay: local_replay(20),
+                }
+                .into(),
+                ReplayEvent::LocalDeleted {
+                    path: local_replay(30).path,
+                }
+                .into(),
+                ReplayEvent::LocalLoading.into(),
+                ReplayEvent::LocalLoadFailed {
+                    reason: "the replay folder is unreadable".into(),
+                }
+                .into(),
+                // A delete that lands after a failed rescan still reports the
+                // list it edited as current.
+                ReplayEvent::LocalDeleted {
+                    path: local_replay(20).path,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "replay details answer out of order and keep the newest request loading",
+            vec![
+                ReplayEvent::DetailsLoading { uid: 11 }.into(),
+                ReplayEvent::DetailsLoading { uid: 12 }.into(),
+                // The earlier answer is stored, but 12 is still the one asked.
+                ReplayEvent::DetailsLoaded {
+                    uid: 11,
+                    details: ReplayDetails {
+                        sim_seconds: 1_200,
+                        game_version: Some(3_810),
+                        ..ReplayDetails::default()
+                    },
+                }
+                .into(),
+                ReplayEvent::DetailsFailed {
+                    uid: 12,
+                    reason: "the replay body is truncated".into(),
+                }
+                .into(),
+                // A failure for something no longer asked about keeps the
+                // newer request's spinner, and is not shown as its failure.
+                ReplayEvent::DetailsLoading { uid: 13 }.into(),
+                ReplayEvent::DetailsFailed {
+                    uid: 12,
+                    reason: "late".into(),
+                }
+                .into(),
+                ReplayEvent::DetailsLoaded {
+                    uid: 13,
+                    details: ReplayDetails::default(),
+                }
+                .into(),
+                // 14 fails; 11 answering again afterwards keeps 14's failure.
+                ReplayEvent::DetailsLoading { uid: 14 }.into(),
+                ReplayEvent::DetailsFailed {
+                    uid: 14,
+                    reason: "not uploaded yet".into(),
+                }
+                .into(),
+                ReplayEvent::DetailsLoaded {
+                    uid: 11,
+                    details: ReplayDetails::default(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a failed vault search keeps the page and query it last showed",
+            vec![
+                ReplayEvent::FeaturedModsLoaded {
+                    mods: vec!["faf".into(), "coop".into()],
+                }
+                .into(),
+                ReplayEvent::VaultLoading.into(),
+                ReplayEvent::VaultLoaded {
+                    replays: vec![vault_replay(70)],
+                    query: Box::new(ReplayQuery {
+                        page: 3,
+                        ..Default::default()
+                    }),
+                    has_more: true,
+                    total_pages: Some(5),
+                    total_records: Some(240),
+                }
+                .into(),
+                ReplayEvent::VaultLoading.into(),
+                ReplayEvent::VaultLoadFailed {
+                    reason: "the filter was rejected".into(),
+                }
+                .into(),
+                ReplayEvent::FeaturedModsLoaded {
+                    mods: vec!["faf".into()],
+                }
+                .into(),
+            ],
+        ),
+        // ── player card ──────────────────────────────────────────────────
+        case(
+            "rating history pages merge by time, and another player starts from nothing",
+            vec![
+                PlayerCardEvent::Loading {
+                    login: "Ada".into(),
+                }
+                .into(),
+                PlayerCardEvent::HistoryLoading {
+                    query: history_query(7),
+                    append: false,
+                }
+                .into(),
+                // Two points at one instant inside one page: the first stands.
+                PlayerCardEvent::HistoryLoaded {
+                    query: history_query(7),
+                    page: RatingHistoryPage {
+                        points: vec![
+                            history_point("2026-01-02T00:00:00Z", 1_500.0),
+                            history_point("2026-01-01T00:00:00Z", 1_450.0),
+                            history_point("2026-01-02T00:00:00Z", 1_999.0),
+                        ],
+                        maximum: Some(history_point("2025-06-01T00:00:00Z", 1_800.0)),
+                        page: 1,
+                        total_pages: 2,
+                    },
+                    append: false,
+                }
+                .into(),
+                PlayerCardEvent::HistoryLoading {
+                    query: history_query(7),
+                    append: true,
+                }
+                .into(),
+                // An appended page overlapping the first: the point already
+                // held is the one kept, and a page with no maximum keeps the
+                // known one. A zero page count is read as one.
+                PlayerCardEvent::HistoryLoaded {
+                    query: history_query(7),
+                    page: RatingHistoryPage {
+                        points: vec![
+                            history_point("2026-01-03T00:00:00Z", 1_520.0),
+                            history_point("2026-01-02T00:00:00Z", 1_111.0),
+                        ],
+                        maximum: None,
+                        page: 2,
+                        total_pages: 0,
+                    },
+                    append: true,
+                }
+                .into(),
+                PlayerCardEvent::HistoryLoading {
+                    query: history_query(7),
+                    append: true,
+                }
+                .into(),
+                PlayerCardEvent::HistoryLoadFailed {
+                    reason: "timed out".into(),
+                }
+                .into(),
+                // Another player: the points and the peak both go.
+                PlayerCardEvent::Loading {
+                    login: "Bob".into(),
+                }
+                .into(),
+                PlayerCardEvent::HistoryLoading {
+                    query: history_query(9),
+                    append: false,
+                }
+                .into(),
+            ],
+        ),
+        // ── reporting ────────────────────────────────────────────────────
+        case(
+            "a refused report can be retried, and the history survives until the form closes",
+            vec![
+                ReportingEvent::Opened {
+                    player_id: 7,
+                    login: "Bob".into(),
+                }
+                .into(),
+                ReportingEvent::Submitting.into(),
+                ReportingEvent::Failed {
+                    reason: "the game id does not exist".into(),
+                }
+                .into(),
+                ReportingEvent::HistoryLoading.into(),
+                ReportingEvent::HistoryLoaded {
+                    reports: vec![ModerationReportSummary {
+                        id: 8,
+                        create_time: "2026-08-10T18:30:00Z".into(),
+                        offenders: vec!["Bob".into()],
+                        game_id: None,
+                        description: "Abusive chat".into(),
+                        moderator: String::new(),
+                        moderator_notice: String::new(),
+                        status: "OPEN".into(),
+                    }],
+                }
+                .into(),
+                // Reopening for someone else clears the failure, not the list.
+                ReportingEvent::Opened {
+                    player_id: 9,
+                    login: "Cid".into(),
+                }
+                .into(),
+                ReportingEvent::HistoryLoading.into(),
+                ReportingEvent::HistoryFailed {
+                    reason: "offline".into(),
+                }
+                .into(),
+                ReportingEvent::Closed.into(),
+            ],
+        ),
+        // ── reviews ──────────────────────────────────────────────────────
+        case(
+            "reviews for a subject left behind are dropped, and a failed save keeps the list",
+            vec![
+                ReviewsEvent::Opened {
+                    target: review_target(42, "Seton's Clutch"),
+                }
+                .into(),
+                ReviewsEvent::Loading.into(),
+                // The same map reopened under another name from another view
+                // is another request: the first answer no longer matches it.
+                ReviewsEvent::Opened {
+                    target: review_target(42, "Setons Clutch"),
+                }
+                .into(),
+                ReviewsEvent::Loading.into(),
+                ReviewsEvent::Loaded {
+                    target: review_target(42, "Seton's Clutch"),
+                    reviews: vec![review(1, 5, "Bob")],
+                }
+                .into(),
+                ReviewsEvent::LoadFailed {
+                    reason: "503".into(),
+                }
+                .into(),
+                ReviewsEvent::Loading.into(),
+                ReviewsEvent::Loaded {
+                    target: review_target(42, "Setons Clutch"),
+                    reviews: vec![review(1, 5, "Bob"), review(2, 2, "Cid")],
+                }
+                .into(),
+                ReviewsEvent::Saving.into(),
+                ReviewsEvent::SaveFailed {
+                    reason: "you have not played this map".into(),
+                }
+                .into(),
+                ReviewsEvent::Closed.into(),
+                // An answer that lands after the panel closed has nowhere to go.
+                ReviewsEvent::Loaded {
+                    target: review_target(42, "Setons Clutch"),
+                    reviews: vec![review(3, 4, "Dan")],
+                }
+                .into(),
+            ],
+        ),
+        // ── notifications / social ──────────────────────────────────────
+        case(
+            "a notification is read, re-raised unread at the top, and everything is cleared",
+            vec![
+                NotificationEvent::Added {
+                    notification: notification("n1", NotificationKind::Mention),
+                }
+                .into(),
+                NotificationEvent::Added {
+                    notification: notification("n2", NotificationKind::FriendOnline),
+                }
+                .into(),
+                NotificationEvent::Read { id: "n1".into() }.into(),
+                // Unknown ids change nothing.
+                NotificationEvent::Read { id: "n9".into() }.into(),
+                // The same id again replaces the read copy rather than adding
+                // a second one.
+                NotificationEvent::Added {
+                    notification: notification("n1", NotificationKind::Mention),
+                }
+                .into(),
+                NotificationEvent::Read { id: "n2".into() }.into(),
+                NotificationEvent::Cleared.into(),
+            ],
+        ),
+        case(
+            "relations are set case-insensitively, offline players go by any spelling, and a disconnect clears both",
+            vec![
+                SocialEvent::RelationsUpdated {
+                    friends: vec!["Bob".into(), "Ada".into()],
+                    foes: vec!["Cid".into()],
+                }
+                .into(),
+                SocialEvent::PlayersSeen {
+                    players: vec![
+                        PlayerProfile {
+                            id: 2,
+                            login: "Bob".into(),
+                            ..Default::default()
+                        },
+                        PlayerProfile {
+                            id: 1,
+                            login: "Ada".into(),
+                            ..Default::default()
+                        },
+                    ],
+                }
+                .into(),
+                // Befriending a foe takes them off the foe list, whatever the
+                // capitalisation the menu used.
+                SocialEvent::RelationSet {
+                    login: "cid".into(),
+                    relation: Relation::Friend,
+                    member: true,
+                }
+                .into(),
+                SocialEvent::RelationSet {
+                    login: "BOB".into(),
+                    relation: Relation::Friend,
+                    member: false,
+                }
+                .into(),
+                SocialEvent::RelationSet {
+                    login: "Ada".into(),
+                    relation: Relation::Foe,
+                    member: true,
+                }
+                .into(),
+                // The server's offline notice need not match the login's case.
+                SocialEvent::PlayersRemoved {
+                    logins: vec!["ada".into()],
+                }
+                .into(),
+                SocialEvent::Cleared.into(),
+            ],
+        ),
+        // ── settings ─────────────────────────────────────────────────────
+        case(
+            "appearance values from outside their range are clamped on the way in",
+            vec![SettingsEvent::AppearanceChanged {
+                preferences: AppearancePreferences {
+                    density: UiDensity::Compact,
+                    reduce_motion: true,
+                    ui_scale: 400,
+                    game_tile_columns: 9,
+                    sidebar_width: 20,
+                    hover_panels: false,
+                    hover_open_delay_ms: 9_000,
+                    hover_close_delay_ms: 2_500,
+                    replay_flags: true,
+                },
+            }
+            .into()],
+        ),
+        case(
+            "every preference group is replaced whole, and a reload replaces them all",
+            vec![
+                SettingsEvent::GeneralChanged {
+                    preferences: GeneralPreferences {
+                        start_page: Tab::Play,
+                        auto_login: false,
+                        remember_typed_entries: true,
+                    },
+                }
+                .into(),
+                SettingsEvent::NotificationsChanged {
+                    preferences: NotificationPreferences {
+                        enabled: false,
+                        ..NotificationPreferences::default()
+                    },
+                }
+                .into(),
+                SettingsEvent::ChatChanged {
+                    preferences: Box::new(ChatPreferences {
+                        font_size: 15,
+                        show_timestamps: false,
+                        ..ChatPreferences::default()
+                    }),
+                }
+                .into(),
+                SettingsEvent::GameChanged {
+                    preferences: GamePreferences {
+                        launch_wrapper: "gamemoderun".into(),
+                        cache_size_alert_gb: None,
+                        ..GamePreferences::default()
+                    },
+                }
+                .into(),
+                SettingsEvent::ConnectivityChanged {
+                    preferences: ConnectivityPreferences {
+                        adapter: IceAdapter::Go,
+                        ..ConnectivityPreferences::default()
+                    },
+                }
+                .into(),
+                SettingsEvent::UpdatesChanged {
+                    preferences: UpdatePreferences {
+                        automatic: false,
+                        ..UpdatePreferences::default()
+                    },
+                }
+                .into(),
+                SettingsEvent::MapGeneratorChanged {
+                    preferences: Box::new(GeneratorOptions {
+                        version: Some("1.22.1".into()),
+                        spawn_count: Some(6),
+                        ..GeneratorOptions::default()
+                    }),
+                }
+                .into(),
+                SettingsEvent::ReplayGamePathChanged {
+                    path: "D:/FA-replay/bin/ForgedAlliance.exe".into(),
+                }
+                .into(),
+                SettingsEvent::CacheInfoUpdated {
+                    info: GameCacheInfo {
+                        total_size_bytes: 1_500_000_000.0,
+                        total_files: 3,
+                        versions: vec![CachedGameVersion {
+                            name: "faf".into(),
+                            version: 3_810,
+                            file_count: 3,
+                            size_bytes: 1_500_000_000.0,
+                            url: None,
+                        }],
+                    },
+                }
+                .into(),
+                SettingsEvent::KeptGeneratedMaps {
+                    map_names: vec!["neroxis_map_generator_1.22.1_keep".into()],
+                }
+                .into(),
+                // The file read back from disk is the whole truth: nothing the
+                // session changed survives it, normalised or otherwise.
+                SettingsEvent::Loaded {
+                    settings: Box::new(SettingsState {
+                        theme: Theme::JavaClient,
+                        game_path: "C:/games/FA/bin/ForgedAlliance.exe".into(),
+                        ..SettingsState::default()
+                    }),
+                }
+                .into(),
+            ],
+        ),
+        // ── coop ─────────────────────────────────────────────────────────
+        case(
+            "a stale coop board is dropped, and a failed refresh keeps the catalogue",
+            vec![
+                CoopEvent::CatalogLoading.into(),
+                CoopEvent::CatalogLoaded {
+                    scenarios: vec![],
+                    missions: vec![coop_mission(7, 1), coop_mission(8, 2)],
+                }
+                .into(),
+                CoopEvent::MissionSelected { mission_id: 8 }.into(),
+                CoopEvent::LeaderboardLoading.into(),
+                // The board for the mission that was open before.
+                CoopEvent::LeaderboardLoaded {
+                    mission_id: 7,
+                    player_count: 0,
+                    results: vec![coop_result(1, &["Ada"])],
+                }
+                .into(),
+                CoopEvent::LeaderboardLoaded {
+                    mission_id: 8,
+                    player_count: 0,
+                    results: vec![coop_result(2, &["Bob", "Cid"])],
+                }
+                .into(),
+                CoopEvent::CatalogLoading.into(),
+                CoopEvent::CatalogLoadFailed {
+                    reason: "503".into(),
+                    kind: RequestFailureKind::Offline,
+                }
+                .into(),
+                // The open mission left the catalogue: the first one opens.
+                CoopEvent::CatalogLoaded {
+                    scenarios: vec![],
+                    missions: vec![coop_mission(7, 1)],
+                }
+                .into(),
+                CoopEvent::MissionSelected { mission_id: 7 }.into(),
+            ],
+        ),
+        // ── client self-update ───────────────────────────────────────────
+        case(
+            "a failed download keeps the offer, and a failed re-check does too",
+            vec![
+                ClientUpdateEvent::CheckStarted {
+                    current_version: "0.2.0".into(),
+                }
+                .into(),
+                ClientUpdateEvent::Available {
+                    release: client_release("0.3.0"),
+                }
+                .into(),
+                ClientUpdateEvent::DownloadProgressed {
+                    received_bytes: 1_024,
+                    total_bytes: 4_096,
+                }
+                .into(),
+                ClientUpdateEvent::Failed {
+                    reason: "the connection was reset".into(),
+                }
+                .into(),
+                ClientUpdateEvent::CheckStarted {
+                    current_version: "0.2.0".into(),
+                }
+                .into(),
+                ClientUpdateEvent::Failed {
+                    reason: "GitHub is unreachable".into(),
+                }
+                .into(),
+                ClientUpdateEvent::CheckCompleted {
+                    at: "2026-02-01T09:00:00Z".into(),
+                }
+                .into(),
+            ],
+        ),
+        // ── map generator ────────────────────────────────────────────────
+        case(
+            "generator versions resolve, the options follow a chosen one, and previews are capped",
+            vec![
+                MapGeneratorEvent::VersionsLoaded {
+                    versions: vec!["1.22.1".into(), "1.21.0".into()],
+                }
+                .into(),
+                MapGeneratorEvent::VersionResolved {
+                    version: "1.21.0".into(),
+                }
+                .into(),
+                // The resolved version stays the latest one known; the list
+                // only fills it in when nothing has.
+                MapGeneratorEvent::VersionsLoaded {
+                    versions: vec!["1.23.0".into(), "1.22.1".into()],
+                }
+                .into(),
+                MapGeneratorEvent::OptionsChanged {
+                    options: GeneratorOptions {
+                        spawn_count: Some(4),
+                        ..GeneratorOptions::default()
+                    },
+                }
+                .into(),
+                MapGeneratorEvent::OptionsChanged {
+                    options: GeneratorOptions {
+                        version: Some("1.22.1".into()),
+                        spawn_count: Some(6),
+                        ..GeneratorOptions::default()
+                    },
+                }
+                .into(),
+                MapGeneratorEvent::PreviewsLoaded {
+                    previews: generator_previews("first", 40),
+                }
+                .into(),
+                // Still within the cap together: kept alongside.
+                MapGeneratorEvent::PreviewsLoaded {
+                    previews: generator_previews("second", 20),
+                }
+                .into(),
+                // Over it: the older ones go together, the new batch whole.
+                MapGeneratorEvent::PreviewsLoaded {
+                    previews: generator_previews("third", 10),
+                }
+                .into(),
+            ],
+        ),
+        // ── tournaments / tutorials ──────────────────────────────────────
+        case(
+            "a tournament list, detail and chat fail independently and keep what they had",
+            vec![
+                TourneyEvent::Loading.into(),
+                TourneyEvent::Loaded {
+                    events: vec![tourney("e1"), tourney("e2")],
+                }
+                .into(),
+                TourneyEvent::Selected {
+                    tournament_id: "e2".into(),
+                }
+                .into(),
+                TourneyEvent::DetailLoading.into(),
+                // The detail for the event that was open before is dropped.
+                TourneyEvent::DetailLoaded {
+                    event: Box::new(tourney("e1")),
+                }
+                .into(),
+                TourneyEvent::DetailLoadFailed {
+                    reason: "503".into(),
+                    kind: RequestFailureKind::Offline,
+                }
+                .into(),
+                TourneyEvent::ChatRoomsLoaded {
+                    rooms: vec![tourney_room("global", 2)],
+                }
+                .into(),
+                TourneyEvent::RoomOpened {
+                    room_id: "global".into(),
+                }
+                .into(),
+                TourneyEvent::ChatLoading.into(),
+                TourneyEvent::ChatFailed {
+                    reason: "session expired".into(),
+                    kind: RequestFailureKind::Unauthorized,
+                }
+                .into(),
+                TourneyEvent::Loading.into(),
+                TourneyEvent::LoadFailed {
+                    reason: "offline".into(),
+                    kind: RequestFailureKind::Offline,
+                }
+                .into(),
+                // The open event left the list: its failures go with it.
+                TourneyEvent::Loaded {
+                    events: vec![tourney("e1")],
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a tutorial launch fails, and a refresh without the open lesson moves the selection",
+            vec![
+                TutorialsEvent::Loaded {
+                    categories: vec![],
+                    tutorials: vec![tutorial(7), tutorial(8)],
+                }
+                .into(),
+                TutorialsEvent::Selected { tutorial_id: 8 }.into(),
+                TutorialsEvent::LaunchPreparing {
+                    tutorial_id: 8,
+                    detail: "Updating tutorials".into(),
+                }
+                .into(),
+                TutorialsEvent::LaunchFailed {
+                    reason: "the map could not be staged".into(),
+                }
+                .into(),
+                TutorialsEvent::Loading.into(),
+                TutorialsEvent::LoadFailed {
+                    reason: "503".into(),
+                }
+                .into(),
+                TutorialsEvent::Loaded {
+                    categories: vec![],
+                    tutorials: vec![tutorial(7)],
+                }
+                .into(),
+            ],
+        ),
+        // ── clan / changelog ─────────────────────────────────────────────
+        case(
+            "a withdrawn invitation leaves the candidate list closed, and a failed reload keeps the clan",
+            vec![
+                ClanEvent::Loading.into(),
+                ClanEvent::Loaded {
+                    identity: ClanIdentity {
+                        player_id: 7,
+                        login: "Ada".into(),
+                        clan_id: "42".into(),
+                        clan_name: "Brotherhood".into(),
+                        clan_tag: "BRO".into(),
+                        is_leader: true,
+                    },
+                    clan: None,
+                }
+                .into(),
+                ClanEvent::CandidatesLoaded {
+                    candidates: vec![player_summary(9, "Recruit", Some(1_200))],
+                }
+                .into(),
+                ClanEvent::InvitationReady {
+                    invitation: ClanInvitation {
+                        token: "jwt".into(),
+                        player_id: 9,
+                        login: "Recruit".into(),
+                    },
+                }
+                .into(),
+                ClanEvent::InvitationCleared.into(),
+                ClanEvent::Loading.into(),
+                ClanEvent::LoadFailed {
+                    reason: "offline".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a failed refresh of the patch notes keeps the releases already listed",
+            vec![
+                ChangelogEvent::Loading.into(),
+                ChangelogEvent::Loaded {
+                    releases: vec![faf_domain::protocol::changelog::ChangelogRelease {
+                        id: "3837".into(),
+                        kind: "Game Patch".into(),
+                        date: "2026-08-14".into(),
+                        year: "2026".into(),
+                        source_url: "https://example.invalid/3837.md".into(),
+                        web_url: "https://example.invalid/3837".into(),
+                    }],
+                }
+                .into(),
+                ChangelogEvent::EntryLoading { id: "3837".into() }.into(),
+                ChangelogEvent::Loading.into(),
+                ChangelogEvent::LoadFailed {
+                    reason: "GitHub answered 502".into(),
+                }
+                .into(),
+            ],
+        ),
+        // ── auth ─────────────────────────────────────────────────────────
+        case(
+            "a test session keeps its mode through a failure and gives it up on logout",
+            vec![
+                AuthEvent::TestLoggedIn { player: player() }.into(),
+                AuthEvent::LoginStarted.into(),
+                AuthEvent::LoginFailed {
+                    message: "the test server refused the token".into(),
+                }
+                .into(),
+                AuthEvent::TestLoggedIn { player: player() }.into(),
+                AuthEvent::LoggedOut.into(),
+            ],
+        ),
     ]
+}
+
+fn lobby_game(id: i32, title: &str, players: i32) -> Game {
+    Game {
+        id,
+        title: title.into(),
+        host: "Ada".into(),
+        players,
+        max_players: 8,
+        map: "scmp_009".into(),
+        mod_name: "faf".into(),
+        average_rating: 1_200,
+        rating_type: "global".into(),
+        password_protected: false,
+        visibility: "public".into(),
+        game_type: "custom".into(),
+        launched_at: None,
+        hosted_at: None,
+        rating_min: None,
+        rating_max: None,
+        enforce_rating_range: false,
+        teams: std::collections::BTreeMap::from([("1".to_string(), vec!["Ada".to_string()])]),
+        sim_mods: std::collections::BTreeMap::new(),
+    }
+}
+
+fn game_launch(uid: i32) -> GameLaunch {
+    GameLaunch {
+        uid,
+        mod_name: "faf".into(),
+        name: "Friday game".into(),
+        mapname: "scmp_009".into(),
+        game_type: "custom".into(),
+        rating_type: "global".into(),
+        expected_players: None,
+        team: None,
+        faction: None,
+        map_position: None,
+        game_options: std::collections::BTreeMap::new(),
+        args: vec!["/numgames".into(), "12".into()],
+    }
+}
+
+fn leaderboard_entry(player_id: i32, rank: i32) -> LeaderboardEntry {
+    LeaderboardEntry {
+        player_id,
+        rank,
+        player_name: format!("Player{player_id}"),
+        avatar_url: None,
+        avatar_tooltip: None,
+        score: None,
+        rating: Some(1_500),
+        mean: Some(1_620.0),
+        deviation: Some(40.0),
+        games_played: 120,
+        won_games: Some(70),
+        update_time: Some("2026-01-01T00:00:00Z".into()),
+        division: None,
+        subdivision: None,
+        division_order: None,
+        highest_score: None,
+        division_image_url: None,
+        division_medium_image_url: None,
+        returning_player: None,
+    }
+}
+
+fn league_season(id: i32, league_id: i32, season_number: i32) -> LeagueSeason {
+    LeagueSeason {
+        id,
+        league_id,
+        leaderboard_id: 2,
+        season_number,
+        start_date: "2026-01-01T00:00:00Z".into(),
+        end_date: "2026-04-01T00:00:00Z".into(),
+        placement_games: 10,
+        placement_games_returning_player: 3,
+        active: season_number == 12,
+    }
+}
+
+fn installed_map(folder_name: &str) -> InstalledMap {
+    InstalledMap {
+        folder_name: folder_name.into(),
+        display_name: folder_name.into(),
+        max_players: 8,
+        width: 512,
+        height: 512,
+        version: None,
+        description: None,
+    }
+}
+
+fn matchmaker_pool(id: i32, name: &str) -> MatchmakerMapPool {
+    MatchmakerMapPool {
+        id,
+        name: name.into(),
+        min_rating: None,
+        max_rating: Some(1_300),
+        veto_tokens_per_player: 1,
+        max_tokens_per_map: 1,
+        minimum_maps_after_veto: 1,
+        maps: vec![MatchmakerPoolMap {
+            assignment_id: id * 10,
+            display_name: "Gap of Rohan".into(),
+            folder_name: "gap_of_rohan.v0002".into(),
+            max_players: 2,
+            width: 512,
+            height: 512,
+            thumbnail_url: String::new(),
+        }],
+    }
+}
+
+fn vault_mod(mod_id: i32, uid: &str) -> VaultMod {
+    VaultMod {
+        mod_id,
+        version_id: mod_id * 10,
+        display_name: format!("Mod {uid}"),
+        author: "Someone".into(),
+        uploader: "Someone".into(),
+        uploader_id: Some(4711),
+        uid: uid.into(),
+        version: "3".into(),
+        description: String::new(),
+        filename: format!("{uid}.zip"),
+        mod_type: ModType::Ui,
+        ranked: false,
+        recommended: false,
+        rating_tenths: 0,
+        reviews: 0,
+        created_at: "2026-01-01T00:00:00Z".into(),
+        updated_at: "2026-01-01T00:00:00Z".into(),
+        download_url: String::new(),
+        thumbnail_url: String::new(),
+    }
+}
+
+fn installed_mod(uid: &str, enabled: bool) -> InstalledMod {
+    InstalledMod {
+        folder_name: format!("mod_{uid}"),
+        uid: uid.into(),
+        display_name: format!("Mod {uid}"),
+        version: "3".into(),
+        author: "Someone".into(),
+        description: String::new(),
+        mod_type: ModType::Sim,
+        enabled,
+    }
+}
+
+fn history_query(player_id: i32) -> RatingHistoryQuery {
+    RatingHistoryQuery {
+        player_id,
+        leaderboard_id: 1,
+        leaderboard: "global".into(),
+        period: RatingHistoryPeriod::All,
+        page: 1,
+        page_size: 1_000,
+    }
+}
+
+fn history_point(timestamp: &str, rating: f64) -> RatingHistoryPoint {
+    RatingHistoryPoint {
+        timestamp: timestamp.into(),
+        rating,
+        mean: rating + 300.0,
+        deviation: 100.0,
+    }
+}
+
+fn review_target(id: i32, name: &str) -> ReviewTarget {
+    ReviewTarget {
+        kind: ReviewKind::Map,
+        id,
+        name: name.into(),
+    }
+}
+
+fn notification(id: &str, kind: NotificationKind) -> ClientNotification {
+    ClientNotification {
+        id: id.into(),
+        kind,
+        title: format!("Notification {id}"),
+        body: String::new(),
+        action: None,
+        created_at: "2026-01-01T00:00:00Z".into(),
+        read: false,
+    }
+}
+
+fn coop_mission(id: i32, order: i32) -> CoopMission {
+    CoopMission {
+        id,
+        name: format!("Ivory Sun {order}"),
+        description: String::new(),
+        version: 1,
+        download_url: String::new(),
+        thumbnail_url_small: String::new(),
+        thumbnail_url_large: String::new(),
+        map_folder_name: format!("scmp_coop_{id}"),
+        scenario_id: Some(1),
+        order,
+    }
+}
+
+fn coop_result(id: i32, players: &[&str]) -> CoopResult {
+    CoopResult {
+        id,
+        ranking: 1,
+        secondary_objectives: true,
+        duration_seconds: 1_800,
+        player_count: players.len() as i32,
+        players: players.iter().map(|login| login.to_string()).collect(),
+        replay_id: None,
+        played_at: None,
+    }
+}
+
+fn client_release(version: &str) -> ClientRelease {
+    ClientRelease {
+        version: version.into(),
+        notes_url: format!("https://example.invalid/releases/{version}"),
+        download_url: "https://example.invalid/installer.exe".into(),
+        asset_name: "installer.exe".into(),
+        size_bytes: 4_096,
+        pre_release: false,
+        published_at: "2026-02-01T00:00:00Z".into(),
+    }
+}
+
+/// `count` generated-map previews named after `batch`, for the preview cap.
+fn generator_previews(batch: &str, count: usize) -> std::collections::HashMap<String, String> {
+    (0..count)
+        .map(|index| {
+            (
+                format!("neroxis_map_generator_1.22.1_{batch}_{index}"),
+                format!("data:image/png;base64,{batch}{index}"),
+            )
+        })
+        .collect()
 }
 
 fn tourney(id: &str) -> Tourney {
@@ -7158,6 +8672,13 @@ fn writes_the_frontend_conformance_fixture() {
         cases: cases(),
         helpers: helper_fixture(),
     };
+    // Through `Value` on the way out, whose objects keep their keys sorted.
+    // Several slices hold `HashMap`s (generated map previews, replay details,
+    // resolved maps), which serialise in an order that changes with every
+    // process, so the file differed on every run and CI's drift check failed
+    // on a fixture nobody had changed. The frontend compares with `toEqual`,
+    // which does not care about key order.
+    let fixture = serde_json::to_value(&fixture).expect("the fixture must serialise");
     let json = serde_json::to_string_pretty(&fixture).expect("the fixture must serialise");
 
     let target =
@@ -7220,111 +8741,37 @@ fn every_state_slice_is_covered_by_a_case() {
 /// baseline, not a blanket exemption: a new event fails the test until it gets
 /// a conformance case or is deliberately added here. When a case is added, its
 /// entry must be removed so the baseline can only shrink intentionally.
-const UNCOVERED_EVENT_VARIANTS: &[&str] = &[
-    "Auth:testLoggedIn",
-    "ClientUpdate:failed",
-    "Coop:catalogLoadFailed",
-    "Coop:leaderboardLoading",
-    "Coop:missionSelected",
-    "Leaderboard:catalogLoadFailed",
-    "Leaderboard:catalogLoaded",
-    "Leaderboard:catalogLoading",
-    "Leaderboard:ratingsLoadFailed",
-    "Leaderboard:ratingsLoaded",
-    "Leaderboard:seasonLoadFailed",
-    "Leaderboard:seasonLoaded",
-    "Leaderboard:seasonLoading",
-    "Leaderboard:seasonsLoaded",
-    "Lobby:avatarSelectionFailed",
-    "Lobby:avatarsLoadFailed",
-    // The two lists themselves, snapshot and delta alike. Building a `Game` is
-    // twenty fields, and the value of a case here would be pinning the fold:
-    // the delta twins sort by id and upsert in place, and the snapshot twins
-    // assign. The fold is covered by matching unit tests on both sides
-    // (`state/lobby.rs` and `reducers/lobby.test.ts`) rather than by a replay.
-    "Lobby:gamesChanged",
-    "Lobby:gamesUpdated",
-    "Lobby:joinFailed",
-    "Lobby:launching",
-    "Lobby:liveGamesChanged",
-    "Lobby:liveGamesUpdated",
-    "Lobby:partyUpdated",
-    "Lobby:vetoesUpdated",
-    "MapGenerator:optionsChanged",
-    "MapGenerator:previewsLoaded",
-    "MapGenerator:versionResolved",
-    "MapGenerator:versionsLoaded",
-    "Maps:installFailed",
-    "Maps:installed",
-    "Maps:installedLoadFailed",
-    "Maps:installing",
-    "Maps:matchmakerPoolsLoadFailed",
-    "Maps:matchmakerPoolsLoaded",
-    "Maps:matchmakerPoolsLoading",
-    "Maps:uninstallFailed",
-    "Maps:uninstalled",
-    "Mods:installFailed",
-    "Mods:installed",
-    "Mods:installedLoaded",
-    "Mods:installing",
-    "Mods:toggleFailed",
-    "Mods:toggled",
-    "Mods:toggling",
-    "Mods:uninstallFailed",
-    "Mods:uninstalled",
-    "Mods:vaultLoadFailed",
-    "Mods:vaultLoaded",
-    "Mods:vaultLoading",
-    "Notifications:cleared",
-    "Notifications:read",
-    "PlayerCard:historyLoadFailed",
-    "PlayerCard:historyLoaded",
-    "PlayerCard:historyLoading",
-    "Replays:detailsFailed",
-    "Replays:detailsLoaded",
-    "Replays:detailsLoading",
-    "Replays:featuredModsLoaded",
-    "Replays:localDeleted",
-    "Replays:localLoadFailed",
-    "Replays:localLoaded",
-    "Replays:localLoading",
-    "Replays:vaultLoadFailed",
-    "Reporting:failed",
-    "Reporting:historyFailed",
-    "Reporting:historyLoaded",
-    "Reporting:historyLoading",
-    "Reviews:closed",
-    "Reviews:loadFailed",
-    "Reviews:saveFailed",
-    "Settings:appearanceChanged",
-    "Settings:cacheInfoUpdated",
-    "Settings:chatChanged",
-    "Settings:connectivityChanged",
-    "Settings:gameChanged",
-    "Settings:generalChanged",
-    "Settings:loaded",
-    "Settings:mapGeneratorChanged",
-    "Settings:notificationsChanged",
-    "Settings:replayGamePathChanged",
-    "Settings:updatesChanged",
-    "Social:cleared",
-    "Social:relationSet",
-    "Tourney:chatFailed",
-    "Tourney:detailLoadFailed",
-    "Tourney:loadFailed",
-    "Tutorials:launchFailed",
-    "Tutorials:loadFailed",
-];
+///
+/// Empty: every declared variant is replayed by at least one case. An entry
+/// added here should be the exception, with a comment saying why a case that
+/// reaches the variant from a meaningful state cannot be written yet.
+const UNCOVERED_EVENT_VARIANTS: &[&str] = &[];
 
 const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
     ("Auth", "AuthEvent", include_str!("../src/state/auth.rs")),
+    (
+        "Changelog",
+        "ChangelogEvent",
+        include_str!("../src/state/changelog.rs"),
+    ),
     ("Chat", "ChatEvent", include_str!("../src/state/chat.rs")),
+    ("Clan", "ClanEvent", include_str!("../src/state/clan.rs")),
     (
         "ClientUpdate",
         "ClientUpdateEvent",
         include_str!("../src/state/client_update.rs"),
     ),
     ("Coop", "CoopEvent", include_str!("../src/state/coop.rs")),
+    (
+        "Events",
+        "EventsEvent",
+        include_str!("../src/state/events.rs"),
+    ),
+    (
+        "GalacticWar",
+        "GalacticWarEvent",
+        include_str!("../src/state/galactic_war.rs"),
+    ),
     (
         "Guides",
         "GuidesEvent",
@@ -7388,6 +8835,11 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
         "Social",
         "SocialEvent",
         include_str!("../src/state/social.rs"),
+    ),
+    (
+        "Streams",
+        "StreamsEvent",
+        include_str!("../src/state/streams.rs"),
     ),
     (
         "Tourney",

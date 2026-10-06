@@ -19,8 +19,53 @@ use faf_domain::state::{
     NotificationEvent, NotificationKind, SettingsCommand, SettingsEvent,
 };
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LoadedFromDisk, SerialMutation, ServiceCtx};
 use crate::services::notifications;
+
+/// The settings service's operational context: the locks that keep
+/// concurrent settings commands from overtaking each other in state and on
+/// disk, and whether the settings file has been read yet.
+///
+/// Owned by this service. Chat and lobby persist settings of their own from
+/// spawned tasks; they ask whether the file has been read through
+/// [`Self::has_loaded`] and queue behind every other settings write through
+/// [`Self::write_order`].
+#[derive(Default)]
+pub struct SettingsContext {
+    /// Settings commands run concurrently. Serializing the snapshot + write
+    /// prevents an older command from reaching disk after a newer one.
+    persist: SerialMutation,
+    /// Held across one settings command's read, merge and emit. Commands run
+    /// on their own tasks, so two patches could both read the group before
+    /// either emitted, and the second would carry the first's field back to
+    /// its old value. Synchronous: nothing in between awaits.
+    merge: std::sync::Mutex<()>,
+    /// Added sounds whose removal is under way. A notifications change that
+    /// would newly choose one is refused, so a dropdown that still lists it
+    /// cannot leave a saved setting naming a file about to be deleted.
+    sounds_being_removed: std::sync::Mutex<std::collections::HashSet<String>>,
+    /// Whether the settings file has been read yet. Nothing may be persisted
+    /// before it has, or a preference set during startup writes a document
+    /// made of defaults over the user's own.
+    loaded: LoadedFromDisk,
+}
+
+impl SettingsContext {
+    /// Whether the settings file has been read yet. A service persisting
+    /// settings of its own checks this first, for the reason `persist` gives:
+    /// a write before the load is a document of defaults over the user's own.
+    pub fn has_loaded(&self) -> bool {
+        self.loaded.has_loaded()
+    }
+
+    /// The order every settings write queues in, for a service persisting
+    /// settings of its own from a spawned task. A clone of the same lock this
+    /// service writes under, so that write cannot reach disk out of order
+    /// with a settings command's.
+    pub fn write_order(&self) -> SerialMutation {
+        self.persist.clone()
+    }
+}
 
 pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -112,7 +157,7 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             // Only now may anything be written back: state finally holds the
             // player's settings rather than defaults.
-            ctx.settings_loaded.mark_loaded();
+            ctx.settings.loaded.mark_loaded();
             out.emit(MapGeneratorEvent::OptionsChanged {
                 options: generator_options,
             });
@@ -242,6 +287,7 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 // naming a deleted file. Checked under the merge lock, which
                 // is also where the removal marks it, so the two cannot cross.
                 let removing = ctx
+                    .settings
                     .sounds_being_removed
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -402,7 +448,7 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
 /// only half the fix for two quick changes reverting each other: commands run
 /// on their own tasks, so two patches could still both read the group before
 /// either emitted, and the second would carry the first's field back. The lock
-/// (`ServiceCtx::settings_merge`) closes that window. It is held only across
+/// (`SettingsContext::merge`) closes that window. It is held only across
 /// the read and the emit, which never await, and released before persisting.
 ///
 /// The change may also be `None`, for a step that turns out to change nothing
@@ -413,7 +459,8 @@ fn merge<E: Into<Option<SettingsEvent>>, R>(
     change: impl FnOnce(&faf_domain::state::SettingsState) -> (E, R),
 ) -> R {
     let _merging = ctx
-        .settings_merge
+        .settings
+        .merge
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let (event, result) = out.with_state(|state| change(&state.settings));
@@ -457,14 +504,14 @@ pub(crate) async fn persist(ctx: &ServiceCtx, out: &EventSink) {
 /// and the file went anyway, so the next start played nothing under a
 /// "(missing)" label.
 async fn try_persist(ctx: &ServiceCtx, out: &EventSink) -> Result<(), String> {
-    if !ctx.settings_loaded.has_loaded() {
+    if !ctx.settings.loaded.has_loaded() {
         return Err(
             "a settings change arrived before the settings file was read; not writing \
              defaults over it"
                 .to_string(),
         );
     }
-    let _guard = ctx.settings_persist.acquire().await;
+    let _guard = ctx.settings.persist.acquire().await;
     let settings = out.with_state(|state| state.settings.clone());
     ctx.ports.settings.save(&settings).await
 }
@@ -498,8 +545,9 @@ async fn remove_notification_sound(name: &str, ctx: &ServiceCtx, out: &EventSink
     merge(ctx, out, |settings| {
         // Marked in the same locked step that clears the references, so no
         // notifications change can choose the sound again in between. See
-        // `ServiceCtx::sounds_being_removed`.
-        ctx.sounds_being_removed
+        // `SettingsContext::sounds_being_removed`.
+        ctx.settings
+            .sounds_being_removed
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(name.to_owned());
@@ -551,7 +599,7 @@ async fn remove_notification_sound(name: &str, ctx: &ServiceCtx, out: &EventSink
     }
 }
 
-/// Takes a sound back out of `ServiceCtx::sounds_being_removed` when the
+/// Takes a sound back out of `SettingsContext::sounds_being_removed` when the
 /// removal that put it there ends, on every return path.
 struct BeingRemoved<'a> {
     ctx: &'a ServiceCtx,
@@ -561,6 +609,7 @@ struct BeingRemoved<'a> {
 impl Drop for BeingRemoved<'_> {
     fn drop(&mut self) {
         self.ctx
+            .settings
             .sounds_being_removed
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -602,8 +651,18 @@ fn sync_debug_windows(ctx: &ServiceCtx, out: &EventSink) {
 /// folder until something else happens to reload them, which reads as the
 /// setting having done nothing.
 async fn refresh_content_after_path_change(ctx: &ServiceCtx, out: &EventSink) {
-    crate::services::maps::handle(faf_domain::state::MapsCommand::LoadInstalled, ctx, out).await;
-    crate::services::mods::handle(faf_domain::state::ModsCommand::LoadInstalled, ctx, out).await;
+    crate::runtime::run_command(
+        faf_domain::state::MapsCommand::LoadInstalled.into(),
+        ctx,
+        out,
+    )
+    .await;
+    crate::runtime::run_command(
+        faf_domain::state::ModsCommand::LoadInstalled.into(),
+        ctx,
+        out,
+    )
+    .await;
 }
 
 /// Turn a pick of the *original* game into the FAF copy the user meant.
@@ -753,10 +812,14 @@ fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
     // wrapper is about launching, the prefix is a path. The launcher needs
     // them together.
     ctx.ports.process.set_launch_wrapper(wrapper, wine_prefix);
-    ctx.ports.replay.set_live_replay_pipe(pipe_live_replay);
+    ctx.ports
+        .replay_playback
+        .set_live_replay_pipe(pipe_live_replay);
     // The replay port rebuilds a generated map before playback, and has to
     // honour the same preference the live launcher does.
-    ctx.ports.replay.set_auto_generate_maps(auto_generate_maps);
+    ctx.ports
+        .replay_playback
+        .set_auto_generate_maps(auto_generate_maps);
 }
 
 /// Push the current paths into the launcher and report what actually exists.
@@ -770,7 +833,7 @@ fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
     // variable. Without this a replay install chosen in Settings left the
     // engine version unmatched and FA opened on the main menu.
     ctx.ports
-        .replay
+        .replay_playback
         .set_install_dir(ctx.ports.process.replay_install_dir());
     let present = ctx.ports.process.installs_present();
     let resolved = ctx.ports.paths.resolved();

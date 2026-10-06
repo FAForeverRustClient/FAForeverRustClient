@@ -1,4 +1,5 @@
 import type {
+  AppearancePreferences,
   AuthEvent,
   AuthState,
   EventReminder,
@@ -42,7 +43,7 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
     case "generalChanged":
       return { ...state, general: event.payload.preferences };
     case "appearanceChanged":
-      return { ...state, appearance: event.payload.preferences };
+      return { ...state, appearance: normalizeAppearance(event.payload.preferences) };
     case "socialChanged":
       return {
         ...state,
@@ -90,6 +91,28 @@ export function reduceSettings(state: SettingsState, event: SettingsEvent): Sett
     case "avatarHistoryChanged":
       return { ...state, avatarHistory: event.payload.history };
   }
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+/**
+ * Twin of `AppearancePreferences::normalized`, with its bounds
+ * (`MIN_UI_SCALE`/`MAX_UI_SCALE`, `MIN_SIDEBAR_WIDTH`/`MAX_SIDEBAR_WIDTH`,
+ * `MAX_HOVER_DELAY_MS`).
+ *
+ * The Rust reducer clamps on the way into state, and this one stored whatever
+ * arrived: a scale of 400 was applied as a 400% zoom here while the backend
+ * held 200.
+ */
+function normalizeAppearance(preferences: AppearancePreferences): AppearancePreferences {
+  return {
+    ...preferences,
+    uiScale: clamp(preferences.uiScale, 80, 200),
+    gameTileColumns: Math.min(preferences.gameTileColumns, 6),
+    sidebarWidth: clamp(preferences.sidebarWidth, 64, 400),
+    hoverOpenDelayMs: Math.min(preferences.hoverOpenDelayMs, 2000),
+    hoverCloseDelayMs: Math.min(preferences.hoverCloseDelayMs, 2000),
+  };
 }
 
 /**

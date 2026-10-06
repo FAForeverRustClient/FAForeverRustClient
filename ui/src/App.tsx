@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ipc } from "./ipc/client";
 import { native } from "./ipc/native";
 import { RevisionedMirror } from "./ipc/revisionedMirror";
+import { measureEventApply } from "./ipc/eventCost";
 import { useAppStore } from "./store/store";
 import { t } from "./i18n";
 import { LoginView } from "./features/auth/LoginView";
@@ -152,7 +153,8 @@ export function App() {
     const bootstrap = async () => {
       mirror = new RevisionedMirror(
         (state) => useAppStore.getState().hydrate(state),
-        (event) => useAppStore.getState().apply(event),
+        // Timed, so a slow page leaves numbers in the client log: see `eventCost`.
+        (event) => measureEventApply(event, (applied) => useAppStore.getState().apply(applied)),
         () => ipc.snapshot(),
         (error) => {
           if (active) {

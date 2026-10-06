@@ -21,7 +21,7 @@ use std::time::Duration;
 
 use faf_domain::state::{
     ChangelogCommand, EventReminder, EventsCommand, EventsEvent, EventsPreferences,
-    NotificationAction, NotificationKind, SettingsEvent, TourneyCommand,
+    NotificationAction, NotificationKind, SettingsEvent, TourneyRead,
 };
 
 use crate::runtime::{EventSink, ServiceCtx};
@@ -80,10 +80,10 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
         )
     });
     if needs_tourneys {
-        services::tourney::handle(TourneyCommand::Load, ctx, out).await;
+        crate::runtime::run_command(TourneyRead::Load.into(), ctx, out).await;
     }
     if needs_releases {
-        services::changelog::handle(ChangelogCommand::Load, ctx, out).await;
+        crate::runtime::run_command(ChangelogCommand::Load.into(), ctx, out).await;
     }
 }
 

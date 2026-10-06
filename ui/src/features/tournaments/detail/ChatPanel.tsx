@@ -7,13 +7,14 @@
 // Which rooms exist is decided server-side by permission, so nothing is
 // filtered here: a room this account may not see simply never arrives.
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Icon } from "../../../design-system/Icon";
 import type { ChatPost, ChatRoom, Tourney, TourneyLoadStatus } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { chatGroups, completedWantsAttention, roomBadge } from "../../../shared/rules/tourneyRules";
 import { ChatRoomView } from "./ChatRoomView";
 import { PinButton } from "./PinnedChat";
+import type { ChatActions } from "../tourneyActions";
 
 interface ChatPanelProps {
   event: Tourney;
@@ -22,30 +23,25 @@ interface ChatPanelProps {
   posts: ChatPost[];
   status: TourneyLoadStatus;
   busy: boolean;
-  onOpenRoom: (roomId: string) => void;
-  onPost: (body: string, replyTo: string | null) => void;
-  onDeletePost: (roomId: string, postId: string) => void;
-  onMute: (fafId: number, name: string, muted: boolean) => void;
-  onRefresh: (roomId: string) => void;
-  /** The room kept open beside the sections, and pinning or letting it go. */
+  /** Opening, reading and writing the rooms, and pinning one or letting it go. */
+  chat: ChatActions;
+  /** The room kept open beside the sections. */
   pinnedRoomId: string | null;
-  onPin: (roomId: string | null) => void;
 }
 
-export function ChatPanel({
+/**
+ * Memoised: a pinned room's poll redraws the pane beside this tab every few
+ * seconds, and nothing this tab shows comes from that room's posts.
+ */
+export const ChatPanel = memo(function ChatPanel({
   event,
   rooms,
   openRoomId,
   posts,
   status,
   busy,
-  onOpenRoom,
-  onPost,
-  onDeletePost,
-  onMute,
-  onRefresh,
+  chat,
   pinnedRoomId,
-  onPin,
 }: ChatPanelProps) {
   const { t } = useTranslation();
   /** Finished matches start folded away, which is the whole point of the group. */
@@ -68,7 +64,7 @@ export function ChatPanel({
             : "surface surface-interactive tournament-chat-room"
         }
         aria-current={room.id === openRoomId}
-        onClick={() => onOpenRoom(room.id)}
+        onClick={() => chat.openRoom(room.id)}
       >
         <span>{room.name}</span>
         {/* One mark at a time: being named by `@` says more than a count, and
@@ -113,7 +109,7 @@ export function ChatPanel({
             {active.map((room) => (
               <li key={room.id} className="tournament-chat-room-row">
                 {roomButton(room)}
-                <PinButton roomId={room.id} pinnedRoomId={pinnedRoomId} onPin={onPin} />
+                <PinButton roomId={room.id} pinnedRoomId={pinnedRoomId} onPin={chat.pin} />
               </li>
             ))}
 
@@ -168,7 +164,7 @@ export function ChatPanel({
           <div className="tournament-chat-open">
           {rooms.some((room) => room.id === openRoomId && !room.done) && (
             <div className="tournament-chat-open-head">
-              <PinButton roomId={openRoomId} pinnedRoomId={pinnedRoomId} onPin={onPin} full />
+              <PinButton roomId={openRoomId} pinnedRoomId={pinnedRoomId} onPin={chat.pin} full />
             </div>
           )}
           <ChatRoomView
@@ -177,14 +173,12 @@ export function ChatPanel({
             posts={posts}
             status={status}
             busy={busy}
-            onPost={onPost}
-            onDeletePost={onDeletePost}
-            onMute={onMute}
-            onRefresh={onRefresh}
+            onPost={chat.post}
+            chat={chat}
           />
           </div>
         )}
       </div>
     </>
   );
-}
+});

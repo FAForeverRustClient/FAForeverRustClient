@@ -6,7 +6,7 @@ filled in without touching the client.
 
 | What | Where it comes from | Needs |
 |---|---|---|
-| Tournaments | `TourneyPort`, already read by the client | nothing, works today |
+| Tournaments | `TourneyReadPort`, already read by the client | nothing, works today |
 | Released patches | the changelog index, already parsed by the client | nothing, works today |
 | Ladder pool rotation | a recurrence rule, shipped with the client | nothing |
 | CGN, meetups, game nights, an announced patch date | **this document** | one commit per event |

@@ -80,6 +80,20 @@ export const ipc = {
     }).catch(() => {});
   },
 
+  /**
+   * Write a line to the client log saying what applying backend events cost
+   * the page over the last window, and which event was slowest. Diagnostics
+   * only: a failure is ignored.
+   */
+  reportEventCost(events: number, totalMilliseconds: number, slowestEvent: string, slowestMilliseconds: number): void {
+    void invoke("report_event_cost", {
+      events,
+      totalMilliseconds: Math.round(totalMilliseconds),
+      slowestEvent,
+      slowestMilliseconds: Math.round(slowestMilliseconds),
+    }).catch(() => {});
+  },
+
   /** Backend → UI: consistent snapshot for initial hydration. */
   snapshot(): Promise<VersionedSnapshot> {
     return invoke<VersionedSnapshot>("snapshot");

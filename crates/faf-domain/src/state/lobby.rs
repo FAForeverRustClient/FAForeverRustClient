@@ -685,7 +685,7 @@ pub struct LobbyState {
     pub status: LobbyStatus,
     pub games: Vec<Game>,
     /// Games currently in progress: not joinable, but watchable via a live
-    /// replay (see `faf-app`'s `ReplayPort::watch_live`).
+    /// replay (see `faf-app`'s `ReplayPlaybackPort::watch_live`).
     pub live_games: Vec<Game>,
     pub join: JoinState,
     pub matchmaker_queues: Vec<MatchmakerQueue>,

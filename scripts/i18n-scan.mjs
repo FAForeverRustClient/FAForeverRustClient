@@ -198,7 +198,11 @@ function* stringLiterals(source) {
 async function sourceFiles(directory) {
   const found = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (["node_modules", "dist", "i18n"].includes(entry.name)) continue;
+    // `testing` and `__mocks__` hold the harness for mounted tests: helpers and
+    // a stand-in IPC client that only test files import. Their messages are
+    // read in a failing test's output, never in the client, the same reason
+    // `*.test.*` files are passed over below.
+    if (["node_modules", "dist", "i18n", "testing", "__mocks__"].includes(entry.name)) continue;
     const path = resolve(directory, entry.name);
     if (entry.isDirectory()) found.push(...(await sourceFiles(path)));
     else if ([".ts", ".tsx"].includes(extname(entry.name)) && !entry.name.includes(".test."))

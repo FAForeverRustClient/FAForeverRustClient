@@ -37,7 +37,9 @@ pub async fn handle(cmd: ClientUpdateCommand, ctx: &ServiceCtx, out: &EventSink)
 /// not one. The preference now governs what is *said* about an optional
 /// update rather than whether we find out about one at all.
 pub async fn check_on_startup(ctx: &ServiceCtx, out: &EventSink) {
-    check(ctx, out).await;
+    // As a command, so it is single-flight with a check, download or install
+    // already running (`Key::ClientUpdate` in the command policy).
+    crate::runtime::run_command(ClientUpdateCommand::Check.into(), ctx, out).await;
 }
 
 /// How often the client looks again while it is running.
@@ -73,15 +75,13 @@ pub fn spawn(ctx: Arc<ServiceCtx>, sink: EventSink) {
             if sink.with_state(|state| state.client_update.release.is_some()) {
                 continue;
             }
-            check(&ctx, &sink).await;
+            crate::runtime::run_command(ClientUpdateCommand::Check.into(), &ctx, &sink).await;
         }
     });
 }
 
 async fn check(ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.client_update_active.try_acquire() else {
-        return;
-    };
+    crate::runtime::expect_admitted(crate::runtime::Key::ClientUpdate);
     let (busy, channel) = out.with_state(|state| {
         (
             state.client_update.status.is_busy(),
@@ -170,9 +170,7 @@ fn announce(release: &ClientRelease, current: &str, out: &EventSink) {
 }
 
 async fn download(ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.client_update_active.try_acquire() else {
-        return;
-    };
+    crate::runtime::expect_admitted(crate::runtime::Key::ClientUpdate);
     let state = out.with_state(|state| state.client_update.clone());
     if state.status.is_busy() {
         return;
@@ -223,9 +221,7 @@ async fn download(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn install(ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.client_update_active.try_acquire() else {
-        return;
-    };
+    crate::runtime::expect_admitted(crate::runtime::Key::ClientUpdate);
     // Only ever runs what *this* client downloaded and renamed into place. The
     // path is not a command parameter, so the UI cannot ask for an arbitrary
     // executable to be started.

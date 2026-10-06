@@ -34,7 +34,10 @@ use faf_domain::state::{FactionVetoConfig, RenameCheck, TourneyAdmin, TourneyFac
 use faf_domain::state::{FfaReport, MatchVeto, PoolAction, VetoChoice, VetoDecider};
 use faf_domain::state::{PendingSummary, SiteDocument, SiteRead, SiteWrite, TourneyAccount};
 
-use crate::ports::{RequestError, TourneyPort};
+use crate::ports::{
+    RequestError, TourneyChatPort, TourneyEntryPort, TourneyMapsPort, TourneyMatchPort,
+    TourneyOrganiserPort, TourneyReadPort, TourneySitePort,
+};
 
 /// Whoever is signed in offline. Taken from the bundle's one identity rather
 /// than declared here: the fake stands in for the server's *session*, and a
@@ -246,186 +249,11 @@ impl FakeTourney {
 }
 
 #[async_trait]
-impl TourneyPort for FakeTourney {
+impl TourneyReadPort for FakeTourney {
     /// Empty: there is no server offline, so an image path resolves to nothing
     /// and the gallery is simply absent rather than broken.
     fn asset_base(&self) -> String {
         String::new()
-    }
-
-    async fn profile(&self) -> Result<String, RequestError> {
-        Ok(self.discord.lock().expect("fake profile poisoned").clone())
-    }
-
-    async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
-        // The service's own cleaning, mirrored: it strips the characters it
-        // will not store and cuts the rest at forty, then answers with that.
-        let stored: String = handle
-            .trim()
-            .chars()
-            .filter(|held| !"<>\"'&\\".contains(*held))
-            .take(40)
-            .collect();
-        *self.discord.lock().expect("fake profile poisoned") = stored.clone();
-        Ok(stored)
-    }
-
-    async fn hosting(&self) -> Result<HostingStatus, RequestError> {
-        // Allowed offline, because the alternative is a create button nobody
-        // can press and a feature nobody can develop.
-        Ok(HostingStatus {
-            logged_in: true,
-            allowed: true,
-            pending: false,
-        })
-    }
-
-    async fn create(&self, draft: &TourneyDraft) -> Result<String, RequestError> {
-        if draft.name.trim().is_empty() {
-            return Err(RequestError::rejected("Name required"));
-        }
-        let id = {
-            let mut counter = self.next_event.lock().expect("fake tournaments poisoned");
-            *counter += 1;
-            format!("new{:03}", *counter)
-        };
-        let mut event = empty_event(&id, draft.name.trim(), TourneyStatus::Signup);
-        // The service creates every tournament unpublished, and an offline fake
-        // that skipped that would hide the one step an organiser must not miss.
-        event.published = false;
-        apply(&mut event, draft);
-        event.category = draft.category;
-        event.competition = draft.competition;
-        event.formation = draft.effective_formation();
-        event.bracket_kind = draft.bracket_kind;
-        event.team_size = draft.team_size.clamp(1, 6);
-        // Structural settings, which `edit_info` may not touch and `apply`
-        // therefore leaves alone: they are only ever set at creation here.
-        event.seeding = draft.seeding;
-        event.signup_mode = draft.signup_mode;
-        event.rating_kind = draft.rating_kind;
-        event.max_teams = draft.max_teams.max(0);
-        event.draft_snakes = draft.draft_snakes;
-        event.veto = draft.veto.clone();
-        event.veto_enabled = draft.veto.enabled;
-        event.plan = draft.plan;
-        event.series_id = draft.series_id.clone();
-        self.events
-            .lock()
-            .expect("fake tournaments poisoned")
-            .push(FakeEvent {
-                event,
-                chat: HashMap::new(),
-                next_id: 100,
-            });
-        Ok(id)
-    }
-
-    async fn edit_info(
-        &self,
-        tournament_id: &str,
-        draft: &TourneyDraft,
-    ) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            if draft.name.trim().is_empty() {
-                return Err(RequestError::rejected("Name required"));
-            }
-            apply(&mut held.event, draft);
-            Ok(())
-        })
-    }
-
-    async fn publish(&self, tournament_id: &str) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            held.event.published = true;
-            held.event.publish_at = None;
-            Ok(())
-        })
-    }
-
-    async fn advance(
-        &self,
-        tournament_id: &str,
-        phase: TourneyPhase,
-        config: Option<&BracketConfig>,
-    ) -> Result<(), RequestError> {
-        // The best-of plan is drawn into the matches by the service, and this
-        // fake draws a much simpler bracket than it does. Refusing a config it
-        // cannot honour would be worse than ignoring one: the flow being
-        // exercised here is "the organiser settles the plan and the draw
-        // happens", and the shape of the plan is pinned by the codec instead.
-        let _ = config;
-        self.with_event(tournament_id, |held| {
-            if !phase.is_legal_from(held.event.status) {
-                return Err(RequestError::rejected(match phase {
-                    TourneyPhase::FormTeams => "Teams already formed",
-                    TourneyPhase::StartBracket => "Form teams first",
-                    TourneyPhase::ReopenSignups => "Bracket already started",
-                    TourneyPhase::SetCaptains | TourneyPhase::StartDraft => {
-                        "This tournament does not use a draft"
-                    }
-                }));
-            }
-            match phase {
-                TourneyPhase::FormTeams => {
-                    if held.event.players.len() < 2 {
-                        return Err(RequestError::rejected("Need at least 2 players"));
-                    }
-                    form_teams(&mut held.event);
-                    held.event.status = TourneyStatus::Drafted;
-                }
-                TourneyPhase::StartBracket => {
-                    if held.event.teams.len() < 2 {
-                        return Err(RequestError::rejected("Need at least 2 teams"));
-                    }
-                    draw_bracket(&mut held.event);
-                    held.event.status = TourneyStatus::Running;
-                }
-                TourneyPhase::SetCaptains => {
-                    // A no-op step: the list is sent with the command, and the
-                    // service only stores it. `set_captains` on the port is the
-                    // one that carries the ids.
-                }
-                TourneyPhase::StartDraft => {
-                    if held.event.formation != Formation::Draft {
-                        return Err(RequestError::rejected(
-                            "This tournament does not use a draft",
-                        ));
-                    }
-                    let captains = held.event.pending_captains.clone();
-                    if captains.len() < 2 {
-                        return Err(RequestError::rejected(
-                            "Mark at least 2 captains in the player list first",
-                        ));
-                    }
-                    build_draft(&mut held.event, &captains);
-                    held.event.status = TourneyStatus::Draft;
-                }
-                TourneyPhase::ReopenSignups => {
-                    held.event.draft = None;
-                    held.event.pending_captains.clear();
-                    held.event.teams.clear();
-                    held.event.matches.clear();
-                    held.event.team_count = 0;
-                    for player in &mut held.event.players {
-                        player.team_id = None;
-                    }
-                    held.event.viewer.member_team_id = None;
-                    held.event.status = TourneyStatus::Signup;
-                }
-            }
-            Ok(())
-        })
-    }
-
-    async fn archive(&self, tournament_id: &str) -> Result<(), RequestError> {
-        let mut events = self.events.lock().expect("fake tournaments poisoned");
-        let before = events.len();
-        events.retain(|held| held.event.id != tournament_id);
-        if events.len() == before {
-            return Err(RequestError::not_found("That tournament no longer exists."));
-        }
-        Ok(())
     }
 
     async fn list(&self) -> Result<Vec<Tourney>, RequestError> {
@@ -450,6 +278,109 @@ impl TourneyPort for FakeTourney {
         self.with_event(tournament_id, |held| Ok(held.event.clone()))
     }
 
+    async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
+        Err(RequestError::rejected(
+            "Checking a rating against FAF is not available offline",
+        ))
+    }
+
+    async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
+        Err(RequestError::rejected(
+            "Importing maps is not available offline",
+        ))
+    }
+
+    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
+        // None offline: the create form then simply offers no preset.
+        Ok(Vec::new())
+    }
+
+    async fn player_ratings(
+        &self,
+        _: &str,
+        _: &str,
+        _: bool,
+    ) -> Result<EntrantRatings, RequestError> {
+        Err(RequestError::rejected(
+            "A player's ratings are not available offline",
+        ))
+    }
+
+    async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
+        Err(RequestError::rejected(
+            "Checking names against FAF is not available offline",
+        ))
+    }
+
+    async fn series(&self) -> Result<Vec<TourneySeries>, RequestError> {
+        let events = self.events.lock().expect("fake tournaments poisoned");
+        let series = self.series.lock().expect("fake series poisoned");
+        let mut rows: Vec<TourneySeries> = series
+            .iter()
+            .map(|held| summarise_series(held, &events))
+            .collect();
+        // The service's own order, and worth reproducing rather than leaving
+        // the insertion order: running series first, then most recent activity.
+        // A client that quietly re-sorted would look right offline and wrong
+        // against the service.
+        rows.sort_by(|left, right| {
+            (right.active > 0)
+                .cmp(&(left.active > 0))
+                .then(right.last_at.cmp(&left.last_at))
+                .then_with(|| left.name.cmp(&right.name))
+        });
+        Ok(rows)
+    }
+
+    async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError> {
+        let events = self.events.lock().expect("fake tournaments poisoned");
+        let series = self.series.lock().expect("fake series poisoned");
+        let held = series
+            .iter()
+            .find(|held| held.id == series_id)
+            .ok_or_else(|| RequestError::not_found("That series no longer exists."))?;
+        let mut editions: Vec<SeriesEdition> = events
+            .iter()
+            .map(|held| &held.event)
+            .filter(|event| event.series_id.as_deref() == Some(series_id))
+            .map(edition_of)
+            .collect();
+        editions.sort_by_key(|edition| Reverse(edition.event_date));
+        Ok(SeriesDetail {
+            id: held.id.clone(),
+            name: held.name.clone(),
+            description: held.description.clone(),
+            colour: held.colour,
+            category: held.category,
+            editions,
+            // The offline account organises every fixture event, so it manages
+            // every series they could reach.
+            can_edit: true,
+            bans: Vec::new(),
+        })
+    }
+
+    async fn mark_news_read(&self, tournament_id: &str) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            if !held.event.viewer.logged_in {
+                // The service answers `{ok: 0}` rather than an error, and
+                // remembers nothing: there is no account to remember it for.
+                return Ok(());
+            }
+            held.event.viewer.news_read_at = held
+                .event
+                .news
+                .iter()
+                .filter_map(|post| post.at)
+                .max()
+                .or(held.event.viewer.news_read_at);
+            Ok(())
+        })
+    }
+}
+
+#[async_trait]
+impl TourneyEntryPort for FakeTourney {
     async fn sign_up(&self, tournament_id: &str, _: Option<i32>) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
             if held.event.status != TourneyStatus::Signup {
@@ -1003,127 +934,6 @@ impl TourneyPort for FakeTourney {
         })
     }
 
-    async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            if held.event.status != TourneyStatus::Drafted {
-                return Err(RequestError::rejected(
-                    "Seeds can only be changed after teams are formed and before the bracket starts",
-                ));
-            }
-            match order {
-                // Not simulated, like every action added after 2026-09-28.
-                SeedOrder::InviteOrder => {
-                    return Err(RequestError::rejected(
-                        "Seeding by invite order is not available offline",
-                    ));
-                }
-                SeedOrder::Randomise => {
-                    // Reversed rather than shuffled: the fake has no clock and
-                    // no randomness, and a deterministic reorder proves the
-                    // round trip just as well.
-                    held.event.teams.reverse();
-                    for (index, team) in held.event.teams.iter_mut().enumerate() {
-                        team.seed = index as i32 + 1;
-                    }
-                }
-                SeedOrder::Explicit { team_ids } => {
-                    if !order.is_complete(&held.event.teams) {
-                        return Err(RequestError::rejected(
-                            "Seed order must include every team exactly once",
-                        ));
-                    }
-                    for (index, wanted) in team_ids.iter().enumerate() {
-                        if let Some(team) =
-                            held.event.teams.iter_mut().find(|team| &team.id == wanted)
-                        {
-                            team.seed = index as i32 + 1;
-                        }
-                    }
-                    held.event.teams.sort_by_key(|team| team.seed);
-                }
-            }
-            Ok(())
-        })
-    }
-
-    async fn split_divisions(
-        &self,
-        tournament_id: &str,
-        divisions: i32,
-    ) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            if held.event.status != TourneyStatus::Drafted {
-                return Err(RequestError::rejected(
-                    "Split into divisions after forming teams and before starting the bracket",
-                ));
-            }
-            let count = divisions.clamp(1, 6);
-            if count == 1 {
-                for team in &mut held.event.teams {
-                    team.division = 0;
-                }
-                held.event.divisions = 0;
-                return Ok(());
-            }
-            let per = held.event.teams.len().div_ceil(count as usize).max(1);
-            for (index, team) in held.event.teams.iter_mut().enumerate() {
-                team.division = ((index / per) as i32 + 1).min(count);
-            }
-            held.event.divisions = count;
-            Ok(())
-        })
-    }
-
-    async fn set_division(
-        &self,
-        tournament_id: &str,
-        team_id: &str,
-        division: i32,
-    ) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            let Some(team) = held.event.teams.iter_mut().find(|team| team.id == team_id) else {
-                return Err(RequestError::rejected("Team not found"));
-            };
-            team.division = division.clamp(0, 6);
-            Ok(())
-        })
-    }
-
-    async fn post_news(
-        &self,
-        tournament_id: &str,
-        body: &str,
-        important: bool,
-    ) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            let body = body.trim();
-            if body.is_empty() {
-                return Err(RequestError::rejected("Write something first"));
-            }
-            let id = held.handle("nw");
-            // Newest first, which is the order the server sorts them into.
-            held.event.news.insert(
-                0,
-                NewsPost {
-                    edited_at: None,
-                    id,
-                    body: body.to_string(),
-                    by: ME_NAME.into(),
-                    at: Some(1_785_400_000),
-                    important,
-                },
-            );
-            Ok(())
-        })
-    }
-
-    async fn delete_news(&self, tournament_id: &str, news_id: &str) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            held.event.news.retain(|post| post.id != news_id);
-            Ok(())
-        })
-    }
-
     async fn check_in(&self, tournament_id: &str, checked_in: bool) -> Result<(), RequestError> {
         self.with_event(tournament_id, |held| {
             let Some(team_id) = held.event.viewer.member_team_id.clone() else {
@@ -1140,289 +950,10 @@ impl TourneyPort for FakeTourney {
         })
     }
 
-    async fn confirm_report(
-        &self,
-        tournament_id: &str,
-        match_id: &str,
-        accept: bool,
-    ) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            let entry = held.entry_mut(match_id)?;
-            let pending = entry.pending_report.clone().ok_or_else(|| {
-                RequestError::rejected("Nothing awaiting confirmation on this match")
-            })?;
-            if !accept {
-                entry.pending_report = None;
-                return Ok(());
-            }
-            held.finalise(match_id, pending.score1, pending.score2);
-            Ok(())
-        })
-    }
-
-    async fn faction_veto(
-        &self,
-        _: &str,
-        _: &str,
-        _: i32,
-        _: TourneyFaction,
-    ) -> Result<(), RequestError> {
-        // Not simulated, like every action added after 2026-09-28.
-        Err(RequestError::rejected(
-            "Faction vetoes are not available offline",
-        ))
-    }
-
-    async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
-        Err(RequestError::rejected(
-            "Faction vetoes are not available offline",
-        ))
-    }
-
     async fn decline_invite(&self, _: &str) -> Result<(), RequestError> {
         Err(RequestError::rejected(
             "Invitations are not available offline",
         ))
-    }
-
-    async fn check_rating(&self, _: &str) -> Result<RatingCheck, RequestError> {
-        Err(RequestError::rejected(
-            "Checking a rating against FAF is not available offline",
-        ))
-    }
-
-    async fn copy_sources(&self) -> Result<Vec<CopySource>, RequestError> {
-        Err(RequestError::rejected(
-            "Importing maps is not available offline",
-        ))
-    }
-
-    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError> {
-        // The account is the one the fixture events belong to, with no role
-        // on the site; nothing else about the site is simulated offline.
-        match read {
-            SiteRead::Account => Ok(SiteDocument::Account(TourneyAccount {
-                logged_in: true,
-                faf_id: Some(1),
-                faf_name: "OfflinePlayer".into(),
-                allowed: true,
-                ..TourneyAccount::default()
-            })),
-            SiteRead::Pending => Ok(SiteDocument::Pending(PendingSummary::default())),
-            _ => Err(RequestError::rejected(
-                "The tournament site is not available offline",
-            )),
-        }
-    }
-
-    async fn site_write(
-        &self,
-        _: &SiteWrite,
-    ) -> Result<(Option<String>, Option<String>), RequestError> {
-        Err(RequestError::rejected(
-            "The tournament site is not available offline",
-        ))
-    }
-
-    async fn upload_desc_image(&self, _: &str, _: &str) -> Result<String, RequestError> {
-        Err(RequestError::rejected("Pictures are not available offline"))
-    }
-
-    async fn presets(&self) -> Result<Vec<TourneyPreset>, RequestError> {
-        // None offline: the create form then simply offers no preset.
-        Ok(Vec::new())
-    }
-
-    async fn player_ratings(
-        &self,
-        _: &str,
-        _: &str,
-        _: bool,
-    ) -> Result<EntrantRatings, RequestError> {
-        Err(RequestError::rejected(
-            "A player's ratings are not available offline",
-        ))
-    }
-
-    async fn check_renames(&self, _: &str) -> Result<RenameCheck, RequestError> {
-        Err(RequestError::rejected(
-            "Checking names against FAF is not available offline",
-        ))
-    }
-
-    async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
-        Err(RequestError::rejected(
-            "This organiser change is not available offline",
-        ))
-    }
-
-    async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
-        // Not simulated: the offline fake is no longer extended with new
-        // actions. The body is covered at the codec level instead.
-        Err(RequestError::rejected(
-            "Submitting a score is not available offline",
-        ))
-    }
-
-    async fn decide_report(
-        &self,
-        tournament_id: &str,
-        report: &MatchReport,
-    ) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            let entry = held.entry_mut(&report.match_id)?;
-            let needed = (entry.best_of + 1) / 2;
-
-            // The forfeit shorthand, as the server derives it: the other side
-            // takes the win at the series length, the forfeiting side is recorded
-            // at -1.
-            if report.is_bare_forfeit() {
-                let forfeiting = report.forfeit.clone().unwrap_or_default();
-                let Some(winner) = entry.forfeit_opponent(&forfeiting).map(str::to_string) else {
-                    return Err(RequestError::rejected(
-                        "Forfeiting team is not in this match",
-                    ));
-                };
-                let (score1, score2) = if entry.team1.as_deref() == Some(forfeiting.as_str()) {
-                    (-1, needed)
-                } else {
-                    (needed, -1)
-                };
-                held.finalise_with_winner(&report.match_id, score1, score2, Some(winner));
-                return Ok(());
-            }
-
-            if !report.is_submittable(entry) {
-                return Err(RequestError::rejected(format!(
-                    "Scores must be between 0 and {needed}"
-                )));
-            }
-            // An explicit winner finalises even a score that reached nobody's
-            // threshold: a 1-1 somebody walked away from.
-            let winner = report.winner.clone().or_else(|| {
-                report
-                    .forfeit
-                    .as_deref()
-                    .and_then(|team| entry.forfeit_opponent(team))
-                    .map(str::to_string)
-            });
-            held.finalise_with_winner(&report.match_id, report.score1, report.score2, winner);
-            Ok(())
-        })
-    }
-
-    async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
-        self.with_event(tournament_id, |held| {
-            let count = |room: &str| {
-                held.chat
-                    .get(room)
-                    .map_or(0, |posts| i32::try_from(posts.len()).unwrap_or(i32::MAX))
-            };
-            let mut rooms = vec![ChatRoom {
-                id: "global".into(),
-                name: "Global: everyone".into(),
-                count: count("global"),
-                ..ChatRoom::default()
-            }];
-            // A match gets a room once both sides are known, exactly as the
-            // server decides it, and a played match's room is marked done so
-            // the list can fold it away rather than leaving a bracket's worth
-            // of finished conversations above the live ones.
-            for entry in &held.event.matches {
-                let (Some(one), Some(two)) = (entry.team1.as_ref(), entry.team2.as_ref()) else {
-                    continue;
-                };
-                if one == "BYE" || two == "BYE" {
-                    continue;
-                }
-                // `match:{id}`, which is the service's own grammar. The fake
-                // used the bare match id, and a fake that spells an id
-                // differently from the service is a fake that cannot catch a
-                // client which spells it wrong either.
-                let room_id = format!("match:{}", entry.id);
-                rooms.push(ChatRoom {
-                    count: count(&room_id),
-                    id: room_id,
-                    name: format!(
-                        "{} vs {}",
-                        team_name(&held.event, one),
-                        team_name(&held.event, two)
-                    ),
-                    done: entry.status == MatchStatus::Done,
-                    ..ChatRoom::default()
-                });
-            }
-            Ok(rooms)
-        })
-    }
-
-    async fn chat_read(
-        &self,
-        tournament_id: &str,
-        room_id: &str,
-    ) -> Result<Vec<ChatPost>, RequestError> {
-        self.with_event(tournament_id, |held| {
-            Ok(held.chat.get(room_id).cloned().unwrap_or_default())
-        })
-    }
-
-    async fn chat_post(
-        &self,
-        tournament_id: &str,
-        room_id: &str,
-        body: &str,
-        // Replies are not simulated, like every chat feature added after
-        // 2026-09-28: the post lands as an ordinary one.
-        _reply_to: Option<&str>,
-    ) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            if body.trim().is_empty() {
-                return Err(RequestError::rejected("Empty message"));
-            }
-            let id = held.handle("c");
-            held.chat
-                .entry(room_id.to_string())
-                .or_default()
-                .push(ChatPost {
-                    id,
-                    author: ME_NAME.into(),
-                    faf_id: Some(ME_FAF_ID),
-                    body: body.trim().to_string(),
-                    at: Some(1_785_400_000),
-                    system: false,
-                    reply_to: None,
-                    everyone: false,
-                });
-            Ok(())
-        })
-    }
-
-    async fn articles(&self) -> Result<Vec<Article>, RequestError> {
-        Ok(self.articles.clone())
-    }
-
-    async fn assign_pool(
-        &self,
-        tournament_id: &str,
-        round_key: &str,
-        pool_id: &str,
-    ) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            held.event
-                .pool_assign
-                .retain(|assignment| assignment.round != round_key);
-            if pool_id.is_empty() {
-                return Ok(());
-            }
-            if !held.event.map_pools.iter().any(|pool| pool.id == pool_id) {
-                return Err(RequestError::rejected("Pool not found"));
-            }
-            held.event.pool_assign.push(PoolAssignment {
-                round: round_key.to_string(),
-                pool_id: pool_id.to_string(),
-            });
-            Ok(())
-        })
     }
 
     async fn draft_pick(&self, tournament_id: &str, player_id: &str) -> Result<(), RequestError> {
@@ -1524,6 +1055,159 @@ impl TourneyPort for FakeTourney {
             Ok(())
         })
     }
+}
+
+#[async_trait]
+impl TourneyMatchPort for FakeTourney {
+    async fn advance(
+        &self,
+        tournament_id: &str,
+        phase: TourneyPhase,
+        config: Option<&BracketConfig>,
+    ) -> Result<(), RequestError> {
+        // The best-of plan is drawn into the matches by the service, and this
+        // fake draws a much simpler bracket than it does. Refusing a config it
+        // cannot honour would be worse than ignoring one: the flow being
+        // exercised here is "the organiser settles the plan and the draw
+        // happens", and the shape of the plan is pinned by the codec instead.
+        let _ = config;
+        self.with_event(tournament_id, |held| {
+            if !phase.is_legal_from(held.event.status) {
+                return Err(RequestError::rejected(match phase {
+                    TourneyPhase::FormTeams => "Teams already formed",
+                    TourneyPhase::StartBracket => "Form teams first",
+                    TourneyPhase::ReopenSignups => "Bracket already started",
+                    TourneyPhase::SetCaptains | TourneyPhase::StartDraft => {
+                        "This tournament does not use a draft"
+                    }
+                }));
+            }
+            match phase {
+                TourneyPhase::FormTeams => {
+                    if held.event.players.len() < 2 {
+                        return Err(RequestError::rejected("Need at least 2 players"));
+                    }
+                    form_teams(&mut held.event);
+                    held.event.status = TourneyStatus::Drafted;
+                }
+                TourneyPhase::StartBracket => {
+                    if held.event.teams.len() < 2 {
+                        return Err(RequestError::rejected("Need at least 2 teams"));
+                    }
+                    draw_bracket(&mut held.event);
+                    held.event.status = TourneyStatus::Running;
+                }
+                TourneyPhase::SetCaptains => {
+                    // A no-op step: the list is sent with the command, and the
+                    // service only stores it. `set_captains` on the port is the
+                    // one that carries the ids.
+                }
+                TourneyPhase::StartDraft => {
+                    if held.event.formation != Formation::Draft {
+                        return Err(RequestError::rejected(
+                            "This tournament does not use a draft",
+                        ));
+                    }
+                    let captains = held.event.pending_captains.clone();
+                    if captains.len() < 2 {
+                        return Err(RequestError::rejected(
+                            "Mark at least 2 captains in the player list first",
+                        ));
+                    }
+                    build_draft(&mut held.event, &captains);
+                    held.event.status = TourneyStatus::Draft;
+                }
+                TourneyPhase::ReopenSignups => {
+                    held.event.draft = None;
+                    held.event.pending_captains.clear();
+                    held.event.teams.clear();
+                    held.event.matches.clear();
+                    held.event.team_count = 0;
+                    for player in &mut held.event.players {
+                        player.team_id = None;
+                    }
+                    held.event.viewer.member_team_id = None;
+                    held.event.status = TourneyStatus::Signup;
+                }
+            }
+            Ok(())
+        })
+    }
+
+    async fn confirm_report(
+        &self,
+        tournament_id: &str,
+        match_id: &str,
+        accept: bool,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let entry = held.entry_mut(match_id)?;
+            let pending = entry.pending_report.clone().ok_or_else(|| {
+                RequestError::rejected("Nothing awaiting confirmation on this match")
+            })?;
+            if !accept {
+                entry.pending_report = None;
+                return Ok(());
+            }
+            held.finalise(match_id, pending.score1, pending.score2);
+            Ok(())
+        })
+    }
+
+    async fn submit_report(&self, _: &str, _: &MatchReport) -> Result<(), RequestError> {
+        // Not simulated: the offline fake is no longer extended with new
+        // actions. The body is covered at the codec level instead.
+        Err(RequestError::rejected(
+            "Submitting a score is not available offline",
+        ))
+    }
+
+    async fn decide_report(
+        &self,
+        tournament_id: &str,
+        report: &MatchReport,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let entry = held.entry_mut(&report.match_id)?;
+            let needed = (entry.best_of + 1) / 2;
+
+            // The forfeit shorthand, as the server derives it: the other side
+            // takes the win at the series length, the forfeiting side is recorded
+            // at -1.
+            if report.is_bare_forfeit() {
+                let forfeiting = report.forfeit.clone().unwrap_or_default();
+                let Some(winner) = entry.forfeit_opponent(&forfeiting).map(str::to_string) else {
+                    return Err(RequestError::rejected(
+                        "Forfeiting team is not in this match",
+                    ));
+                };
+                let (score1, score2) = if entry.team1.as_deref() == Some(forfeiting.as_str()) {
+                    (-1, needed)
+                } else {
+                    (needed, -1)
+                };
+                held.finalise_with_winner(&report.match_id, score1, score2, Some(winner));
+                return Ok(());
+            }
+
+            if !report.is_submittable(entry) {
+                return Err(RequestError::rejected(format!(
+                    "Scores must be between 0 and {needed}"
+                )));
+            }
+            // An explicit winner finalises even a score that reached nobody's
+            // threshold: a 1-1 somebody walked away from.
+            let winner = report.winner.clone().or_else(|| {
+                report
+                    .forfeit
+                    .as_deref()
+                    .and_then(|team| entry.forfeit_opponent(team))
+                    .map(str::to_string)
+            });
+            held.finalise_with_winner(&report.match_id, report.score1, report.score2, winner);
+            Ok(())
+        })
+    }
 
     async fn report_ffa(
         &self,
@@ -1577,6 +1261,52 @@ impl TourneyPort for FakeTourney {
                 return Ok(());
             }
             entry.status = MatchStatus::Done;
+            Ok(())
+        })
+    }
+}
+
+#[async_trait]
+impl TourneyMapsPort for FakeTourney {
+    async fn faction_veto(
+        &self,
+        _: &str,
+        _: &str,
+        _: i32,
+        _: TourneyFaction,
+    ) -> Result<(), RequestError> {
+        // Not simulated, like every action added after 2026-09-28.
+        Err(RequestError::rejected(
+            "Faction vetoes are not available offline",
+        ))
+    }
+
+    async fn set_faction_veto(&self, _: &str, _: &FactionVetoConfig) -> Result<(), RequestError> {
+        Err(RequestError::rejected(
+            "Faction vetoes are not available offline",
+        ))
+    }
+
+    async fn assign_pool(
+        &self,
+        tournament_id: &str,
+        round_key: &str,
+        pool_id: &str,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            held.event
+                .pool_assign
+                .retain(|assignment| assignment.round != round_key);
+            if pool_id.is_empty() {
+                return Ok(());
+            }
+            if !held.event.map_pools.iter().any(|pool| pool.id == pool_id) {
+                return Err(RequestError::rejected("Pool not found"));
+            }
+            held.event.pool_assign.push(PoolAssignment {
+                round: round_key.to_string(),
+                pool_id: pool_id.to_string(),
+            });
             Ok(())
         })
     }
@@ -1831,53 +1561,341 @@ impl TourneyPort for FakeTourney {
             Ok(())
         })
     }
+}
 
-    async fn series(&self) -> Result<Vec<TourneySeries>, RequestError> {
-        let events = self.events.lock().expect("fake tournaments poisoned");
-        let series = self.series.lock().expect("fake series poisoned");
-        let mut rows: Vec<TourneySeries> = series
-            .iter()
-            .map(|held| summarise_series(held, &events))
-            .collect();
-        // The service's own order, and worth reproducing rather than leaving
-        // the insertion order: running series first, then most recent activity.
-        // A client that quietly re-sorted would look right offline and wrong
-        // against the service.
-        rows.sort_by(|left, right| {
-            (right.active > 0)
-                .cmp(&(left.active > 0))
-                .then(right.last_at.cmp(&left.last_at))
-                .then_with(|| left.name.cmp(&right.name))
-        });
-        Ok(rows)
+#[async_trait]
+impl TourneyChatPort for FakeTourney {
+    async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
+        self.with_event(tournament_id, |held| {
+            let count = |room: &str| {
+                held.chat
+                    .get(room)
+                    .map_or(0, |posts| i32::try_from(posts.len()).unwrap_or(i32::MAX))
+            };
+            let mut rooms = vec![ChatRoom {
+                id: "global".into(),
+                name: "Global: everyone".into(),
+                count: count("global"),
+                ..ChatRoom::default()
+            }];
+            // A match gets a room once both sides are known, exactly as the
+            // server decides it, and a played match's room is marked done so
+            // the list can fold it away rather than leaving a bracket's worth
+            // of finished conversations above the live ones.
+            for entry in &held.event.matches {
+                let (Some(one), Some(two)) = (entry.team1.as_ref(), entry.team2.as_ref()) else {
+                    continue;
+                };
+                if one == "BYE" || two == "BYE" {
+                    continue;
+                }
+                // `match:{id}`, which is the service's own grammar. The fake
+                // used the bare match id, and a fake that spells an id
+                // differently from the service is a fake that cannot catch a
+                // client which spells it wrong either.
+                let room_id = format!("match:{}", entry.id);
+                rooms.push(ChatRoom {
+                    count: count(&room_id),
+                    id: room_id,
+                    name: format!(
+                        "{} vs {}",
+                        team_name(&held.event, one),
+                        team_name(&held.event, two)
+                    ),
+                    done: entry.status == MatchStatus::Done,
+                    ..ChatRoom::default()
+                });
+            }
+            Ok(rooms)
+        })
     }
 
-    async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError> {
-        let events = self.events.lock().expect("fake tournaments poisoned");
-        let series = self.series.lock().expect("fake series poisoned");
-        let held = series
-            .iter()
-            .find(|held| held.id == series_id)
-            .ok_or_else(|| RequestError::not_found("That series no longer exists."))?;
-        let mut editions: Vec<SeriesEdition> = events
-            .iter()
-            .map(|held| &held.event)
-            .filter(|event| event.series_id.as_deref() == Some(series_id))
-            .map(edition_of)
-            .collect();
-        editions.sort_by_key(|edition| Reverse(edition.event_date));
-        Ok(SeriesDetail {
-            id: held.id.clone(),
-            name: held.name.clone(),
-            description: held.description.clone(),
-            colour: held.colour,
-            category: held.category,
-            editions,
-            // The offline account organises every fixture event, so it manages
-            // every series they could reach.
-            can_edit: true,
-            bans: Vec::new(),
+    async fn chat_read(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+    ) -> Result<Vec<ChatPost>, RequestError> {
+        self.with_event(tournament_id, |held| {
+            Ok(held.chat.get(room_id).cloned().unwrap_or_default())
         })
+    }
+
+    async fn chat_post(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+        body: &str,
+        // Replies are not simulated, like every chat feature added after
+        // 2026-09-28: the post lands as an ordinary one.
+        _reply_to: Option<&str>,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            if body.trim().is_empty() {
+                return Err(RequestError::rejected("Empty message"));
+            }
+            let id = held.handle("c");
+            held.chat
+                .entry(room_id.to_string())
+                .or_default()
+                .push(ChatPost {
+                    id,
+                    author: ME_NAME.into(),
+                    faf_id: Some(ME_FAF_ID),
+                    body: body.trim().to_string(),
+                    at: Some(1_785_400_000),
+                    system: false,
+                    reply_to: None,
+                    everyone: false,
+                });
+            Ok(())
+        })
+    }
+
+    async fn mute_chat(
+        &self,
+        tournament_id: &str,
+        faf_id: i32,
+        name: &str,
+        muted: bool,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            held.event.chat_mutes.retain(|mute| mute.faf_id != faf_id);
+            if muted {
+                held.event.chat_mutes.push(faf_domain::state::ChatMute {
+                    faf_id,
+                    name: name.to_string(),
+                    at: Some(1_786_300_000),
+                });
+            }
+            // The silenced account is told before it types, not after: that is
+            // the whole reason `chatMutedMe` is read at all.
+            if Some(faf_id) == held.event.viewer.faf_id {
+                held.event.chat_muted_me = muted;
+            }
+            Ok(())
+        })
+    }
+
+    async fn delete_chat_post(
+        &self,
+        tournament_id: &str,
+        room_id: &str,
+        post_id: &str,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let Some(posts) = held.chat.get_mut(room_id) else {
+                return Ok(());
+            };
+            posts.retain(|post| post.id != post_id);
+            Ok(())
+        })
+    }
+}
+
+#[async_trait]
+impl TourneyOrganiserPort for FakeTourney {
+    async fn create(&self, draft: &TourneyDraft) -> Result<String, RequestError> {
+        if draft.name.trim().is_empty() {
+            return Err(RequestError::rejected("Name required"));
+        }
+        let id = {
+            let mut counter = self.next_event.lock().expect("fake tournaments poisoned");
+            *counter += 1;
+            format!("new{:03}", *counter)
+        };
+        let mut event = empty_event(&id, draft.name.trim(), TourneyStatus::Signup);
+        // The service creates every tournament unpublished, and an offline fake
+        // that skipped that would hide the one step an organiser must not miss.
+        event.published = false;
+        apply(&mut event, draft);
+        event.category = draft.category;
+        event.competition = draft.competition;
+        event.formation = draft.effective_formation();
+        event.bracket_kind = draft.bracket_kind;
+        event.team_size = draft.team_size.clamp(1, 6);
+        // Structural settings, which `edit_info` may not touch and `apply`
+        // therefore leaves alone: they are only ever set at creation here.
+        event.seeding = draft.seeding;
+        event.signup_mode = draft.signup_mode;
+        event.rating_kind = draft.rating_kind;
+        event.max_teams = draft.max_teams.max(0);
+        event.draft_snakes = draft.draft_snakes;
+        event.veto = draft.veto.clone();
+        event.veto_enabled = draft.veto.enabled;
+        event.plan = draft.plan;
+        event.series_id = draft.series_id.clone();
+        self.events
+            .lock()
+            .expect("fake tournaments poisoned")
+            .push(FakeEvent {
+                event,
+                chat: HashMap::new(),
+                next_id: 100,
+            });
+        Ok(id)
+    }
+
+    async fn edit_info(
+        &self,
+        tournament_id: &str,
+        draft: &TourneyDraft,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            if draft.name.trim().is_empty() {
+                return Err(RequestError::rejected("Name required"));
+            }
+            apply(&mut held.event, draft);
+            Ok(())
+        })
+    }
+
+    async fn publish(&self, tournament_id: &str) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            held.event.published = true;
+            held.event.publish_at = None;
+            Ok(())
+        })
+    }
+
+    async fn archive(&self, tournament_id: &str) -> Result<(), RequestError> {
+        let mut events = self.events.lock().expect("fake tournaments poisoned");
+        let before = events.len();
+        events.retain(|held| held.event.id != tournament_id);
+        if events.len() == before {
+            return Err(RequestError::not_found("That tournament no longer exists."));
+        }
+        Ok(())
+    }
+
+    async fn reseed(&self, tournament_id: &str, order: &SeedOrder) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            if held.event.status != TourneyStatus::Drafted {
+                return Err(RequestError::rejected(
+                    "Seeds can only be changed after teams are formed and before the bracket starts",
+                ));
+            }
+            match order {
+                // Not simulated, like every action added after 2026-09-28.
+                SeedOrder::InviteOrder => {
+                    return Err(RequestError::rejected(
+                        "Seeding by invite order is not available offline",
+                    ));
+                }
+                SeedOrder::Randomise => {
+                    // Reversed rather than shuffled: the fake has no clock and
+                    // no randomness, and a deterministic reorder proves the
+                    // round trip just as well.
+                    held.event.teams.reverse();
+                    for (index, team) in held.event.teams.iter_mut().enumerate() {
+                        team.seed = index as i32 + 1;
+                    }
+                }
+                SeedOrder::Explicit { team_ids } => {
+                    if !order.is_complete(&held.event.teams) {
+                        return Err(RequestError::rejected(
+                            "Seed order must include every team exactly once",
+                        ));
+                    }
+                    for (index, wanted) in team_ids.iter().enumerate() {
+                        if let Some(team) =
+                            held.event.teams.iter_mut().find(|team| &team.id == wanted)
+                        {
+                            team.seed = index as i32 + 1;
+                        }
+                    }
+                    held.event.teams.sort_by_key(|team| team.seed);
+                }
+            }
+            Ok(())
+        })
+    }
+
+    async fn split_divisions(
+        &self,
+        tournament_id: &str,
+        divisions: i32,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            if held.event.status != TourneyStatus::Drafted {
+                return Err(RequestError::rejected(
+                    "Split into divisions after forming teams and before starting the bracket",
+                ));
+            }
+            let count = divisions.clamp(1, 6);
+            if count == 1 {
+                for team in &mut held.event.teams {
+                    team.division = 0;
+                }
+                held.event.divisions = 0;
+                return Ok(());
+            }
+            let per = held.event.teams.len().div_ceil(count as usize).max(1);
+            for (index, team) in held.event.teams.iter_mut().enumerate() {
+                team.division = ((index / per) as i32 + 1).min(count);
+            }
+            held.event.divisions = count;
+            Ok(())
+        })
+    }
+
+    async fn set_division(
+        &self,
+        tournament_id: &str,
+        team_id: &str,
+        division: i32,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let Some(team) = held.event.teams.iter_mut().find(|team| team.id == team_id) else {
+                return Err(RequestError::rejected("Team not found"));
+            };
+            team.division = division.clamp(0, 6);
+            Ok(())
+        })
+    }
+
+    async fn post_news(
+        &self,
+        tournament_id: &str,
+        body: &str,
+        important: bool,
+    ) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            let body = body.trim();
+            if body.is_empty() {
+                return Err(RequestError::rejected("Write something first"));
+            }
+            let id = held.handle("nw");
+            // Newest first, which is the order the server sorts them into.
+            held.event.news.insert(
+                0,
+                NewsPost {
+                    edited_at: None,
+                    id,
+                    body: body.to_string(),
+                    by: ME_NAME.into(),
+                    at: Some(1_785_400_000),
+                    important,
+                },
+            );
+            Ok(())
+        })
+    }
+
+    async fn delete_news(&self, tournament_id: &str, news_id: &str) -> Result<(), RequestError> {
+        self.with_event(tournament_id, |held| {
+            held.event.news.retain(|post| post.id != news_id);
+            Ok(())
+        })
+    }
+
+    async fn upload_desc_image(&self, _: &str, _: &str) -> Result<String, RequestError> {
+        Err(RequestError::rejected("Pictures are not available offline"))
+    }
+
+    async fn administer(&self, _: &str, _: &TourneyAdmin) -> Result<(), RequestError> {
+        Err(RequestError::rejected(
+            "This organiser change is not available offline",
+        ))
     }
 
     async fn save_series(&self, draft: &SeriesDraft) -> Result<(), RequestError> {
@@ -2101,46 +2119,6 @@ impl TourneyPort for FakeTourney {
         })
     }
 
-    async fn mute_chat(
-        &self,
-        tournament_id: &str,
-        faf_id: i32,
-        name: &str,
-        muted: bool,
-    ) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            held.event.chat_mutes.retain(|mute| mute.faf_id != faf_id);
-            if muted {
-                held.event.chat_mutes.push(faf_domain::state::ChatMute {
-                    faf_id,
-                    name: name.to_string(),
-                    at: Some(1_786_300_000),
-                });
-            }
-            // The silenced account is told before it types, not after: that is
-            // the whole reason `chatMutedMe` is read at all.
-            if Some(faf_id) == held.event.viewer.faf_id {
-                held.event.chat_muted_me = muted;
-            }
-            Ok(())
-        })
-    }
-
-    async fn delete_chat_post(
-        &self,
-        tournament_id: &str,
-        room_id: &str,
-        post_id: &str,
-    ) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            let Some(posts) = held.chat.get_mut(room_id) else {
-                return Ok(());
-            };
-            posts.retain(|post| post.id != post_id);
-            Ok(())
-        })
-    }
-
     async fn add_organiser(
         &self,
         tournament_id: &str,
@@ -2251,23 +2229,66 @@ impl TourneyPort for FakeTourney {
             Ok(())
         })
     }
+}
 
-    async fn mark_news_read(&self, tournament_id: &str) -> Result<(), RequestError> {
-        self.with_event(tournament_id, |held| {
-            if !held.event.viewer.logged_in {
-                // The service answers `{ok: 0}` rather than an error, and
-                // remembers nothing: there is no account to remember it for.
-                return Ok(());
-            }
-            held.event.viewer.news_read_at = held
-                .event
-                .news
-                .iter()
-                .filter_map(|post| post.at)
-                .max()
-                .or(held.event.viewer.news_read_at);
-            Ok(())
+#[async_trait]
+impl TourneySitePort for FakeTourney {
+    async fn profile(&self) -> Result<String, RequestError> {
+        Ok(self.discord.lock().expect("fake profile poisoned").clone())
+    }
+
+    async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
+        // The service's own cleaning, mirrored: it strips the characters it
+        // will not store and cuts the rest at forty, then answers with that.
+        let stored: String = handle
+            .trim()
+            .chars()
+            .filter(|held| !"<>\"'&\\".contains(*held))
+            .take(40)
+            .collect();
+        *self.discord.lock().expect("fake profile poisoned") = stored.clone();
+        Ok(stored)
+    }
+
+    async fn hosting(&self) -> Result<HostingStatus, RequestError> {
+        // Allowed offline, because the alternative is a create button nobody
+        // can press and a feature nobody can develop.
+        Ok(HostingStatus {
+            logged_in: true,
+            allowed: true,
+            pending: false,
         })
+    }
+
+    async fn site_read(&self, read: SiteRead) -> Result<SiteDocument, RequestError> {
+        // The account is the one the fixture events belong to, with no role
+        // on the site; nothing else about the site is simulated offline.
+        match read {
+            SiteRead::Account => Ok(SiteDocument::Account(TourneyAccount {
+                logged_in: true,
+                faf_id: Some(1),
+                faf_name: "OfflinePlayer".into(),
+                allowed: true,
+                ..TourneyAccount::default()
+            })),
+            SiteRead::Pending => Ok(SiteDocument::Pending(PendingSummary::default())),
+            _ => Err(RequestError::rejected(
+                "The tournament site is not available offline",
+            )),
+        }
+    }
+
+    async fn site_write(
+        &self,
+        _: &SiteWrite,
+    ) -> Result<(Option<String>, Option<String>), RequestError> {
+        Err(RequestError::rejected(
+            "The tournament site is not available offline",
+        ))
+    }
+
+    async fn articles(&self) -> Result<Vec<Article>, RequestError> {
+        Ok(self.articles.clone())
     }
 }
 

@@ -9,6 +9,7 @@
 // `Tourney::standings` pinned by the conformance harness. The service sends no
 // table at all: the website works one out in the browser and so do we, so the
 // only thing keeping the three honest is that pin.
+import { memo } from "react";
 
 import type { PlayerSummary, Tourney, TourneyTeam } from "../../../ipc/bindings";
 import type { Standing, StandingsKind } from "../../../shared/rules/tourneyRules";
@@ -100,7 +101,8 @@ function ImportedTables({ event }: { event: Tourney }) {
   );
 }
 
-export function StandingsPanel({ event, profiles }: StandingsPanelProps) {
+/** Memoised: it ranks every entrant on each draw, and the pane above redraws often. */
+export const StandingsPanel = memo(function StandingsPanel({ event, profiles }: StandingsPanelProps) {
   const { t } = useTranslation();
   const display = useTourneyDisplay();
   const kind = standingsKind(event);
@@ -170,7 +172,7 @@ export function StandingsPanel({ event, profiles }: StandingsPanelProps) {
       </section>
     </div>
   );
-}
+});
 
 interface StandingsTableProps {
   event: Tourney;

@@ -17,181 +17,48 @@ use tokio::sync::{broadcast, mpsc, oneshot, OwnedSemaphorePermit, Semaphore};
 use crate::ports::Ports;
 use crate::services;
 
+mod census;
+mod command_policy;
 mod policies;
+pub(crate) use command_policy::{expect_admitted, Key};
+use command_policy::{CommandAdmission, Lane};
 pub use policies::{
     AutoReconnect, LatestRequest, LoadedFromDisk, LobbyOperation, LobbyOperations, RunningGame,
     SerialMutation, SingleFlight,
 };
 
-/// Read-only context handed to every service: shared dependencies.
+/// Context handed to every service: shared dependencies plus one operational
+/// context per domain.
 ///
-/// Holds the [`Ports`] bundle (network, fs, process, auth…) injected at startup.
+/// Holds the [`Ports`] bundle (network, fs, process, auth...) injected at
+/// startup. Each service owns its context and that context's fields, which are
+/// private to the service's module, so only the owner can touch its request
+/// generations, locks and connection guards. Anything another service needs is
+/// a named method on the owner's context, so a cross-domain dependency is
+/// visible at the call.
 pub struct ServiceCtx {
     pub backend_version: String,
     pub ports: Ports,
-    /// Single-flight guard for the lobby connection while `Connect` owns an
-    /// active/connecting socket. A redundant request is dropped, so overlapping
-    /// connections cannot race and clobber each other's state.
-    pub lobby_active: SingleFlight,
-    /// The lobby's joins, hosts and launch orders: which one is current,
-    /// whether it was called off, and which join holds the single-flight join
-    /// slot. See [`LobbyOperations`].
-    ///
-    /// Named for the question the launcher asks of it (`is_cancelled`), which
-    /// is why it is not called `lobby_operations`; renaming it means renaming
-    /// the launcher's reads in the same change.
-    pub lobby_operations: LobbyOperations,
-    /// Which match the match-start watchdog was armed for. A timer for a
-    /// match that was cancelled must not call off the next one found on the
-    /// same queue; see `services::lobby::watch_for_match_start`.
-    pub lobby_match_generation: LatestRequest,
-    /// The title of the game this client last asked the server to host, so
-    /// the launch order that answers it starts on the hosting preference.
-    /// Taken by that launch; see `launcher::launch`.
-    pub hosted_title: std::sync::Mutex<Option<String>>,
-    /// The game this client is currently playing, if any. Read when the lobby
-    /// socket comes back, so the server can be told to restore the game
-    /// session it dropped along with the connection.
-    pub running_game: RunningGame,
-    /// Same single-flight guard, for the chat connection.
-    pub chat_active: SingleFlight,
-    /// Whether [`services::reconnect`] should bring these sockets back after
-    /// an unexpected drop, so a user who hung up stays hung up while a laptop
-    /// resume does not.
-    pub lobby_auto_reconnect: AutoReconnect,
-    pub chat_auto_reconnect: AutoReconnect,
-    /// Generations cancel stale player-card requests when users rapidly switch players/queues.
-    pub player_card_profile_generation: LatestRequest,
-    pub player_card_matchmaker_generation: LatestRequest,
-    pub player_card_map_stats_generation: LatestRequest,
-    pub player_card_history_generation: LatestRequest,
-    /// Party placement lookups run one at a time. The panel sends the whole
-    /// party on every change, and the service skips ids it already knows, so
-    /// serialising them is what turns "already known" into "asked once": two
-    /// overlapping lookups would both find the map empty and both fetch.
-    pub party_placements_mutation: SerialMutation,
-    /// Global single-flight guards for operations whose adapters use a shared
-    /// temporary file or whose state machine only represents one operation.
-    pub uploads_active: SingleFlight,
-    pub client_update_active: SingleFlight,
-    /// One Galactic War install at a time: concurrent runs would share a
-    /// staging directory and race to write the same manifest.
-    pub galactic_war_active: SingleFlight,
-    /// Settings commands run concurrently. Serializing the snapshot + write
-    /// prevents an older command from reaching disk after a newer one.
-    pub settings_persist: SerialMutation,
-    /// Held across one settings command's read, merge and emit. Commands run
-    /// on their own tasks, so two patches could both read the group before
-    /// either emitted, and the second would carry the first's field back to
-    /// its old value. Synchronous: nothing in between awaits.
-    pub settings_merge: std::sync::Mutex<()>,
-    /// Added sounds whose removal is under way. A notifications change that
-    /// would newly choose one is refused, so a dropdown that still lists it
-    /// cannot leave a saved setting naming a file about to be deleted.
-    pub sounds_being_removed: std::sync::Mutex<std::collections::HashSet<String>>,
-    /// Whether the settings file has been read yet. Nothing may be persisted
-    /// before it has, or a preference set during startup writes a document
-    /// made of defaults over the user's own.
-    pub settings_loaded: LoadedFromDisk,
-    /// When a composing notice was last sent per channel, so the composer can
-    /// report on every keystroke while the wire sees one line every few
-    /// seconds.
-    pub chat_typing_sent: std::sync::Mutex<std::collections::HashMap<String, u32>>,
-    /// Read markers can change on every channel click. Only the last click in
-    /// a short burst writes settings, while state updates remain immediate.
-    pub chat_read_marker_persist_generation: LatestRequest,
-    /// Generations discard replies from superseded leaderboard and co-op
-    /// requests. The runtime intentionally executes commands concurrently, so
-    /// request order is not response order.
-    pub leaderboard_catalog_generation: LatestRequest,
-    pub leaderboard_ratings_generation: LatestRequest,
-    pub leaderboard_seasons_generation: LatestRequest,
-    pub leaderboard_season_generation: LatestRequest,
-    pub coop_catalog_generation: LatestRequest,
-    pub coop_leaderboard_generation: LatestRequest,
-    pub auth_generation: LatestRequest,
-    pub auth_cancellation: std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>,
-    pub reviews_generation: LatestRequest,
-    pub reporting_generation: LatestRequest,
-    /// Whether this session has compared the matchmaker map pools with the
-    /// ones last seen (#406). Once per run: pools change between releases,
-    /// not between reconnects.
-    pub map_pools_checked: std::sync::atomic::AtomicBool,
-    pub replay_vault_generation: LatestRequest,
-    pub replay_local_generation: LatestRequest,
-    /// The in-flight replay launch, so the overlay's Cancel button has
-    /// something to press. Same shape as `auth_cancellation`, and for the same
-    /// reason: dropping the future is the only thing that actually stops work
-    /// that is several awaits deep inside a port.
-    pub replay_cancellation: std::sync::Mutex<Option<tokio_util::sync::CancellationToken>>,
-    pub map_generator_active: SingleFlight,
-    pub tutorial_launch_active: SingleFlight,
-    /// The changelog tab re-mounts on every visit and asks for the index each
-    /// time. Without this, two quick visits both read a not-ready status and
-    /// both fetch the same index: the check on `ChangelogStatus::Ready` is a
-    /// check-then-act, and commands run concurrently.
-    pub changelog_active: SingleFlight,
-    /// One crawl of the whole map vault at a time. The service's "already
-    /// loading or loaded" check is a check-then-act, and commands run
-    /// concurrently: several views ask for the vault as they mount, and two
-    /// asking together both read a status that was not yet `Loading` and
-    /// both crawled every page.
-    pub map_vault_active: SingleFlight,
-    /// Only the newest note may land. Clicking two releases in a row must not
-    /// leave the first one's text on screen because it answered second, and a
-    /// cached selection must not be overwritten by a slower earlier fetch.
-    pub changelog_entry_generation: LatestRequest,
-    /// A GitHub device-flow login polls for minutes. Pressing the button twice
-    /// must not leave two loops polling, because the second code would silently
-    /// invalidate the one on screen.
-    pub guides_login_active: SingleFlight,
-    /// Accepting and rejecting go one at a time. Two accepts would each read
-    /// the catalogue, each patch their own copy, and one would be refused by
-    /// the content hash; serialising means it never gets that far.
-    pub guides_verdict: SerialMutation,
-    /// Only the newest queue answer may land: every verdict reloads the queue,
-    /// so an older response arriving late would restore rows already decided.
-    pub guides_queue_generation: LatestRequest,
-    pub maps_mutation: SerialMutation,
-    pub mods_mutation: SerialMutation,
-    /// Only the newest vault search may land. A slow earlier query answering
-    /// after a fast later one would otherwise replace its page, its totals or
-    /// its error with results for filters no longer on screen.
-    pub map_search_generation: LatestRequest,
-    pub mod_search_generation: LatestRequest,
-    pub auth_mutation: SerialMutation,
-    /// Player and organiser writes go one at a time. The server recomputes the
-    /// bracket on every confirmed result, so two overlapping reports would each
-    /// be answered against a bracket the other has already moved.
-    pub tourney_mutation: SerialMutation,
-    /// Clan writes go one at a time, and each ends by reloading. Two
-    /// overlapping edits would otherwise reload in response order rather than
-    /// command order and leave the older answer standing.
-    pub clan_mutation: SerialMutation,
-    /// Only the newest invite-field answer may land: the field searches per
-    /// keystroke, and an earlier prefix arriving late would replace the list
-    /// with matches for something no longer typed.
-    pub clan_candidate_generation: LatestRequest,
-    /// Only the newest detail response may land: opening three events in a row
-    /// must not leave the first one's bracket on screen because it answered
-    /// last.
-    pub tourney_detail_generation: LatestRequest,
-    /// The same, for reading a chat room.
-    pub tourney_chat_generation: LatestRequest,
-    /// The same, for the organiser's account search: it fires per keystroke, so
-    /// answers overtaking each other is the normal case rather than the rare one.
-    pub tourney_account_search_generation: LatestRequest,
-    /// The same, for the entry-eligibility check. Moving to another event
-    /// invalidates it as well, so a verdict about the event just left cannot
-    /// land under the one now open.
-    pub tourney_rating_check_generation: LatestRequest,
-    /// The same, for one entrant's ratings table. Asking for another entrant,
-    /// or again from FAF, supersedes the answer in flight, and moving to
-    /// another event invalidates it like the eligibility check.
-    pub tourney_player_ratings_generation: LatestRequest,
-    /// The same, for the create form's "Fill from this": only the template
-    /// asked for last may fill the form, success or refusal.
-    pub tourney_template_generation: LatestRequest,
+    /// Which commands may run together, enforced. Here rather than in the
+    /// runtime loop alone so a service starting another service's command
+    /// goes through it as well: see [`run_command`].
+    pub(crate) admission: CommandAdmission,
+    pub lobby: services::lobby::LobbyContext,
+    pub chat: services::chat::ChatContext,
+    pub settings: services::settings::SettingsContext,
+    pub auth: services::auth::AuthContext,
+    pub player_card: services::player_card::PlayerCardContext,
+    pub leaderboard: services::leaderboard::LeaderboardContext,
+    pub coop: services::coop::CoopContext,
+    pub replays: services::replays::ReplaysContext,
+    pub tourney: services::tourney::TourneyContext,
+    pub reviews: services::reviews::ReviewsContext,
+    pub reporting: services::reporting::ReportingContext,
+    pub changelog: services::changelog::ChangelogContext,
+    pub guides: services::guides::GuidesContext,
+    pub maps: services::maps::MapsContext,
+    pub mods: services::mods::ModsContext,
+    pub clan: services::clan::ClanContext,
 }
 
 /// The sink a service emits events into.
@@ -232,6 +99,9 @@ pub struct VersionedSnapshot {
     pub state: AppState,
 }
 
+/// A reduction this slow, under the write lock, is worth a log line.
+const SLOW_REDUCE: std::time::Duration = std::time::Duration::from_millis(25);
+
 impl EventSink {
     /// Reduce an event into the authoritative state and broadcast it.
     ///
@@ -260,6 +130,7 @@ impl EventSink {
             .send_order
             .lock()
             .expect("event delivery lock poisoned");
+        let started = std::time::Instant::now();
         let revision = {
             let mut guard = self.state.write().expect("app state lock poisoned");
             faf_domain::reduce(&mut guard, &event);
@@ -267,6 +138,16 @@ impl EventSink {
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
                 .wrapping_add(1)
         };
+        // Every reader and every other emitter waits for this, so a reducer
+        // that has become expensive at a populated catalogue should say so.
+        let reduced = started.elapsed();
+        if reduced >= SLOW_REDUCE {
+            tracing::warn!(
+                event = %variant_name(&event),
+                milliseconds = reduced.as_millis() as u64,
+                "reducing an event held the state write lock this long"
+            );
+        }
         // Err only means "no subscribers yet": fine to ignore. The clone is
         // skipped when nobody is listening on the plain stream, because some
         // events carry the whole player directory and this would otherwise
@@ -471,64 +352,23 @@ impl App {
         let ctx = ServiceCtx {
             backend_version: backend_version.into(),
             ports,
-            lobby_active: SingleFlight::default(),
-            lobby_operations: LobbyOperations::default(),
-            lobby_match_generation: LatestRequest::default(),
-            hosted_title: std::sync::Mutex::new(None),
-            running_game: RunningGame::default(),
-            chat_active: SingleFlight::default(),
-            lobby_auto_reconnect: AutoReconnect::default(),
-            chat_auto_reconnect: AutoReconnect::default(),
-            player_card_profile_generation: LatestRequest::default(),
-            player_card_matchmaker_generation: LatestRequest::default(),
-            player_card_map_stats_generation: LatestRequest::default(),
-            player_card_history_generation: LatestRequest::default(),
-            party_placements_mutation: SerialMutation::default(),
-            uploads_active: SingleFlight::default(),
-            client_update_active: SingleFlight::default(),
-            galactic_war_active: SingleFlight::default(),
-            settings_persist: SerialMutation::default(),
-            settings_merge: std::sync::Mutex::new(()),
-            sounds_being_removed: std::sync::Mutex::new(std::collections::HashSet::new()),
-            settings_loaded: LoadedFromDisk::default(),
-            chat_typing_sent: std::sync::Mutex::new(std::collections::HashMap::new()),
-            chat_read_marker_persist_generation: LatestRequest::default(),
-            leaderboard_catalog_generation: LatestRequest::default(),
-            leaderboard_ratings_generation: LatestRequest::default(),
-            leaderboard_seasons_generation: LatestRequest::default(),
-            leaderboard_season_generation: LatestRequest::default(),
-            coop_catalog_generation: LatestRequest::default(),
-            coop_leaderboard_generation: LatestRequest::default(),
-            auth_generation: LatestRequest::default(),
-            auth_cancellation: std::sync::Mutex::new(None),
-            reviews_generation: LatestRequest::default(),
-            reporting_generation: LatestRequest::default(),
-            map_pools_checked: std::sync::atomic::AtomicBool::new(false),
-            replay_vault_generation: LatestRequest::default(),
-            replay_local_generation: LatestRequest::default(),
-            replay_cancellation: std::sync::Mutex::new(None),
-            map_generator_active: SingleFlight::default(),
-            tutorial_launch_active: SingleFlight::default(),
-            changelog_active: SingleFlight::default(),
-            map_vault_active: SingleFlight::default(),
-            changelog_entry_generation: LatestRequest::default(),
-            guides_login_active: SingleFlight::default(),
-            guides_verdict: SerialMutation::default(),
-            guides_queue_generation: LatestRequest::default(),
-            maps_mutation: SerialMutation::default(),
-            mods_mutation: SerialMutation::default(),
-            map_search_generation: LatestRequest::default(),
-            mod_search_generation: LatestRequest::default(),
-            auth_mutation: SerialMutation::default(),
-            tourney_mutation: SerialMutation::default(),
-            clan_mutation: SerialMutation::default(),
-            clan_candidate_generation: LatestRequest::default(),
-            tourney_detail_generation: LatestRequest::default(),
-            tourney_chat_generation: LatestRequest::default(),
-            tourney_account_search_generation: LatestRequest::default(),
-            tourney_rating_check_generation: LatestRequest::default(),
-            tourney_player_ratings_generation: LatestRequest::default(),
-            tourney_template_generation: LatestRequest::default(),
+            admission: CommandAdmission::default(),
+            lobby: services::lobby::LobbyContext::default(),
+            chat: services::chat::ChatContext::default(),
+            settings: services::settings::SettingsContext::default(),
+            auth: services::auth::AuthContext::default(),
+            player_card: services::player_card::PlayerCardContext::default(),
+            leaderboard: services::leaderboard::LeaderboardContext::default(),
+            coop: services::coop::CoopContext::default(),
+            replays: services::replays::ReplaysContext::default(),
+            tourney: services::tourney::TourneyContext::default(),
+            reviews: services::reviews::ReviewsContext::default(),
+            reporting: services::reporting::ReportingContext::default(),
+            changelog: services::changelog::ChangelogContext::default(),
+            guides: services::guides::GuidesContext::default(),
+            maps: services::maps::MapsContext::default(),
+            mods: services::mods::ModsContext::default(),
+            clan: services::clan::ClanContext::default(),
         };
 
         let app = Self {
@@ -713,11 +553,27 @@ impl AppLoop {
         // reaches a client nobody has restarted since Friday.
         services::client_update::spawn(ctx.clone(), self.sink.clone());
 
+        // And how big the state has grown, written to the log now and then:
+        // see `census`.
+        census::spawn(self.sink.clone());
+
         let sink = self.sink.clone();
+        // Admitted here, synchronously, as the command leaves its queue: see
+        // `CommandAdmission` for why the place is taken before the task starts.
         let handle = move |command: AppCommand| {
             let ctx = ctx.clone();
             let sink = sink.clone();
-            async move { dispatch(command, &ctx, &sink).await }
+            let admission = command_policy::policy(&command).admission;
+            let turn = ctx.admission.admit(admission);
+            async move {
+                let Some(mut turn) = turn else {
+                    tracing::debug!("dropped a command whose kind is already running");
+                    return;
+                };
+                turn.ready().await;
+                command_policy::run_admitted(admission, dispatch(command, &ctx, &sink)).await;
+                drop(turn);
+            }
         };
         drive(
             self.cmd_rx,
@@ -758,41 +614,10 @@ const PRODUCTION_LIMITS: Limits = Limits {
     urgent: MAX_CONCURRENT_URGENT,
 };
 
-/// Commands that call work off rather than start it.
-///
-/// They get their own queue and their own permits. With one shared pool, a
-/// cancel clicked while the pool was full of the very work it was meant to
-/// stop waited behind that work, and a stuck join could not be called off
-/// until something else finished.
-///
-/// Matchmaker *stop* is here, *start* is not; the same goes for every pair.
-/// Only the half that releases something jumps the queue.
-///
-/// Navigation is here as well, for the same reason from the other side: a
-/// click on a tab only changes what is on screen and never waits on anything,
-/// so it must not wait behind the work it is moving away from. The Live tab
-/// once filled every ordinary slot with vault lookups, and a click on Online
-/// did nothing until they had all come back.
+/// Whether a command waits in the priority queue. The lane is part of the
+/// command's policy: see [`command_policy::Lane`].
 fn is_urgent(command: &AppCommand) -> bool {
-    use faf_domain::state::{
-        AuthCommand, ChatCommand, GuidesCommand, LobbyCommand, MapGeneratorCommand, ReplayCommand,
-    };
-    matches!(
-        command,
-        AppCommand::Nav(_)
-            | AppCommand::Lobby(
-                LobbyCommand::CancelJoin
-                    | LobbyCommand::DeclineModReplacement
-                    | LobbyCommand::TerminateGame
-                    | LobbyCommand::Disconnect
-                    | LobbyCommand::Matchmake { start: false, .. }
-            )
-            | AppCommand::Auth(AuthCommand::CancelLogin | AuthCommand::Logout)
-            | AppCommand::Chat(ChatCommand::Disconnect)
-            | AppCommand::Guides(GuidesCommand::CancelSignIn)
-            | AppCommand::MapGenerator(MapGeneratorCommand::Cancel)
-            | AppCommand::Replays(ReplayCommand::CancelWatch | ReplayCommand::CancelLiveTracking)
-    )
+    command_policy::policy(command).lane == Lane::Priority
 }
 
 /// Run commands from both queues until the ordinary one closes.
@@ -910,10 +735,16 @@ impl Running {
 }
 
 /// A command's slice and variant, as "Nav::SelectReplaysSection", without its
-/// payload. Read from the `Debug` text, cut off after a few dozen characters
-/// so a command carrying a picture costs no more to name than one that does
-/// not.
+/// payload.
 fn command_name(command: &AppCommand) -> String {
+    variant_name(command)
+}
+
+/// A command's or event's slice and variant, as "Lobby::GamesUpdated",
+/// without its payload. Read from the `Debug` text, cut off after a few dozen
+/// characters so a value carrying a picture or a whole catalogue costs no more
+/// to name than one that does not.
+fn variant_name(value: &impl std::fmt::Debug) -> String {
     struct Capped(String);
     impl std::fmt::Write for Capped {
         fn write_str(&mut self, text: &str) -> std::fmt::Result {
@@ -927,7 +758,7 @@ fn command_name(command: &AppCommand) -> String {
         }
     }
     let mut text = Capped(String::new());
-    let _ = std::fmt::write(&mut text, format_args!("{command:?}"));
+    let _ = std::fmt::write(&mut text, format_args!("{value:?}"));
     let text = text.0;
     let (slice, rest) = text.split_once('(').unwrap_or((text.as_str(), ""));
     let variant: String = rest
@@ -975,6 +806,33 @@ fn spawn_command<H, F>(
             let _ = completion.send(());
         }
     });
+}
+
+/// Run a command from inside a service, under the same policy as one from the
+/// webview: a single-flight command is dropped while its kind runs, and a
+/// serial one waits its turn.
+///
+/// The way for one service to start another's command. Calling the other
+/// service's `handle` directly walks past the policy table, which is how the
+/// training tab's catalogue load used to start a second crawl beside the Maps
+/// tab's own.
+///
+/// Boxed because it recurses: a command run here may itself run another.
+pub(crate) fn run_command<'a>(
+    command: AppCommand,
+    ctx: &'a ServiceCtx,
+    out: &'a EventSink,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + 'a>> {
+    let admission = command_policy::policy(&command).admission;
+    let turn = ctx.admission.admit(admission);
+    Box::pin(async move {
+        let Some(mut turn) = turn else {
+            return;
+        };
+        turn.ready().await;
+        command_policy::run_admitted(admission, dispatch(command, ctx, out)).await;
+        drop(turn);
+    })
 }
 
 /// Route a command to the owning service. One arm per slice (ARCHITECTURE.md §8).
@@ -1064,6 +922,12 @@ mod tests {
             .into(),
         );
         assert_eq!(named, "Lobby::Join");
+    }
+
+    #[test]
+    fn an_event_is_named_the_same_way() {
+        let event: AppEvent = faf_domain::state::MapsEvent::VaultLoading.into();
+        assert_eq!(variant_name(&event), "Maps::VaultLoading");
     }
 
     #[test]

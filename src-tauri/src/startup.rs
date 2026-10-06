@@ -164,15 +164,17 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                 // Re-establish an atomic state/event boundary rather
                 // than skipping deltas and permanently diverging from
                 // the authoritative Rust state.
-                // Logged, with how long the snapshot took to send: it is the
-                // whole state, map and mod catalogues included, and while the
-                // webview takes it in, nothing else on screen updates. A
+                // Logged, with its size and how long it took to send: it is
+                // the whole state, map and mod catalogues included, and while
+                // the webview takes it in, nothing else on screen updates. A
                 // client that looked frozen for seconds left nothing behind to
-                // say whether this was why.
+                // say whether this was why. Sizing it serialises it once more,
+                // which a lag, rare by design, can afford.
                 Err(RecvError::Lagged(skipped)) => {
                     let started = std::time::Instant::now();
                     let (replacement, snapshot) = event_core.subscribe_versioned_with_snapshot();
                     events = replacement;
+                    let bytes = serde_json::to_vec(&snapshot.state).map_or(0, |json| json.len());
                     let _ = handle.emit(
                         EVENT_CHANNEL,
                         FrontendMessage::Snapshot {
@@ -182,6 +184,7 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                     );
                     tracing::warn!(
                         skipped,
+                        bytes,
                         seconds = started.elapsed().as_secs_f32(),
                         "webview event stream fell behind; sent a full state snapshot"
                     );

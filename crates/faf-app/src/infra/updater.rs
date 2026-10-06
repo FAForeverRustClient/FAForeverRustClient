@@ -20,7 +20,7 @@ use tokio::sync::mpsc;
 use crate::infra::session::TokenStore;
 use crate::infra::{cache_dir, env_or, game_updater, maps};
 use crate::ports::{
-    GamePreparation, GameUpdaterPort, PreparationStep, ProcessPort, UpdateProgress,
+    GamePreparation, GameUpdaterPort, InstalledBuild, PreparationStep, ProcessPort, UpdateProgress,
 };
 
 /// Endpoints and install details the updater needs.
@@ -179,6 +179,12 @@ impl GameUpdaterPort for GameUpdaterClient {
             }
         }
         failures
+    }
+
+    fn installed_build(&self) -> Option<InstalledBuild> {
+        // Asked for on every launch, like `run` above, so the stamp read is
+        // always the one in the install Settings currently points at.
+        game_updater::read_installed_build(&self.process.game_install_dir()?)
     }
 }
 

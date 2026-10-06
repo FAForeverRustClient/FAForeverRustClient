@@ -43,23 +43,15 @@ import {
 import { ChangeCaptainDialog, SwapInDialog, TeamFromFreeAgentDialog } from "./TeamDialogs";
 import { PremadeTeams } from "./PremadeTeams";
 import { useTourneyDisplay } from "../display";
+import type { EntryActions, TeamActions } from "../tourneyActions";
 
 interface TeamsPanelProps {
   event: Tourney;
   profiles: PlayerSummary[];
   busy: boolean;
-  onCreate: (name: string) => void;
-  onRequestJoin: (teamId: string) => void;
-  onCancelJoin: (teamId: string) => void;
-  onRespondJoin: (teamId: string, playerId: string, accept: boolean) => void;
-  onInvite: (teamId: string, playerId: string) => void;
-  onRespondInvite: (teamId: string, accept: boolean) => void;
-  onLeave: () => void;
-  onDisband: (teamId: string) => void;
-  onRename: (teamId: string, name: string) => void;
-  /** Check this account's own team in, or take it back. */
-  onCheckIn: (checkedIn: boolean) => void;
-  onSetCaptain: (teamId: string, playerId: string) => void;
+  teams: TeamActions;
+  /** Checking this account's own team in, or taking it back. */
+  entry: Pick<EntryActions, "checkIn">;
   onAdmin: (change: TourneyAdmin) => void;
 }
 
@@ -150,11 +142,7 @@ export function TeamsPanel(props: TeamsPanelProps) {
       asked={askedFor(team)}
       overCap={canForm && !teamIsFull(event, team) && wouldExceedCap(event, team)}
       extra={extra}
-      onRequestJoin={props.onRequestJoin}
-      onCancelJoin={props.onCancelJoin}
-      onRespondJoin={props.onRespondJoin}
-      onDisband={props.onDisband}
-      onRename={props.onRename}
+      teams={props.teams}
       onChangeCaptain={() => setDialog({ kind: "captain", team })}
       onAdmin={props.onAdmin}
     />
@@ -177,10 +165,10 @@ export function TeamsPanel(props: TeamsPanelProps) {
                   {event.rating.maxTeam !== null &&
                     ` · ${t("tournaments.teams.ratingOfMax", { rating: teamRating(event, team), max: event.rating.maxTeam })}`}
                 </span>
-                <Button variant="primary" disabled={busy} onClick={() => props.onRespondInvite(team.id, true)}>
+                <Button variant="primary" disabled={busy} onClick={() => props.teams.respondInvite(team.id, true)}>
                   {t("tournaments.teams.accept")}
                 </Button>
-                <Button disabled={busy} onClick={() => props.onRespondInvite(team.id, false)}>
+                <Button disabled={busy} onClick={() => props.teams.respondInvite(team.id, false)}>
                   {t("tournaments.teams.decline")}
                 </Button>
               </li>
@@ -198,10 +186,8 @@ export function TeamsPanel(props: TeamsPanelProps) {
           busy={busy}
           captain={captainOf(mine)}
           now={now}
-          onCheckIn={props.onCheckIn}
-          onLeave={props.onLeave}
-          onDisband={props.onDisband}
-          onRename={props.onRename}
+          onCheckIn={props.entry.checkIn}
+          teams={props.teams}
           onCancelInvite={(playerId) =>
             props.onAdmin({ type: "cancelTeamInvite", payload: { teamId: mine.id, playerId } })
           }
@@ -214,7 +200,7 @@ export function TeamsPanel(props: TeamsPanelProps) {
           onSubmit={(submitted) => {
             submitted.preventDefault();
             if (newName.trim() === "") return;
-            props.onCreate(newName);
+            props.teams.create(newName);
             setNewName("");
           }}
         >
@@ -324,7 +310,7 @@ export function TeamsPanel(props: TeamsPanelProps) {
             sort={sort}
             recruiting={recruiting}
             onSort={setSort}
-            onInvite={props.onInvite}
+            onInvite={props.teams.invite}
             onCancelInvite={(teamId, playerId) =>
               props.onAdmin({ type: "cancelTeamInvite", payload: { teamId, playerId } })
             }
@@ -353,7 +339,7 @@ export function TeamsPanel(props: TeamsPanelProps) {
           members={teamMembers(event, dialog.team)}
           busy={busy}
           onPick={(playerId) => {
-            props.onSetCaptain(dialog.team.id, playerId);
+            props.teams.setCaptain(dialog.team.id, playerId);
             setDialog(null);
           }}
           onClose={() => setDialog(null)}
@@ -429,9 +415,7 @@ interface YourTeamProps {
   captain: boolean;
   now: number;
   onCheckIn: (checkedIn: boolean) => void;
-  onLeave: () => void;
-  onDisband: (teamId: string) => void;
-  onRename: (teamId: string, name: string) => void;
+  teams: Pick<TeamActions, "leave" | "disband" | "rename">;
   onCancelInvite: (playerId: string) => void;
 }
 
@@ -488,7 +472,7 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
         <Button
           disabled={busy}
           onClick={() => {
-            if (window.confirm(t("tournaments.teams.leaveConfirm"))) on.onLeave();
+            if (window.confirm(t("tournaments.teams.leaveConfirm"))) on.teams.leave();
           }}
         >
           {t("tournaments.teams.leave")}
@@ -498,7 +482,7 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
             disabled={busy}
             onClick={() => {
               const renamed = window.prompt(t("tournaments.teams.renamePrompt"), team.name);
-              if (renamed !== null && renamed.trim() !== "") on.onRename(team.id, renamed);
+              if (renamed !== null && renamed.trim() !== "") on.teams.rename(team.id, renamed);
             }}
           >
             {t("tournaments.teams.rename")}
@@ -508,7 +492,7 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
           <Button
             disabled={busy}
             onClick={() => {
-              if (window.confirm(t("tournaments.teams.disbandConfirm"))) on.onDisband(team.id);
+              if (window.confirm(t("tournaments.teams.disbandConfirm"))) on.teams.disband(team.id);
             }}
           >
             {t("tournaments.teams.disband")}
@@ -552,11 +536,7 @@ interface TeamCardProps {
   asked: boolean;
   overCap: boolean;
   extra?: ReactNode;
-  onRequestJoin: (teamId: string) => void;
-  onCancelJoin: (teamId: string) => void;
-  onRespondJoin: (teamId: string, playerId: string, accept: boolean) => void;
-  onDisband: (teamId: string) => void;
-  onRename: (teamId: string, name: string) => void;
+  teams: Pick<TeamActions, "requestJoin" | "cancelJoin" | "respondJoin" | "disband" | "rename">;
   onChangeCaptain: () => void;
   onAdmin: (change: TourneyAdmin) => void;
 }
@@ -655,11 +635,11 @@ function TeamCard(props: TeamCardProps) {
                   <Button
                     variant="primary"
                     disabled={busy || full}
-                    onClick={() => props.onRespondJoin(team.id, ask.playerId, true)}
+                    onClick={() => props.teams.respondJoin(team.id, ask.playerId, true)}
                   >
                     {t("tournaments.teams.accept")}
                   </Button>
-                  <Button disabled={busy} onClick={() => props.onRespondJoin(team.id, ask.playerId, false)}>
+                  <Button disabled={busy} onClick={() => props.teams.respondJoin(team.id, ask.playerId, false)}>
                     {t("tournaments.teams.decline")}
                   </Button>
                 </li>
@@ -671,14 +651,14 @@ function TeamCard(props: TeamCardProps) {
 
       <div className="tournament-match-actions">
         {props.mayAsk && (
-          <Button variant="primary" disabled={busy} onClick={() => props.onRequestJoin(team.id)}>
+          <Button variant="primary" disabled={busy} onClick={() => props.teams.requestJoin(team.id)}>
             {t("tournaments.teams.askOpen", { count: openSlots })}
           </Button>
         )}
         {props.asked && (
           <>
             <span className="muted">{t("tournaments.teams.requestPending")}</span>
-            <Button disabled={busy} onClick={() => props.onCancelJoin(team.id)}>
+            <Button disabled={busy} onClick={() => props.teams.cancelJoin(team.id)}>
               {t("tournaments.teams.cancelAsk")}
             </Button>
           </>
@@ -709,7 +689,7 @@ function TeamCard(props: TeamCardProps) {
             disabled={busy}
             onClick={() => {
               const renamed = window.prompt(t("tournaments.teams.renamePrompt"), team.name);
-              if (renamed !== null && renamed.trim() !== "") props.onRename(team.id, renamed);
+              if (renamed !== null && renamed.trim() !== "") props.teams.rename(team.id, renamed);
             }}
           >
             {t("tournaments.teams.rename")}
@@ -719,7 +699,7 @@ function TeamCard(props: TeamCardProps) {
           <Button
             disabled={busy}
             onClick={() => {
-              if (window.confirm(t("tournaments.teams.disbandConfirm"))) props.onDisband(team.id);
+              if (window.confirm(t("tournaments.teams.disbandConfirm"))) props.teams.disband(team.id);
             }}
           >
             {t("tournaments.teams.disband")}

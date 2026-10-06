@@ -8,8 +8,11 @@
 //! 2. open the system browser at Hydra's `/oauth2/auth` (PKCE `S256`);
 //! 3. receive the `code` on the loopback socket;
 //! 4. exchange the code for tokens at `/oauth2/token` (public client, no secret);
-//! 5. persist the refresh token in the OS keyring (best-effort);
-//! 6. look up the player at `/me` and return it.
+//! 5. look up the player at `/me`, stage the session and return the player.
+//!
+//! The staged session is published (access token made current, refresh token
+//! persisted in the OS keyring, renewal scheduled) only when the auth service
+//! commits it, which it does once the attempt is known to be still wanted.
 //!
 //! Native FAF protocol values are taken from the reference clients; everything is
 //! overridable via [`OAuthConfig::from_env`] so a partner dev can point at staging.
@@ -94,6 +97,28 @@ pub struct OAuthAuth {
     /// The running background refresh, so a second login replaces it rather
     /// than leaving two loops refreshing the same store.
     refresh_task: Mutex<Option<tokio::task::JoinHandle<()>>>,
+    /// The session the last login or restore obtained but nobody has
+    /// committed yet. See [`AuthPort::commit_session`].
+    pending: Mutex<Option<PendingSession>>,
+}
+
+/// A signed-in session that is not visible to the rest of the client yet.
+///
+/// Login used to publish the access token, persist the refresh token and start
+/// the renewal loop before the `/me` request had answered. A sign-in that was
+/// cancelled during that request, or whose profile lookup failed, then left a
+/// live session behind a login screen, and with "Remember me" one that the
+/// next start would restore. Holding everything here until the auth service
+/// commits makes publication a single step that only a wanted attempt takes.
+#[derive(Debug)]
+struct PendingSession {
+    access_token: String,
+    /// Written to the keyring on commit. `None` when the user did not ask to
+    /// be remembered, or when a restore has already persisted the rotated one.
+    refresh_token: Option<String>,
+    /// Whether the committed session is kept valid by the background refresh.
+    renew: bool,
+    expires_in: Option<u64>,
 }
 
 /// Refresh this far before the access token actually expires.
@@ -129,7 +154,39 @@ impl OAuthAuth {
             http: super::http::shared_http_client(),
             tokens,
             refresh_task: Mutex::new(None),
+            pending: Mutex::new(None),
         }
+    }
+
+    fn pending_slot(&self) -> std::sync::MutexGuard<'_, Option<PendingSession>> {
+        self.pending
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// Wait for the player's profile, then stage the session for the auth
+    /// service to commit.
+    ///
+    /// Nothing is published here, not even after the profile arrives: the
+    /// attempt may have been called off while `/me` was in flight, and only the
+    /// service knows that. A cancelled attempt drops this future before the
+    /// staging line runs; a failed lookup returns before it.
+    async fn stage_session(
+        &self,
+        tokens: TokenResponse,
+        persist_refresh: bool,
+        renew: bool,
+        profile: impl std::future::Future<Output = AuthResult<Player>>,
+    ) -> AuthResult<Player> {
+        let mut player = profile.await?;
+        player.roles = session_roles(&tokens);
+        *self.pending_slot() = Some(PendingSession {
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token.filter(|_| persist_refresh),
+            renew,
+            expires_in: tokens.expires_in,
+        });
+        Ok(player)
     }
 
     /// Keep the access token valid for as long as the client is signed in.
@@ -216,6 +273,9 @@ impl OAuthAuth {
 #[async_trait]
 impl AuthPort for OAuthAuth {
     async fn login(&self, remember: bool) -> AuthResult<Player> {
+        // A session an earlier attempt staged and nobody committed belongs to
+        // that attempt, never to this one.
+        self.discard_pending_session();
         // Remove the old token up front so an account switch cannot retain the
         // previous account, and so an unchecked "Remember me" choice takes
         // effect even if the user had remembered a different account.
@@ -266,32 +326,17 @@ impl AuthPort for OAuthAuth {
         // 5. Exchange the code for tokens.
         let tokens = self.exchange_code(&code, &verifier, &redirect_uri).await?;
 
-        // 6. Make the access token available to network ports (e.g. lobby).
-        self.tokens.set(&tokens.access_token);
-
-        // 7. Persist the refresh token only when the user asked to be
-        //    remembered. Keyring failures must not block an otherwise
-        //    successful login.
-        if remember {
-            if let Some(refresh) = &tokens.refresh_token {
-                self.store_refresh_token(refresh);
-            }
-        }
-
-        // 8. Keep it valid. Only possible when a refresh token was persisted:
-        //    without "remember me" there is nothing to renew with, and the
-        //    session lasts as long as the access token does.
-        if remember {
-            self.schedule_refresh(tokens.expires_in);
-        }
-
-        // 9. Resolve the player, tagged with this session's permission roles.
-        let mut player = self.fetch_me(&tokens.access_token).await?;
-        player.roles = session_roles(&tokens);
-        Ok(player)
+        // 6. Resolve the player, then stage the session. The refresh token is
+        //    kept only when the user asked to be remembered, and only then is
+        //    there something to renew with: without it the session lasts as
+        //    long as the access token does.
+        let access_token = tokens.access_token.clone();
+        self.stage_session(tokens, remember, remember, self.fetch_me(&access_token))
+            .await
     }
 
     async fn restore(&self) -> AuthResult<Option<Player>> {
+        self.discard_pending_session();
         let Some(refresh_token) = self.load_refresh_token() else {
             return Ok(None);
         };
@@ -306,23 +351,43 @@ impl AuthPort for OAuthAuth {
             }
         };
 
-        self.tokens.set(&tokens.access_token);
+        // The rotated refresh token is persisted now rather than on commit.
+        // Hydra invalidates the one it was just given, so withholding the
+        // replacement would not roll anything back: it would silently forget a
+        // credential the user chose to keep before this attempt began.
         if let Some(refresh) = &tokens.refresh_token {
             self.store_refresh_token(refresh);
         }
-        self.schedule_refresh(tokens.expires_in);
 
-        match self.fetch_me(&tokens.access_token).await {
-            Ok(mut player) => {
-                player.roles = session_roles(&tokens);
-                Ok(Some(player))
-            }
-            Err(error) => {
-                self.cancel_refresh();
-                self.tokens.clear();
-                Err(error)
-            }
+        // The access token and the renewal loop wait for the commit, like a
+        // login's do. A failed profile lookup therefore has nothing to undo.
+        let access_token = tokens.access_token.clone();
+        self.stage_session(tokens, false, true, self.fetch_me(&access_token))
+            .await
+            .map(Some)
+    }
+
+    fn commit_session(&self) -> bool {
+        let Some(session) = self.pending_slot().take() else {
+            return false;
+        };
+        self.tokens.set(&session.access_token);
+        // Keyring failures must not block an otherwise successful login.
+        if let Some(refresh) = &session.refresh_token {
+            self.store_refresh_token(refresh);
         }
+        if session.renew {
+            self.schedule_refresh(session.expires_in);
+        } else {
+            // A loop left over from an earlier session would renew a token
+            // this session replaced.
+            self.cancel_refresh();
+        }
+        true
+    }
+
+    fn discard_pending_session(&self) {
+        self.pending_slot().take();
     }
 
     async fn logout(&self) -> AuthResult<()> {
@@ -330,6 +395,7 @@ impl AuthPort for OAuthAuth {
         // token. The session itself is torn down by the auth slice regardless.
         // The refresh loop goes first: left running it would immediately put a
         // fresh token back into the store the lines below are clearing.
+        self.discard_pending_session();
         self.cancel_refresh();
         self.tokens.clear();
         self.clear_refresh_token();
@@ -822,6 +888,10 @@ fn snippet(body: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use tokio::sync::oneshot;
+
     use super::*;
 
     /// A JWT with `payload` as its claims. Header and signature are inert: the
@@ -1019,5 +1089,118 @@ mod tests {
     #[test]
     fn me_rejects_unrecognized_shape() {
         assert!(me(r#"{"unexpected":true}"#).is_none());
+    }
+
+    // The staging tests drive the real adapter from the token exchange's
+    // answer onwards, with the `/me` request replaced by a future the test
+    // controls. No refresh token is ever staged for persisting, so none of
+    // them touches the OS keyring of whoever runs the suite.
+
+    fn adapter() -> Arc<OAuthAuth> {
+        Arc::new(OAuthAuth::new(OAuthConfig::faf(), TokenStore::new()))
+    }
+
+    fn exchanged() -> TokenResponse {
+        TokenResponse {
+            access_token: "at".into(),
+            refresh_token: None,
+            expires_in: Some(3600),
+            id_token: None,
+        }
+    }
+
+    /// What of a session the rest of the client can see.
+    fn published(auth: &OAuthAuth) -> (Option<String>, bool) {
+        let renewing = auth.refresh_task.lock().unwrap().is_some();
+        (auth.tokens.get(), renewing)
+    }
+
+    #[tokio::test]
+    async fn a_sign_in_called_off_during_the_profile_request_publishes_nothing() {
+        let auth = adapter();
+        let (entered_tx, entered_rx) = oneshot::channel();
+        let (_release_tx, release_rx) = oneshot::channel::<()>();
+        let staging = auth.clone();
+        let sign_in = tokio::spawn(async move {
+            let profile = async move {
+                let _ = entered_tx.send(());
+                let _ = release_rx.await;
+                Ok(Player::new(7, "Ada"))
+            };
+            staging
+                .stage_session(exchanged(), true, true, profile)
+                .await
+        });
+
+        entered_rx.await.unwrap();
+        assert_eq!(
+            published(&auth),
+            (None, false),
+            "the session went live before /me answered"
+        );
+
+        // Cancelling the command drops the port's future, as here.
+        sign_in.abort();
+        let _ = sign_in.await;
+        assert_eq!(published(&auth), (None, false));
+        assert!(
+            !auth.commit_session(),
+            "a called-off attempt left a session to commit"
+        );
+        assert_eq!(published(&auth), (None, false));
+    }
+
+    #[tokio::test]
+    async fn a_failed_profile_lookup_publishes_and_stages_nothing() {
+        let auth = adapter();
+        let result = auth
+            .stage_session(exchanged(), true, true, async {
+                Err(AuthError::new("Could not load profile (/me returned 500)"))
+            })
+            .await;
+        assert!(result.is_err());
+        assert_eq!(published(&auth), (None, false));
+        assert!(!auth.commit_session());
+        assert_eq!(published(&auth), (None, false));
+    }
+
+    #[tokio::test]
+    async fn a_successful_sign_in_is_published_only_by_the_commit() {
+        let auth = adapter();
+        let player = auth
+            .stage_session(exchanged(), true, true, async { Ok(Player::new(7, "Ada")) })
+            .await
+            .unwrap();
+        assert_eq!(player.id, 7);
+        assert_eq!(published(&auth), (None, false), "published before commit");
+
+        assert!(auth.commit_session());
+        assert_eq!(published(&auth), (Some("at".into()), true));
+        // A commit publishes once; a second has nothing left to publish.
+        assert!(!auth.commit_session());
+        auth.cancel_refresh();
+    }
+
+    #[tokio::test]
+    async fn a_session_without_remember_me_is_published_without_renewal() {
+        let auth = adapter();
+        auth.stage_session(exchanged(), false, false, async {
+            Ok(Player::new(7, "Ada"))
+        })
+        .await
+        .unwrap();
+        assert!(auth.commit_session());
+        assert_eq!(published(&auth), (Some("at".into()), false));
+    }
+
+    #[tokio::test]
+    async fn a_discarded_session_can_no_longer_be_committed() {
+        let auth = adapter();
+        auth.stage_session(exchanged(), true, true, async { Ok(Player::new(7, "Ada")) })
+            .await
+            .unwrap();
+        auth.discard_pending_session();
+        assert!(!auth.commit_session());
+        assert_eq!(published(&auth), (None, false));
     }
 }

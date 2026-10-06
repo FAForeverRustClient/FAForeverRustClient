@@ -15,12 +15,12 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use faf_app::infra::fake_ports;
-use faf_app::ports::{ReplayPort, TrainingPort, TutorialsPort, VaultSearchResult};
+use faf_app::ports::{ReplayLibraryPort, TrainingPort, TutorialsPort};
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    AuthCommand, LiveReplayTarget, LocalReplay, LocalReplayPlayer, LocalReplayStatus,
-    LocalReplayTeam, ReplayQuery, TrainingCatalogue, TrainingCommand, TrainingKind, TrainingLinks,
-    TrainingResource, TrainingStatus, Tutorial, TutorialCategory,
+    AuthCommand, LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam,
+    TrainingCatalogue, TrainingCommand, TrainingKind, TrainingLinks, TrainingResource,
+    TrainingStatus, Tutorial, TutorialCategory,
 };
 
 const ME: &str = "Nuggets";
@@ -107,52 +107,14 @@ impl TutorialsPort for StubTutorials {
 struct StubReplays(Vec<LocalReplay>);
 
 #[async_trait]
-impl ReplayPort for StubReplays {
-    async fn watch_live(
-        &self,
-        _target: LiveReplayTarget,
-        _player: String,
-    ) -> Result<Option<String>, String> {
-        Ok(None)
-    }
-    async fn play_file(&self, _path: PathBuf) -> Result<Option<String>, String> {
-        Ok(None)
-    }
-    async fn search_vault(&self, _query: ReplayQuery) -> Result<VaultSearchResult, String> {
-        Ok(VaultSearchResult::default())
-    }
-    async fn list_featured_mods(&self) -> Result<Vec<String>, String> {
-        Ok(Vec::new())
-    }
-    async fn watch_vault(&self, _uid: i32) -> Result<Option<String>, String> {
-        Ok(None)
-    }
-    async fn download_vault(&self, _uid: i32) -> Result<LocalReplay, String> {
-        Err("not in this test".into())
-    }
-    async fn load_details(
-        &self,
-        _uid: i32,
-        _local_path: Option<PathBuf>,
-    ) -> Result<faf_domain::state::ReplayDetails, String> {
-        Ok(faf_domain::state::ReplayDetails::default())
-    }
-    async fn load_analysis(
-        &self,
-        _uid: i32,
-        _local_path: Option<PathBuf>,
-    ) -> Result<faf_domain::state::ReplayAnalysis, String> {
-        unreachable!()
-    }
+impl ReplayLibraryPort for StubReplays {
     async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {
         Ok(self.0.clone())
     }
     async fn delete_local(&self, _path: PathBuf) -> Result<(), String> {
         Ok(())
     }
-    fn set_install_dir(&self, _dir: Option<PathBuf>) {}
 }
-
 fn local(uid: i32, map: &str, players: i32, faction: i32, rating: i32) -> LocalReplay {
     LocalReplay {
         path: format!("C:/replays/{uid}.fafreplay"),
@@ -202,7 +164,7 @@ fn harness(replays: Vec<LocalReplay>) -> Harness {
     let ports = Ports {
         training: Arc::new(StubCatalogue),
         tutorials: Arc::new(StubTutorials),
-        replay: Arc::new(StubReplays(replays)),
+        replay_library: Arc::new(StubReplays(replays)),
         ..fake_ports()
     };
     let (app, app_loop) = App::new("test", ports);

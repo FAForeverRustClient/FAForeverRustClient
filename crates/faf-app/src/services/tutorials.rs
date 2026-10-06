@@ -35,9 +35,7 @@ pub async fn handle(cmd: TutorialsCommand, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.tutorial_launch_active.try_acquire() else {
-        return;
-    };
+    crate::runtime::expect_admitted(crate::runtime::Key::TutorialLaunch);
     let Some(tutorial) = out.with_state(|state| {
         state
             .tutorials
