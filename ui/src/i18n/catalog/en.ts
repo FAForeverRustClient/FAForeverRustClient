@@ -5330,7 +5330,6 @@ export const en = {
   "status.matchmaking.searching": "Searching {queues}",
   "status.matchmaking.found": "Match found: {queue}",
   "status.matchmaking.launching": "Starting {queue}…",
-  "status.matchmaking.stop": "Stop",
   "nav.badge.mentions": "Mentions: {count}",
   "nav.badge.matchFound": "Match found",
   "nav.badge.searching": "Searching for a match",

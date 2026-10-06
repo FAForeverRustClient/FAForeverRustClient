@@ -4823,7 +4823,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "status.matchmaking.searching": "Buscando {queues}",
   "status.matchmaking.found": "Partida encontrada: {queue}",
   "status.matchmaking.launching": "Iniciando {queue}…",
-  "status.matchmaking.stop": "Detener",
   "nav.badge.mentions": "Menciones: {count}",
   "nav.badge.matchFound": "Partida encontrada",
   "nav.badge.searching": "Buscando partida",

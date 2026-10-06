@@ -5067,7 +5067,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "status.matchmaking.searching": "Поиск {queues}",
   "status.matchmaking.found": "Матч найден: {queue}",
   "status.matchmaking.launching": "Запуск {queue}…",
-  "status.matchmaking.stop": "Остановить",
   "nav.badge.mentions": "Упоминания: {count}",
   "nav.badge.matchFound": "Матч найден",
   "nav.badge.searching": "Идёт поиск матча",
