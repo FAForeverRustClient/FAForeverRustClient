@@ -15,29 +15,16 @@ import type {
   DescImageAnswer,
   AccountSearch,
   Article,
-  BracketConfig,
   ChatPost,
   ChatRoom,
-  FactionVetoConfig,
-  FfaReport,
-  MapDraft,
   MapListStatus,
-  PoolDraft,
   PlayerSummary,
-  FormatDraft,
-  QualifierRule,
   RatingCheck,
   EntrantRatings,
   RenameCheck,
-  SeedOrder,
-  TourneyPlayer,
-  SeriesDraft,
   Tourney,
-  TourneyAdmin,
   TourneyLoadStatus,
-  TourneyDraft,
   TourneyMatch,
-  TourneyPhase,
   TourneySeries,
   VaultMap,
 } from "../../../ipc/bindings";
@@ -73,7 +60,7 @@ import { ManagePanel } from "../manage/ManagePanel";
 import { NewsPanel } from "./NewsPanel";
 import { OverviewPanel } from "./OverviewPanel";
 import { StandingsPanel } from "../bracket/StandingsPanel";
-import type { VetoHandlers } from "../bracket/VetoPanel";
+import type { ChatActions, TourneyActions } from "../tourneyActions";
 import { myVetoSteps, vetoSettled } from "../bracket/vetoPresentation";
 import { MapsPanel } from "./MapsPanel";
 import { listedMatches, MatchesPanel } from "./MatchesPanel";
@@ -146,13 +133,15 @@ function sectionLabel(section: Section, event: Tourney): MessageKey {
 
 interface TournamentDetailPaneProps {
   event: Tourney;
-  /** Store a picture pasted into the event's text, and the last one stored. */
-  onUploadImage?: (dataUrl: string, requestId: number) => void;
+  /** Every command the sections can send, grouped by what it acts on. */
+  actions: TourneyActions;
+  /** The last picture pasted into the event's text and stored. */
   pastedImage?: DescImageAnswer | null;
   /** This account is a site admin with its powers on. */
   siteAdmin?: boolean;
   /** Open one of the site's pages, from the Overview's links. */
   onOpenPage?: (page: SitePage) => void;
+  onOpenUrl: (url: string) => void;
   /**
    * A section to open, from outside: the pending bar's "Go". The nonce makes
    * a second request for the same section open it again.
@@ -167,118 +156,35 @@ interface TournamentDetailPaneProps {
   articles: Article[];
   /** Where the tournament service lives, for its own image paths. */
   assetBase: string;
-  /** Ask for the map vault, if it has not been loaded yet. */
-  onNeedVault: () => void;
   vault: VaultMap[];
   vaultStatus: MapListStatus;
   chatRooms: ChatRoom[];
   openRoomId: string | null;
   chatPosts: ChatPost[];
   chatStatus: TourneyLoadStatus;
+  /** The room pinned beside the sections, and its posts. */
+  pinnedRoomId: string | null;
+  pinnedPosts: ChatPost[];
   busy: boolean;
   busyMatchId: string | null;
   /** The organiser's name-search state, forwarded to the entrant pickers. */
   accountSearch: AccountSearch;
-  onSearchAccounts: (query: string) => void;
   /** The organiser's last check of entrant names against FAF. */
   renames: RenameCheck | null;
   renamesStatus: TourneyLoadStatus;
-  onCheckRenames: () => void;
-  /** This account's last rating check, and asking for one. */
+  /** This account's last rating check. */
   ratingCheck: RatingCheck | null;
   ratingCheckStatus: TourneyLoadStatus;
-  onCheckRating: () => void;
-  onDeclineInvite: () => void;
   /** One entrant's every rating, for the organiser. */
   playerRatings: EntrantRatings | null;
   playerRatingsStatus: TourneyLoadStatus;
-  onLoadPlayerRatings: (playerId: string, refresh: boolean) => void;
-  onBanPlayer: (player: TourneyPlayer, reason: string, expires: number | null, remove: boolean) => void;
   /** Importing maps from another event, for Manage. */
   mapImport: MapImport;
-  onSignUp: () => void;
-  onWithdraw: () => void;
-  /** Check this account's team in, or take the check-in back. */
-  onCheckIn: (checkedIn: boolean) => void;
-  onReport: (entry: TourneyMatch) => void;
-  onAnswer: (entry: TourneyMatch, accept: boolean) => void;
-  onHost: (entry: TourneyMatch) => void;
-  onOpenChat: () => void;
-  onOpenRoom: (roomId: string) => void;
-  onPost: (body: string, replyTo: string | null) => void;
-  onAssignPool: (roundKey: string, poolId: string) => void;
-  onOpenUrl: (url: string) => void;
-  /** Play a FAF replay by its vault id, in the client. */
-  onWatchReplay: (uid: number) => void;
-  /** Save the settings, from the form Manage now shows inline. */
-  onEditInfo: (draft: TourneyDraft) => void;
-  onPublish: () => void;
-  onAdvance: (phase: TourneyPhase, config?: BracketConfig) => void;
-  onArchive: () => void;
-  onCreateTeam: (name: string) => void;
-  onRequestJoin: (teamId: string) => void;
-  onCancelJoin: (teamId: string) => void;
-  onRespondJoin: (teamId: string, playerId: string, accept: boolean) => void;
-  onInvite: (teamId: string, playerId: string) => void;
-  onRespondInvite: (teamId: string, accept: boolean) => void;
-  onLeaveTeam: () => void;
-  onDisbandTeam: (teamId: string) => void;
-  onRenameTeam: (teamId: string, name: string) => void;
-  onAddPlayer: (name: string, rating: number | null) => void;
-  onSetCaptain: (teamId: string, playerId: string) => void;
-  onMovePlayer: (playerId: string, teamId: string | null) => void;
-  onEditPlayer: (playerId: string, note: string, rating: number | null) => void;
-  onSetDivision: (teamId: string, division: number) => void;
-  onSaveMap: (map: MapDraft) => void;
-  onPublishMap: (mapId: string, published: boolean) => void;
-  onDeleteMap: (mapId: string) => void;
-  onSetFactionVeto: (config: FactionVetoConfig) => void;
-  /** One of the organiser's single-call changes. */
-  onAdmin: (change: TourneyAdmin) => void;
-  onSavePool: (pool: PoolDraft) => void;
-  onPublishPool: (poolId: string, published: boolean) => void;
-  onDeletePool: (poolId: string) => void;
-  onDeleteChatPost: (roomId: string, postId: string) => void;
-  onRefreshChat: (roomId: string) => void;
-  /** Read the open event again without a loading state: the pick phase's poll. */
-  onRefreshDetail: () => void;
-  /** The room pinned beside the sections, its posts, and pinning one. */
-  pinnedRoomId: string | null;
-  pinnedPosts: ChatPost[];
-  onPin: (roomId: string | null) => void;
-  /** Post to a named room: the pinned one is not always the open one. */
-  onPostTo: (roomId: string, body: string, replyTo: string | null) => void;
-  onMute: (fafId: number, name: string, muted: boolean) => void;
-  onAddOrganiser: (fafId: number, name: string) => void;
-  onSetOrganiserVisibility: (fafId: number, hidden: boolean) => void;
-  onSetCaster: (fafId: number, name: string, casting: boolean) => void;
-  onAbandon: (abandoned: boolean) => void;
-  onEditFormat: (format: FormatDraft) => void;
-  onEditNews: (newsId: string, body: string, important: boolean) => void;
-  onMarkNewsRead: () => void;
-  onLoadSeries: () => void;
-  onSetSeries: (seriesId: string | null) => void;
-  onSaveSeries: (draft: SeriesDraft) => void;
-  onAddQualifier: (qualifierId: string, rule: QualifierRule) => void;
-  onRemoveQualifier: (linkId: string) => void;
-  veto: VetoHandlers;
-  onReportFfa: (report: FfaReport) => void;
-  onDraftPick: (playerId: string) => void;
-  onDraftUndo: () => void;
-  onSetCaptains: (playerIds: string[]) => void;
-  onRespondSignup: (playerId: string, accept: boolean) => void;
-  onRemovePlayer: (playerId: string) => void;
-  onInvitePlayer: (name: string) => void;
-  onUninvite: (fafId: number) => void;
-  onReseed: (order: SeedOrder) => void;
-  onSplitDivisions: (divisions: number) => void;
-  onPostNews: (body: string, important: boolean) => void;
-  onDeleteNews: (newsId: string) => void;
 }
 
 export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   const { t } = useTranslation();
-  const { busy } = props;
+  const { busy, actions } = props;
   const [section, setSection] = useState<Section>("overview");
 
   // The website's three display switches, kept on this machine and never sent.
@@ -299,12 +205,17 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         : props.event,
     [playerView, rights, props.event],
   );
-  const display: TourneyDisplay = {
-    showPlayers,
-    streamer,
-    masked: (entry) => isMasked(streamer, revealed, entry),
-    toggleReveal,
-  };
+  // Memoised, as the match chat below is: every section that reads either
+  // context is redrawn whenever its value is a new object, memoised or not.
+  const display = useMemo<TourneyDisplay>(
+    () => ({
+      showPlayers,
+      streamer,
+      masked: (entry) => isMasked(streamer, revealed, entry),
+      toggleReveal,
+    }),
+    [showPlayers, streamer, revealed, toggleReveal],
+  );
   const root = useRef<HTMLDivElement>(null);
 
   // The pinned room lets go of itself once its match is over, and says so:
@@ -314,9 +225,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   const pinnedDone = pinnedRoom?.done === true;
   useEffect(() => {
     if (!pinnedDone) return;
-    props.onPin(null);
+    actions.chat.pin(null);
     setPinNotice(true);
-    // The callback is stable per render of the view above.
+    // Only the room finishing lets go of it, not a new set of commands.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pinnedDone]);
 
@@ -399,9 +310,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   // now, which the website shows too.
   const needsVault = section === "manage";
   useEffect(() => {
-    if (needsVault) props.onNeedVault();
-    // The callback is stable per render of the view above; re-running on it
-    // would ask again on every keystroke anywhere in the pane.
+    if (needsVault) actions.maps.needVault();
+    // Asked again for a new event, and not for a new set of commands.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsVault, event.id]);
 
@@ -418,13 +328,13 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     // The rooms are loaded on demand rather than with the detail: chat is
     // beside the bracket, not the point of it, and a tab nobody opens should
     // not cost a request per tournament.
-    if (next === "chat" && props.chatRooms.length === 0) props.onOpenChat();
+    if (next === "chat" && props.chatRooms.length === 0) actions.chat.load();
     // The series list is a second endpoint, and most visits never open Manage.
-    if (next === "manage" && props.series.length === 0) props.onLoadSeries();
+    if (next === "manage" && props.series.length === 0) actions.series.load();
 
     // Opening the announcements is what reading them means. The service keeps
     // the mark, so the badge clears on every device rather than once here.
-    if (next === "news" && unreadNews(event) > 0) props.onMarkNewsRead();
+    if (next === "news" && unreadNews(event) > 0) actions.news.markRead();
   };
 
   // A link that names what it points at: open the section, then, once it has
@@ -447,16 +357,33 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   // The match whose chat is open in the popup, if any. The room itself is the
   // tab's one open room, so the popup and the Chat tab never disagree about it.
   const [matchChat, setMatchChat] = useState<TourneyMatch | null>(null);
-  const chatApi: MatchChatApi = {
-    open: (entry) => {
-      // The room list carries the unread counts; load it if the Chat tab
-      // never has.
-      if (props.chatRooms.length === 0) props.onOpenChat();
-      setMatchChat(entry);
-      props.onOpenRoom(matchRoomId(entry));
-    },
-    unread: (entry) => props.chatRooms.find((room) => room.id === matchRoomId(entry))?.unread ?? 0,
-  };
+  const { chatRooms } = props;
+  const chatApi = useMemo<MatchChatApi>(
+    () => ({
+      open: (entry) => {
+        // The room list carries the unread counts; load it if the Chat tab
+        // never has.
+        if (chatRooms.length === 0) actions.chat.load();
+        setMatchChat(entry);
+        actions.chat.openRoom(matchRoomId(entry));
+      },
+      unread: (entry) => chatRooms.find((room) => room.id === matchRoomId(entry))?.unread ?? 0,
+    }),
+    [chatRooms, actions.chat],
+  );
+
+  // The Chat tab's own pin, which also takes back the notice that the last
+  // pinned room let go of itself.
+  const tabChat = useMemo<ChatActions>(
+    () => ({
+      ...actions.chat,
+      pin: (roomId) => {
+        setPinNotice(false);
+        actions.chat.pin(roomId);
+      },
+    }),
+    [actions.chat],
+  );
 
   return (
     <MatchChatContext.Provider value={chatApi}>
@@ -534,22 +461,22 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
             {t(pill.label)}
           </span>
           {mayEnter && (
-            <Button variant="primary" onClick={props.onSignUp} disabled={busy}>
+            <Button variant="primary" onClick={actions.entry.signUp} disabled={busy}>
               <Icon name="plus" size={16} /> {t("tournaments.action.enter")}
             </Button>
           )}
           {offerCheckIn && (
-            <Button variant="primary" onClick={() => props.onCheckIn(true)} disabled={busy}>
+            <Button variant="primary" onClick={() => actions.entry.checkIn(true)} disabled={busy}>
               {t("tournaments.action.checkIn")}
             </Button>
           )}
           {offerUndoCheckIn && (
-            <Button onClick={() => props.onCheckIn(false)} disabled={busy}>
+            <Button onClick={() => actions.entry.checkIn(false)} disabled={busy}>
               {t("tournaments.teams.undoCheckIn")}
             </Button>
           )}
           {mayWithdraw && (
-            <Button onClick={props.onWithdraw} disabled={busy}>
+            <Button onClick={actions.entry.withdraw} disabled={busy}>
               {t("tournaments.action.withdraw")}
             </Button>
           )}
@@ -666,8 +593,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           event={event}
           assetBase={props.assetBase}
           busy={busy}
-          onPublish={props.onPublish}
-          onAdmin={props.onAdmin}
+          organiser={actions.organiser}
         />
       )}
 
@@ -735,9 +661,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         <NewsPanel
           event={event}
           busy={busy}
-          onPost={props.onPostNews}
-          onEdit={props.onEditNews}
-          onDelete={props.onDeleteNews}
+          news={actions.news}
         />
       )}
 
@@ -748,8 +672,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           check={props.ratingCheck}
           checkStatus={props.ratingCheckStatus}
           busy={busy}
-          onDecline={props.onDeclineInvite}
-          onCheckRating={props.onCheckRating}
+          entry={actions.entry}
         />
       )}
 
@@ -760,18 +683,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           event={event}
           profiles={props.profiles}
           busy={busy}
-          onCreate={props.onCreateTeam}
-          onRequestJoin={props.onRequestJoin}
-          onCancelJoin={props.onCancelJoin}
-          onRespondJoin={props.onRespondJoin}
-          onInvite={props.onInvite}
-          onRespondInvite={props.onRespondInvite}
-          onLeave={props.onLeaveTeam}
-          onDisband={props.onDisbandTeam}
-          onRename={props.onRenameTeam}
-          onCheckIn={props.onCheckIn}
-          onSetCaptain={props.onSetCaptain}
-          onAdmin={props.onAdmin}
+          teams={actions.teams}
+          entry={actions.entry}
+          onAdmin={actions.organiser.admin}
         />
       )}
 
@@ -793,20 +707,14 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       {section === "bracket" && !(event.imported && event.standingsOnly) && (
         <BracketView
           busy={busy}
-          onRefresh={props.onRefreshDetail}
           event={event}
           profiles={props.profiles}
           busyMatchId={props.busyMatchId}
-          onReport={props.onReport}
-          onAnswer={props.onAnswer}
-          onHost={props.onHost}
           vault={props.vault}
           assetBase={props.assetBase}
-          veto={props.veto}
-          onReportFfa={props.onReportFfa}
-          onAdmin={props.onAdmin}
-          onAssignPool={props.onAssignPool}
-          onWatchReplay={props.onWatchReplay}
+          matches={actions.matches}
+          onAdmin={actions.organiser.admin}
+          onAssignPool={actions.maps.assignPool}
         />
       )}
 
@@ -815,11 +723,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           event={event}
           profiles={props.profiles}
           busy={busy}
-          onPick={props.onDraftPick}
-          onUndo={props.onDraftUndo}
-          onSetCaptains={props.onSetCaptains}
-          onStart={() => props.onAdvance("startDraft")}
-          onAdmin={props.onAdmin}
+          teams={actions.teams}
+          organiser={actions.organiser}
         />
       )}
 
@@ -830,13 +735,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           vault={props.vault}
           assetBase={props.assetBase}
           busyMatchId={props.busyMatchId}
-          onReport={props.onReport}
-          onAnswer={props.onAnswer}
-          onHost={props.onHost}
-          onWatchReplay={props.onWatchReplay}
-          veto={props.veto}
-          onAdmin={props.onAdmin}
-          onAssignPool={props.onAssignPool}
+          matches={actions.matches}
+          onAdmin={actions.organiser.admin}
+          onAssignPool={actions.maps.assignPool}
         />
       )}
 
@@ -847,7 +748,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           vault={props.vault}
           assetBase={props.assetBase}
           busyMatchId={props.busyMatchId}
-          veto={props.veto}
+          veto={actions.matches.veto}
         />
       )}
 
@@ -872,16 +773,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           posts={props.chatPosts}
           status={props.chatStatus}
           busy={busy}
-          onOpenRoom={props.onOpenRoom}
-          onPost={props.onPost}
-          onDeletePost={props.onDeleteChatPost}
-          onMute={props.onMute}
-          onRefresh={props.onRefreshChat}
+          chat={tabChat}
           pinnedRoomId={props.pinnedRoomId}
-          onPin={(roomId) => {
-            setPinNotice(false);
-            props.onPin(roomId);
-          }}
         />
       )}
 
@@ -890,7 +783,6 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       {section === "manage" && (
         <ManagePanel
           siteAdmin={props.siteAdmin}
-          onUploadImage={props.onUploadImage}
           pastedImage={props.pastedImage}
           event={event}
           vault={props.vault}
@@ -902,49 +794,17 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           accountSearch={props.accountSearch}
           renames={props.renames}
           renamesStatus={props.renamesStatus}
-          onCheckRenames={props.onCheckRenames}
           playerRatings={props.playerRatings}
           playerRatingsStatus={props.playerRatingsStatus}
-          onLoadPlayerRatings={props.onLoadPlayerRatings}
-          onBanPlayer={props.onBanPlayer}
           mapImport={props.mapImport}
-          onSearchAccounts={props.onSearchAccounts}
           busy={busy}
-          onEditInfo={props.onEditInfo}
-          onPublish={props.onPublish}
-          onAdvance={props.onAdvance}
-          onArchive={props.onArchive}
-          onAssignPool={props.onAssignPool}
           onOpenUrl={props.onOpenUrl}
-          onAddPlayer={props.onAddPlayer}
-          onSetCaptain={props.onSetCaptain}
-          onMovePlayer={props.onMovePlayer}
-          onEditPlayer={props.onEditPlayer}
-          onSetDivision={props.onSetDivision}
-          onSaveMap={props.onSaveMap}
-          onPublishMap={props.onPublishMap}
-          onDeleteMap={props.onDeleteMap}
-          onSetFactionVeto={props.onSetFactionVeto}
-          onAdmin={props.onAdmin}
-          onSavePool={props.onSavePool}
-          onPublishPool={props.onPublishPool}
-          onDeletePool={props.onDeletePool}
-          onSetSeries={props.onSetSeries}
-          onSaveSeries={props.onSaveSeries}
-          onAddQualifier={props.onAddQualifier}
-          onRemoveQualifier={props.onRemoveQualifier}
-          onMute={props.onMute}
-          onAddOrganiser={props.onAddOrganiser}
-          onSetOrganiserVisibility={props.onSetOrganiserVisibility}
-          onSetCaster={props.onSetCaster}
-          onAbandon={props.onAbandon}
-          onEditFormat={props.onEditFormat}
-          onRespondSignup={props.onRespondSignup}
-          onRemovePlayer={props.onRemovePlayer}
-          onInvitePlayer={props.onInvitePlayer}
-          onUninvite={props.onUninvite}
-          onReseed={props.onReseed}
-          onSplitDivisions={props.onSplitDivisions}
+          organiser={actions.organiser}
+          entrants={actions.entrants}
+          teams={actions.teams}
+          maps={actions.maps}
+          seriesActions={actions.series}
+          chat={actions.chat}
         />
       )}
       </div>
@@ -955,18 +815,13 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           room={pinnedRoom}
           posts={props.pinnedPosts}
           busy={busy}
-          onPost={(body, replyTo) => {
-            if (props.pinnedRoomId !== null) props.onPostTo(props.pinnedRoomId, body, replyTo);
-          }}
-          onDeletePost={props.onDeleteChatPost}
-          onMute={props.onMute}
-          onRefresh={props.onRefreshChat}
+          chat={actions.chat}
           onOpenInTab={() => {
             if (props.pinnedRoomId === null) return;
             openSection("chat");
-            props.onOpenRoom(props.pinnedRoomId);
+            actions.chat.openRoom(props.pinnedRoomId);
           }}
-          onUnpin={() => props.onPin(null)}
+          onUnpin={() => actions.chat.pin(null)}
         />
       )}
       </div>
@@ -990,7 +845,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
             pinnedRoomId={props.pinnedRoomId}
             full
             onPin={(roomId) => {
-              props.onPin(roomId);
+              actions.chat.pin(roomId);
               if (roomId !== null) setMatchChat(null);
             }}
           />
@@ -1001,10 +856,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           posts={props.chatPosts}
           status={props.chatStatus}
           busy={busy}
-          onPost={props.onPost}
-          onDeletePost={props.onDeleteChatPost}
-          onMute={props.onMute}
-          onRefresh={props.onRefreshChat}
+          onPost={actions.chat.post}
+          chat={actions.chat}
           compact
         />
       </Modal>

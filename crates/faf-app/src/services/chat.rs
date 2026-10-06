@@ -23,15 +23,50 @@ use faf_domain::state::{
 };
 
 use crate::ports::ChatUpdate;
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{AutoReconnect, EventSink, LatestRequest, ServiceCtx, SingleFlight};
 use crate::services::notifications;
+
+/// The chat connection's operational context: its single-flight guard,
+/// whether it should come back after a drop, and the throttles on what the
+/// composer and the read markers send.
+///
+/// Owned by this service. The reconnect service asks whether the connection
+/// should come back through [`Self::auto_reconnect_armed`].
+#[derive(Default)]
+pub struct ChatContext {
+    /// Single-flight guard for the chat connection while `Connect` owns an
+    /// active/connecting socket, the same guard the lobby connection keeps. A
+    /// redundant request is dropped, so overlapping connections cannot race
+    /// and clobber each other's state.
+    active: SingleFlight,
+    /// Whether [`reconnect`](crate::services::reconnect) should bring this
+    /// socket back after an unexpected drop, so a user who hung up stays hung
+    /// up while a laptop resume does not.
+    auto_reconnect: AutoReconnect,
+    /// When a composing notice was last sent per channel, so the composer can
+    /// report on every keystroke while the wire sees one line every few
+    /// seconds.
+    typing_sent: std::sync::Mutex<std::collections::HashMap<String, u32>>,
+    /// Read markers can change on every channel click. Only the last click in
+    /// a short burst writes settings, while state updates remain immediate.
+    read_marker_persist_generation: LatestRequest,
+}
+
+impl ChatContext {
+    /// Whether an explicit `Connect` armed the chat connection to come back
+    /// after an unexpected drop. Read by
+    /// [`reconnect`](crate::services::reconnect).
+    pub fn auto_reconnect_armed(&self) -> bool {
+        self.auto_reconnect.armed()
+    }
+}
 
 pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         ChatCommand::Connect { username } => {
             // Armed before the guard, so asking for a connection while one
             // is already in flight still re-arms the watchdog.
-            ctx.chat_auto_reconnect.arm();
+            ctx.chat.auto_reconnect.arm();
             connect(username, ctx, out, false).await;
         }
         ChatCommand::SendMessage {
@@ -103,8 +138,8 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
         ChatCommand::Disconnect => {
             // Hanging up is a decision, not a fault: the watchdog must not
             // undo it on its next tick.
-            ctx.chat_auto_reconnect.disarm();
-            ctx.chat_read_marker_persist_generation.invalidate();
+            ctx.chat.auto_reconnect.disarm();
+            ctx.chat.read_marker_persist_generation.invalidate();
             ctx.ports.chat.disconnect();
             crate::services::settings::persist(ctx, out).await;
         }
@@ -122,13 +157,13 @@ pub async fn reconnect(username: String, ctx: &ServiceCtx, out: &EventSink) {
 async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     // Single-flight: only one connection may be active at a time,
     // same guard shape as the lobby service.
-    if !ctx.chat_active.try_start() {
+    if !ctx.chat.active.try_start() {
         return; // a connection is already active/connecting
     }
     // Read once the guard is held, the last moment a Disconnect could have
     // landed between the watchdog's tick and this retry.
-    if only_if_armed && !ctx.chat_auto_reconnect.armed() {
-        ctx.chat_active.finish();
+    if only_if_armed && !ctx.chat.auto_reconnect.armed() {
+        ctx.chat.active.finish();
         return;
     }
 
@@ -217,7 +252,7 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
         }
     }
 
-    ctx.chat_active.finish();
+    ctx.chat.active.finish();
     out.emit(ChatEvent::Disconnected);
 }
 
@@ -237,7 +272,7 @@ const TYPING_REFRESH_SECONDS: u32 = 3;
 fn set_typing(ctx: &ServiceCtx, channel: String, composing: bool) {
     let now = super::now_seconds();
     {
-        let mut sent = ctx.chat_typing_sent.lock().expect("typing lock poisoned");
+        let mut sent = ctx.chat.typing_sent.lock().expect("typing lock poisoned");
         if composing {
             let last = sent.get(&channel).copied().unwrap_or(0);
             if now.saturating_sub(last) < TYPING_REFRESH_SECONDS {
@@ -260,12 +295,12 @@ fn persist_read_markers_after_quiet_period(ctx: &ServiceCtx, out: &EventSink) {
     // so it has to honour the same rule by hand: nothing is written before
     // the settings file has been read, or the write is defaults for
     // everything else in it.
-    if !ctx.settings_loaded.has_loaded() {
+    if !ctx.settings.has_loaded() {
         return;
     }
-    let generation = ctx.chat_read_marker_persist_generation.begin();
-    let latest = ctx.chat_read_marker_persist_generation.clone();
-    let serial = ctx.settings_persist.clone();
+    let generation = ctx.chat.read_marker_persist_generation.begin();
+    let latest = ctx.chat.read_marker_persist_generation.clone();
+    let serial = ctx.settings.write_order();
     let settings = ctx.ports.settings.clone();
     let out = out.clone();
     tokio::spawn(async move {

@@ -78,6 +78,19 @@ const MAX_LOG_BYTES: u64 = 1024 * 1024;
 /// somewhere in the 1.8 range.
 const RELEASES_PER_PAGE: u32 = 100;
 
+/// What the command builder picks from when the user selected several styles,
+/// symmetries or a density range but pinned no numeric seed.
+///
+/// The current time in milliseconds, which is what the builder used to read
+/// for itself. It is read here instead because the domain crate is kept free
+/// of clocks, so the same options always build the same command line there.
+fn fallback_seed() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
 /// How many pages to walk before giving up. Bounded so a malformed `Link`
 /// header cannot turn version resolution into an infinite request loop.
 const MAX_RELEASE_PAGES: u32 = 10;
@@ -1050,6 +1063,7 @@ impl NeroxisMapGenerator {
                 map_name.as_deref(),
                 options,
                 self.config.version_policy,
+                fallback_seed(),
             )));
         }
         let jar = fail!(self.ensure_jar(version, tx).await);
@@ -1105,9 +1119,14 @@ impl NeroxisMapGenerator {
         let (tx, _rx) = mpsc::channel(8);
         let jar = self.ensure_jar(version, &tx).await?;
 
-        let mut args =
-            map_generator::build_arguments(version, None, options, self.config.version_policy)
-                .map_err(|e| e.to_string())?;
+        let mut args = map_generator::build_arguments(
+            version,
+            None,
+            options,
+            self.config.version_policy,
+            fallback_seed(),
+        )
+        .map_err(|e| e.to_string())?;
         // `--parse` prints and exits, so a viewer window would never open and
         // the debug dump would never be written: both only confuse the output.
         args.retain(|arg| arg != "--visualize" && arg != "--debug");

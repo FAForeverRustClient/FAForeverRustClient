@@ -20,7 +20,16 @@
 use faf_domain::state::{contribution_problem, ContributionProblem, GuidesCommand, GuidesEvent};
 
 use crate::ports::guides::LOGIN_CANCELLED;
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// The catalogue maintenance service's request generation. Owned by this
+/// service.
+#[derive(Default)]
+pub struct GuidesContext {
+    /// Only the newest queue answer may land: every verdict reloads the queue,
+    /// so an older response arriving late would restore rows already decided.
+    queue_generation: LatestRequest,
+}
 
 pub async fn handle(cmd: GuidesCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
@@ -146,12 +155,10 @@ async fn restore(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn sign_in(ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.guides_login_active.try_acquire() else {
-        // Already waiting on a code. Starting a second one would issue a
-        // second code and leave the one on screen dead.
-        return;
-    };
-
+    crate::runtime::expect_admitted(crate::runtime::Key::GuidesSignIn);
+    // Single-flight in the command policy (`Key::GuidesSignIn`): a second
+    // sign-in while one waits on a code would issue a second code and leave
+    // the one on screen dead.
     let code = match ctx.ports.guides.begin_login().await {
         Ok(code) => code,
         // Cancelled while the code was being issued: the cancel already said
@@ -191,11 +198,11 @@ async fn sign_in(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn load_queue(ctx: &ServiceCtx, out: &EventSink) {
-    let generation = ctx.guides_queue_generation.begin();
+    let generation = ctx.guides.queue_generation.begin();
     out.emit(GuidesEvent::QueueLoading);
     let answer = ctx.ports.guides.list_submissions().await;
     report_lost_session(ctx, out);
-    if !ctx.guides_queue_generation.is_current(generation) {
+    if !ctx.guides.queue_generation.is_current(generation) {
         return; // A newer load has already been asked for.
     }
     match answer {
@@ -204,9 +211,11 @@ async fn load_queue(ctx: &ServiceCtx, out: &EventSink) {
     }
 }
 
+/// Accepting and rejecting are serial in the command policy
+/// (`Key::GuidesVerdict`): two accepts would each read the catalogue, patch
+/// their own copy, and one would be refused by the content hash.
 async fn accept(number: i32, ctx: &ServiceCtx, out: &EventSink) {
-    let order = ctx.guides_verdict.acquire().await;
-
+    crate::runtime::expect_admitted(crate::runtime::Key::GuidesVerdict);
     // Read back rather than carried on the command: the queue may have been
     // reloaded since the button was drawn, and publishing an entry that is no
     // longer what the issue says would be worse than refusing.
@@ -227,10 +236,6 @@ async fn accept(number: i32, ctx: &ServiceCtx, out: &EventSink) {
 
     out.emit(GuidesEvent::Accepting { number });
     let answer = ctx.ports.guides.accept(submission).await;
-    // The write is what must not overtake another; the reloads after it are
-    // reads. Holding the order across them made the next verdict wait for a
-    // whole catalogue reload it has nothing to do with.
-    drop(order);
     report_lost_session(ctx, out);
     match answer {
         Ok(()) => {
@@ -239,7 +244,8 @@ async fn accept(number: i32, ctx: &ServiceCtx, out: &EventSink) {
             // And the library, because the maintainer's next question is
             // whether it worked. Leaving them to press refresh on another tab
             // to find out is how a working write looks broken.
-            super::training::handle(faf_domain::state::TrainingCommand::Load, ctx, out).await;
+            crate::runtime::run_command(faf_domain::state::TrainingCommand::Load.into(), ctx, out)
+                .await;
         }
         Err(reason) => out.emit(GuidesEvent::WriteFailed { number, reason }),
     }
@@ -252,11 +258,9 @@ async fn reject(
     ctx: &ServiceCtx,
     out: &EventSink,
 ) {
-    let order = ctx.guides_verdict.acquire().await;
-
+    crate::runtime::expect_admitted(crate::runtime::Key::GuidesVerdict);
     out.emit(GuidesEvent::Rejecting { number });
     let answer = ctx.ports.guides.reject(number, reason, note).await;
-    drop(order);
     report_lost_session(ctx, out);
     match answer {
         Ok(()) => {

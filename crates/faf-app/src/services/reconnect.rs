@@ -138,7 +138,7 @@ async fn run(ctx: Arc<ServiceCtx>, sink: EventSink) {
             continue;
         };
 
-        if lobby.tick(watch.lobby, ctx.lobby_auto_reconnect.armed()) == Step::Connect {
+        if lobby.tick(watch.lobby, ctx.lobby.auto_reconnect_armed()) == Step::Connect {
             tracing::info!(attempt = lobby.attempts, "reconnecting to the lobby");
             let (ctx, sink) = (ctx.clone(), sink.clone());
             // Not `LobbyCommand::Connect`, which arms the flag this just
@@ -148,7 +148,7 @@ async fn run(ctx: Arc<ServiceCtx>, sink: EventSink) {
             });
         }
 
-        if chat.tick(watch.chat, ctx.chat_auto_reconnect.armed()) == Step::Connect {
+        if chat.tick(watch.chat, ctx.chat.auto_reconnect_armed()) == Step::Connect {
             tracing::info!(attempt = chat.attempts, "reconnecting to chat");
             let (ctx, sink, username) = (ctx.clone(), sink.clone(), watch.username);
             // Not `ChatCommand::Connect`, for the same reason as the lobby's.

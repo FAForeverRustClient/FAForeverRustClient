@@ -33,6 +33,16 @@ use faf_domain::AppEvent;
 
 use crate::runtime::{EventSink, ServiceCtx};
 
+/// The training service's own state. Owned by this service.
+#[derive(Default)]
+pub struct TrainingContext {
+    /// This account's matchmaker profile, as the hub fetched it for its
+    /// recommendations. Kept here rather than in the player card, which is one
+    /// shared slot: loading this account into it replaced whatever card the
+    /// player had open from chat.
+    own_profile: std::sync::Mutex<Option<MatchmakerPlayerProfile>>,
+}
+
 /// How many local replays the profile is read from, and therefore how many the
 /// scan is asked for when nobody has asked yet.
 ///
@@ -160,7 +170,7 @@ async fn ask_for_map_previews(ctx: &ServiceCtx, out: &EventSink) {
     if !needed {
         return;
     }
-    super::maps::handle(faf_domain::state::MapsCommand::LoadVault, ctx, out).await;
+    crate::runtime::run_command(faf_domain::state::MapsCommand::LoadVault.into(), ctx, out).await;
 }
 
 /// Load this account's ratings into the hub's own slot.
@@ -168,7 +178,7 @@ async fn ask_for_map_previews(ctx: &ServiceCtx, out: &EventSink) {
 /// Not through the player card. That is one shared slot, and loading this
 /// account into it replaced whatever card the player had open from chat, so
 /// the hub asks the port itself and keeps the answer in
-/// [`ServiceCtx::training_own_profile`]. Skipped when that already holds this
+/// [`TrainingContext`]. Skipped when that already holds this
 /// account, unless the player pressed refresh. A failure is silent:
 /// recommendations without a rating are still recommendations, and a rating
 /// is not worth an error banner on a tab that works without one.
@@ -208,14 +218,16 @@ async fn ask_for_own_ratings(refresh: bool, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 fn own_profile(ctx: &ServiceCtx) -> Option<MatchmakerPlayerProfile> {
-    ctx.training_own_profile
+    ctx.training
+        .own_profile
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .clone()
 }
 
 fn set_own_profile(ctx: &ServiceCtx, profile: Option<MatchmakerPlayerProfile>) {
-    *ctx.training_own_profile
+    *ctx.training
+        .own_profile
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = profile;
 }
@@ -333,12 +345,11 @@ async fn read_guide(resource_id: String, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn load(ctx: &ServiceCtx, out: &EventSink) {
-    // One load at a time. The refresh button stays live while a load runs,
-    // and a second one used to repeat every request and the replay scan; the
-    // load in flight already ends with the state the second would produce.
-    let Some(_flight) = ctx.training_load_active.try_acquire() else {
-        return;
-    };
+    // One load at a time (`Key::TrainingLoad`, single-flight in the command
+    // policy). The refresh button stays live while a load runs, and a second
+    // one used to repeat every request and the replay scan; the load in
+    // flight already ends with the state the second would produce.
+    crate::runtime::expect_admitted(crate::runtime::Key::TrainingLoad);
     // A tab that has loaded before is asking again on purpose: the refresh
     // button, or trying again after a failure. That is the one case worth
     // going past the CDN's cache for.
@@ -372,10 +383,11 @@ async fn load(ctx: &ServiceCtx, out: &EventSink) {
     // holding the whole tab blank for it would trade the part that is useful
     // immediately for the part that is only a ranking.
     if out.with_state(|state| state.replays.local_status == VaultStatus::Idle) {
-        super::replays::handle(
+        crate::runtime::run_command(
             ReplayCommand::LoadLocal {
                 limit: PROFILE_REPLAY_REQUEST,
-            },
+            }
+            .into(),
             ctx,
             out,
         )
@@ -529,10 +541,11 @@ async fn watch(
                 let sink = sink.clone();
                 tokio::spawn(async move {
                     tokio::time::sleep(GAME_END_RESCAN_DELAY).await;
-                    super::replays::handle(
+                    crate::runtime::run_command(
                         ReplayCommand::LoadLocal {
                             limit: rescan_limit(&sink),
-                        },
+                        }
+                        .into(),
                         &ctx,
                         &sink,
                     )

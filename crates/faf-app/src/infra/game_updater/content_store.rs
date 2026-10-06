@@ -235,6 +235,8 @@ fn create_parent(dest: &Path) -> io::Result<()> {
 ///
 /// Blocking: call it off the async runtime.
 pub(super) fn replace_with_copy(src: &Path, dest: &Path) -> io::Result<()> {
+    #[cfg(test)]
+    super::test_support::probe::writing(dest);
     create_parent(dest)?;
     let partial = Partial::beside(dest);
     std::fs::copy(src, partial.path())?;

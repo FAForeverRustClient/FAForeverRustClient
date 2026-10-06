@@ -13,12 +13,12 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_app::infra::fake_ports;
-use faf_app::ports::{LobbyPort, LobbyUpdate, ReplayPort};
+use faf_app::ports::{LobbyPort, LobbyUpdate, ReplayPlaybackPort};
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    Game, HostGameConfig, LiveReplayTarget, LiveReplayTrackingAction, LobbyCommand, LocalReplay,
+    Game, HostGameConfig, LiveReplayTarget, LiveReplayTrackingAction, LobbyCommand,
     NotificationAction, NotificationKind, PlayerVeto, Relation, ReplayCommand, ReplayEvent,
-    ReplayQuery, LIVE_REPLAY_DELAY_SECONDS,
+    LIVE_REPLAY_DELAY_SECONDS,
 };
 use faf_domain::AppEvent;
 use serde_json::Value;
@@ -30,7 +30,7 @@ struct RecordingReplay {
 }
 
 #[async_trait]
-impl ReplayPort for RecordingReplay {
+impl ReplayPlaybackPort for RecordingReplay {
     async fn watch_live(
         &self,
         target: LiveReplayTarget,
@@ -42,40 +42,8 @@ impl ReplayPort for RecordingReplay {
     async fn play_file(&self, _path: PathBuf) -> Result<Option<String>, String> {
         Ok(None)
     }
-    async fn search_vault(
-        &self,
-        _query: ReplayQuery,
-    ) -> Result<faf_app::ports::VaultSearchResult, String> {
-        Ok(faf_app::ports::VaultSearchResult::default())
-    }
-    async fn list_featured_mods(&self) -> Result<Vec<String>, String> {
-        Ok(Vec::new())
-    }
     async fn watch_vault(&self, _uid: i32) -> Result<Option<String>, String> {
         Ok(None)
-    }
-    async fn download_vault(&self, _uid: i32) -> Result<LocalReplay, String> {
-        Err("not used by live-replay delay tests".into())
-    }
-    async fn load_details(
-        &self,
-        _uid: i32,
-        _local_path: Option<PathBuf>,
-    ) -> Result<faf_domain::state::ReplayDetails, String> {
-        Ok(faf_domain::state::ReplayDetails::default())
-    }
-    async fn load_analysis(
-        &self,
-        _uid: i32,
-        _local_path: Option<PathBuf>,
-    ) -> Result<faf_domain::state::ReplayAnalysis, String> {
-        unreachable!()
-    }
-    async fn list_local(&self, _limit: usize) -> Result<Vec<LocalReplay>, String> {
-        Ok(Vec::new())
-    }
-    async fn delete_local(&self, _path: PathBuf) -> Result<(), String> {
-        Ok(())
     }
 
     fn set_install_dir(&self, _dir: Option<PathBuf>) {}
@@ -134,7 +102,7 @@ impl Harness {
             updates: Mutex::new(None),
         });
         let ports = Ports {
-            replay: Arc::new(RecordingReplay {
+            replay_playback: Arc::new(RecordingReplay {
                 watched: watched.clone(),
             }),
             lobby: lobby.clone(),

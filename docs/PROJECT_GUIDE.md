@@ -117,7 +117,7 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/services/session.rs` | Service **session**: handshake → reports backend version. |
 | `src/services/auth.rs` | Service **auth**: command → `AuthPort` → events. |
 | `src/services/nav.rs` | Service **nav**: pure UI state transition (command → event). |
-| `src/services/lobby.rs` | Service **lobby**: subscribes to the stream, forwards each snapshot as an event. |
+| `src/services/lobby/` | Service **lobby**: subscribes to the stream, forwards each snapshot as an event. |
 | `src/services/settings.rs` | Service **settings**: `Load` → emit `Loaded`; `SetTheme` → emit + persist post-reduce slice. |
 | `tests/` | 26 integration tests, each driving the real runtime with fake ports: `loop.rs` (the loop end to end), `auth.rs` (a swapped port, success + failure), `lobby.rs` (streaming, plus connect/disconnect teardown), and one per feature area since. `ls crates/faf-app/tests` is the current list. |
 

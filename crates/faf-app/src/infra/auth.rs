@@ -63,6 +63,14 @@ impl AuthPort for FakeAuth {
         }
     }
 
+    // The fake holds no tokens, so there is nothing to stage, publish or drop;
+    // committing always succeeds so a successful fake login still lands.
+    fn commit_session(&self) -> bool {
+        true
+    }
+
+    fn discard_pending_session(&self) {}
+
     async fn logout(&self) -> AuthResult<()> {
         Ok(())
     }

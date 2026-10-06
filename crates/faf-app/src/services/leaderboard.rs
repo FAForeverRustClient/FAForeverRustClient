@@ -2,17 +2,36 @@
 
 use faf_domain::state::{LeaderboardCommand, LeaderboardEvent, LeaderboardStatus};
 
-use crate::runtime::{EventSink, ServiceCtx};
+use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+
+/// The leaderboard's request generations. Owned by this service.
+///
+/// Generations discard replies from superseded leaderboard requests. The
+/// runtime intentionally executes commands concurrently, so request order is
+/// not response order.
+#[derive(Default)]
+pub struct LeaderboardContext {
+    /// The catalogue of rating leaderboards and leagues.
+    catalog_generation: LatestRequest,
+    /// One page of a rating leaderboard, and the other boards' ratings loaded
+    /// after it.
+    ratings_generation: LatestRequest,
+    /// A league's seasons. Selecting another league also invalidates the
+    /// season board, which belongs to the league left behind.
+    seasons_generation: LatestRequest,
+    /// One season's board.
+    season_generation: LatestRequest,
+}
 
 async fn load_season(season_id: i32, ctx: &ServiceCtx, out: &EventSink) {
-    let generation = ctx.leaderboard_season_generation.begin();
+    let generation = ctx.leaderboard.season_generation.begin();
     out.emit(LeaderboardEvent::SeasonLoading { season_id });
     let result = ctx
         .ports
         .leaderboard
         .list_season_leaderboard(season_id)
         .await;
-    if !ctx.leaderboard_season_generation.is_current(generation) {
+    if !ctx.leaderboard.season_generation.is_current(generation) {
         return;
     }
     match result {
@@ -41,13 +60,13 @@ pub async fn handle(cmd: LeaderboardCommand, ctx: &ServiceCtx, out: &EventSink) 
             }) {
                 return;
             }
-            let generation = ctx.leaderboard_catalog_generation.begin();
+            let generation = ctx.leaderboard.catalog_generation.begin();
             out.emit(LeaderboardEvent::CatalogLoading);
             let (rating_leaderboards, leagues) = tokio::join!(
                 ctx.ports.leaderboard.list_rating_leaderboards(),
                 ctx.ports.leaderboard.list_leagues(),
             );
-            if !ctx.leaderboard_catalog_generation.is_current(generation) {
+            if !ctx.leaderboard.catalog_generation.is_current(generation) {
                 return;
             }
             match (rating_leaderboards, leagues) {
@@ -63,14 +82,14 @@ pub async fn handle(cmd: LeaderboardCommand, ctx: &ServiceCtx, out: &EventSink) 
             }
         }
         LeaderboardCommand::LoadRatings { mut query } => {
-            let generation = ctx.leaderboard_ratings_generation.begin();
+            let generation = ctx.leaderboard.ratings_generation.begin();
             query.page = query.page.max(1);
             query.page_size = query.page_size.clamp(25, 1_000);
             out.emit(LeaderboardEvent::RatingsLoading {
                 query: query.clone(),
             });
             let result = ctx.ports.leaderboard.list_ratings(&query).await;
-            if !ctx.leaderboard_ratings_generation.is_current(generation) {
+            if !ctx.leaderboard.ratings_generation.is_current(generation) {
                 return;
             }
             let page = match result {
@@ -95,7 +114,7 @@ pub async fn handle(cmd: LeaderboardCommand, ctx: &ServiceCtx, out: &EventSink) 
                 return;
             }
             let ratings = ctx.ports.leaderboard.list_player_ratings(&player_ids).await;
-            if !ctx.leaderboard_ratings_generation.is_current(generation) {
+            if !ctx.leaderboard.ratings_generation.is_current(generation) {
                 return;
             }
             // A failure here is silence, not an error banner: the page is on
@@ -106,12 +125,12 @@ pub async fn handle(cmd: LeaderboardCommand, ctx: &ServiceCtx, out: &EventSink) 
             }
         }
         LeaderboardCommand::SelectLeague { league_id } => {
-            let generation = ctx.leaderboard_seasons_generation.begin();
+            let generation = ctx.leaderboard.seasons_generation.begin();
             // A board from the previously selected league is no longer relevant.
-            ctx.leaderboard_season_generation.invalidate();
+            ctx.leaderboard.season_generation.invalidate();
             out.emit(LeaderboardEvent::SeasonsLoading { league_id });
             let result = ctx.ports.leaderboard.list_seasons(league_id).await;
-            if !ctx.leaderboard_seasons_generation.is_current(generation) {
+            if !ctx.leaderboard.seasons_generation.is_current(generation) {
                 return;
             }
             match result {

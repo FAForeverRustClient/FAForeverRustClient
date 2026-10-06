@@ -35,9 +35,7 @@ pub async fn handle(cmd: TutorialsCommand, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.tutorial_launch_active.try_acquire() else {
-        return;
-    };
+    crate::runtime::expect_admitted(crate::runtime::Key::TutorialLaunch);
     let Some(tutorial) = out.with_state(|state| {
         state
             .tutorials
@@ -133,7 +131,7 @@ async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
 /// lobby has already ordered.
 fn game_is_running(ctx: &ServiceCtx, out: &EventSink) -> bool {
     ctx.ports.process.game_running()
-        || ctx.running_game.id().is_some()
+        || ctx.lobby.running_game_id().is_some()
         || out.with_state(|state| {
             matches!(
                 state.lobby.join,

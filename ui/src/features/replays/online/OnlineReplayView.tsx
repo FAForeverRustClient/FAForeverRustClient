@@ -14,6 +14,7 @@ import { ReplayDetailPanel } from "../ReplayDetailPanel";
 import { ReplayViewSwitch, type ReplayViewMode } from "../ReplayViewSwitch";
 import { subscribeReplaySearch, takeReplaySearch } from "../../../shared/replaySearchIntent";
 import { VaultSearch } from "./VaultSearch";
+import { ReplayPageSize } from "./AdvancedReplayFilters";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { plainError } from "../../../shared/plainError";
@@ -165,7 +166,10 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         },
       });
     }
-    searchVault(newQuery);
+    // The page size is set on the results line, not in the form, so a search
+    // from the form keeps the one in effect: clearing the filters is not a
+    // request for a different page length.
+    searchVault({ ...newQuery, pageSize: query.pageSize });
   };
 
   const openReplay = vault.find((r) => r.uid === openUid) ?? null;
@@ -246,7 +250,14 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
                 })}
           </span>
         </div>
-        <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
+        <div className="online-replay-view-bar-right">
+          {/* Applies at once, to the search on screen, from its first page. */}
+          <ReplayPageSize
+            value={query.pageSize}
+            onChange={(pageSize) => searchVault({ ...query, pageSize, page: 1 })}
+          />
+          <ReplayViewSwitch value={viewMode} onChange={setViewMode} />
+        </div>
       </div>
       {/* A failed search as a line of its own with the way to run it again.
           It was a muted fragment after "0 shown · 1 pages", which read as an

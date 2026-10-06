@@ -18,7 +18,6 @@ use faf_domain::AppEvent;
 
 use crate::ports::DiscordRequest;
 use crate::runtime::{EventSink, ServiceCtx};
-use crate::services;
 use std::sync::Arc;
 
 /// Start the two long-lived tasks: presence out, requests in.
@@ -141,12 +140,13 @@ async fn serve_requests(ctx: Arc<ServiceCtx>, sink: EventSink) {
                     tracing::info!("ignoring Discord join request because joins are disabled");
                     continue;
                 }
-                services::lobby::handle(
+                crate::runtime::run_command(
                     LobbyCommand::Join {
                         id: game_id,
                         password: None,
                         replace_mods: false,
-                    },
+                    }
+                    .into(),
                     &ctx,
                     &sink,
                 )
@@ -167,12 +167,13 @@ async fn serve_requests(ctx: Arc<ServiceCtx>, sink: EventSink) {
                     tracing::warn!("ignoring Discord spectate request for an unknown game");
                     continue;
                 };
-                services::replays::handle(
+                crate::runtime::run_command(
                     ReplayCommand::WatchLive(LiveReplayTarget {
                         uid: game.id,
                         mod_name: game.mod_name.clone(),
                         map: game.map.clone(),
-                    }),
+                    })
+                    .into(),
                     &ctx,
                     &sink,
                 )

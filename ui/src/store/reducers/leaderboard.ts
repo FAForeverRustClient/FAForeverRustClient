@@ -57,6 +57,7 @@ export function reduceLeaderboard(
         selectedSeasonId: null,
         seasonEntries: [],
         tiers: [],
+        seasonStatus: { type: "idle" },
       };
     case "seasonsLoaded":
       return {

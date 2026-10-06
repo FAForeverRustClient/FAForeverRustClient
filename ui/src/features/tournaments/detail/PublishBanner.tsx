@@ -9,7 +9,8 @@
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
-import type { Tourney, TourneyAdmin } from "../../../ipc/bindings";
+import type { Tourney } from "../../../ipc/bindings";
+import type { OrganiserActions } from "../tourneyActions";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { formatMoment } from "../tourneyPresentation";
 
@@ -18,8 +19,8 @@ interface PublishBannerProps {
   /** Where the service lives, for the share link. Empty until it is known. */
   assetBase: string;
   busy: boolean;
-  onPublish: () => void;
-  onAdmin: (change: TourneyAdmin) => void;
+  /** Publishing now, and the scheduled publish, which is an organiser change. */
+  organiser: Pick<OrganiserActions, "publish" | "admin">;
 }
 
 /** `YYYY-MM-DDTHH:mm` in local time, as a `datetime-local` field reads it. */
@@ -29,7 +30,7 @@ function secondsOf(value: string): number | null {
   return Number.isNaN(millis) ? null : Math.floor(millis / 1000);
 }
 
-export function PublishBanner({ event, assetBase, busy, onPublish, onAdmin }: PublishBannerProps) {
+export function PublishBanner({ event, assetBase, busy, organiser }: PublishBannerProps) {
   const { t } = useTranslation();
   const [when, setWhen] = useState("");
   const [copied, setCopied] = useState(false);
@@ -55,7 +56,7 @@ export function PublishBanner({ event, assetBase, busy, onPublish, onAdmin }: Pu
       {event.publishAt !== null && (
         <div className="tournament-detail-actions">
           <span>{t("tournaments.publish.scheduled", { when: formatMoment(event.publishAt, "") })}</span>
-          <Button disabled={busy} onClick={() => onAdmin({ type: "schedulePublish", payload: { at: null } })}>
+          <Button disabled={busy} onClick={() => organiser.admin({ type: "schedulePublish", payload: { at: null } })}>
             {t("tournaments.publish.cancelSchedule")}
           </Button>
         </div>
@@ -65,7 +66,7 @@ export function PublishBanner({ event, assetBase, busy, onPublish, onAdmin }: Pu
           variant="primary"
           disabled={busy}
           onClick={() => {
-            if (window.confirm(t("tournaments.publish.confirm"))) onPublish();
+            if (window.confirm(t("tournaments.publish.confirm"))) organiser.publish();
           }}
         >
           {t("tournaments.publish.now")}
@@ -77,7 +78,7 @@ export function PublishBanner({ event, assetBase, busy, onPublish, onAdmin }: Pu
         <Button
           disabled={busy || at === null}
           onClick={() => {
-            if (at !== null) onAdmin({ type: "schedulePublish", payload: { at } });
+            if (at !== null) organiser.admin({ type: "schedulePublish", payload: { at } });
             setWhen("");
           }}
         >

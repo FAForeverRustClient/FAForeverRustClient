@@ -595,7 +595,18 @@ fn retain_or_keep(values: &[String], keep: impl Fn(&str) -> bool) -> Vec<String>
     }
 }
 
-fn pick_choice(single: &str, multi: &[String], seed_str: &str) -> Option<String> {
+/// The number every pick in one command line is derived from.
+///
+/// A numeric seed pins the picks, so the same seed always yields the same
+/// command line. Without one (empty, or a seed the generator accepts but that
+/// is not a number) the caller's `fallback` is used instead: the caller owns
+/// the randomness, which keeps this module free of clock reads and makes a
+/// command line a pure function of its inputs.
+fn pick_seed(seed: &str, fallback: u64) -> u64 {
+    seed.parse().unwrap_or(fallback)
+}
+
+fn pick_choice(single: &str, multi: &[String], seed_num: u64) -> Option<String> {
     if !single.is_empty() {
         return Some(single.to_string());
     }
@@ -605,12 +616,6 @@ fn pick_choice(single: &str, multi: &[String], seed_str: &str) -> Option<String>
     if multi.len() == 1 {
         return multi.first().cloned();
     }
-    let seed_num: u64 = seed_str.parse().unwrap_or_else(|_| {
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
-            .unwrap_or(0)
-    });
     let idx = (seed_num as usize) % multi.len();
     multi.get(idx).cloned()
 }
@@ -619,7 +624,7 @@ fn pick_density(
     single: Option<f32>,
     min: Option<f32>,
     max: Option<f32>,
-    seed_str: &str,
+    seed_num: u64,
 ) -> Option<f32> {
     if let Some(val) = single {
         return Some(val);
@@ -629,12 +634,6 @@ fn pick_density(
         (Some(a), Some(b)) => {
             let low = a.min(b);
             let high = a.max(b);
-            let seed_num: u64 = seed_str.parse().unwrap_or_else(|_| {
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_millis() as u64)
-                    .unwrap_or(0)
-            });
             let frac = ((seed_num.wrapping_mul(6364136223846793005).wrapping_add(1) >> 32) as u32
                 % 1000) as f32
                 / 1000.0;
@@ -787,11 +786,17 @@ fn resolve_choices(
 /// Reproduces the Java client's `GeneratorCommand.getCommand()` including its
 /// early returns, which are load-bearing: several options *replace* the rest of
 /// the command rather than adding to it.
+///
+/// `fallback_seed` drives the picks among several selected candidates (styles,
+/// symmetries, density ranges) when `options.seed` is not a number. The caller
+/// supplies it, typically from a clock or a random source, so the same inputs
+/// always build the same command line.
 pub fn build_arguments(
     version: GeneratorVersion,
     map_name: Option<&str>,
     options: &GeneratorOptions,
     policy: VersionPolicy,
+    fallback_seed: u64,
 ) -> Result<Vec<String>, CommandError> {
     // Refused here rather than at the download site so *every* path: join,
     // host, option query: is gated by the same check, and so nothing is
@@ -914,6 +919,7 @@ pub fn build_arguments(
         }
     };
     push_flag("--seed", &options.seed);
+    let seed = pick_seed(&options.seed, fallback_seed);
 
     // Narrow the candidates to those that can actually make this many teams
     // before picking. Both reference clients pick uniformly from everything the
@@ -922,7 +928,7 @@ pub fn build_arguments(
     let symmetries = retain_or_keep(&options.symmetries, |symmetry| {
         symmetry_fits_teams(symmetry, teams)
     });
-    if let Some(symmetry) = pick_choice(&options.symmetry, &symmetries, &options.seed) {
+    if let Some(symmetry) = pick_choice(&options.symmetry, &symmetries, seed) {
         // Named `--symmetry` in 1.1 and 1.2 and absent either side of that, but
         // those releases cannot list their symmetries either, so there is
         // nothing for a user to have picked.
@@ -937,7 +943,7 @@ pub fn build_arguments(
     let styles = retain_or_keep(&options.styles, |style| {
         style_constraints(style).matches(size, spawns, teams)
     });
-    if let Some(style) = pick_choice(&options.style, &styles, &options.seed) {
+    if let Some(style) = pick_choice(&options.style, &styles, seed) {
         if version.supports_style() {
             args.push("--style".to_string());
             args.push(style);
@@ -954,28 +960,16 @@ pub fn build_arguments(
         return Ok(args);
     }
 
-    if let Some(terrain) = pick_choice(
-        &options.terrain_style,
-        &options.terrain_styles,
-        &options.seed,
-    ) {
+    if let Some(terrain) = pick_choice(&options.terrain_style, &options.terrain_styles, seed) {
         push_flag("--terrain-style", &terrain);
     }
-    if let Some(texture) = pick_choice(
-        &options.texture_style,
-        &options.texture_styles,
-        &options.seed,
-    ) {
+    if let Some(texture) = pick_choice(&options.texture_style, &options.texture_styles, seed) {
         push_flag("--texture-style", &texture);
     }
-    if let Some(resource) = pick_choice(
-        &options.resource_style,
-        &options.resource_styles,
-        &options.seed,
-    ) {
+    if let Some(resource) = pick_choice(&options.resource_style, &options.resource_styles, seed) {
         push_flag("--resource-style", &resource);
     }
-    if let Some(prop) = pick_choice(&options.prop_style, &options.prop_styles, &options.seed) {
+    if let Some(prop) = pick_choice(&options.prop_style, &options.prop_styles, seed) {
         push_flag("--prop-style", &prop);
     }
 
@@ -983,7 +977,7 @@ pub fn build_arguments(
         options.resource_density,
         options.resource_density_min,
         options.resource_density_max,
-        &options.seed,
+        seed,
     ) {
         args.push("--resource-density".to_string());
         args.push(format_density(density));
@@ -992,7 +986,7 @@ pub fn build_arguments(
         options.reclaim_density,
         options.reclaim_density_min,
         options.reclaim_density_max,
-        &options.seed,
+        seed,
     ) {
         args.push("--reclaim-density".to_string());
         args.push(format_density(density));
@@ -1484,6 +1478,79 @@ pub fn parse_option_list(stdout: &str) -> Vec<String> {
 mod tests {
     use super::*;
 
+    /// What a caller would otherwise draw from its clock. Fixed, so a test
+    /// that leaves a choice to it still gets the same command line every run.
+    const FALLBACK_SEED: u64 = 0;
+
+    #[test]
+    fn picks_are_a_function_of_their_inputs_alone() {
+        let multi: Vec<String> = ["A", "B", "C"].map(String::from).to_vec();
+
+        // A numeric seed decides and the fallback is ignored, exactly as the
+        // parse used to decide before the fallback was injected.
+        assert_eq!(pick_seed("4", 99), 4);
+        assert_eq!(pick_seed("", 99), 99);
+        assert_eq!(pick_seed("not-a-number", 99), 99);
+
+        for seed in [0, 1, 2, 7, u64::MAX] {
+            assert_eq!(pick_choice("", &multi, seed), pick_choice("", &multi, seed));
+            assert_eq!(
+                pick_density(None, Some(10.0), Some(90.0), seed),
+                pick_density(None, Some(10.0), Some(90.0), seed)
+            );
+        }
+        assert_eq!(pick_choice("", &multi, 4).as_deref(), Some("B"));
+        // An explicit single value still wins over any seed.
+        assert_eq!(pick_choice("Z", &multi, 4).as_deref(), Some("Z"));
+        assert_eq!(
+            pick_density(Some(5.0), Some(10.0), Some(90.0), 4),
+            Some(5.0)
+        );
+        let density = pick_density(None, Some(10.0), Some(90.0), 4).unwrap();
+        assert!((10.0..=90.0).contains(&density), "{density}");
+    }
+
+    #[test]
+    fn the_same_fallback_always_builds_the_same_command_line() {
+        let options = GeneratorOptions {
+            terrain_styles: ["A", "B", "C"].map(String::from).to_vec(),
+            prop_styles: ["P", "Q"].map(String::from).to_vec(),
+            reclaim_density_min: Some(0.0),
+            reclaim_density_max: Some(127.0),
+            ..Default::default()
+        };
+        let build = |options: &GeneratorOptions, fallback| {
+            build_arguments(
+                MIN_COMPONENT_STYLE_VERSION,
+                None,
+                options,
+                VersionPolicy::default(),
+                fallback,
+            )
+            .unwrap()
+        };
+
+        for fallback in [0, 1, 2, 12_345] {
+            assert_eq!(build(&options, fallback), build(&options, fallback));
+        }
+        // The fallback is what varies the pick when there is no seed...
+        assert!(build(&options, 0)
+            .windows(2)
+            .any(|w| w == ["--terrain-style", "A"]));
+        assert!(build(&options, 1)
+            .windows(2)
+            .any(|w| w == ["--terrain-style", "B"]));
+        // ...and a numeric seed overrides it entirely.
+        let seeded = GeneratorOptions {
+            seed: "2".into(),
+            ..options.clone()
+        };
+        assert_eq!(build(&seeded, 0), build(&seeded, 1));
+        assert!(build(&seeded, 0)
+            .windows(2)
+            .any(|w| w == ["--terrain-style", "C"]));
+    }
+
     #[test]
     fn a_batch_gets_three_minutes_for_every_map() {
         let args = |extra: &[&str]| extra.iter().map(|arg| arg.to_string()).collect::<Vec<_>>();
@@ -1611,8 +1678,14 @@ mod tests {
             min_major: 1,
             max_major: 1,
         };
-        let error = build_arguments(version(0, 9, 0), None, &GeneratorOptions::default(), policy)
-            .unwrap_err();
+        let error = build_arguments(
+            version(0, 9, 0),
+            None,
+            &GeneratorOptions::default(),
+            policy,
+            FALLBACK_SEED,
+        )
+        .unwrap_err();
         assert_eq!(
             error,
             CommandError::UnsupportedVersion(VersionSupport::Outdated)
@@ -1629,6 +1702,7 @@ mod tests {
             None,
             &GeneratorOptions::default(),
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap_err();
         assert!(error.to_string().contains("update the client"), "{error}");
@@ -1663,8 +1737,14 @@ mod tests {
             command_line_args: "--map-size 512 --visualize".into(),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            version(1, 7, 7),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert!(runs_without_timeout(&args));
     }
 
@@ -1681,6 +1761,7 @@ mod tests {
             Some("neroxis_map_generator_1.7.7_abc"),
             &GeneratorOptions::default(),
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert_eq!(args, vec!["--map-name", "neroxis_map_generator_1.7.7_abc"]);
@@ -1697,6 +1778,7 @@ mod tests {
             Some("mapname"),
             &options,
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert_eq!(args, vec![".", "12345", "0.9.0", "mapname"]);
@@ -1709,6 +1791,7 @@ mod tests {
             None,
             &GeneratorOptions::default(),
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert_eq!(
@@ -1731,7 +1814,13 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()),
+            build_arguments(
+                version(1, 7, 7),
+                None,
+                &options,
+                VersionPolicy::default(),
+                FALLBACK_SEED
+            ),
             Err(CommandError::MissingParameters)
         );
     }
@@ -1746,8 +1835,14 @@ mod tests {
             seed: "9".into(),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            version(1, 7, 7),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert!(args.contains(&"--blind".to_string()));
         assert!(!args.contains(&"--style".to_string()));
         assert!(!args.contains(&"--seed".to_string()));
@@ -1760,6 +1855,7 @@ mod tests {
             None,
             &GeneratorOptions::default(),
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert!(!args
@@ -1776,8 +1872,14 @@ mod tests {
             resource_density: Some(1.0),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            version(1, 7, 7),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert!(args.ends_with(&["--style".to_string(), "BIG_ISLANDS".to_string()]));
         assert!(!args.contains(&"--terrain-style".to_string()));
         assert!(!args.contains(&"--resource-density".to_string()));
@@ -1802,6 +1904,7 @@ mod tests {
             None,
             &options,
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         for expected in [
@@ -1847,6 +1950,7 @@ mod tests {
                 None,
                 &options,
                 VersionPolicy::default(),
+                FALLBACK_SEED,
             )
             .unwrap();
             let emitted: Vec<f32> = args
@@ -1876,6 +1980,7 @@ mod tests {
             None,
             &options,
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert!(args
@@ -1912,6 +2017,7 @@ mod tests {
             None,
             &options,
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert!(args.windows(2).any(|w| w == ["--out-path", "D:/maps"]));
@@ -1938,6 +2044,7 @@ mod tests {
             None,
             &options,
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert!(!args.contains(&"--preview-path".to_string()), "{args:?}");
@@ -1964,6 +2071,7 @@ mod tests {
                     ..options.clone()
                 },
                 VersionPolicy::default(),
+                FALLBACK_SEED,
             )
             .unwrap();
             assert!(
@@ -2038,6 +2146,7 @@ mod tests {
             None,
             &batch[0],
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert!(!args.iter().any(|arg| arg == "--num-to-generate"));
@@ -2096,6 +2205,7 @@ mod tests {
             None,
             &options,
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert!(args
@@ -2120,6 +2230,7 @@ mod tests {
                     ..options.clone()
                 },
                 VersionPolicy::default(),
+                FALLBACK_SEED,
             )
             .unwrap();
             assert!(args.windows(2).any(|w| w == ["--style", "MOUNTAIN_RANGE"]));
@@ -2304,11 +2415,15 @@ mod tests {
             num_to_generate: Some(1),
             ..Default::default()
         };
-        assert!(
-            !build_arguments(MIN_MODERN_CLI_VERSION, None, &one, VersionPolicy::default())
-                .unwrap()
-                .contains(&"--num-to-generate".to_string())
-        );
+        assert!(!build_arguments(
+            MIN_MODERN_CLI_VERSION,
+            None,
+            &one,
+            VersionPolicy::default(),
+            FALLBACK_SEED
+        )
+        .unwrap()
+        .contains(&"--num-to-generate".to_string()));
 
         let many = GeneratorOptions {
             num_to_generate: Some(4),
@@ -2319,6 +2434,7 @@ mod tests {
             None,
             &many,
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert!(args.windows(2).any(|w| w == ["--num-to-generate", "4"]));
@@ -2332,8 +2448,14 @@ mod tests {
             num_to_generate: Some(4),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            version(1, 7, 7),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert!(!args.contains(&"--num-to-generate".to_string()), "{args:?}");
         assert!(
             args.windows(2).any(|w| w == ["--seed", "12345"]),
@@ -2348,8 +2470,14 @@ mod tests {
             style: "IGNORED".into(),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 7, 7), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            version(1, 7, 7),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert_eq!(args, vec!["--map-size", "256", "--spawn-count", "2"]);
     }
 
@@ -2360,7 +2488,8 @@ mod tests {
                 version(9, 0, 0),
                 None,
                 &GeneratorOptions::default(),
-                VersionPolicy::default()
+                VersionPolicy::default(),
+                FALLBACK_SEED
             ),
             Err(CommandError::UnsupportedVersion(VersionSupport::TooNew))
         );
@@ -2448,8 +2577,14 @@ mod tests {
             reclaim_density: Some(64.0),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 9, 0), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            version(1, 9, 0),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert!(!args.iter().any(|arg| arg.ends_with("-style")));
         assert!(!args.contains(&"--reclaim-density".to_string()));
         // The size/spawn/team triple every release understands still goes out.
@@ -2469,8 +2604,14 @@ mod tests {
             style: "BIG_ISLANDS".into(),
             ..Default::default()
         };
-        let args =
-            build_arguments(version(1, 0, 0), None, &options, VersionPolicy::default()).unwrap();
+        let args = build_arguments(
+            version(1, 0, 0),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert_eq!(
             args,
             vec!["--spawn-count", "4", "--folder-path", "."],
@@ -2478,12 +2619,24 @@ mod tests {
         );
 
         // 1.1.0 gained the size, 1.3.0 the teams.
-        let sized =
-            build_arguments(version(1, 1, 0), None, &options, VersionPolicy::default()).unwrap();
+        let sized = build_arguments(
+            version(1, 1, 0),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert!(sized.starts_with(&["--map-size".to_string(), "512".to_string()]));
         assert!(!sized.contains(&"--num-teams".to_string()));
-        let teamed =
-            build_arguments(version(1, 3, 0), None, &options, VersionPolicy::default()).unwrap();
+        let teamed = build_arguments(
+            version(1, 3, 0),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert!(teamed.contains(&"--num-teams".to_string()));
         // The whole-map style is 1.4.0 and later, so neither of these gets one.
         assert!(!teamed.contains(&"--style".to_string()));
@@ -2499,19 +2652,37 @@ mod tests {
             num_to_generate: Some(3),
             ..Default::default()
         };
-        let old =
-            build_arguments(version(1, 5, 0), None, &options, VersionPolicy::default()).unwrap();
+        let old = build_arguments(
+            version(1, 5, 0),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert!(old.windows(2).any(|w| w == ["--folder-path", "D:/maps"]));
         assert!(old.windows(2).any(|w| w == ["--num-to-gen", "3"]));
 
-        let modern =
-            build_arguments(version(1, 9, 0), None, &options, VersionPolicy::default()).unwrap();
+        let modern = build_arguments(
+            version(1, 9, 0),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert!(modern.windows(2).any(|w| w == ["--out-path", "D:/maps"]));
         assert!(modern.windows(2).any(|w| w == ["--num-to-generate", "3"]));
 
         // Before 1.4.0 there is no way to ask for several maps at all.
-        let ancient =
-            build_arguments(version(1, 3, 0), None, &options, VersionPolicy::default()).unwrap();
+        let ancient = build_arguments(
+            version(1, 3, 0),
+            None,
+            &options,
+            VersionPolicy::default(),
+            FALLBACK_SEED,
+        )
+        .unwrap();
         assert!(!ancient.iter().any(|arg| arg.starts_with("--num-to-gen")));
     }
 
@@ -2522,6 +2693,7 @@ mod tests {
             Some("neroxis_map_generator_1.0.0_abc"),
             &GeneratorOptions::default(),
             VersionPolicy::default(),
+            FALLBACK_SEED,
         )
         .unwrap();
         assert_eq!(

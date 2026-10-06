@@ -2,7 +2,7 @@
 //!
 //! Services describe the behavior they need instead of open-coding atomics,
 //! memory ordering, and empty mutexes. This keeps the policy auditable in one
-//! place and makes a `ServiceCtx` field explain whether work is single-flight,
+//! place and makes a service context field explain whether work is single-flight,
 //! latest-response-wins, or serialized.
 
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};

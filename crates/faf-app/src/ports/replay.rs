@@ -1,8 +1,18 @@
-//! Replay port: watching a live game or a local replay file.
+//! Replay ports: the vault, the local library, reading one replay in depth,
+//! and playback.
 //!
-//! The impl fetches the replay-access relay (live) or decompresses a file,
-//! then launches the game via [`crate::ports::ProcessPort::launch_replay`].
-//! See `infra/replay.rs` for the real implementation and its protocol notes.
+//! Four traits rather than one, cut along what each capability talks to, so a
+//! service or a test that needs one of them does not have to supply the
+//! others:
+//!
+//! - [`ReplayVaultPort`]: the FAF API's game records and the replay host.
+//! - [`ReplayLibraryPort`]: the shared local replay folder.
+//! - [`ReplayDetailsPort`]: the expensive reads of one replay's file.
+//! - [`ReplayPlaybackPort`]: preparing the replay install and launching FA,
+//!   from a file, from the vault, or from a live stream. Every launch goes
+//!   through [`crate::ports::ProcessPort::launch_replay`].
+//!
+//! See `infra/replay/` for the real implementations and their protocol notes.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -14,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use crate::ports::PreparationStep;
 
 /// Receives the steps of a replay launch's preparation. See
-/// [`ReplayPort::set_preparation_progress`].
+/// [`ReplayPlaybackPort::set_preparation_progress`].
 pub type PreparationSink = Arc<dyn Fn(PreparationStep) + Send + Sync>;
 
 /// How many of the newest local replays to read headers for by default.
@@ -28,8 +38,85 @@ pub struct VaultSearchResult {
     pub total_records: Option<i32>,
 }
 
+/// The online replay vault: searching the FAF API's game records and fetching
+/// replay files from the replay host.
 #[async_trait]
-pub trait ReplayPort: Send + Sync {
+pub trait ReplayVaultPort: Send + Sync {
+    /// Search the vault (FAF Data API `/data/game`). A default [`ReplayQuery`]
+    /// is the unfiltered newest-first feed: the Java client's `NEWEST`
+    /// category: so this covers browsing and searching alike. Looking a game
+    /// up by id is a search too (`ReplayQuery::replay_id`/`replay_ids`).
+    async fn search_vault(&self, query: ReplayQuery) -> Result<VaultSearchResult, String>;
+
+    /// Featured mod technical names (`/data/featuredMod`), for the search
+    /// form's mod filter. Both reference clients populate the same dropdown
+    /// from the same endpoint rather than hardcoding the list.
+    async fn list_featured_mods(&self) -> Result<Vec<String>, String>;
+
+    /// Download a vault replay into the shared local replay directory without
+    /// launching the game, returning its lightweight library metadata.
+    async fn download_vault(&self, uid: i32) -> Result<LocalReplay, String>;
+
+    /// The map one game was played on, read out of the replay file itself.
+    ///
+    /// For the games the vault listing has no map for, which is every co-op
+    /// game ever played: FAF records a game's map as a `map_version` row and
+    /// a campaign mission is not one. The replay knows regardless, because
+    /// the engine wrote the scenario it loaded into the head of the command
+    /// stream, and the head is all this reads.
+    ///
+    /// `Ok(None)` means the file was read and named no map. The default is a
+    /// no-op so a fake port does not have to care.
+    async fn replay_map_name(&self, _uid: i32) -> Result<Option<String>, String> {
+        Ok(None)
+    }
+}
+
+/// The shared FAF replay folder every client records into.
+#[async_trait]
+pub trait ReplayLibraryPort: Send + Sync {
+    /// List `.fafreplay` files in the shared FAF replay folder (mirrors the
+    /// Java client's `LocalReplayVaultController`).
+    /// `limit` bounds how many of the newest files have their headers read.
+    /// Every replay is still listed; the ones past the limit carry only what
+    /// the directory entry gave, which is why the caller can ask for more.
+    async fn list_local(&self, limit: usize) -> Result<Vec<LocalReplay>, String>;
+
+    /// Delete a replay previously returned by [`Self::list_local`].
+    async fn delete_local(&self, path: PathBuf) -> Result<(), String>;
+}
+
+/// Reading one replay past its header, on request. Either call takes a vault
+/// id and, when the replay came from the library or a file picker, its path;
+/// a replay with neither on disk is fetched from the vault first.
+#[async_trait]
+pub trait ReplayDetailsPort: Send + Sync {
+    /// Load the deferred game options, in-game chat, and FAF version metadata
+    /// for a replay by uid or local file path. Online replays may need a full
+    /// download when the replay is not cached locally.
+    async fn load_details(
+        &self,
+        uid: i32,
+        local_path: Option<PathBuf>,
+    ) -> Result<faf_domain::state::ReplayDetails, String>;
+
+    /// The whole command stream, for the panel that analyses one replay: every
+    /// order, where it was aimed, what the sim announced, and the statistics it
+    /// sent when the game ended. The expensive read, which is why it is its own
+    /// call; see `ReplayCommand::LoadAnalysis`.
+    async fn load_analysis(
+        &self,
+        uid: i32,
+        local_path: Option<PathBuf>,
+    ) -> Result<faf_domain::state::ReplayAnalysis, String>;
+}
+
+/// Putting a replay on screen: preparing the replay install it needs and
+/// launching FA on it. The setters are pushed from the settings service,
+/// because preparation happens inside the port, which has no settings of its
+/// own.
+#[async_trait]
+pub trait ReplayPlaybackPort: Send + Sync {
     /// Watch a game currently in progress. `player` is the identifier sent in
     /// the replay-server handshake: the server merges all players' streams,
     /// so any non-empty string works (mirrors the Python client's comment in
@@ -50,67 +137,10 @@ pub trait ReplayPort: Send + Sync {
     /// couldn't be matched, which FA always refuses to load).
     async fn play_file(&self, path: PathBuf) -> Result<Option<String>, String>;
 
-    /// Search the vault (FAF Data API `/data/game`). A default [`ReplayQuery`]
-    /// is the unfiltered newest-first feed: the Java client's `NEWEST`
-    /// category: so this covers browsing and searching alike.
-    async fn search_vault(&self, query: ReplayQuery) -> Result<VaultSearchResult, String>;
-
-    /// Featured mod technical names (`/data/featuredMod`), for the search
-    /// form's mod filter. Both reference clients populate the same dropdown
-    /// from the same endpoint rather than hardcoding the list.
-    async fn list_featured_mods(&self) -> Result<Vec<String>, String>;
-
     /// Download a vault replay by game id and play it (delegates to
     /// [`Self::play_file`] once downloaded: same `Ok(Some(warning))`/`Err`
     /// meaning).
     async fn watch_vault(&self, uid: i32) -> Result<Option<String>, String>;
-
-    /// Download a vault replay into the shared local replay directory without
-    /// launching the game, returning its lightweight library metadata.
-    async fn download_vault(&self, uid: i32) -> Result<LocalReplay, String>;
-
-    /// Load the deferred game options, in-game chat, and FAF version metadata
-    /// for a replay by uid or local file path. Online replays may need a full
-    /// download when the replay is not cached locally.
-    async fn load_details(
-        &self,
-        uid: i32,
-        local_path: Option<PathBuf>,
-    ) -> Result<faf_domain::state::ReplayDetails, String>;
-
-    /// The whole command stream, for the panel that analyses one replay: every
-    /// order, where it was aimed, what the sim announced, and the statistics it
-    /// sent when the game ended. The expensive read, which is why it is its own
-    /// call; see `ReplayCommand::LoadAnalysis`.
-    async fn load_analysis(
-        &self,
-        uid: i32,
-        local_path: Option<PathBuf>,
-    ) -> Result<faf_domain::state::ReplayAnalysis, String>;
-
-    /// The map one game was played on, read out of the replay file itself.
-    ///
-    /// For the games the vault listing has no map for, which is every co-op
-    /// game ever played: FAF records a game's map as a `map_version` row and
-    /// a campaign mission is not one. The replay knows regardless, because
-    /// the engine wrote the scenario it loaded into the head of the command
-    /// stream, and the head is all this reads.
-    ///
-    /// `Ok(None)` means the file was read and named no map. The default is a
-    /// no-op so a fake port does not have to care.
-    async fn replay_map_name(&self, _uid: i32) -> Result<Option<String>, String> {
-        Ok(None)
-    }
-
-    /// List `.fafreplay` files in the shared FAF replay folder (mirrors the
-    /// Java client's `LocalReplayVaultController`).
-    /// `limit` bounds how many of the newest files have their headers read.
-    /// Every replay is still listed; the ones past the limit carry only what
-    /// the directory entry gave, which is why the caller can ask for more.
-    async fn list_local(&self, limit: usize) -> Result<Vec<LocalReplay>, String>;
-
-    /// Delete a replay previously returned by [`Self::list_local`].
-    async fn delete_local(&self, path: PathBuf) -> Result<(), String>;
 
     /// Point the replay preparation steps at the install that will actually be
     /// launched. `None` when no replay install is configured.
@@ -147,8 +177,7 @@ pub trait ReplayPort: Send + Sync {
     /// playback (`game/auto_generate_maps`).
     ///
     /// Pushed from the settings service for the same reason as
-    /// [`Self::set_live_replay_pipe`]: preparation happens inside the port,
-    /// which has no settings of its own, and the launcher already gates live
+    /// [`Self::set_live_replay_pipe`], and the launcher already gates live
     /// games on this preference. Defaults to enabled, matching the setting, so
     /// a replay opened before the first settings sync still prepares.
     ///

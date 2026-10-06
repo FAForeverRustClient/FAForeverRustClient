@@ -24,6 +24,7 @@ import { useTranslation } from "../../../i18n/useTranslation";
 import { qualifierRejection, seriesIsSubmittable } from "../../../shared/rules/tourneyRules";
 import { formatDay } from "../tourneyPresentation";
 import { NumberInput } from "../../../design-system/NumberInput";
+import type { SeriesActions } from "../tourneyActions";
 
 interface SeriesPanelProps {
   event: Tourney;
@@ -32,10 +33,8 @@ interface SeriesPanelProps {
   /** The other events, as candidates for a qualifier link. */
   events: Tourney[];
   busy: boolean;
-  onSetSeries: (seriesId: string | null) => void;
-  onSaveSeries: (draft: SeriesDraft) => void;
-  onAddQualifier: (qualifierId: string, rule: QualifierRule) => void;
-  onRemoveQualifier: (linkId: string) => void;
+  /** Filing this edition, saving a series, and the qualifier links. */
+  actions: Pick<SeriesActions, "set" | "save" | "addQualifier" | "removeQualifier">;
   /** Keep a block of seeds for one link's arrivals, from this seed down. */
   onSeedFrom: (linkId: string, seedFrom: number) => void;
 }
@@ -73,7 +72,7 @@ export function SeriesPanel(props: SeriesPanelProps) {
             <select
               value={event.seriesId ?? ""}
               disabled={busy}
-              onChange={(changed) => props.onSetSeries(changed.target.value || null)}
+              onChange={(changed) => props.actions.set(changed.target.value || null)}
             >
               <option value="">{t("tournaments.series.none")}</option>
               {series.map((row) => (
@@ -97,7 +96,7 @@ export function SeriesPanel(props: SeriesPanelProps) {
             onSubmit={(submitted) => {
               submitted.preventDefault();
               if (!seriesIsSubmittable(draft)) return;
-              props.onSaveSeries(draft);
+              props.actions.save(draft);
               setDraft(null);
             }}
           >
@@ -196,7 +195,7 @@ export function SeriesPanel(props: SeriesPanelProps) {
                   busy={busy}
                   onSave={(seedFrom) => props.onSeedFrom(link.id, seedFrom)}
                 />
-                <Button type="button" disabled={busy} onClick={() => props.onRemoveQualifier(link.id)}>
+                <Button type="button" disabled={busy} onClick={() => props.actions.removeQualifier(link.id)}>
                   {t("tournaments.qualifiers.remove")}
                 </Button>
               </li>
@@ -250,7 +249,7 @@ export function SeriesPanel(props: SeriesPanelProps) {
             disabled={busy || candidate === null || rejection !== null}
             onClick={() => {
               if (candidate === null || rejection !== null) return;
-              props.onAddQualifier(candidate.id, rule);
+              props.actions.addQualifier(candidate.id, rule);
               setCandidateId("");
             }}
           >

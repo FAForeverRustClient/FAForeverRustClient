@@ -271,7 +271,26 @@ button.vault-input {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+  gap: var(--space-3);
+}
+
+/* The page length beside the view switch: a label and a short select, the
+   same height as the switch so the line stays one row. */
+.online-replay-page-size {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-2);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.online-replay-page-size select {
+  width: auto;
+  min-width: 64px;
+  height: 34px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .online-replay-status-note {

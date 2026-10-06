@@ -146,6 +146,22 @@ describe("channel bookkeeping", () => {
     expect(next.retainedHistories).toEqual([]);
   });
 
+  it("keeps a retained history when the same leave arrives twice", () => {
+    // Rust replaces a retained history only when the leave has messages to
+    // keep. The twin used to drop it on any leave, so a duplicate
+    // `channelLeft` (found by the ordering fixture) lost the conversation
+    // the first one had saved.
+    const saved = message({ content: "remember this" });
+    const leave: ChatEvent = { type: "channelLeft", payload: { channel: "#uef" } };
+    const next = apply(
+      state({ channels: [channel("#uef", { messages: [saved] })], activeChannel: "#uef" }),
+      leave,
+      leave,
+    );
+
+    expect(next.retainedHistories).toEqual([{ channel: "#uef", messages: [saved] }]);
+  });
+
   it("opens a conversation that has not been joined yet", () => {
     // Rust: `ChannelSelected` uses `ensure_channel`. Opening a private
     // conversation sends `joinChannel` and `selectChannel` back to back, but

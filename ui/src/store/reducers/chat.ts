@@ -219,14 +219,16 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
     case "channelLeft": {
       const left = state.channels.find((channel) => channel.name === event.payload.channel);
       const channels = state.channels.filter((channel) => channel.name !== event.payload.channel);
-      const withoutPrevious = state.retainedHistories.filter(
-        (history) => history.channel !== event.payload.channel,
-      );
+      // Only a leave with something to keep replaces the channel's retained
+      // history. A second `channelLeft` for a channel already gone (or one
+      // left before anything was said) must not throw away what the first
+      // one kept.
       const retainedHistories = left && left.messages.length > 0
-        ? [...withoutPrevious, { channel: left.name, messages: left.messages }].slice(
-            -MAX_RETAINED_HISTORIES,
-          )
-        : withoutPrevious;
+        ? [
+            ...state.retainedHistories.filter((history) => history.channel !== left.name),
+            { channel: left.name, messages: left.messages },
+          ].slice(-MAX_RETAINED_HISTORIES)
+        : state.retainedHistories;
       const activeChannel =
         state.activeChannel === event.payload.channel
           ? (channels[0]?.name ?? "")

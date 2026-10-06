@@ -138,7 +138,10 @@ pub use oauth::{OAuthAuth, OAuthConfig};
 pub use paths::{ConfiguredPaths, FakePaths};
 pub use player_card::{FakePlayerCard, PlayerCardClient, PlayerCardConfig};
 pub use relay::{GpgRelayServer, RelayChannels};
-pub use replay::{FakeReplay, ReplayClient, ReplayConfig};
+pub use replay::{
+    FakeReplay, ReplayAdapters, ReplayConfig, ReplayLibrary, ReplayPlayback, ReplayReader,
+    ReplayVault,
+};
 pub use reporting::{FakeReporting, ReportingClient, ReportingConfig};
 pub use reviews::{FakeReviews, ReviewsClient, ReviewsConfig};
 pub use session::TokenStore;
@@ -158,7 +161,7 @@ use serde_json::Value;
 
 use crate::ports::{
     ChatPort, GameUpdaterPort, IcePort, LobbyPort, MapGeneratorPort, MapsPort, ModsPort, Ports,
-    ProcessPort, ReplayPort,
+    ProcessPort,
 };
 
 const MAX_ACCESS_RESPONSE_BYTES: u64 = 1024 * 1024;
@@ -558,6 +561,9 @@ pub(crate) fn validated_ws_url(raw: &str) -> Result<String, String> {
 
 /// Build a [`Ports`] bundle backed entirely by fakes. Fully offline; used by tests.
 pub fn fake_ports() -> Ports {
+    // One fake behind every tournament slot: it holds the events, and a write
+    // through one trait has to be seen by a read through another.
+    let tourney = Arc::new(FakeTourney::default());
     Ports {
         auth: Arc::new(FakeAuth::default()),
         chat: Arc::new(FakeChat::default()),
@@ -568,7 +574,10 @@ pub fn fake_ports() -> Ports {
         ice: Arc::new(FakeIce),
         process: Arc::new(FakeGame),
         updater: Arc::new(FakeGameUpdater),
-        replay: Arc::new(FakeReplay),
+        replay_vault: Arc::new(FakeReplay),
+        replay_library: Arc::new(FakeReplay),
+        replay_details: Arc::new(FakeReplay),
+        replay_playback: Arc::new(FakeReplay),
         maps: Arc::new(FakeMaps),
         map_generator: Arc::new(FakeMapGenerator),
         mods: Arc::new(FakeMods),
@@ -578,7 +587,13 @@ pub fn fake_ports() -> Ports {
         reporting: Arc::new(FakeReporting),
         clan: Arc::new(FakeClan),
         reviews: Arc::new(FakeReviews::default()),
-        tourney: Arc::new(FakeTourney::default()),
+        tourney_read: tourney.clone(),
+        tourney_entry: tourney.clone(),
+        tourney_match: tourney.clone(),
+        tourney_maps: tourney.clone(),
+        tourney_chat: tourney.clone(),
+        tourney_organiser: tourney.clone(),
+        tourney_site: tourney,
         streams: Arc::new(FakeStreams),
         events: Arc::new(FakeEvents),
         training: Arc::new(FakeTraining),
@@ -664,20 +679,16 @@ pub fn real_ports() -> Ports {
     //
     // Playback still needs an install, and that is enforced where it belongs:
     // `GameProcess::launch_replay` fails with a message pointing at
-    // Settings → Paths when `replay_game_path` is unset or gone. So the replay
-    // client always shares the real process port, which tracks the game and the
-    // replay in separate slots: relaunching a replay replaces the previous
+    // Settings → Paths when `replay_game_path` is unset or gone. So replay
+    // playback always shares the real process port, which tracks the game and
+    // the replay in separate slots: relaunching a replay replaces the previous
     // replay and leaves a running game alone.
     //
-    // It shares the map generator for the same reason the launcher holds one: a
-    // replay recorded on a generated map has no vault archive to stage, so the
-    // only way to put that map on disk before playback is to run the generator
-    // again.
-    let replay: Arc<dyn ReplayPort> = Arc::new(ReplayClient::faf(
-        tokens.clone(),
-        process.clone(),
-        map_generator.clone(),
-    ));
+    // Playback shares the map generator for the same reason the launcher holds
+    // one: a replay recorded on a generated map has no vault archive to stage,
+    // so the only way to put that map on disk before playback is to run the
+    // generator again.
+    let replays = ReplayAdapters::faf(tokens.clone(), process.clone(), map_generator.clone());
 
     // Vault browsing + local install management is pure API + filesystem,
     // no subprocess; it just needs the same bearer token.
@@ -693,7 +704,8 @@ pub fn real_ports() -> Ports {
         Arc::new(PlayerCardClient::faf(tokens.clone()));
     let reporting: Arc<dyn crate::ports::ReportingPort> =
         Arc::new(ReportingClient::faf(tokens.clone()));
-    let tourney: Arc<dyn crate::ports::TourneyPort> = Arc::new(TourneyClient::faf(tokens.clone()));
+    // One client behind every tournament slot; see `Ports::tourney_read`.
+    let tourney = Arc::new(TourneyClient::faf(tokens.clone()));
     // Not FAF's service, not the player's identity, and inert on any build
     // without Twitch application credentials of its own. It holds an app token
     // for public information and nothing belonging to this session.
@@ -752,7 +764,10 @@ pub fn real_ports() -> Ports {
         ice,
         process,
         updater,
-        replay,
+        replay_vault: replays.vault,
+        replay_library: replays.library,
+        replay_details: replays.reader,
+        replay_playback: replays.playback,
         maps,
         map_generator,
         mods,
@@ -762,7 +777,13 @@ pub fn real_ports() -> Ports {
         clan,
         reporting,
         reviews,
-        tourney,
+        tourney_read: tourney.clone(),
+        tourney_entry: tourney.clone(),
+        tourney_match: tourney.clone(),
+        tourney_maps: tourney.clone(),
+        tourney_chat: tourney.clone(),
+        tourney_organiser: tourney.clone(),
+        tourney_site: tourney,
         streams,
         events,
         training,

@@ -27,6 +27,97 @@ function report(path, message) {
   violations.push(`${relative(root, path).split(sep).join("/")}: ${message}`);
 }
 
+// Blank out every character except newlines, so offsets and line numbers in
+// the result still point at the same place in the original source.
+function blank(text) {
+  return text.replace(/[^\n]/g, " ");
+}
+
+// Rust source with comments and string and char literals blanked out.
+//
+// The plain `//.*$` strip the older rules use is enough to find a path, but
+// it cuts a literal such as "https://..." in half, and the test-module rule
+// below has to match braces, which an unbalanced literal would throw off.
+function rustCode(source) {
+  let out = "";
+  let i = 0;
+  while (i < source.length) {
+    const c = source[i];
+    const next = source[i + 1];
+    let end = -1;
+    if (c === "/" && next === "/") {
+      end = source.indexOf("\n", i);
+      if (end === -1) end = source.length;
+    } else if (c === "/" && next === "*") {
+      // Rust block comments nest.
+      let depth = 1;
+      end = i + 2;
+      while (end < source.length && depth > 0) {
+        if (source.startsWith("/*", end)) { depth++; end += 2; }
+        else if (source.startsWith("*/", end)) { depth--; end += 2; }
+        else end++;
+      }
+    } else if ((c === "r" || (c === "b" && next === "r")) && !/\w/.test(source[i - 1] ?? "")) {
+      const raw = /^b?r(#*)"/.exec(source.slice(i, i + 300));
+      if (raw) {
+        const close = `"${raw[1]}`;
+        const found = source.indexOf(close, i + raw[0].length);
+        end = found === -1 ? source.length : found + close.length;
+      }
+    } else if (c === '"') {
+      end = i + 1;
+      while (end < source.length && source[end] !== '"') end += source[end] === "\\" ? 2 : 1;
+      end++;
+    } else if (c === "'") {
+      // A char literal, or else the quote of a lifetime, which is left alone.
+      const literal = /^'(?:\\(?:u\{[0-9a-fA-F]+\}|x[0-9a-fA-F]{2}|.)|[^\\'\n])'/u.exec(source.slice(i, i + 16));
+      if (literal) end = i + literal[0].length;
+    }
+    if (end === -1) {
+      out += c;
+      i++;
+    } else {
+      out += blank(source.slice(i, end));
+      i = end;
+    }
+  }
+  return out;
+}
+
+// `code` (from `rustCode`) with every `#[cfg(test)]` item blanked out, and the
+// names of test modules that live in a file of their own (`mod tests;`).
+function withoutTestItems(code) {
+  let result = code;
+  const externalModules = [];
+  for (const match of code.matchAll(/#\[cfg\(test\)\]/g)) {
+    const start = match.index;
+    let i = start + match[0].length;
+    while (i < code.length && code[i] !== "{" && code[i] !== ";") i++;
+    if (code[i] === ";") {
+      const external = /\bmod\s+(\w+)\s*$/.exec(code.slice(start, i));
+      if (external) externalModules.push(external[1]);
+      continue;
+    }
+    let depth = 0;
+    for (; i < code.length; i++) {
+      if (code[i] === "{") depth++;
+      else if (code[i] === "}" && --depth === 0) break;
+    }
+    result = result.slice(0, start) + blank(result.slice(start, i + 1)) + result.slice(i + 1);
+  }
+  return { code: result, externalModules };
+}
+
+// Where `mod name;` declared in `path` keeps its source, either spelling.
+function moduleFiles(path, name) {
+  const directory = resolve(path, "..");
+  const file = path.slice(directory.length + 1);
+  const base = ["mod.rs", "lib.rs", "main.rs"].includes(file)
+    ? directory
+    : resolve(directory, file.replace(/\.rs$/, ""));
+  return [resolve(base, `${name}.rs`), resolve(base, name, "mod.rs")];
+}
+
 // Application services depend on ports and domain types, never concrete IO.
 //
 // Both spellings count: importing infra, and calling into it by its full path.
@@ -40,6 +131,44 @@ for (const path of await sourceFiles(resolve(root, "crates/faf-app/src/services"
   const match = /\bcrate::infra\b/.exec(code);
   if (match) {
     report(path, `line ${lineNumber(code, match.index)} reaches a concrete infra adapter; depend on a port instead`);
+  }
+  // The same boundary without the word "infra" in it: a file read or write in
+  // a service is IO the ports cannot see, fake or route. The launcher read the
+  // installed build's stamp this way until it moved behind the updater port.
+  const fsMatch = /\b(?:std|tokio)::(?:fs\b|\{[^}]*\bfs\b)/.exec(rustCode(source));
+  if (fsMatch) {
+    report(path, `line ${lineNumber(source, fsMatch.index)} touches the filesystem directly; move the IO behind a port`);
+  }
+  // One service starting another's command goes through the command policy
+  // (`runtime::run_command`), like a command from the webview. Calling the
+  // other service's `handle` directly walked past it: the training tab's
+  // catalogue load started a second crawl beside the Maps tab's own.
+  const handleMatch = /\b(?:services|super)::\w+::handle\s*\(/.exec(rustCode(source));
+  if (handleMatch) {
+    report(path, `line ${lineNumber(source, handleMatch.index)} calls another service's handler directly; use crate::runtime::run_command so the command policy applies`);
+  }
+}
+
+// The domain crate is pure: the same state and input give the same result.
+// A clock read breaks that silently, as the map generator's style picks did
+// when they fell back to the current time. The caller reads the clock and
+// passes the value in. Tests may read a clock, so `#[cfg(test)]` items are
+// left out, including test modules kept in a file of their own.
+{
+  const domainFiles = await sourceFiles(resolve(root, "crates/faf-domain/src"), new Set([".rs"]));
+  const cleaned = new Map();
+  const testFiles = new Set();
+  for (const path of domainFiles) {
+    const { code, externalModules } = withoutTestItems(rustCode(await readFile(path, "utf8")));
+    cleaned.set(path, code);
+    for (const name of externalModules) for (const file of moduleFiles(path, name)) testFiles.add(file);
+  }
+  for (const [path, code] of cleaned) {
+    if (testFiles.has(path)) continue;
+    const match = /\b(?:SystemTime|Instant|Utc|Local)::now\b/.exec(code);
+    if (match) {
+      report(path, `line ${lineNumber(code, match.index)} reads the clock in the domain crate; take the time as an input instead`);
+    }
   }
 }
 

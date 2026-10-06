@@ -77,13 +77,12 @@ fn rescan_mods(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn start(ctx: &ServiceCtx, out: &EventSink) {
-    let Some(_guard) = ctx.uploads_active.try_acquire() else {
-        return;
-    };
+    crate::runtime::expect_admitted(crate::runtime::Key::Upload);
     let state = out.with_state(|state| state.uploads.clone());
 
     // Both reference clients hold a global upload lock. A second publish would
-    // fight the first for the same temporary archive path.
+    // fight the first for the same temporary archive path, which is why
+    // `Start` is single-flight in the command policy (`Key::Upload`).
     if state.status.is_busy() {
         return;
     }
