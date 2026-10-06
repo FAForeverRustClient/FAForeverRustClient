@@ -1600,6 +1600,21 @@
   white-space: normal;
 }
 
+.host-coop-modal-ru .host-gametype-title-row {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.host-coop-modal-ru .host-gametype-name {
+  width: 100%;
+  flex: none;
+  overflow-wrap: anywhere;
+}
+
+.host-coop-modal-ru .host-coop-faction-badge {
+  max-width: 100%;
+}
+
 /* A campaign the player picks a faction for. `official` is the retail Forged
    Alliance campaign, which the raw faction value labelled "custom" - the same
    word community campaigns carry. */

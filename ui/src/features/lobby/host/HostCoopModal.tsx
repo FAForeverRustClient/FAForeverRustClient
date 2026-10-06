@@ -45,7 +45,7 @@ interface Props {
  *  off re-renders on every game list the lobby sends, and nothing in here
  *  reads one. */
 export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissionId, initialTitle }: Props) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const coop = useAppStore((state) => state.state.coop);
   const vault = useAppStore((state) => state.state.maps.vault);
   const remembered = useAppStore((state) => state.state.settings.browsing.hostCoop);
@@ -251,7 +251,10 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
   };
 
   return (
-    <Modal className="host-game-modal host-coop-modal" onClose={onClose}>
+    <Modal
+      className={`host-game-modal host-coop-modal${locale === "ru" ? " host-coop-modal-ru" : ""}`}
+      onClose={onClose}
+    >
       <div className="play-dialog-head">
         <div>
           <h2>{t("lobby.host.titleCoop")}</h2>

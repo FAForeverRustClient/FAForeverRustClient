@@ -2103,7 +2103,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.coop.badge.aeon": "Эон",
   "lobby.coop.badge.seraphim": "Серафим",
   "lobby.coop.badge.official": "Официальная",
-  "lobby.coop.badge.custom": "От сообщества",
+  "lobby.coop.badge.custom": "Пользовательская",
   "lobby.coop.campaigns": "Кампании",
   "lobby.coop.vanillaUefCampaignName": "Кампания ОФЗ (SC)",
   "lobby.coop.vanillaCybranCampaignName": "Кампания Кибран (SC)",
