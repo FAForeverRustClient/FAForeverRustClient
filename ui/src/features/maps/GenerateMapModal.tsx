@@ -602,6 +602,8 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                         low={form.reclaimDensityMin ?? null}
                         high={form.reclaimDensityMax ?? null}
                         format={(v) => `${densityPercent(v)}%`}
+                        formatUnbounded={(side) => side === "high" ? "100%" : "0%"}
+                        unboundedLabel={t("common.any")}
                         onChange={(low, high) => {
                           set("reclaimDensityMin", low);
                           set("reclaimDensityMax", high);
@@ -617,6 +619,8 @@ export function GenerateMapModal({ onClose, onGenerated }: Props) {
                         low={form.resourceDensityMin ?? null}
                         high={form.resourceDensityMax ?? null}
                         format={(v) => `${densityPercent(v)}%`}
+                        formatUnbounded={(side) => side === "high" ? "100%" : "0%"}
+                        unboundedLabel={t("common.any")}
                         onChange={(low, high) => {
                           set("resourceDensityMin", low);
                           set("resourceDensityMax", high);

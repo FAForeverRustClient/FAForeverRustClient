@@ -499,9 +499,8 @@
 .generate-map-row-label {
   font-size: 12px;
   color: var(--color-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* A row whose control is taller than one field: a text box with buttons under
@@ -531,6 +530,7 @@
   font-size: 11px;
   color: var(--color-subtle);
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 /* MultiSelect and RangeSlider render their own label, which would duplicate the row's. Hidden
@@ -555,6 +555,7 @@
 
 .generate-map-checks-group {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   min-height: 34px;
@@ -617,11 +618,15 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
   font-size: 12px;
   color: var(--color-text);
-  white-space: nowrap;
   cursor: pointer;
   user-select: none;
+}
+
+.generate-map-check span {
+  min-width: 0;
 }
 
 .generate-map-check input[type="checkbox"] {

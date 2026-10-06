@@ -14,6 +14,10 @@ interface Props {
   onChange: (low: number | null, high: number | null) => void;
   /** Renders a value for the readout, e.g. appending a unit. */
   format?: (value: number) => string;
+  /** Overrides the readout for an unbounded endpoint. */
+  formatUnbounded?: (side: "low" | "high") => string;
+  /** Overrides the readout when both endpoints are unbounded. */
+  unboundedLabel?: string;
 }
 
 export function RangeSlider({
@@ -25,6 +29,8 @@ export function RangeSlider({
   high,
   onChange,
   format = String,
+  formatUnbounded,
+  unboundedLabel,
 }: Props) {
   const { t } = useTranslation();
   const id = useId();
@@ -59,10 +65,33 @@ export function RangeSlider({
   };
 
   const unbounded = low === null && high === null;
+  const lowLabel = low === null ? (formatUnbounded?.("low") ?? t("common.any")) : format(low);
+  const highLabel = high === null ? (formatUnbounded?.("high") ?? t("common.any")) : format(high);
+  const valueLabel = unbounded
+    ? (unboundedLabel ?? t("common.any"))
+    : lowLabel === highLabel
+      ? lowLabel
+      : t("common.rangeBetween", { low: lowLabel, high: highLabel });
 
-  // Elevate active handle's z-index so overlapping handles can always be separated
-  const lowZIndex = activeHandle === "low" ? 3 : lowValue >= highValue ? 2 : 1;
-  const highZIndex = activeHandle === "high" ? 3 : 1;
+  // Keep the active handle above the other one. At the minimum, put the high
+  // handle on top so a collapsed range can be expanded by dragging it right.
+  const handlesOverlap = lowValue === highValue;
+  const lowZIndex =
+    activeHandle === "low"
+      ? 3
+      : activeHandle === "high"
+        ? 1
+        : handlesOverlap && lowValue >= max
+          ? 2
+          : 1;
+  const highZIndex =
+    activeHandle === "high"
+      ? 3
+      : activeHandle === "low"
+        ? 1
+        : handlesOverlap && lowValue < max
+          ? 2
+          : 1;
 
   // Handle clicking directly on the track to move the nearest thumb
   const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -91,9 +120,7 @@ export function RangeSlider({
           {label}
         </span>
         <span className={`range-slider-value${unbounded ? " is-any" : ""}`}>
-          {unbounded
-            ? t("common.any")
-            : t("common.rangeBetween", { low: low === null ? t("common.any") : format(low), high: high === null ? t("common.any") : format(high) })}
+          {valueLabel}
         </span>
       </div>
 
