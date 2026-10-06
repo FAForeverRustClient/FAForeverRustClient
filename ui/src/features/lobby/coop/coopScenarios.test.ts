@@ -147,7 +147,7 @@ describe("co-op campaign ordering", () => {
           scenario("Coalition Campaign", "custom", "custom", 4),
           t,
         ),
-      ).toBe("Кампания Коалиции (От сообщества)");
+      ).toBe("Кампания Коалиции (Пользовательская)");
     });
 
     it("chooses campaign option wording by campaign kind", () => {
