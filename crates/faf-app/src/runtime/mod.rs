@@ -559,6 +559,10 @@ impl AppLoop {
         // see `census`.
         census::spawn(self.sink.clone());
 
+        // And the training hub's recommendations follow what they are read
+        // from: a sign-in, a finished replay scan, a game that just ended.
+        services::training::spawn(ctx.clone(), self.sink.clone());
+
         let sink = self.sink.clone();
         // Admitted here, synchronously, as the command leaves its queue: see
         // `CommandAdmission` for why the place is taken before the task starts.
