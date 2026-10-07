@@ -1583,7 +1583,7 @@
 }
 
 .host-coop-faction-badge {
-  max-width: 48%;
+  max-width: 100%;
   flex-shrink: 0;
   padding: 1px 5px;
   border-radius: var(--radius-sm);
@@ -1600,19 +1600,15 @@
   white-space: normal;
 }
 
-.host-coop-modal-ru .host-gametype-title-row {
-  align-items: flex-start;
-  flex-direction: column;
+/* A campaign name too long to share its line with the badge puts the badge on
+   the next line, in any language: the row wraps instead of squeezing both.
+   A name that fits keeps the badge beside it, as before. */
+.host-coop-modal .host-gametype-title-row {
+  flex-wrap: wrap;
 }
 
-.host-coop-modal-ru .host-gametype-name {
-  width: 100%;
-  flex: none;
+.host-coop-modal .host-gametype-name {
   overflow-wrap: anywhere;
-}
-
-.host-coop-modal-ru .host-coop-faction-badge {
-  max-width: 100%;
 }
 
 /* A campaign the player picks a faction for. `official` is the retail Forged

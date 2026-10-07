@@ -956,18 +956,9 @@ export const en = {
   "lobby.coop.coalitionCampaignName": "Coalition Campaign",
   "lobby.coop.seraphimCampaignName": "Seraphim Campaign",
   "lobby.coop.standaloneMissionsName": "Standalone missions",
-  "lobby.coop.officialCampaignOption": "{name} ({badge})",
-  "lobby.coop.communityCampaignOption": "{name} ({badge})",
-  "lobby.coop.factionCampaignOption": "{name}",
-  // Co-op campaign and mission text keyed by stable API identifiers.
-  "lobby.coop.campaignOption.vanillaUef": "Vanilla UEF Campaign (UEF)",
-  "lobby.coop.campaignOption.vanillaCybran": "Vanilla Cybran Campaign (Cybran)",
-  "lobby.coop.campaignOption.vanillaAeon": "Vanilla Aeon Campaign (Aeon)",
-  "lobby.coop.campaignOption.scfa": "Forged Alliance Campaign (Official)",
-  "lobby.coop.campaignOption.coalition": "Coalition Campaign (Custom)",
-  "lobby.coop.campaignOption.seraphim": "Seraphim Campaign (Seraphim)",
-  "lobby.coop.campaignOption.standalone": "Standalone missions (Custom)",
-  "lobby.coop.unknownCampaignOption": "{name} ({badge})",
+  // A campaign in the co-op tab's dropdown: its name, then its badge.
+  "lobby.coop.campaignOption": "{name} ({badge})",
+  // Co-op mission text keyed by stable API identifiers.
   "lobby.coop.mission.scca_coop_a01.name": "Joust",
   "lobby.coop.mission.scca_coop_a02.name": "Machine Purge",
   "lobby.coop.mission.scca_coop_a03.name": "High Tide",
