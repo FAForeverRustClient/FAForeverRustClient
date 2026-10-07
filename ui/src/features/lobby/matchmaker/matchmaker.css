@@ -1001,124 +1001,50 @@
 .matchmaker-party-chat .chat-compose button { padding-inline: 9px; }
 
 .modal-panel.matchmaker-invite-modal {
-  width: min(900px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  width: min(900px, calc(100vw - var(--space-4) - var(--space-4)));
+  max-height: calc(100vh - var(--space-4) - var(--space-4));
   box-sizing: border-box;
 }
 
-.matchmaker-invite-controls {
+.matchmaker-invite-filters {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
+}
+
+.matchmaker-invite-filters .search-panel-primary {
   display: grid;
   grid-template-columns: minmax(190px, 2fr) repeat(4, minmax(105px, 1fr));
-  align-items: end;
-  gap: 8px;
-  margin-top: 16px;
 }
 
 .matchmaker-invite-search {
-  min-width: 0;
-  min-height: 34px;
-  margin: 0;
-  background: var(--color-surface-raised);
-}
-
-.matchmaker-invite-search:focus-within {
-  border-color: var(--color-border-strong);
-}
-
-.matchmaker-invite-search input {
-  width: 100%;
-  min-height: 36px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  outline: 0;
-}
-
-.matchmaker-invite-field {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 3px;
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.matchmaker-invite-field select,
-.matchmaker-invite-sort-direction {
-  width: 100%;
-  min-width: 0;
-  height: 34px;
-  padding: 0 8px;
-  color: var(--color-text);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: none;
-}
-
-.matchmaker-invite-field select:hover,
-.matchmaker-invite-field select:focus-visible,
-.matchmaker-invite-sort-direction:hover,
-.matchmaker-invite-sort-direction:focus-visible {
-  border-color: var(--color-border-strong);
-  outline: none;
+  max-width: none;
 }
 
 .matchmaker-invite-sort > span:last-child {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 34px;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .matchmaker-invite-sort-direction {
+  justify-content: center;
   padding: 0;
   text-align: center;
   cursor: pointer;
 }
 
 .matchmaker-invite-rating-filters {
-  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 10px;
-  padding: 8px 10px 2px;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  gap: var(--space-3);
 }
 
 .matchmaker-invite-rating-filters > .range-slider {
   max-width: none;
 }
 
-.matchmaker-invite-rating-filters .range-slider-track {
-  height: 28px;
-}
-
-.matchmaker-invite-rating-filters .range-slider-input,
-.matchmaker-invite-rating-filters .range-slider-input::-webkit-slider-runnable-track,
-.matchmaker-invite-rating-filters .range-slider-input::-moz-range-track {
-  height: 28px;
-}
-
-.matchmaker-invite-rating-filters .range-slider-input::-webkit-slider-thumb {
-  margin-top: 8px;
-}
-
-.matchmaker-invite-rating-filters .range-slider-input::-moz-range-thumb {
-  margin-top: 8px;
-}
-
 .matchmaker-invite-list {
-  height: calc(100vh - 450px);
-  margin-top: 10px;
+  height: clamp(160px, calc(100vh - 470px), 420px);
+  margin-top: var(--space-3);
   overflow: auto;
 }
 
@@ -1126,8 +1052,8 @@
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -1143,14 +1069,14 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .matchmaker-invite-name {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .matchmaker-invite-name > img {
@@ -1161,7 +1087,7 @@
 .matchmaker-invite-name-button {
   display: block;
   min-width: 0;
-  padding: 1px 3px;
+  padding: var(--space-1);
   overflow: hidden;
   color: inherit;
   text-align: left;
@@ -1200,7 +1126,7 @@
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 3px;
+  gap: var(--space-1);
   color: var(--color-friend, var(--color-accent));
   font-size: 11px;
   font-weight: 600;
@@ -1210,7 +1136,7 @@
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--space-1);
   color: var(--color-text);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -1218,18 +1144,18 @@
 
 .matchmaker-invite-ratings > span {
   min-width: 58px;
-  padding: 2px 5px;
+  padding: var(--space-1);
   background: var(--color-surface-raised);
   border-radius: var(--radius-sm);
 }
 
 .matchmaker-invite-ratings small {
-  margin-right: 2px;
-  font-size: 10px;
+  margin-right: var(--space-1);
+  font-size: 11px;
 }
 
 @media (max-width: 760px) {
-  .matchmaker-invite-controls {
+  .matchmaker-invite-filters .search-panel-primary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

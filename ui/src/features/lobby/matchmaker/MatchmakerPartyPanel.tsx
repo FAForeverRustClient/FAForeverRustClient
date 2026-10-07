@@ -3,6 +3,7 @@ import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import { RangeSlider } from "../../../design-system/RangeSlider";
+import { SearchField, SearchPanel } from "../../../design-system/SearchPanel";
 import { ipc } from "../../../ipc/client";
 import type { PartyMember, PartyState, PlayerLeaguePlacement, PlayerProfile, SocialState } from "../../../ipc/bindings";
 import { formatNumber } from "../../../i18n";
@@ -137,125 +138,135 @@ function InvitePlayerModal({ social, selfId, partyMemberIds, onClose }: InviteMo
   return (
     <>
       <Modal onClose={onClose} className="matchmaker-invite-modal">
-      <div className="play-dialog-head">
-        <div><h2>{t("lobby.party.invite.title")}</h2><p>{t("lobby.party.invite.subtitle")}</p></div>
-      </div>
-      <div className="matchmaker-invite-controls">
-        <label className="search-field matchmaker-invite-search">
-          <Icon name="search" size={16} />
-          <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("lobby.party.invite.placeholder")} />
-        </label>
-        <div className="matchmaker-invite-field matchmaker-invite-sort">
-          <span>{t("lobby.party.invite.sort.label")}</span>
-          <span>
-            <select aria-label={t("lobby.party.invite.sort.label")} value={sortBy} onChange={(event) => setSortBy(event.target.value as InviteSort)}>
-              <option value="friend">{t("lobby.party.invite.sort.friend")}</option>
-              <option value="name">{t("lobby.party.invite.sort.name")}</option>
-              <option value="clan">{t("lobby.party.invite.sort.clan")}</option>
-              {QUEUE_RATINGS.map((queue) => <option key={queue} value={queue}>{queue}</option>)}
-            </select>
-            <button
-              type="button"
-              className="matchmaker-invite-sort-direction"
-              aria-label={sortDirectionLabel}
-              title={sortDirectionLabel}
-              onClick={() => setSortDescending((current) => !current)}
-            >
-              {sortDescending ? "↓" : "↑"}
-            </button>
-          </span>
+        <div className="play-dialog-head">
+          <div><h2>{t("lobby.party.invite.title")}</h2><p>{t("lobby.party.invite.subtitle")}</p></div>
         </div>
-        <label className="matchmaker-invite-field">
-          <span>{t("lobby.party.invite.country")}</span>
-          <select value={country} onChange={(event) => setCountry(event.target.value)}>
-            <option value="*">{t("common.any")}</option>
-            {countries.map((code) => <option key={code} value={code}>{countryOf(code)}</option>)}
-          </select>
-        </label>
-        <label className="matchmaker-invite-field">
-          <span>{t("lobby.party.invite.clan")}</span>
-          <select value={clan} onChange={(event) => setClan(event.target.value)}>
-            <option value="*">{t("common.any")}</option>
-            <option value="">{t("lobby.party.invite.clanNone")}</option>
-            {clans.map((tag) => <option key={tag} value={tag}>[{tag}]</option>)}
-          </select>
-        </label>
-        <label className="matchmaker-invite-field">
-          <span>{t("lobby.party.invite.relation")}</span>
-          <select value={friendsOnly ? "friends" : "all"} onChange={(event) => setFriendsOnly(event.target.value === "friends")}>
-            <option value="all">{t("lobby.party.invite.allPlayers")}</option>
-            <option value="friends">{t("lobby.party.invite.friendsOnly")}</option>
-          </select>
-        </label>
-      </div>
-      <div className="matchmaker-invite-rating-filters">
-        {QUEUE_RATINGS.map((queue) => (
-          <RangeSlider
-            key={queue}
-            label={t("lobby.party.invite.rating", { queue })}
-            min={RATING_MIN}
-            max={RATING_MAX}
-            step={50}
-            low={ratingRanges[queue].low}
-            high={ratingRanges[queue].high}
-            format={formatNumber}
-            onChange={(low, high) => setRatingRanges((current) => ({ ...current, [queue]: { low, high } }))}
-          />
-        ))}
-      </div>
-      <div className="matchmaker-invite-list surface">
-        {candidates.length === 0 ? <p className="play-empty">{t("lobby.party.invite.empty")}</p> : candidates.map((player) => {
-          const wasInvited = invited.has(player.id);
-          const isFriend = friendNames.has(player.login.toLocaleLowerCase());
-          const queueRatings = QUEUE_RATINGS
-            .map((queue) => [queue, inviteQueueRating(player, queue)] as const)
-            .filter((entry): entry is readonly [QueueRating, number] => entry[1] !== null).filter(([queue, rating]) =>
-              // No idea why but for 1v1 queue a rating of 0 displays even if there shouldn't be a rating
-              !(rating === 0 && queue === "1v1"));
-          return (
-            <div className={`matchmaker-invite-row${isFriend ? " is-friend" : ""}`} key={player.id}>
-              <ProfileAvatar name={player.login} avatarUrl={player.avatarUrl} tooltip={player.avatarTooltip} />
-              <span className="matchmaker-invite-player">
-                <span className="matchmaker-invite-name">
-                  {player.country && (
-                    <img
-                      src={flagSrc(player.country)}
-                      alt={countryOf(player.country)}
-                      title={countryOf(player.country)}
-                      width={18}
-                      height={12}
-                    />
-                  )}
-                  <button
-                    type="button"
-                    className={`matchmaker-invite-name-button${playerMenuTarget === player.login ? " is-menu-open" : ""}`}
-                    aria-haspopup="menu"
-                    aria-expanded={playerMenuTarget === player.login}
-                    onClick={(event) => openPlayerMenu(player.login, event)}
-                    onContextMenu={(event) => openPlayerMenu(player.login, event)}
-                  >
-                    <strong>{player.login}</strong>
-                  </button>
-                  {isFriend && (
-                    <span className="matchmaker-invite-friend" title={t("lobby.party.friend")}>
-                      <Icon name="star" size={12} /> {t("lobby.party.friend")}
+        <SearchPanel
+          className="matchmaker-invite-filters"
+          onSubmit={(event) => event.preventDefault()}
+          advanced={(
+            <div className="search-panel-advanced">
+              <div className="search-panel-advanced-sliders matchmaker-invite-rating-filters">
+                {QUEUE_RATINGS.map((queue) => (
+                  <RangeSlider
+                    key={queue}
+                    label={t("lobby.party.invite.rating", { queue })}
+                    min={RATING_MIN}
+                    max={RATING_MAX}
+                    step={50}
+                    low={ratingRanges[queue].low}
+                    high={ratingRanges[queue].high}
+                    format={formatNumber}
+                    onChange={(low, high) => setRatingRanges((current) => ({ ...current, [queue]: { low, high } }))}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        >
+          <SearchField label={t("lobby.party.invite.placeholder")} className="search-panel-field-grow matchmaker-invite-search">
+            <input
+              autoFocus
+              className="search-panel-control"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("lobby.party.invite.placeholder")}
+            />
+          </SearchField>
+          <div className="search-panel-field search-panel-field-compact matchmaker-invite-sort">
+            <span className="search-panel-label">{t("lobby.party.invite.sort.label")}</span>
+            <span>
+              <select className="search-panel-control" aria-label={t("lobby.party.invite.sort.label")} value={sortBy} onChange={(event) => setSortBy(event.target.value as InviteSort)}>
+                <option value="friend">{t("lobby.party.invite.sort.friend")}</option>
+                <option value="name">{t("lobby.party.invite.sort.name")}</option>
+                <option value="clan">{t("lobby.party.invite.sort.clan")}</option>
+                {QUEUE_RATINGS.map((queue) => <option key={queue} value={queue}>{queue}</option>)}
+              </select>
+              <button
+                type="button"
+                className="search-panel-control matchmaker-invite-sort-direction"
+                aria-label={sortDirectionLabel}
+                title={sortDirectionLabel}
+                onClick={() => setSortDescending((current) => !current)}
+              >
+                {sortDescending ? "↓" : "↑"}
+              </button>
+            </span>
+          </div>
+          <SearchField label={t("lobby.party.invite.country")} className="search-panel-field-compact">
+            <select className="search-panel-control" value={country} onChange={(event) => setCountry(event.target.value)}>
+              <option value="*">{t("common.any")}</option>
+              {countries.map((code) => <option key={code} value={code}>{countryOf(code)}</option>)}
+            </select>
+          </SearchField>
+          <SearchField label={t("lobby.party.invite.clan")} className="search-panel-field-compact">
+            <select className="search-panel-control" value={clan} onChange={(event) => setClan(event.target.value)}>
+              <option value="*">{t("common.any")}</option>
+              <option value="">{t("lobby.party.invite.clanNone")}</option>
+              {clans.map((tag) => <option key={tag} value={tag}>[{tag}]</option>)}
+            </select>
+          </SearchField>
+          <SearchField label={t("lobby.party.invite.relation")} className="search-panel-field-compact">
+            <select className="search-panel-control" value={friendsOnly ? "friends" : "all"} onChange={(event) => setFriendsOnly(event.target.value === "friends")}>
+              <option value="all">{t("lobby.party.invite.allPlayers")}</option>
+              <option value="friends">{t("lobby.party.invite.friendsOnly")}</option>
+            </select>
+          </SearchField>
+        </SearchPanel>
+        <div className="matchmaker-invite-list surface">
+          {candidates.length === 0 ? <p className="play-empty">{t("lobby.party.invite.empty")}</p> : candidates.map((player) => {
+            const wasInvited = invited.has(player.id);
+            const isFriend = friendNames.has(player.login.toLocaleLowerCase());
+            const queueRatings = QUEUE_RATINGS
+              .map((queue) => [queue, inviteQueueRating(player, queue)] as const)
+              .filter((entry): entry is readonly [QueueRating, number] => entry[1] !== null)
+              // The directory reports a zero for players with no 1v1 entry;
+              // it is an absence marker, not a rating to show in the row.
+              .filter(([queue, rating]) => !(rating === 0 && queue === "1v1"));
+            return (
+              <div className={`matchmaker-invite-row${isFriend ? " is-friend" : ""}`} key={player.id}>
+                <ProfileAvatar name={player.login} avatarUrl={player.avatarUrl} tooltip={player.avatarTooltip} />
+                <span className="matchmaker-invite-player">
+                  <span className="matchmaker-invite-name">
+                    {player.country && (
+                      <img
+                        src={flagSrc(player.country)}
+                        alt={countryOf(player.country)}
+                        title={countryOf(player.country)}
+                        width={18}
+                        height={12}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className={`matchmaker-invite-name-button${playerMenuTarget === player.login ? " is-menu-open" : ""}`}
+                      aria-haspopup="menu"
+                      aria-expanded={playerMenuTarget === player.login}
+                      onClick={(event) => openPlayerMenu(player.login, event)}
+                      onContextMenu={(event) => openPlayerMenu(player.login, event)}
+                    >
+                      <strong>{player.login}</strong>
+                    </button>
+                    {isFriend && (
+                      <span className="matchmaker-invite-friend" title={t("lobby.party.friend")}>
+                        <Icon name="star" size={12} /> {t("lobby.party.friend")}
+                      </span>
+                    )}
+                    {player.clan && <small>[{player.clan}]</small>}
+                  </span>
+                  {queueRatings.length > 0 && (
+                    <span className="matchmaker-invite-ratings">
+                      {queueRatings.map(([queue, rating]) => (
+                        <span key={queue}><small>{queue}</small> {formatNumber(rating)}</span>
+                      ))}
                     </span>
                   )}
-                  {player.clan && <small>[{player.clan}]</small>}
                 </span>
-                {queueRatings.length > 0 && (
-                  <span className="matchmaker-invite-ratings">
-                    {queueRatings.map(([queue, rating]) => (
-                      <span key={queue}><small>{queue}</small> {formatNumber(rating)}</span>
-                    ))}
-                  </span>
-                )}
-              </span>
-              <Button onClick={() => invite(player)}>{t(wasInvited ? "lobby.party.inviteAgain" : "lobby.party.invite")}</Button>
-            </div>
-          );
-        })}
-      </div>
+                <Button onClick={() => invite(player)}>{t(wasInvited ? "lobby.party.inviteAgain" : "lobby.party.invite")}</Button>
+              </div>
+            );
+          })}
+        </div>
       </Modal>
       {playerMenu}
     </>
