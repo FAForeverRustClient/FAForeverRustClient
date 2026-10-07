@@ -132,6 +132,36 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
   };
   const moveHint = t("lobby.browser.moveColumn");
 
+  const profileLink = playerName && (
+    <Button onClick={openOwnResults} title={t("lobby.matchmaker.recent.openResultsHint")}>
+      {t("lobby.matchmaker.recent.openResults")}
+    </Button>
+  );
+
+  // Nothing to list yet (loading, none played, or the load failed): one slim
+  // line rather than the full card. A kicker, a heading, a button and a
+  // sentence of state took a card's height to say "no games", under the
+  // queues where the space matters.
+  if (games.length === 0) {
+    const state = status.type === "failed"
+      ? t("lobby.matchmaker.recent.failed", { reason: status.payload.reason })
+      : status.type === "loading" || status.type === "idle"
+        ? t("lobby.matchmaker.recent.loading")
+        : t("lobby.matchmaker.recent.empty");
+    return (
+      <section
+        className="matchmaker-card surface-panel matchmaker-recent is-compact"
+        aria-labelledby="matchmaker-recent-title"
+      >
+        <h2 id="matchmaker-recent-title">{t("lobby.matchmaker.recent.title")}</h2>
+        <p className="muted matchmaker-recent-state" role={status.type === "failed" ? "alert" : undefined}>
+          {state}
+        </p>
+        {profileLink}
+      </section>
+    );
+  }
+
   return (
     <section className="matchmaker-card surface-panel matchmaker-recent" aria-labelledby="matchmaker-recent-title">
       <div className="matchmaker-section-copy">
@@ -142,19 +172,11 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
         {/* The short list here is the last few games; the profile's Results
             tab is the whole history, with the queue and the rating change per
             game. One click across rather than two (issue 361). */}
-        {playerName && (
-          <Button onClick={openOwnResults} title={t("lobby.matchmaker.recent.openResultsHint")}>
-            {t("lobby.matchmaker.recent.openResults")}
-          </Button>
-        )}
+        {profileLink}
       </div>
 
       {status.type === "failed" ? (
         <p className="muted matchmaker-recent-state">{t("lobby.matchmaker.recent.failed", { reason: status.payload.reason })}</p>
-      ) : games.length === 0 ? (
-        <p className="muted matchmaker-recent-state">
-          {status.type === "loading" || status.type === "idle" ? t("lobby.matchmaker.recent.loading") : t("lobby.matchmaker.recent.empty")}
-        </p>
       ) : (
         <div className="matchmaker-recent-table-wrap">
           <table className="matchmaker-recent-table" ref={columns.containerRef}>

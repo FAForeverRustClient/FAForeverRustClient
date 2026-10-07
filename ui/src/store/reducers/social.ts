@@ -1,6 +1,9 @@
 import type { PlayerProfile, SocialEvent, SocialState } from "../../ipc/bindings";
 
-const EMPTY_SOCIAL: SocialState = { friends: [], foes: [], players: [] };
+const EMPTY_SOCIAL: SocialState = { friends: [], foes: [], players: [], loginLookups: [] };
+
+/** Twin of `MAX_LOGIN_LOOKUPS`. */
+const MAX_LOGIN_LOOKUPS = 200;
 const sortedUnique = (values: string[]): string[] => [...new Set(values)].sort();
 
 /**
@@ -114,5 +117,34 @@ export function reduceSocial(state: SocialState, event: SocialEvent): SocialStat
     }
     case "cleared":
       return EMPTY_SOCIAL;
+    case "loginLookedUp": {
+      // The newest answer for a login replaces an older one and goes last,
+      // so the cap drops the answers asked for longest ago.
+      const { login, id } = event.payload;
+      const lower = asciiLower(login);
+      const kept = state.loginLookups.filter((lookup) => asciiLower(lookup.login) !== lower);
+      const loginLookups = [...kept, { login, id }].slice(-MAX_LOGIN_LOOKUPS);
+      return { ...state, loginLookups };
+    }
   }
+}
+
+/** A FAF account, as the user menu's account actions address it. */
+export interface AccountRef {
+  id: number;
+  login: string;
+}
+
+/**
+ * The account behind a login: the online profile's, or a lookup's answer.
+ * `undefined` while nothing is known yet, `null` when the API knows no such
+ * account.
+ */
+export function accountFor(social: SocialState, login: string): AccountRef | null | undefined {
+  const online = findPlayer(social, login);
+  if (online) return { id: online.id, login: online.login };
+  const lower = asciiLower(login);
+  const lookup = social.loginLookups.find((entry) => asciiLower(entry.login) === lower);
+  if (!lookup) return undefined;
+  return lookup.id === null ? null : { id: lookup.id, login: lookup.login };
 }

@@ -21,6 +21,7 @@ const online = (id: number, login: string): PlayerProfile => ({
 const directory = (...players: PlayerProfile[]): SocialState => ({
   friends: [],
   foes: [],
+  loginLookups: [],
   players,
 });
 

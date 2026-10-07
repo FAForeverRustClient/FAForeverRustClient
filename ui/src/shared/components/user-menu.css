@@ -104,3 +104,14 @@
 .chat-user-menu-item.is-danger {
   color: var(--color-error);
 }
+
+/* An account entry while an offline player's account is being looked up:
+   in its place, so the menu keeps its shape when the answer lands. */
+.chat-user-menu-item:disabled {
+  color: var(--color-subtle);
+  cursor: default;
+}
+
+.chat-user-menu-item:disabled:hover {
+  background: transparent;
+}

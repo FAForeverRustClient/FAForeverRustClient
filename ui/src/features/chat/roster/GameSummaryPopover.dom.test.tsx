@@ -15,7 +15,7 @@ import type { GamePresence } from "./gameSummary";
 
 vi.mock("../../../ipc/client");
 
-const social: SocialState = { friends: [], foes: [], players: [] };
+const social: SocialState = { friends: [], foes: [], loginLookups: [], players: [] };
 
 function presence(id: number, title: string): GamePresence {
   const game: Game = {

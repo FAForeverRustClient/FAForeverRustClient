@@ -59,5 +59,48 @@ pub async fn handle(cmd: SocialCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             ctx.ports.lobby.set_relation(player_id, relation, member);
         }
+        SocialCommand::LookUpLogin { login } => {
+            let login = login.trim().to_string();
+            if login.is_empty() {
+                return;
+            }
+            // Online, or answered already: the menu has its id, or knows there
+            // is none. Asked again only after a failure, which stores nothing.
+            let known = out.with_state(|state| {
+                state.social.player(&login).is_some()
+                    || state
+                        .social
+                        .login_lookups
+                        .iter()
+                        .any(|lookup| lookup.login.eq_ignore_ascii_case(&login))
+            });
+            if known {
+                return;
+            }
+            match ctx
+                .ports
+                .player_card
+                .players_by_login(std::slice::from_ref(&login))
+                .await
+            {
+                Ok(players) => {
+                    let found = players
+                        .into_iter()
+                        .find(|player| player.login.eq_ignore_ascii_case(&login));
+                    // Stored under the account's own spelling when there is
+                    // one, which is what the relation lists and notes use.
+                    let (login, id) = match found {
+                        Some(player) => (player.login, Some(player.id)),
+                        None => (login, None),
+                    };
+                    out.emit(SocialEvent::LoginLookedUp { login, id });
+                }
+                // Nothing stored, so the next menu opened on this name asks
+                // again; until then its account entries stay unavailable.
+                Err(error) => {
+                    tracing::warn!(%login, %error, "could not look up an account by login")
+                }
+            }
+        }
     }
 }
