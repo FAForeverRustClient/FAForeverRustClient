@@ -38,6 +38,15 @@ use crate::ports::{AuthError, AuthPort, AuthResult};
 /// How long we wait for the user to finish the browser login before giving up.
 const LOGIN_TIMEOUT: Duration = Duration::from_secs(300);
 
+/// This client's own public PKCE client with FAF Hydra, "FAF Rust Client",
+/// registered by FAForever/gitops-stack#335.
+const CLIENT_ID: &str = "03c2132b-b5f8-4cbd-9901-499e83700f45";
+
+/// The Python client's id, which this client signed in with until it had its
+/// own. Only refresh tokens remembered before the switch are still renewed
+/// under it; see [`StoredRefresh`].
+const LEGACY_CLIENT_ID: &str = "95ecec08-29c1-4c48-ae0a-b000ff349cb8";
+
 /// Endpoints and client identity for the OAuth2 flow. Defaults target FAF prod.
 #[derive(Debug, Clone)]
 pub struct OAuthConfig {
@@ -54,13 +63,13 @@ pub struct OAuthConfig {
 }
 
 impl OAuthConfig {
-    /// FAF production defaults (mirrors the reference clients' config).
+    /// FAF production defaults: the reference clients' endpoints and scopes,
+    /// and this client's own id.
     pub fn faf() -> Self {
         Self {
             hydra_base: "https://hydra.faforever.com".into(),
             api_base: "https://api.faforever.com".into(),
-            // Public PKCE client id registered with FAF Hydra.
-            client_id: "95ecec08-29c1-4c48-ae0a-b000ff349cb8".into(),
+            client_id: CLIENT_ID.into(),
             scopes: "openid offline public_profile upload_map upload_mod lobby".into(),
             keyring_service: crate::infra::APP_SLUG.into(),
         }
@@ -115,10 +124,52 @@ struct PendingSession {
     access_token: String,
     /// Written to the keyring on commit. `None` when the user did not ask to
     /// be remembered, or when a restore has already persisted the rotated one.
-    refresh_token: Option<String>,
+    refresh_token: Option<StoredRefresh>,
     /// Whether the committed session is kept valid by the background refresh.
     renew: bool,
     expires_in: Option<u64>,
+}
+
+/// A remembered refresh token and the OAuth client it was issued to.
+///
+/// Hydra binds a refresh token to the client that obtained it and refuses to
+/// renew it under any other id. This client signed in with the Python client's
+/// id until it had its own, so every token remembered before the switch still
+/// belongs to that id: renewing it under the new one would have signed every
+/// remembered user out on the first launch of the update. Each token therefore
+/// carries its client and is always renewed under that one. The user moves to
+/// this client's own id at their next interactive login.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+struct StoredRefresh {
+    client_id: String,
+    refresh_token: String,
+}
+
+impl StoredRefresh {
+    /// Read a keyring value. A bare token predates the switch, so it was issued
+    /// to the Python client's id.
+    fn decode(raw: &str) -> Self {
+        serde_json::from_str(raw).unwrap_or_else(|_| Self {
+            client_id: LEGACY_CLIENT_ID.into(),
+            refresh_token: raw.to_owned(),
+        })
+    }
+
+    fn encode(&self) -> String {
+        serde_json::json!({
+            "client_id": self.client_id,
+            "refresh_token": self.refresh_token,
+        })
+        .to_string()
+    }
+
+    /// The token Hydra rotated this one into, which belongs to the same client.
+    fn rotated(&self, refresh_token: &str) -> Self {
+        Self {
+            client_id: self.client_id.clone(),
+            refresh_token: refresh_token.to_owned(),
+        }
+    }
 }
 
 /// Refresh this far before the access token actually expires.
@@ -180,9 +231,18 @@ impl OAuthAuth {
     ) -> AuthResult<Player> {
         let mut player = profile.await?;
         player.roles = session_roles(&tokens);
+        // Only a login persists its token through here, and a login always
+        // runs under the configured client.
+        let refresh_token = tokens
+            .refresh_token
+            .filter(|_| persist_refresh)
+            .map(|refresh_token| StoredRefresh {
+                client_id: self.config.client_id.clone(),
+                refresh_token,
+            });
         *self.pending_slot() = Some(PendingSession {
             access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token.filter(|_| persist_refresh),
+            refresh_token,
             renew,
             expires_in: tokens.expires_in,
         });
@@ -216,16 +276,16 @@ impl OAuthAuth {
             loop {
                 sleep_until(due).await;
 
-                let Some(refresh_token) = load_refresh_token(&config) else {
+                let Some(stored) = load_refresh_token(&config) else {
                     // Nothing persisted (the user did not ask to be remembered),
                     // so there is nothing to renew with. Stop rather than spin.
                     return;
                 };
-                match exchange_refresh_token(&http, &config, &refresh_token).await {
+                match exchange_refresh_token(&http, &config, &stored).await {
                     Ok(response) => {
                         tokens.set(&response.access_token);
                         if let Some(refresh) = &response.refresh_token {
-                            store_refresh_token(&config, refresh);
+                            store_refresh_token(&config, &stored.rotated(refresh));
                         }
                         let wait = refresh_delay(
                             response
@@ -337,11 +397,11 @@ impl AuthPort for OAuthAuth {
 
     async fn restore(&self) -> AuthResult<Option<Player>> {
         self.discard_pending_session();
-        let Some(refresh_token) = self.load_refresh_token() else {
+        let Some(stored) = self.load_refresh_token() else {
             return Ok(None);
         };
 
-        let tokens = match self.exchange_refresh_token(&refresh_token).await {
+        let tokens = match self.exchange_refresh_token(&stored).await {
             Ok(tokens) => tokens,
             Err(_) => {
                 // Keep the stored credential for a later retry. A transient
@@ -356,7 +416,7 @@ impl AuthPort for OAuthAuth {
         // replacement would not roll anything back: it would silently forget a
         // credential the user chose to keep before this attempt began.
         if let Some(refresh) = &tokens.refresh_token {
-            self.store_refresh_token(refresh);
+            self.store_refresh_token(&stored.rotated(refresh));
         }
 
         // The access token and the renewal loop wait for the commit, like a
@@ -438,8 +498,8 @@ impl OAuthAuth {
             .map_err(|e| AuthError::new(format!("Could not parse token response: {e}")))
     }
 
-    async fn exchange_refresh_token(&self, refresh_token: &str) -> AuthResult<TokenResponse> {
-        exchange_refresh_token(&self.http, &self.config, refresh_token).await
+    async fn exchange_refresh_token(&self, stored: &StoredRefresh) -> AuthResult<TokenResponse> {
+        exchange_refresh_token(&self.http, &self.config, stored).await
     }
 
     async fn fetch_me(&self, access_token: &str) -> AuthResult<Player> {
@@ -473,11 +533,11 @@ impl OAuthAuth {
         })
     }
 
-    fn store_refresh_token(&self, refresh_token: &str) {
-        store_refresh_token(&self.config, refresh_token);
+    fn store_refresh_token(&self, stored: &StoredRefresh) {
+        store_refresh_token(&self.config, stored);
     }
 
-    fn load_refresh_token(&self) -> Option<String> {
+    fn load_refresh_token(&self) -> Option<StoredRefresh> {
         load_refresh_token(&self.config)
     }
 
@@ -491,9 +551,13 @@ impl OAuthAuth {
 // Free functions so the background refresh task can use them without holding a
 // borrow of the port itself.
 
-fn store_refresh_token(config: &OAuthConfig, refresh_token: &str) {
-    if let Ok(entry) = keyring::Entry::new(&config.keyring_service, "refresh_token") {
-        let _ = entry.set_password(refresh_token);
+fn store_refresh_token(config: &OAuthConfig, stored: &StoredRefresh) {
+    write_refresh_token(&config.keyring_service, &stored.encode());
+}
+
+fn write_refresh_token(service: &str, raw: &str) {
+    if let Ok(entry) = keyring::Entry::new(service, "refresh_token") {
+        let _ = entry.set_password(raw);
     }
 }
 
@@ -511,28 +575,32 @@ fn read_refresh_token(service: &str) -> Option<String> {
 /// nothing and the client sends them back through the browser. Found under the
 /// old name, it is rewritten under the new one and the old entry removed, so
 /// the fallback stops being consulted after one launch.
-fn load_refresh_token(config: &OAuthConfig) -> Option<String> {
-    if let Some(token) = read_refresh_token(&config.keyring_service) {
-        return Some(token);
+fn load_refresh_token(config: &OAuthConfig) -> Option<StoredRefresh> {
+    if let Some(raw) = read_refresh_token(&config.keyring_service) {
+        return Some(StoredRefresh::decode(&raw));
     }
-    let token = read_refresh_token(crate::infra::LEGACY_APP_SLUG)?;
+    let raw = read_refresh_token(crate::infra::LEGACY_APP_SLUG)?;
     tracing::info!("migrating the stored refresh token to the renamed keyring service");
-    store_refresh_token(config, &token);
+    // Copied as it is: decoding happens on the way out, so the copy keeps
+    // naming whichever client the token was issued to.
+    write_refresh_token(&config.keyring_service, &raw);
     if let Ok(entry) = keyring::Entry::new(crate::infra::LEGACY_APP_SLUG, "refresh_token") {
         let _ = entry.delete_credential();
     }
-    Some(token)
+    Some(StoredRefresh::decode(&raw))
 }
 
+/// Renew `stored` under the client it was issued to, which is not necessarily
+/// the configured one: see [`StoredRefresh`].
 async fn exchange_refresh_token(
     http: &reqwest::Client,
     config: &OAuthConfig,
-    refresh_token: &str,
+    stored: &StoredRefresh,
 ) -> AuthResult<TokenResponse> {
     let params = [
         ("grant_type", "refresh_token"),
-        ("refresh_token", refresh_token),
-        ("client_id", config.client_id.as_str()),
+        ("refresh_token", stored.refresh_token.as_str()),
+        ("client_id", stored.client_id.as_str()),
     ];
     let resp = http
         .post(format!("{}/oauth2/token", config.hydra_base))
@@ -1025,6 +1093,36 @@ mod tests {
         // redirect_uri is percent-encoded.
         assert!(url.contains("redirect_uri=http%3A%2F%2F127.0.0.1%3A54321"));
         assert!(url.contains(&format!("client_id={}", cfg.client_id)));
+    }
+
+    #[test]
+    fn the_client_signs_in_under_its_own_id() {
+        assert_eq!(OAuthConfig::faf().client_id, CLIENT_ID);
+        assert_ne!(CLIENT_ID, LEGACY_CLIENT_ID);
+    }
+
+    #[test]
+    fn a_token_remembered_before_the_switch_renews_under_the_python_id() {
+        let stored = StoredRefresh::decode("ory_rt_abc.def");
+        assert_eq!(stored.client_id, LEGACY_CLIENT_ID);
+        assert_eq!(stored.refresh_token, "ory_rt_abc.def");
+    }
+
+    #[test]
+    fn a_stored_token_keeps_the_client_it_was_issued_to() {
+        let stored = StoredRefresh {
+            client_id: CLIENT_ID.into(),
+            refresh_token: "ory_rt_abc.def".into(),
+        };
+        assert_eq!(StoredRefresh::decode(&stored.encode()), stored);
+    }
+
+    #[test]
+    fn a_rotated_token_stays_with_its_client() {
+        let legacy = StoredRefresh::decode("ory_rt_old");
+        let rotated = legacy.rotated("ory_rt_new");
+        assert_eq!(rotated.client_id, LEGACY_CLIENT_ID);
+        assert_eq!(rotated.refresh_token, "ory_rt_new");
     }
 
     #[test]
