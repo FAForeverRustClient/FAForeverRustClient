@@ -1048,13 +1048,35 @@
   overflow: auto;
 }
 
+/* Avatar, flag, clan and name, the four queue ratings, the button. The
+   avatar is a FAF avatar at its own 40x20, and the rest of the row is sized to
+   that line: the flag at its native 16px, the name at a line of 20px. */
 .matchmaker-invite-row {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: 40px 16px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border);
+}
+
+.matchmaker-invite-row .profile-avatar {
+  width: 40px;
+  height: 20px;
+  color: var(--color-muted);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+.matchmaker-invite-row .profile-avatar.has-image {
+  background: none;
+}
+
+.matchmaker-invite-flag {
+  display: block;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
 }
 
 .matchmaker-invite-row:last-child {
@@ -1065,29 +1087,28 @@
   box-shadow: inset 2px 0 var(--color-friend, var(--color-accent));
 }
 
-.matchmaker-invite-player {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
 .matchmaker-invite-name {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  line-height: 20px;
 }
 
-.matchmaker-invite-name > img {
+.matchmaker-invite-clan {
   flex: 0 0 auto;
-  object-fit: cover;
+  color: var(--color-subtle);
+  font-size: 13px;
+}
+
+.matchmaker-invite-tags {
+  flex: 0 0 auto;
 }
 
 .matchmaker-invite-name-button {
   display: block;
   min-width: 0;
-  padding: var(--space-1);
+  padding: 0 var(--space-1);
   overflow: hidden;
   color: inherit;
   text-align: left;
@@ -1112,46 +1133,50 @@
 .matchmaker-invite-row strong {
   display: block;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 13px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.matchmaker-invite-row small {
-  color: var(--color-subtle);
-  font-size: 12px;
-}
-
-.matchmaker-invite-friend {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: var(--space-1);
-  color: var(--color-friend, var(--color-accent));
-  font-size: 11px;
-  font-weight: 600;
-}
-
+/* The Training tab's facts strip, one row high: each queue as a label over its
+   rating, a hairline between them, and an unknown one in the muted colour. */
 .matchmaker-invite-ratings {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 52px);
+  margin: 0;
+}
+
+.matchmaker-invite-ratings > div {
   min-width: 0;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  color: var(--color-text);
+  padding: 0 var(--space-2);
+  border-left: 1px solid var(--color-border);
+}
+
+.matchmaker-invite-ratings > div:first-child {
+  border-left: 0;
+}
+
+.matchmaker-invite-ratings dt {
+  color: var(--color-subtle);
   font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.matchmaker-invite-ratings dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
-.matchmaker-invite-ratings > span {
-  min-width: 58px;
-  padding: var(--space-1);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm);
-}
-
-.matchmaker-invite-ratings small {
-  margin-right: var(--space-1);
-  font-size: 11px;
+.matchmaker-invite-ratings dd.is-unknown {
+  color: var(--color-muted);
+  font-weight: 500;
 }
 
 @media (max-width: 760px) {

@@ -17,6 +17,8 @@ import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { placementLabel } from "../../../shared/leagueNames";
 import { factionIdFromName, factionLabelFromName, orderFactionNames } from "../../../shared/factions";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
+// The friend tag is the Play tab's own, styled there.
+import "../browser/custom-games.css";
 
 interface InviteModalProps {
   social: SocialState;
@@ -217,51 +219,62 @@ function InvitePlayerModal({ social, selfId, partyMemberIds, onClose }: InviteMo
           {candidates.length === 0 ? <p className="play-empty">{t("lobby.party.invite.empty")}</p> : candidates.map((player) => {
             const wasInvited = invited.has(player.id);
             const isFriend = friendNames.has(player.login.toLocaleLowerCase());
-            const queueRatings = QUEUE_RATINGS
-              .map((queue) => [queue, inviteQueueRating(player, queue)] as const)
-              .filter((entry): entry is readonly [QueueRating, number] => entry[1] !== null)
+            // Every queue in every row, so the columns line up down the list;
+            // one the player has no rating in reads as a dash.
+            const queueRatings = QUEUE_RATINGS.map((queue) => {
+              const rating = inviteQueueRating(player, queue);
               // The directory reports a zero for players with no 1v1 entry;
               // it is an absence marker, not a rating to show in the row.
-              .filter(([queue, rating]) => !(rating === 0 && queue === "1v1"));
+              return [queue, rating === 0 && queue === "1v1" ? null : rating] as const;
+            });
             return (
               <div className={`matchmaker-invite-row${isFriend ? " is-friend" : ""}`} key={player.id}>
+                {/* Avatar, flag, then the name with its clan in front, all on
+                    the avatar's 20px line. */}
                 <ProfileAvatar name={player.login} avatarUrl={player.avatarUrl} tooltip={player.avatarTooltip} />
-                <span className="matchmaker-invite-player">
-                  <span className="matchmaker-invite-name">
-                    {player.country && (
-                      <img
-                        src={flagSrc(player.country)}
-                        alt={countryOf(player.country)}
-                        title={countryOf(player.country)}
-                        width={18}
-                        height={12}
-                      />
-                    )}
-                    <button
-                      type="button"
-                      className={`matchmaker-invite-name-button${playerMenuTarget === player.login ? " is-menu-open" : ""}`}
-                      aria-haspopup="menu"
-                      aria-expanded={playerMenuTarget === player.login}
-                      onClick={(event) => openPlayerMenu(player.login, event)}
-                      onContextMenu={(event) => openPlayerMenu(player.login, event)}
-                    >
-                      <strong>{player.login}</strong>
-                    </button>
-                    {isFriend && (
-                      <span className="matchmaker-invite-friend" title={t("lobby.party.friend")}>
-                        <Icon name="star" size={12} /> {t("lobby.party.friend")}
-                      </span>
-                    )}
-                    {player.clan && <small>[{player.clan}]</small>}
-                  </span>
-                  {queueRatings.length > 0 && (
-                    <span className="matchmaker-invite-ratings">
-                      {queueRatings.map(([queue, rating]) => (
-                        <span key={queue}><small>{queue}</small> {formatNumber(rating)}</span>
-                      ))}
+                {player.country ? (
+                  <img
+                    className="matchmaker-invite-flag"
+                    src={flagSrc(player.country)}
+                    alt={countryOf(player.country)}
+                    title={countryOf(player.country)}
+                    width={16}
+                    height={16}
+                  />
+                ) : (
+                  <span className="matchmaker-invite-flag" aria-hidden />
+                )}
+                <span className="matchmaker-invite-name">
+                  {player.clan && <span className="matchmaker-invite-clan">[{player.clan}]</span>}
+                  <button
+                    type="button"
+                    className={`matchmaker-invite-name-button${playerMenuTarget === player.login ? " is-menu-open" : ""}`}
+                    aria-haspopup="menu"
+                    aria-expanded={playerMenuTarget === player.login}
+                    onClick={(event) => openPlayerMenu(player.login, event)}
+                    onContextMenu={(event) => openPlayerMenu(player.login, event)}
+                  >
+                    <strong>{player.login}</strong>
+                  </button>
+                  {/* The Play tab's friend tag, as a game row carries it. */}
+                  {isFriend && (
+                    <span className="game-browser-tags matchmaker-invite-tags">
+                      <i className="friend">{t("lobby.party.friend")}</i>
                     </span>
                   )}
                 </span>
+                {/* Queue and rating as the Training tab states them: the queue
+                    as a label over its number. */}
+                <dl className="matchmaker-invite-ratings">
+                  {queueRatings.map(([queue, rating]) => (
+                    <div key={queue}>
+                      <dt>{queue}</dt>
+                      <dd className={rating === null ? "is-unknown" : undefined}>
+                        {rating === null ? "–" : formatNumber(rating)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
                 <Button onClick={() => invite(player)}>{t(wasInvited ? "lobby.party.inviteAgain" : "lobby.party.invite")}</Button>
               </div>
             );
