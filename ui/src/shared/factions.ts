@@ -23,6 +23,22 @@ const FACTION_LABEL_KEYS: Readonly<Record<number, MessageKey>> = {
   5: "factions.random",
 };
 
+const GALACTIC_WAR_FACTION_LABEL_KEYS: Readonly<
+  Partial<Record<number, MessageKey>>
+> = {
+  1: "lobby.galacticWar.faction.name.uef",
+  2: "lobby.galacticWar.faction.name.aeon",
+  3: "lobby.galacticWar.faction.name.cybran",
+  4: "lobby.galacticWar.faction.name.seraphim",
+};
+
+const FACTION_ID_BY_LONG_NAME: Readonly<Record<string, number>> = {
+  "united earth federation": 1,
+  "aeon illuminate": 2,
+  "cybran nation": 3,
+  "seraphim army": 4,
+};
+
 export const FACTION_COLORS: Readonly<Record<number, string>> = {
   1: "var(--color-faction-uef)",
   2: "var(--color-faction-aeon)",
@@ -46,6 +62,13 @@ export function factionLabel(id: number): string {
 export function factionLabelFromName(name: string): string {
   const id = factionIdFromName(name);
   return id === null ? name : factionLabel(id);
+}
+
+/** The full Galactic War faction name, with the server name as fallback. */
+export function galacticWarFactionLabel(name: string, fallback: string): string {
+  const id = factionIdFromName(name);
+  const key = id === null ? undefined : GALACTIC_WAR_FACTION_LABEL_KEYS[id];
+  return key ? t(key) : fallback;
 }
 
 /** Every faction, Random included, as select options keyed by faction id. */
@@ -99,5 +122,5 @@ export function factionIdFromName(name: string): number | null {
   const found = Object.entries(FACTION_NAMES).find(
     ([, label]) => label.toLocaleLowerCase() === wanted,
   );
-  return found ? Number(found[0]) : null;
+  return found ? Number(found[0]) : FACTION_ID_BY_LONG_NAME[wanted] ?? null;
 }

@@ -586,6 +586,8 @@
 }
 
 .host-gametype-name {
+  flex: 1;
+  min-width: 0;
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text);
@@ -1581,6 +1583,7 @@
 }
 
 .host-coop-faction-badge {
+  max-width: 100%;
   flex-shrink: 0;
   padding: 1px 5px;
   border-radius: var(--radius-sm);
@@ -1593,6 +1596,19 @@
   /* The label used to be upper-cased in the component, which is no longer
      possible now that it comes from the catalogue in six languages. */
   text-transform: uppercase;
+  text-align: center;
+  white-space: normal;
+}
+
+/* A campaign name too long to share its line with the badge puts the badge on
+   the next line, in any language: the row wraps instead of squeezing both.
+   A name that fits keeps the badge beside it, as before. */
+.host-coop-modal .host-gametype-title-row {
+  flex-wrap: wrap;
+}
+
+.host-coop-modal .host-gametype-name {
+  overflow-wrap: anywhere;
 }
 
 /* A campaign the player picks a faction for. `official` is the retail Forged

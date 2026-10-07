@@ -12,6 +12,7 @@ import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { inferCoopFaction, mapThumbnailCandidates } from "../../../shared/mapPresentation";
 import { useLocalMapPreview } from "../../../shared/hooks/useLocalMapPreview";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { translateCoopMissionName } from "../../../i18n";
 
 const COOP_FACTION_NUMBERS: Record<string, number> = {
   uef: 1,
@@ -50,6 +51,7 @@ interface Props {
 
 export function CoopMissionArt({ mission, scenario, vault, className }: Props) {
   const { t } = useTranslation();
+  const missionName = translateCoopMissionName(mission.mapFolderName, mission.name);
   const localPreview = useLocalMapPreview(mission.mapFolderName, true, true);
   const candidates = useMemo(
     () => [...(localPreview ? [localPreview] : []), ...coopPreviewCandidates(mission, vault)],
@@ -92,7 +94,7 @@ export function CoopMissionArt({ mission, scenario, vault, className }: Props) {
       <img
         className={className}
         src={loadedUrl}
-        alt={t("common.mapPreview", { name: mission.name })}
+        alt={t("common.mapPreview", { name: missionName })}
         loading="lazy"
         decoding="async"
       />
@@ -104,7 +106,7 @@ export function CoopMissionArt({ mission, scenario, vault, className }: Props) {
       className={`${className ?? ""} coop-mission-art-fallback`}
       data-faction={faction}
       role="img"
-      aria-label={t("lobby.coop.previewUnavailable", { mission: mission.name })}
+      aria-label={t("lobby.coop.previewUnavailable", { mission: missionName })}
     >
       <FactionIcon faction={factionId} size={40} />
     </div>
