@@ -1059,44 +1059,45 @@
   gap: var(--space-3);
 }
 
-@container (max-width: 900px) {
+/* Two by two until a row of four leaves each tile room for its description
+   and its count side by side on the picture's foot: below this a tile is too
+   narrow, and the description is cut off whatever the language. */
+@container (max-width: 1199px) {
   .training-basics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@container (max-width: 420px) {
+/* And one per row for the same reason, once two side by side are as narrow. */
+@container (max-width: 599px) {
   .training-basics-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/* A tile in the replay detail's terms: the raised surface, a hairline, an
-   eyebrow over a title, and a fact stated as label over value at the foot.
-   Neutral at rest, so four tiles do not compete with the covers above them;
-   each basic's colour arrives only on hover, as a faint tint, its border and
-   its number. Build orders share the build-order kind's colour, so the tile
-   and the shelf it opens match.
+/* A picture, and on its foot what is behind it: the description on the left,
+   how many entries on the right. The picture carries the topic's name as its
+   heading, so the tile does not say it a second time. Each basic's colour
+   arrives only on hover, as its border and its count. Build orders share the
+   build-order kind's colour, so the tile and the shelf it opens match.
 
-   Every tile has the same shape whatever its text: the description is held
-   to two lines and the foot sits on the bottom edge, so the four line up as a
-   row rather than as four boxes of different heights. */
+   Every tile has the same shape whatever its text: the picture is 16:9 and
+   the description is held to two lines, so the four line up as a row. */
 .training-basic-card {
   --topic-color: var(--color-subtle);
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  display: block;
   min-width: 0;
-  padding: 18px 20px 16px;
-  color: var(--color-text);
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  overflow: hidden;
   font: inherit;
   text-align: left;
-  background: var(--color-surface-raised);
+  background: #0b0f0a;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition:
-    background-color 140ms ease,
-    border-color 140ms ease;
+  transition: border-color 140ms ease;
 }
 
 .training-basic-card[data-topic="economy"] {
@@ -1116,8 +1117,7 @@
 }
 
 .training-basic-card:hover {
-  background: color-mix(in srgb, var(--topic-color) 4%, var(--color-surface-raised));
-  border-color: color-mix(in srgb, var(--topic-color) 45%, transparent);
+  border-color: color-mix(in srgb, var(--topic-color) 60%, transparent);
 }
 
 .training-basic-card:focus-visible {
@@ -1125,62 +1125,76 @@
   outline-offset: 2px;
 }
 
-/* The eyebrow: where the basic stands in the order. */
-.training-basic-index {
-  margin-bottom: 10px;
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.09em;
-  transition: color 140ms ease;
+/* Drawn for this frame, so it fills it rather than being fitted into it. */
+.training-basic-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 260ms ease;
 }
 
-.training-basic-card:hover .training-basic-index {
-  color: var(--topic-color);
+.training-basic-card:hover .training-basic-image {
+  transform: scale(1.03);
 }
 
-.training-basic-name {
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.015em;
+/* The foot, on black fading to nothing. The pictures keep their bottom third
+   clear for it. The colours are fixed rather than the theme's, since what is
+   under them is a picture in either theme. */
+.training-basic-caption {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 44px 14px 11px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.95),
+    rgba(0, 0, 0, 0.82) 40%,
+    rgba(0, 0, 0, 0.45) 72%,
+    rgba(0, 0, 0, 0)
+  );
 }
 
-/* Two lines, always: one line of text leaves a tile half empty next to a
-   neighbour with two, and a third would push its foot out of line. */
+/* Two lines at most, so a long translation never climbs into the picture. */
 .training-basic-hint {
   display: -webkit-box;
-  min-height: calc(2 * 1.5em);
-  margin: 6px 0 16px;
+  min-width: 0;
   overflow: hidden;
-  color: var(--color-muted);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-/* The foot: how much is behind the tile, as a figure with its unit, on the
-   bottom edge whatever the text above it says. */
-.training-basic-foot {
+/* How much is behind the tile, as a figure with its unit, on the right. */
+.training-basic-count {
   display: flex;
+  flex-shrink: 0;
   align-items: baseline;
-  gap: 6px;
-  margin-top: auto;
-  padding-top: 14px;
-  border-top: 1px solid var(--color-border);
+  gap: 5px;
+  white-space: nowrap;
 }
 
 .training-basic-figure {
+  color: #fff;
   font-size: 18px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  transition: color 140ms ease;
+}
+
+.training-basic-card:hover .training-basic-figure {
+  color: var(--topic-color);
 }
 
 .training-basic-unit {
-  color: var(--color-subtle);
+  color: rgba(255, 255, 255, 0.62);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.07em;
@@ -1189,8 +1203,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .training-basic-card,
-  .training-basic-index {
+  .training-basic-image,
+  .training-basic-figure {
     transition: none;
+  }
+
+  .training-basic-card:hover .training-basic-image {
+    transform: none;
   }
 }
 

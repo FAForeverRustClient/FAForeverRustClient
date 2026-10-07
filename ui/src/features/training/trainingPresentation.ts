@@ -260,6 +260,19 @@ export function topicHint(topic: TrainingTopic): MessageKey {
   return `training.topicHint.${topic}`;
 }
 
+/**
+ * The picture a basic's tile leads with, shipped with the client.
+ *
+ * Bundled rather than read from the catalogue: the four basics are the client's
+ * own front page, not something a trainer submits, and a tile that waited on
+ * the network for its picture would be the only thing on the hub that did.
+ * Each picture is 16:9, carries the topic's name as its heading, and keeps its
+ * bottom third clear for the description and count the tile lays over it.
+ */
+export function basicArtUrl(topic: TrainingTopic): string {
+  return `/images/training/basics/${topic}.webp`;
+}
+
 /** The glyph a card leads with, so a kind is recognisable before it is read. */
 export function kindIcon(kind: TrainingKind): IconName {
   switch (kind) {

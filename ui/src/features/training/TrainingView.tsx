@@ -59,6 +59,7 @@ import { GuidesQueue } from "./GuidesQueue";
 import { modeOptions } from "./libraryGroups";
 import {
   BASIC_TOPICS,
+  basicArtUrl,
   renderedPage,
   topicHint,
   topicLabel,
@@ -403,7 +404,7 @@ export function TrainingView() {
                 </div>
               </header>
               <div className="training-basics-grid">
-                {BASIC_TOPICS.map((topic, index) => {
+                {BASIC_TOPICS.map((topic) => {
                   const count = state.resources.filter((resource) =>
                     resource.topics.includes(topic),
                   ).length;
@@ -425,19 +426,23 @@ export function TrainingView() {
                         setSection("library");
                       }}
                     >
-                      {/* The four are an order, not a set: the first thing a
-                          new player is told to learn, then the next. */}
-                      <span className="training-basic-index" aria-hidden>
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <strong className="training-basic-name">{t(topicLabel(topic))}</strong>
-                      <span className="training-basic-hint">{t(topicHint(topic))}</span>
-                      {/* Label over value, the way the profile strip above
-                          states its numbers. */}
-                      <span className="training-basic-foot">
-                        <span className="training-basic-figure">{count}</span>
-                        <span className="training-basic-unit">
-                          {t("training.basics.entries", { count })}
+                      {/* The picture is the tile and carries the topic's name
+                          as its heading, so the name is its alt text: that is
+                          what a screen reader announces the tile as. */}
+                      <img
+                        className="training-basic-image"
+                        src={basicArtUrl(topic)}
+                        alt={t(topicLabel(topic))}
+                        decoding="async"
+                        draggable={false}
+                      />
+                      <span className="training-basic-caption">
+                        <span className="training-basic-hint">{t(topicHint(topic))}</span>
+                        <span className="training-basic-count">
+                          <span className="training-basic-figure">{count}</span>
+                          <span className="training-basic-unit">
+                            {t("training.basics.entries", { count })}
+                          </span>
                         </span>
                       </span>
                     </button>
