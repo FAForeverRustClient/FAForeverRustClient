@@ -11,6 +11,7 @@
 //!    *in that game*.
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -20,7 +21,7 @@ use faf_app::{App, Ports};
 use faf_domain::state::{
     AuthCommand, LocalReplay, LocalReplayPlayer, LocalReplayStatus, LocalReplayTeam,
     TrainingCatalogue, TrainingCommand, TrainingKind, TrainingLinks, TrainingResource,
-    TrainingStatus, Tutorial, TutorialCategory,
+    TrainingStatus, Tutorial, TutorialCategory, VaultStatus,
 };
 
 const ME: &str = "Nuggets";
@@ -31,7 +32,7 @@ struct StubCatalogue;
 
 #[async_trait]
 impl TrainingPort for StubCatalogue {
-    async fn list_catalogue(&self) -> Result<TrainingCatalogue, String> {
+    async fn list_catalogue(&self, _refresh: bool) -> Result<TrainingCatalogue, String> {
         let base = TrainingResource {
             kind: TrainingKind::Guide,
             ..TrainingResource::default()
@@ -74,6 +75,27 @@ impl TrainingPort for StubCatalogue {
 
     async fn read_recording(&self, _url: String) -> Result<String, String> {
         Err("this stub holds no recordings".into())
+    }
+}
+
+/// The stub catalogue, slow enough that a second load arrives while the first
+/// is still waiting for it, and counting how often it was asked.
+struct SlowCatalogue(Arc<AtomicUsize>);
+
+#[async_trait]
+impl TrainingPort for SlowCatalogue {
+    async fn list_catalogue(&self, refresh: bool) -> Result<TrainingCatalogue, String> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        StubCatalogue.list_catalogue(refresh).await
+    }
+
+    async fn read_guide(&self, url: String) -> Result<String, String> {
+        StubCatalogue.read_guide(url).await
+    }
+
+    async fn read_recording(&self, url: String) -> Result<String, String> {
+        StubCatalogue.read_recording(url).await
     }
 }
 
@@ -161,8 +183,12 @@ struct Harness {
 }
 
 fn harness(replays: Vec<LocalReplay>) -> Harness {
+    harness_with(replays, Arc::new(StubCatalogue))
+}
+
+fn harness_with(replays: Vec<LocalReplay>, training: Arc<dyn TrainingPort>) -> Harness {
     let ports = Ports {
-        training: Arc::new(StubCatalogue),
+        training,
         tutorials: Arc::new(StubTutorials),
         replay_library: Arc::new(StubReplays(replays)),
         ..fake_ports()
@@ -194,8 +220,13 @@ impl Harness {
             .dispatch(TrainingCommand::Load.into())
             .await
             .unwrap();
+        // The library is published before the replay scan finishes, so a
+        // test that reads the replays waits for the scan as well.
         for _ in 0..400 {
-            if self.app.snapshot().training.status == TrainingStatus::Ready {
+            let state = self.app.snapshot();
+            if state.training.status == TrainingStatus::Ready
+                && state.replays.local_status == VaultStatus::Ready
+            {
                 return;
             }
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
@@ -293,6 +324,129 @@ async fn the_recommendations_follow_the_maps_and_rating_the_replays_report() {
         ..TrainingResource::default()
     };
     assert_eq!(profile.rating_for(&ladder), Some(1710));
+
+    // Fetched into the hub's own slot, not the player card: that slot is
+    // shared, and whoever had a card open from chat used to lose it.
+    assert!(
+        h.app.snapshot().player_card.matchmaker_profile.is_none(),
+        "opening training leaves the player card alone"
+    );
+}
+
+/// A replay of somebody else's game, downloaded to watch.
+fn foreign(uid: i32, map: &str) -> LocalReplay {
+    let mut replay = local(uid, map, 8, 2, 2000);
+    replay.recorder = "Stranger".into();
+    replay.teams[0].players[0].name = "Stranger".into();
+    replay
+}
+
+#[tokio::test]
+async fn a_replay_on_an_official_map_is_recognised_by_its_folder() {
+    // Replay headers name the folder. `scmp_009` used to fold to "009", which
+    // matched none of the catalogue's Seton's entries.
+    let h = harness(vec![
+        local(1, "SCMP_009", 8, 1, 1150),
+        local(2, "SCMP_009", 8, 1, 1150),
+    ]);
+    h.sign_in().await;
+    h.load().await;
+
+    let recommended = h.recommended().await;
+    assert_eq!(
+        recommended.first().map(String::as_str),
+        Some("setons-eco"),
+        "{recommended:?}"
+    );
+    assert_eq!(
+        h.app.snapshot().training.profile.maps,
+        vec!["Seton's Clutch"]
+    );
+}
+
+#[tokio::test]
+async fn downloaded_games_of_other_players_do_not_count() {
+    let h = harness(vec![
+        foreign(1, "Gap of Rohan"),
+        local(2, "Setons Clutch", 8, 1, 1150),
+        foreign(3, "Gap of Rohan"),
+    ]);
+    h.sign_in().await;
+    h.load().await;
+    h.recommended().await;
+
+    let profile = h.app.snapshot().training.profile;
+    assert_eq!(profile.games_seen, 1);
+    assert_eq!(profile.maps, vec!["Setons Clutch"]);
+}
+
+#[tokio::test]
+async fn a_review_of_someone_else_s_game_does_not_name_the_player_in_it() {
+    // The request describes the game, but the player asking was not in it:
+    // naming them, with their rating and a faction, would send a reviewer to
+    // watch an army nobody in the request played.
+    let h = harness(vec![foreign(31, "SCMP_009")]);
+    h.sign_in().await;
+    // No recommendations to wait for: the only replay is someone else's, so
+    // the profile is empty by design. The load already waits for the scan.
+    h.load().await;
+
+    h.app
+        .dispatch(
+            TrainingCommand::OpenReview {
+                replay_uid: Some(31),
+                local_path: None,
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    let draft = wait_for_review(&h).await;
+    assert_eq!(draft.replay_id, Some(31));
+    assert_eq!(draft.map, "Seton's Clutch", "the name, not the folder");
+    assert_eq!(draft.player, "");
+    assert_eq!(draft.rating, "");
+    assert_eq!(draft.faction, "");
+}
+
+#[tokio::test]
+async fn signing_in_after_the_tab_loaded_brings_the_recommendations_up_to_date() {
+    // They used to be computed once, at the end of the load, and signing in
+    // later changed nothing until the player pressed refresh.
+    let h = harness(vec![local(1, "Setons Clutch", 8, 1, 1150)]);
+    h.load().await;
+    assert_eq!(h.app.snapshot().training.profile.games_seen, 0);
+
+    h.sign_in().await;
+    for _ in 0..400 {
+        let training = h.app.snapshot().training;
+        if training.profile.player == ME && training.profile.rating.is_some() {
+            assert_eq!(training.profile.games_seen, 1);
+            assert_eq!(
+                training.recommended.first().map(String::as_str),
+                Some("setons-eco")
+            );
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    panic!(
+        "the profile never followed the sign-in: {:?}",
+        h.app.snapshot().training.profile
+    );
+}
+
+#[tokio::test]
+async fn a_second_load_while_one_is_running_is_folded_into_it() {
+    // The refresh button is live during a load. Pressing it used to repeat
+    // every request and the replay scan.
+    let calls = Arc::new(AtomicUsize::new(0));
+    let h = harness_with(Vec::new(), Arc::new(SlowCatalogue(calls.clone())));
+    h.app.dispatch(TrainingCommand::Load.into()).await.unwrap();
+    h.load().await;
+    // Long enough for a second load, had one started, to have asked too.
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
 }
 
 #[tokio::test]

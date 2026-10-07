@@ -20,7 +20,7 @@ use crate::services;
 mod census;
 mod command_policy;
 mod policies;
-pub(crate) use command_policy::{expect_admitted, Key};
+pub(crate) use command_policy::{end_turn, expect_admitted, Key};
 use command_policy::{CommandAdmission, Lane};
 pub use policies::{
     AutoReconnect, LatestRequest, LoadedFromDisk, LobbyOperation, LobbyOperations, RunningGame,
@@ -56,6 +56,7 @@ pub struct ServiceCtx {
     pub reporting: services::reporting::ReportingContext,
     pub changelog: services::changelog::ChangelogContext,
     pub guides: services::guides::GuidesContext,
+    pub training: services::training::TrainingContext,
     pub maps: services::maps::MapsContext,
     pub mods: services::mods::ModsContext,
     pub clan: services::clan::ClanContext,
@@ -366,6 +367,7 @@ impl App {
             reporting: services::reporting::ReportingContext::default(),
             changelog: services::changelog::ChangelogContext::default(),
             guides: services::guides::GuidesContext::default(),
+            training: services::training::TrainingContext::default(),
             maps: services::maps::MapsContext::default(),
             mods: services::mods::ModsContext::default(),
             clan: services::clan::ClanContext::default(),
@@ -557,6 +559,10 @@ impl AppLoop {
         // see `census`.
         census::spawn(self.sink.clone());
 
+        // And the training hub's recommendations follow what they are read
+        // from: a sign-in, a finished replay scan, a game that just ended.
+        services::training::spawn(ctx.clone(), self.sink.clone());
+
         let sink = self.sink.clone();
         // Admitted here, synchronously, as the command leaves its queue: see
         // `CommandAdmission` for why the place is taken before the task starts.
@@ -571,8 +577,7 @@ impl AppLoop {
                     return;
                 };
                 turn.ready().await;
-                command_policy::run_admitted(admission, dispatch(command, &ctx, &sink)).await;
-                drop(turn);
+                command_policy::run_admitted(admission, turn, dispatch(command, &ctx, &sink)).await;
             }
         };
         drive(
@@ -830,8 +835,7 @@ pub(crate) fn run_command<'a>(
             return;
         };
         turn.ready().await;
-        command_policy::run_admitted(admission, dispatch(command, ctx, out)).await;
-        drop(turn);
+        command_policy::run_admitted(admission, turn, dispatch(command, ctx, out)).await;
     })
 }
 

@@ -57,9 +57,8 @@ Two filter behaviours are deliberate and easy to mistake for bugs:
 
 ### The lessons (`training.section.lessons`)
 
-FAF's own guided lessons, unchanged: the `tutorials` slice still owns the
-tutorial API, the `tutorials` featured-mod patching and the offline launch. The
-existing view is rendered as a section of the new tab rather than reimplemented.
+See [Lessons](#lessons-none-exist-yet) below: the section exists, and it says
+plainly that there is no playable lesson yet.
 
 ### Replay review requests
 
@@ -104,8 +103,9 @@ which is the maintenance burden the rest of this tab exists to avoid.
 ### The submission queue, and accepting
 
 Built, and it writes. The catalogue lives in `FAForeverRustClient/guides`, so a
-submission is a GitHub issue and a verdict is a commit; the format of both is
-[training-catalogue.md](training-catalogue.md).
+submission is a GitHub issue (a link) or pull request (a guide written in the
+client, with its pictures) and a verdict is a commit or a merge; the format of
+all of it is [training-catalogue.md](training-catalogue.md).
 
 - **The queue is its own tab, and a closed one.** A player who cannot act on it
   has no use for a list of other people's unreviewed guides, so the tab explains
@@ -119,9 +119,12 @@ submission is a GitHub issue and a verdict is a commit; the format of both is
   can commit to a public repository.
 - **Accepting is one press.** The submission is already in the catalogue's own
   terms, because the client wrote the form it came in on, so accepting is a copy
-  rather than a rewrite. It commits the guide file when the author wrote one, adds the entry to `catalogue.json`, comments where it landed and closes
-  the issue. Guarded by the file's content hash, so two trainers working at
-  once get a refusal and a retry rather than a lost commit.
+  rather than a rewrite. For an issue it commits the guide file when the author wrote one, adds the entry to `catalogue.json`, comments where it landed and closes
+  the issue. For a pull request it merges exactly the commit the trainer read
+  (refused if it has moved on, and refused outright if it changes anything but
+  the guide and its pictures), then adds the entry the same way. Guarded by the
+  catalogue's content hash, so two trainers working at once get a refusal and
+  a retry rather than a lost commit.
 - **Declining takes a reason** from a closed set, plus an optional note, and
   both go into the issue where the author reads them.
 
@@ -132,22 +135,30 @@ a control is drawn, never whether an operation is allowed. It also means the
 maintainer list is the repository's collaborator list, and adding a trainer
 needs no client change.
 
-Until an OAuth client id is configured the queue is still listed and the tab
-says why accepting is not offered.
+The OAuth client id is built in (see
+[training-catalogue.md](training-catalogue.md#registering-the-github-app)). A
+build with it set empty still lists the queue and says why accepting is not
+offered.
 
-### Lessons: the tab is empty on purpose
+A saved sign-in survives being offline: the token is dropped only when GitHub
+answers 401 to a request that carried it. When that happens, public reads fall
+back to anonymous, so the queue still loads and the tab shows the sign-in
+button again.
+
+### Lessons: none exist yet
 
 A lesson here means something the client can *start*: it patches the `tutorials`
-featured mod, fetches the map and opens an offline game. That path is finished
-and tested, and it launches nothing today, because nobody has authored a
-scenario for it. FAF's tutorial API carries links to videos and wiki pages
-rather than playable maps; those are library resources like any other and reach
-the reader that way.
+featured mod, fetches the map and opens an offline game. The launch path in
+`services/tutorials.rs` exists (and refuses while Forged Alliance is already
+running), but nothing reaches it today: the catalogue has no lesson entries,
+and no entry carries a map or scenario to launch. The first one, "Reclaim 01",
+is waiting for its map.
 
-So the tab stays and says so. "Coming" is information; a tab that quietly
-disappears is not, and one listing links under the word "playable" is worse
-than either. It fills in by itself the day a scenario exists: the count and the
-pane both key off whether any entry is actually launchable.
+So the section stays and says exactly that, in every language: there is no
+playable lesson yet, with a link to the FAF wiki in the meantime. It does not
+promise that one will appear by itself, because wiring a launchable entry into
+the section is still client work. A catalogue entry of kind `lesson` that only
+has a URL is offered as "Open lesson page", never as "Start".
 
 What a scenario would be is a design question, not a client one. The useful
 shape is closer to a chess puzzle than to a co-op mission: a fixed starting
@@ -171,15 +182,23 @@ Includes a small dependency-free Markdown editor with a toolbar and preview
 HTML, which is the same posture the rest of the client takes towards markup it
 did not write.
 
+Pictures go in through the toolbar, by pasting a screenshot or by dragging a
+file into the text, and are shown in the preview straight away. They stay on
+the form's side (`contributionImages.ts`) until the guide is sent, and travel
+once, with the submission, rather than with every pause in typing. A browser
+link carries text only, so pictures need the GitHub sign-in, and the form says
+so when the author has attached some without one.
+
 ### How both forms leave the client
 
 **The client composes; the player posts.** Both paths end in a post shown in
 full before it goes anywhere.
 
-A **guide submission** goes to the catalogue's repository as an issue: sent
-directly when the author is signed in to GitHub, and otherwise through a
-prefilled new-issue link, which produces a byte-identical issue so the queue can
-accept either in one step. A **replay review request** goes to the training Discord, which is where FAF
+A **guide submission** goes to the catalogue's repository. Sent directly when
+the author is signed in to GitHub: a link as an issue, a written guide as a
+pull request with its pictures. Without a sign-in it goes through a prefilled
+new-issue link, which produces a byte-identical issue so the queue can accept
+either in one step, but carries no pictures. A **replay review request** goes to the training Discord, which is where FAF
 actually answers them. Discord cannot be handed a prefilled message, so there
 the client's job ends at writing the request: copying is the action and the
 link only opens the server. The value was never the paste, it is not having to
@@ -201,35 +220,34 @@ the template, dig the replay id out of a file name.
 
 ## The catalogue
 
-Three sources, merged in the service:
+One document, `catalogue.json` in the `FAForeverRustClient/guides`
+repository (format and layout: [training-catalogue.md](training-catalogue.md)).
+FAF's tutorial API is no longer read; it was dropped in early September 2026.
+The client tries, in order:
 
-1. **FAF's tutorial API** (`/data/tutorialCategory`), already modelled by the
-   `tutorials` slice. It carries titles, briefings, categories and, for the
-   video and written-guide categories, links. It carries **none** of the
-   metadata this hub filters on, so tags are inferred from the author's own
-   words by a small keyword table (`derive_topics`, `derive_level`). That is a
-   fallback so an untagged catalogue is still filterable on the day it loads,
-   not a substitute for tags.
-2. **A remote manifest**, a plain JSON document at a configured URL, held in
-   its own Git repository. Format and repository layout:
-   [training-catalogue.md](training-catalogue.md). Every
-   field is optional, unknown fields are ignored, and an entry with no id or no
-   title is dropped rather than sinking the document: a manifest is edited by
-   hand and a strict parser would turn a typo into an empty tab. A manifest
-   entry naming a `tutorialId` **replaces** the derived lesson entry wholesale
-   rather than merging with it, because an entry whose tags come from a curator
-   and whose level comes from a keyword table is not something anyone can
-   reason about.
-3. **The seed** shipped at `crates/faf-app/src/infra/training_catalogue.json`.
-   Deliberately tiny, and it lists only destinations this repository already
-   relies on. A guessed URL in a shipped client is worse than a short
-   catalogue, and FAF's hosts cannot be probed from a development machine
-   (Cloudflare answers 403 to everything).
+1. **The published catalogue**, fetched with `If-None-Match`, so an unchanged
+   catalogue costs a 304. The cache-busting query parameter is only added on an
+   explicit refresh.
+2. **The last good copy**, saved after every fetch that parsed, at
+   `cache_dir()/training/catalogue.json` (on Windows
+   `%LOCALAPPDATA%\FAForever\FAForever Client\cache\training\catalogue.json`).
+   Used when the fetch fails, so the tab works offline and while GitHub is
+   having trouble. A copy saved from a different URL is ignored.
+3. **The snapshot** shipped at `crates/faf-app/src/infra/training_catalogue.json`,
+   a copy of the published catalogue taken when the client was built, so even
+   a first start without a network is not empty.
 
-The tab says which of the two it is showing (`Built-in catalogue` /
-`Community catalogue`), because a client on the seed shows a fraction of what a
-published manifest carries, and looking thin for no stated reason is worse than
-saying so.
+Parsing is lenient on purpose. A manifest is edited by hand, and a strict
+parser would turn a typo into an empty tab, so only a document that is not a
+JSON object at all is rejected. An entry that cannot be read is skipped, an
+unknown topic is dropped, an unknown kind reads as a guide and an unknown level
+as none, each with a warning in the log. A newer catalogue with a topic this
+client does not know therefore still loads in it.
+
+The tab says which one it is showing (`Built-in catalogue`, `Saved community
+catalogue (offline)` or `Community catalogue`). The catalogue is fetched at
+the same time as the map previews, not after them, and a second load while one
+is running is dropped rather than repeated.
 
 ### Personalisation, without fetching anything for it
 
@@ -238,17 +256,20 @@ saying so.
 - the account name and, when the matchmaker profile has been opened, its
   per-leaderboard ratings (preferring `global`, then `ladder_1v1`, then the
   leaderboard with the most games);
-- the newest 40 local replays, which are this player's own recent games and
-  carry the map, the mod, their faction and their displayed rating in each
-  file's header. Only rows matching this account shape the profile: reading the
-  opponent's faction and rating would describe the wrong player.
+- the newest 40 local replays **this account played in**. Downloaded games of
+  other players are skipped entirely, and signed out no replay counts. Each
+  carries the map, the mod, the player's faction and their displayed rating in
+  the file's header. Official maps are recorded by folder (`scmp_009`) and are
+  translated to their names (`Seton's Clutch`) before matching.
 
 The live matchmaker rating wins over what a replay recorded. If neither is
 available the profile says so, and the hub says what it is missing.
 
-One guard worth knowing about: the player card is a single slot and clicking a
-name in chat fills it with a stranger, so the matchmaker profile is only read
-when its `playerId` is this account's.
+The player card is a single slot that chat fills with strangers, so the tab
+loads this account's matchmaker ratings into a slot of its own and never
+touches the card. The recommendations are recomputed whenever their inputs
+change: signing in or out, the replay scan finishing, a replay being deleted,
+and a game ending (which rescans local replays a moment later).
 
 ---
 
@@ -256,17 +277,26 @@ when its `playerId` is this account's.
 
 | Variable | Meaning |
 | --- | --- |
-| `FAF_TRAINING_CATALOGUE_URL` | The training manifest. Empty (the default) means the seed is used; pointing at a URL nobody has published would make every load wait for a request certain to fail. |
+| `FAF_TRAINING_CATALOGUE_URL` | The training catalogue. Unset, the published one in `FAForeverRustClient/guides`. Set to an empty value, the remote catalogue is off and the snapshot shipped in the client is shown, without reading or writing the cache. |
 
 Two values live in the catalogue's `links` block rather than in code, because
 neither should need a client release to change:
 
-- `discordUrl`: the training community's invite, `https://discord.gg/By9tNUAq8B`
-  in the seed. A manifest may replace it and inherits the seed's when it says
+- `discordUrl`: the invite to FAF's Discord, `https://discord.gg/By9tNUAq8B`
+  in the seed. It is the whole community server, so the hero's button is
+  labelled as Discord and as FAF's, not as a training community. A manifest may replace it and inherits the seed's when it says
   nothing; an empty value hides the button rather than sending anyone to a
   guess.
-- `trainers`: the training team's tiles. Empty in the seed on purpose, because
-  who coaches and whether they still coach is theirs to state.
+- `trainers`: the training team's tiles (a top-level block, not part of
+  `links`). Who coaches and whether they still coach is theirs to state.
+- `replayReviewChannel`: the Discord review channel, behind the hero's
+  "past reviews on Discord" button as well as the request: reviews live there
+  and nowhere else. `replayReviewUrl` is read but no longer shown; it named a
+  forum help category that holds no reviews. `wikiUrl` is linked from the
+  lessons section.
+- `contributeUrl`: read but not used anywhere. Submissions go to the guides
+  repository; only `contributeCategory` is still used, by the forum composer
+  fallback for a build with no repository configured.
 - `replayReviewCategory` / `contributeCategory`: NodeBB category ids for the
   prefilled composer. The seed uses category 4 ("I need help"), which is the
   right destination when no dedicated one is configured. Without a category id
@@ -293,6 +323,5 @@ job, and a wrong automated diagnosis would be worse than none.
 
 ### Translations
 
-English and German are complete. The other four catalogues have the tab's name
-translated and fall back to English for the rest, which is how partial
-catalogues are meant to work here (`pnpm i18n:coverage` measures it).
+All six languages (English, German, Spanish, French, Polish, Russian) carry
+every key of the tab; `pnpm i18n:coverage` measures it.

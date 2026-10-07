@@ -70,9 +70,10 @@ pub use galactic_war::{
 pub use guides::{
     accept_commit_message, catalogue_with, compose_submission, entry_from_body, entry_from_draft,
     guide_file_path, guide_from_body, guide_raw_url, new_issue_url, prose_from_body,
-    rejection_comment, slug, submission_body, submission_title, DeviceLogin, GuideSubmission,
-    GuidesAuthStatus, GuidesCommand, GuidesEvent, GuidesIdentity, GuidesState, GuidesStatus,
-    GuidesWrite, RejectReason, SubmitStatus, CATALOGUE_PATH, GUIDES_REPO, SUBMISSION_LABEL,
+    read_draft_images, rejection_comment, slug, submission_body, submission_title, DeviceLogin,
+    DraftImage, GuideImage, GuideSubmission, GuidesAuthStatus, GuidesCommand, GuidesEvent,
+    GuidesIdentity, GuidesState, GuidesStatus, GuidesWrite, RejectReason, SubmissionPull,
+    SubmitStatus, CATALOGUE_PATH, GUIDES_REPO, SUBMISSION_LABEL,
 };
 pub use install::{InstallEvent, InstallState, ResolvedPaths};
 pub use leaderboard::{
@@ -191,16 +192,15 @@ pub use tourney::{ImportedGroup, ImportedPlacing, ImportedRow};
 pub use tourney::{PendingImage, PickSettings, PlanLists, SwissExtras, TourneyPreset};
 pub use tourney::{PickLogEntry, PickMade, PickPhase, Playoffs, StageTwoPlan, TeamRecord};
 pub use training::{
-    compose_contribution, compose_review_request, compose_url, contribution_problem, derive_level,
-    derive_topics, filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label,
-    leaderboard_word, lesson_resources, level_label, merge_catalogue, normalise_map,
-    percent_encode, profile_from_state, recommend, related_resources, review_problem, score,
-    topic_counts, topic_label, video_still, within_band, ContributionDraft, ContributionProblem,
-    ForumPost, HostedGuide, ReviewProblem, ReviewRequestDraft, Trainer, TrainingCatalogue,
-    TrainingCommand, TrainingDocument, TrainingEvent, TrainingKind, TrainingLevel, TrainingLinks,
-    TrainingProfile, TrainingQuery, TrainingResource, TrainingSource, TrainingState,
-    TrainingStatus, TrainingTopic, FORUM_BASE, LESSON_ID_PREFIX, PROFILE_REPLAY_WINDOW,
-    RECOMMENDED_LIMIT,
+    compose_contribution, compose_review_request, compose_url, contribution_problem,
+    filter_resources, game_mode_of, hosted_guide, hosted_recording, kind_label, leaderboard_word,
+    level_label, normalise_map, official_map_name, own_row, percent_encode, profile_from,
+    profile_from_state, recommend, related_resources, review_problem, score, topic_counts,
+    topic_label, video_still, within_band, ContributionDraft, ContributionProblem, ForumPost,
+    HostedGuide, ReviewProblem, ReviewRequestDraft, Trainer, TrainingCatalogue, TrainingCommand,
+    TrainingDocument, TrainingEvent, TrainingKind, TrainingLevel, TrainingLinks, TrainingProfile,
+    TrainingQuery, TrainingResource, TrainingSource, TrainingState, TrainingStatus, TrainingTopic,
+    FORUM_BASE, OFFICIAL_MAPS, PROFILE_REPLAY_WINDOW, RECOMMENDED_LIMIT,
 };
 pub use tutorials::{
     tutorials_of, Tutorial, TutorialCategory, TutorialLaunchStatus, TutorialsCommand,

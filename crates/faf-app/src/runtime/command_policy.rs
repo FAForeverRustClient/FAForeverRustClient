@@ -79,6 +79,9 @@ pub(crate) enum Key {
     GuidesVerdict,
     /// Launching a tutorial.
     TutorialLaunch,
+    /// Loading the training hub: one at a time, since a second load repeats
+    /// every request and the replay scan.
+    TrainingLoad,
     /// Clan writes, each of which ends by reloading the clan.
     ClanWrite,
     /// Tournament writes: the server recomputes the bracket on every one.
@@ -467,8 +470,8 @@ fn tourney_read(command: &TourneyRead) -> CommandPolicy {
 
 fn training(command: &TrainingCommand) -> CommandPolicy {
     match command {
-        TrainingCommand::Load
-        | TrainingCommand::SetQuery { .. }
+        TrainingCommand::Load => single_flight(Key::TrainingLoad),
+        TrainingCommand::SetQuery { .. }
         | TrainingCommand::Select { .. }
         | TrainingCommand::ReadGuide { .. }
         | TrainingCommand::OpenReview { .. }
@@ -581,15 +584,47 @@ tokio::task_local! {
     /// The admission the command running on this task came in under. Set by
     /// the runtime around every command, read by [`expect_admitted`].
     static ADMITTED_AS: Admission;
+
+    /// The turn the command running on this task holds, until it finishes or
+    /// hands it on early with [`end_turn`].
+    static TURN: Arc<Mutex<Option<Turn>>>;
 }
 
-/// Run `work` as a command admitted under `admission`, so that the code it
-/// reaches can check with [`expect_admitted`] that the table agrees with it.
+/// Run `work` as a command admitted under `admission`, holding `turn`, so that
+/// the code it reaches can check with [`expect_admitted`] that the table
+/// agrees with it, and can end its turn early with [`end_turn`].
+///
+/// `turn` must already be [`Turn::ready`]. It is dropped when `work` is
+/// finished, unless `work` ended it first.
 pub(crate) async fn run_admitted<F: std::future::Future>(
     admission: Admission,
+    turn: Turn,
     work: F,
 ) -> F::Output {
-    ADMITTED_AS.scope(admission, work).await
+    let slot = Arc::new(Mutex::new(Some(turn)));
+    let output = TURN
+        .scope(slot.clone(), ADMITTED_AS.scope(admission, work))
+        .await;
+    drop(slot.lock().unwrap_or_else(PoisonError::into_inner).take());
+    output
+}
+
+/// Hand the running command's turn on before the command is finished.
+///
+/// For a serial command whose ordered part is over while it still has work
+/// to do: a write that must not overtake another, followed by reads that
+/// refresh what the write changed. Holding the turn across those reads makes
+/// the next write wait for reads it has nothing to do with. A guide accepted
+/// in the training queue is followed by a reload of the queue and of the
+/// whole catalogue, and the trainer's next verdict waited for both.
+///
+/// The [`expect_admitted`] check still passes afterwards: the command was
+/// admitted under its key, it just no longer holds it. Does nothing outside a
+/// command, and a second call does nothing.
+pub(crate) fn end_turn() {
+    let _ = TURN.try_with(|slot| {
+        drop(slot.lock().unwrap_or_else(PoisonError::into_inner).take());
+    });
 }
 
 /// A debug check, for code that is only correct one at a time: the command
@@ -903,19 +938,53 @@ mod tests {
         // Outside any command: nothing to check against.
         expect_admitted(Key::TourneyWrite);
         // Under the right entry.
-        run_admitted(Admission::Serial(Key::TourneyWrite), async {
-            expect_admitted(Key::TourneyWrite)
-        })
+        run_admitted(
+            Admission::Serial(Key::TourneyWrite),
+            Turn::default(),
+            async { expect_admitted(Key::TourneyWrite) },
+        )
         .await;
         // Under a wrong one, it says so.
-        let wrong = tokio::spawn(run_admitted(Admission::Concurrent, async {
-            expect_admitted(Key::TourneyWrite)
-        }))
+        let wrong = tokio::spawn(run_admitted(
+            Admission::Concurrent,
+            Turn::default(),
+            async { expect_admitted(Key::TourneyWrite) },
+        ))
         .await;
         assert!(
             wrong.is_err(),
             "a concurrent command reached a serial write unnoticed"
         );
+    }
+
+    #[tokio::test]
+    async fn a_command_that_ends_its_turn_lets_the_next_one_run_before_it_finishes() {
+        // A write, then reads: the next write waits for the write only.
+        let admission = CommandAdmission::default();
+        let first = admission
+            .admit(Admission::Serial(Key::GuidesVerdict))
+            .unwrap();
+        let mut second = admission
+            .admit(Admission::Serial(Key::GuidesVerdict))
+            .unwrap();
+        let (reads_go, reads_wait) = oneshot::channel::<()>();
+        let running = tokio::spawn(run_admitted(
+            Admission::Serial(Key::GuidesVerdict),
+            first,
+            async move {
+                end_turn();
+                // Still admitted under its key for the rest of its work.
+                expect_admitted(Key::GuidesVerdict);
+                let _ = reads_wait.await;
+            },
+        ));
+        tokio::time::timeout(std::time::Duration::from_secs(1), second.ready())
+            .await
+            .expect("the second runs while the first is still reading");
+        let _ = reads_go.send(());
+        running.await.expect("the first finishes");
+        // Outside a command it does nothing, and says nothing.
+        end_turn();
     }
 
     #[tokio::test]

@@ -437,8 +437,13 @@ impl GuidesPort for GatedGuides {
         self.0.pass(&format!("guides-verdict:{number}")).await;
         Ok(())
     }
-    async fn submit(&self, entry: TrainingResource, guide: String) -> Result<String, String> {
-        FakeGuides.submit(entry, guide).await
+    async fn submit(
+        &self,
+        entry: TrainingResource,
+        guide: String,
+        images: Vec<faf_domain::state::GuideImage>,
+    ) -> Result<String, String> {
+        FakeGuides.submit(entry, guide, images).await
     }
 }
 

@@ -25,12 +25,23 @@
 //
 // Filtering runs locally against the loaded catalogue (`shared/rules/trainingRules`,
 // a twin pinned by the conformance fixture) rather than as a command per
-// keystroke.
+// keystroke, and the search box is controlled locally for the same reason
+// (`useQueryDraft`).
 
-import { useLayoutEffect, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
-import { SectionTabs, type SectionTab } from "../../design-system/SectionTabs";
+import { Modal } from "../../design-system/Modal";
+import { SectionTabs, sectionPanelProps, type SectionTab } from "../../design-system/SectionTabs";
 import { Select } from "../../design-system/Select";
 import type {
   TrainingKind,
@@ -39,18 +50,26 @@ import type {
   TrainingResource,
 } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
-import { filterResources } from "../../shared/rules/trainingRules";
-import { EMPTY_TRAINING_QUERY, trainingQueryIsEmpty } from "../../shared/trainingQuery";
-import { TrainingCard } from "./TrainingCard";
 import {
+  asciiLower,
+  eqIgnoreAsciiCase,
+  filterResources,
+  rustTrim,
+} from "../../shared/rules/trainingRules";
+import { EMPTY_TRAINING_QUERY, trainingQueryIsEmpty } from "../../shared/trainingQuery";
+import { ChannelsCard, CreatorTile, TrainingCard } from "./TrainingCard";
+import {
+  channelsForMode,
   collectionsOf,
+  CREATOR_KINDS,
   LIBRARY_SORTS,
+  isQueueMode,
+  modeOptions,
   sortLabel,
   type Collection,
-  type LibrarySort,
 } from "./libraryGroups";
+import { foldSeries, seriesIndex, type Series } from "./trainingSeries";
 import {
-  COMMON_MODES,
   KINDS,
   LEVELS,
   TOPICS,
@@ -58,6 +77,7 @@ import {
   levelLabel,
   topicLabel,
 } from "./trainingPresentation";
+import { shelfKey, useTrainingView } from "./trainingViewState";
 
 
 /**
@@ -75,6 +95,7 @@ import {
  * An option that would return nothing is dimmed rather than removed. The row's
  * job is to say what the catalogue holds, and a set of chips that reshuffled
  * itself as the reader narrowed would answer that differently every time.
+ * "Would return nothing" is the caller's to decide, with the filter itself.
  */
 function ChipRow<T extends string>({
   label,
@@ -155,8 +176,124 @@ function useRowLength(ref: RefObject<HTMLDivElement | null>): number | null {
   return columns;
 }
 
+/** How long the search and map boxes wait for typing to pause before the query is sent. */
+const DRAFT_DELAY_MS = 200;
+
+/** The two typed fields of the query, which the boxes own while typing. */
+interface Draft {
+  text: string;
+  map: string;
+}
+
+const draftOf = (query: TrainingQuery): Draft => ({ text: query.text, map: query.map });
+const sameDraft = (a: Draft, b: Draft) => a.text === b.text && a.map === b.map;
+
+/**
+ * The typed fields of the query, owned by the inputs while the reader types.
+ *
+ * The query lives in the slice, and the boxes used to be fed straight from it:
+ * every keystroke went out as `setQuery` and the character only appeared once
+ * the echo came back. That is the round trip `docs/training-features.md` warns
+ * about, and it showed: the cursor jumped to the end and fast typing dropped
+ * characters. So the boxes are controlled by local state, the filter runs on
+ * that local text at once, and the slice hears about it once typing pauses.
+ *
+ * The slice's copy is still adopted when it changes for a reason of its own
+ * (the hub's topic tiles reset it), and never when it is merely the echo of
+ * something sent from here: those are remembered until they come back, so an
+ * echo that arrives after the reader has typed on is recognised and dropped.
+ *
+ * Every other change to the query goes through `send` as well, carrying the
+ * current text, so a chip pressed mid-word cannot send the slice's older text
+ * back and have it overwrite the box.
+ */
+function useQueryDraft(query: TrainingQuery, onQuery: (query: TrainingQuery) => void) {
+  const [draft, setDraft] = useState<Draft>(() => draftOf(query));
+  const draftRef = useRef<Draft>(draftOf(query));
+  const inFlight = useRef<Draft[]>([]);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef({ query, onQuery });
+  useLayoutEffect(() => {
+    latest.current = { query, onQuery };
+  });
+
+  const deliver = useCallback((next: TrainingQuery) => {
+    const snapshot = draftOf(next);
+    if (!sameDraft(snapshot, draftOf(latest.current.query))) inFlight.current.push(snapshot);
+    latest.current.onQuery(next);
+  }, []);
+
+  const cancelTimer = () => {
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+
+  /** Send a whole query now, typed fields included. */
+  const send = (next: TrainingQuery) => {
+    cancelTimer();
+    draftRef.current = draftOf(next);
+    setDraft(draftRef.current);
+    deliver(next);
+  };
+
+  /** One keystroke in a box: shown and filtered at once, sent once typing pauses. */
+  const edit = (field: keyof Draft, value: string) => {
+    draftRef.current = { ...draftRef.current, [field]: value };
+    setDraft(draftRef.current);
+    cancelTimer();
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      deliver({ ...latest.current.query, ...draftRef.current });
+    }, DRAFT_DELAY_MS);
+  };
+
+  const incomingText = query.text;
+  const incomingMap = query.map;
+  useEffect(() => {
+    const incoming = { text: incomingText, map: incomingMap };
+    const echo = inFlight.current.findIndex((sent) => sameDraft(sent, incoming));
+    if (echo >= 0) {
+      inFlight.current.splice(0, echo + 1);
+      return;
+    }
+    inFlight.current = [];
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    if (!sameDraft(draftRef.current, incoming)) {
+      draftRef.current = incoming;
+      setDraft(incoming);
+    }
+  }, [incomingText, incomingMap]);
+
+  // Opening a guide unmounts the library. Typing that has not been sent yet
+  // goes out then rather than being lost with the component.
+  useEffect(
+    () => () => {
+      if (timer.current !== null) {
+        clearTimeout(timer.current);
+        timer.current = null;
+        deliver({ ...latest.current.query, ...draftRef.current });
+      }
+    },
+    [deliver],
+  );
+
+  return { draft, effective: { ...query, ...draft }, send, edit };
+}
+
+/** The library's own kind tabs, tied to the shelves below them. */
+const KIND_TABS_ID = "training-kind";
+
 interface Props {
   resources: TrainingResource[];
+  /** True until the catalogue has arrived, so an empty list is not mistaken for an empty catalogue. */
+  loading: boolean;
+  /** Ask for the catalogue again, from the empty state. */
+  onReload: () => void;
   query: TrainingQuery;
   /**
    * The reader, for the "at my rating" switch. A profile rather than a number
@@ -172,6 +309,8 @@ interface Props {
 
 export function TrainingLibrary({
   resources,
+  loading,
+  onReload,
   query,
   profile,
   myRating,
@@ -180,32 +319,74 @@ export function TrainingLibrary({
   onSelect,
 }: Props) {
   const { t } = useTranslation();
-  // Two pieces of local state, and both are presentation the backend never acts
-  // on: how the shelf is ordered, and whether the narrow filters are unfolded.
-  // The query itself lives in the slice, because the hub's topic tiles set it
-  // from another section and it has to survive that crossing.
-  const [sort, setSort] = useState<LibrarySort>("forYou");
-  const [refining, setRefining] = useState(false);
+  // How the shelf is ordered and whether the narrow filters are unfolded are
+  // presentation the backend never acts on, but they live outside this
+  // component: opening a guide unmounts it, and back from the guide used to
+  // reset both. The query itself lives in the slice, because the hub's topic
+  // tiles set it from another section and it has to survive that crossing.
+  const sort = useTrainingView((view) => view.sort);
+  // The chapter whose channels are open as a grid, if one is.
+  const [channelsOf, setChannelsOf] = useState<string | null>(null);
+  const setSort = useTrainingView((view) => view.setSort);
+  const refining = useTrainingView((view) => view.refining);
+  const setRefining = useTrainingView((view) => view.setRefining);
+  const { draft, effective, send, edit } = useQueryDraft(query, onQuery);
 
-  const found = filterResources(resources, query, profile);
+  const found = filterResources(resources, effective, profile);
+  // Kind is navigation rather than a filter (see the tabs below), so it is
+  // neither something "clear" removes nor a reason to stop previewing shelves.
+  const narrowedBeyondKind = !trainingQueryIsEmpty({ ...effective, kind: null });
   // Counted with the kind cleared, so a tab says how many entries it *would*
   // show. A count that collapsed to zero on every tab but the open one would
   // be a fact about the filter rather than about the catalogue.
-  const acrossKinds = filterResources(resources, { ...query, kind: null }, profile);
+  const acrossKinds = filterResources(resources, { ...effective, kind: null }, profile);
+
+  // The whole library is shelved by mode and by kind at once ("1v1 · Build
+  // orders"); under a kind tab the kind is already chosen and the mode is the
+  // shelf. Channels and community pages are not material and are not shelved
+  // with it: they are a row of creators of their own, under the shelves.
+  const wholeLibrary = effective.kind === null;
+  const isCreator = (entry: TrainingResource) => CREATOR_KINDS.includes(entry.kind);
+  const creators = wholeLibrary || effective.kind === "community" ? found.filter(isCreator) : [];
+  const material = found.filter((entry) => !isCreator(entry));
+
+  // An untouched library is an overview: a series is one card there, and its
+  // episodes or parts are listed where it is opened. The moment the reader
+  // narrows the library it is a result, and every match stands on its own,
+  // or a search for episode seven would answer with episode one's card.
+  const series = useMemo(() => seriesIndex(resources), [resources]);
+  const fold = !narrowedBeyondKind;
 
   // Shelved rather than listed. Recomputed per keystroke on purpose: narrowing
   // the filter changes which shelves survive it, and stale headings over a
   // filtered grid would be worse than none.
-  const collections = collectionsOf(found, profile, sort);
+  const collections = collectionsOf(material, profile, sort, wholeLibrary).map((collection) =>
+    fold ? { ...collection, entries: foldSeries(collection.entries, series) } : collection,
+  );
 
-  const modes = [...new Set([...COMMON_MODES, ...resources.flatMap((entry) => entry.gameModes)])];
+  const modes = modeOptions(resources);
+  // The matchmaker's queues on one row, the custom-game formats the catalogue
+  // names (Seton's Clutch) on their own: one is a queue a player joins, the
+  // other a map a community plays its own way, and "4v4" answers neither.
+  const queueModes = modes.filter(isQueueMode);
+  const customGames = modes.filter((mode) => !isQueueMode(mode));
+  // The chip that is on, in the row's own spelling, however the query spells it.
+  const activeMode =
+    effective.gameMode === ""
+      ? null
+      : (modes.find((mode) => eqIgnoreAsciiCase(mode, rustTrim(effective.gameMode))) ??
+        effective.gameMode);
 
-  // Each visible facet, measured with itself cleared: a topic chip says what it
-  // would find beside the *other* filters, which is the only reading of it a
-  // reader can act on. Measured against the loaded catalogue, ninety rows and
-  // fifteen options, so it costs nothing to redo per keystroke.
-  const acrossTopics = filterResources(resources, { ...query, topic: null }, profile);
-  const acrossModes = filterResources(resources, { ...query, gameMode: "" }, profile);
+  // A chip is dimmed when pressing it would show nothing, asked of the filter
+  // itself with that chip pressed and every other filter as it is. Any other
+  // test drifts from what the press actually does: the previous one compared
+  // modes exactly, so a dimmed "custom" chip still found every entry tagged
+  // "global", and every entry naming no mode at all. Ninety rows and fifteen
+  // options, so it costs nothing to redo per keystroke.
+  const wouldFind = (narrowed: TrainingQuery) =>
+    filterResources(resources, narrowed, profile).length > 0;
+
+  const clearFilters = () => send({ ...EMPTY_TRAINING_QUERY, kind: effective.kind });
 
   const kindTabs: SectionTab<TrainingKind | "all">[] = [
     { id: "all", label: t("training.library.allKinds"), count: acrossKinds.length },
@@ -226,41 +407,41 @@ export function TrainingLibrary({
    * as a chip that removes itself, whether the panel is open or shut.
    */
   const narrowed: { key: string; label: string; clear: () => void }[] = [];
-  if (query.level !== null) {
-    const level = query.level;
+  if (effective.level !== null) {
+    const level = effective.level;
     narrowed.push({
       key: "level",
       label: t(levelLabel(level)),
-      clear: () => onQuery({ ...query, level: null }),
+      clear: () => send({ ...effective, level: null }),
     });
   }
-  if (query.topic !== null) {
-    const topic = query.topic;
+  if (effective.topic !== null) {
+    const topic = effective.topic;
     narrowed.push({
       key: "topic",
       label: t(topicLabel(topic)),
-      clear: () => onQuery({ ...query, topic: null }),
+      clear: () => send({ ...effective, topic: null }),
     });
   }
-  if (query.gameMode !== "") {
+  if (effective.gameMode !== "") {
     narrowed.push({
       key: "mode",
-      label: query.gameMode,
-      clear: () => onQuery({ ...query, gameMode: "" }),
+      label: effective.gameMode,
+      clear: () => send({ ...effective, gameMode: "" }),
     });
   }
-  if (query.map.trim() !== "") {
+  if (effective.map.trim() !== "") {
     narrowed.push({
       key: "map",
-      label: query.map.trim(),
-      clear: () => onQuery({ ...query, map: "" }),
+      label: effective.map.trim(),
+      clear: () => send({ ...effective, map: "" }),
     });
   }
-  if (query.myRatingOnly) {
+  if (effective.myRatingOnly) {
     narrowed.push({
       key: "rating",
       label: t("training.filter.myRating"),
-      clear: () => onQuery({ ...query, myRatingOnly: false }),
+      clear: () => send({ ...effective, myRatingOnly: false }),
     });
   }
 
@@ -272,14 +453,13 @@ export function TrainingLibrary({
       <header className="training-section-head">
         <div>
           <h3>{t("training.library.title")}</h3>
-          <p className="muted">{t("training.library.lead")}</p>
         </div>
         <div className="training-toolbar-tools">
           <label className="training-search">
             <Icon name="search" size={15} />
             <input
-              value={query.text}
-              onChange={(event) => onQuery({ ...query, text: event.target.value })}
+              value={draft.text}
+              onChange={(event) => edit("text", event.target.value)}
               placeholder={t("training.filter.searchPlaceholder")}
               aria-label={t("training.filter.search")}
             />
@@ -312,11 +492,12 @@ export function TrainingLibrary({
           at the far end of the same rule, beside the counts it is a total of. */}
       <div className="training-library-tabs">
         <SectionTabs
-          active={query.kind ?? "all"}
+          active={effective.kind ?? "all"}
           ariaLabel={t("training.filter.kind")}
           className="training-kind-tabs"
+          idPrefix={KIND_TABS_ID}
           items={kindTabs}
-          onChange={(kind) => onQuery({ ...query, kind: kind === "all" ? null : kind })}
+          onChange={(kind) => send({ ...effective, kind: kind === "all" ? null : kind })}
         />
         <span className="muted training-count">
           {t("training.library.count", { count: found.length, total: resources.length })}
@@ -329,26 +510,40 @@ export function TrainingLibrary({
       <div className="training-facets">
         <ChipRow
           label={t("training.filter.topic")}
-          value={query.topic}
+          value={effective.topic}
           options={TOPICS.map((topic) => ({
             value: topic,
             label: t(topicLabel(topic)),
-            empty: !acrossTopics.some((entry) => entry.topics.includes(topic)),
+            empty: !wouldFind({ ...effective, topic }),
           }))}
-          onChange={(topic) => onQuery({ ...query, topic })}
+          onChange={(topic) => send({ ...effective, topic })}
         />
         {/* The mode filter is a plain string in the query rather than an enum,
             so its off position is "" and not null. */}
         <ChipRow
           label={t("training.filter.mode")}
-          value={query.gameMode === "" ? null : query.gameMode}
-          options={modes.map((mode) => ({
+          value={activeMode}
+          options={queueModes.map((mode) => ({
             value: mode,
             label: mode,
-            empty: !acrossModes.some((entry) => entry.gameModes.includes(mode)),
+            empty: !wouldFind({ ...effective, gameMode: mode }),
           }))}
-          onChange={(mode) => onQuery({ ...query, gameMode: mode ?? "" })}
+          onChange={(mode) => send({ ...effective, gameMode: mode ?? "" })}
         />
+        {/* The same filter as the row above, so pressing one here lets go of
+            a queue there: an entry is for one or the other, never both. */}
+        {customGames.length > 0 && (
+          <ChipRow
+            label={t("training.filter.customGames")}
+            value={activeMode}
+            options={customGames.map((mode) => ({
+              value: mode,
+              label: mode,
+              empty: !wouldFind({ ...effective, gameMode: mode }),
+            }))}
+            onChange={(mode) => send({ ...effective, gameMode: mode ?? "" })}
+          />
+        )}
       </div>
 
       {/* Folded by default, and honestly so: six of ninety entries state a
@@ -358,16 +553,16 @@ export function TrainingLibrary({
         <div className="surface-panel training-filters">
           <ChipRow
             label={t("training.filter.level")}
-            value={query.level}
+            value={effective.level}
             options={LEVELS.map((level) => ({ value: level, label: t(levelLabel(level)) }))}
-            onChange={(level) => onQuery({ ...query, level })}
+            onChange={(level) => send({ ...effective, level })}
           />
           <div className="training-filter-line">
             <label className="training-map-filter">
               <span>{t("training.filter.map")}</span>
               <input
-                value={query.map}
-                onChange={(event) => onQuery({ ...query, map: event.target.value })}
+                value={draft.map}
+                onChange={(event) => edit("map", event.target.value)}
                 placeholder={t("training.filter.mapPlaceholder")}
               />
             </label>
@@ -378,8 +573,8 @@ export function TrainingLibrary({
               <label className="training-toggle">
                 <input
                   type="checkbox"
-                  checked={query.myRatingOnly}
-                  onChange={(event) => onQuery({ ...query, myRatingOnly: event.target.checked })}
+                  checked={effective.myRatingOnly}
+                  onChange={(event) => send({ ...effective, myRatingOnly: event.target.checked })}
                 />
                 {/* No number in the label. Which rating applies depends on the
                     entry: a 1v1 guide is judged by the 1v1 rating and a general
@@ -406,48 +601,102 @@ export function TrainingLibrary({
               <Icon name="close" size={11} />
             </button>
           ))}
-          {!trainingQueryIsEmpty(query) && (
-            <button
-              type="button"
-              className="training-clear-all"
-              onClick={() => onQuery(EMPTY_TRAINING_QUERY)}
-            >
+          {narrowedBeyondKind && (
+            <button type="button" className="training-clear-all" onClick={clearFilters}>
               {t("training.filter.clear")}
             </button>
           )}
         </div>
       )}
 
-      {found.length === 0 ? (
-        <p className="surface training-state muted">
-          <span>
-            {resources.length === 0
-              ? t("training.library.emptyCatalogue")
-              : t("training.library.noMatches")}
-          </span>
-          {!trainingQueryIsEmpty(query) && (
-            <Button onClick={() => onQuery(EMPTY_TRAINING_QUERY)}>
-              <Icon name="close" size={14} /> {t("training.filter.clear")}
-            </Button>
-          )}
-        </p>
-      ) : (
-        <div className="training-collections">
-          {collections.map((collection) => (
-            <CollectionShelf
-              key={collection.key}
-              collection={collection}
-              // An untouched library is an overview and gives every shelf one
-              // row; the moment the reader narrows it, it is a result and shows
-              // all of it. Ninety cards under twelve headings is four screens
-              // of scrolling before the second heading, which is the same flat
-              // list the grouping exists to undo.
-              clip={trainingQueryIsEmpty(query)}
-              onOpen={onOpen}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
+      <div {...sectionPanelProps(KIND_TABS_ID, effective.kind ?? "all")}>
+        {found.length === 0 ? (
+          <p className="surface training-state muted" aria-live="polite">
+            <span>
+              {resources.length > 0
+                ? t("training.library.noMatches")
+                : loading
+                  ? t("training.loading")
+                  : t("training.library.emptyCatalogue")}
+            </span>
+            {resources.length > 0 && narrowedBeyondKind && (
+              <Button onClick={clearFilters}>
+                <Icon name="close" size={14} /> {t("training.filter.clear")}
+              </Button>
+            )}
+            {resources.length === 0 && !loading && (
+              <Button onClick={onReload}>
+                <Icon name="refresh" size={15} /> {t("training.tryAgain")}
+              </Button>
+            )}
+          </p>
+        ) : (
+          <div className="training-collections">
+            {collections.map((collection, index) => {
+              // The last shelf of a mode is where its chapter ends, and where
+              // the reader is pointed at the channels that hold more of it.
+              // Only in the overview: a filtered result is an answer, and a
+              // card of channels in it would be an answer to something else.
+              const next = collections[index + 1];
+              const endsChapter =
+                !collection.isRemainder &&
+                (next === undefined || asciiLower(next.key) !== asciiLower(collection.key));
+              const more =
+                endsChapter && !narrowedBeyondKind ? channelsForMode(resources, collection.key) : [];
+              return (
+                <CollectionShelf
+                  key={`${collection.key}|${collection.kind ?? ""}`}
+                  collection={collection}
+                  series={fold ? series : null}
+                  shelf={shelfKey(effective.kind, `${collection.key}|${collection.kind ?? ""}`)}
+                  // An untouched library is an overview and gives every shelf one
+                  // row; the moment the reader narrows it, it is a result and
+                  // shows all of it. Ninety cards under twelve headings is four
+                  // screens of scrolling before the second heading, which is the
+                  // same flat list the grouping exists to undo. A kind tab is not
+                  // narrowing: it is where the reader is standing, and it used to
+                  // unfold every shelf under it.
+                  clip={!narrowedBeyondKind}
+                  onOpen={onOpen}
+                  onSelect={onSelect}
+                  last={
+                    more.length > 0 ? (
+                      <ChannelsCard
+                        mode={collection.key}
+                        channels={more}
+                        onOpen={() => setChannelsOf(collection.key)}
+                      />
+                    ) : null
+                  }
+                />
+              );
+            })}
+            {creators.length > 0 && (
+              <section className="training-collection training-creators">
+                <header className="training-collection-head">
+                  <div className="training-collection-name">
+                    <h4>{t("training.library.creators")}</h4>
+                  </div>
+                  <span className="training-collection-count">{creators.length}</span>
+                </header>
+                <div className="training-creator-grid">
+                  {creators.map((creator) => (
+                    <CreatorTile key={creator.id} resource={creator} onSelect={onSelect} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+      </div>
+
+      {channelsOf !== null && (
+        <ChannelsDialog
+          mode={channelsOf}
+          channels={channelsForMode(resources, channelsOf)}
+          onOpen={onOpen}
+          onClose={() => setChannelsOf(null)}
+        />
       )}
     </section>
   );
@@ -463,20 +712,37 @@ export function TrainingLibrary({
  */
 function CollectionShelf({
   collection,
+  series,
+  shelf,
   clip,
   onOpen,
   onSelect,
+  last = null,
 }: {
   collection: Collection;
+  /** The catalogue's series, when they are folded into one card each. */
+  series: Map<string, Series> | null;
+  /** Which shelf this is across visits, for remembering that it was opened. */
+  shelf: string;
   /** Whether to show one row and offer the rest, or lay the whole shelf out. */
   clip: boolean;
   onOpen: (resource: TrainingResource) => void;
   onSelect: (resource: TrainingResource) => void;
+  /**
+   * A card that closes the shelf, after its entries: the chapter's channels.
+   * It keeps its place in the first row when the shelf is clipped, so the
+   * entries give way to it rather than it to them.
+   */
+  last?: ReactNode;
 }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
+  // Remembered outside the component, so a shelf opened before reading one of
+  // its guides is still open on the way back.
+  const open = useTrainingView((view) => view.openShelves.includes(shelf));
+  const toggleShelf = useTrainingView((view) => view.toggleShelf);
   const grid = useRef<HTMLDivElement>(null);
-  const limit = useRowLength(grid) ?? SHELF_PREVIEW;
+  const row = useRowLength(grid) ?? SHELF_PREVIEW;
+  const limit = last ? Math.max(1, row - 1) : row;
   const hidden = clip && !open ? Math.max(0, collection.entries.length - limit) : 0;
   const shown = hidden === 0 ? collection.entries : collection.entries.slice(0, limit);
 
@@ -488,14 +754,22 @@ function CollectionShelf({
               "4v4" are the same in every language the client speaks, and the
               bucket for entries naming none is the only heading here that is
               a sentence rather than a name. */}
-          <h4>{collection.isRemainder ? t("training.library.noMode") : collection.key}</h4>
+          <h4>
+            {collection.kind === null
+              ? collection.isRemainder
+                ? t("training.library.noMode")
+                : collection.key
+              : collection.isRemainder
+                ? t(kindPluralLabel(collection.kind))
+                : `${collection.key} \u00b7 ${t(kindPluralLabel(collection.kind))}`}
+          </h4>
         </div>
         <span className="training-collection-count">
-          {hidden > 0 || open ? (
+          {clip && (hidden > 0 || open) ? (
             // The count is the control. A shelf saying "21" and a button saying
             // "show all" are the same sentence twice, and the number is the
             // part a reader was already looking at.
-            <button type="button" className="training-shelf-more" onClick={() => setOpen(!open)}>
+            <button type="button" className="training-shelf-more" onClick={() => toggleShelf(shelf)}>
               {open
                 ? t("training.library.showFewer")
                 : t("training.library.showAll", { count: collection.entries.length })}
@@ -507,9 +781,54 @@ function CollectionShelf({
       </header>
       <div className="training-grid" ref={grid}>
         {shown.map((resource) => (
-          <TrainingCard key={resource.id} resource={resource} onOpen={onOpen} onSelect={onSelect} />
+          <TrainingCard
+            key={resource.id}
+            resource={resource}
+            series={series?.get(resource.id)}
+            onOpen={onOpen}
+            onSelect={onSelect}
+          />
         ))}
+        {last}
       </div>
     </section>
+  );
+}
+
+/**
+ * The channels behind a chapter's last card, as a grid of faces: each opens
+ * its channel. The same tile the creators row draws, so a channel looks like
+ * itself wherever it appears.
+ */
+function ChannelsDialog({
+  mode,
+  channels,
+  onOpen,
+  onClose,
+}: {
+  mode: string;
+  channels: TrainingResource[];
+  onOpen: (resource: TrainingResource) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Modal
+      onClose={onClose}
+      ariaLabel={t("training.library.channels.dialogTitle", { mode })}
+      className="training-dialog training-channels-dialog"
+    >
+      <div className="training-channels-dialog-body">
+        <header>
+          <h4>{t("training.library.channels.dialogTitle", { mode })}</h4>
+          <p className="muted">{t("training.library.channels.dialogLead", { mode })}</p>
+        </header>
+        <div className="training-creator-grid">
+          {channels.map((channel) => (
+            <CreatorTile key={channel.id} resource={channel} onSelect={onOpen} />
+          ))}
+        </div>
+      </div>
+    </Modal>
   );
 }

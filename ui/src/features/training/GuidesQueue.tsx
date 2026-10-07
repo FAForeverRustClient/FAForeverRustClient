@@ -20,6 +20,7 @@ import type { GuideSubmission, GuidesCommand, GuidesState } from "../../ipc/bind
 import { ipc } from "../../ipc/client";
 import { useTranslation } from "../../i18n/useTranslation";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { isAcceptable, settledNotice, writeFailure } from "./queueNotices";
 import { Markdown } from "./markdown";
 import { RejectDialog } from "./RejectDialog";
 import { levelLabel, topicLabel } from "./trainingPresentation";
@@ -38,7 +39,8 @@ export function GuidesQueue({ state, discordUrl }: Props) {
   const [rejecting, setRejecting] = useState<GuideSubmission | null>(null);
 
   const busy = busyNumber(state);
-  const failure = state.write.type === "failed" ? state.write.payload : null;
+  const failure = writeFailure(state);
+  const settled = settledNotice(state);
   const me = state.auth.type === "signedIn" ? state.auth.payload.identity : null;
 
   // The gate is being signed in, not being a collaborator.
@@ -58,11 +60,6 @@ export function GuidesQueue({ state, discordUrl }: Props) {
       <header className="training-section-head">
         <div>
           <h3>{t("training.queue.title")}</h3>
-          <p className="muted">
-            {state.repo
-              ? t("training.queue.lead", { repo: state.repo })
-              : t("training.queue.leadUnknown")}
-          </p>
         </div>
         <div className="training-queue-account">
           <Button
@@ -101,6 +98,20 @@ export function GuidesQueue({ state, discordUrl }: Props) {
         </p>
       )}
 
+      {settled && (
+        // The row a verdict settles leaves the list at once, so without a
+        // word here a working accept looked exactly like nothing happening.
+        <p className="training-queue-settled" role="status">
+          <Icon name="check" size={14} />{" "}
+          {t(
+            settled.verdict === "accepted"
+              ? "training.queue.acceptedNotice"
+              : "training.queue.declinedNotice",
+            { number: settled.number },
+          )}
+        </p>
+      )}
+
       {state.submissions.length === 0 ? (
         <p className="muted training-queue-empty">
           {state.status.type === "loading"
@@ -129,10 +140,19 @@ export function GuidesQueue({ state, discordUrl }: Props) {
                       author: submission.author || t("training.queue.someone"),
                     })}
                   </span>
-                  {submission.entry === null && (
-                    // Worth listing and worth answering; there is simply
-                    // nothing to copy into the catalogue in one step.
-                    <span className="training-chip">{t("training.queue.needsHand")}</span>
+                  {submission.pull !== null && submission.pull.images.length > 0 && (
+                    <span className="training-tag">
+                      {t("training.queue.pictures", { count: submission.pull.images.length })}
+                    </span>
+                  )}
+                  {submission.pull !== null && submission.pull.foreign.length > 0 ? (
+                    <span className="training-chip">{t("training.queue.foreign")}</span>
+                  ) : (
+                    !isAcceptable(submission) && (
+                      // Worth listing and worth answering; there is simply
+                      // nothing to copy into the catalogue in one step.
+                      <span className="training-chip">{t("training.queue.needsHand")}</span>
+                    )
                   )}
                 </div>
 
@@ -142,10 +162,33 @@ export function GuidesQueue({ state, discordUrl }: Props) {
                       <Markdown source={submission.summary} className="training-queue-summary" />
                     )}
                     {submission.entry && <EntryFacts entry={submission.entry} />}
+                    {submission.pull !== null && submission.pull.foreign.length > 0 && (
+                      // Accepting merges every file, so these are what stops
+                      // it: named, so the reviewer knows what to look at.
+                      <div className="training-queue-foreign">
+                        <p className="muted">{t("training.queue.foreignHint")}</p>
+                        <ul>
+                          {submission.pull.foreign.map((path) => (
+                            <li key={path}>
+                              <code>{path}</code>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     {submission.guide !== null && (
                       <details className="training-queue-guide">
                         <summary>{t("training.queue.readGuide")}</summary>
-                        <Markdown source={submission.guide} />
+                        {/* A proposed guide's pictures are in its pull request,
+                            beside the guide, at the commit the queue read. */}
+                        <Markdown
+                          source={submission.guide}
+                          base={
+                            submission.pull === null
+                              ? undefined
+                              : { document: submission.pull.guideUrl }
+                          }
+                        />
                       </details>
                     )}
                   </div>
@@ -160,9 +203,13 @@ export function GuidesQueue({ state, discordUrl }: Props) {
                   <>
                     <Button
                       variant="primary"
-                      disabled={working || submission.entry === null || busy !== null}
+                      disabled={working || !isAcceptable(submission) || busy !== null}
                       title={
-                        submission.entry === null ? t("training.queue.needsHandHint") : undefined
+                        submission.pull !== null && submission.pull.foreign.length > 0
+                          ? t("training.queue.foreignHint")
+                          : !isAcceptable(submission)
+                            ? t("training.queue.needsHandHint")
+                            : undefined
                       }
                       onClick={() =>
                         dispatch({ type: "accept", payload: { number: submission.number } })
@@ -252,6 +299,7 @@ function NoAccess({ state, discordUrl }: { state: GuidesState; discordUrl: strin
               <code>{userCode}</code>
               <Button
                 title={t("training.queue.copyCode")}
+                aria-label={t("training.queue.copyCode")}
                 onClick={() => void navigator.clipboard?.writeText(userCode)}
               >
                 <Icon name="copy" size={14} />

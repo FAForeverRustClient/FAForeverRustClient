@@ -19,7 +19,7 @@ import { Icon } from "../../design-system/Icon";
 import type { ForumPost, SubmitStatus } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { openHttpsUrl } from "../../shared/externalLinks";
-import { Markdown } from "./markdown";
+import { Markdown, type Addresses } from "./markdown";
 
 interface Props {
   post: ForumPost;
@@ -33,9 +33,13 @@ interface Props {
   submit?: SubmitStatus;
   /** Send it from the client, or `null` when only the browser path exists. */
   onSubmit?: (() => void) | null;
+  /** The post's body reached the clipboard, which on Discord is the delivery. */
+  onDelivered?: () => void;
+  /** What the body's pictures resolve against: the ones attached, unsent. */
+  base?: Addresses;
 }
 
-export function PostPreview({ post, destination, submit, onSubmit }: Props) {
+export function PostPreview({ post, destination, submit, onSubmit, onDelivered, base }: Props) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [copiedTitle, setCopiedTitle] = useState(false);
@@ -55,7 +59,11 @@ export function PostPreview({ post, destination, submit, onSubmit }: Props) {
       .then(() => mark(true))
       .catch(() => mark(false));
   };
-  const copy = () => copyText(toDiscord ? post.body : `${post.title}\n\n${post.body}`, setCopied);
+  const copy = () =>
+    copyText(toDiscord ? post.body : `${post.title}\n\n${post.body}`, (value) => {
+      setCopied(value);
+      if (value) onDelivered?.();
+    });
   const copyTitle = () => copyText(post.title, setCopiedTitle);
 
   return (
@@ -79,7 +87,7 @@ export function PostPreview({ post, destination, submit, onSubmit }: Props) {
         ) : (
           <strong className="training-post-subject">{post.title}</strong>
         )}
-        <Markdown source={post.body} />
+        <Markdown source={post.body} base={base} />
       </div>
 
       <div className="training-post-actions">
@@ -117,7 +125,7 @@ export function PostPreview({ post, destination, submit, onSubmit }: Props) {
               void openHttpsUrl(post.url);
             }}
           >
-            <Icon name="external" size={15} />{" "}
+            <Icon name={toDiscord ? "discord" : "external"} size={15} />{" "}
             {t(toDiscord ? "training.post.openDiscord" : "training.post.open")}
           </Button>
         ) : sent ? null : (

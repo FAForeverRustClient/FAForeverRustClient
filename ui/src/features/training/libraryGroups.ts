@@ -16,9 +16,9 @@
 // filter narrows.
 
 import type { MessageKey } from "../../i18n";
-import type { TrainingProfile, TrainingResource } from "../../ipc/bindings";
-import { normaliseMap } from "../../shared/rules/trainingRules";
-import { kindLabel } from "./trainingPresentation";
+import type { TrainingKind, TrainingProfile, TrainingResource } from "../../ipc/bindings";
+import { asciiLower, normaliseMap } from "../../shared/rules/trainingRules";
+import { COMMON_MODES, kindLabel } from "./trainingPresentation";
 
 /**
  * How the reader asked for the shelves to be arranged.
@@ -44,10 +44,26 @@ export function sortLabel(sort: LibrarySort): MessageKey {
 export interface Collection {
   /** The mode, and the heading. Empty for the bucket of entries naming none. */
   key: string;
+  /**
+   * The one kind on this shelf, when the shelves are split by kind as well as
+   * by mode, and `null` when they are not.
+   */
+  kind: TrainingKind | null;
   entries: TrainingResource[];
   /** True for the bucket that holds whatever names no mode. */
   isRemainder?: boolean;
 }
+
+/**
+ * The order kinds follow one another inside a mode, when the library is shown
+ * whole: what a player reads before a match first, then what they watch.
+ * Channels and pages are not here: they are creators and places rather than
+ * material, and the library shows them in a row of their own.
+ */
+export const SHELF_KINDS: TrainingKind[] = ["buildOrder", "guide", "video", "replayAnalysis", "lesson"];
+
+/** Kinds kept off the shelves when the library is shown whole. */
+export const CREATOR_KINDS: TrainingKind[] = ["community"];
 
 /**
  * The lobby type, not a shape of game.
@@ -68,7 +84,60 @@ const LOBBY_TYPES = ["custom"];
  */
 function shelfMode(resource: TrainingResource): string {
   const modes = resource.gameModes.map((mode) => mode.trim()).filter(Boolean);
-  return modes.find((mode) => !LOBBY_TYPES.includes(mode.toLowerCase())) ?? modes[0] ?? "";
+  return modes.find((mode) => !LOBBY_TYPES.includes(asciiLower(mode))) ?? modes[0] ?? "";
+}
+
+/**
+ * The channels that make more of a mode than the library holds.
+ *
+ * The library carries the videos somebody picked out of a channel, not the
+ * whole channel, so a reader at the end of "Seton's Clutch" is pointed at where
+ * the rest lives. Read off the channel entries' own modes rather than listed
+ * per chapter: a channel is tagged once, with the modes it is about, and shows
+ * under each of them. Nobody keeps a second list in step with the first.
+ */
+export function channelsForMode(resources: TrainingResource[], mode: string): TrainingResource[] {
+  const wanted = asciiLower(mode.trim());
+  if (wanted === "") return [];
+  return resources
+    .filter(
+      (entry) =>
+        entry.kind === "community" &&
+        entry.url !== "" &&
+        entry.gameModes.some((held) => asciiLower(held.trim()) === wanted),
+    )
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/**
+ * The modes the mode row offers: the common ones, then whatever the catalogue
+ * carries, once each.
+ *
+ * Folded the way the filter folds them (ASCII case, as in Rust), so "1V1" in
+ * one entry and "1v1" in another are one chip rather than two that select the
+ * same thing. The first spelling met wins, which puts the common list's
+ * lowercase ahead of whatever a manifest typed.
+ */
+export function modeOptions(resources: TrainingResource[]): string[] {
+  const seen = new Set<string>();
+  const modes: string[] = [];
+  for (const mode of [...COMMON_MODES, ...resources.flatMap((entry) => entry.gameModes)]) {
+    const trimmed = mode.trim();
+    const key = asciiLower(trimmed);
+    if (trimmed === "" || seen.has(key)) continue;
+    seen.add(key);
+    modes.push(trimmed);
+  }
+  return modes;
+}
+
+/**
+ * Whether a mode is a matchmaker queue ("1v1", "4v4") rather than a custom-game
+ * format the catalogue names ("Seton's Clutch"). Read off the shape of the
+ * word, so a new queue or a new format needs no change here.
+ */
+export function isQueueMode(mode: string): boolean {
+  return /^\d+v\d+$/i.test(mode.trim());
 }
 
 /** Whether this entry is on ground the player has been playing. */
@@ -133,8 +202,8 @@ function comparatorFor(
   }
   // For you: the modes this player has actually been playing, then the fuller
   // shelf, which is the closest thing to authority the catalogue carries.
-  const mine = profile.gameModes.map((mode) => mode.toLowerCase());
-  const plays = (collection: Collection) => Number(mine.includes(collection.key.toLowerCase()));
+  const mine = profile.gameModes.map(asciiLower);
+  const plays = (collection: Collection) => Number(mine.includes(asciiLower(collection.key)));
   return (a, b) =>
     plays(b) - plays(a) || b.entries.length - a.entries.length || byName(a, b);
 }
@@ -150,8 +219,11 @@ export function collectionsOf(
   resources: TrainingResource[],
   profile: TrainingProfile,
   sort: LibrarySort = "forYou",
+  byKind = false,
 ): Collection[] {
-  const shelves = new Map<string, TrainingResource[]>();
+  // Keyed by the folded mode, so "1V1" and "1v1" are one shelf, as they are
+  // one chip and one filter; headed by the first spelling met.
+  const shelves = new Map<string, { key: string; entries: TrainingResource[] }>();
   const loose: TrainingResource[] = [];
 
   for (const resource of resources) {
@@ -160,13 +232,14 @@ export function collectionsOf(
       loose.push(resource);
       continue;
     }
-    const shelf = shelves.get(mode);
-    if (shelf) shelf.push(resource);
-    else shelves.set(mode, [resource]);
+    const shelf = shelves.get(asciiLower(mode));
+    if (shelf) shelf.entries.push(resource);
+    else shelves.set(asciiLower(mode), { key: mode, entries: [resource] });
   }
 
-  const collections: Collection[] = [...shelves].map(([key, entries]) => ({
+  const collections: Collection[] = [...shelves.values()].map(({ key, entries }) => ({
     key,
+    kind: null,
     entries: orderEntries(entries, sort, profile),
   }));
   collections.sort(comparatorFor(sort, profile));
@@ -174,11 +247,27 @@ export function collectionsOf(
   if (loose.length > 0) {
     collections.push({
       key: "",
+      kind: null,
       entries: orderEntries(loose, sort, profile),
       isRemainder: true,
     });
   }
-  return collections;
+  return byKind ? collections.flatMap(splitByKind) : collections;
+}
+
+/**
+ * One mode's shelf as one shelf per kind, in reading order.
+ *
+ * The whole library under "1v1" was build orders, guides, videos and channels
+ * in one row, and a reader scanning it could not tell a map from a lecture
+ * until they read every caption. "1v1 · Build orders" over a row of maps says
+ * what the row is before anything in it is read.
+ */
+function splitByKind(collection: Collection): Collection[] {
+  return SHELF_KINDS.flatMap((kind) => {
+    const entries = collection.entries.filter((entry) => entry.kind === kind);
+    return entries.length === 0 ? [] : [{ ...collection, kind, entries }];
+  });
 }
 
 /** Re-export so the view can label a kind without importing two modules. */

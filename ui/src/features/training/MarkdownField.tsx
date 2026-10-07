@@ -23,6 +23,14 @@ interface Props {
   placeholder?: string;
   rows?: number;
   ownPreview?: boolean;
+  /**
+   * Take pictures the author picked, pasted or dropped, and answer with the
+   * Markdown to insert where the caret is. Absent where a field has nowhere to
+   * send a picture, and then the field offers none.
+   */
+  onAttach?: (files: File[]) => string;
+  /** The file types `onAttach` takes, for the picker. */
+  accept?: string;
 }
 
 /** What a toolbar button does to the selected range. */
@@ -81,6 +89,20 @@ export function applyAction(
   };
 }
 
+/**
+ * The line breaks that put something inserted into a paragraph of its own:
+ * none against the edge of the text or an existing blank line, one against a
+ * single line break, two against text. `side` is which edge of `text` the
+ * insertion touches.
+ */
+export function paragraphBreak(text: string, side: "start" | "end"): string {
+  if (text === "") return "";
+  const edge = side === "end" ? text.slice(-2) : text.slice(0, 2);
+  if (edge === "\n\n") return "";
+  const touching = side === "end" ? edge.endsWith("\n") : edge.startsWith("\n");
+  return touching ? "\n" : "\n\n";
+}
+
 export function MarkdownField({
   label,
   value,
@@ -96,10 +118,41 @@ export function MarkdownField({
    * being separable at all.
    */
   ownPreview = true,
+  onAttach,
+  accept,
 }: Props) {
   const { t } = useTranslation();
   const [preview, setPreview] = useState(false);
   const areaRef = useRef<HTMLTextAreaElement>(null);
+  const pickerRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Insert the Markdown for `files` at the caret, on lines of its own: a
+   * picture glued to the end of a sentence is an inline icon, not a figure.
+   */
+  const attachAtCaret = (files: File[]) => {
+    if (!onAttach || files.length === 0) return;
+    const snippet = onAttach(files);
+    if (!snippet) return;
+    const area = areaRef.current;
+    const start = area?.selectionStart ?? value.length;
+    const end = area?.selectionEnd ?? value.length;
+    const before = value.slice(0, start);
+    const after = value.slice(end);
+    const lead = paragraphBreak(before, "end");
+    const trail = paragraphBreak(after, "start");
+    const inserted = `${lead}${snippet}${trail}`;
+    onChange(`${before}${inserted}${after}`);
+    const caret = start + inserted.length;
+    requestAnimationFrame(() => {
+      area?.focus();
+      area?.setSelectionRange(caret, caret);
+    });
+  };
+
+  /** The pictures among a paste's or a drop's files, if it carried any. */
+  const picturesIn = (list: FileList | null | undefined) =>
+    Array.from(list ?? []).filter((file) => file.type.startsWith("image/"));
 
   const run = (action: Action) => {
     const area = areaRef.current;
@@ -130,6 +183,30 @@ export function MarkdownField({
               <span aria-hidden>{entry.glyph}</span>
             </button>
           ))}
+          {onAttach && (
+            <>
+              <button
+                type="button"
+                title={t("training.editor.image")}
+                aria-label={t("training.editor.image")}
+                onClick={() => pickerRef.current?.click()}
+              >
+                <Icon name="upload" size={13} />
+              </button>
+              <input
+                ref={pickerRef}
+                type="file"
+                accept={accept}
+                multiple
+                hidden
+                onChange={(event) => {
+                  attachAtCaret(Array.from(event.target.files ?? []));
+                  // The same file picked twice in a row is still a change.
+                  event.target.value = "";
+                }}
+              />
+            </>
+          )}
           {ownPreview && (
             <Button onClick={() => setPreview(!preview)}>
               <Icon name="eye" size={13} />{" "}
@@ -152,6 +229,25 @@ export function MarkdownField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           rows={rows}
+          // A screenshot is usually on the clipboard or in a folder window,
+          // and the shortest way in is the way it is already travelling.
+          onPaste={(event) => {
+            const pictures = onAttach ? picturesIn(event.clipboardData?.files) : [];
+            if (pictures.length === 0) return;
+            event.preventDefault();
+            attachAtCaret(pictures);
+          }}
+          onDragOver={(event) => {
+            // "Files" is the drag's type for files from the system, not text.
+            const files = event.dataTransfer?.types.some((type) => type === "Files");
+            if (onAttach && files) event.preventDefault();
+          }}
+          onDrop={(event) => {
+            const pictures = onAttach ? picturesIn(event.dataTransfer?.files) : [];
+            if (pictures.length === 0) return;
+            event.preventDefault();
+            attachAtCaret(pictures);
+          }}
         />
       )}
       <p className="muted training-markdown-hint">{t("training.editor.hint")}</p>

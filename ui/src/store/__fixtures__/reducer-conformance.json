@@ -37745,6 +37745,7 @@
                     },
                     "guide": null,
                     "number": 11,
+                    "pull": null,
                     "summary": "A short pitch for it.",
                     "title": "Training submission: Guide 11",
                     "url": "https://github.com/FAForeverRustClient/guides/issues/11"
@@ -37784,6 +37785,7 @@
                     },
                     "guide": null,
                     "number": 12,
+                    "pull": null,
                     "summary": "A short pitch for it.",
                     "title": "Training submission: Guide 12",
                     "url": "https://github.com/FAForeverRustClient/guides/issues/12"
@@ -37846,6 +37848,7 @@
                 },
                 "guide": null,
                 "number": 11,
+                "pull": null,
                 "summary": "A short pitch for it.",
                 "title": "Training submission: Guide 11",
                 "url": "https://github.com/FAForeverRustClient/guides/issues/11"
@@ -37885,6 +37888,7 @@
                 },
                 "guide": null,
                 "number": 12,
+                "pull": null,
                 "summary": "A short pitch for it.",
                 "title": "Training submission: Guide 12",
                 "url": "https://github.com/FAForeverRustClient/guides/issues/12"
@@ -37960,6 +37964,7 @@
                 },
                 "guide": null,
                 "number": 11,
+                "pull": null,
                 "summary": "A short pitch for it.",
                 "title": "Training submission: Guide 11",
                 "url": "https://github.com/FAForeverRustClient/guides/issues/11"
@@ -37999,6 +38004,7 @@
                 },
                 "guide": null,
                 "number": 12,
+                "pull": null,
                 "summary": "A short pitch for it.",
                 "title": "Training submission: Guide 12",
                 "url": "https://github.com/FAForeverRustClient/guides/issues/12"
@@ -38079,6 +38085,7 @@
                 },
                 "guide": null,
                 "number": 12,
+                "pull": null,
                 "summary": "A short pitch for it.",
                 "title": "Training submission: Guide 12",
                 "url": "https://github.com/FAForeverRustClient/guides/issues/12"
@@ -38159,6 +38166,7 @@
                 },
                 "guide": null,
                 "number": 12,
+                "pull": null,
                 "summary": "A short pitch for it.",
                 "title": "Training submission: Guide 12",
                 "url": "https://github.com/FAForeverRustClient/guides/issues/12"
@@ -38240,6 +38248,7 @@
                 },
                 "guide": null,
                 "number": 12,
+                "pull": null,
                 "summary": "A short pitch for it.",
                 "title": "Training submission: Guide 12",
                 "url": "https://github.com/FAForeverRustClient/guides/issues/12"
@@ -38321,6 +38330,7 @@
                 },
                 "guide": null,
                 "number": 12,
+                "pull": null,
                 "summary": "A short pitch for it.",
                 "title": "Training submission: Guide 12",
                 "url": "https://github.com/FAForeverRustClient/guides/issues/12"
@@ -38456,6 +38466,7 @@
                     },
                     "guide": null,
                     "number": 11,
+                    "pull": null,
                     "summary": "A short pitch for it.",
                     "title": "Training submission: Guide 11",
                     "url": "https://github.com/FAForeverRustClient/guides/issues/11"
@@ -38495,6 +38506,7 @@
                     },
                     "guide": null,
                     "number": 12,
+                    "pull": null,
                     "summary": "A short pitch for it.",
                     "title": "Training submission: Guide 12",
                     "url": "https://github.com/FAForeverRustClient/guides/issues/12"
@@ -78630,7 +78642,8 @@
           "event": {
             "event": {
               "payload": {
-                "reason": "the map could not be staged"
+                "reason": "the map could not be staged",
+                "tutorialId": 8
               },
               "type": "launchFailed"
             },
@@ -78640,7 +78653,8 @@
             "categories": [],
             "launch": {
               "payload": {
-                "reason": "the map could not be staged"
+                "reason": "the map could not be staged",
+                "tutorialId": 8
               },
               "type": "failed"
             },
@@ -78687,7 +78701,8 @@
             "categories": [],
             "launch": {
               "payload": {
-                "reason": "the map could not be staged"
+                "reason": "the map could not be staged",
+                "tutorialId": 8
               },
               "type": "failed"
             },
@@ -78737,7 +78752,8 @@
             "categories": [],
             "launch": {
               "payload": {
-                "reason": "the map could not be staged"
+                "reason": "the map could not be staged",
+                "tutorialId": 8
               },
               "type": "failed"
             },
@@ -78804,7 +78820,8 @@
             "categories": [],
             "launch": {
               "payload": {
-                "reason": "the map could not be staged"
+                "reason": "the map could not be staged",
+                "tutorialId": 8
               },
               "type": "failed"
             },

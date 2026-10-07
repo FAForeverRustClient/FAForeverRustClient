@@ -82,17 +82,13 @@ pub enum TutorialLaunchStatus {
     #[default]
     Idle,
     #[serde(rename_all = "camelCase")]
-    Preparing {
-        tutorial_id: i32,
-        detail: String,
-    },
+    Preparing { tutorial_id: i32, detail: String },
     #[serde(rename_all = "camelCase")]
-    Launched {
-        tutorial_id: i32,
-    },
-    Failed {
-        reason: String,
-    },
+    Launched { tutorial_id: i32 },
+    /// Keyed by the lesson like the other two, so one lesson's failure is not
+    /// shown under every lesson the player opens afterwards.
+    #[serde(rename_all = "camelCase")]
+    Failed { tutorial_id: i32, reason: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -164,7 +160,9 @@ pub enum TutorialsEvent {
     Launched {
         tutorial_id: i32,
     },
+    #[serde(rename_all = "camelCase")]
     LaunchFailed {
+        tutorial_id: i32,
         reason: String,
     },
 }
@@ -220,8 +218,12 @@ pub fn reduce(state: &mut TutorialsState, event: &TutorialsEvent) {
                 tutorial_id: *tutorial_id,
             }
         }
-        TutorialsEvent::LaunchFailed { reason } => {
+        TutorialsEvent::LaunchFailed {
+            tutorial_id,
+            reason,
+        } => {
             state.launch = TutorialLaunchStatus::Failed {
+                tutorial_id: *tutorial_id,
                 reason: reason.clone(),
             }
         }
@@ -429,17 +431,21 @@ mod tests {
     }
 
     #[test]
-    fn a_failed_launch_reports_why() {
+    fn a_failed_launch_reports_why_and_for_which_lesson() {
+        // Keyed, so the view can show it under the lesson that failed and not
+        // under every lesson opened after it.
         let mut state = TutorialsState::default();
         reduce(
             &mut state,
             &TutorialsEvent::LaunchFailed {
+                tutorial_id: 7,
                 reason: "no install".into(),
             },
         );
         assert_eq!(
             state.launch,
             TutorialLaunchStatus::Failed {
+                tutorial_id: 7,
                 reason: "no install".into()
             }
         );
