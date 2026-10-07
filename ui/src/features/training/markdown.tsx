@@ -39,7 +39,13 @@ export type Block =
   | { kind: "quote"; text: string }
   | { kind: "code"; text: string }
   | { kind: "rule" }
-  | { kind: "table"; align: Align[]; header: string[]; rows: string[][] };
+  | { kind: "table"; align: Align[]; header: string[]; rows: string[][] }
+  /**
+   * The wiki's `## Title{.tabset}`: a heading it never shows, whose child
+   * headings (one level deeper) become tabs over the text under each, until
+   * the next heading at its own level or above.
+   */
+  | { kind: "tabset"; level: 1 | 2 | 3 | 4 };
 
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
 
@@ -165,6 +171,16 @@ export function parseBlocks(source: string): Block[] {
       // flattening the fourth into the third put a topic and its own parts at
       // the same rank. Deeper than four still flattens.
       const depth = heading[1].length;
+      // A tabset heading is one the wiki never shows: it turns the headings
+      // under it into tabs and draws no title of its own. The copied guides
+      // lean on that, writing a visible "## Spending Resources" over a
+      // "## Spending Resources{.tabset}", so showing it put every such title
+      // on the page twice. What it keeps is where the tabs start.
+      if (/\{[^}]*\.tabset\b[^}]*\}\s*$/.test(heading[2])) {
+        blocks.push({ kind: "tabset", level: Math.min(depth, 4) as 1 | 2 | 3 | 4 });
+        index += 1;
+        continue;
+      }
       blocks.push({
         kind: "heading",
         level: Math.min(depth, 4) as 1 | 2 | 3 | 4,
@@ -544,6 +560,10 @@ export function renderBlock(block: Block, key: number, base?: Addresses): ReactN
       return <pre key={key}>{block.text}</pre>;
     case "rule":
       return <hr key={key} />;
+    case "tabset":
+      // Only the guide reader lays tabs out; anywhere else the headings
+      // under it read as headings.
+      return null;
     case "list":
       return renderList(block, key, base);
     case "table":

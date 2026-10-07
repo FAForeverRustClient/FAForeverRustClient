@@ -9,8 +9,13 @@
 // generous line height, headings that rank visibly, and its sections as a
 // contents column beside the text when there is room, or a row of jump links
 // above it when there is not.
+//
+// The wiki's guides also come in tabs: a section whose parts the wiki shows
+// one at a time under a row of tab labels. Laid out one under another they
+// read as a run of short sections with nothing to say they belong together,
+// so the reader lays them out as the wiki does.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "../../i18n/useTranslation";
 import { parseBlocks, renderBlock, renderSpans, type Addresses, type Block } from "./markdown";
 
@@ -56,7 +61,110 @@ export function guideOutline(markdown: string): GuideOutline {
       start += 1;
     }
   }
-  return { blocks: blocks.slice(start), source };
+  return { blocks: withoutRedundantRules(blocks.slice(start)), source };
+}
+
+/**
+ * The level a guide writes its sections at: the shallowest heading it has,
+ * counting the tabsets it never shows, so the tabs under a top-level tabset
+ * rank as parts of a section rather than as sections.
+ */
+function topLevel(blocks: Block[]): number {
+  const levels = blocks.flatMap((block) =>
+    block.kind === "heading" || block.kind === "tabset" ? [block.level] : [],
+  );
+  return levels.length > 0 ? Math.min(...levels) : 1;
+}
+
+/**
+ * The guide's rules, less the ones that would draw a second line.
+ *
+ * The reader draws a hairline over every section, so a `---` its author put
+ * before a section, or right under one, doubles it; two rules in a row, or one
+ * at either end of the guide, separate nothing. The copied wiki guides do all
+ * of these, and a reader saw two or three lines stacked between two headings.
+ * A rule between two paragraphs is the author's own break and stays.
+ */
+function withoutRedundantRules(blocks: Block[]): Block[] {
+  const top = topLevel(blocks);
+  const isSection = (block: Block | undefined) =>
+    block?.kind === "heading" && block.level === top;
+  const kept: Block[] = [];
+  blocks.forEach((block, index) => {
+    if (block.kind !== "rule") {
+      kept.push(block);
+      return;
+    }
+    const before = kept[kept.length - 1];
+    const after = blocks.slice(index + 1).find((next) => next.kind !== "rule");
+    if (before === undefined || after === undefined) return;
+    if (before.kind === "rule" || isSection(before) || isSection(after)) return;
+    kept.push(block);
+  });
+  return kept;
+}
+
+/** A block and where it stands in the guide, which is what its key and anchor are. */
+export interface Placed {
+  block: Block;
+  index: number;
+}
+
+/** One tab: its heading, which becomes the label, and the text under it. */
+export interface GuideTab {
+  heading: Placed & { block: Extract<Block, { kind: "heading" }> };
+  body: Placed[];
+}
+
+/** The guide as the reader lays it out: blocks, and runs of them shown as tabs. */
+export type GuideSegment =
+  | { kind: "block"; placed: Placed }
+  | { kind: "tabs"; index: number; lead: Placed[]; tabs: GuideTab[] };
+
+/**
+ * Group a guide's tabsets into tabs, the way the wiki shows them.
+ *
+ * A tabset at level n takes everything after it up to the next heading at
+ * level n or above. Each heading one level deeper inside it starts a tab and
+ * names it; anything before the first of those stays above the tabs. A tabset
+ * with no headings under it has nothing to tab between, so its text is laid
+ * out as it would be without it.
+ */
+export function guideSegments(blocks: Block[]): GuideSegment[] {
+  const segments: GuideSegment[] = [];
+  let index = 0;
+  while (index < blocks.length) {
+    const block = blocks[index];
+    if (block.kind !== "tabset") {
+      segments.push({ kind: "block", placed: { block, index } });
+      index += 1;
+      continue;
+    }
+    const at = index;
+    const lead: Placed[] = [];
+    const tabs: GuideTab[] = [];
+    index += 1;
+    while (index < blocks.length) {
+      const inner = blocks[index];
+      const ends =
+        (inner.kind === "heading" || inner.kind === "tabset") && inner.level <= block.level;
+      if (ends) break;
+      if (inner.kind === "heading" && inner.level === block.level + 1) {
+        tabs.push({ heading: { block: inner, index }, body: [] });
+      } else if (tabs.length > 0) {
+        tabs[tabs.length - 1].body.push({ block: inner, index });
+      } else {
+        lead.push({ block: inner, index });
+      }
+      index += 1;
+    }
+    if (tabs.length === 0) {
+      for (const placed of lead) segments.push({ kind: "block", placed });
+    } else {
+      segments.push({ kind: "tabs", index: at, lead, tabs });
+    }
+  }
+  return segments;
 }
 
 interface Section {
@@ -107,10 +215,36 @@ export function GuideReader({
 
   // The guide's own top level, whatever it wrote it as: a guide whose
   // sections are `##` and one whose sections are `#` read the same.
-  const top = useMemo(() => {
-    const levels = blocks.flatMap((block) => (block.kind === "heading" ? [block.level] : []));
-    return levels.length > 0 ? Math.min(...levels) : 1;
-  }, [blocks]);
+  const top = useMemo(() => topLevel(blocks), [blocks]);
+  const segments = useMemo(() => guideSegments(blocks), [blocks]);
+
+  // Which tabset each tab's anchor belongs to, and which tab it is, so the
+  // contents list can open a tab rather than scroll to a heading it hid.
+  const tabOf = useMemo(() => {
+    const map = new Map<string, { tabset: number; tab: number }>();
+    for (const segment of segments) {
+      if (segment.kind !== "tabs") continue;
+      segment.tabs.forEach((tab, position) => {
+        map.set(anchorFor(tab.heading.block.text, tab.heading.index), {
+          tabset: segment.index,
+          tab: position,
+        });
+      });
+    }
+    return map;
+  }, [segments]);
+  // The open tab of each tabset, kept with the guide it was chosen in so
+  // another guide opens on its first tabs rather than on this one's choice.
+  const [choice, setChoice] = useState<{ of: Block[]; tabs: Record<number, number> }>({
+    of: blocks,
+    tabs: {},
+  });
+  const chosen = choice.of === blocks ? choice.tabs : {};
+  const setChosen = (update: (current: Record<number, number>) => Record<number, number>) =>
+    setChoice((previous) => ({
+      of: blocks,
+      tabs: update(previous.of === blocks ? previous.tabs : {}),
+    }));
 
   const sections = useMemo<Section[]>(
     () =>
@@ -129,11 +263,41 @@ export function GuideReader({
   );
   // A contents list of one or two entries is furniture, not navigation.
   const hasToc = sections.filter((section) => section.depth === 1).length >= 3;
-  const active = useActiveSection(hasToc ? sections : []);
+  const active = useActiveSection(hasToc ? sections : [], JSON.stringify(chosen));
 
   const jump = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const tab = tabOf.get(id);
+    if (tab) setChosen((current) => ({ ...current, [tab.tabset]: tab.tab }));
+    // After the tab is open, so the scroll lands on what is now shown, and
+    // for a tab on its card's top edge: a label in a second row of them would
+    // otherwise scroll the first row out of sight.
+    requestAnimationFrame(() => {
+      const target = document.getElementById(id);
+      (tab ? target?.closest(".training-guide-tabs") : target)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   };
+
+  const heading = (placed: Placed): ReactNode => {
+    if (placed.block.kind !== "heading") return null;
+    // Ranked against the guide's own top level: a section, a part of one,
+    // and anything deeper as a run-in label.
+    const rank = Math.min(placed.block.level - top + 1, 3);
+    const Tag = rank === 1 ? "h3" : rank === 2 ? "h4" : "h5";
+    return (
+      <Tag
+        key={placed.index}
+        id={anchorFor(placed.block.text, placed.index)}
+        className={`training-guide-heading is-rank-${rank}`}
+      >
+        {renderSpans(placed.block.text, base)}
+      </Tag>
+    );
+  };
+  const render = (placed: Placed): ReactNode =>
+    placed.block.kind === "heading" ? heading(placed) : renderBlock(placed.block, placed.index, base);
 
   return (
     // The frame is the size container the layout below asks about: a
@@ -157,22 +321,20 @@ export function GuideReader({
               ))}
           </nav>
         )}
-        {blocks.map((block, index) => {
-          if (block.kind !== "heading") return renderBlock(block, index, base);
-          // Ranked against the guide's own top level: a section, a part of
-          // one, and anything deeper as a run-in label.
-          const rank = Math.min(block.level - top + 1, 3);
-          const Tag = rank === 1 ? "h3" : rank === 2 ? "h4" : "h5";
-          return (
-            <Tag
-              key={index}
-              id={anchorFor(block.text, index)}
-              className={`training-guide-heading is-rank-${rank}`}
-            >
-              {renderSpans(block.text, base)}
-            </Tag>
-          );
-        })}
+        {segments.map((segment) =>
+          segment.kind === "block" ? (
+            render(segment.placed)
+          ) : (
+            <GuideTabs
+              key={`tabs-${segment.index}`}
+              segment={segment}
+              selected={chosen[segment.index] ?? 0}
+              onSelect={(tab) => setChosen((current) => ({ ...current, [segment.index]: tab }))}
+              render={render}
+              base={base}
+            />
+          ),
+        )}
       </article>
 
       {hasToc && (
@@ -207,14 +369,103 @@ export function GuideReader({
 }
 
 /**
+ * A tabset: the labels in a row, the chosen tab's text under them.
+ *
+ * The labels are the tab headings themselves and carry their anchors, so the
+ * contents list and a link into the guide both land on the row. Every panel is
+ * rendered and the others hidden, which keeps their pictures loading and
+ * their text findable with the browser's search once opened. The arrow keys,
+ * Home and End move between tabs, as the ARIA tabs pattern has them.
+ */
+function GuideTabs({
+  segment,
+  selected,
+  onSelect,
+  render,
+  base,
+}: {
+  segment: Extract<GuideSegment, { kind: "tabs" }>;
+  selected: number;
+  onSelect: (tab: number) => void;
+  render: (placed: Placed) => ReactNode;
+  base: Addresses;
+}) {
+  const list = useRef<HTMLDivElement>(null);
+  const current = Math.min(selected, segment.tabs.length - 1);
+  const panelId = (tab: number) => `guide-tabs-${segment.index}-${tab}`;
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // From the label that has focus rather than from the render's choice: two
+    // presses inside one frame would otherwise both start from the same tab.
+    const labels = [...(list.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [])];
+    const from = labels.indexOf(event.target as HTMLButtonElement);
+    const at = from === -1 ? current : from;
+    const last = segment.tabs.length - 1;
+    const next =
+      event.key === "ArrowRight"
+        ? at === last ? 0 : at + 1
+        : event.key === "ArrowLeft"
+          ? at === 0 ? last : at - 1
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? last
+              : null;
+    if (next === null) return;
+    event.preventDefault();
+    onSelect(next);
+    labels[next]?.focus();
+  };
+
+  return (
+    <>
+      {segment.lead.map(render)}
+      <section className="training-guide-tabs">
+        <div className="training-guide-tablist" role="tablist" ref={list} onKeyDown={onKeyDown}>
+          {segment.tabs.map((tab, position) => (
+            <button
+              type="button"
+              role="tab"
+              key={tab.heading.index}
+              id={anchorFor(tab.heading.block.text, tab.heading.index)}
+              className="training-guide-tab"
+              aria-selected={position === current}
+              aria-controls={panelId(position)}
+              tabIndex={position === current ? 0 : -1}
+              onClick={() => onSelect(position)}
+            >
+              {renderSpans(tab.heading.block.text, base)}
+            </button>
+          ))}
+        </div>
+        {segment.tabs.map((tab, position) => (
+          <div
+            key={tab.heading.index}
+            id={panelId(position)}
+            role="tabpanel"
+            className="training-guide-tabpanel"
+            aria-labelledby={anchorFor(tab.heading.block.text, tab.heading.index)}
+            hidden={position !== current}
+          >
+            {tab.body.map(render)}
+          </div>
+        ))}
+      </section>
+    </>
+  );
+}
+
+/**
  * The section the reader is in: the last heading that has scrolled past the
  * top of the tab.
  *
  * Read off the scroll of whatever element scrolls the guide (the tab itself),
  * on a frame rather than per event, and only while there is a contents column
- * to mark it in.
+ * to mark it in. A tab that is not the open one is skipped, since its label
+ * sits in the same row as the open one's; `tabs` is what changes when another
+ * is opened, and is read again then.
  */
-function useActiveSection(sections: Section[]): string | null {
+function useActiveSection(sections: Section[], tabs: string): string | null {
   const [active, setActive] = useState<string | null>(null);
   const frame = useRef(0);
   const ids = sections.map((section) => section.id).join(" ");
@@ -231,7 +482,8 @@ function useActiveSection(sections: Section[]): string | null {
       let current: string | null = list[0];
       for (const id of list) {
         const heading = document.getElementById(id);
-        if (heading && heading.getBoundingClientRect().top <= top) current = id;
+        if (!heading || heading.getAttribute("aria-selected") === "false") continue;
+        if (heading.getBoundingClientRect().top <= top) current = id;
       }
       setActive(current);
     };
@@ -245,7 +497,7 @@ function useActiveSection(sections: Section[]): string | null {
       if (frame.current !== 0) cancelAnimationFrame(frame.current);
       frame.current = 0;
     };
-  }, [ids]);
+  }, [ids, tabs]);
 
   return active;
 }

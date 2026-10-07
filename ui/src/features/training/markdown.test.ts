@@ -410,8 +410,19 @@ describe("what the copied guides carry from their old homes", () => {
   });
 
   it("drops the wiki's attribute block from a heading", () => {
-    expect(parseBlocks("## Early Game{.tabset}")).toEqual([
+    expect(parseBlocks("## Early Game {#early}")).toEqual([
       { kind: "heading", level: 2, text: "Early Game" },
+    ]);
+  });
+
+  it("reads a tabset heading as where tabs start, not as a title", () => {
+    expect(
+      parseBlocks("## Spending Resources\n## Spending Resources{.tabset}\n### Mass\n\ntext"),
+    ).toEqual([
+      { kind: "heading", level: 2, text: "Spending Resources" },
+      { kind: "tabset", level: 2 },
+      { kind: "heading", level: 3, text: "Mass" },
+      { kind: "paragraph", text: "text" },
     ]);
   });
 
