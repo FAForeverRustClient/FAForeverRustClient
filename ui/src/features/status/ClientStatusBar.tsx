@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import type {
@@ -337,13 +338,21 @@ export function MatchmakingTask({
   };
   // No progress bar: a search has no progress to measure, and an endless
   // sweep in the corner where downloads report theirs read as one that never
-  // finished. The Play tab's pulsing dot already says a search is running.
+  // finished. The Play tab's dot says it instead, and the same dot leads the
+  // line here, coloured by the same states.
   return (
     <div className="client-status-task" aria-live="polite">
+      <i className="client-status-search-dot" data-state={state.type} aria-hidden="true" />
       <span className="client-status-task-label" title={label}>{label}</span>
       {searching && (
-        <button type="button" className="client-status-task-action" onClick={stop}>
-          {t("status.matchmaking.stop")}
+        <button
+          type="button"
+          className="client-status-task-action"
+          onClick={stop}
+          aria-label={t("lobby.matchmaker.stopSearching")}
+          title={t("lobby.matchmaker.stopSearching")}
+        >
+          <Icon name="close" size={12} />
         </button>
       )}
     </div>

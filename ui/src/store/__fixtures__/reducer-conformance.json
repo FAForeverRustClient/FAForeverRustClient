@@ -39282,6 +39282,7 @@
             "friends": [
               "Bob"
             ],
+            "loginLookups": [],
             "players": []
           }
         },
@@ -39313,6 +39314,7 @@
             "friends": [
               "Bob"
             ],
+            "loginLookups": [],
             "players": [
               {
                 "avatarTooltip": "",
@@ -39346,6 +39348,7 @@
             "friends": [
               "Bob"
             ],
+            "loginLookups": [],
             "players": []
           }
         }
@@ -66617,6 +66620,7 @@
               "Ada",
               "Bob"
             ],
+            "loginLookups": [],
             "players": []
           }
         },
@@ -66659,6 +66663,7 @@
               "Ada",
               "Bob"
             ],
+            "loginLookups": [],
             "players": [
               {
                 "avatarTooltip": "",
@@ -66702,6 +66707,7 @@
               "Bob",
               "cid"
             ],
+            "loginLookups": [],
             "players": [
               {
                 "avatarTooltip": "",
@@ -66744,6 +66750,7 @@
               "Ada",
               "cid"
             ],
+            "loginLookups": [],
             "players": [
               {
                 "avatarTooltip": "",
@@ -66787,6 +66794,7 @@
             "friends": [
               "cid"
             ],
+            "loginLookups": [],
             "players": [
               {
                 "avatarTooltip": "",
@@ -66830,6 +66838,7 @@
             "friends": [
               "cid"
             ],
+            "loginLookups": [],
             "players": [
               {
                 "avatarTooltip": "",
@@ -66854,6 +66863,89 @@
           "expected": {
             "foes": [],
             "friends": [],
+            "loginLookups": [],
+            "players": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "a login lookup keeps one answer per login, the newest last",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": 1,
+                "login": "Ada"
+              },
+              "type": "loginLookedUp"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "foes": [],
+            "friends": [],
+            "loginLookups": [
+              {
+                "id": 1,
+                "login": "Ada"
+              }
+            ],
+            "players": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": null,
+                "login": "qai"
+              },
+              "type": "loginLookedUp"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "foes": [],
+            "friends": [],
+            "loginLookups": [
+              {
+                "id": 1,
+                "login": "Ada"
+              },
+              {
+                "id": null,
+                "login": "qai"
+              }
+            ],
+            "players": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "id": 1,
+                "login": "ADA"
+              },
+              "type": "loginLookedUp"
+            },
+            "kind": "Social"
+          },
+          "expected": {
+            "foes": [],
+            "friends": [],
+            "loginLookups": [
+              {
+                "id": null,
+                "login": "qai"
+              },
+              {
+                "id": 1,
+                "login": "ADA"
+              }
+            ],
             "players": []
           }
         }
@@ -109377,6 +109469,7 @@
     "social": {
       "foes": [],
       "friends": [],
+      "loginLookups": [],
       "players": []
     },
     "streams": {

@@ -1648,15 +1648,32 @@
   gap: var(--space-2);
 }
 
+/* Wraps, so the record drops under the note on a narrow card instead of
+   squeezing it. */
 .player-results-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-1) var(--space-3);
 }
 
 .player-results-head .player-maps-note {
   margin: 0;
+}
+
+/* The record of the rows on screen, across from the note: the note says what
+   is listed, this sums it up. */
+.player-results-summary {
+  margin: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.player-results-summary strong {
+  color: var(--color-text);
+  font-weight: 600;
 }
 
 /* The next page sits under the rows (issue 362), so it is still on screen

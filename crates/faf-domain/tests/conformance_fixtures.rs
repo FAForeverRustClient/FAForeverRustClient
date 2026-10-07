@@ -7580,6 +7580,27 @@ fn transition_cases() -> Vec<Case> {
                 SocialEvent::Cleared.into(),
             ],
         ),
+        case(
+            "a login lookup keeps one answer per login, the newest last",
+            vec![
+                SocialEvent::LoginLookedUp {
+                    login: "Ada".into(),
+                    id: Some(1),
+                }
+                .into(),
+                SocialEvent::LoginLookedUp {
+                    login: "qai".into(),
+                    id: None,
+                }
+                .into(),
+                // Another spelling of a login already answered replaces it.
+                SocialEvent::LoginLookedUp {
+                    login: "ADA".into(),
+                    id: Some(1),
+                }
+                .into(),
+            ],
+        ),
         // ── settings ─────────────────────────────────────────────────────
         case(
             "appearance values from outside their range are clamped on the way in",

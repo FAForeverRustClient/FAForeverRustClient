@@ -416,6 +416,9 @@ fn reviews(command: &ReviewsCommand) -> CommandPolicy {
 fn social(command: &SocialCommand) -> CommandPolicy {
     match command {
         SocialCommand::SetRelation { .. } => ORDINARY,
+        // A read whose answer is keyed by its login, so two at once are two
+        // answers, never one overwriting the other.
+        SocialCommand::LookUpLogin { .. } => ORDINARY,
     }
 }
 

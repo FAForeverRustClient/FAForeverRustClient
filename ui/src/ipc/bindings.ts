@@ -4235,6 +4235,19 @@ export type LocalReplayTeam = {
 	players: LocalReplayPlayer[],
 };
 
+/**
+ *  What the API said about a login nobody online answers to.
+ *
+ *  The user menu opens on names from replays, results and leaderboards, most
+ *  of them offline, and every account action (friend, foe, note) addresses the
+ *  player by id. `id` is `None` when the API knows no such account, which is
+ *  the answer for an IRC-only nickname.
+ */
+export type LoginLookup = {
+	login: string,
+	id: number | null,
+};
+
 /**  A map being added to or edited in a tournament's own map database. */
 export type MapDraft = {
 	/**  Empty to add a new map; an existing id edits that one. */
@@ -8678,6 +8691,14 @@ export type SocialCommand =
 	login: string,
 	relation: Relation,
 	member: boolean,
+} } |
+/**
+ *  Find the account behind a login nobody online answers to, so the user
+ *  menu can offer an offline player the same account actions as an
+ *  online one.
+ */
+{ type: "lookUpLogin"; payload: {
+	login: string,
 } };
 
 export type SocialEvent =
@@ -8712,7 +8733,15 @@ export type SocialEvent =
 	logins: string[],
 } } |
 /**  The lobby connection went away; relations are no longer authoritative. */
-{ type: "cleared" };
+{ type: "cleared" } |
+/**
+ *  The API answered an account lookup by login: the id, or `None` for a
+ *  login with no account behind it.
+ */
+{ type: "loginLookedUp"; payload: {
+	login: string,
+	id: number | null,
+} };
 
 /**  The player's own annotations: notes on players and on replays. */
 export type SocialPreferences = {
@@ -8727,6 +8756,8 @@ export type SocialState = {
 	foes: string[],
 	/**  Every FAF account currently announced online, sorted by login. */
 	players: PlayerProfile[],
+	/**  Accounts looked up by login for the user menu, oldest first. */
+	loginLookups: LoginLookup[],
 };
 
 /**
