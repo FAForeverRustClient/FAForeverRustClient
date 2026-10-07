@@ -175,6 +175,7 @@ describe("which roster group a nickname lands in", () => {
   const social: SocialState = {
     friends: ["Nexus-"],
     foes: ["Grump"],
+    loginLookups: [],
     players: [
       profile("Dog", "SNF"),
       profile("Rhiza", "SNF"),

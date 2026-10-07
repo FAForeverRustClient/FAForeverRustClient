@@ -124,10 +124,14 @@ export function ChatSettingsSection() {
           label={t("settings.chat.autoJoinNewbie")}
         />
       </SettingRow>
-      <div className="setting-block settings-muted-players">
-        <span className="setting-label">{t("settings.chat.mutedLabel")}</span>
-        <span className="muted">{t("settings.chat.mutedHint")}</span>
-        {preferences.mutedPlayers.length > 0 ? (
+      {/* Nobody can be muted any more: the foe list and "Hide foe messages"
+          above do that job, as in both reference clients. The list stays for
+          as long as it holds somebody muted before that, so they can still be
+          let back in, and goes once it is empty. */}
+      {preferences.mutedPlayers.length > 0 && (
+        <div className="setting-block settings-muted-players">
+          <span className="setting-label">{t("settings.chat.mutedLabel")}</span>
+          <span className="muted">{t("settings.chat.mutedHint")}</span>
           <div className="settings-chip-list" aria-label={t("settings.chat.mutedPlayers")}>
             {preferences.mutedPlayers.map((player) => (
               <span className="settings-chip surface" key={player.toLocaleLowerCase()}>
@@ -143,8 +147,8 @@ export function ChatSettingsSection() {
               </span>
             ))}
           </div>
-        ) : <span className="settings-empty muted">{t("settings.chat.mutedEmpty")}</span>}
-      </div>
+        </div>
+      )}
       <SettingRow label={t("settings.chat.visibleHistory")} hint={t("settings.chat.visibleHistoryHint")}>
         <select
           className="settings-select"

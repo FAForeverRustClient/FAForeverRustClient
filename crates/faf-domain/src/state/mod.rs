@@ -148,7 +148,8 @@ pub use settings::{
     MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
-    PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent, SocialState,
+    LoginLookup, PlayerLobbyRating, PlayerProfile, Relation, SocialCommand, SocialEvent,
+    SocialState, MAX_LOGIN_LOOKUPS,
 };
 pub use streams::{
     LiveStream, StreamPlatform, StreamsCommand, StreamsEvent, StreamsState, StreamsStatus,
