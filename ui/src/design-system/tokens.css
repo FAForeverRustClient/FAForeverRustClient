@@ -74,6 +74,13 @@
   --color-training-lesson: var(--color-faction-aeon);
   --color-training-community: var(--color-subtle);
 
+  /* Text laid over a picture, on the dark gradient that carries it, and what
+     a picture's frame shows before it has loaded. Fixed in every theme on
+     purpose: what is under them is a picture, which a light theme does not
+     make light, so no theme block overrides these. */
+  --color-on-picture: #ffffff;
+  --color-picture-backdrop: #0b0f0a;
+
   /* The number a player card is opened for.
      Its own token rather than `--color-accent`, because in this theme the
      accent *is* the text colour: a rating drawn in it would be the white it

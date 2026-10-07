@@ -1093,7 +1093,7 @@
   overflow: hidden;
   font: inherit;
   text-align: left;
-  background: #0b0f0a;
+  background: var(--color-picture-backdrop);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -1163,7 +1163,7 @@
   display: -webkit-box;
   min-width: 0;
   overflow: hidden;
-  color: rgba(255, 255, 255, 0.9);
+  color: color-mix(in srgb, var(--color-on-picture) 90%, transparent);
   font-size: 13px;
   line-height: 1.4;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
@@ -1181,7 +1181,7 @@
 }
 
 .training-basic-figure {
-  color: #fff;
+  color: var(--color-on-picture);
   font-size: 18px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -1194,7 +1194,7 @@
 }
 
 .training-basic-unit {
-  color: rgba(255, 255, 255, 0.62);
+  color: color-mix(in srgb, var(--color-on-picture) 62%, transparent);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.07em;
