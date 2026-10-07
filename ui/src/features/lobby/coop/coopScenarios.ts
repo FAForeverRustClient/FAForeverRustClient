@@ -88,16 +88,17 @@ export function displayScenarioName(
   return key ? t(key) : scenario.name;
 }
 
+/**
+ * A campaign as the dropdown lists it: its name and its badge, for every
+ * campaign alike. One template rather than one per kind of campaign, so a
+ * language that wants another format changes it in one place, and the badge
+ * always reads as `lobby.coop.badge.*` says it.
+ */
 export function displayScenarioOptionLabel(
   scenario: CoopScenario,
   t: Translation["t"],
 ): string {
-  const key = scenario.faction !== "custom"
-    ? "lobby.coop.factionCampaignOption"
-    : scenario.category === "custom"
-      ? "lobby.coop.communityCampaignOption"
-      : "lobby.coop.officialCampaignOption";
-  return t(key, {
+  return t("lobby.coop.campaignOption", {
     name: displayScenarioName(scenario, t),
     badge: t(`lobby.coop.badge.${scenarioBadge(scenario)}`),
   });

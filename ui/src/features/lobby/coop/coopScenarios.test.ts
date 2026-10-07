@@ -41,9 +41,9 @@ describe("co-op campaign ordering", () => {
 
   describe("co-op campaign names", () => {
     it.each([
-      [scenario("Vanilla UEF Campaign", "uef", "sc", 1), "Кампания ОФЗ (SC)"],
-      [scenario("Vanilla Cybran Campaign", "cybran", "sc", 2), "Кампания Кибран (SC)"],
-      [scenario("Vanilla Aeon Campaign", "aeon", "sc", 3), "Кампания Эон (SC)"],
+      [scenario("Vanilla UEF Campaign", "uef", "sc", 1), "Кампания ОФЗ"],
+      [scenario("Vanilla Cybran Campaign", "cybran", "sc", 2), "Кампания Кибран"],
+      [scenario("Vanilla Aeon Campaign", "aeon", "sc", 3), "Кампания Эон"],
     ])("uses the Russian campaign label for %s", (entry, expected) => {
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
         translateIn("ru", key, values);
@@ -54,7 +54,7 @@ describe("co-op campaign ordering", () => {
       const entry = scenario("Forged Alliance Campaign", "custom", "scfa", 1);
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
         translateIn("ru", key, values);
-      expect(displayScenarioName(entry, t)).toBe("Кампания SCFA (Forged Alliance)");
+      expect(displayScenarioName(entry, t)).toBe("Кампания Forged Alliance");
       expect(scenarioBadge(entry)).toBe("official");
     });
 
@@ -110,17 +110,17 @@ describe("co-op campaign ordering", () => {
       ];
 
       expect(entries.map((entry) => displayScenarioName(entry, t))).toEqual([
-        "Кампания ОФЗ (SC)",
-        "Кампания Кибран (SC)",
-        "Кампания Эон (SC)",
-        "Кампания SCFA (Forged Alliance)",
+        "Кампания ОФЗ",
+        "Кампания Кибран",
+        "Кампания Эон",
+        "Кампания Forged Alliance",
         "Кампания Коалиции",
         "Кампания Серафим",
         "Отдельные миссии",
       ]);
     });
 
-    it("uses catalogue campaign option labels without repeating badges", () => {
+    it("lists every campaign as its name and its badge, in Russian", () => {
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
         translateIn("ru", key, values);
 
@@ -129,19 +129,19 @@ describe("co-op campaign ordering", () => {
           scenario("Vanilla UEF Campaign", "uef", "sc", 1),
           t,
         ),
-      ).toBe("Кампания ОФЗ (SC)");
+      ).toBe("Кампания ОФЗ (ОФЗ)");
       expect(
         displayScenarioOptionLabel(
           scenario("Seraphim Campaign", "seraphim", "custom", 2),
           t,
         ),
-      ).toBe("Кампания Серафим");
+      ).toBe("Кампания Серафим (Серафим)");
       expect(
         displayScenarioOptionLabel(
           scenario("Forged Alliance Campaign", "custom", "scfa", 3),
           t,
         ),
-      ).toBe("Кампания SCFA (Forged Alliance)");
+      ).toBe("Кампания Forged Alliance (Официальная)");
       expect(
         displayScenarioOptionLabel(
           scenario("Coalition Campaign", "custom", "custom", 4),
@@ -150,36 +150,28 @@ describe("co-op campaign ordering", () => {
       ).toBe("Кампания Коалиции (Пользовательская)");
     });
 
-    it("chooses campaign option wording by campaign kind", () => {
+    it("keeps the English dropdown labels as they were before translation", () => {
+      // One template for every campaign: a faction campaign keeps its faction
+      // in brackets, as the dropdown has always shown it.
       const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
         translateIn("en", key, values);
 
       expect(displayScenarioOptionLabel(
-        scenario("Forged Alliance Campaign", "custom", "scfa", 1),
+        scenario("Vanilla UEF Campaign", "uef", "sc", 1),
+        t,
+      )).toBe("Vanilla UEF Campaign (UEF)");
+      expect(displayScenarioOptionLabel(
+        scenario("Forged Alliance Campaign", "custom", "scfa", 2),
         t,
       )).toBe("Forged Alliance Campaign (Official)");
       expect(displayScenarioOptionLabel(
-        scenario("Coalition Campaign", "custom", "custom", 2),
+        scenario("Coalition Campaign", "custom", "custom", 3),
         t,
       )).toBe("Coalition Campaign (Custom)");
       expect(displayScenarioOptionLabel(
-        scenario("Seraphim Campaign", "seraphim", "custom", 3),
+        scenario("Seraphim Campaign", "seraphim", "custom", 4),
         t,
-      )).toBe("Seraphim Campaign");
-    });
-
-    it("uses the campaign name for a faction campaign option", () => {
-      const t = (key: Parameters<typeof translateIn>[1], values?: Parameters<typeof translateIn>[2]) =>
-        translateIn("en", key, values);
-
-      expect(displayScenarioName(
-        scenario("Seraphim Campaign", "seraphim", "custom", 1),
-        t,
-      )).toBe("Seraphim Campaign");
-      expect(displayScenarioOptionLabel(
-        scenario("Seraphim Campaign", "seraphim", "custom", 1),
-        t,
-      )).toBe("Seraphim Campaign");
+      )).toBe("Seraphim Campaign (Seraphim)");
     });
   });
 
