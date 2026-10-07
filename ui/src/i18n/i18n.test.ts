@@ -138,7 +138,7 @@ describe("co-op mission catalogue lookup", () => {
 
   it("normalizes folder paths and version suffixes", () => {
     expect(translateCoopMissionName("maps/SCCA_Coop_R03.v0021", "Renamed by API"))
-      .toBe("\u0414\u0435\u0431\u0440\u0438\u0444\u0438\u043d\u0433 (Defrag)");
+      .toBe("\u0414\u0435\u0444\u0440\u0430\u0433\u043c\u0435\u043d\u0442\u0430\u0446\u0438\u044f (Defrag)");
   });
 
   it("does not use the display name as a translation key", () => {
