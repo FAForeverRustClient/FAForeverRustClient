@@ -6732,6 +6732,8 @@ fn cases() -> Vec<Case> {
                         coop_board_columns: Vec::new(),
                         matchmaker_recent_columns: Vec::new(),
                         matchmaker_recent_order: Vec::new(),
+                        matchmaker_invite_columns: Vec::new(),
+                        matchmaker_invite_order: Vec::new(),
                         mod_vault_preset: "recommended".into(),
                         mod_presets: Vec::new(),
                         leaderboard_rating_columns: vec!["games".into(), "updated".into()],
