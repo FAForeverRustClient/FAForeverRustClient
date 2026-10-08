@@ -33,7 +33,7 @@ describe("who is in a game before a search (#443)", () => {
   });
 
   it("counts a launched matchmaker game and a custom lobby somebody joined", () => {
-    expect(playersInGames([], [game({ launchedAt: "2026-10-05T21:00:00Z" })]).has("freerating4you")).toBe(true);
+    expect(playersInGames([], [game({ launchedAt: 1_791_234_000 })]).has("freerating4you")).toBe(true);
     expect(playersInGames([game({ gameType: "custom" })], []).has("freerating4you")).toBe(true);
   });
 });
