@@ -17,7 +17,7 @@ import { partyChatWidth, withPartyChatResized } from "./matchmakerLayout";
 import { placementForQueue, ratingForQueue } from "./matchmakerRatings";
 import { playersInRatingRange } from "./queueRatingRange";
 import { secondsUntil } from "./queuePopClock";
-import { allGamePlayers } from "../../../shared/liveReplayModel";
+import { playersInGames } from "./partyReadiness";
 import "./matchmaker.css";
 import { t } from "../../../i18n";
 import { useLocale } from "../../../i18n/useTranslation";
@@ -95,7 +95,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   // lobby included, when the search starts. The server refuses it anyway, with
   // a notice the search bar never hears about.
   const membersInGame = useMemo(() => {
-    const busy = new Set([...openGames, ...liveGames].flatMap((game) => allGamePlayers(game)));
+    const busy = playersInGames(openGames, liveGames);
     const ids = party.members.length > 0 ? party.members.map((member) => member.playerId) : playerId === null ? [] : [playerId];
     const names = ids
       .filter((id) => id !== playerId)
