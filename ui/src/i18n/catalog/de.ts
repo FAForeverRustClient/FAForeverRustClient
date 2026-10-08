@@ -1609,7 +1609,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.view.unranked": "Ungewertet",
   "maps.view.sort.name": "Name",
   "maps.view.sort.size": "Größte",
-  "maps.view.sort.installed": "Zuletzt installiert",
+  "maps.view.sort.downloaded": "Zuletzt heruntergeladen",
   "maps.view.detectionUnavailable": "Der Installationsstatus lässt sich nicht ermitteln.",
   "maps.view.emptyVault": "Keine Karten verfügbar",
   "maps.view.emptyVaultHint": "Aktualisiere den Vault, sobald die FAF-API erreichbar ist.",

@@ -1928,7 +1928,7 @@ export const en = {
   "maps.view.unranked": "Unranked",
   "maps.view.sort.name": "Name",
   "maps.view.sort.size": "Largest",
-  "maps.view.sort.installed": "Recently installed",
+  "maps.view.sort.downloaded": "Recently downloaded",
   "maps.view.sort.players": "Players",
   "maps.view.preset.custom": "Custom",
   "maps.view.preset.builtin": "Built-in",
