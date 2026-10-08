@@ -14,6 +14,12 @@ interface Props {
   onChange: (low: number | null, high: number | null) => void;
   /** Renders a value for the readout, e.g. appending a unit. */
   format?: (value: number) => string;
+  /**
+   * The scale's ends are real values rather than "no limit". A percentage
+   * slider stops at 0% and 100%, and "any" there read as "unlimited" (#459):
+   * with this set an open side reads as its end of the scale.
+   */
+  closedScale?: boolean;
 }
 
 export function RangeSlider({
@@ -25,6 +31,7 @@ export function RangeSlider({
   high,
   onChange,
   format = String,
+  closedScale = false,
 }: Props) {
   const { t } = useTranslation();
   const id = useId();
@@ -91,9 +98,9 @@ export function RangeSlider({
           {label}
         </span>
         <span className={`range-slider-value${unbounded ? " is-any" : ""}`}>
-          {unbounded
-            ? t("common.any")
-            : t("common.rangeBetween", { low: low === null ? t("common.any") : format(low), high: high === null ? t("common.any") : format(high) })}
+          {rangeReadout({ low, high, min, max, format, closedScale, any: t("common.any") }, (lowText, highText) =>
+            t("common.rangeBetween", { low: lowText, high: highText }),
+          )}
         </span>
       </div>
 
@@ -144,4 +151,38 @@ export function RangeSlider({
       </div>
     </div>
   );
+}
+
+/**
+ * The text above the track. "Any" when neither side is set; one value when
+ * both handles sit on the same one, rather than "76% to 76%" (#459); else
+ * "low to high", where an open side says "any" unless the scale is closed.
+ */
+export function rangeReadout(
+  {
+    low,
+    high,
+    min,
+    max,
+    format,
+    closedScale,
+    any,
+  }: {
+    low: number | null;
+    high: number | null;
+    min: number;
+    max: number;
+    format: (value: number) => string;
+    closedScale: boolean;
+    any: string;
+  },
+  between: (low: string, high: string) => string,
+): string {
+  if (low === null && high === null) return any;
+  const lowValue = low ?? min;
+  const highValue = high ?? max;
+  if (lowValue === highValue) return format(lowValue);
+  const side = (value: number | null, end: number) =>
+    value !== null ? format(value) : closedScale ? format(end) : any;
+  return between(side(low, min), side(high, max));
 }
