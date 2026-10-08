@@ -8,10 +8,21 @@ import type { AccessStatus, Article, HallOfFame, SiteWrite, TourneyLoadStatus } 
 import { useTranslation } from "../../../i18n/useTranslation";
 import { RichText } from "../detail/RichText";
 
+/**
+ * The Hall of Fame: players by championships, with a search over the names,
+ * as on the website. There is no teams board (#444): a team is named and
+ * formed anew for every tournament, so no team ever won twice and the board
+ * only listed every winner once. The rank stays the player's place on the
+ * whole board when the search narrows it.
+ */
 export function HallOfFamePage({ hall, status }: { hall: HallOfFame | null; status: TourneyLoadStatus }) {
   const { t } = useTranslation();
+  const [query, setQuery] = useState("");
   if (status.type === "failed") return <p className="surface-error">{status.payload.reason}</p>;
   if (hall === null) return <p className="muted">{t("tournaments.loading")}</p>;
+  const needle = query.trim().toLocaleLowerCase();
+  const ranked = hall.players.map((player, index) => ({ player, rank: index + 1 }));
+  const shown = needle === "" ? ranked : ranked.filter(({ player }) => player.name.toLocaleLowerCase().includes(needle));
   return (
     <div className="tournament-site-page">
       <h2>{t("tournaments.site.hall")}</h2>
@@ -19,8 +30,21 @@ export function HallOfFamePage({ hall, status }: { hall: HallOfFame | null; stat
         <h3>
           {t("tournaments.hall.players")} <span className="muted">{t("tournaments.hall.byTitles")}</span>
         </h3>
+        {hall.players.length > 0 && (
+          <label className="tournament-field">
+            <span>{t("tournaments.hall.search")}</span>
+            <input
+              type="search"
+              value={query}
+              placeholder={t("tournaments.hall.searchPlaceholder")}
+              onChange={(changed) => setQuery(changed.target.value)}
+            />
+          </label>
+        )}
         {hall.players.length === 0 ? (
           <p className="muted">{t("tournaments.hall.noPlayers")}</p>
+        ) : shown.length === 0 ? (
+          <p className="muted">{t("tournaments.hall.noMatch")}</p>
         ) : (
           <table className="tournament-standings">
             <thead>
@@ -32,39 +56,12 @@ export function HallOfFamePage({ hall, status }: { hall: HallOfFame | null; stat
               </tr>
             </thead>
             <tbody>
-              {hall.players.map((player, index) => (
+              {shown.map(({ player, rank }) => (
                 <tr key={player.fafId}>
-                  <td className="mono">{index + 1}</td>
+                  <td className="mono">{rank}</td>
                   <td>{player.name}</td>
                   <td className="mono">{player.wins}</td>
                   <td className="mono">{player.entered}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-      <section className="surface tournament-site-panel">
-        <h3>
-          {t("tournaments.hall.teams")} <span className="muted">{t("tournaments.hall.byTitles")}</span>
-        </h3>
-        {hall.teams.length === 0 ? (
-          <p className="muted">{t("tournaments.hall.noTeams")}</p>
-        ) : (
-          <table className="tournament-standings">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>{t("tournaments.hall.team")}</th>
-                <th>{t("tournaments.hall.wins")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {hall.teams.map((team, index) => (
-                <tr key={team.name}>
-                  <td className="mono">{index + 1}</td>
-                  <td>{team.name}</td>
-                  <td className="mono">{team.wins}</td>
                 </tr>
               ))}
             </tbody>

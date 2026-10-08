@@ -49,11 +49,10 @@ export function isCustomGameRanked(
     return false;
   }
 
-  // 0. A free-for-all is never rated (#292), and neither is a game of more
-  //    than two teams (#368). See `isFreeForAll` and `isMultiTeam`.
-  if (isFreeForAll(game) || isMultiTeam(game)) {
-    return false;
-  }
+  // Team setups are deliberately not consulted (#432). The server does refuse
+  // to rate a free-for-all or a game of more than two teams, but a lobby's
+  // team layout is what the host has not got round to yet, not what will be
+  // played: tagging those lobbies "unranked" kept them from filling.
 
   // 1. Check map ranked status
   const mapMeta = findVaultMapByFolder(vaultMaps, game.map);
@@ -75,47 +74,6 @@ export function isCustomGameRanked(
   }
 
   return true;
-}
-
-/** The team a player without one sits on: `FFA_TEAM` in the server's config. */
-const FFA_TEAM = "1";
-
-/**
- * Would the server rate this lobby as it stands a free-for-all?
- *
- * The server's own rule (`Game.is_ffa` in `server/games/game.py`): three or
- * more players, at least one of them on team 1, which is the "no team" slot.
- * A game launched like that is marked `FFA_NOT_RANKED` and rates nobody, so
- * "Hide unranked" hides it and the row carries the "Unranked" tag. It says
- * what the lobby is now: a lobby still putting players into teams reads as
- * unranked until it has.
- */
-export function isFreeForAll(game: Game): boolean {
-  const seated = Object.entries(game.teams).filter(([team]) => !observerTeam(team));
-  const players = seated.reduce((total, [, members]) => total + members.length, 0);
-  return players >= 3 && seated.some(([team, members]) => team === FFA_TEAM && members.length > 0);
-}
-
-
-/**
- * Would the server rate this lobby as it stands a game of more than two teams?
- *
- * The server's `Game.is_multi_team`: more than two distinct teams among the
- * players, the "no team" slot counting as one of them. Such a game is marked
- * `MULTI_TEAM` and rates nobody. Without this rule a four-team lobby read as
- * ranked whenever every player had picked a team and as unranked whenever one
- * had not, through the free-for-all rule above, so the tag came and went while
- * players moved around (#368). It is unranked the whole time.
- *
- * Uneven teams are deliberately not checked, although the server rejects
- * those too: every lobby is uneven while it fills, and a tag on nearly every
- * open game would stop saying anything.
- */
-export function isMultiTeam(game: Game): boolean {
-  const teams = Object.entries(game.teams).filter(
-    ([team, members]) => !observerTeam(team) && members.length > 0,
-  );
-  return teams.length > 2;
 }
 
 /**
