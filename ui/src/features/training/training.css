@@ -379,6 +379,19 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* With a background picture of the player's own (issue 439), the page's colour
+   is a hard-edged strip cut across the picture. There the heading is a bar of
+   its own instead: the blurred veil the Play tab's panels take, rounded, with
+   room at its ends, so the grid still passes behind it legibly and the picture
+   shows through. */
+html[data-background="custom"] .training-collection-head {
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
 .training-collection-name {
   display: flex;
   min-width: 0;
