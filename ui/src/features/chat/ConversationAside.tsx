@@ -106,6 +106,7 @@ export function ConversationAside({
           waitSeconds={replayDelayRemaining(presence.game, clock)}
           tracking={tracking}
           onPlayerMenu={onPlayerContextMenu}
+          layout="stacked"
         />
       </aside>
     );

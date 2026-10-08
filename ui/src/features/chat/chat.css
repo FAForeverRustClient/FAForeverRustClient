@@ -1754,8 +1754,13 @@ img.chat-game-map {
   border: 0;
 }
 
+/* As wide as the panel and never wider (issue 448): the stacked card is laid
+   out for this width, and `min-width: 0` lets it shrink with the panel when
+   the roster column is dragged narrower. */
 .chat-conversation-aside.is-live .replay-card {
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .chat-conversation-aside-card {
