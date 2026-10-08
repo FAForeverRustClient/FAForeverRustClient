@@ -39220,6 +39220,7 @@
                   "id": "n1",
                   "kind": "mention",
                   "read": false,
+                  "text": null,
                   "title": "Hello"
                 }
               },
@@ -39236,6 +39237,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": false,
+                "text": null,
                 "title": "Hello"
               }
             ]
@@ -66378,6 +66380,7 @@
                   "id": "n1",
                   "kind": "mention",
                   "read": false,
+                  "text": null,
                   "title": "Notification n1"
                 }
               },
@@ -66394,6 +66397,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": false,
+                "text": null,
                 "title": "Notification n1"
               }
             ]
@@ -66410,6 +66414,7 @@
                   "id": "n2",
                   "kind": "friendOnline",
                   "read": false,
+                  "text": null,
                   "title": "Notification n2"
                 }
               },
@@ -66426,6 +66431,7 @@
                 "id": "n2",
                 "kind": "friendOnline",
                 "read": false,
+                "text": null,
                 "title": "Notification n2"
               },
               {
@@ -66435,6 +66441,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": false,
+                "text": null,
                 "title": "Notification n1"
               }
             ]
@@ -66459,6 +66466,7 @@
                 "id": "n2",
                 "kind": "friendOnline",
                 "read": false,
+                "text": null,
                 "title": "Notification n2"
               },
               {
@@ -66468,6 +66476,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": true,
+                "text": null,
                 "title": "Notification n1"
               }
             ]
@@ -66492,6 +66501,7 @@
                 "id": "n2",
                 "kind": "friendOnline",
                 "read": false,
+                "text": null,
                 "title": "Notification n2"
               },
               {
@@ -66501,6 +66511,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": true,
+                "text": null,
                 "title": "Notification n1"
               }
             ]
@@ -66517,6 +66528,7 @@
                   "id": "n1",
                   "kind": "mention",
                   "read": false,
+                  "text": null,
                   "title": "Notification n1"
                 }
               },
@@ -66533,6 +66545,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": false,
+                "text": null,
                 "title": "Notification n1"
               },
               {
@@ -66542,6 +66555,7 @@
                 "id": "n2",
                 "kind": "friendOnline",
                 "read": false,
+                "text": null,
                 "title": "Notification n2"
               }
             ]
@@ -66566,6 +66580,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": false,
+                "text": null,
                 "title": "Notification n1"
               },
               {
@@ -66575,6 +66590,7 @@
                 "id": "n2",
                 "kind": "friendOnline",
                 "read": true,
+                "text": null,
                 "title": "Notification n2"
               }
             ]

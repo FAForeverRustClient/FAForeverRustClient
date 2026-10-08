@@ -1500,6 +1500,13 @@ export type ClientNotification = {
 	createdAt: string,
 	read: boolean,
 	action: NotificationAction | null,
+	/**
+	 *  The catalog entry this notification is written from, when it has one.
+	 *  `title` and `body` stay the English text, for the OS notification
+	 *  before the UI has a language and for anything that reads them raw; the
+	 *  UI shows this translated instead (#458).
+	 */
+	text: NotificationText | null,
 };
 
 /**  A release that could be installed over the running client. */
@@ -5837,6 +5844,18 @@ export type NotificationSoundChoicesPatch = {
 
 export type NotificationState = {
 	items: ClientNotification[],
+};
+
+/**
+ *  A notification's text as a catalog key and the values it is filled with.
+ *
+ *  The UI looks up `<key>.title` and `<key>.body` and fills each with
+ *  `params`. A side the catalog has no entry for falls back to the English
+ *  `title` or `body`, so a server-supplied reason is still shown as sent.
+ */
+export type NotificationText = {
+	key: string,
+	params: { [key in string]: string },
 };
 
 /**

@@ -222,13 +222,20 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                 let notify = !hidden_foe
                     && ((private && private_messages) || (mentioned && mentions_enabled));
                 if notify {
-                    notifications::add(
+                    // The body is what they wrote, so only the title has an entry.
+                    notifications::add_text(
                         out,
                         if private {
                             NotificationKind::PrivateMessage
                         } else {
                             NotificationKind::Mention
                         },
+                        notifications::Text::new(if private {
+                            "notifications.msg.privateMessage"
+                        } else {
+                            "notifications.msg.mention"
+                        })
+                        .with("sender", &message.sender),
                         if private {
                             format!("Message from {}", message.sender)
                         } else {

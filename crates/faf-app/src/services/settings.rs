@@ -912,6 +912,11 @@ fn check_cache_size_alert(
                 action: Some(NotificationAction::OpenSettings {
                     section: Some("gameCache".to_string()),
                 }),
+                text: Some(
+                    notifications::Text::new("notifications.msg.gameCacheAlert")
+                        .with("size", format!("{size_gb:.1}"))
+                        .with("threshold", threshold_gb),
+                ),
             };
             out.emit(NotificationEvent::Added { notification });
         }

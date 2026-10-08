@@ -5581,6 +5581,7 @@ fn cases() -> Vec<Case> {
                         action: None,
                         created_at: "2026-01-01T00:00:00Z".into(),
                         read: false,
+                        text: None,
                     },
                 }
                 .into(),
@@ -8178,6 +8179,7 @@ fn notification(id: &str, kind: NotificationKind) -> ClientNotification {
         action: None,
         created_at: "2026-01-01T00:00:00Z".into(),
         read: false,
+        text: None,
     }
 }
 

@@ -107,7 +107,7 @@ pub use nav::{
 };
 pub use notifications::{
     ClientNotification, NotificationAction, NotificationCommand, NotificationEvent,
-    NotificationKind, NotificationState,
+    NotificationKind, NotificationState, NotificationText,
 };
 pub use player_card::{
     aggregate_map_stats, is_retired_leaderboard, leaderboard_display_rank, sort_league_placements,

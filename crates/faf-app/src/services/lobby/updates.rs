@@ -114,9 +114,10 @@ pub(super) async fn handle_update<'a>(
         LobbyUpdate::Party(party) => on_party(party, ctx, out),
         LobbyUpdate::PartyInvite { player_id, login } => {
             if out.with_state(|state| state.settings.notifications.party_invites) {
-                notifications::add(
+                notifications::add_text(
                     out,
                     NotificationKind::PartyInvite,
+                    notifications::Text::new("notifications.msg.partyInvite").with("login", &login),
                     "Party invitation",
                     format!("{login} invited you to their matchmaker party."),
                     Some(NotificationAction::AcceptPartyInvite { player_id }),
@@ -168,9 +169,11 @@ pub(super) async fn handle_update<'a>(
                     .collect::<Vec<_>>()
             });
             for login in newly_online {
-                notifications::add(
+                notifications::add_text(
                     out,
                     NotificationKind::FriendOnline,
+                    notifications::Text::new("notifications.msg.friendOnline")
+                        .with("login", &login),
                     "Friend online",
                     format!("{login} is now online."),
                     None,
@@ -206,9 +209,11 @@ pub(super) async fn handle_update<'a>(
                     .collect::<Vec<_>>()
             });
             for login in offline_friends {
-                notifications::add(
+                notifications::add_text(
                     out,
                     NotificationKind::FriendOffline,
+                    notifications::Text::new("notifications.msg.friendOffline")
+                        .with("login", &login),
                     "Friend offline",
                     format!("{login} is now offline."),
                     None,
@@ -223,16 +228,40 @@ pub(super) async fn handle_update<'a>(
             reconcile_own_avatar(ctx, out).await;
         }
         LobbyUpdate::Notice { style, text } => {
-            let (kind, title) = match style {
-                ServerNoticeStyle::Info => (NotificationKind::ServerNotice, "Message from server"),
-                ServerNoticeStyle::Warning => {
-                    (NotificationKind::ServerWarning, "Warning from server")
+            let (kind, key, title) = match style {
+                ServerNoticeStyle::Info => (
+                    NotificationKind::ServerNotice,
+                    "serverInfo",
+                    "Message from server",
+                ),
+                ServerNoticeStyle::Warning => (
+                    NotificationKind::ServerWarning,
+                    "serverWarning",
+                    "Warning from server",
+                ),
+                ServerNoticeStyle::Error => {
+                    (NotificationKind::Error, "serverError", "Error from server")
                 }
-                ServerNoticeStyle::Error => (NotificationKind::Error, "Error from server"),
-                ServerNoticeStyle::Kill => (NotificationKind::Error, "Game stopped by server"),
-                ServerNoticeStyle::Kick => (NotificationKind::Error, "Disconnected by server"),
+                ServerNoticeStyle::Kill => (
+                    NotificationKind::Error,
+                    "serverKill",
+                    "Game stopped by server",
+                ),
+                ServerNoticeStyle::Kick => (
+                    NotificationKind::Error,
+                    "serverKick",
+                    "Disconnected by server",
+                ),
             };
-            notifications::add_required(out, kind, title, text, None);
+            // The body is the server's own words, so only the title has an entry.
+            notifications::add_required_text(
+                out,
+                kind,
+                notifications::Text::new(format!("notifications.msg.{key}")),
+                title,
+                text,
+                None,
+            );
             if style == ServerNoticeStyle::Kill {
                 if background.launch.is_some() {
                     launch.called_off = true;
@@ -250,9 +279,10 @@ pub(super) async fn handle_update<'a>(
             }
         }
         LobbyUpdate::ConnectionRejected { reason } => {
-            notifications::add_required(
+            notifications::add_required_text(
                 out,
                 NotificationKind::Error,
+                notifications::Text::new("notifications.msg.connectionRejected"),
                 "Lobby connection rejected",
                 reason,
                 None,
