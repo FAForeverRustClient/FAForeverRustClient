@@ -2,9 +2,9 @@
 //
 // A popover rather than a dialog: picking an emoji is a step inside writing a
 // message, and a modal would take the caret out of the input for something
-// that takes half a second. It closes on Escape, on a click outside, and after
-// a pick unless the pick was made with a modifier held, which is how people
-// build a row of several.
+// that takes half a second. It closes on Escape, on a click outside and on its
+// own button, and stays open after a pick (#442): a row of several emoji is
+// the common case, and reopening the popover for each one was the complaint.
 //
 // Keyboard use is the point, not an afterthought: the search box takes focus
 // on open, typing narrows, and the arrow keys walk the grid. The Java client's
@@ -61,9 +61,13 @@ export function EmojiPicker({ disabled, onPick }: Props) {
     setActive(0);
   };
 
-  const pick = (entry: EmojiEntry, keepOpen: boolean) => {
+  const pick = (entry: EmojiEntry) => {
     onPick(entry.char);
-    if (!keepOpen) close();
+    // The composer puts the caret back into the message after inserting, a
+    // frame from now. The search box takes focus back a frame after that, so
+    // the arrow keys and Enter keep working for the next pick; the message
+    // input keeps its caret position while it is not focused.
+    requestAnimationFrame(() => searchRef.current?.focus());
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
@@ -81,7 +85,7 @@ export function EmojiPicker({ disabled, onPick }: Props) {
     }
     if (event.key === "Enter") {
       event.preventDefault();
-      pick(results[selected], event.shiftKey || event.ctrlKey);
+      pick(results[selected]);
     }
   };
 
@@ -159,7 +163,7 @@ function Grid({
   selected: number;
   /** Where this block starts in the flat result list the arrow keys walk. */
   offset?: number;
-  onPick: (entry: EmojiEntry, keepOpen: boolean) => void;
+  onPick: (entry: EmojiEntry) => void;
 }) {
   return (
     <div className="emoji-grid">
@@ -172,7 +176,7 @@ function Grid({
             className={`emoji-tile${flat === selected ? " is-active" : ""}`}
             title={entry.name}
             aria-label={entry.name}
-            onClick={(event) => onPick(entry, event.shiftKey || event.ctrlKey)}
+            onClick={() => onPick(entry)}
           >
             {entry.char}
           </button>
