@@ -1611,6 +1611,17 @@
   overflow-wrap: anywhere;
 }
 
+/* Keep co-op campaign badges on their own line in every locale. */
+.host-coop-modal .host-gametype-title-row {
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.host-coop-modal .host-gametype-name {
+  width: 100%;
+}
+
 /* A campaign the player picks a faction for. `official` is the retail Forged
    Alliance campaign, which the raw faction value labelled "custom" - the same
    word community campaigns carry. */
