@@ -2,6 +2,7 @@
 // routes purely from state: logged in → the active tab, otherwise → Login. No router logic
 // beyond selecting a slice (ARCHITECTURE.md §4).
 
+import { useAppBackground } from "./shared/appBackground";
 import { useEffect, useRef, useState } from "react";
 import { ipc } from "./ipc/client";
 import { native } from "./ipc/native";
@@ -61,6 +62,9 @@ export function App() {
     document.documentElement.dataset.density = appearance.density;
     document.documentElement.dataset.reducedMotion = String(appearance.reduceMotion);
   }, [appearance.density, appearance.reduceMotion, theme]);
+
+  // The player's own background picture, if one is set (#439).
+  useAppBackground(appearance.backgroundImage, appearance.backgroundDim);
 
   // Project friend and foe color preferences at the document root so token-driven
   // indicators (game tile borders, badges, chat elements) align.

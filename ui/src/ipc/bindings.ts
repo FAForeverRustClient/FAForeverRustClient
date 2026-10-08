@@ -188,6 +188,17 @@ export type AppearancePreferences = {
 	 *  offers: it has no country for an account.
 	 */
 	replayFlags: boolean,
+	/**
+	 *  The picture behind the interface, as the name it was stored under in
+	 *  the client's `backgrounds` folder (#439). Empty is the theme's own
+	 *  background.
+	 */
+	backgroundImage: string,
+	/**
+	 *  How far the picture is darkened under the interface, in percent, so
+	 *  text stays readable over a bright one. Clamped to `0..=90`.
+	 */
+	backgroundDim: number,
 };
 
 /**  A change to [`AppearancePreferences`]. */
@@ -201,6 +212,8 @@ export type AppearancePreferencesPatch = {
 	hoverOpenDelayMs?: number,
 	hoverCloseDelayMs?: number,
 	replayFlags?: boolean,
+	backgroundImage?: string,
+	backgroundDim?: number,
 };
 
 /**  An archived tournament, hidden from everyone until restored. */

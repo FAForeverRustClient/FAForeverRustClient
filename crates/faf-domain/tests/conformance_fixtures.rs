@@ -7618,6 +7618,8 @@ fn transition_cases() -> Vec<Case> {
                     hover_open_delay_ms: 9_000,
                     hover_close_delay_ms: 2_500,
                     replay_flags: true,
+                    background_image: String::new(),
+                    background_dim: 60,
                 },
             }
             .into()],

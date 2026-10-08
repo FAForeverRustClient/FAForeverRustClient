@@ -1098,3 +1098,16 @@
 .settings-section-scope {
   display: contents;
 }
+
+/* The background picture's buttons and its veil slider (#439). */
+.settings-background-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.settings-background-dim {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

@@ -1116,6 +1116,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -51073,6 +51075,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -51350,6 +51354,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -51636,6 +51642,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -51917,6 +51925,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -52198,6 +52208,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -52489,6 +52501,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -52786,6 +52800,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -53080,6 +53096,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -53378,6 +53396,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -53727,6 +53747,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -54052,6 +54074,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -54379,6 +54403,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -54814,6 +54840,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -67024,6 +67052,8 @@
             "event": {
               "payload": {
                 "preferences": {
+                  "backgroundDim": 60,
+                  "backgroundImage": "",
                   "density": "compact",
                   "gameTileColumns": 9,
                   "hoverCloseDelayMs": 2500,
@@ -67041,6 +67071,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "compact",
               "gameTileColumns": 6,
               "hoverCloseDelayMs": 2000,
@@ -67327,6 +67359,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -67644,6 +67678,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -67947,6 +67983,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -68237,6 +68275,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -68518,6 +68558,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -68798,6 +68840,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -69106,6 +69150,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -69383,6 +69429,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -69672,6 +69720,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -69959,6 +70009,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -70240,6 +70292,8 @@
               "payload": {
                 "settings": {
                   "appearance": {
+                    "backgroundDim": 60,
+                    "backgroundImage": "",
                     "density": "comfortable",
                     "gameTileColumns": 0,
                     "hoverCloseDelayMs": 160,
@@ -70511,6 +70565,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -109296,6 +109352,8 @@
     },
     "settings": {
       "appearance": {
+        "backgroundDim": 60,
+        "backgroundImage": "",
         "density": "comfortable",
         "gameTileColumns": 0,
         "hoverCloseDelayMs": 160,

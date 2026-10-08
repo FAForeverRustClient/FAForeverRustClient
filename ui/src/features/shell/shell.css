@@ -531,3 +531,20 @@
     overflow: visible;
   }
 }
+
+/* The player's own picture behind the tabs (#439), under a veil of the
+   theme's background so text stays readable: `--app-background-dim` is how
+   much of the veil there is. Set on the document root by `useAppBackground`.
+   Panels and cards keep their own surfaces and sit on top of it. */
+html[data-background="custom"] .workspace {
+  background-color: var(--color-bg);
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--color-bg) var(--app-background-dim, 60%), transparent),
+      color-mix(in srgb, var(--color-bg) var(--app-background-dim, 60%), transparent)
+    ),
+    var(--app-background-image);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}

@@ -112,6 +112,7 @@ function normalizeAppearance(preferences: AppearancePreferences): AppearancePref
     sidebarWidth: clamp(preferences.sidebarWidth, 64, 400),
     hoverOpenDelayMs: Math.min(preferences.hoverOpenDelayMs, 2000),
     hoverCloseDelayMs: Math.min(preferences.hoverCloseDelayMs, 2000),
+    backgroundDim: Math.min(preferences.backgroundDim, 90),
   };
 }
 

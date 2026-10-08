@@ -476,6 +476,13 @@ pub struct AppearancePreferences {
     /// replay from players who are online right now, which is all the API
     /// offers: it has no country for an account.
     pub replay_flags: bool,
+    /// The picture behind the interface, as the name it was stored under in
+    /// the client's `backgrounds` folder (#439). Empty is the theme's own
+    /// background.
+    pub background_image: String,
+    /// How far the picture is darkened under the interface, in percent, so
+    /// text stays readable over a bright one. Clamped to `0..=90`.
+    pub background_dim: u8,
 }
 
 // A field-level `#[serde(default)]` would have been shorter, but specta turns
@@ -499,6 +506,8 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             hover_open_delay_ms: u16,
             hover_close_delay_ms: u16,
             replay_flags: bool,
+            background_image: String,
+            background_dim: u8,
         }
 
         impl Default for Wire {
@@ -514,6 +523,8 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
                     hover_open_delay_ms: defaults.hover_open_delay_ms,
                     hover_close_delay_ms: defaults.hover_close_delay_ms,
                     replay_flags: defaults.replay_flags,
+                    background_image: defaults.background_image,
+                    background_dim: defaults.background_dim,
                 }
             }
         }
@@ -531,6 +542,8 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             hover_open_delay_ms: wire.hover_open_delay_ms.min(MAX_HOVER_DELAY_MS),
             hover_close_delay_ms: wire.hover_close_delay_ms.min(MAX_HOVER_DELAY_MS),
             replay_flags: wire.replay_flags,
+            background_image: wire.background_image,
+            background_dim: wire.background_dim.min(MAX_BACKGROUND_DIM),
         })
     }
 }
@@ -586,9 +599,16 @@ impl Default for AppearancePreferences {
             // that without the panel trailing the pointer down the list.
             hover_close_delay_ms: 160,
             replay_flags: false,
+            background_image: String::new(),
+            // Enough that the interface's own surfaces read as surfaces over a
+            // busy picture; the slider goes either way.
+            background_dim: 60,
         }
     }
 }
+
+/// The most a background may be darkened. Past this it is a black screen.
+pub const MAX_BACKGROUND_DIM: u8 = 90;
 
 impl AppearancePreferences {
     pub fn normalized(mut self) -> Self {
@@ -599,6 +619,7 @@ impl AppearancePreferences {
             .clamp(MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
         self.hover_open_delay_ms = self.hover_open_delay_ms.min(MAX_HOVER_DELAY_MS);
         self.hover_close_delay_ms = self.hover_close_delay_ms.min(MAX_HOVER_DELAY_MS);
+        self.background_dim = self.background_dim.min(MAX_BACKGROUND_DIM);
         self
     }
 }
@@ -3051,6 +3072,8 @@ preference_patch! {
         hover_open_delay_ms: u16,
         hover_close_delay_ms: u16,
         replay_flags: bool,
+        background_image: String,
+        background_dim: u8,
     }
 }
 
