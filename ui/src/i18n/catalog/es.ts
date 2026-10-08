@@ -1459,6 +1459,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.vault.searching": "Buscando repeticiones…",
   "replays.vault.loadFailed": "No se pudo cargar el vault",
   "replays.vault.noMatch": "Ninguna repetición coincide con esta búsqueda.",
+  "replays.vault.winner": "Ganó: {winner}",
   "replays.vault.previous": "Anterior",
   "replays.vault.next": "Siguiente",
 

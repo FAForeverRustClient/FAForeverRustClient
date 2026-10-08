@@ -487,6 +487,19 @@ button.vault-input {
   row-gap: 0;
 }
 
+/* The count and, with "Game result" on (#454), the outcome after it. */
+.replay-card-team-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.replay-card-team-summary .replay-team-outcome {
+  height: 18px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
 .replay-card-team-title {
   display: flex;
   justify-content: space-between;

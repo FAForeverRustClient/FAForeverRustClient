@@ -1419,6 +1419,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.vault.searching": "Wyszukiwanie powtórek…",
   "replays.vault.loadFailed": "Nie udało się wczytać magazynu",
   "replays.vault.noMatch": "Żadna powtórka nie pasuje do tego wyszukiwania.",
+  "replays.vault.winner": "Wygrana: {winner}",
   "replays.vault.previous": "Poprzednia",
   "replays.vault.next": "Następna",
   "replays.vault.pagesAria": "Strony powtórek sieciowych",

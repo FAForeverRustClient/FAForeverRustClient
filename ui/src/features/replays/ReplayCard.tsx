@@ -239,6 +239,7 @@ export function ReplayLibraryCard({
   replay,
   watched,
   selected = false,
+  showResults = false,
   watch,
   onOpen,
   onDoubleClick,
@@ -247,6 +248,8 @@ export function ReplayLibraryCard({
   replay: ReplayCardData;
   watched: boolean;
   selected?: boolean;
+  /** Outcomes and rating changes on the lineup. See `ReplayCardRoster`. */
+  showResults?: boolean;
   /** The footer's action. See `ReplayCardWatch`. */
   watch?: ReplayCardWatch;
   onOpen: () => void;
@@ -341,7 +344,7 @@ export function ReplayLibraryCard({
             </div>
           )}
         </div>
-        <ReplayCardRoster teams={replay.teams} onPlayerMenu={onPlayerMenu} />
+        <ReplayCardRoster teams={replay.teams} showResults={showResults} onPlayerMenu={onPlayerMenu} />
         {replay.footerNote && (
           <div className="replay-card-footer">
             <span className="muted">{replay.footerNote}</span>
@@ -356,6 +359,7 @@ export function ReplayCard({
   replay,
   watched,
   busy = false,
+  showResults = false,
   onOpen,
   onDoubleClick,
   onWatch,
@@ -365,6 +369,8 @@ export function ReplayCard({
   watched: boolean;
   /** A game is already starting, so a second "watch" would go nowhere. */
   busy?: boolean;
+  /** The vault's "Game result" switch (#454). */
+  showResults?: boolean;
   onOpen: () => void;
   onDoubleClick?: () => void;
   onWatch?: () => void;
@@ -404,6 +410,7 @@ export function ReplayCard({
         footerNote: replay.replayAvailable ? "" : t("replays.card.notUploaded"),
       }}
       watched={watched}
+      showResults={showResults}
       watch={watch}
       onOpen={onOpen}
       onDoubleClick={onDoubleClick}

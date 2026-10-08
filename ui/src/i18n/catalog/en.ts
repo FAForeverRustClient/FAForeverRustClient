@@ -1272,6 +1272,7 @@ export const en = {
   "replays.vault.searching": "Searching replays…",
   "replays.vault.loadFailed": "Could not load vault",
   "replays.vault.noMatch": "No replays match this search.",
+  "replays.vault.winner": "Won: {winner}",
   "replays.vault.resultCount": "{shown} shown · {total} replays found · {pages} pages",
   "replays.vault.resultCountUnknown": "{shown} shown · {pages} pages · the total is not known for this filter",
   "replays.vault.pastEnd": "No more replays. This page is past the end of the results.",

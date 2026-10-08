@@ -1025,6 +1025,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.vault.searching": "Replays werden gesucht…",
   "replays.vault.loadFailed": "Vault konnte nicht geladen werden",
   "replays.vault.noMatch": "Keine Replays passen zu dieser Suche.",
+  "replays.vault.winner": "Gewonnen: {winner}",
   "replays.vault.resultCount": "{shown} angezeigt · {total} Replays gefunden · {pages} Seiten",
   "replays.vault.resultCountUnknown": "{shown} angezeigt · {pages} Seiten · die Gesamtzahl ist bei diesem Filter unbekannt",
   "replays.vault.pastEnd": "Keine weiteren Replays. Diese Seite liegt hinter dem Ende der Ergebnisse.",

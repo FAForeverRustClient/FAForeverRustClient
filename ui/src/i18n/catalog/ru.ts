@@ -1531,6 +1531,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.vault.searching": "Поиск реплеев…",
   "replays.vault.loadFailed": "Не удалось загрузить хранилище",
   "replays.vault.noMatch": "Нет реплеев, подходящих под этот поиск.",
+  "replays.vault.winner": "Победа: {winner}",
   "replays.vault.previous": "Назад",
   "replays.vault.next": "Вперёд",
 

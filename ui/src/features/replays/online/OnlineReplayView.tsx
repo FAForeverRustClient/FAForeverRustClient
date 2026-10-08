@@ -15,6 +15,8 @@ import { ReplayViewSwitch, type ReplayViewMode } from "../ReplayViewSwitch";
 import { subscribeReplaySearch, takeReplaySearch } from "../../../shared/replaySearchIntent";
 import { VaultSearch } from "./VaultSearch";
 import { ReplayPageSize } from "./AdvancedReplayFilters";
+import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { plainError } from "../../../shared/plainError";
@@ -70,6 +72,9 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     });
   };
   const [openUid, setOpenUid] = useState<number | null>(null);
+  // The detail panel's "Game result" switch, for the whole page at once
+  // (#454). Off by default, as there: a result is a spoiler until asked for.
+  const [showResults, setShowResults] = useState(false);
   const [selectedUid, setSelectedUid] = useState<number | null>(null);
   const [watchedUids, setWatchedUids] = useState<Set<number>>(() =>
     loadStoredSet(WATCHED_STORAGE_KEY, (value): value is number => typeof value === "number"),
@@ -251,6 +256,14 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
           </span>
         </div>
         <div className="online-replay-view-bar-right">
+          <Button
+            className="replay-detail-reveal-btn"
+            aria-pressed={showResults}
+            onClick={() => setShowResults((visible) => !visible)}
+          >
+            <Icon name="eye" size={13} />
+            <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
+          </Button>
           {/* Applies at once, to the search on screen, from its first page. */}
           <ReplayPageSize
             value={query.pageSize}
@@ -287,6 +300,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
               replay={r}
               watched={watchedUids.has(r.uid)}
               busy={busy}
+              showResults={showResults}
               onOpen={() => setOpenUid(r.uid)}
               onDoubleClick={() => r.replayAvailable && !busy && markWatchedAndPlay(r.uid)}
               onWatch={() => {
@@ -304,6 +318,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
           groupByDate={query.sortBy === "startTime" || query.sortBy === "endTime"}
           selectedUid={selectedUid}
           watchedUids={watchedUids}
+          showResults={showResults}
           onOpen={(uid) => {
             setSelectedUid(uid);
             setOpenUid(uid);
