@@ -158,7 +158,7 @@ fn announce(release: &ClientRelease, current: &str, out: &EventSink) {
         services::notifications::Text::new("notifications.msg.clientUpdate")
     } else {
         services::notifications::Text::new("notifications.msg.clientUpdateFrom")
-            .with("current", &current)
+            .with("current", current)
     };
     services::notifications::add_text(
         out,
