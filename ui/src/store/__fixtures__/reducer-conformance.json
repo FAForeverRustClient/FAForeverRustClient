@@ -1116,6 +1116,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -1205,6 +1207,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -1275,6 +1278,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -1288,6 +1292,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -39222,6 +39227,7 @@
                   "id": "n1",
                   "kind": "mention",
                   "read": false,
+                  "text": null,
                   "title": "Hello"
                 }
               },
@@ -39238,6 +39244,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": false,
+                "text": null,
                 "title": "Hello"
               }
             ]
@@ -39757,6 +39764,7 @@
                     "displayName": "Open Palms",
                     "folderName": "scmp_009",
                     "height": 512,
+                    "installedAt": null,
                     "maxPlayers": 6,
                     "version": "1.0",
                     "width": 512
@@ -39806,6 +39814,7 @@
                 "displayName": "Open Palms",
                 "folderName": "scmp_009",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 6,
                 "version": "1.0",
                 "width": 512
@@ -51069,6 +51078,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -51158,6 +51169,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -51220,6 +51232,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -51233,6 +51246,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -51346,6 +51360,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -51435,6 +51451,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -51497,6 +51514,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -51510,6 +51528,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -51632,6 +51651,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -51721,6 +51742,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -51783,6 +51805,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -51796,6 +51819,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -51913,6 +51937,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -52002,6 +52028,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -52064,6 +52091,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -52077,6 +52105,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -52194,6 +52223,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -52283,6 +52314,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -52345,6 +52377,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -52358,6 +52391,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -52485,6 +52519,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -52574,6 +52610,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -52636,6 +52673,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -52649,6 +52687,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -52782,6 +52821,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -52871,6 +52912,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -52933,6 +52975,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -52946,6 +52989,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -53076,6 +53120,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -53165,6 +53211,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -53227,6 +53274,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -53240,6 +53288,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -53374,6 +53423,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -53467,6 +53518,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -53529,6 +53581,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -53542,6 +53595,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -53723,6 +53777,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -53816,6 +53872,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -53878,6 +53935,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -53891,6 +53949,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -54048,6 +54107,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -54141,6 +54202,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -54203,6 +54265,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -54216,6 +54279,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -54375,6 +54439,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -54468,6 +54534,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -54530,6 +54597,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -54543,6 +54611,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -54792,6 +54861,9 @@
                   "modPresets": [],
                   "modVaultPreset": "recommended",
                   "modVaultSort": "rating",
+                  "rememberedFilters": {
+                    "installedMods": "{\"search\":\"ui\"}"
+                  },
                   "replayChatChannel": "",
                   "replayChatTransfers": "show",
                   "replayListColumns": [
@@ -54811,6 +54883,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -54922,6 +54996,9 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "rating",
+              "rememberedFilters": {
+                "installedMods": "{\"search\":\"ui\"}"
+              },
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [
@@ -54988,6 +55065,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -55001,6 +55079,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -59326,6 +59405,7 @@
                     "displayName": "scmp_009",
                     "folderName": "scmp_009",
                     "height": 512,
+                    "installedAt": null,
                     "maxPlayers": 8,
                     "version": null,
                     "width": 512
@@ -59372,6 +59452,7 @@
                 "displayName": "scmp_009",
                 "folderName": "scmp_009",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -59450,6 +59531,7 @@
                 "displayName": "scmp_009",
                 "folderName": "scmp_009",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -59534,6 +59616,7 @@
                 "displayName": "scmp_009",
                 "folderName": "scmp_009",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -59618,6 +59701,7 @@
                 "displayName": "scmp_009",
                 "folderName": "scmp_009",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -59702,6 +59786,7 @@
                 "displayName": "scmp_009",
                 "folderName": "scmp_009",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -59747,6 +59832,7 @@
                     "displayName": "scmp_009",
                     "folderName": "scmp_009",
                     "height": 512,
+                    "installedAt": null,
                     "maxPlayers": 8,
                     "version": null,
                     "width": 512
@@ -59756,6 +59842,7 @@
                     "displayName": "setons_clutch.v0003",
                     "folderName": "setons_clutch.v0003",
                     "height": 512,
+                    "installedAt": null,
                     "maxPlayers": 8,
                     "version": null,
                     "width": 512
@@ -59802,6 +59889,7 @@
                 "displayName": "scmp_009",
                 "folderName": "scmp_009",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -59811,6 +59899,7 @@
                 "displayName": "setons_clutch.v0003",
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -59885,6 +59974,7 @@
                 "displayName": "scmp_009",
                 "folderName": "scmp_009",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -59894,6 +59984,7 @@
                 "displayName": "setons_clutch.v0003",
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -59973,6 +60064,7 @@
                 "displayName": "scmp_009",
                 "folderName": "scmp_009",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -59982,6 +60074,7 @@
                 "displayName": "setons_clutch.v0003",
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -60022,6 +60115,7 @@
                     "displayName": "setons_clutch.v0003",
                     "folderName": "setons_clutch.v0003",
                     "height": 512,
+                    "installedAt": null,
                     "maxPlayers": 8,
                     "version": null,
                     "width": 512
@@ -60068,6 +60162,7 @@
                 "displayName": "setons_clutch.v0003",
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -60134,6 +60229,7 @@
                 "displayName": "setons_clutch.v0003",
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -60203,6 +60299,7 @@
                 "displayName": "setons_clutch.v0003",
                 "folderName": "setons_clutch.v0003",
                 "height": 512,
+                "installedAt": null,
                 "maxPlayers": 8,
                 "version": null,
                 "width": 512
@@ -66408,6 +66505,7 @@
                   "id": "n1",
                   "kind": "mention",
                   "read": false,
+                  "text": null,
                   "title": "Notification n1"
                 }
               },
@@ -66424,6 +66522,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": false,
+                "text": null,
                 "title": "Notification n1"
               }
             ]
@@ -66440,6 +66539,7 @@
                   "id": "n2",
                   "kind": "friendOnline",
                   "read": false,
+                  "text": null,
                   "title": "Notification n2"
                 }
               },
@@ -66456,6 +66556,7 @@
                 "id": "n2",
                 "kind": "friendOnline",
                 "read": false,
+                "text": null,
                 "title": "Notification n2"
               },
               {
@@ -66465,6 +66566,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": false,
+                "text": null,
                 "title": "Notification n1"
               }
             ]
@@ -66489,6 +66591,7 @@
                 "id": "n2",
                 "kind": "friendOnline",
                 "read": false,
+                "text": null,
                 "title": "Notification n2"
               },
               {
@@ -66498,6 +66601,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": true,
+                "text": null,
                 "title": "Notification n1"
               }
             ]
@@ -66522,6 +66626,7 @@
                 "id": "n2",
                 "kind": "friendOnline",
                 "read": false,
+                "text": null,
                 "title": "Notification n2"
               },
               {
@@ -66531,6 +66636,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": true,
+                "text": null,
                 "title": "Notification n1"
               }
             ]
@@ -66547,6 +66653,7 @@
                   "id": "n1",
                   "kind": "mention",
                   "read": false,
+                  "text": null,
                   "title": "Notification n1"
                 }
               },
@@ -66563,6 +66670,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": false,
+                "text": null,
                 "title": "Notification n1"
               },
               {
@@ -66572,6 +66680,7 @@
                 "id": "n2",
                 "kind": "friendOnline",
                 "read": false,
+                "text": null,
                 "title": "Notification n2"
               }
             ]
@@ -66596,6 +66705,7 @@
                 "id": "n1",
                 "kind": "mention",
                 "read": false,
+                "text": null,
                 "title": "Notification n1"
               },
               {
@@ -66605,6 +66715,7 @@
                 "id": "n2",
                 "kind": "friendOnline",
                 "read": true,
+                "text": null,
                 "title": "Notification n2"
               }
             ]
@@ -66989,6 +67100,8 @@
             "event": {
               "payload": {
                 "preferences": {
+                  "backgroundDim": 60,
+                  "backgroundImage": "",
                   "density": "compact",
                   "gameTileColumns": 9,
                   "hoverCloseDelayMs": 2500,
@@ -67006,6 +67119,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "compact",
               "gameTileColumns": 6,
               "hoverCloseDelayMs": 2000,
@@ -67095,6 +67210,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -67157,6 +67273,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -67170,6 +67287,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -67282,6 +67400,7 @@
               "payload": {
                 "preferences": {
                   "autoLogin": false,
+                  "filterMemory": "restart",
                   "rememberTypedEntries": true,
                   "startPage": "play"
                 }
@@ -67292,6 +67411,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -67381,6 +67502,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -67443,6 +67565,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -67456,6 +67579,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -67609,6 +67733,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -67698,6 +67824,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -67760,6 +67887,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -67773,6 +67901,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -67912,6 +68041,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -68001,6 +68132,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -68063,6 +68195,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -68076,6 +68209,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -68184,6 +68318,7 @@
                 "preferences": {
                   "additionalArguments": [],
                   "autoGenerateMaps": true,
+                  "borderlessWindow": false,
                   "cacheLifetimeDays": 30,
                   "cacheRollingBranches": false,
                   "cacheSizeAlertGb": null,
@@ -68201,6 +68336,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -68290,6 +68427,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -68352,6 +68490,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -68365,6 +68504,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -68482,6 +68622,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -68571,6 +68713,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -68633,6 +68776,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -68646,6 +68790,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -68762,6 +68907,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -68851,6 +68998,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -68913,6 +69061,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -68926,6 +69075,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -69070,6 +69220,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -69159,6 +69311,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -69221,6 +69374,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -69234,6 +69388,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -69347,6 +69502,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -69436,6 +69593,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -69498,6 +69656,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -69511,6 +69670,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -69636,6 +69796,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -69725,6 +69887,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -69795,6 +69958,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -69808,6 +69972,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -69923,6 +70088,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -70012,6 +70179,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -70082,6 +70250,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -70095,6 +70264,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -70204,6 +70374,8 @@
               "payload": {
                 "settings": {
                   "appearance": {
+                    "backgroundDim": 60,
+                    "backgroundImage": "",
                     "density": "comfortable",
                     "gameTileColumns": 0,
                     "hoverCloseDelayMs": 160,
@@ -70293,6 +70465,7 @@
                     "modPresets": [],
                     "modVaultPreset": "recommended",
                     "modVaultSort": "",
+                    "rememberedFilters": {},
                     "replayChatChannel": "",
                     "replayChatTransfers": "show",
                     "replayListColumns": [],
@@ -70355,6 +70528,7 @@
                   "game": {
                     "additionalArguments": [],
                     "autoGenerateMaps": true,
+                    "borderlessWindow": false,
                     "cacheLifetimeDays": 30,
                     "cacheRollingBranches": false,
                     "cacheSizeAlertGb": 10,
@@ -70368,6 +70542,7 @@
                   "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
                   "general": {
                     "autoLogin": true,
+                    "filterMemory": "session",
                     "rememberTypedEntries": false,
                     "startPage": "news"
                   },
@@ -70475,6 +70650,8 @@
           },
           "expected": {
             "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
@@ -70564,6 +70741,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -70626,6 +70804,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -70639,6 +70818,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -109260,6 +109440,8 @@
     },
     "settings": {
       "appearance": {
+        "backgroundDim": 60,
+        "backgroundImage": "",
         "density": "comfortable",
         "gameTileColumns": 0,
         "hoverCloseDelayMs": 160,
@@ -109349,6 +109531,7 @@
         "modPresets": [],
         "modVaultPreset": "recommended",
         "modVaultSort": "",
+        "rememberedFilters": {},
         "replayChatChannel": "",
         "replayChatTransfers": "show",
         "replayListColumns": [],
@@ -109411,6 +109594,7 @@
       "game": {
         "additionalArguments": [],
         "autoGenerateMaps": true,
+        "borderlessWindow": false,
         "cacheLifetimeDays": 30,
         "cacheRollingBranches": false,
         "cacheSizeAlertGb": 10,
@@ -109424,6 +109608,7 @@
       "gamePath": "",
       "general": {
         "autoLogin": true,
+        "filterMemory": "session",
         "rememberTypedEntries": false,
         "startPage": "news"
       },

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { EMPTY_MAP_QUERY } from "../../shared/vaultQuery";
-import { mapsMatchingQuery, visibleVaultMaps } from "./mapVaultResults";
+import { mapsByDownload, mapsMatchingQuery, visibleVaultMaps } from "./mapVaultResults";
 
 function map(folderName: string, extra: Partial<VaultMap> = {}): VaultMap {
   return {
@@ -119,5 +119,33 @@ describe("mapsMatchingQuery", () => {
     expect(sorted("played")).toEqual(["seton", "astro", "dual"]);
     expect(sorted("size")).toEqual(["seton", "dual", "astro"]);
     expect(sorted("name", false)).toEqual(["astro", "dual", "seton"]);
+  });
+});
+
+describe("mapsByDownload (#453)", () => {
+  const vault = [
+    map("seton_clutch.v0003", { displayName: "Seton's Clutch", recommended: true }),
+    map("dual_gap.v0004", { displayName: "Dual Gap" }),
+    map("theta_passage.v0002", { displayName: "Theta Passage" }),
+    map("never_downloaded.v0001", { displayName: "Never downloaded" }),
+  ];
+  const installed = [
+    { folderName: "seton_clutch.v0003", installedAt: "2026-10-01T10:00:00Z" },
+    // An older version than the catalogue's stands for its map.
+    { folderName: "dual_gap.v0002", installedAt: "2026-10-07T10:00:00Z" },
+    { folderName: "theta_passage.v0002", installedAt: null },
+    // On disk, but not in the vault: nothing to show it as.
+    { folderName: "my_own_map", installedAt: "2026-10-08T10:00:00Z" },
+  ];
+
+  it("lists the downloaded maps, the one downloaded last first", () => {
+    const query: MapVaultQuery = { ...EMPTY_MAP_QUERY, recommended: true };
+    expect(mapsByDownload(vault, installed, query).map((m) => m.displayName))
+      .toEqual(["Dual Gap", "Seton's Clutch", "Theta Passage"]);
+  });
+
+  it("still applies the search", () => {
+    const query: MapVaultQuery = { ...EMPTY_MAP_QUERY, search: "seton*" };
+    expect(mapsByDownload(vault, installed, query).map((m) => m.displayName)).toEqual(["Seton's Clutch"]);
   });
 });

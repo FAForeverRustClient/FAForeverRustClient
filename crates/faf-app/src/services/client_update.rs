@@ -154,9 +154,16 @@ fn announce(release: &ClientRelease, current: &str, out: &EventSink) {
     if skip {
         return;
     }
-    services::notifications::add(
+    let text = if current.is_empty() {
+        services::notifications::Text::new("notifications.msg.clientUpdate")
+    } else {
+        services::notifications::Text::new("notifications.msg.clientUpdateFrom")
+            .with("current", current)
+    };
+    services::notifications::add_text(
         out,
         NotificationKind::ClientUpdate,
+        text.with("version", &release.version),
         format!("Version {} is available", release.version),
         if current.is_empty() {
             "Open Settings to download it.".to_string()

@@ -27,6 +27,7 @@ import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
 import { placementLabel } from "../../../shared/leagueNames";
 import { factionIdFromName, factionLabelFromName, orderFactionNames } from "../../../shared/factions";
 import { UNLISTED_DIVISION_IMAGE } from "./MatchmakerPlayerCard";
+import { isFilterRecord, useRememberedFilter } from "../../../shared/filterMemory";
 
 interface InviteModalProps {
   social: SocialState;
@@ -210,18 +211,25 @@ function InvitePlayerModal({ social, selfId, partyMemberIds, onClose }: InviteMo
   const { t } = useTranslation();
   const countryOf = useCountryLabel();
   const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
-  const [query, setQuery] = useState("");
+  // The search and the filters are remembered as the filter setting says
+  // (#447); the sort is not a filter.
+  const isText = (value: unknown) => typeof value === "string";
+  const [query, setQuery] = useRememberedFilter("invite.search", "", isText);
   const [invited, setInvited] = useState<Set<number>>(() => new Set());
   const [sort, setSort] = useState<{ key: InviteSort; direction: "ascending" | "descending" } | null>(null);
-  const [country, setCountry] = useState("*");
-  const [clan, setClan] = useState("*");
+  const [country, setCountry] = useRememberedFilter("invite.country", "*", isText);
+  const [clan, setClan] = useRememberedFilter("invite.clan", "*", isText);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [ratingRanges, setRatingRanges] = useState<Record<QueueRating, RatingRange>>(() => ({
-    "1v1": { low: null, high: null },
-    "2v2": { low: null, high: null },
-    "3v3": { low: null, high: null },
-    "4v4": { low: null, high: null },
-  }));
+  const [ratingRanges, setRatingRanges] = useRememberedFilter<Record<QueueRating, RatingRange>>(
+    "invite.ratings",
+    () => ({
+      "1v1": { low: null, high: null },
+      "2v2": { low: null, high: null },
+      "3v3": { low: null, high: null },
+      "4v4": { low: null, high: null },
+    }),
+    (value) => isFilterRecord(value) && QUEUE_RATINGS.every((queue) => isFilterRecord(value[queue])),
+  );
   const [appliedRatingRanges, setAppliedRatingRanges] = useState(ratingRanges);
 
   // The order as every list view has it (`useColumnOrder`), the widths the

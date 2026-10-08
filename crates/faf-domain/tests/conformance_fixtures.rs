@@ -5581,6 +5581,7 @@ fn cases() -> Vec<Case> {
                         action: None,
                         created_at: "2026-01-01T00:00:00Z".into(),
                         read: false,
+                        text: None,
                     },
                 }
                 .into(),
@@ -5646,6 +5647,7 @@ fn cases() -> Vec<Case> {
                         height: 512,
                         version: Some("1.0".into()),
                         description: None,
+                        installed_at: None,
                     }],
                 }
                 .into(),
@@ -6742,6 +6744,10 @@ fn cases() -> Vec<Case> {
                         replay_chat_channel: String::new(),
                         replay_chat_transfers: Default::default(),
                         legacy_storage_migrated: true,
+                        remembered_filters: std::collections::BTreeMap::from([(
+                            "installedMods".into(),
+                            r#"{"search":"ui"}"#.into(),
+                        )]),
                     }),
                 }
                 .into(),
@@ -7617,6 +7623,8 @@ fn transition_cases() -> Vec<Case> {
                     hover_open_delay_ms: 9_000,
                     hover_close_delay_ms: 2_500,
                     replay_flags: true,
+                    background_image: String::new(),
+                    background_dim: 60,
                 },
             }
             .into()],
@@ -7629,6 +7637,7 @@ fn transition_cases() -> Vec<Case> {
                         start_page: Tab::Play,
                         auto_login: false,
                         remember_typed_entries: true,
+                        filter_memory: FilterMemory::Restart,
                     },
                 }
                 .into(),
@@ -8082,6 +8091,7 @@ fn installed_map(folder_name: &str) -> InstalledMap {
         height: 512,
         version: None,
         description: None,
+        installed_at: None,
     }
 }
 
@@ -8180,6 +8190,7 @@ fn notification(id: &str, kind: NotificationKind) -> ClientNotification {
         action: None,
         created_at: "2026-01-01T00:00:00Z".into(),
         read: false,
+        text: None,
     }
 }
 

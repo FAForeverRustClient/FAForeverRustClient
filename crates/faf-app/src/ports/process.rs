@@ -192,6 +192,11 @@ pub trait ProcessPort: Send + Sync {
     /// game to show.
     fn set_steam_presence(&self, _enabled: bool) {}
 
+    /// Whether the next game's window should be made borderless and stretched
+    /// over its monitor (#445). Read at launch, like the Steam status, and
+    /// defaulted to nothing for a launcher that starts no process.
+    fn set_borderless_window(&self, _enabled: bool) {}
+
     /// Spell a path the way the game this launcher starts will be able to open
     /// it.
     ///

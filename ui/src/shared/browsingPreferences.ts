@@ -189,6 +189,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   replayChatChannel: "",
   replayChatTransfers: "show",
   legacyStorageMigrated: false,
+  rememberedFilters: {},
 };
 
 export function normalizeBrowsingPreferences(

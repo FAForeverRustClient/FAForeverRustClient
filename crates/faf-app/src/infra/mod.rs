@@ -57,6 +57,8 @@ pub const OFFLINE_FAF_ID: i32 = 101;
 pub const OFFLINE_FAF_NAME: &str = "Nuggets";
 
 pub mod auth;
+pub mod backgrounds;
+pub mod borderless;
 pub mod changelog;
 pub mod chat_fake;
 pub mod clan;

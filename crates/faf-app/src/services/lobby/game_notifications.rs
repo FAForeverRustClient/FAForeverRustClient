@@ -437,6 +437,31 @@ fn format_friends_playing(logins: &[String], game_title: &str) -> (&'static str,
     }
 }
 
+/// The catalog form of `format_friends_playing` (#458): up to three names are
+/// listed, more than that name two and count the rest.
+fn friends_playing_text(logins: &[String], game_title: &str) -> notifications::Text {
+    let text = match logins {
+        [] => notifications::Text::new("notifications.msg.friendsPlayingSomeone"),
+        [single] => {
+            notifications::Text::new("notifications.msg.friendPlaying").with("first", single)
+        }
+        [first, second] => notifications::Text::new("notifications.msg.friendsPlayingTwo")
+            .with("first", first)
+            .with("second", second),
+        [first, second, third] => notifications::Text::new("notifications.msg.friendsPlayingThree")
+            .with("first", first)
+            .with("second", second)
+            .with("third", third),
+        [first, second, rest @ ..] => {
+            notifications::Text::new("notifications.msg.friendsPlayingMany")
+                .with("first", first)
+                .with("second", second)
+                .with("count", rest.len())
+        }
+    };
+    text.with("game", game_title)
+}
+
 pub(super) fn notify_game_signal(
     out: &EventSink,
     preferences: &NotificationPreferences,
@@ -449,30 +474,44 @@ pub(super) fn notify_game_signal(
             if preferences.new_custom_games
                 && (!preferences.new_custom_games_friends_only || friend_host)
             {
-                notifications::add(
+                notifications::add_text(
                     out,
                     NotificationKind::NewCustomGame,
+                    notifications::Text::new("notifications.msg.newCustomGame")
+                        .with("host", &game.host)
+                        .with("title", &game.title),
                     "New custom game",
                     format!("{} hosted {}.", game.host, game.title),
                     Some(NotificationAction::OpenCustomGames),
                 );
             }
         }
-        GameNotificationSignal::GameFull(game) if preferences.game_full => notifications::add(
+        GameNotificationSignal::GameFull(game) if preferences.game_full => notifications::add_text(
             out,
             NotificationKind::GameFull,
+            notifications::Text::new("notifications.msg.gameFull").with("title", &game.title),
             "Game full",
             format!("{} is full and ready to launch.", game.title),
             Some(NotificationAction::OpenCustomGames),
         ),
         GameNotificationSignal::FriendsPlaying { logins, game } if preferences.friend_playing => {
             let (title, message) = format_friends_playing(&logins, &game.title);
-            notifications::add(out, NotificationKind::FriendPlaying, title, message, None);
+            let text = friends_playing_text(&logins, &game.title);
+            notifications::add_text(
+                out,
+                NotificationKind::FriendPlaying,
+                text,
+                title,
+                message,
+                None,
+            );
         }
         GameNotificationSignal::OwnGameEnded(game) if preferences.review_reminder => {
-            notifications::add(
+            notifications::add_text(
                 out,
                 NotificationKind::ReviewReminder,
+                notifications::Text::new("notifications.msg.reviewReminder")
+                    .with("title", &game.title),
                 "How was your game?",
                 format!("Review the map or mods you played in {}.", game.title),
                 None,

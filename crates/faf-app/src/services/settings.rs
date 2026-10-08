@@ -71,6 +71,13 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         SettingsCommand::Load => {
             let mut settings = ctx.ports.settings.load().await.normalized();
+            // Filters outlive a restart only when the player asked for that
+            // (#447); otherwise every list starts unfiltered. Only in state:
+            // the file is written over with the cleared filters on the next
+            // save anyway.
+            if settings.general.filter_memory != domain::FilterMemory::Restart {
+                settings.browsing = settings.browsing.without_filters();
+            }
             let discovered = ctx.ports.process.discover_install_paths();
             // Where FAF's copy of the game goes when there is no copy yet.
             // Only reached when nothing else answers, and deliberately last:
@@ -805,8 +812,10 @@ fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
                 state.settings.game.steam_presence,
             )
         });
+    let borderless_window = out.with_state(|state| state.settings.game.borderless_window);
     ctx.ports.process.set_additional_arguments(arguments);
     ctx.ports.process.set_steam_presence(steam_presence);
+    ctx.ports.process.set_borderless_window(borderless_window);
     // The two halves of "run a Windows game on Linux" arrive from two
     // different preference groups, because that is where each one belongs: the
     // wrapper is about launching, the prefix is a path. The launcher needs
@@ -912,6 +921,11 @@ fn check_cache_size_alert(
                 action: Some(NotificationAction::OpenSettings {
                     section: Some("gameCache".to_string()),
                 }),
+                text: Some(
+                    notifications::Text::new("notifications.msg.gameCacheAlert")
+                        .with("size", format!("{size_gb:.1}"))
+                        .with("threshold", threshold_gb),
+                ),
             };
             out.emit(NotificationEvent::Added { notification });
         }

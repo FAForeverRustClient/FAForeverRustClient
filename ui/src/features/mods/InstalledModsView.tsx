@@ -23,12 +23,26 @@ import { favoriteModKeys, isFavoriteMod, toggleFavoriteMod } from "./favoriteMod
 import { modUpdateAvailable } from "./modVersions";
 import { modCounterparts } from "./modIdentity";
 import { useTranslation } from "../../i18n/useTranslation";
+import { useRememberedFilters } from "../../shared/filterMemory";
 
 type ModTypeFilter = "all" | "ui" | "sim";
 type EnabledFilter = "all" | "enabled" | "disabled";
 type RankedFilter = "all" | "ranked" | "unranked";
 type InstalledModPreset = "all" | "favorites" | "enabled" | "disabled" | "ui" | "sim" | "updates";
 type InstalledModSort = "state" | "name" | "rating" | "newest" | "author";
+
+/** Where the library's filters are remembered (#447), and where they start. */
+const INSTALLED_MOD_FILTERS = "mods.installed";
+const NO_INSTALLED_MOD_FILTERS = {
+  search: "",
+  creator: "",
+  preset: "all" as InstalledModPreset,
+  modType: "all" as ModTypeFilter,
+  enabled: "all" as EnabledFilter,
+  ranked: "all" as RankedFilter,
+  minimumRating: null as number | null,
+  maximumRating: null as number | null,
+};
 
 /** `.installed-mod-card`'s designed height, which is what a page is measured in. */
 const INSTALLED_MOD_CARD_PX = 86;
@@ -303,15 +317,18 @@ export function InstalledModsView({
   const installStatus = useAppStore((state) => state.state.mods.installStatus);
   const toggleStatus = useAppStore((state) => state.state.mods.toggleStatus);
 
-  const [search, setSearch] = useState("");
-  const [creator, setCreator] = useState("");
-  const [preset, setPreset] = useState<InstalledModPreset>("all");
+  // The filters, remembered as the setting says (#447). The sort is not one.
+  const { filters, setFilter } = useRememberedFilters(INSTALLED_MOD_FILTERS, NO_INSTALLED_MOD_FILTERS);
+  const { search, creator, preset, modType, enabled, ranked, minimumRating, maximumRating } = filters;
+  const setSearch = (value: string) => setFilter("search", value);
+  const setCreator = (value: string) => setFilter("creator", value);
+  const setPreset = (value: InstalledModPreset) => setFilter("preset", value);
+  const setModType = (value: ModTypeFilter) => setFilter("modType", value);
+  const setEnabled = (value: EnabledFilter) => setFilter("enabled", value);
+  const setRanked = (value: RankedFilter) => setFilter("ranked", value);
+  const setMinimumRating = (value: number | null) => setFilter("minimumRating", value);
+  const setMaximumRating = (value: number | null) => setFilter("maximumRating", value);
   const [sort, setSort] = useState<InstalledModSort>("state");
-  const [modType, setModType] = useState<ModTypeFilter>("all");
-  const [enabled, setEnabled] = useState<EnabledFilter>("all");
-  const [ranked, setRanked] = useState<RankedFilter>("all");
-  const [minimumRating, setMinimumRating] = useState<number | null>(null);
-  const [maximumRating, setMaximumRating] = useState<number | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledMod | null>(null);

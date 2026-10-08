@@ -142,6 +142,8 @@ pub struct GameProcess {
     /// Show each game on Steam while it runs; see `infra::steam_presence`.
     /// Off until Settings says otherwise, which is also its default there.
     steam_presence: AtomicBool,
+    /// Make the game's window borderless; see `infra::borderless`.
+    borderless_window: AtomicBool,
 }
 
 impl GameProcess {
@@ -154,6 +156,7 @@ impl GameProcess {
             replay_recorder: Mutex::new(None),
             replay_relay: None,
             steam_presence: AtomicBool::new(false),
+            borderless_window: AtomicBool::new(false),
         }
     }
 
@@ -369,6 +372,14 @@ impl GameProcess {
                 crate::infra::steam_presence::start(game_pid);
             }
         }
+        // Both slots: a replay is watched in the same window a game is
+        // played in, and the player who wants one borderless wants the other
+        // so too.
+        if self.borderless_window.load(Ordering::Relaxed) {
+            if let Some(game_pid) = game_pid {
+                crate::infra::borderless::start(game_pid);
+            }
+        }
         Ok(())
     }
 
@@ -527,6 +538,10 @@ impl ProcessPort for GameProcess {
 
     fn set_steam_presence(&self, enabled: bool) {
         self.steam_presence.store(enabled, Ordering::Relaxed);
+    }
+
+    fn set_borderless_window(&self, enabled: bool) {
+        self.borderless_window.store(enabled, Ordering::Relaxed);
     }
 
     fn game_argument_path(&self, path: &Path) -> String {

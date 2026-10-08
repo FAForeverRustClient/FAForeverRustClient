@@ -62,3 +62,17 @@ describe("placementForQueue", () => {
     expect(placementForQueue([], "ladder_1v1")).toBeNull();
   });
 });
+
+describe("the queue rating after a game (#449)", () => {
+  it("takes the lobby's refreshed numbers over the profile read at the start", () => {
+    const live = [{ leaderboard: "ladder_1v1", rating: 1943, mean: 2140, deviation: 65, gamesPlayed: 1451 }];
+    const merged = ratingForQueue([rating("ladder_1v1", 1912)], "ladder1v1", live);
+    expect(merged?.rating).toBe(1943);
+    expect(merged?.mean).toBe(2140);
+    expect(merged?.wonGames).toBe(5);
+  });
+
+  it("keeps the profile's numbers when the lobby has no such board", () => {
+    expect(ratingForQueue([rating("ladder_1v1", 1912)], "ladder1v1", [])?.rating).toBe(1912);
+  });
+});

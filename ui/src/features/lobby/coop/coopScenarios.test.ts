@@ -5,6 +5,7 @@ import {
   displayScenarioOptionLabel,
   displayScenarioName,
   scenarioBadge,
+  sortCoopMissions,
   sortCoopScenarios,
 } from "./coopScenarios";
 
@@ -190,5 +191,20 @@ describe("co-op campaign ordering", () => {
     expect(scenarioBadge(byName.get("Coalition Campaign")!)).toBe("custom");
     expect(scenarioBadge(byName.get("Vanilla UEF Campaign")!)).toBe("uef");
     expect(scenarioBadge(byName.get("Seraphim Campaign")!)).toBe("seraphim");
+  });
+});
+
+describe("a campaign's missions", () => {
+  it("are listed in campaign order, not alphabetically (#457)", () => {
+    const missions = [
+      { name: "Operation Blockade", order: 3 },
+      { name: "Black Day", order: 1 },
+      { name: "Operation Rescue", order: 2 },
+    ];
+    expect(sortCoopMissions(missions).map((mission) => mission.name)).toEqual([
+      "Black Day",
+      "Operation Rescue",
+      "Operation Blockade",
+    ]);
   });
 });

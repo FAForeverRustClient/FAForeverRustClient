@@ -53,17 +53,22 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
                         });
                         load_history(ctx, out, generation).await;
                     }
-                    None => notifications::add(
+                    None => notifications::add_text(
                         out,
                         NotificationKind::Error,
+                        notifications::Text::new("notifications.msg.reportNoAccount")
+                            .with("login", &wanted),
                         "Cannot report player",
                         format!("No FAF account is called {wanted}."),
                         None,
                     ),
                 },
-                Err(error) => notifications::add(
+                Err(error) => notifications::add_text(
                     out,
                     NotificationKind::Error,
+                    notifications::Text::new("notifications.msg.reportLookupFailed")
+                        .with("login", &wanted)
+                        .with("reason", &error),
                     "Cannot report player",
                     format!("Could not look up {wanted}: {error}"),
                     None,
@@ -168,9 +173,11 @@ pub async fn handle(cmd: ReportingCommand, ctx: &ServiceCtx, out: &EventSink) {
             match result {
                 Ok(()) => {
                     out.emit(ReportingEvent::Submitted);
-                    notifications::add(
+                    notifications::add_text(
                         out,
                         NotificationKind::ReportSubmitted,
+                        notifications::Text::new("notifications.msg.reportSubmitted")
+                            .with("login", &login),
                         "Report submitted",
                         format!("Your report about {login} was sent to the moderation team."),
                         None,

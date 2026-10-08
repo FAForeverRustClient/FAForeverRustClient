@@ -150,21 +150,26 @@ fn announce_if_hidden(out: &EventSink, kind: UploadKind, name: &str, outcome: &U
     if out.with_state(|state| state.uploads.request.is_some()) {
         return; // The dialog is open and shows the outcome itself.
     }
-    let what = match kind {
-        UploadKind::Map => "Map",
-        UploadKind::Mod => "Mod",
+    let (what, which) = match kind {
+        UploadKind::Map => ("Map", "map"),
+        UploadKind::Mod => ("Mod", "mod"),
     };
     match outcome {
-        UploadStatus::Succeeded => notifications::add(
+        UploadStatus::Succeeded => notifications::add_text(
             out,
             NotificationKind::UploadFinished,
+            notifications::Text::new(format!("notifications.msg.{which}Published"))
+                .with("name", name),
             format!("{what} published"),
             format!("{name} is in the vault."),
             None,
         ),
-        UploadStatus::Failed { reason } => notifications::add(
+        UploadStatus::Failed { reason } => notifications::add_text(
             out,
             NotificationKind::Error,
+            notifications::Text::new(format!("notifications.msg.{which}NotPublished"))
+                .with("name", name)
+                .with("reason", reason),
             format!("{what} not published"),
             format!("{name} could not be published: {reason}. Open the upload again to retry."),
             None,

@@ -622,6 +622,27 @@ impl PlayerCardPort for PlayerCardClient {
     }
 
     async fn load_map_stats(&self, player_id: i32) -> Result<PlayerMapStats, String> {
+        self.scan_map_stats(player_id, MAX_HISTORY_GAMES).await
+    }
+
+    async fn load_recent_map_stats(
+        &self,
+        player_id: i32,
+        limit: usize,
+    ) -> Result<PlayerMapStats, String> {
+        self.scan_map_stats(player_id, limit.clamp(1, MAX_HISTORY_GAMES))
+            .await
+    }
+}
+
+impl PlayerCardClient {
+    /// The history scan behind both [`PlayerCardPort::load_map_stats`] and
+    /// its recent-games form, stopping after `max_games`.
+    async fn scan_map_stats(
+        &self,
+        player_id: i32,
+        max_games: usize,
+    ) -> Result<PlayerMapStats, String> {
         let token = self.token()?;
         let mut games: Vec<PlayedGame> = Vec::new();
         let mut truncated = false;
@@ -638,7 +659,14 @@ impl PlayerCardPort for PlayerCardClient {
                 truncated = true;
                 break;
             }
-            let last = (page + HISTORY_PAGE_CONCURRENCY - 1).min(MAX_HISTORY_PAGES);
+            // No more pages in a batch than the limit can use: a recent scan
+            // of a thousand games is ten pages, not the twelve three full
+            // batches would ask for. A server that pages shorter than asked
+            // still gets there, a page at a time past the estimate.
+            let wanted_pages = max_games.div_ceil(HISTORY_PAGE_SIZE).max(page);
+            let last = (page + HISTORY_PAGE_CONCURRENCY - 1)
+                .min(MAX_HISTORY_PAGES)
+                .min(wanted_pages);
             // Several pages at once. A full history is seventy-odd requests,
             // and one at a time is the whole of why opening a profile took a
             // minute where faftracker took seconds against the same API; it
@@ -655,8 +683,8 @@ impl PlayerCardPort for PlayerCardClient {
                     ended = true;
                 }
                 games.extend(rows);
-                if games.len() >= MAX_HISTORY_GAMES {
-                    games.truncate(MAX_HISTORY_GAMES);
+                if games.len() > max_games || (games.len() == max_games && !ended) {
+                    games.truncate(max_games);
                     truncated = true;
                     break 'scan;
                 }

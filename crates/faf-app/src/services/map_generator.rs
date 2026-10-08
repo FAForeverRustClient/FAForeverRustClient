@@ -310,26 +310,34 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             // one they asked the generator to hold on to as it ran.
             protected_maps.extend(settings.kept_generated_maps);
             match ctx.ports.map_generator.clean_up(&protected_maps).await {
-                Ok(0) => services::notifications::add(
+                Ok(0) => services::notifications::add_text(
                     out,
                     NotificationKind::MapGenerated,
+                    services::notifications::Text::new("notifications.msg.noGeneratedMaps"),
                     "Generated maps",
                     "There were no generated maps to remove.",
                     None,
                 ),
                 Ok(count) => {
-                    services::notifications::add(
+                    services::notifications::add_text(
                         out,
                         NotificationKind::MapGenerated,
+                        services::notifications::Text::new(
+                            "notifications.msg.generatedMapsRemoved",
+                        )
+                        .with("count", count),
                         "Generated maps removed",
                         format!("Removed {count} generated map(s)."),
                         None,
                     );
                     refresh_installed_maps(ctx, out).await;
                 }
-                Err(reason) => services::notifications::add(
+                Err(reason) => services::notifications::add_text(
                     out,
                     NotificationKind::Error,
+                    services::notifications::Text::new(
+                        "notifications.msg.generatedMapsRemoveFailed",
+                    ),
                     "Could not remove generated maps",
                     reason,
                     None,
@@ -367,6 +375,12 @@ async fn drain(
                 succeeded_maps = maps.clone();
                 announce_background_result(
                     out,
+                    match maps.as_slice() {
+                        [one] => services::notifications::Text::new("notifications.msg.mapReady")
+                            .with("name", one),
+                        many => services::notifications::Text::new("notifications.msg.mapsReady")
+                            .with("count", many.len()),
+                    },
                     "Map ready",
                     match maps.as_slice() {
                         [one] => one.clone(),
@@ -374,9 +388,10 @@ async fn drain(
                     },
                 );
             }
-            GeneratorStatus::Failed { reason } => services::notifications::add(
+            GeneratorStatus::Failed { reason } => services::notifications::add_text(
                 out,
                 NotificationKind::Error,
+                services::notifications::Text::new("notifications.msg.mapGenerationFailed"),
                 "Map generation failed",
                 reason.clone(),
                 None,
@@ -462,6 +477,8 @@ async fn evict_generated_maps(
     }
     announce_background_result(
         out,
+        services::notifications::Text::new("notifications.msg.generatedMapsTrimmed")
+            .with("count", evicted.len()),
         "Generated maps trimmed",
         format!(
             "Removed {} older generated map(s) to stay within the keep limit.",
@@ -478,9 +495,21 @@ async fn evict_generated_maps(
 /// unconditional, because they reply to a click, and failures stay
 /// unconditional because a lobby join blocked on a map that never arrives needs
 /// explaining whatever the switch says.
-fn announce_background_result(out: &EventSink, title: &str, body: String) {
+fn announce_background_result(
+    out: &EventSink,
+    text: services::notifications::Text,
+    title: &str,
+    body: String,
+) {
     if out.with_state(|state| state.settings.notifications.map_generated) {
-        services::notifications::add(out, NotificationKind::MapGenerated, title, body, None);
+        services::notifications::add_text(
+            out,
+            NotificationKind::MapGenerated,
+            text,
+            title,
+            body,
+            None,
+        );
     }
 }
 

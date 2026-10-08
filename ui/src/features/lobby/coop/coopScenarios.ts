@@ -4,7 +4,7 @@
 // showed the same list in the same wrong order, each with its own copy of the
 // sort, so this is one module they share.
 
-import type { CoopScenario } from "../../../ipc/bindings";
+import type { CoopMission, CoopScenario } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import type { Translation } from "../../../i18n/useTranslation";
 
@@ -65,6 +65,16 @@ export function sortCoopScenarios<T extends CoopScenario>(scenarios: readonly T[
       factionRank(a.faction) - factionRank(b.faction) ||
       a.name.localeCompare(b.name),
   );
+}
+
+/**
+ * A campaign's missions in campaign order, as the Java client lists them: the
+ * API's `order` is the mission's place in its campaign, and the alphabet is
+ * not ("... 10" sorts before "... 2"). The name only breaks ties. The records
+ * view and the host dialog both list missions, and both must agree (#457).
+ */
+export function sortCoopMissions<T extends Pick<CoopMission, "order" | "name">>(missions: readonly T[]): T[] {
+  return [...missions].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
 }
 
 /**

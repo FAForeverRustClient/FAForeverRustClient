@@ -348,6 +348,17 @@ describe("unread counting", () => {
     expect(next.channels[0]).toMatchObject({ unread: 1, unreadMentions: 1 });
   });
 
+  it("does not let joins and parts push the conversation out (#441)", () => {
+    let next = state({ channels: [channel("#uef")], activeChannel: "#uef" });
+    next = receive(next, { content: "said" });
+    for (let i = 0; i < 520; i += 1) {
+      next = receive(next, { kind: "info", content: `join ${i}` });
+    }
+    const messages = next.channels[0].messages;
+    expect(messages.some((kept) => kept.content === "said")).toBe(true);
+    expect(messages).toHaveLength(501);
+  });
+
   it("keeps only the most recent messages", () => {
     // Rust: `MAX_MESSAGES` drain. Both sides must keep the *newest*.
     let next = state({ channels: [channel("#uef")], activeChannel: "#uef" });

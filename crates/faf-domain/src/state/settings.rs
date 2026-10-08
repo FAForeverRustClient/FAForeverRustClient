@@ -57,6 +57,35 @@ pub struct GeneralPreferences {
     /// rotating titles is served by it.
     #[serde(default)]
     pub remember_typed_entries: bool,
+    /// How long the filters of every list in the client are remembered (#447).
+    ///
+    /// One setting for all of them, not a switch per tab: the thread asked
+    /// for exactly these three answers to one question, and a filter that
+    /// behaves differently from the one in the next tab reads as a bug either
+    /// way. `default` so a settings file written before this existed reads as
+    /// the default rather than failing.
+    #[serde(default)]
+    pub filter_memory: FilterMemory,
+}
+
+/// How long a filter outlives the moment it was set (#447).
+///
+/// What counts as a filter is anything that narrows a list: a search, a
+/// "hide" or "only" switch, a picker, a vault preset, a rule. How a list is
+/// sorted and how its columns are laid out are not filters and are always
+/// kept.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum FilterMemory {
+    /// Every list starts unfiltered whenever it is opened.
+    Never,
+    /// Filters survive leaving a tab and coming back, and are cleared when the
+    /// client starts. The default, because a search typed yesterday that
+    /// still hid games after a restart was reported as a bug (#447).
+    #[default]
+    Session,
+    /// Filters survive a restart.
+    Restart,
 }
 
 /// Which day a calendar week starts on.
@@ -412,6 +441,7 @@ impl Default for GeneralPreferences {
             start_page: Tab::News,
             auto_login: true,
             remember_typed_entries: false,
+            filter_memory: FilterMemory::Session,
         }
     }
 }
@@ -476,6 +506,13 @@ pub struct AppearancePreferences {
     /// replay from players who are online right now, which is all the API
     /// offers: it has no country for an account.
     pub replay_flags: bool,
+    /// The picture behind the interface, as the name it was stored under in
+    /// the client's `backgrounds` folder (#439). Empty is the theme's own
+    /// background.
+    pub background_image: String,
+    /// How far the picture is darkened under the interface, in percent, so
+    /// text stays readable over a bright one. Clamped to `0..=90`.
+    pub background_dim: u8,
 }
 
 // A field-level `#[serde(default)]` would have been shorter, but specta turns
@@ -499,6 +536,8 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             hover_open_delay_ms: u16,
             hover_close_delay_ms: u16,
             replay_flags: bool,
+            background_image: String,
+            background_dim: u8,
         }
 
         impl Default for Wire {
@@ -514,6 +553,8 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
                     hover_open_delay_ms: defaults.hover_open_delay_ms,
                     hover_close_delay_ms: defaults.hover_close_delay_ms,
                     replay_flags: defaults.replay_flags,
+                    background_image: defaults.background_image,
+                    background_dim: defaults.background_dim,
                 }
             }
         }
@@ -531,6 +572,8 @@ impl<'de> Deserialize<'de> for AppearancePreferences {
             hover_open_delay_ms: wire.hover_open_delay_ms.min(MAX_HOVER_DELAY_MS),
             hover_close_delay_ms: wire.hover_close_delay_ms.min(MAX_HOVER_DELAY_MS),
             replay_flags: wire.replay_flags,
+            background_image: wire.background_image,
+            background_dim: wire.background_dim.min(MAX_BACKGROUND_DIM),
         })
     }
 }
@@ -586,9 +629,16 @@ impl Default for AppearancePreferences {
             // that without the panel trailing the pointer down the list.
             hover_close_delay_ms: 160,
             replay_flags: false,
+            background_image: String::new(),
+            // Enough that the interface's own surfaces read as surfaces over a
+            // busy picture; the slider goes either way.
+            background_dim: 60,
         }
     }
 }
+
+/// The most a background may be darkened. Past this it is a black screen.
+pub const MAX_BACKGROUND_DIM: u8 = 90;
 
 impl AppearancePreferences {
     pub fn normalized(mut self) -> Self {
@@ -599,6 +649,7 @@ impl AppearancePreferences {
             .clamp(MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
         self.hover_open_delay_ms = self.hover_open_delay_ms.min(MAX_HOVER_DELAY_MS);
         self.hover_close_delay_ms = self.hover_close_delay_ms.min(MAX_HOVER_DELAY_MS);
+        self.background_dim = self.background_dim.min(MAX_BACKGROUND_DIM);
         self
     }
 }
@@ -1667,6 +1718,12 @@ pub struct GamePreferences {
     /// library; without any of those it does nothing. Windows and Linux.
     #[serde(default)]
     pub steam_presence: bool,
+    /// Take the frame off Forged Alliance's window and stretch it over its
+    /// monitor, for as long as the game runs (#445): the "borderless
+    /// windowed" mode players used to get from a third-party script. Needs the
+    /// game itself set to windowed. Off by default. Windows only.
+    #[serde(default)]
+    pub borderless_window: bool,
 }
 
 /// The most generated maps a keep list may hold. Far past what anybody sets,
@@ -1700,6 +1757,7 @@ impl Default for GamePreferences {
             keep_generated_maps: false,
             keep_generated_maps_limit: 0,
             steam_presence: false,
+            borderless_window: false,
         }
     }
 }
@@ -2083,10 +2141,10 @@ pub struct LiveReplayFilters {
     pub max_players: String,
     pub hide_modded: bool,
     pub hide_single_player: bool,
-    /// Hides the games the client can tell will rate nobody: an unranked map,
-    /// a sim mod that is not on the ranked list, or a free-for-all. Lobby
-    /// settings are not visible to any client, so this is the same question
-    /// the game browser's own "Hide unranked" asks, and the same answer.
+    /// Hides the games the client can tell will rate nobody: an unranked map
+    /// or a sim mod that is not on the ranked list. Lobby settings are not
+    /// visible to any client, so this is the same question the game browser's
+    /// own "Hide unranked" asks, and the same answer.
     ///
     /// `default` on this field alone rather than on the struct: a settings
     /// file written before this filter existed has every other key and not
@@ -2335,6 +2393,15 @@ pub struct BrowsingPreferences {
     /// the backend. Kept in the settings file so the compatibility read really
     /// is one-time and the old keys can be removed on a later confirmed load.
     pub legacy_storage_migrated: bool,
+    /// The filters of the lists that keep theirs in the webview, by list, each
+    /// one a JSON document only that list reads (#447).
+    ///
+    /// Only written while `GeneralPreferences::filter_memory` is `Restart`,
+    /// and emptied at startup otherwise. The lists whose filters were stored
+    /// before this existed keep their own fields above; this is for the rest,
+    /// so a new list does not need a new field and a new binding to be
+    /// remembered across a restart.
+    pub remembered_filters: BTreeMap<String, String>,
 }
 
 pub const DEFAULT_LEADERBOARD_RATING_COLUMNS: [&str; 2] = ["games", "updated"];
@@ -2397,6 +2464,7 @@ impl Default for BrowsingPreferences {
             replay_chat_channel: String::new(),
             replay_chat_transfers: ReplayChatTransfers::Show,
             legacy_storage_migrated: false,
+            remembered_filters: BTreeMap::new(),
         }
     }
 }
@@ -2454,6 +2522,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             #[serde(default)]
             replay_chat_transfers: ReplayChatTransfers,
             legacy_storage_migrated: bool,
+            #[serde(default)]
+            remembered_filters: BTreeMap<String, String>,
         }
 
         impl Default for Wire {
@@ -2493,6 +2563,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     replay_chat_channel: defaults.replay_chat_channel,
                     replay_chat_transfers: defaults.replay_chat_transfers,
                     legacy_storage_migrated: defaults.legacy_storage_migrated,
+                    remembered_filters: defaults.remembered_filters,
                 }
             }
         }
@@ -2532,6 +2603,7 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             replay_chat_channel: wire.replay_chat_channel,
             replay_chat_transfers: wire.replay_chat_transfers,
             legacy_storage_migrated: wire.legacy_storage_migrated,
+            remembered_filters: wire.remembered_filters,
         })
     }
 }
@@ -2661,8 +2733,54 @@ impl BrowsingPreferences {
         self.matchmaker_recent_order = normalize_column_order(self.matchmaker_recent_order);
         self.matchmaker_invite_columns = normalize_column_widths(self.matchmaker_invite_columns);
         self.matchmaker_invite_order = normalize_column_order(self.matchmaker_invite_order);
+        self.remembered_filters = normalize_remembered_filters(self.remembered_filters);
         self
     }
+
+    /// The same preferences with every filter back at its default (#447).
+    ///
+    /// What `FilterMemory` calls a filter: whatever narrows a list. The game
+    /// browser's switches and rules, the live replay filters, the vault
+    /// presets and the replay vault's player, and every list's entry in
+    /// `remembered_filters`. Sort orders, columns, views and favourites are
+    /// not filters and are left exactly as they were.
+    pub fn without_filters(mut self) -> Self {
+        let defaults = Self::default();
+        let browser = &mut self.custom_games_browser;
+        browser.hide_private = defaults.custom_games_browser.hide_private;
+        browser.hide_modded = defaults.custom_games_browser.hide_modded;
+        browser.hide_unranked = defaults.custom_games_browser.hide_unranked;
+        browser.hide_foes = defaults.custom_games_browser.hide_foes;
+        browser.apply_filters = defaults.custom_games_browser.apply_filters;
+        browser.rules = defaults.custom_games_browser.rules;
+        self.live_replay_filters = defaults.live_replay_filters;
+        self.map_vault_preset = defaults.map_vault_preset;
+        self.mod_vault_preset = defaults.mod_vault_preset;
+        self.replay_vault_player = defaults.replay_vault_player;
+        self.remembered_filters = defaults.remembered_filters;
+        self
+    }
+}
+
+/// Bounds on the webview's stored filters, against a corrupt or hand-edited
+/// file. Far more lists than the client has, and far longer documents than
+/// any filter writes.
+const MAX_REMEMBERED_FILTER_LISTS: usize = 64;
+const MAX_REMEMBERED_FILTER_KEY_CHARS: usize = 64;
+const MAX_REMEMBERED_FILTER_CHARS: usize = 8 * 1024;
+
+/// A list whose key or document is past the bounds is dropped whole rather
+/// than cut: half a JSON document is not a filter.
+fn normalize_remembered_filters(filters: BTreeMap<String, String>) -> BTreeMap<String, String> {
+    filters
+        .into_iter()
+        .filter(|(key, value)| {
+            !key.trim().is_empty()
+                && key.chars().count() <= MAX_REMEMBERED_FILTER_KEY_CHARS
+                && value.chars().count() <= MAX_REMEMBERED_FILTER_CHARS
+        })
+        .take(MAX_REMEMBERED_FILTER_LISTS)
+        .collect()
 }
 
 /// Column widths as a settings file may hold them.
@@ -3029,6 +3147,7 @@ preference_patch! {
         start_page: Tab,
         auto_login: bool,
         remember_typed_entries: bool,
+        filter_memory: FilterMemory,
     }
 }
 
@@ -3053,6 +3172,8 @@ preference_patch! {
         hover_open_delay_ms: u16,
         hover_close_delay_ms: u16,
         replay_flags: bool,
+        background_image: String,
+        background_dim: u8,
     }
 }
 
@@ -3194,6 +3315,7 @@ preference_patch! {
         keep_generated_maps: bool,
         keep_generated_maps_limit: u32,
         steam_presence: bool,
+        borderless_window: bool,
     }
 }
 
@@ -3295,6 +3417,7 @@ preference_patch! {
         replay_chat_channel: String,
         replay_chat_transfers: ReplayChatTransfers,
         legacy_storage_migrated: bool,
+        remembered_filters: BTreeMap<String, String>,
     }
     nested {
         custom_games_browser: CustomGameBrowserPreferencesPatch,
@@ -4469,6 +4592,7 @@ mod tests {
                 replay_chat_channel: "  ALLIES  ".into(),
                 replay_chat_transfers: ReplayChatTransfers::Hide,
                 legacy_storage_migrated: true,
+                remembered_filters: BTreeMap::new(),
             },
             ..SettingsState::default()
         }
@@ -4601,6 +4725,61 @@ mod tests {
         let stored = serde_json::to_string(&ticked).unwrap();
         let reloaded: BrowsingPreferences = serde_json::from_str(&stored).unwrap();
         assert!(reloaded.leaderboard_include_former_names);
+    }
+
+    #[test]
+    fn filters_last_one_session_unless_told_otherwise() {
+        // A settings file from before #447 has no answer and gets the default.
+        let general: GeneralPreferences = serde_json::from_str(r#"{"startPage":"news"}"#).unwrap();
+        assert_eq!(general.filter_memory, FilterMemory::Session);
+    }
+
+    #[test]
+    fn without_filters_clears_what_narrows_a_list_and_nothing_else() {
+        let mut browsing = BrowsingPreferences::default();
+        browsing.custom_games_browser.hide_private = true;
+        browsing.custom_games_browser.apply_filters = true;
+        browsing.custom_games_browser.rules = vec![CustomGameFilterRule {
+            field: CustomGameFilterField::Map,
+            constraint: CustomGameFilterConstraint::Contains,
+            value: "seton".into(),
+        }];
+        browsing.custom_games_browser.sort_reversed = true;
+        browsing.custom_games_browser.column_widths = vec![200];
+        browsing.live_replay_filters.search = "1500+".into();
+        browsing.map_vault_preset = "favorites".into();
+        browsing.map_vault_sort = "rating".into();
+        browsing.replay_vault_player = "Dog".into();
+        browsing.favorite_maps = vec!["setons_clutch".into()];
+        browsing
+            .remembered_filters
+            .insert("installedMods".into(), r#"{"search":"ui"}"#.into());
+
+        let cleared = browsing.without_filters();
+
+        assert!(!cleared.custom_games_browser.hide_private);
+        assert!(!cleared.custom_games_browser.apply_filters);
+        assert!(cleared.custom_games_browser.rules.is_empty());
+        assert_eq!(cleared.live_replay_filters, LiveReplayFilters::default());
+        assert_eq!(cleared.map_vault_preset, "recommended");
+        assert!(cleared.replay_vault_player.is_empty());
+        assert!(cleared.remembered_filters.is_empty());
+        // How the lists are sorted and laid out is not a filter.
+        assert!(cleared.custom_games_browser.sort_reversed);
+        assert_eq!(cleared.custom_games_browser.column_widths, vec![200]);
+        assert_eq!(cleared.map_vault_sort, "rating");
+        assert_eq!(cleared.favorite_maps, vec!["setons_clutch".to_owned()]);
+    }
+
+    #[test]
+    fn remembered_filters_drop_what_a_list_could_not_have_written() {
+        let mut filters = BTreeMap::new();
+        filters.insert("maps".into(), "{}".into());
+        filters.insert(" ".into(), "{}".into());
+        filters.insert("x".repeat(65), "{}".into());
+        filters.insert("huge".into(), "x".repeat(8 * 1024 + 1));
+        let normalized = normalize_remembered_filters(filters);
+        assert_eq!(normalized.keys().collect::<Vec<_>>(), vec!["maps"]);
     }
 
     #[test]

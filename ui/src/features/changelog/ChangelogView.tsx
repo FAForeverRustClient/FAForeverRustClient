@@ -20,6 +20,7 @@ import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
+import { useRememberedFilter } from "../../shared/filterMemory";
 import { formatDate } from "../../shared/format/dates";
 import { FeaturedModIcon } from "../../shared/components/FeaturedModIcon";
 import type {
@@ -188,7 +189,8 @@ const anchorFor = (index: number) => `changelog-block-${index}`;
 export function ChangelogView() {
   const { t } = useTranslation();
   const changelog = useAppStore((state) => state.state.changelog);
-  const [search, setSearch] = useState("");
+  // Remembered as the filter setting says (#447).
+  const [search, setSearch] = useRememberedFilter("changelog.search", "", (value) => typeof value === "string");
   /// The years the reader has flipped from their default, folded or open.
   const [toggledGroups, setToggledGroups] = useState<Set<string>>(() => new Set());
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);

@@ -487,6 +487,56 @@ button.vault-input {
   row-gap: 0;
 }
 
+/* With "Game result" on (issue 454), each side is a panel tinted by its
+   outcome, the same border and wash the detail view's team panels take
+   (`.replay-detail-team[data-outcome]`). Every side gets the panel, so the
+   teams of one card stay aligned; a draw or an unrecorded result keeps it
+   neutral. Observers are not a side and stay plain. */
+.replay-card-teams[data-results="true"] > .replay-card-team:not([data-observer]) {
+  padding: 4px 6px 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+
+.replay-card-teams[data-results="true"] > .replay-card-team[data-outcome="victory"] {
+  border-color: color-mix(in srgb, var(--color-ok) 40%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 4%, var(--color-surface-raised));
+}
+
+.replay-card-teams[data-results="true"] > .replay-card-team[data-outcome="defeat"] {
+  border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+  background: color-mix(in srgb, var(--color-error) 4%, var(--color-surface-raised));
+}
+
+/* A free-for-all's players each have their own result, so there the row is
+   what takes the colour, not the panel around all of them. The winner's row
+   only: seven red rows under one green one is noise, and the rating changes
+   already say who lost what. */
+.replay-card-teams[data-results="true"] .replay-player[data-outcome] {
+  margin: 0 -4px;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+}
+
+.replay-card-teams[data-results="true"] .replay-player[data-outcome="victory"] {
+  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+}
+
+/* A player's rating and its change: one group at the row's end, which never
+   wraps and never shrinks. The name is what gives way. */
+.replay-card-player-stats {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-card-player-stats .replay-player-rating-change {
+  min-width: 0;
+}
+
 .replay-card-team-title {
   display: flex;
   justify-content: space-between;
@@ -499,6 +549,31 @@ button.vault-input {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+/* One line, always: the team's name gives way before the player count does,
+   and neither wraps onto a second line of the header (issue 454). */
+.replay-card-team-title > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-card-team-title > span:last-child {
+  flex: none;
+}
+
+/* The name is what gives way in a player's row, cut short rather than pushed
+   onto a second line by the rating beside it. */
+.replay-player > .replay-player-identity {
+  flex: 1 1 auto;
+}
+
+.replay-player > .replay-player-identity > :last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* A shade larger than the surrounding card metadata: the roster is what a

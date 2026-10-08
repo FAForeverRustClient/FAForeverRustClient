@@ -120,6 +120,21 @@ pub(crate) fn read_notification_sound(name: String) -> Result<Vec<u8>, String> {
     std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
 }
 
+/// Copy a picked picture in as the interface's background (#439). Returns the
+/// name it was stored under, which is what goes in the settings.
+#[tauri::command]
+pub(crate) fn import_background_image(path: String) -> Result<String, String> {
+    faf_app::infra::backgrounds::import_background(std::path::Path::new(&path))
+}
+
+/// The stored background's bytes, read here for the same reason the sounds
+/// are: see [`read_notification_sound`].
+#[tauri::command]
+pub(crate) fn read_background_image(name: String) -> Result<Vec<u8>, String> {
+    let path = faf_app::infra::backgrounds::background_path(&name)?;
+    std::fs::read(&path).map_err(|error| format!("could not read {}: {error}", path.display()))
+}
+
 #[tauri::command]
 pub(crate) fn open_version_folder(name: String, app: tauri::AppHandle) -> Result<(), String> {
     let cache_root = faf_app::infra::cache_dir()?;

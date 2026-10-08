@@ -1452,6 +1452,18 @@ img.chat-game-map {
   font-size: 12px;
 }
 
+/* A fact and its icon, as the replay tab's cards pair them (issue 448). */
+.chat-game-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chat-game-meta > span > svg {
+  flex: none;
+  opacity: 0.75;
+}
+
 .chat-game-teams {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1730,11 +1742,19 @@ img.chat-game-map {
    fills with its roster, so it matches the roster's frame rather than the
    floating popover's: no shadow, no fixed position, and it scrolls with its
    own content when a lineup is long. */
+/* As tall as what it holds, not the whole column (issue 448): stretched from the
+   top of the column to the bottom it read as a pane of its own rather than as
+   a card, unlike every card on the Play tab. */
+/* And it starts where the conversation's card starts, below the channel tabs
+   and the row of controls, not level with the tabs: `--chat-card-top` is
+   measured by `ChatView`. */
 .chat-conversation-aside {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  height: 100%;
+  align-self: flex-start;
+  margin-top: var(--chat-card-top, 0px);
+  max-height: calc(100% - var(--chat-card-top, 0px));
   min-height: 0;
   overflow: auto;
   padding: 10px;
@@ -1825,6 +1845,96 @@ img.chat-game-map {
 
 .chat-aside-action {
   align-self: flex-start;
+}
+
+/* The side panel in the replay tab's look (issue 448). Its layout is the one
+   it always had: the map beside the title, the facts, the lineup, the way in
+   at the foot. What changed is how each of those is drawn, so the game reads
+   the same here as on the Live tab's card for it: the title at the card's
+   size, the teams as the card's plain columns under a ruled, upper-case team
+   line rather than as boxes, a name and its rating at the card's 13 px with
+   the rating at the row's end, and Watch as the primary button. */
+.chat-conversation-aside .chat-game-popover-head {
+  padding-bottom: var(--space-2);
+}
+
+.chat-conversation-aside .chat-game-popover-head strong {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+
+.chat-conversation-aside .chat-game-meta {
+  padding: var(--space-1) 0;
+  font-size: 11px;
+}
+
+.chat-conversation-aside .chat-game-teams {
+  gap: var(--space-3);
+}
+
+.chat-conversation-aside .chat-game-team {
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.chat-conversation-aside .chat-game-team h4 {
+  margin: 0 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chat-conversation-aside .chat-game-team h4 > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The team's name is short and is what says which team this is, so it is
+   the count and the rating after it that give way in a narrow panel. */
+.chat-conversation-aside .chat-game-team h4 > span:first-child {
+  flex: none;
+}
+
+.chat-conversation-aside .chat-game-team ul {
+  gap: 0;
+}
+
+.chat-conversation-aside .chat-game-team li {
+  min-height: 22px;
+  font-size: 13px;
+}
+
+/* A team where nobody has an avatar does not keep 40 px of nothing in front
+   of every name: the replay card's names start at the flag. The same rule
+   the hover card has for a lone team. The narrow step drops avatar and flag
+   anyway, see above. */
+.chat-conversation-aside:not([data-tier="narrow"]) .chat-game-team:not(:has(.chat-game-player-avatar img)) li {
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+}
+
+.chat-conversation-aside:not([data-tier="narrow"]) .chat-game-team:not(:has(.chat-game-player-avatar img)) .chat-game-player-avatar {
+  display: none;
+}
+
+.chat-conversation-aside .chat-game-team li small {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-conversation-aside .chat-aside-primary {
+  flex: 1;
+  min-height: 36px;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 /* The roster hover card. Replaces the operating system's own tooltip, which is

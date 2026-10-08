@@ -1,4 +1,10 @@
-import type { Tab, WeekStart, GeneralPreferencesPatch, EventsPreferencesPatch } from "../../ipc/bindings";
+import type {
+  Tab,
+  WeekStart,
+  GeneralPreferencesPatch,
+  EventsPreferencesPatch,
+  FilterMemory,
+} from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
@@ -6,6 +12,9 @@ import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { LOCALES, LOCALE_KEYS, type Locale } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { TABS } from "../nav/tabs";
+import { filterMemoryChanged } from "../../shared/filterMemory";
+
+const FILTER_MEMORY: FilterMemory[] = ["never", "session", "restart"];
 
 // Start pages are the tabs a session can open on. The labels come from the tab
 // registry so this list cannot drift out of step with the tab bar's wording.
@@ -78,6 +87,27 @@ export function GeneralSettingsSection() {
           onChange={(checked) => void save({ rememberTypedEntries: checked })}
           label={t("settings.general.rememberTypedEntries.label")}
         />
+      </SettingRow>
+
+      {/* One answer for every list in the client (#447). */}
+      <SettingRow
+        label={t("settings.general.filterMemory.label")}
+        hint={t("settings.general.filterMemory.hint")}
+      >
+        <select
+          className="settings-select"
+          value={preferences.filterMemory ?? "session"}
+          onChange={(event) => {
+            const next = event.target.value as FilterMemory;
+            void save({ filterMemory: next });
+            filterMemoryChanged(next);
+          }}
+          aria-label={t("settings.general.filterMemory.label")}
+        >
+          {FILTER_MEMORY.map((memory) => (
+            <option key={memory} value={memory}>{t(`settings.general.filterMemory.${memory}`)}</option>
+          ))}
+        </select>
       </SettingRow>
 
       <SettingRow

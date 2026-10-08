@@ -188,6 +188,17 @@ export type AppearancePreferences = {
 	 *  offers: it has no country for an account.
 	 */
 	replayFlags: boolean,
+	/**
+	 *  The picture behind the interface, as the name it was stored under in
+	 *  the client's `backgrounds` folder (#439). Empty is the theme's own
+	 *  background.
+	 */
+	backgroundImage: string,
+	/**
+	 *  How far the picture is darkened under the interface, in percent, so
+	 *  text stays readable over a bright one. Clamped to `0..=90`.
+	 */
+	backgroundDim: number,
 };
 
 /**  A change to [`AppearancePreferences`]. */
@@ -201,6 +212,8 @@ export type AppearancePreferencesPatch = {
 	hoverOpenDelayMs?: number,
 	hoverCloseDelayMs?: number,
 	replayFlags?: boolean,
+	backgroundImage?: string,
+	backgroundDim?: number,
 };
 
 /**  An archived tournament, hidden from everyone until restored. */
@@ -571,6 +584,17 @@ export type BrowsingPreferences = {
 	 *  is one-time and the old keys can be removed on a later confirmed load.
 	 */
 	legacyStorageMigrated: boolean,
+	/**
+	 *  The filters of the lists that keep theirs in the webview, by list, each
+	 *  one a JSON document only that list reads (#447).
+	 *
+	 *  Only written while `GeneralPreferences::filter_memory` is `Restart`,
+	 *  and emptied at startup otherwise. The lists whose filters were stored
+	 *  before this existed keep their own fields above; this is for the rest,
+	 *  so a new list does not need a new field and a new binding to be
+	 *  remembered across a restart.
+	 */
+	rememberedFilters: { [key in string]: string },
 };
 
 /**
@@ -607,6 +631,7 @@ export type BrowsingPreferencesPatch = {
 	replayChatChannel?: string,
 	replayChatTransfers?: ReplayChatTransfers,
 	legacyStorageMigrated?: boolean,
+	rememberedFilters?: { [key in string]: string },
 	customGamesBrowser?: CustomGameBrowserPreferencesPatch,
 	liveReplayFilters?: LiveReplayFiltersPatch,
 	hostGame?: HostGamePreferencesPatch,
@@ -1506,6 +1531,13 @@ export type ClientNotification = {
 	createdAt: string,
 	read: boolean,
 	action: NotificationAction | null,
+	/**
+	 *  The catalog entry this notification is written from, when it has one.
+	 *  `title` and `body` stay the English text, for the OS notification
+	 *  before the UI has a language and for anything that reads them raw; the
+	 *  UI shows this translated instead (#458).
+	 */
+	text: NotificationText | null,
 };
 
 /**  A release that could be installed over the running client. */
@@ -2492,6 +2524,26 @@ export type FfaReport = {
 };
 
 /**
+ *  How long a filter outlives the moment it was set (#447).
+ *
+ *  What counts as a filter is anything that narrows a list: a search, a
+ *  "hide" or "only" switch, a picker, a vault preset, a rule. How a list is
+ *  sorted and how its columns are laid out are not filters and are always
+ *  kept.
+ */
+export type FilterMemory =
+/**  Every list starts unfiltered whenever it is opened. */
+"never" |
+/**
+ *  Filters survive leaving a tab and coming back, and are cleared when the
+ *  client starts. The default, because a search typed yesterday that
+ *  still hid games after a restart was reported as a bug (#447).
+ */
+"session" |
+/**  Filters survive a restart. */
+"restart";
+
+/**
  *  The shape of the competition, changed after the event was created.
  *
  *  A narrower set than the service's `edit_format` accepts. The best-of plan
@@ -2922,6 +2974,13 @@ export type GamePreferences = {
 	 *  library; without any of those it does nothing. Windows and Linux.
 	 */
 	steamPresence?: boolean,
+	/**
+	 *  Take the frame off Forged Alliance's window and stretch it over its
+	 *  monitor, for as long as the game runs (#445): the "borderless
+	 *  windowed" mode players used to get from a third-party script. Needs the
+	 *  game itself set to windowed. Off by default. Windows only.
+	 */
+	borderlessWindow?: boolean,
 };
 
 /**
@@ -2940,6 +2999,7 @@ export type GamePreferencesPatch = {
 	keepGeneratedMaps?: boolean,
 	keepGeneratedMapsLimit?: number,
 	steamPresence?: boolean,
+	borderlessWindow?: boolean,
 };
 
 export type GeneralPreferences = {
@@ -2961,6 +3021,16 @@ export type GeneralPreferences = {
 	 *  rotating titles is served by it.
 	 */
 	rememberTypedEntries?: boolean,
+	/**
+	 *  How long the filters of every list in the client are remembered (#447).
+	 *
+	 *  One setting for all of them, not a switch per tab: the thread asked
+	 *  for exactly these three answers to one question, and a filter that
+	 *  behaves differently from the one in the next tab reads as a bug either
+	 *  way. `default` so a settings file written before this existed reads as
+	 *  the default rather than failing.
+	 */
+	filterMemory?: FilterMemory,
 };
 
 /**  A change to [`GeneralPreferences`]; see `preference_patch!`. */
@@ -2968,6 +3038,7 @@ export type GeneralPreferencesPatch = {
 	startPage?: Tab,
 	autoLogin?: boolean,
 	rememberTypedEntries?: boolean,
+	filterMemory?: FilterMemory,
 };
 
 /**
@@ -3576,6 +3647,12 @@ export type InstalledMap = {
 	height?: number,
 	version?: string | null,
 	description?: string | null,
+	/**
+	 *  When the folder was last written, RFC 3339: in practice when the map
+	 *  was downloaded, which is what "recently installed" sorts by (#453).
+	 *  `None` when the file system would not say.
+	 */
+	installedAt?: string | null,
 };
 
 /**
@@ -3840,10 +3917,10 @@ export type LiveReplayFilters = {
 	hideModded: boolean,
 	hideSinglePlayer: boolean,
 	/**
-	 *  Hides the games the client can tell will rate nobody: an unranked map,
-	 *  a sim mod that is not on the ranked list, or a free-for-all. Lobby
-	 *  settings are not visible to any client, so this is the same question
-	 *  the game browser's own "Hide unranked" asks, and the same answer.
+	 *  Hides the games the client can tell will rate nobody: an unranked map
+	 *  or a sim mod that is not on the ranked list. Lobby settings are not
+	 *  visible to any client, so this is the same question the game browser's
+	 *  own "Hide unranked" asks, and the same answer.
 	 *
 	 *  `default` on this field alone rather than on the struct: a settings
 	 *  file written before this filter existed has every other key and not
@@ -5846,6 +5923,18 @@ export type NotificationState = {
 };
 
 /**
+ *  A notification's text as a catalog key and the values it is filled with.
+ *
+ *  The UI looks up `<key>.title` and `<key>.body` and fills each with
+ *  `params`. A side the catalog has no entry for falls back to the English
+ *  `title` or `body`, so a server-supplied reason is still shown as sent.
+ */
+export type NotificationText = {
+	key: string,
+	params: { [key in string]: string },
+};
+
+/**
  *  What the vault knows about one game id, looked up for a replay the client
  *  only has as a file on disk.
  *
@@ -6202,6 +6291,12 @@ export type PlayerCardCommand = { type: "open"; payload: {
 /**  Scan this player's games and fold them into per-map records. */
 { type: "loadMapStats"; payload: {
 	playerId: number,
+	/**
+	 *  Scan the whole history instead of the most recent games (#440).
+	 *  A long history is dozens of requests, so the profile opens on the
+	 *  recent ones and the reader asks for the rest.
+	 */
+	full?: boolean,
 } } |
 /**
  *  Look up the active league placements of these party members.

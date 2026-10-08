@@ -477,7 +477,7 @@ const INITIAL: AppState = {
     mapPoolsSeen: [],
     avatarHistory: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
-    general: { startPage: "news", autoLogin: true, rememberTypedEntries: false },
+    general: { startPage: "news", autoLogin: true, rememberTypedEntries: false, filterMemory: "session" },
     appearance: {
       density: "comfortable",
       reduceMotion: false,
@@ -488,6 +488,8 @@ const INITIAL: AppState = {
       hoverOpenDelayMs: 500,
       hoverCloseDelayMs: 160,
       replayFlags: false,
+      backgroundImage: "",
+      backgroundDim: 60,
     },
     social: { playerNotes: [], replayNotes: [] },
     notifications: {
@@ -581,6 +583,7 @@ const INITIAL: AppState = {
       keepGeneratedMaps: false,
       keepGeneratedMapsLimit: 0,
       steamPresence: false,
+      borderlessWindow: false,
     },
     discord: { enabled: true, disallowJoins: false },
     connectivity: { adapter: "dynamic", hostAdapter: "java", selectionVersion: 2 },
@@ -668,6 +671,7 @@ const INITIAL: AppState = {
       replayChatChannel: "",
       replayChatTransfers: "show",
       legacyStorageMigrated: false,
+      rememberedFilters: {},
     },
     events: { weekStart: "monday", reminders: [] },
   },
