@@ -1730,7 +1730,7 @@ img.chat-game-map {
    fills with its roster, so it matches the roster's frame rather than the
    floating popover's: no shadow, no fixed position, and it scrolls with its
    own content when a lineup is long. */
-/* As tall as what it holds, not the whole column (#448): stretched from the
+/* As tall as what it holds, not the whole column (issue 448): stretched from the
    top of the column to the bottom it read as a pane of its own rather than as
    a card, unlike every card on the Play tab. */
 .chat-conversation-aside {

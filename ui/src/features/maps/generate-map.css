@@ -497,7 +497,7 @@
 }
 
 /* Wraps rather than ending in "...": every language but English runs longer
-   than the 105px column, and a cut-off label could not be read at all (#459). */
+   than the 105px column, and a cut-off label could not be read at all (issue 459). */
 .generate-map-row-label {
   font-size: 12px;
   color: var(--color-muted);
@@ -604,7 +604,7 @@
 }
 
 /* Both buttons the same height, whatever they say. A longer translation
-   wraps to a second line rather than being cut off (#459), and the row's
+   wraps to a second line rather than being cut off (issue 459), and the row's
    `align-items: stretch` keeps the button beside it just as tall. */
 .generate-map-preset-save-group-buttons > * {
   flex: 1;
@@ -847,7 +847,7 @@
 
 /* The dialog's pickers and sliders wrap a long summary instead of cutting it
    to "...". Translations run longer than English, and in this narrow column
-   the cut-off text was all there was to read (#459). */
+   the cut-off text was all there was to read (issue 459). */
 .generate-map .multi-select-summary {
   overflow: visible;
   white-space: normal;

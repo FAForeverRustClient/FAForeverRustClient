@@ -487,7 +487,7 @@ button.vault-input {
   row-gap: 0;
 }
 
-/* The count and, with "Game result" on (#454), the outcome after it. */
+/* The count and, with "Game result" on (issue 454), the outcome after it. */
 .replay-card-team-summary {
   display: inline-flex;
   align-items: center;

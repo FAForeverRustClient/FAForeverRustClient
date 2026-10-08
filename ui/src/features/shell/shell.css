@@ -532,7 +532,7 @@
   }
 }
 
-/* The player's own picture behind the tabs (#439), under a veil of the
+/* The player's own picture behind the tabs (issue 439), under a veil of the
    theme's background so text stays readable: `--app-background-dim` is how
    much of the veil there is. Set on the document root by `useAppBackground`.
    Panels and cards keep their own surfaces and sit on top of it. */

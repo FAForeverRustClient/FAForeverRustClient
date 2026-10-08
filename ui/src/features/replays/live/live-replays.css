@@ -75,7 +75,7 @@
   gap: var(--space-1);
 }
 
-/* The "keep after a restart" switch (#447): a row of its own under the four
+/* The "keep after a restart" switch (issue 447): a row of its own under the four
    pickers, a checkbox and its label side by side rather than stacked. */
 .live-replay-filters > label.live-replay-remember {
   grid-column: 1 / -1;
@@ -686,7 +686,7 @@
 }
 
 /* The replay id, last in the fact grid, across both of its columns: in one
-   narrow column an eight-digit id was always cut short (#434). */
+   narrow column an eight-digit id was always cut short (issue 434). */
 .live-replay-card .replay-meta-grid > .replay-meta-fact:last-child {
   grid-column: 1 / -1;
 }
