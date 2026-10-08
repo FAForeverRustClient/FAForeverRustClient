@@ -625,6 +625,7 @@ const INITIAL: AppState = {
         hideSinglePlayer: false,
         hideUnranked: false,
         friendsOnly: false,
+        remember: false,
       },
       hostGame: {
         title: "",

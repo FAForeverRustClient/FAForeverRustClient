@@ -488,6 +488,7 @@ function parseLegacyLiveReplayFilters(
       hideSinglePlayer: booleanValue("hideSinglePlayer"),
       hideUnranked: booleanValue("hideUnranked"),
       friendsOnly: booleanValue("friendsOnly"),
+      remember: booleanValue("remember"),
     },
   }).liveReplayFilters;
 }
