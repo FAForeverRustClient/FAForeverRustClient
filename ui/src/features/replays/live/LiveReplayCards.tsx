@@ -135,12 +135,7 @@ export function LiveReplayCards(props: Props) {
   );
 }
 
-/**
- * One running game as the Live tab draws it. Exported for the side panel of a
- * private conversation (#448), which shows the game the other person is
- * playing and should say exactly what this tab says about it.
- */
-export const LiveReplayCard = memo(function LiveReplayCard({
+const LiveReplayCard = memo(function LiveReplayCard({
   busy,
   game,
   ageNow,
@@ -149,7 +144,6 @@ export const LiveReplayCard = memo(function LiveReplayCard({
   onOpen,
   onPlayerMenu,
   mapSize,
-  layout = "wide",
 }: {
   busy: boolean;
   game: Game;
@@ -158,16 +152,8 @@ export const LiveReplayCard = memo(function LiveReplayCard({
   ageNow: number;
   waitSeconds: number;
   tracking: LiveReplayTracking | null;
-  /** Opens the game's detail panel; a card with nowhere to open one leaves it out. */
-  onOpen?: (id: number) => void;
+  onOpen: (id: number) => void;
   onPlayerMenu: PlayerMenuOpener;
-  /**
-   * `wide` is the Live tab's grid. `stacked` is the same card for a column a
-   * third as wide, the side panel of a private conversation (#448): the
-   * title and the way in on top, the preview beside the facts, the lineup
-   * one team under the other.
-   */
-  layout?: "wide" | "stacked";
 }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
@@ -196,9 +182,9 @@ export const LiveReplayCard = memo(function LiveReplayCard({
 
   return (
     <article
-      className={`replay-card live-replay-card surface-panel${layout === "stacked" ? " is-stacked" : ""}`}
+      className="replay-card live-replay-card surface-panel"
       onClick={(event) => {
-        if (opensDetail(event)) onOpen?.(game.id);
+        if (opensDetail(event)) onOpen(game.id);
       }}
       // Double click watches, as it does on a table row.
       onDoubleClick={(event) => {

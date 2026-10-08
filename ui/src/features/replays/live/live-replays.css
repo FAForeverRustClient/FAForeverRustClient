@@ -599,66 +599,6 @@
   font-weight: 600;
 }
 
-/* The stacked card, for a column a third as wide as the Live tab's grid: the
-   side panel of a private conversation (issue 448). The same pieces, laid out
-   as a grid of their own: the title and the way in across the top, the
-   preview beside the facts, then the lineup with one team under the other.
-   The two columns the wide card has are dissolved into it rather than kept,
-   which is what let the wide card run past the panel's right edge. */
-.live-replay-card.is-stacked {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  grid-template-areas:
-    "top top"
-    "thumb facts"
-    "roster roster";
-  align-items: start;
-  gap: var(--space-2) var(--space-3);
-  min-height: 0;
-  min-width: 0;
-}
-
-.live-replay-card.is-stacked > .replay-card-left,
-.live-replay-card.is-stacked > .replay-card-right {
-  display: contents;
-}
-
-.live-replay-card.is-stacked .replay-card-top {
-  grid-area: top;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-2);
-  margin-bottom: 0;
-}
-
-.live-replay-card.is-stacked .replay-card-corner,
-.live-replay-card.is-stacked .replay-card-corner > * {
-  width: 100%;
-}
-
-/* Not pulled left the way the wide card pulls it toward its edge: here it
-   lines up with the title above it. */
-.live-replay-card.is-stacked .replay-card-thumb-wrap {
-  grid-area: thumb;
-  left: 0;
-}
-
-.live-replay-card.is-stacked .replay-card-thumb {
-  width: 96px;
-  height: 96px;
-}
-
-/* One fact a line: half of a column this narrow cuts every value short. */
-.live-replay-card.is-stacked .replay-meta-grid {
-  grid-area: facts;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.live-replay-card.is-stacked .replay-card-teams {
-  grid-area: roster;
-  grid-template-columns: minmax(0, 1fr);
-}
-
 /* The detail panel's one action, at the top of the head's action column where
    the vault panel puts its "Watch", so the button sits in the same place in
    every replay tab. */
