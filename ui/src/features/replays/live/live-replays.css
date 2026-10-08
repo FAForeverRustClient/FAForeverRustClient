@@ -684,3 +684,9 @@
     grid-column: 1 / -1;
   }
 }
+
+/* The replay id, last in the fact grid, across both of its columns: in one
+   narrow column an eight-digit id was always cut short (#434). */
+.live-replay-card .replay-meta-grid > .replay-meta-fact:last-child {
+  grid-column: 1 / -1;
+}
