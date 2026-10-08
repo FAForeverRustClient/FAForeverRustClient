@@ -54,10 +54,14 @@ fn java_client_vault_dir_from_json(contents: &str) -> Option<PathBuf> {
 }
 
 fn default_vault_dir() -> PathBuf {
-    let documents = directories::UserDirs::new()
-        .and_then(|dirs| dirs.document_dir().map(PathBuf::from))
-        .unwrap_or_else(|| PathBuf::from("."));
-    documents
+    let base_dir = if cfg!(target_os = "linux") {
+        directories::BaseDirs::new().map(|dirs| dirs.home_dir().to_path_buf())
+    } else {
+        directories::UserDirs::new().and_then(|dirs| dirs.document_dir().map(PathBuf::from))
+    }
+    .unwrap_or_else(|| PathBuf::from("."));
+
+    base_dir
         .join("My Games")
         .join("Gas Powered Games")
         .join("Supreme Commander Forged Alliance")
