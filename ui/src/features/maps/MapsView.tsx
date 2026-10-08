@@ -3,7 +3,7 @@
 // current search, filters, sorting and selection for presentation.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type RankedFilter, useMapFilterDraft } from "./mapFilterDraft";
+import { type MapFilterDraft, type RankedFilter, useMapFilterDraft } from "./mapFilterDraft";
 import { type InstallFilter, mapsMatchingQuery, visibleVaultMaps } from "./mapVaultResults";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { localPage, vaultPageOutcome } from "../../shared/vaultResults";
@@ -41,6 +41,13 @@ import "./maps.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DateInput } from "../../design-system/DateInput";
+import {
+  filterMemoryNow,
+  isFilterRecord,
+  rememberedFilter,
+  useForgetFiltersOnLeave,
+  useRememberFilter,
+} from "../../shared/filterMemory";
 
 type SubView = MapsSection;
 type VaultSort = "rating" | "newest" | "played" | "name" | "size";
@@ -85,6 +92,10 @@ const setMapVersionHidden = (versionId: number, hidden: boolean) =>
     kind: "Maps",
     command: { type: "setMapVersionHidden", payload: { versionId, hidden } },
   });
+
+/** Where the vault's and the library's filters are remembered (#447). */
+const MAP_VAULT_FILTERS = "maps.vault";
+const INSTALLED_MAP_FILTERS = "maps.installed";
 
 interface MapFilterState {
   search: string;
@@ -213,11 +224,18 @@ function VaultView({ busy }: { busy: boolean }) {
   const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
   // What was last searched, read once as the tab mounts: the form starts from
   // it, so coming back from another tab finds the search where it was left.
-  const [restored] = useState(() => mapFilterFromQuery(browseQuery, preset));
+  // As long as the filter setting keeps it (#447): the copy remembered for
+  // this tab, which also holds the install filter the query does not carry,
+  // then the query in state.
+  const [restored] = useState(() =>
+    filterMemoryNow() === "never"
+      ? null
+      : rememberedFilter<MapFilterState | null>(MAP_VAULT_FILTERS, null, isFilterRecord)
+        ?? mapFilterFromQuery(browseQuery, preset));
   const { draft, setFilter, resetFilters } = useMapFilterDraft(restored ?? undefined);
   const { search, author, ranked, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
   const [sort, setSort] = useState<VaultSort>(restored?.sort ?? initialSort);
-  const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
+  const [installFilter, setInstallFilter] = useState<InstallFilter>(restored?.installFilter ?? "all");
   const [createdAfter, setCreatedAfter] = useState(restored?.createdAfter ?? "");
   const [createdBefore, setCreatedBefore] = useState(restored?.createdBefore ?? "");
   const [showHidden, setShowHidden] = useState(restored?.showHidden ?? false);
@@ -243,6 +261,16 @@ function VaultView({ busy }: { busy: boolean }) {
     maximumPlayers: null,
     width: 0,
     height: 0,
+  });
+  useRememberFilter(MAP_VAULT_FILTERS, applied);
+  // With filters never remembered (#447), the next visit starts from the
+  // default preset. The sort the preset brought is not a filter and stays.
+  useForgetFiltersOnLeave(() => {
+    if (useAppStore.getState().state.settings.browsing.mapVaultPreset === "recommended") return;
+    ipc.send({
+      kind: "Settings",
+      command: { type: "patchBrowsing", payload: { patch: { mapVaultPreset: "recommended" } } },
+    });
   });
 
   const installedFolders = useMemo(
@@ -688,6 +716,11 @@ function VaultView({ busy }: { busy: boolean }) {
 type InstalledPreset = "all" | "favorites" | "ranked" | "custom" | "builtin";
 type InstalledSort = "name" | "size" | "players" | "newest" | "rating" | "installed";
 
+interface InstalledMapFilters {
+  draft: MapFilterDraft;
+  preset: InstalledPreset;
+}
+
 function InstalledView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
   const installed = useAppStore((state) => state.state.maps.installed);
@@ -704,9 +737,13 @@ function InstalledView({ busy }: { busy: boolean }) {
   // looks at were stuck at thumbnail size, which is the complaint the Vault's
   // zoom answers.
   const [previewMap, setPreviewMap] = useState<InstalledMap | VaultMap | null>(null);
-  const { draft, setFilter, resetFilters } = useMapFilterDraft();
+  // The filters as the setting keeps them (#447). The sort is not one.
+  const [remembered] = useState(() =>
+    rememberedFilter<InstalledMapFilters | null>(INSTALLED_MAP_FILTERS, null, isFilterRecord));
+  const { draft, setFilter, resetFilters } = useMapFilterDraft(remembered?.draft);
   const { search, author, ranked, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
-  const [preset, setPreset] = useState<InstalledPreset>("all");
+  const [preset, setPreset] = useState<InstalledPreset>(remembered?.preset ?? "all");
+  useRememberFilter(INSTALLED_MAP_FILTERS, useMemo(() => ({ draft, preset }), [draft, preset]));
   const [sort, setSort] = useState<InstalledSort>("name");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);

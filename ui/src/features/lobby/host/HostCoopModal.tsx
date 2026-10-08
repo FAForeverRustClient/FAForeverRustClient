@@ -13,6 +13,7 @@ import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
 import type { CoopMission } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { useRememberedFilter } from "../../../shared/filterMemory";
 import { translateCoopMissionDescription, translateCoopMissionName } from "../../../i18n";
 import { useAppStore } from "../../../store/store";
 import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNavigation";
@@ -61,7 +62,12 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
   const [titleTouched, setTitleTouched] = useState(
     initialTitle !== undefined || remembered.title !== "",
   );
-  const [missionSearch, setMissionSearch] = useState("");
+  // Remembered as the filter setting says (#447).
+  const [missionSearch, setMissionSearch] = useRememberedFilter(
+    "host.coop.missions",
+    "",
+    (value) => typeof value === "string",
+  );
   const [campaignId, setCampaignId] = useState<number | null>(null);
   // Where the mission comes from, in order: an explicit "host this one" from
   // the leaderboard, then the mission this dialog was last on, then whatever

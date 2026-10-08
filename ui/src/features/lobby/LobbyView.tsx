@@ -47,6 +47,8 @@ import "./play.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import { joinGame } from "../../shared/joinGame";
 import { plainError } from "../../shared/plainError";
+import { useForgetFiltersOnLeave, useRememberedFilter } from "../../shared/filterMemory";
+import { DEFAULT_BROWSING_PREFERENCES } from "../../shared/browsingPreferences";
 
 /// How often the Galactic War player count is re-asked while the Play tab is
 /// open. A minute: often enough that the number is not stale advice about
@@ -413,7 +415,7 @@ export function LobbyView() {
   const browsing = useAppStore((state) => state.state.settings.browsing);
   const mods = useAppStore((state) => state.state.mods);
   const gameBrowser = browsing.customGamesBrowser;
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useRememberedFilter("play.search", "");
   const sort: SortMode = gameBrowser.sort;
   const sortReversed = gameBrowser.sortReversed;
   const gameView: GameViewMode = browsing.customGamesView;
@@ -568,6 +570,20 @@ export function LobbyView() {
       },
     });
   };
+
+  // With filters never remembered (#447), the next visit starts unfiltered.
+  // The switches and rules only: the sort order is not a filter.
+  useForgetFiltersOnLeave(() => {
+    const defaults = DEFAULT_BROWSING_PREFERENCES.customGamesBrowser;
+    updateGameBrowser({
+      hidePrivate: defaults.hidePrivate,
+      hideModded: defaults.hideModded,
+      hideUnranked: defaults.hideUnranked,
+      hideFoes: defaults.hideFoes,
+      applyFilters: defaults.applyFilters,
+      rules: defaults.rules,
+    });
+  });
 
   // Why the list is empty, which decides what it says and what it offers.
   // "No games match. Adjust the search or the filters" used to stand for all

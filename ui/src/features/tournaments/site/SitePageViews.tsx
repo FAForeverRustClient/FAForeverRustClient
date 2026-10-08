@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import type { AccessStatus, Article, HallOfFame, SiteWrite, TourneyLoadStatus } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { useRememberedFilter } from "../../../shared/filterMemory";
 import { RichText } from "../detail/RichText";
 
 /**
@@ -17,7 +18,8 @@ import { RichText } from "../detail/RichText";
  */
 export function HallOfFamePage({ hall, status }: { hall: HallOfFame | null; status: TourneyLoadStatus }) {
   const { t } = useTranslation();
-  const [query, setQuery] = useState("");
+  // Remembered as the filter setting says (#447).
+  const [query, setQuery] = useRememberedFilter("tournaments.hall", "", (value) => typeof value === "string");
   if (status.type === "failed") return <p className="surface-error">{status.payload.reason}</p>;
   if (hall === null) return <p className="muted">{t("tournaments.loading")}</p>;
   const needle = query.trim().toLocaleLowerCase();

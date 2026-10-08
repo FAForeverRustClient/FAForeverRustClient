@@ -5,6 +5,7 @@ import { useAppStore } from "../../../store/store";
 import { isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { isCustomGameRanked } from "../../../shared/gameRules";
 import { usePlayerMenu } from "../../../shared/hooks/usePlayerMenu";
+import { useForgetFiltersOnLeave } from "../../../shared/filterMemory";
 import { LiveReplayControls } from "./LiveReplayControls";
 import { LiveReplayCards } from "./LiveReplayCards";
 import { LiveReplayDetail } from "./LiveReplayDetail";
@@ -107,6 +108,17 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     }, 200);
     return () => window.clearTimeout(timer);
   }, [filters]);
+
+  // With filters never remembered (#447), the next visit starts unfiltered.
+  useForgetFiltersOnLeave(() => {
+    ipc.send({
+      kind: "Settings",
+      command: {
+        type: "patchBrowsing",
+        payload: { patch: { liveReplayFilters: DEFAULT_LIVE_FILTERS } },
+      },
+    });
+  });
 
   const gameTypes = useMemo(
     () => [...new Set(liveGames.map((game) => game.gameType).filter(Boolean))].sort(),
@@ -282,8 +294,7 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
         onClear={() => {
           setVisibleCount(LIVE_REPLAY_BATCH_SIZE);
           filtersDirty.current = true;
-          // Clearing the filters is not a change of mind about keeping them.
-          setFilters({ ...DEFAULT_LIVE_FILTERS, remember: filters.remember ?? false });
+          setFilters(DEFAULT_LIVE_FILTERS);
         }}
       />
       {filteredGames.length === 0 ? (

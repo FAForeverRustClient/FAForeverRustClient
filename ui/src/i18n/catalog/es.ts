@@ -1065,6 +1065,12 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.general.startPage.hint": "Destino que se abre cada vez que arranca el cliente.",
   "settings.general.autoLogin.label": "Inicio de sesión automático",
   "settings.general.autoLogin.hint": "Iniciar sesión automáticamente con tu cuenta guardada al iniciar el cliente.",
+  "settings.general.filterMemory.label": "Recordar filtros",
+  "settings.general.filterMemory.hint":
+    "Cuánto tiempo se mantienen las búsquedas y los filtros, en todas las listas del cliente. El orden y las columnas se conservan siempre.",
+  "settings.general.filterMemory.never": "Nunca",
+  "settings.general.filterMemory.session": "Hasta cerrar el cliente",
+  "settings.general.filterMemory.restart": "También tras reiniciar",
   "settings.general.language.label": "Idioma",
   "settings.general.language.hint": "Se aplica de inmediato. El texto sin traducir sigue en inglés.",
 
@@ -1423,8 +1429,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.live.hideUnranked": "Ocultar no clasificatorias",
   "replays.live.hideUnrankedHint": "Oculta las partidas que el cliente sabe que no puntuarán a nadie: mapa no clasificatorio o mod de simulación no clasificatorio. Ningún cliente ve los ajustes de la sala.",
   "replays.live.friendsOnly": "Partidas con amigos",
-  "replays.live.rememberHint": "Desactivado, los filtros se borran cada vez que se inicia el cliente.",
-  "replays.live.remember": "Mantener los filtros tras reiniciar",
   "replays.live.startUnavailable": "Hora de inicio no disponible",
   "replays.live.notificationSet": "Aviso programado",
   "replays.live.autoWatchSet": "Visionado automático programado",

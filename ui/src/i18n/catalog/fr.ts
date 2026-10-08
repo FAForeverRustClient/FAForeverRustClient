@@ -1066,6 +1066,12 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.general.startPage.hint": "Destination ouverte à chaque démarrage du client.",
   "settings.general.autoLogin.label": "Connexion automatique",
   "settings.general.autoLogin.hint": "Se connecter automatiquement avec le compte enregistré au démarrage du client.",
+  "settings.general.filterMemory.label": "Mémoriser les filtres",
+  "settings.general.filterMemory.hint":
+    "Combien de temps les recherches et les filtres restent appliqués, dans toutes les listes du client. Le tri et les colonnes sont toujours conservés.",
+  "settings.general.filterMemory.never": "Jamais",
+  "settings.general.filterMemory.session": "Jusqu'à la fermeture du client",
+  "settings.general.filterMemory.restart": "Même après un redémarrage",
   "settings.general.language.label": "Langue",
   "settings.general.language.hint": "S'applique immédiatement. Les textes non traduits restent en anglais.",
 
@@ -1424,8 +1430,6 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "replays.live.hideUnranked": "Masquer les non classées",
   "replays.live.hideUnrankedHint": "Masque les parties dont le client sait qu'elles ne classeront personne : carte non classée ou mod de simulation non classé. Aucun client ne voit les réglages du salon.",
   "replays.live.friendsOnly": "Parties avec des amis",
-  "replays.live.rememberHint": "Désactivé, les filtres sont effacés à chaque démarrage du client.",
-  "replays.live.remember": "Conserver les filtres après un redémarrage",
   "replays.live.startUnavailable": "Heure de début indisponible",
   "replays.live.notificationSet": "Notification programmée",
   "replays.live.autoWatchSet": "Lecture automatique programmée",

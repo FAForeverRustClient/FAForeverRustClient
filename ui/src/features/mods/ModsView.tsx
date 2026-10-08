@@ -44,6 +44,13 @@ import "./mods.css";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { MessageKey } from "../../i18n";
 import { DateInput } from "../../design-system/DateInput";
+import {
+  filterMemoryNow,
+  isFilterRecord,
+  rememberedFilter,
+  useForgetFiltersOnLeave,
+  useRememberFilter,
+} from "../../shared/filterMemory";
 
 type SubView = ModsSection;
 type ModSort = "rating" | "newest" | "updated" | "name";
@@ -92,6 +99,9 @@ const toggleMod = (uid: string, enabled: boolean) => ipc.send({ kind: "Mods", co
  * searching, so it is a choice in the search panel rather than a default.
  */
 type ModSearchScope = "name" | "description" | "exact";
+
+/** Where the vault's filters are remembered (#447). */
+const MOD_VAULT_FILTERS = "mods.vault";
 
 interface ModFilterState {
   search: string;
@@ -211,14 +221,20 @@ function VaultView({ busy }: { busy: boolean }) {
   // it, so coming back from another tab finds the search where it was left.
   // Not when a mod was clicked elsewhere to be looked at (#380): the last
   // search's filters could hide exactly that mod, so the request below starts
-  // from a clean form instead.
-  const [restored] = useState(() => (hasModVaultFocus() ? null : modFilterFromQuery(browseQuery, preset)));
+  // from a clean form instead. And only as long as the filter setting keeps
+  // it (#447): the copy remembered for this tab, which also holds the install
+  // filter the query does not carry, then the query in state.
+  const [restored] = useState(() =>
+    hasModVaultFocus() || filterMemoryNow() === "never"
+      ? null
+      : rememberedFilter<ModFilterState | null>(MOD_VAULT_FILTERS, null, isFilterRecord)
+        ?? modFilterFromQuery(browseQuery, preset));
   const [search, setSearch] = useState(restored?.search ?? "");
   const [searchScope, setSearchScope] = useState<ModSearchScope>(restored?.searchScope ?? "name");
   const [sort, setSort] = useState<ModSort>(restored?.sort ?? initialSort);
   const [modType, setModType] = useState<ModTypeFilter>(restored?.modType ?? "all");
   const [ranked, setRanked] = useState<RankedFilter>(restored?.ranked ?? "all");
-  const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
+  const [installFilter, setInstallFilter] = useState<InstallFilter>(restored?.installFilter ?? "all");
   const [creator, setCreator] = useState(restored?.creator ?? "");
   const [dateField, setDateField] = useState<DateField>(restored?.dateField ?? "updated");
   const [dateAfter, setDateAfter] = useState(restored?.dateAfter ?? "");
@@ -244,6 +260,16 @@ function VaultView({ busy }: { busy: boolean }) {
     dateBefore: "",
     minimumRating: null,
     maximumRating: null,
+  });
+  useRememberFilter(MOD_VAULT_FILTERS, applied);
+  // With filters never remembered (#447), the next visit starts from the
+  // default preset. The sort the preset brought is not a filter and stays.
+  useForgetFiltersOnLeave(() => {
+    if (useAppStore.getState().state.settings.browsing.modVaultPreset === "recommended") return;
+    ipc.send({
+      kind: "Settings",
+      command: { type: "patchBrowsing", payload: { patch: { modVaultPreset: "recommended" } } },
+    });
   });
 
   // Someone clicked a mod somewhere else and was sent here to look at it. Only

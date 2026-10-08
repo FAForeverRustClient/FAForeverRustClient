@@ -133,16 +133,6 @@ export function LiveReplayControls(props: Props) {
             selected={filterChoices(filters.maxPlayers)}
             onChange={(values) => onFilter("maxPlayers", joinFilterChoices(values))}
           />
-          {/* Whether all of the above outlives a restart (#447). Off, the
-              filters last as long as the client is open. */}
-          <label className="toolbar-check live-replay-remember" title={t("replays.live.rememberHint")}>
-            <input
-              type="checkbox"
-              checked={filters.remember ?? false}
-              onChange={(event) => onFilter("remember", event.target.checked)}
-            />
-            {t("replays.live.remember")}
-          </label>
         </div>
       )}
     </>

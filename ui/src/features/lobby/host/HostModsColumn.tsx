@@ -17,6 +17,7 @@ import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { ipc } from "../../../ipc/client";
 import type { InstalledMod, ModPreset } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { useRememberedFilter } from "../../../shared/filterMemory";
 import { useAppStore } from "../../../store/store";
 import { ModPresetModal } from "./ModPresetModal";
 
@@ -54,7 +55,8 @@ export const HostModsColumn = memo(function HostModsColumn() {
   const presets = useAppStore((state) => state.state.settings.browsing.modPresets);
 
   const [modTab, setModTab] = useState<ModTab>("ui");
-  const [modSearch, setModSearch] = useState("");
+  // Remembered as the filter setting says (#447).
+  const [modSearch, setModSearch] = useRememberedFilter("host.mods", "", (value) => typeof value === "string");
   const [presetModalOpen, setPresetModalOpen] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
   const presetRef = useRef<HTMLDivElement>(null);
