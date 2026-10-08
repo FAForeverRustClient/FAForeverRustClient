@@ -31,10 +31,18 @@ fn non_empty_env_path(name: &str) -> Option<PathBuf> {
 }
 
 fn java_client_vault_dir() -> Option<PathBuf> {
-    let prefs = directories::BaseDirs::new()?
-        .config_dir()
-        .join("Forged Alliance Forever")
-        .join("client.prefs");
+    let prefs = if cfg!(target_os = "linux") {
+        directories::BaseDirs::new()?
+            .home_dir()
+            .join(".faforever")
+            .join("client.prefs")
+    } else {
+        directories::BaseDirs::new()?
+            .config_dir()
+            .join("Forged Alliance Forever")
+            .join("client.prefs")
+    };
+
     let contents = std::fs::read_to_string(prefs).ok()?;
     java_client_vault_dir_from_json(&contents)
 }
