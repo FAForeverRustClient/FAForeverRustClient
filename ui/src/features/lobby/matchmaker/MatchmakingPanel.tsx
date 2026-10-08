@@ -105,6 +105,12 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
       || (player !== null && busy.has(player.name));
     return selfBusy ? [playerName, ...names] : names;
   }, [join.type, liveGames, openGames, party.members, player, playerId, playerName, social.players]);
+  // The lobby's own copy of our ratings, which the server refreshes after
+  // every rated game (#449). See `ratingForQueue`.
+  const ownLobbyRatings = useMemo(
+    () => social.players.find((entry) => entry.id === playerId)?.ratings ?? [],
+    [playerId, social.players],
+  );
   const compatibleQueues = selectedQueues.filter((queue) => party.members.length <= queue.teamSize);
   const mapPoolQueue = sortedQueues.find((queue) => queue.queueName === mapPoolQueueName) ?? null;
   const matchmakerProfile = playerCard.matchmakerProfile?.playerId === playerId
@@ -162,6 +168,27 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
       },
     });
   }, [playerCard.matchmakerProfile, playerCard.matchmakerProfileStatus, playerId, playerName]);
+
+  // A rated game moves the lobby's copy of our ratings first. The profile
+  // behind the player card (games, wins, league placement) is read from the
+  // API, so it is asked for again then rather than staying on the numbers the
+  // session started with (#449). Not on the first table: that is the one the
+  // load above already answers.
+  const lobbyRatingsKey = ownLobbyRatings.map((rating) => `${rating.leaderboard}:${rating.mean}:${rating.deviation}`).join("|");
+  const seenLobbyRatings = useRef<string | null>(null);
+  useEffect(() => {
+    if (playerId === null || lobbyRatingsKey === "") return;
+    const previous = seenLobbyRatings.current;
+    seenLobbyRatings.current = lobbyRatingsKey;
+    if (previous === null || previous === lobbyRatingsKey) return;
+    ipc.send({
+      kind: "PlayerCard",
+      command: {
+        type: "loadMatchmakerProfile",
+        payload: { playerId, login: playerName },
+      },
+    });
+  }, [lobbyRatingsKey, playerId, playerName]);
 
   // Sorted and joined so the effect keys on who is in the party, not on the
   // party message arriving again with the same people in it. The backend
@@ -311,7 +338,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
             {sortedQueues.map((queue) => {
               const remaining = secondsUntil(queue, clock);
               const activeGames = activeMatchmakerGames.filter((game) => game.maxPlayers === queue.teamSize * 2).length;
-              const queueRating = ratingForQueue(matchmakerProfile?.ratings ?? [], queue.queueName);
+              const queueRating = ratingForQueue(matchmakerProfile?.ratings ?? [], queue.queueName, ownLobbyRatings);
               const queuePlacement = placementForQueue(matchmakerProfile?.leaguePlacements ?? [], queue.queueName);
               const searchingThisQueue =
                 matchmaking.type === "searching" &&
