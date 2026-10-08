@@ -20,6 +20,7 @@ import { loadLocalMapPreviews } from "../../../shared/hooks/useLocalMapPreview";
 import {
   displayScenarioName,
   scenarioBadge,
+  sortCoopMissions,
   sortCoopScenarios,
 } from "../coop/coopScenarios";
 import { CoopMissionArt } from "./CoopMissionArt";
@@ -129,19 +130,21 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
 
   const missionsInCampaign = useMemo(() => {
     const search = missionSearch.trim().toLocaleLowerCase();
-    return coop.missions
-      .filter((mission) =>
-        activeCampaignId === NO_CAMPAIGN
-          ? mission.scenarioId === null
-          : mission.scenarioId === activeCampaignId,
-      )
-      .filter(
-        (mission) =>
-          !search ||
-          mission.name.toLocaleLowerCase().includes(search) ||
-          mission.mapFolderName.toLocaleLowerCase().includes(search),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
+    // Campaign order, the same as the records view (#457), not the alphabet.
+    return sortCoopMissions(
+      coop.missions
+        .filter((mission) =>
+          activeCampaignId === NO_CAMPAIGN
+            ? mission.scenarioId === null
+            : mission.scenarioId === activeCampaignId,
+        )
+        .filter(
+          (mission) =>
+            !search ||
+            mission.name.toLocaleLowerCase().includes(search) ||
+            mission.mapFolderName.toLocaleLowerCase().includes(search),
+        ),
+    );
   }, [activeCampaignId, coop.missions, missionSearch]);
 
   const selected: CoopMission | undefined =
