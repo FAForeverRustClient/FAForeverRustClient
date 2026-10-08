@@ -61,9 +61,10 @@ impl LaunchSlot {
         if called_off {
             tracing::info!("lobby: the launch finished after it was called off; stopping the game");
             terminate_game(ctx, out);
-            notifications::add_required(
+            notifications::add_required_text(
                 out,
                 NotificationKind::Error,
+                notifications::Text::new("notifications.msg.matchCancelled"),
                 "Match cancelled",
                 "The server cancelled the match after launch, so Forged Alliance was stopped.",
                 Some(NotificationAction::OpenMatchmaking),
@@ -75,9 +76,10 @@ impl LaunchSlot {
         }
         self.session = Some(session);
         if out.with_state(|state| state.settings.notifications.game_launched) {
-            notifications::add(
+            notifications::add_text(
                 out,
                 NotificationKind::GameLaunched,
+                notifications::Text::new("notifications.msg.gameLaunched").with("name", &self.name),
                 "Game launched",
                 format!("{} started successfully.", self.name),
                 None,

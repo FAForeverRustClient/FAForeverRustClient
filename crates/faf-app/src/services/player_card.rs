@@ -27,6 +27,10 @@ pub struct PlayerCardContext {
     history_generation: LatestRequest,
 }
 
+/// How many of a player's games a profile scans until asked for all of them
+/// (#440): ten pages of the API, three round trips at four in flight.
+const RECENT_HISTORY_GAMES: usize = 1_000;
+
 pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSink) {
     match command {
         PlayerCardCommand::LookUpAccounts { query } => {
@@ -130,12 +134,19 @@ pub async fn handle(command: PlayerCardCommand, ctx: &ServiceCtx, out: &EventSin
                 }
             }
         }
-        PlayerCardCommand::LoadMapStats { player_id } => {
+        PlayerCardCommand::LoadMapStats { player_id, full } => {
             // Guarded by its own generation: opening one profile after another
             // must not let the slower first scan land under the second name.
             let generation = ctx.player_card.map_stats_generation.begin();
             out.emit(PlayerCardEvent::MapStatsLoading { player_id });
-            let result = ctx.ports.player_card.load_map_stats(player_id).await;
+            let result = if full {
+                ctx.ports.player_card.load_map_stats(player_id).await
+            } else {
+                ctx.ports
+                    .player_card
+                    .load_recent_map_stats(player_id, RECENT_HISTORY_GAMES)
+                    .await
+            };
             if !ctx.player_card.map_stats_generation.is_current(generation) {
                 return;
             }

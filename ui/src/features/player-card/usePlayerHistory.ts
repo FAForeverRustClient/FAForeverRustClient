@@ -20,6 +20,13 @@ import { useAppStore } from "../../store/store";
  */
 let requestedFor: number | null = null;
 
+/**
+ * The player whose whole history was asked for. A profile opens on the most
+ * recent games (#440); this is what keeps the full scan, once asked for, from
+ * being replaced by the short one when the other tab opens.
+ */
+let fullFor: number | null = null;
+
 export function usePlayerHistory(playerId: number) {
   const stats = useAppStore((state) => state.state.playerCard.mapStats);
   const status = useAppStore((state) => state.state.playerCard.mapStatsStatus);
@@ -36,8 +43,22 @@ export function usePlayerHistory(playerId: number) {
         || (card.mapStatsStatus === "ready" && card.mapStats?.playerId === playerId));
     if (held) return;
     requestedFor = playerId;
-    ipc.send({ kind: "PlayerCard", command: { type: "loadMapStats", payload: { playerId } } });
+    const full = fullFor === playerId;
+    ipc.send({ kind: "PlayerCard", command: { type: "loadMapStats", payload: full ? { playerId, full } : { playerId } } });
   }, [playerId]);
 
-  return { stats: stats?.playerId === playerId ? stats : null, status, error };
+  const loadFull = () => {
+    fullFor = playerId;
+    requestedFor = playerId;
+    ipc.send({ kind: "PlayerCard", command: { type: "loadMapStats", payload: { playerId, full: true } } });
+  };
+
+  return {
+    stats: stats?.playerId === playerId ? stats : null,
+    status,
+    error,
+    /** Whether what is on screen is the whole history as far as it was asked. */
+    full: fullFor === playerId,
+    loadFull,
+  };
 }

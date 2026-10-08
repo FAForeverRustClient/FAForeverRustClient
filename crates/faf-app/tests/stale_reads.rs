@@ -1038,7 +1038,12 @@ async fn older_map_statistics_never_replace_newer_ones() {
     gates.hold("map stats 7 #1");
     gates.hold_refused("map stats 9 #1");
 
-    let scan = |player_id: i32| AppCommand::from(PlayerCardCommand::LoadMapStats { player_id });
+    let scan = |player_id: i32| {
+        AppCommand::from(PlayerCardCommand::LoadMapStats {
+            player_id,
+            full: true,
+        })
+    };
     let stale_ok = start_held(&app, &gates, scan(7), "map stats 7 #1").await;
     let stale_err = start_held(&app, &gates, scan(9), "map stats 9 #1").await;
     run(&app, scan(8)).await;

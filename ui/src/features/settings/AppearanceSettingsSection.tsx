@@ -4,6 +4,7 @@ import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
 import { ChatNameColorSettings } from "./ChatNameColorSettings";
 import { ThemePicker } from "./ThemePicker";
+import { BackgroundSettings } from "./BackgroundSettings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
 
@@ -108,6 +109,7 @@ export function AppearanceSettingsSection() {
         <span className="setting-label">{t("settings.appearance.theme")}</span>
         <ThemePicker />
       </div>
+      <BackgroundSettings />
       <SettingRow label={t("settings.appearance.interfaceDensity")}>
         <div className="settings-segmented surface" role="group" aria-label={t("settings.appearance.interfaceDensity")}>
           {(["compact", "comfortable"] as UiDensity[]).map((density) => (

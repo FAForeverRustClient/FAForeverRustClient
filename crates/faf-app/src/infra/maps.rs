@@ -430,6 +430,14 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
         };
 
         let description = scenario_info.and_then(|s| s.description);
+        // The folder's own modification time: an install unpacks into a fresh
+        // folder, so this is when the map arrived (#453).
+        let installed_at = entry
+            .metadata()
+            .await
+            .and_then(|meta| meta.modified())
+            .ok()
+            .map(|modified| chrono::DateTime::<chrono::Utc>::from(modified).to_rfc3339());
 
         installed.push(InstalledMap {
             folder_name,
@@ -439,6 +447,7 @@ async fn list_installed_dir(dir: &std::path::Path) -> Result<Vec<InstalledMap>, 
             height,
             version,
             description,
+            installed_at,
         });
     }
     installed.sort_by(|a, b| a.display_name.cmp(&b.display_name));

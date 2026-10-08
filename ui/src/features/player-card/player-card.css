@@ -1727,3 +1727,11 @@
   color: var(--color-text);
   outline: none;
 }
+
+/* The recent-games note with its "load everything" button (issue 440). */
+.player-history-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}

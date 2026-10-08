@@ -70,9 +70,10 @@ pub(super) fn invite_to_party(player_id: i32, ctx: &ServiceCtx, out: &EventSink)
     // accept the invitation and then refuse the invitee with "That
     // party is already in queue", which is the wrong person to tell.
     if out.with_state(|state| state.lobby.matchmaking.is_looking()) {
-        notifications::add_required(
+        notifications::add_required_text(
             out,
             NotificationKind::Error,
+            notifications::Text::new("notifications.msg.cannotInvite"),
             "Cannot invite now",
             "Stop the search before inviting somebody to the party.",
             Some(NotificationAction::OpenMatchmaking),
@@ -85,9 +86,10 @@ pub(super) fn invite_to_party(player_id: i32, ctx: &ServiceCtx, out: &EventSink)
 /// Accept a party invitation: `LobbyCommand::AcceptPartyInvite`.
 pub(super) fn accept_party_invite(player_id: i32, ctx: &ServiceCtx, out: &EventSink) {
     if let Some(refusal) = out.with_state(|state| party_join_refusal(state, ctx, player_id)) {
-        notifications::add_required(
+        notifications::add_required_text(
             out,
             NotificationKind::Error,
+            notifications::Text::new("notifications.msg.cannotJoinParty"),
             "Cannot join the party",
             refusal,
             Some(NotificationAction::OpenMatchmaking),
@@ -193,9 +195,10 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
     match refusal {
         Some(Ok(())) => return,
         Some(Err(reason)) => {
-            notifications::add_required(
+            notifications::add_required_text(
                 out,
                 NotificationKind::Error,
+                notifications::Text::new("notifications.msg.searchFailed"),
                 "Could not start the search",
                 reason,
                 Some(NotificationAction::OpenMatchmaking),
@@ -232,9 +235,10 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
         out.emit(LobbyEvent::MatchmakingUpdated {
             state: MatchmakingState::Idle,
         });
-        notifications::add_required(
+        notifications::add_required_text(
             out,
             NotificationKind::Error,
+            notifications::Text::new("notifications.msg.searchFailed"),
             "Could not start the search",
             reason,
             Some(NotificationAction::OpenMatchmaking),
@@ -332,9 +336,11 @@ fn watch_for_match_start(queue_name: String, ctx: &ServiceCtx, out: &EventSink) 
                 queue_name: Some(queue_name.clone()),
             },
         });
-        notifications::add_required(
+        notifications::add_required_text(
             &out,
             NotificationKind::Error,
+            notifications::Text::new("notifications.msg.matchDidNotStart")
+                .with("queue", &queue_name),
             "Match did not start",
             format!(
                 "The {queue_name} match was found but never started. It has been called off; \
@@ -423,9 +429,12 @@ pub(super) fn on_queues(
         &watched,
         Instant::now(),
     ) {
-        notifications::add(
+        notifications::add_text(
             out,
             NotificationKind::QueueOpponent,
+            notifications::Text::new("notifications.msg.queueOpponent")
+                .with("count", count)
+                .with("teamSize", queue.team_size),
             "Opponent in your range",
             format!(
                 "{count} {} near your rating {} waiting in {} vs {}.",
@@ -511,9 +520,10 @@ pub(super) fn on_matchmaking<'a>(
     if matches!(state, MatchmakingState::MatchFound { .. }) && !already_found {
         let queue = state.matched_queue().unwrap_or("matchmaker");
         if notify_match_found {
-            notifications::add(
+            notifications::add_text(
                 out,
                 NotificationKind::MatchFound,
+                notifications::Text::new("notifications.msg.matchFound").with("queue", queue),
                 "Match found",
                 format!("Your {queue} match is ready."),
                 Some(NotificationAction::OpenMatchmaking),
@@ -525,9 +535,10 @@ pub(super) fn on_matchmaking<'a>(
     if terminate_cancelled_game {
         terminate_game(ctx, out);
         launch.session = None;
-        notifications::add_required(
+        notifications::add_required_text(
             out,
             NotificationKind::Error,
+            notifications::Text::new("notifications.msg.matchCancelled"),
             "Match cancelled",
             "The server cancelled the match after launch, so Forged Alliance was stopped.",
             Some(NotificationAction::OpenMatchmaking),
@@ -582,9 +593,10 @@ pub(super) async fn on_vetoes(
     crate::services::settings::persist(ctx, out).await;
     // Java's two strings, `teammatchmaking.vetoes.forced.*`.
     if forced {
-        notifications::add_required(
+        notifications::add_required_text(
             out,
             NotificationKind::ServerNotice,
+            notifications::Text::new("notifications.msg.mapBansChanged"),
             "Map bans were changed",
             "The matchmaker team changed the map pools, so some of your map bans were \
              adjusted. Set them again if needed.",
@@ -641,9 +653,10 @@ fn announce_new_map_pools(ctx: &ServiceCtx, out: &EventSink, queue_names: Vec<St
                 continue;
             }
             let label = queue_display_name(&queue_name);
-            notifications::add(
+            notifications::add_text(
                 &out,
                 NotificationKind::MapPoolReleased,
+                notifications::Text::new("notifications.msg.newMapPool").with("queue", &label),
                 "New map pool",
                 format!("{label} has a new map pool."),
                 Some(NotificationAction::OpenMatchmaking),

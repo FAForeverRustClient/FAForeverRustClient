@@ -175,9 +175,10 @@ async fn launch(
 /// alert, and turning match and chat notifications off must not silence the one
 /// message explaining why nothing opened.
 fn fail(out: &EventSink, reason: String) {
-    notifications::add_required(
+    notifications::add_required_text(
         out,
         NotificationKind::Error,
+        notifications::Text::new("notifications.msg.replayFailed"),
         "Replay failed",
         reason.clone(),
         None,
@@ -196,7 +197,14 @@ fn fail(out: &EventSink, reason: String) {
 fn refuse(ctx: &ServiceCtx, out: &EventSink, reason: String) {
     let slot = ctx.replays.launch_slot();
     if slot.cancellation.is_some() {
-        notifications::add_required(out, NotificationKind::Error, "Replay failed", reason, None);
+        notifications::add_required_text(
+            out,
+            NotificationKind::Error,
+            notifications::Text::new("notifications.msg.replayFailed"),
+            "Replay failed",
+            reason,
+            None,
+        );
     } else {
         fail(out, reason);
     }
@@ -298,9 +306,11 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(ReplayEvent::LiveTrackingCleared);
 
             match action {
-                LiveReplayTrackingAction::Notify => notifications::add(
+                LiveReplayTrackingAction::Notify => notifications::add_text(
                     out,
                     NotificationKind::ReplayAvailable,
+                    notifications::Text::new("notifications.msg.liveReplayReady")
+                        .with("title", &tracking.title),
                     "Live replay ready",
                     format!("{} is now available to watch.", tracking.title),
                     Some(NotificationAction::WatchLive {
@@ -308,9 +318,11 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
                     }),
                 ),
                 LiveReplayTrackingAction::Watch => {
-                    notifications::add(
+                    notifications::add_text(
                         out,
                         NotificationKind::ReplayAvailable,
+                        notifications::Text::new("notifications.msg.liveReplayLaunching")
+                            .with("title", &tracking.title),
                         "Live replay ready",
                         format!("Launching {} now.", tracking.title),
                         None,

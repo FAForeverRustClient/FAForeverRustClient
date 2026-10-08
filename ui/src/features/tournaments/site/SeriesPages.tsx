@@ -16,6 +16,7 @@ import type {
 } from "../../../ipc/bindings";
 import { t, type MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { useRememberedFilter } from "../../../shared/filterMemory";
 import { RichText } from "../detail/RichText";
 import { bracketShort, eventDayCount } from "../orientation";
 import { formatDay, STATUS_LABELS } from "../tourneyPresentation";
@@ -59,7 +60,12 @@ interface SeriesIndexProps {
 export function SeriesIndex({ series, mayCreate, busy, onOpen, onCreate }: SeriesIndexProps) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
-  const [officialOnly, setOfficialOnly] = useState(false);
+  // Remembered as the filter setting says (#447).
+  const [officialOnly, setOfficialOnly] = useRememberedFilter(
+    "tournaments.series.official",
+    false,
+    (value) => typeof value === "boolean",
+  );
   const shown = series.filter((held) => !officialOnly || held.category === "official");
   const running = shown.filter((held) => held.active > 0);
   const quiet = shown.filter((held) => held.active === 0);

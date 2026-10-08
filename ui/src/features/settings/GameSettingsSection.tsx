@@ -5,7 +5,7 @@ import { Button } from "../../design-system/Button";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsSwitch } from "./SettingControls";
-import { gameNeedsALaunchWrapper } from "../../shared/platform";
+import { gameNeedsALaunchWrapper, runsOnWindows } from "../../shared/platform";
 
 const save = (patch: GamePreferencesPatch) =>
   ipc.send({ kind: "Settings", command: { type: "patchGame", payload: { patch } } });
@@ -74,6 +74,21 @@ export function GameSettingsSection() {
         />
       </SettingRow>
 
+
+      {/* Windows only: on Linux the game is a Wine window, and the window
+          manager there has its own answer (#445). */}
+      {runsOnWindows() && (
+        <SettingRow
+          label={t("settings.game.borderlessWindow")}
+          hint={t("settings.game.borderlessWindowHint")}
+        >
+          <SettingsSwitch
+            checked={preferences.borderlessWindow ?? false}
+            onChange={(borderlessWindow) => void save({ borderlessWindow })}
+            label={t("settings.game.borderlessWindow")}
+          />
+        </SettingRow>
+      )}
 
       <SettingRow
         label={t("settings.game.pipeLiveReplay")}

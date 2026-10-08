@@ -67,6 +67,16 @@ export const native = {
     return invoke<string[]>("list_notification_sounds");
   },
 
+  /** Copy a picked picture in as the background; resolves to its stored name (#439). */
+  importBackgroundImage(path: string): Promise<string> {
+    return invoke<string>("import_background_image", { path });
+  },
+
+  /** The stored background's bytes, for the page to show. */
+  readBackgroundImage(name: string): Promise<number[]> {
+    return invoke<number[]>("read_background_image", { name });
+  },
+
   /** One stored sound's bytes, for the page to decode. */
   readNotificationSound(name: string): Promise<number[]> {
     return invoke<number[]>("read_notification_sound", { name });

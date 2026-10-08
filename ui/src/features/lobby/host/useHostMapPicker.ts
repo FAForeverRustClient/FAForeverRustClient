@@ -1,4 +1,4 @@
-// The host dialog's map picker: its filters and their session memory, the
+// The host dialog's map picker: its filters and how they are remembered, the
 // filter popover's dismissal, the narrowed and favourite lists, keyboard
 // selection, and whether the enlarged preview is open. The selection itself
 // belongs to the dialog, which hosts on it; this only moves it.
@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { ipc } from "../../../ipc/client";
 import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNavigation";
+import { isFilterRecord, rememberedFilter, useRememberFilter } from "../../../shared/filterMemory";
 import {
   activeFilterCount as countActiveFilters,
   filterHostMaps,
@@ -22,14 +23,12 @@ import {
 } from "./hostMapCatalogue";
 
 /**
- * The picker as the dialog was last left, for the next time it opens (#387).
- *
- * Kept for the session, in memory, rather than in the settings file: what was
- * asked for is not having to narrow the list down again after hosting, and the
- * next host of the evening is the one that wants it. A fresh start opening on
- * last night's search would be a list that looks empty for no reason.
+ * Where the picker is remembered as the dialog was last left, for the next
+ * time it opens (#387): what was asked for is not having to narrow the list
+ * down again after hosting. For how long is the filter setting's to say
+ * (#447), like every list's filters.
  */
-let lastPicker: MapPickerFilters = NO_PICKER_FILTERS;
+const HOST_MAP_FILTERS = "host.maps";
 
 interface Options {
   /** Every map the dialog can host, before any filter. */
@@ -44,12 +43,14 @@ export type HostMapPicker = ReturnType<typeof useHostMapPicker>;
 
 export function useHostMapPicker({ catalogueMaps, favoriteMaps, selectedMap, setSelectedMap }: Options) {
   // The map picker's own controls, as one value so a change or a reset is one
-  // update rather than seven. They outlive the dialog for the session (see
-  // `lastPicker`); the filter popover does not reopen with them.
-  const [picker, setPicker] = useState<MapPickerFilters>(() => ({ ...lastPicker, filtersOpen: false }));
-  useEffect(() => {
-    lastPicker = picker;
-  }, [picker]);
+  // update rather than seven. They outlive the dialog (see `HOST_MAP_FILTERS`);
+  // the filter popover does not reopen with them.
+  const [picker, setPicker] = useState<MapPickerFilters>(() => ({
+    ...NO_PICKER_FILTERS,
+    ...rememberedFilter<Partial<MapPickerFilters>>(HOST_MAP_FILTERS, {}, isFilterRecord),
+    filtersOpen: false,
+  }));
+  useRememberFilter(HOST_MAP_FILTERS, picker);
   const { mapSearch, rankedFilter, widthKm, heightKm, playerCount, filtersOpen, mapTab } = picker;
   const filter = useCallback(
     (patch: Partial<MapPickerFilters>) => setPicker((current) => ({ ...current, ...patch })),

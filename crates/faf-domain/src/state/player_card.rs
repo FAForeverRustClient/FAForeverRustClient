@@ -396,6 +396,11 @@ pub enum PlayerCardCommand {
     #[serde(rename_all = "camelCase")]
     LoadMapStats {
         player_id: i32,
+        /// Scan the whole history instead of the most recent games (#440).
+        /// A long history is dozens of requests, so the profile opens on the
+        /// recent ones and the reader asks for the rest.
+        #[serde(default)]
+        full: bool,
     },
     /// Look up the active league placements of these party members.
     ///

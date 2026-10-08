@@ -571,9 +571,12 @@ pub(crate) async fn prepare_search(
     };
     for (folder, reason) in failures {
         tracing::warn!(%folder, %reason, "a pool map could not be downloaded before the search");
-        notifications::add(
+        notifications::add_text(
             out,
             NotificationKind::Error,
+            notifications::Text::new("notifications.msg.mapDownloadFailed")
+                .with("folder", &folder)
+                .with("reason", &reason),
             "Map download failed",
             format!("{folder} could not be downloaded: {reason}"),
             None,
@@ -639,9 +642,10 @@ pub(crate) fn report_failure(ctx: &ServiceCtx, out: &EventSink, reason: String) 
     // nothing private.
     tracing::warn!(%reason, "game launch failed");
     ctx.ports.ice.stop();
-    notifications::add_required(
+    notifications::add_required_text(
         out,
         NotificationKind::Error,
+        notifications::Text::new("notifications.msg.gameLaunchFailed"),
         "Game launch failed",
         reason.clone(),
         None,

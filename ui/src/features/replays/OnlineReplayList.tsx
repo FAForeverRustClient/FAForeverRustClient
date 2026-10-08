@@ -6,7 +6,7 @@ import { formatDuration } from "../../shared/format/durations";
 import { effectiveReplayMapName } from "../../shared/mapPresentation";
 import { replayMapKey, replayMapPresentation } from "./coopReplayMap";
 import { useAppStore } from "../../store/store";
-import { playerCount } from "./ReplayRoster";
+import { playerCount, replayWinner } from "./ReplayRoster";
 import {
   formatReplayListTime,
   ReplayList,
@@ -21,6 +21,7 @@ export function OnlineReplayList({
   groupByDate = true,
   selectedUid,
   watchedUids,
+  showResults = false,
   onOpen,
   onWatch,
   onDownload,
@@ -28,6 +29,8 @@ export function OnlineReplayList({
 }: {
   replays: VaultReplay[];
   groupByDate?: boolean;
+  /** The vault's "Game result" switch (#454): who won, under the player count. */
+  showResults?: boolean;
   selectedUid: number | null;
   watchedUids: Set<number>;
   /** Opens the detail panel, and marks the row selected on the way. */
@@ -66,7 +69,10 @@ export function OnlineReplayList({
           primary: formatReplayListTime(replay.startTime),
           secondary: groupByDate ? undefined : replayAge(replay.startTime) || t("common.notAvailable"),
         },
-        players: { primary: String(playerCount(replay.teams)) },
+        players: {
+          primary: String(playerCount(replay.teams)),
+          secondary: showResults ? (replayWinner(replay.teams) ?? undefined) : undefined,
+        },
         rating: { primary: replay.averageRating === null ? t("common.notAvailable") : String(replay.averageRating) },
         mod: {
           primary: replay.modName || "faf",

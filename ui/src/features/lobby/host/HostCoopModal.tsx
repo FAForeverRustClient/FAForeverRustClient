@@ -13,6 +13,7 @@ import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
 import type { CoopMission } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { useRememberedFilter } from "../../../shared/filterMemory";
 import { translateCoopMissionDescription, translateCoopMissionName } from "../../../i18n";
 import { useAppStore } from "../../../store/store";
 import { focusListboxOption, nextListboxIndex } from "../../../shared/listboxNavigation";
@@ -20,6 +21,7 @@ import { loadLocalMapPreviews } from "../../../shared/hooks/useLocalMapPreview";
 import {
   displayScenarioName,
   scenarioBadge,
+  sortCoopMissions,
   sortCoopScenarios,
 } from "../coop/coopScenarios";
 import { CoopMissionArt } from "./CoopMissionArt";
@@ -60,7 +62,12 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
   const [titleTouched, setTitleTouched] = useState(
     initialTitle !== undefined || remembered.title !== "",
   );
-  const [missionSearch, setMissionSearch] = useState("");
+  // Remembered as the filter setting says (#447).
+  const [missionSearch, setMissionSearch] = useRememberedFilter(
+    "host.coop.missions",
+    "",
+    (value) => typeof value === "string",
+  );
   const [campaignId, setCampaignId] = useState<number | null>(null);
   // Where the mission comes from, in order: an explicit "host this one" from
   // the leaderboard, then the mission this dialog was last on, then whatever
@@ -129,19 +136,21 @@ export const HostCoopModal = memo(function HostCoopModal({ onClose, initialMissi
 
   const missionsInCampaign = useMemo(() => {
     const search = missionSearch.trim().toLocaleLowerCase();
-    return coop.missions
-      .filter((mission) =>
-        activeCampaignId === NO_CAMPAIGN
-          ? mission.scenarioId === null
-          : mission.scenarioId === activeCampaignId,
-      )
-      .filter(
-        (mission) =>
-          !search ||
-          mission.name.toLocaleLowerCase().includes(search) ||
-          mission.mapFolderName.toLocaleLowerCase().includes(search),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
+    // Campaign order, the same as the records view (#457), not the alphabet.
+    return sortCoopMissions(
+      coop.missions
+        .filter((mission) =>
+          activeCampaignId === NO_CAMPAIGN
+            ? mission.scenarioId === null
+            : mission.scenarioId === activeCampaignId,
+        )
+        .filter(
+          (mission) =>
+            !search ||
+            mission.name.toLocaleLowerCase().includes(search) ||
+            mission.mapFolderName.toLocaleLowerCase().includes(search),
+        ),
+    );
   }, [activeCampaignId, coop.missions, missionSearch]);
 
   const selected: CoopMission | undefined =

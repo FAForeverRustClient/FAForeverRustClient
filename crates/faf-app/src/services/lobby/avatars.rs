@@ -148,9 +148,10 @@ pub(super) async fn reconcile_own_avatar(ctx: &ServiceCtx, out: &EventSink) {
                 .map(|avatar| avatar.tooltip.trim().to_string())
                 .filter(|tooltip| !tooltip.is_empty())
                 .unwrap_or_else(|| "the one you wore before".into());
-            notifications::add(
+            notifications::add_text(
                 out,
                 NotificationKind::AvatarRestored,
+                notifications::Text::new("notifications.msg.avatarRestored").with("name", &name),
                 "Avatar restored",
                 format!("Your last avatar is no longer available. Switched back to {name}."),
                 None,

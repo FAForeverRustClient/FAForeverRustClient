@@ -116,6 +116,7 @@ describe("browsing preferences", () => {
       replayChatChannel: "  ALLIES  ",
       replayChatTransfers: "hide",
       legacyStorageMigrated: true,
+      rememberedFilters: {},
     });
 
     expect(normalized.favoriteMods).toEqual(["eco_graph"]);

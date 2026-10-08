@@ -1,5 +1,7 @@
 //! Actionable client notifications retained in backend-owned state.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -174,6 +176,37 @@ pub struct ClientNotification {
     pub created_at: String,
     pub read: bool,
     pub action: Option<NotificationAction>,
+    /// The catalog entry this notification is written from, when it has one.
+    /// `title` and `body` stay the English text, for the OS notification
+    /// before the UI has a language and for anything that reads them raw; the
+    /// UI shows this translated instead (#458).
+    pub text: Option<NotificationText>,
+}
+
+/// A notification's text as a catalog key and the values it is filled with.
+///
+/// The UI looks up `<key>.title` and `<key>.body` and fills each with
+/// `params`. A side the catalog has no entry for falls back to the English
+/// `title` or `body`, so a server-supplied reason is still shown as sent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationText {
+    pub key: String,
+    pub params: BTreeMap<String, String>,
+}
+
+impl NotificationText {
+    pub fn new(key: impl Into<String>) -> Self {
+        Self {
+            key: key.into(),
+            params: BTreeMap::new(),
+        }
+    }
+
+    pub fn with(mut self, name: impl Into<String>, value: impl ToString) -> Self {
+        self.params.insert(name.into(), value.to_string());
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -229,6 +262,7 @@ mod tests {
             created_at: "now".into(),
             read: false,
             action: None,
+            text: None,
         }
     }
 

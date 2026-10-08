@@ -15,9 +15,20 @@ import { ReplayViewSwitch, type ReplayViewMode } from "../ReplayViewSwitch";
 import { subscribeReplaySearch, takeReplaySearch } from "../../../shared/replaySearchIntent";
 import { VaultSearch } from "./VaultSearch";
 import { ReplayPageSize } from "./AdvancedReplayFilters";
+import { Button } from "../../../design-system/Button";
+import { Icon } from "../../../design-system/Icon";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { plainError } from "../../../shared/plainError";
+import {
+  filterMemoryNow,
+  isFilterRecord,
+  rememberedFilter,
+  useRememberFilter,
+} from "../../../shared/filterMemory";
+
+/** Where the vault's search is remembered (#447). */
+const ONLINE_REPLAY_FILTERS = "replays.online";
 
 /**
  * The selector's answer when nothing has been resolved yet. A literal `{}` in
@@ -70,6 +81,9 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     });
   };
   const [openUid, setOpenUid] = useState<number | null>(null);
+  // The detail panel's "Game result" switch, for the whole page at once
+  // (#454). Off by default, as there: a result is a spoiler until asked for.
+  const [showResults, setShowResults] = useState(false);
   const [selectedUid, setSelectedUid] = useState<number | null>(null);
   const [watchedUids, setWatchedUids] = useState<Set<number>>(() =>
     loadStoredSet(WATCHED_STORAGE_KEY, (value): value is number => typeof value === "number"),
@@ -106,9 +120,18 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   useEffect(() => {
     const state = useAppStore.getState().state;
     const playerToSearch = self || state.settings.browsing.replayVaultPlayer;
+    const memory = filterMemoryNow();
     if (!runRequestedSearch() && !handedOver.current) {
       const status = state.replays.vaultStatus.type;
-      if (status === "idle") {
+      // The search left before a restart, when the filter setting keeps
+      // filters that long (#447). Otherwise the landing search below.
+      const kept = status === "idle" && memory === "restart"
+        ? rememberedFilter<ReplayQuery | null>(ONLINE_REPLAY_FILTERS, null, isFilterRecord)
+        : null;
+      if (kept) {
+        refreshed.current = true;
+        searchVault(kept);
+      } else if (status === "idle") {
         if (playerToSearch) {
           // The landing search is this visit's fresh one, so it counts as the
           // re-run. Unarmed, the first search of a session (the vault player
@@ -127,7 +150,12 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         // and pressing Search by hand to see it is not something a reader
         // should have to know to do. A search already in flight is left to
         // finish, and a failed one gets another try on the way back in.
-        searchVault(state.replays.vaultQuery);
+        //
+        // With filters never remembered (#447) that is the landing search
+        // instead, at the page length in effect, which is not a filter.
+        searchVault(memory === "never" && playerToSearch
+          ? { ...personalReplayQuery(playerToSearch, isoDaysAgo(365)), pageSize: state.replays.vaultQuery.pageSize }
+          : state.replays.vaultQuery);
       }
     }
     // The two dropdowns' contents. Both are cheap and cached in state, so
@@ -135,6 +163,9 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     if (state.replays.featuredMods.length === 0) loadFeaturedMods();
     loadLeaderboards();
   }, [self, browsing.replayVaultPlayer, runRequestedSearch]);
+
+  // The search on screen, for the next visit or the next start (#447).
+  useRememberFilter(ONLINE_REPLAY_FILTERS, query);
 
   // And for the request that arrives while this tab is already open.
   useEffect(() => subscribeReplaySearch(() => { runRequestedSearch(); }), [runRequestedSearch]);
@@ -251,6 +282,14 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
           </span>
         </div>
         <div className="online-replay-view-bar-right">
+          <Button
+            className="replay-detail-reveal-btn"
+            aria-pressed={showResults}
+            onClick={() => setShowResults((visible) => !visible)}
+          >
+            <Icon name="eye" size={13} />
+            <span>{t(showResults ? "replays.detail.hideResults" : "replays.detail.gameResult")}</span>
+          </Button>
           {/* Applies at once, to the search on screen, from its first page. */}
           <ReplayPageSize
             value={query.pageSize}
@@ -287,6 +326,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
               replay={r}
               watched={watchedUids.has(r.uid)}
               busy={busy}
+              showResults={showResults}
               onOpen={() => setOpenUid(r.uid)}
               onDoubleClick={() => r.replayAvailable && !busy && markWatchedAndPlay(r.uid)}
               onWatch={() => {
@@ -304,6 +344,7 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
           groupByDate={query.sortBy === "startTime" || query.sortBy === "endTime"}
           selectedUid={selectedUid}
           watchedUids={watchedUids}
+          showResults={showResults}
           onOpen={(uid) => {
             setSelectedUid(uid);
             setOpenUid(uid);

@@ -108,6 +108,15 @@ function interpolate(template: string, values?: MessageValues): string {
   });
 }
 
+/**
+ * Is this string a key of the catalogue? For keys that arrive at run time,
+ * such as the ones the backend attaches to a notification: `t()` itself only
+ * takes keys the compiler has checked.
+ */
+export function isMessageKey(key: string): key is MessageKey {
+  return Object.prototype.hasOwnProperty.call(en, key);
+}
+
 /** Translate `key` into the currently selected language. */
 export function t(key: MessageKey, values?: MessageValues): string {
   return translateIn(getLocale(), key, values);

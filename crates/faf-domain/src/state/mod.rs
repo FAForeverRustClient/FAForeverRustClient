@@ -107,7 +107,7 @@ pub use nav::{
 };
 pub use notifications::{
     ClientNotification, NotificationAction, NotificationCommand, NotificationEvent,
-    NotificationKind, NotificationState,
+    NotificationKind, NotificationState, NotificationText,
 };
 pub use player_card::{
     aggregate_map_stats, is_retired_leaderboard, leaderboard_display_rank, sort_league_placements,
@@ -141,8 +141,8 @@ pub use settings::{
     AppearancePreferences, BrowsingPreferences, CachedGameVersion, ChatNameColors, ChatPreferences,
     ConnectivityPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
     CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView, DebugPreferences,
-    DiscordPreferences, EventReminder, EventsPreferences, GameCacheInfo, GamePreferences,
-    GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
+    DiscordPreferences, EventReminder, EventsPreferences, FilterMemory, GameCacheInfo,
+    GamePreferences, GeneralPreferences, HostGamePreferences, IceAdapter, LiveReplayFilters,
     NotificationPreferences, NotificationSound, NotificationSoundChoices, PathPreferences,
     PlayerNote, ReplayChatTransfers, ReplayNote, SettingsCommand, SettingsEvent, SettingsState,
     SocialPreferences, Theme, ToastPosition, UiDensity, UpdatePreferences, WeekStart,

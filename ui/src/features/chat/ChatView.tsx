@@ -12,7 +12,7 @@
 // account login, and the small fallback below covers a tab mounted before that
 // event arrived.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
@@ -262,14 +262,40 @@ export function ChatView() {
     // later click reports the failure in the language now selected.
   }, [games, liveGames, t]);
 
+  // Where the conversation's own card starts, below the channel tabs and the
+  // row of controls, so a private conversation's side panel can start level
+  // with it rather than level with the tabs (#448). Measured rather than
+  // summed from the stylesheet: the tabs and the row wrap at narrow widths.
+  // The conversation area rather than the card itself, so the panel does not
+  // jump down when the search bar opens over the card: the bar is part of
+  // the conversation, and without it the two start at the same pixel.
+  const chatRef = useRef<HTMLDivElement>(null);
+  const [cardTop, setCardTop] = useState(0);
+  const privateConversation = Boolean(active && isPrivateChannel(active.name));
+  useLayoutEffect(() => {
+    const root = chatRef.current;
+    const card = root?.querySelector<HTMLElement>(".chat-main .chat-scroll-wrap");
+    if (!privateConversation || !root || !card) return;
+    const measure = () => setCardTop(Math.max(0, Math.round(
+      card.getBoundingClientRect().top - root.getBoundingClientRect().top,
+    )));
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [privateConversation, active?.name]);
+
   const chatStyle = {
+    "--chat-card-top": `${cardTop}px`,
     "--chat-roster-width": `${rosterWidth}px`,
     "--chat-font-size": `${chatPreferences.fontSize || 13}px`,
     "--chat-sender-width": `${chatPreferences.senderWidth || 116}px`,
   } as CSSProperties;
 
   return (
-    <div className="chat" style={chatStyle}>
+    <div className="chat" style={chatStyle} ref={chatRef}>
       <section className="chat-main">
         <ChannelTabs
           channels={channels}
