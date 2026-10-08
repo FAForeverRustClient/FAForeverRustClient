@@ -33,6 +33,41 @@ pub fn read_marker_key(username: &str, channel: &str) -> String {
 /// server will hand us on join.
 const MAX_MESSAGES: usize = 500;
 
+/// Bound on the client's own commentary (joins, parts, quits, topic changes)
+/// per channel, counted apart from [`MAX_MESSAGES`] (#441). In #aeolus the
+/// joins and quits alone came to 500 lines in well under an hour, and sharing
+/// one bound with the conversation meant they pushed what people had said out
+/// of the history, even with joins and parts hidden.
+const MAX_INFO_MESSAGES: usize = 500;
+
+/// Keeps a channel's history inside both bounds, evicting the oldest line of
+/// whichever kind is over. The TypeScript twin is `capMessages` in
+/// `ui/src/store/reducers/chat.ts`.
+fn cap_messages(messages: &mut Vec<ChatMessage>) {
+    let info = messages
+        .iter()
+        .filter(|message| message.kind == ChatMessageKind::Info)
+        .count();
+    let mut excess_info = info.saturating_sub(MAX_INFO_MESSAGES);
+    let mut excess_other = (messages.len() - info).saturating_sub(MAX_MESSAGES);
+    if excess_info == 0 && excess_other == 0 {
+        return;
+    }
+    messages.retain(|message| {
+        let budget = if message.kind == ChatMessageKind::Info {
+            &mut excess_info
+        } else {
+            &mut excess_other
+        };
+        if *budget > 0 {
+            *budget -= 1;
+            false
+        } else {
+            true
+        }
+    });
+}
+
 /// Histories retained after explicitly leaving a channel. Keeping this bound
 /// prevents cycling through arbitrary private conversations from growing the
 /// application snapshot forever. The Python client's `ChatLineRestorer`
@@ -892,10 +927,7 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
             let is_private = c.is_private();
 
             c.messages.push(message.clone());
-            if c.messages.len() > MAX_MESSAGES {
-                let excess = c.messages.len() - MAX_MESSAGES;
-                c.messages.drain(0..excess);
-            }
+            cap_messages(&mut c.messages);
 
             // Sending is the loudest possible "done typing". Relying on the
             // sender's own `done` would leave the indicator up for anyone
@@ -1212,6 +1244,35 @@ mod tests {
             c.messages.last().unwrap().id,
             (MAX_MESSAGES + 9).to_string()
         );
+    }
+
+    #[test]
+    fn joins_and_parts_do_not_push_the_conversation_out() {
+        // #441: a busy channel's joins and quits filled the shared bound and
+        // the conversation went with them.
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::MessageReceived {
+                channel: DEFAULT_CHANNEL.into(),
+                message: message("said"),
+            },
+        );
+        for i in 0..(MAX_INFO_MESSAGES + 10) {
+            reduce(
+                &mut s,
+                &ChatEvent::MessageReceived {
+                    channel: DEFAULT_CHANNEL.into(),
+                    message: ChatMessage {
+                        kind: ChatMessageKind::Info,
+                        ..message(&format!("join-{i}"))
+                    },
+                },
+            );
+        }
+        let c = s.channel(DEFAULT_CHANNEL).unwrap();
+        assert!(c.messages.iter().any(|kept| kept.id == "said"));
+        assert_eq!(c.messages.len(), MAX_INFO_MESSAGES + 1);
     }
 
     #[test]

@@ -2,6 +2,35 @@ import type { ChatChannel, ChatEvent, ChatMessage, ChatState, ChatUser, Reaction
 
 const DEFAULT_CHANNEL = "#aeolus";
 const MAX_MESSAGES = 500;
+/** Joins, parts and the like, counted apart from the conversation (#441). */
+const MAX_INFO_MESSAGES = 500;
+
+/**
+ * Keeps a channel's history inside both bounds, dropping the oldest line of
+ * whichever kind is over. Twin of `cap_messages` in faf-domain's chat slice:
+ * joins and quits used to share the conversation's bound and, in a channel as
+ * busy as #aeolus, pushed what people said out of it within the hour.
+ */
+function capMessages(messages: ChatMessage[]): ChatMessage[] {
+  const info = messages.filter((message) => message.kind === "info").length;
+  let excessInfo = Math.max(0, info - MAX_INFO_MESSAGES);
+  let excessOther = Math.max(0, messages.length - info - MAX_MESSAGES);
+  if (excessInfo === 0 && excessOther === 0) return messages;
+  return messages.filter((message) => {
+    if (message.kind === "info") {
+      if (excessInfo > 0) {
+        excessInfo -= 1;
+        return false;
+      }
+      return true;
+    }
+    if (excessOther > 0) {
+      excessOther -= 1;
+      return false;
+    }
+    return true;
+  });
+}
 const MAX_RETAINED_HISTORIES = 20;
 const MAX_AUTO_JOIN_CHANNELS = 20;
 const MODERATOR_PREFIXES = ["~", "&", "@", "%"];
@@ -260,7 +289,7 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
     case "messageReceived": {
       const { channel, message } = event.payload;
       return mapChannel(state, channel, (current) => {
-        const messages = [...current.messages, message].slice(-MAX_MESSAGES);
+        const messages = capMessages([...current.messages, message]);
         // Sending is the loudest possible "done typing". Waiting for the
         // sender's own `done` would leave the indicator up for every client
         // that never sends one, which is most of them.
@@ -290,7 +319,7 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
       const { channel, message } = event.payload;
       return mapChannel(state, channel, (current) => ({
         ...current,
-        messages: [...current.messages, message].slice(-MAX_MESSAGES),
+        messages: capMessages([...current.messages, message]),
       }));
     }
     case "usersUpdated":
