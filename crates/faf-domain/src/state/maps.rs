@@ -87,6 +87,11 @@ pub struct InstalledMap {
     pub version: Option<String>,
     #[serde(default)]
     pub description: Option<String>,
+    /// When the folder was last written, RFC 3339: in practice when the map
+    /// was downloaded, which is what "recently installed" sorts by (#453).
+    /// `None` when the file system would not say.
+    #[serde(default)]
+    pub installed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -624,6 +629,7 @@ mod tests {
             height: 1024,
             version: Some("1".into()),
             description: None,
+            installed_at: None,
         }
     }
 

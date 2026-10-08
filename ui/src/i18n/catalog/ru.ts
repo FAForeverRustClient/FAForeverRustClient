@@ -763,6 +763,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.view.unranked": "Без рейтинга",
   "maps.view.sort.name": "Название",
   "maps.view.sort.size": "Самые большие",
+  "maps.view.sort.installed": "Недавно установленные",
   "maps.view.detectionUnavailable": "Определение состояния установки недоступно.",
   "maps.view.emptyVault": "Карт нет",
   "maps.view.emptyVaultHint": "Обновите хранилище, когда API FAF будет доступен.",

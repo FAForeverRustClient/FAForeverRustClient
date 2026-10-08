@@ -744,6 +744,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.view.unranked": "Poza rankingiem",
   "maps.view.sort.name": "Nazwa",
   "maps.view.sort.size": "Największe",
+  "maps.view.sort.installed": "Ostatnio zainstalowane",
   "maps.view.detectionUnavailable": "Wykrywanie stanu instalacji jest niedostępne.",
   "maps.view.emptyVault": "Brak dostępnych map",
   "maps.view.emptyVaultHint": "Odśwież magazyn, gdy API FAF będzie dostępne.",

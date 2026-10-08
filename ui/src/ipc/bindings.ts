@@ -3577,6 +3577,12 @@ export type InstalledMap = {
 	height?: number,
 	version?: string | null,
 	description?: string | null,
+	/**
+	 *  When the folder was last written, RFC 3339: in practice when the map
+	 *  was downloaded, which is what "recently installed" sorts by (#453).
+	 *  `None` when the file system would not say.
+	 */
+	installedAt?: string | null,
 };
 
 /**

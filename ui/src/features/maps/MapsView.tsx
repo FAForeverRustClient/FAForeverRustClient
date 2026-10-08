@@ -686,7 +686,7 @@ function VaultView({ busy }: { busy: boolean }) {
 }
 
 type InstalledPreset = "all" | "favorites" | "ranked" | "custom" | "builtin";
-type InstalledSort = "name" | "size" | "players" | "newest" | "rating";
+type InstalledSort = "name" | "size" | "players" | "newest" | "rating" | "installed";
 
 function InstalledView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
@@ -823,6 +823,10 @@ function InstalledView({ busy }: { busy: boolean }) {
             return (Date.parse(metaRight?.createdAt ?? "") || 0) - (Date.parse(metaLeft?.createdAt ?? "") || 0);
           case "rating":
             return (metaRight?.ratingTenths ?? 0) - (metaLeft?.ratingTenths ?? 0);
+          // The map downloaded last first (#453): for finding again a map
+          // tried out a moment ago without having noted its name.
+          case "installed":
+            return (Date.parse(right.installedAt ?? "") || 0) - (Date.parse(left.installedAt ?? "") || 0);
         }
       });
   }, [
@@ -951,6 +955,7 @@ function InstalledView({ busy }: { busy: boolean }) {
             <option value="players">{t("maps.view.sort.players")}</option>
             <option value="rating">{t("maps.view.preset.rating")}</option>
             <option value="newest">{t("maps.view.preset.newest")}</option>
+            <option value="installed">{t("maps.view.sort.installed")}</option>
           </select>
         </SearchField>
       </SearchPanel>
