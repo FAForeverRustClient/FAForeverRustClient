@@ -213,6 +213,7 @@ const allowedFeatureEdges = new Map([
   ["lobby -> maps", "hosting a game embeds the maps feature's generator and dialogs"],
   // The matchmaker's party chat is the chat feature's composer and message list.
   ["lobby -> chat", "the party chat panel is the chat feature embedded in the matchmaker"],
+  ["chat -> replays", "a private conversation shows the game the other person plays as the Live tab's card (#448)"],
   // Uploading is its own feature with its own state slice; the vaults open it.
   ["maps -> uploads", "the map vault opens the uploads feature's dialog"],
   ["mods -> uploads", "the mod vault opens the uploads feature's dialog"],

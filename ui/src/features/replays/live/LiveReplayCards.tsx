@@ -134,7 +134,12 @@ export function LiveReplayCards(props: Props) {
   );
 }
 
-const LiveReplayCard = memo(function LiveReplayCard({
+/**
+ * One running game as the Live tab draws it. Exported for the side panel of a
+ * private conversation (#448), which shows the game the other person is
+ * playing and should say exactly what this tab says about it.
+ */
+export const LiveReplayCard = memo(function LiveReplayCard({
   busy,
   game,
   ageNow,
@@ -151,7 +156,8 @@ const LiveReplayCard = memo(function LiveReplayCard({
   ageNow: number;
   waitSeconds: number;
   tracking: LiveReplayTracking | null;
-  onOpen: (id: number) => void;
+  /** Opens the game's detail panel; a card with nowhere to open one leaves it out. */
+  onOpen?: (id: number) => void;
   onPlayerMenu: PlayerMenuOpener;
 }) {
   const { t } = useTranslation();
@@ -178,7 +184,7 @@ const LiveReplayCard = memo(function LiveReplayCard({
     <article
       className="replay-card live-replay-card surface-panel"
       onClick={(event) => {
-        if (opensDetail(event)) onOpen(game.id);
+        if (opensDetail(event)) onOpen?.(game.id);
       }}
       // Double click watches, as it does on a table row.
       onDoubleClick={(event) => {
