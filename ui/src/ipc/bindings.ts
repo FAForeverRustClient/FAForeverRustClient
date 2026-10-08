@@ -539,6 +539,10 @@ export type BrowsingPreferences = {
 	matchmakerRecentColumns: number[],
 	/**  The recent games' columns in the order they are drawn, the same way. */
 	matchmakerRecentOrder: number[],
+	/**  And for the party invite dialog's player list. */
+	matchmakerInviteColumns: number[],
+	/**  The invite list's columns in the order they are drawn, the same way. */
+	matchmakerInviteOrder: number[],
 	/**
 	 *  Named mod sets the host dialog can re-apply in one click.
 	 *
@@ -607,6 +611,8 @@ export type BrowsingPreferencesPatch = {
 	coopBoardColumns?: number[],
 	matchmakerRecentColumns?: number[],
 	matchmakerRecentOrder?: number[],
+	matchmakerInviteColumns?: number[],
+	matchmakerInviteOrder?: number[],
 	modPresets?: ModPreset[],
 	leaderboardRatingColumns?: string[],
 	leaderboardIncludeFormerNames?: boolean,

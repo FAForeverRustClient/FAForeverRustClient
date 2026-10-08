@@ -663,6 +663,8 @@ const INITIAL: AppState = {
       coopBoardColumns: [],
       matchmakerRecentColumns: [],
       matchmakerRecentOrder: [],
+      matchmakerInviteColumns: [],
+      matchmakerInviteOrder: [],
       modPresets: [],
       leaderboardRatingColumns: ["games", "updated"],
       leaderboardIncludeFormerNames: false,

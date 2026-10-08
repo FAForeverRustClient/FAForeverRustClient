@@ -2334,6 +2334,10 @@ pub struct BrowsingPreferences {
     pub matchmaker_recent_columns: Vec<u32>,
     /// The recent games' columns in the order they are drawn, the same way.
     pub matchmaker_recent_order: Vec<u32>,
+    /// And for the party invite dialog's player list.
+    pub matchmaker_invite_columns: Vec<u32>,
+    /// The invite list's columns in the order they are drawn, the same way.
+    pub matchmaker_invite_order: Vec<u32>,
     /// Named mod sets the host dialog can re-apply in one click.
     ///
     /// Only the word is shared with `mod_vault_preset` above, which is a vault
@@ -2415,6 +2419,8 @@ impl Default for BrowsingPreferences {
             coop_board_columns: Vec::new(),
             matchmaker_recent_columns: Vec::new(),
             matchmaker_recent_order: Vec::new(),
+            matchmaker_invite_columns: Vec::new(),
+            matchmaker_invite_order: Vec::new(),
             mod_presets: Vec::new(),
             leaderboard_rating_columns: DEFAULT_LEADERBOARD_RATING_COLUMNS
                 .iter()
@@ -2469,6 +2475,9 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             matchmaker_recent_columns: Vec<u32>,
             #[serde(default)]
             matchmaker_recent_order: Vec<u32>,
+            matchmaker_invite_columns: Vec<u32>,
+            #[serde(default)]
+            matchmaker_invite_order: Vec<u32>,
             mod_presets: Vec<ModPreset>,
             leaderboard_rating_columns: Vec<String>,
             #[serde(default)]
@@ -2509,6 +2518,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
                     coop_board_columns: defaults.coop_board_columns,
                     matchmaker_recent_columns: defaults.matchmaker_recent_columns,
                     matchmaker_recent_order: defaults.matchmaker_recent_order,
+                    matchmaker_invite_columns: defaults.matchmaker_invite_columns,
+                    matchmaker_invite_order: defaults.matchmaker_invite_order,
                     mod_presets: defaults.mod_presets,
                     leaderboard_rating_columns: defaults.leaderboard_rating_columns,
                     leaderboard_include_former_names: defaults.leaderboard_include_former_names,
@@ -2546,6 +2557,8 @@ impl<'de> Deserialize<'de> for BrowsingPreferences {
             coop_board_columns: wire.coop_board_columns,
             matchmaker_recent_columns: wire.matchmaker_recent_columns,
             matchmaker_recent_order: wire.matchmaker_recent_order,
+            matchmaker_invite_columns: wire.matchmaker_invite_columns,
+            matchmaker_invite_order: wire.matchmaker_invite_order,
             mod_presets: wire.mod_presets,
             leaderboard_rating_columns: wire.leaderboard_rating_columns,
             leaderboard_include_former_names: wire.leaderboard_include_former_names,
@@ -2680,6 +2693,8 @@ impl BrowsingPreferences {
         self.coop_board_columns = normalize_column_widths(self.coop_board_columns);
         self.matchmaker_recent_columns = normalize_column_widths(self.matchmaker_recent_columns);
         self.matchmaker_recent_order = normalize_column_order(self.matchmaker_recent_order);
+        self.matchmaker_invite_columns = normalize_column_widths(self.matchmaker_invite_columns);
+        self.matchmaker_invite_order = normalize_column_order(self.matchmaker_invite_order);
         self
     }
 }
@@ -3309,6 +3324,8 @@ preference_patch! {
         coop_board_columns: Vec<u32>,
         matchmaker_recent_columns: Vec<u32>,
         matchmaker_recent_order: Vec<u32>,
+        matchmaker_invite_columns: Vec<u32>,
+        matchmaker_invite_order: Vec<u32>,
         mod_presets: Vec<ModPreset>,
         leaderboard_rating_columns: Vec<String>,
         leaderboard_include_former_names: bool,
@@ -4477,6 +4494,8 @@ mod tests {
                 coop_board_columns: Vec::new(),
                 matchmaker_recent_columns: Vec::new(),
                 matchmaker_recent_order: Vec::new(),
+                matchmaker_invite_columns: Vec::new(),
+                matchmaker_invite_order: Vec::new(),
                 mod_vault_preset: "  UI  ".into(),
                 mod_presets: Vec::new(),
                 leaderboard_rating_columns: vec![
