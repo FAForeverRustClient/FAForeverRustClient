@@ -812,8 +812,10 @@ fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
                 state.settings.game.steam_presence,
             )
         });
+    let borderless_window = out.with_state(|state| state.settings.game.borderless_window);
     ctx.ports.process.set_additional_arguments(arguments);
     ctx.ports.process.set_steam_presence(steam_presence);
+    ctx.ports.process.set_borderless_window(borderless_window);
     // The two halves of "run a Windows game on Linux" arrive from two
     // different preference groups, because that is where each one belongs: the
     // wrapper is about launching, the prefix is a path. The launcher needs

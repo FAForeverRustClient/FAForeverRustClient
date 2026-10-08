@@ -2047,6 +2047,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.game.pipeLiveReplay": "Solución alternativa para repeticiones en vivo",
   "settings.game.pipeLiveReplayHint": "Transmite las repeticiones en directo por una tubería con nombre. Evita los errores \"unable to load replay from gpgnet\" y \"Premature EOF\", pero la ventana se congela mientras se pone al día. Solo Windows.",
 
+  "settings.game.borderlessWindowHint": "Quita el marco de la ventana del juego y la extiende por toda la pantalla mientras se ejecuta. Forged Alliance debe estar en modo ventana.",
+  "settings.game.borderlessWindow": "Ventana sin bordes",
   "lobby.modConflict.title": "¿Reemplazar los mods instalados?",
   "lobby.modConflict.body": { one: "Esta partida usa una versión distinta de un mod que ya tienes instalado. Todavía no se ha cambiado nada.", other: "Esta partida usa versiones distintas de {count} mods que ya tienes instalados. Todavía no se ha cambiado nada." },
   "lobby.modConflict.versions": "Esta partida: v{required}. Instalado: {installed} v{version}, en {folder}",

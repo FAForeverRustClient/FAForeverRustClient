@@ -1667,6 +1667,12 @@ pub struct GamePreferences {
     /// library; without any of those it does nothing. Windows and Linux.
     #[serde(default)]
     pub steam_presence: bool,
+    /// Take the frame off Forged Alliance's window and stretch it over its
+    /// monitor, for as long as the game runs (#445): the "borderless
+    /// windowed" mode players used to get from a third-party script. Needs the
+    /// game itself set to windowed. Off by default. Windows only.
+    #[serde(default)]
+    pub borderless_window: bool,
 }
 
 /// The most generated maps a keep list may hold. Far past what anybody sets,
@@ -1700,6 +1706,7 @@ impl Default for GamePreferences {
             keep_generated_maps: false,
             keep_generated_maps_limit: 0,
             steam_presence: false,
+            borderless_window: false,
         }
     }
 }
@@ -3185,6 +3192,7 @@ preference_patch! {
         keep_generated_maps: bool,
         keep_generated_maps_limit: u32,
         steam_presence: bool,
+        borderless_window: bool,
     }
 }
 

@@ -4565,6 +4565,8 @@ export const en = {
   "settings.game.pipeLiveReplay": "Live replays workaround",
   "settings.game.pipeLiveReplayHint": "Streams live replays through a named pipe. Avoids the \"unable to load replay from gpgnet\" and \"Premature EOF\" errors, but the window freezes while catching up. Windows only.",
 
+  "settings.game.borderlessWindowHint": "Takes the frame off the game's window and stretches it over the screen while it runs. Set Forged Alliance itself to windowed for this to apply.",
+  "settings.game.borderlessWindow": "Borderless window",
   // Joining used to fetch whatever a lobby required the moment you
   // double-clicked it. Two dialogs answer that: what is about to arrive, and
   // then what is arriving.

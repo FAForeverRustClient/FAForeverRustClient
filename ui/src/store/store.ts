@@ -581,6 +581,7 @@ const INITIAL: AppState = {
       keepGeneratedMaps: false,
       keepGeneratedMapsLimit: 0,
       steamPresence: false,
+      borderlessWindow: false,
     },
     discord: { enabled: true, disallowJoins: false },
     connectivity: { adapter: "dynamic", hostAdapter: "java", selectionVersion: 2 },

@@ -2923,6 +2923,13 @@ export type GamePreferences = {
 	 *  library; without any of those it does nothing. Windows and Linux.
 	 */
 	steamPresence?: boolean,
+	/**
+	 *  Take the frame off Forged Alliance's window and stretch it over its
+	 *  monitor, for as long as the game runs (#445): the "borderless
+	 *  windowed" mode players used to get from a third-party script. Needs the
+	 *  game itself set to windowed. Off by default. Windows only.
+	 */
+	borderlessWindow?: boolean,
 };
 
 /**
@@ -2941,6 +2948,7 @@ export type GamePreferencesPatch = {
 	keepGeneratedMaps?: boolean,
 	keepGeneratedMapsLimit?: number,
 	steamPresence?: boolean,
+	borderlessWindow?: boolean,
 };
 
 export type GeneralPreferences = {

@@ -2049,6 +2049,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.game.pipeLiveReplay": "Contournement pour les replays en direct",
   "settings.game.pipeLiveReplayHint": "Diffuse les replays en direct par un tube nommé. Évite les erreurs \"unable to load replay from gpgnet\" et \"Premature EOF\", mais la fenêtre se fige pendant le rattrapage. Windows uniquement.",
 
+  "settings.game.borderlessWindowHint": "Retire le cadre de la fenêtre du jeu et l'étend sur tout l'écran pendant la partie. Forged Alliance doit lui-même être en mode fenêtré.",
+  "settings.game.borderlessWindow": "Fenêtre sans bordure",
   "lobby.modConflict.title": "Remplacer les mods installés ?",
   "lobby.modConflict.body": { one: "Cette partie utilise une autre version d'un mod que vous avez déjà installé. Rien n'a encore été modifié.", other: "Cette partie utilise d'autres versions de {count} mods que vous avez déjà installés. Rien n'a encore été modifié." },
   "lobby.modConflict.versions": "Cette partie : v{required}. Installé : {installed} v{version}, dans {folder}",

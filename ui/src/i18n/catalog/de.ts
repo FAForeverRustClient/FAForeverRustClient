@@ -4156,6 +4156,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.game.pipeLiveReplay": "Live-Replay-Workaround",
   "settings.game.pipeLiveReplayHint": "Überträgt Live-Replays über eine Named Pipe. Vermeidet die Fehler \"unable to load replay from gpgnet\" und \"Premature EOF\", aber das Fenster friert beim Aufholen ein. Nur Windows.",
 
+  "settings.game.borderlessWindowHint": "Entfernt den Rahmen des Spielfensters und zieht es über den ganzen Bildschirm, solange das Spiel läuft. Forged Alliance selbst muss dafür auf Fenstermodus stehen.",
+  "settings.game.borderlessWindow": "Randloses Fenster",
   "lobby.joinDownload.title": "Diese Lobby braucht Mods, die du nicht hast",
   "lobby.joinDownload.body": {
     one: "Der Beitritt zu „{title}“ lädt 1 Simulationsmod herunter:",

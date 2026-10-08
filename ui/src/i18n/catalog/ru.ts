@@ -2410,6 +2410,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.game.pipeLiveReplay": "Обходной путь для live-реплеев",
   "settings.game.pipeLiveReplayHint": "Передавать live-реплей через именованный канал, чтобы избежать ошибок движка \"unable to load replay from gpgnet\" и \"Premature EOF\". Во время синхронизации окно зависает. Только для Windows.",
 
+  "settings.game.borderlessWindowHint": "Убирает рамку окна игры и растягивает его на весь экран, пока игра запущена. Сама Forged Alliance должна быть в оконном режиме.",
+  "settings.game.borderlessWindow": "Окно без рамки",
   "lobby.modConflict.title": "Заменить установленные моды?",
   "lobby.modConflict.body": { one: "Эта игра использует другую версию мода, который у вас уже установлен. Пока ничего не изменено.", few: "Эта игра использует другие версии {count} модов, которые у вас уже установлены. Пока ничего не изменено.", many: "Эта игра использует другие версии {count} модов, которые у вас уже установлены. Пока ничего не изменено.", other: "Эта игра использует другие версии {count} модов, которые у вас уже установлены. Пока ничего не изменено." },
   "lobby.modConflict.versions": "В этой игре: v{required}. Установлено: {installed} v{version}, в {folder}",

@@ -1274,6 +1274,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -51222,6 +51223,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -51498,6 +51500,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -51783,6 +51786,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -52063,6 +52067,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -52343,6 +52348,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -52633,6 +52639,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -52929,6 +52936,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -53222,6 +53230,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -53523,6 +53532,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -53871,6 +53881,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -54195,6 +54206,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -54521,6 +54533,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -54977,6 +54990,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -67177,6 +67191,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -67462,6 +67477,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -67778,6 +67794,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -68080,6 +68097,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -68201,6 +68219,7 @@
                 "preferences": {
                   "additionalArguments": [],
                   "autoGenerateMaps": true,
+                  "borderlessWindow": false,
                   "cacheLifetimeDays": 30,
                   "cacheRollingBranches": false,
                   "cacheSizeAlertGb": null,
@@ -68368,6 +68387,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -68648,6 +68668,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -68927,6 +68948,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -69234,6 +69256,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -69510,6 +69533,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -69806,6 +69830,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -70092,6 +70117,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
@@ -70364,6 +70390,7 @@
                   "game": {
                     "additionalArguments": [],
                     "autoGenerateMaps": true,
+                    "borderlessWindow": false,
                     "cacheLifetimeDays": 30,
                     "cacheRollingBranches": false,
                     "cacheSizeAlertGb": 10,
@@ -70634,6 +70661,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
@@ -109418,6 +109446,7 @@
       "game": {
         "additionalArguments": [],
         "autoGenerateMaps": true,
+        "borderlessWindow": false,
         "cacheLifetimeDays": 30,
         "cacheRollingBranches": false,
         "cacheSizeAlertGb": 10,
