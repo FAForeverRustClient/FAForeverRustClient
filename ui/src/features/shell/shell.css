@@ -548,3 +548,30 @@ html[data-background="custom"] .workspace {
   background-size: cover;
   background-repeat: no-repeat;
 }
+
+/* The panels that fill the Play tab let the picture through (issue 439). The
+   game list is one panel the size of the tab, and with the theme's opaque
+   surface it covered the picture whole. In tile view its tiles are cards of
+   their own, so the panel around them has no fill and no frame, and the tiles
+   sit on the picture the way the replay vault's cards sit on the tab. In list
+   view the rows are text on the panel itself, and the detail panel is text
+   too, so those keep a blurred veil of their surface: the picture shows
+   through, the writing stays on something even. */
+html[data-background="custom"] :is(.game-browser-panel, .coop-games-main).game-browser-tiles {
+  background: transparent;
+  border-color: transparent;
+}
+
+html[data-background="custom"] :is(.game-browser-panel, .coop-games-main).game-browser-list,
+html[data-background="custom"] :is(.game-detail-panel, .coop-detail) {
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+/* With the tiles on the picture, the count under them would be muted text on
+   whatever the picture is there. It keeps a strip of the veil. */
+html[data-background="custom"] :is(.game-browser-panel, .coop-games-main).game-browser-tiles > .game-browser-footer {
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  backdrop-filter: blur(8px);
+}
