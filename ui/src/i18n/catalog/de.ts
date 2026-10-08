@@ -496,6 +496,12 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.general.rememberTypedEntries.label": "Frühere Eingaben vorschlagen",
   "settings.general.rememberTypedEntries.hint":
     "Lässt das Fenster Einträge vorschlagen, die du schon einmal in ein Feld getippt hast, etwa den Spieltitel im Hosten-Dialog. Standardmäßig aus: der Client setzt deinen letzten Titel ohnehin wieder in dieses Feld.",
+  "settings.general.filterMemory.label": "Filter merken",
+  "settings.general.filterMemory.hint":
+    "Wie lange Suchen und Filter gesetzt bleiben, in jeder Liste des Clients. Sortierung und Spalten bleiben immer erhalten.",
+  "settings.general.filterMemory.never": "Nie",
+  "settings.general.filterMemory.session": "Bis der Client geschlossen wird",
+  "settings.general.filterMemory.restart": "Auch nach einem Neustart",
   "settings.general.language.label": "Sprache",
   "settings.general.language.hint":
     "Wirkt sofort. Nicht übersetzte Texte bleiben auf Englisch.",
@@ -1003,8 +1009,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.live.hideUnrankedHint": "Blendet Spiele aus, von denen der Client weiß, dass sie niemanden werten: ungewertete Karte oder ungewerteter Sim-Mod. Die Lobby-Einstellungen sieht kein Client.",
   "replays.live.friendsOnly": "Partien mit Freunden",
 
-  "replays.live.rememberHint": "Aus: Die Filter werden bei jedem Start des Clients zurückgesetzt.",
-  "replays.live.remember": "Filter nach Neustart behalten",
   "replays.filters.duration": "Dauer",
   "replays.filters.reviewScore": "Bewertung",
   "replays.filters.mapSlots": "Kartenplätze",
@@ -1605,7 +1609,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.view.unranked": "Ungewertet",
   "maps.view.sort.name": "Name",
   "maps.view.sort.size": "Größte",
-  "maps.view.sort.installed": "Zuletzt installiert",
+  "maps.view.sort.downloaded": "Zuletzt heruntergeladen",
   "maps.view.detectionUnavailable": "Der Installationsstatus lässt sich nicht ermitteln.",
   "maps.view.emptyVault": "Keine Karten verfügbar",
   "maps.view.emptyVaultHint": "Aktualisiere den Vault, sobald die FAF-API erreichbar ist.",

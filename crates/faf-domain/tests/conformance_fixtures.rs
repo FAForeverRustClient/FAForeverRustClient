@@ -6696,7 +6696,6 @@ fn cases() -> Vec<Case> {
                             hide_single_player: false,
                             hide_unranked: true,
                             friends_only: true,
-                            remember: false,
                         },
                         host_game: HostGamePreferences {
                             title: " Friday game ".into(),
@@ -6745,6 +6744,10 @@ fn cases() -> Vec<Case> {
                         replay_chat_channel: String::new(),
                         replay_chat_transfers: Default::default(),
                         legacy_storage_migrated: true,
+                        remembered_filters: std::collections::BTreeMap::from([(
+                            "installedMods".into(),
+                            r#"{"search":"ui"}"#.into(),
+                        )]),
                     }),
                 }
                 .into(),
@@ -7634,6 +7637,7 @@ fn transition_cases() -> Vec<Case> {
                         start_page: Tab::Play,
                         auto_login: false,
                         remember_typed_entries: true,
+                        filter_memory: FilterMemory::Restart,
                     },
                 }
                 .into(),

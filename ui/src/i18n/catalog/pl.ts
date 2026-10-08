@@ -744,7 +744,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.view.unranked": "Poza rankingiem",
   "maps.view.sort.name": "Nazwa",
   "maps.view.sort.size": "Największe",
-  "maps.view.sort.installed": "Ostatnio zainstalowane",
+  "maps.view.sort.downloaded": "Ostatnio pobrane",
   "maps.view.detectionUnavailable": "Wykrywanie stanu instalacji jest niedostępne.",
   "maps.view.emptyVault": "Brak dostępnych map",
   "maps.view.emptyVaultHint": "Odśwież magazyn, gdy API FAF będzie dostępne.",
@@ -1019,6 +1019,12 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.general.autoLogin.label": "Automatyczne logowanie",
   "settings.general.autoLogin.hint":
     "Automatycznie loguj za pomocą zapisanego konta przy uruchomieniu klienta.",
+  "settings.general.filterMemory.label": "Zapamiętuj filtry",
+  "settings.general.filterMemory.hint":
+    "Jak długo wyszukiwania i filtry pozostają ustawione, na każdej liście w kliencie. Sortowanie i kolumny są zawsze zachowywane.",
+  "settings.general.filterMemory.never": "Nigdy",
+  "settings.general.filterMemory.session": "Do zamknięcia klienta",
+  "settings.general.filterMemory.restart": "Także po ponownym uruchomieniu",
   "settings.general.language.label": "Język",
   "settings.general.language.hint":
     "Działa natychmiast. Nieprzetłumaczone teksty pozostają po angielsku.",
@@ -1407,8 +1413,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "replays.live.hideUnranked": "Ukryj bez rankingu",
   "replays.live.hideUnrankedHint": "Ukrywa gry, o których klient wie, że nikogo nie ocenią: mapa bez rankingu albo mod symulacji bez rankingu. Żaden klient nie widzi ustawień lobby.",
   "replays.live.friendsOnly": "Gry ze znajomymi",
-  "replays.live.rememberHint": "Wyłączone: filtry są czyszczone przy każdym uruchomieniu klienta.",
-  "replays.live.remember": "Zachowaj filtry po ponownym uruchomieniu",
   "replays.filters.duration": "Czas trwania",
   "replays.filters.reviewScore": "Ocena",
   "replays.filters.mapSlots": "Miejsca na mapie",

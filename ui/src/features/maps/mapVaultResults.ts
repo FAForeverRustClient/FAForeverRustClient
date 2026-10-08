@@ -10,11 +10,12 @@
 // filters, and a map can be withdrawn long after it was starred.
 //
 // The same preset is why `mapsMatchingQuery` lives here too: it answers the
-// whole query locally for a set the server cannot see.
+// whole query locally for a set the server cannot see. And the "Recently
+// downloaded" sort (#453) is a third such set, see `mapsByDownload`.
 
 import type { MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { isWithinDateRange, isWithinNumberRange } from "../../shared/filterRanges";
-import { mapInstalled } from "../../shared/mapPresentation";
+import { findVaultMapByFolder, mapInstalled } from "../../shared/mapPresentation";
 import { matchesVaultGlob, ratingLowerBound, vaultSearchText } from "../../shared/vaultResults";
 
 export type InstallFilter = "all" | "installed" | "available";
@@ -112,4 +113,31 @@ function mapSortKey(map: VaultMap, sortBy: MapVaultQuery["sortBy"]): number {
     case "name":
       return 0;
   }
+}
+
+/**
+ * The vault maps that are on disk, matching `query`, the one downloaded last
+ * first (#453). What the server cannot answer: when a map arrived is a fact
+ * about this computer's map folder.
+ *
+ * An installed older version stands for its map, which is how the catalogue
+ * lists it (#416), and a map whose folder gave no time sorts last. The
+ * "recommended" flag is not applied: it is the preset the tab opens on, not a
+ * choice, and it would hide most of what was downloaded.
+ */
+export function mapsByDownload(
+  source: VaultMap[],
+  installed: readonly { folderName: string; installedAt?: string | null }[],
+  query: MapVaultQuery,
+): VaultMap[] {
+  const downloadedAt = new Map<VaultMap, number>();
+  for (const map of installed) {
+    const record = findVaultMapByFolder(source, map.folderName);
+    if (!record) continue;
+    const at = Date.parse(map.installedAt ?? "") || 0;
+    downloadedAt.set(record, Math.max(downloadedAt.get(record) ?? -1, at));
+  }
+  return mapsMatchingQuery(source.filter((map) => downloadedAt.has(map)), { ...query, recommended: false })
+    .sort((left, right) => (downloadedAt.get(right) ?? 0) - (downloadedAt.get(left) ?? 0)
+      || left.displayName.localeCompare(right.displayName));
 }

@@ -58,7 +58,6 @@ export const DEFAULT_LIVE_REPLAY_FILTERS: LiveReplayFilters = {
   hideSinglePlayer: false,
   hideUnranked: false,
   friendsOnly: false,
-  remember: false,
 };
 
 export const DEFAULT_HOST_GAME_PREFERENCES: HostGamePreferences = {
@@ -190,6 +189,7 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   replayChatChannel: "",
   replayChatTransfers: "show",
   legacyStorageMigrated: false,
+  rememberedFilters: {},
 };
 
 export function normalizeBrowsingPreferences(
@@ -492,7 +492,6 @@ function parseLegacyLiveReplayFilters(
       hideSinglePlayer: booleanValue("hideSinglePlayer"),
       hideUnranked: booleanValue("hideUnranked"),
       friendsOnly: booleanValue("friendsOnly"),
-      remember: booleanValue("remember"),
     },
   }).liveReplayFilters;
 }

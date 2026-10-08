@@ -1186,7 +1186,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -1208,6 +1207,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -1292,6 +1292,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -51147,7 +51148,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -51169,6 +51169,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -51245,6 +51246,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -51428,7 +51430,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -51450,6 +51451,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -51526,6 +51528,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -51718,7 +51721,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -51740,6 +51742,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -51816,6 +51819,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -52003,7 +52007,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -52025,6 +52028,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -52101,6 +52105,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -52288,7 +52293,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -52310,6 +52314,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -52386,6 +52391,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -52583,7 +52589,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -52605,6 +52610,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -52681,6 +52687,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -52884,7 +52891,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -52906,6 +52912,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -52982,6 +52989,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -53182,7 +53190,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -53204,6 +53211,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -53280,6 +53288,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -53488,7 +53497,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -53510,6 +53518,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -53586,6 +53595,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -53841,7 +53851,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -53863,6 +53872,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -53939,6 +53949,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -54170,7 +54181,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -54192,6 +54202,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -54268,6 +54279,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -54501,7 +54513,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -54523,6 +54534,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -54599,6 +54611,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -54826,7 +54839,6 @@
                     "hideSinglePlayer": false,
                     "hideUnranked": true,
                     "maxPlayers": "999",
-                    "remember": false,
                     "search": "  tournament  "
                   },
                   "liveReplayOrder": [],
@@ -54849,6 +54861,9 @@
                   "modPresets": [],
                   "modVaultPreset": "recommended",
                   "modVaultSort": "rating",
+                  "rememberedFilters": {
+                    "installedMods": "{\"search\":\"ui\"}"
+                  },
                   "replayChatChannel": "",
                   "replayChatTransfers": "show",
                   "replayListColumns": [
@@ -54961,7 +54976,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": true,
                 "maxPlayers": "",
-                "remember": false,
                 "search": "tournament"
               },
               "liveReplayOrder": [],
@@ -54982,6 +54996,9 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "rating",
+              "rememberedFilters": {
+                "installedMods": "{\"search\":\"ui\"}"
+              },
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [
@@ -55062,6 +55079,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -67171,7 +67189,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -67193,6 +67210,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -67269,6 +67287,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -67381,6 +67400,7 @@
               "payload": {
                 "preferences": {
                   "autoLogin": false,
+                  "filterMemory": "restart",
                   "rememberTypedEntries": true,
                   "startPage": "play"
                 }
@@ -67461,7 +67481,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -67483,6 +67502,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -67559,6 +67579,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -67782,7 +67803,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -67804,6 +67824,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -67880,6 +67901,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -68089,7 +68111,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -68111,6 +68132,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -68187,6 +68209,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -68383,7 +68406,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -68405,6 +68427,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -68481,6 +68504,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -68668,7 +68692,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -68690,6 +68713,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -68766,6 +68790,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -68952,7 +68977,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -68974,6 +68998,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -69050,6 +69075,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -69264,7 +69290,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -69286,6 +69311,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -69362,6 +69388,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -69545,7 +69572,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -69567,6 +69593,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -69643,6 +69670,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -69838,7 +69866,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -69860,6 +69887,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -69944,6 +69972,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -70129,7 +70158,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -70151,6 +70179,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -70235,6 +70264,7 @@
             "gamePath": "",
             "general": {
               "autoLogin": false,
+              "filterMemory": "restart",
               "rememberTypedEntries": true,
               "startPage": "play"
             },
@@ -70414,7 +70444,6 @@
                       "hideSinglePlayer": false,
                       "hideUnranked": false,
                       "maxPlayers": "",
-                      "remember": false,
                       "search": ""
                     },
                     "liveReplayOrder": [],
@@ -70436,6 +70465,7 @@
                     "modPresets": [],
                     "modVaultPreset": "recommended",
                     "modVaultSort": "",
+                    "rememberedFilters": {},
                     "replayChatChannel": "",
                     "replayChatTransfers": "show",
                     "replayListColumns": [],
@@ -70512,6 +70542,7 @@
                   "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
                   "general": {
                     "autoLogin": true,
+                    "filterMemory": "session",
                     "rememberTypedEntries": false,
                     "startPage": "news"
                   },
@@ -70689,7 +70720,6 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
-                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -70711,6 +70741,7 @@
               "modPresets": [],
               "modVaultPreset": "recommended",
               "modVaultSort": "",
+              "rememberedFilters": {},
               "replayChatChannel": "",
               "replayChatTransfers": "show",
               "replayListColumns": [],
@@ -70787,6 +70818,7 @@
             "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
             "general": {
               "autoLogin": true,
+              "filterMemory": "session",
               "rememberTypedEntries": false,
               "startPage": "news"
             },
@@ -109478,7 +109510,6 @@
           "hideSinglePlayer": false,
           "hideUnranked": false,
           "maxPlayers": "",
-          "remember": false,
           "search": ""
         },
         "liveReplayOrder": [],
@@ -109500,6 +109531,7 @@
         "modPresets": [],
         "modVaultPreset": "recommended",
         "modVaultSort": "",
+        "rememberedFilters": {},
         "replayChatChannel": "",
         "replayChatTransfers": "show",
         "replayListColumns": [],
@@ -109576,6 +109608,7 @@
       "gamePath": "",
       "general": {
         "autoLogin": true,
+        "filterMemory": "session",
         "rememberTypedEntries": false,
         "startPage": "news"
       },

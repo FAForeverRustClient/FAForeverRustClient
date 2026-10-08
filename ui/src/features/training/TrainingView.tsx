@@ -35,7 +35,7 @@ import { useEffect, useLayoutEffect, useRef, type UIEvent } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { SectionTabs, sectionPanelProps, type SectionTab } from "../../design-system/SectionTabs";
-import type { AppCommand, TrainingCommand, TrainingResource } from "../../ipc/bindings";
+import type { AppCommand, TrainingCommand, TrainingQuery, TrainingResource } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { plainError } from "../../shared/plainError";
@@ -66,6 +66,13 @@ import {
 } from "./trainingPresentation";
 import { useTrainingView, type TrainingSection } from "./trainingViewState";
 import "./training.css";
+import {
+  filterMemoryNow,
+  isFilterRecord,
+  rememberedFilter,
+  useForgetFiltersOnLeave,
+  useRememberFilter,
+} from "../../shared/filterMemory";
 
 const send = (command: TrainingCommand) =>
   ipc.send({ kind: "Training", command } satisfies AppCommand);
@@ -77,10 +84,32 @@ const openBlankReview = () =>
 /** Ties the section tabs to the panel under them, for assistive technology. */
 const SECTION_TABS_ID = "training-section";
 
+/** Where the library's filters are remembered (#447). */
+const TRAINING_FILTERS = "training.library";
+/** Whether this session has already picked up the filters of the last one. */
+let trainingFiltersRestored = false;
+
 export function TrainingView() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.training);
   const guides = useAppStore((store) => store.state.guides);
+  // The library's filters live in the training slice, so they outlive a tab
+  // switch by themselves. The filter setting decides the rest (#447): the
+  // first visit after a restart picks up what was left, and with filters never
+  // remembered, leaving the tab clears them. The kind is the library's
+  // section, not a filter, and is kept the way "clear filters" keeps it.
+  useEffect(() => {
+    if (trainingFiltersRestored) return;
+    trainingFiltersRestored = true;
+    if (filterMemoryNow() !== "restart") return;
+    const kept = rememberedFilter<TrainingQuery | null>(TRAINING_FILTERS, null, isFilterRecord);
+    if (kept) send({ type: "setQuery", payload: { query: { ...EMPTY_TRAINING_QUERY, ...kept } } });
+  }, []);
+  useRememberFilter(TRAINING_FILTERS, state.query);
+  useForgetFiltersOnLeave(() => {
+    const current = useAppStore.getState().state.training.query;
+    send({ type: "setQuery", payload: { query: { ...EMPTY_TRAINING_QUERY, kind: current.kind } } });
+  });
   const replayScan = useAppStore((store) => store.state.replays.localStatus.type);
   // Kept outside the component: leaving for the chat unmounts this view, and
   // an open guide's back button has to return to the section it was opened

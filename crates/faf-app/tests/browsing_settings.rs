@@ -9,7 +9,7 @@ use faf_app::ports::SettingsPort;
 use faf_app::{App, Ports};
 use faf_domain::state::{
     BrowsingPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
-    CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView,
+    CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView, FilterMemory,
     HostGamePreferences, LiveReplayFilters, ReplayChatTransfers, SettingsCommand, SettingsState,
 };
 
@@ -122,6 +122,7 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
                     replay_chat_channel: "Allies".into(),
                     replay_chat_transfers: ReplayChatTransfers::Only,
                     legacy_storage_migrated: true,
+                    remembered_filters: Default::default(),
                 }
                 .into(),
             ),
@@ -159,4 +160,64 @@ async fn browsing_preferences_are_normalized_reduced_and_persisted() {
     assert_eq!(state.replay_chat_transfers, ReplayChatTransfers::Only);
     assert!(state.legacy_storage_migrated);
     assert_eq!(saved.lock().unwrap().last().unwrap().browsing, state);
+}
+
+/// A settings file holding a filter in every kind of place one is kept, read
+/// with the given answer to "how long are filters remembered".
+struct FilteredSettings(FilterMemory);
+
+#[async_trait]
+impl SettingsPort for FilteredSettings {
+    async fn load(&self) -> SettingsState {
+        let mut settings = SettingsState::default();
+        settings.game.cache_lifetime_days = None;
+        settings.general.filter_memory = self.0;
+        let browsing = &mut settings.browsing;
+        browsing.custom_games_browser.hide_private = true;
+        browsing.live_replay_filters.search = "1500+".into();
+        browsing.map_vault_preset = "favorites".into();
+        browsing.map_vault_sort = "rating".into();
+        browsing
+            .remembered_filters
+            .insert("installedMods".into(), r#"{"search":"ui"}"#.into());
+        settings
+    }
+
+    async fn save(&self, _settings: &SettingsState) -> Result<(), String> {
+        Ok(())
+    }
+}
+
+async fn browsing_after_startup(memory: FilterMemory) -> BrowsingPreferences {
+    let ports = Ports {
+        settings: Arc::new(FilteredSettings(memory)),
+        ..fake_ports()
+    };
+    let (app, app_loop) = App::new("test", ports);
+    tokio::spawn(app_loop.run());
+    app.dispatch_and_wait(SettingsCommand::Load.into())
+        .await
+        .unwrap();
+    app.snapshot().settings.browsing
+}
+
+/// #447: a filter set before a restart is still there afterwards only when
+/// the player chose that; the default is one session.
+#[tokio::test]
+async fn filters_survive_a_restart_only_when_asked_to() {
+    for memory in [FilterMemory::Never, FilterMemory::Session] {
+        let browsing = browsing_after_startup(memory).await;
+        assert!(!browsing.custom_games_browser.hide_private, "{memory:?}");
+        assert!(browsing.live_replay_filters.search.is_empty(), "{memory:?}");
+        assert_eq!(browsing.map_vault_preset, "recommended", "{memory:?}");
+        assert!(browsing.remembered_filters.is_empty(), "{memory:?}");
+        // A sort order is not a filter.
+        assert_eq!(browsing.map_vault_sort, "rating", "{memory:?}");
+    }
+
+    let kept = browsing_after_startup(FilterMemory::Restart).await;
+    assert!(kept.custom_games_browser.hide_private);
+    assert_eq!(kept.live_replay_filters.search, "1500+");
+    assert_eq!(kept.map_vault_preset, "favorites");
+    assert_eq!(kept.remembered_filters.len(), 1);
 }

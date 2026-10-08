@@ -477,7 +477,7 @@ const INITIAL: AppState = {
     mapPoolsSeen: [],
     avatarHistory: [],
     cacheInfo: { totalFiles: 0, totalSizeBytes: 0, versions: [] },
-    general: { startPage: "news", autoLogin: true, rememberTypedEntries: false },
+    general: { startPage: "news", autoLogin: true, rememberTypedEntries: false, filterMemory: "session" },
     appearance: {
       density: "comfortable",
       reduceMotion: false,
@@ -625,7 +625,6 @@ const INITIAL: AppState = {
         hideSinglePlayer: false,
         hideUnranked: false,
         friendsOnly: false,
-        remember: false,
       },
       hostGame: {
         title: "",
@@ -672,6 +671,7 @@ const INITIAL: AppState = {
       replayChatChannel: "",
       replayChatTransfers: "show",
       legacyStorageMigrated: false,
+      rememberedFilters: {},
     },
     events: { weekStart: "monday", reminders: [] },
   },

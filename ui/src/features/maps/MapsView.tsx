@@ -3,8 +3,8 @@
 // current search, filters, sorting and selection for presentation.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type RankedFilter, useMapFilterDraft } from "./mapFilterDraft";
-import { type InstallFilter, mapsMatchingQuery, visibleVaultMaps } from "./mapVaultResults";
+import { type MapFilterDraft, type RankedFilter, useMapFilterDraft } from "./mapFilterDraft";
+import { type InstallFilter, mapsByDownload, mapsMatchingQuery, visibleVaultMaps } from "./mapVaultResults";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { localPage, vaultPageOutcome } from "../../shared/vaultResults";
 import { Button } from "../../design-system/Button";
@@ -41,9 +41,16 @@ import "./maps.css";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { DateInput } from "../../design-system/DateInput";
+import {
+  filterMemoryNow,
+  isFilterRecord,
+  rememberedFilter,
+  useForgetFiltersOnLeave,
+  useRememberFilter,
+} from "../../shared/filterMemory";
 
 type SubView = MapsSection;
-type VaultSort = "rating" | "newest" | "played" | "name" | "size";
+type VaultSort = "rating" | "newest" | "played" | "name" | "size" | "downloaded";
 type VaultPreset = "recommended" | "favorites" | "mine" | "rating" | "newest" | "played" | "all";
 
 const MAP_SIZES = [64, 128, 256, 512, 1024, 2048, 4096];
@@ -51,7 +58,7 @@ const MAP_SIZES = [64, 128, 256, 512, 1024, 2048, 4096];
 /** `.installed-map-card`'s designed height, which is what a page is measured in. */
 const INSTALLED_MAP_CARD_PX = 76;
 
-const VAULT_SORTS: readonly VaultSort[] = ["rating", "newest", "played", "name", "size"];
+const VAULT_SORTS: readonly VaultSort[] = ["rating", "newest", "played", "name", "size", "downloaded"];
 
 /** The sort a preset brings with it when nothing else has been chosen. */
 function presetSort(preset: VaultPreset): VaultSort {
@@ -85,6 +92,10 @@ const setMapVersionHidden = (versionId: number, hidden: boolean) =>
     kind: "Maps",
     command: { type: "setMapVersionHidden", payload: { versionId, hidden } },
   });
+
+/** Where the vault's and the library's filters are remembered (#447). */
+const MAP_VAULT_FILTERS = "maps.vault";
+const INSTALLED_MAP_FILTERS = "maps.installed";
 
 interface MapFilterState {
   search: string;
@@ -213,11 +224,18 @@ function VaultView({ busy }: { busy: boolean }) {
   const pageSize = browsing.vaultPageSize || DEFAULT_VAULT_PAGE_SIZE;
   // What was last searched, read once as the tab mounts: the form starts from
   // it, so coming back from another tab finds the search where it was left.
-  const [restored] = useState(() => mapFilterFromQuery(browseQuery, preset));
+  // As long as the filter setting keeps it (#447): the copy remembered for
+  // this tab, which also holds the install filter the query does not carry,
+  // then the query in state.
+  const [restored] = useState(() =>
+    filterMemoryNow() === "never"
+      ? null
+      : rememberedFilter<MapFilterState | null>(MAP_VAULT_FILTERS, null, isFilterRecord)
+        ?? mapFilterFromQuery(browseQuery, preset));
   const { draft, setFilter, resetFilters } = useMapFilterDraft(restored ?? undefined);
   const { search, author, ranked, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
   const [sort, setSort] = useState<VaultSort>(restored?.sort ?? initialSort);
-  const [installFilter, setInstallFilter] = useState<InstallFilter>("all");
+  const [installFilter, setInstallFilter] = useState<InstallFilter>(restored?.installFilter ?? "all");
   const [createdAfter, setCreatedAfter] = useState(restored?.createdAfter ?? "");
   const [createdBefore, setCreatedBefore] = useState(restored?.createdBefore ?? "");
   const [showHidden, setShowHidden] = useState(restored?.showHidden ?? false);
@@ -243,6 +261,16 @@ function VaultView({ busy }: { busy: boolean }) {
     maximumPlayers: null,
     width: 0,
     height: 0,
+  });
+  useRememberFilter(MAP_VAULT_FILTERS, applied);
+  // With filters never remembered (#447), the next visit starts from the
+  // default preset. The sort the preset brought is not a filter and stays.
+  useForgetFiltersOnLeave(() => {
+    if (useAppStore.getState().state.settings.browsing.mapVaultPreset === "recommended") return;
+    ipc.send({
+      kind: "Settings",
+      command: { type: "patchBrowsing", payload: { patch: { mapVaultPreset: "recommended" } } },
+    });
   });
 
   const installedFolders = useMemo(
@@ -368,21 +396,27 @@ function VaultView({ busy }: { busy: boolean }) {
   // index is loaded anyway, so this preset keeps filtering the index and stays
   // exact, rather than becoming "favourites on this page".
   const localFavorites = preset === "favorites";
+  // "Recently downloaded" (#453) is the other: when a map arrived is a fact
+  // about this computer's map folder, which the server knows nothing of. The
+  // downloaded maps are few and on disk, so the same local answer.
+  const localDownloaded = applied.sort === "downloaded";
+  const localList = localFavorites || localDownloaded;
 
   useEffect(() => {
-    if (localFavorites) return;
+    if (localList) return;
     ipc.send({ kind: "Maps", command: { type: "searchVault", payload: { query } } });
-  }, [localFavorites, query]);
+  }, [localList, query]);
 
   // The same query the server would have been sent, answered locally: the
   // search, author, ratings, slots, sizes, dates and sort all apply here too,
   // where they used to be shown and then ignored.
-  const favorites = useMemo(
-    () => (localFavorites
-      ? mapsMatchingQuery(vault.filter((map) => favoriteFolders.has(map.folderName.toLocaleLowerCase())), query)
-      : []),
-    [localFavorites, vault, favoriteFolders, query],
-  );
+  const favorites = useMemo(() => {
+    if (!localList) return [];
+    const source = localFavorites
+      ? vault.filter((map) => favoriteFolders.has(map.folderName.toLocaleLowerCase()))
+      : vault;
+    return localDownloaded ? mapsByDownload(source, installed, query) : mapsMatchingQuery(source, query);
+  }, [localList, localFavorites, localDownloaded, vault, favoriteFolders, installed, query]);
 
   // The filters the server cannot answer for this tab, applied to the page
   // that came back. `MapsView`'s result count says "on this page" for exactly
@@ -390,13 +424,13 @@ function VaultView({ busy }: { busy: boolean }) {
   // them even though the query asks about them. For favourites the list is
   // whole, so they apply to all of it before it is paged.
   const results = useMemo(
-    () => visibleVaultMaps(localFavorites ? favorites : browse, {
+    () => visibleVaultMaps(localList ? favorites : browse, {
       showHidden: applied.showHidden,
       ownMaps: preset === "mine",
       installFilter: applied.installFilter,
       installedFolders,
     }),
-    [applied.installFilter, applied.showHidden, browse, favorites, installedFolders, localFavorites, preset],
+    [applied.installFilter, applied.showHidden, browse, favorites, installedFolders, localList, preset],
   );
 
   // A page count belongs to the search that produced it. While a new filter's
@@ -404,16 +438,16 @@ function VaultView({ busy }: { busy: boolean }) {
   // one, and a pager built from it offers pages this search does not have.
   // Favourites count what is left after every filter, not the starred total.
   const favoritePage = localPage(results, page, pageSize);
-  const totalPages = localFavorites
+  const totalPages = localList
     ? favoritePage.totalPages
     : (sameVaultSearch(browseQuery, query) ? browseTotalPages ?? 1 : 1);
-  const currentPage = localFavorites ? favoritePage.currentPage : Math.min(page, totalPages);
-  const pageMaps = localFavorites ? favoritePage.items : results;
+  const currentPage = localList ? favoritePage.currentPage : Math.min(page, totalPages);
+  const pageMaps = localList ? favoritePage.items : results;
   // The install filter only ever sees one server page, so a page it empties
   // says so and keeps the pager, rather than claiming the search found nothing.
   const outcome = vaultPageOutcome({
-    settled: localFavorites ? vaultStatus.type === "ready" : browseStatus.type === "ready",
-    received: localFavorites ? results.length : browse.length,
+    settled: localList ? vaultStatus.type === "ready" : browseStatus.type === "ready",
+    received: localList ? results.length : browse.length,
     shown: pageMaps.length,
     currentPage,
     totalPages,
@@ -541,7 +575,7 @@ function VaultView({ busy }: { busy: boolean }) {
           <select className="search-panel-control" value={ranked} onChange={(event) => setFilter({ ranked: event.target.value as RankedFilter })}><option value="all">{t("maps.view.any")}</option><option value="ranked">{t("maps.view.ranked")}</option><option value="unranked">{t("maps.view.unranked")}</option></select>
         </SearchField>
         <SearchField label={t("maps.view.sortBy")} className="search-panel-field-compact">
-          <select className="search-panel-control" value={sort} onChange={(event) => chooseSort(event.target.value as VaultSort)}><option value="rating">{t("maps.view.preset.rating")}</option><option value="newest">{t("maps.view.preset.newest")}</option><option value="played">{t("maps.view.preset.played")}</option><option value="name">{t("maps.view.sort.name")}</option><option value="size">{t("maps.view.sort.size")}</option></select>
+          <select className="search-panel-control" value={sort} onChange={(event) => chooseSort(event.target.value as VaultSort)}><option value="rating">{t("maps.view.preset.rating")}</option><option value="newest">{t("maps.view.preset.newest")}</option><option value="played">{t("maps.view.preset.played")}</option><option value="name">{t("maps.view.sort.name")}</option><option value="size">{t("maps.view.sort.size")}</option><option value="downloaded">{t("maps.view.sort.downloaded")}</option></select>
         </SearchField>
         <SearchPanelSubmit />
       </SearchPanel>
@@ -554,7 +588,7 @@ function VaultView({ busy }: { busy: boolean }) {
       {/* The search this page shows. Silent before: a new filter kept the
           previous cards on screen as though they matched it, and a failed
           search left those cards, or a blank area, with nothing said. */}
-      {!localFavorites && (
+      {!localList && (
         <LoadStatusNotice
           status={browseStatus}
           failed={t("maps.view.searchFailed")}
@@ -596,8 +630,8 @@ function VaultView({ busy }: { busy: boolean }) {
             <span>{t("maps.view.pageOf", { page: currentPage, total: totalPages })}</span>
           </div>
           <div
-            className={!localFavorites && browseStatus.type === "loading" ? "vault-layout is-stale-results" : "vault-layout"}
-            aria-busy={!localFavorites && browseStatus.type === "loading"}
+            className={!localList && browseStatus.type === "loading" ? "vault-layout is-stale-results" : "vault-layout"}
+            aria-busy={!localList && browseStatus.type === "loading"}
           >
             <section className="vault-browser">
               {/* Every map on this page fell to the install filter, which only
@@ -686,7 +720,12 @@ function VaultView({ busy }: { busy: boolean }) {
 }
 
 type InstalledPreset = "all" | "favorites" | "ranked" | "custom" | "builtin";
-type InstalledSort = "name" | "size" | "players" | "newest" | "rating" | "installed";
+type InstalledSort = "name" | "size" | "players" | "newest" | "rating" | "downloaded";
+
+interface InstalledMapFilters {
+  draft: MapFilterDraft;
+  preset: InstalledPreset;
+}
 
 function InstalledView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
@@ -704,9 +743,13 @@ function InstalledView({ busy }: { busy: boolean }) {
   // looks at were stuck at thumbnail size, which is the complaint the Vault's
   // zoom answers.
   const [previewMap, setPreviewMap] = useState<InstalledMap | VaultMap | null>(null);
-  const { draft, setFilter, resetFilters } = useMapFilterDraft();
+  // The filters as the setting keeps them (#447). The sort is not one.
+  const [remembered] = useState(() =>
+    rememberedFilter<InstalledMapFilters | null>(INSTALLED_MAP_FILTERS, null, isFilterRecord));
+  const { draft, setFilter, resetFilters } = useMapFilterDraft(remembered?.draft);
   const { search, author, ranked, minimumRating, maximumRating, minimumPlayers, maximumPlayers, width, height } = draft;
-  const [preset, setPreset] = useState<InstalledPreset>("all");
+  const [preset, setPreset] = useState<InstalledPreset>(remembered?.preset ?? "all");
+  useRememberFilter(INSTALLED_MAP_FILTERS, useMemo(() => ({ draft, preset }), [draft, preset]));
   const [sort, setSort] = useState<InstalledSort>("name");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -825,7 +868,7 @@ function InstalledView({ busy }: { busy: boolean }) {
             return (metaRight?.ratingTenths ?? 0) - (metaLeft?.ratingTenths ?? 0);
           // The map downloaded last first (#453): for finding again a map
           // tried out a moment ago without having noted its name.
-          case "installed":
+          case "downloaded":
             return (Date.parse(right.installedAt ?? "") || 0) - (Date.parse(left.installedAt ?? "") || 0);
         }
       });
@@ -955,7 +998,7 @@ function InstalledView({ busy }: { busy: boolean }) {
             <option value="players">{t("maps.view.sort.players")}</option>
             <option value="rating">{t("maps.view.preset.rating")}</option>
             <option value="newest">{t("maps.view.preset.newest")}</option>
-            <option value="installed">{t("maps.view.sort.installed")}</option>
+            <option value="downloaded">{t("maps.view.sort.downloaded")}</option>
           </select>
         </SearchField>
       </SearchPanel>

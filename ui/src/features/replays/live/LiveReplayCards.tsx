@@ -24,7 +24,7 @@ import { mapPresentation, type MapPresentation } from "../../../shared/mapPresen
 import { ReplayMapThumb, ReplayMetaFact, ReplayThumbGenerate, replayCardTitle } from "../ReplayCard";
 import { ReplayCardRoster } from "../ReplayRoster";
 import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
-import { LiveReplayAge, LiveWatchButton } from "./LiveReplayRow";
+import { liveReplayAgeLabel, LiveWatchButton } from "./LiveReplayRow";
 import { prettyGameType, replayDelayRemaining } from "../../../shared/liveReplayModel";
 import { isCoopGame } from "../../../shared/gameRules";
 import "../online-replays.css";
@@ -149,6 +149,7 @@ export const LiveReplayCard = memo(function LiveReplayCard({
   onOpen,
   onPlayerMenu,
   mapSize,
+  layout = "wide",
 }: {
   busy: boolean;
   game: Game;
@@ -160,6 +161,13 @@ export const LiveReplayCard = memo(function LiveReplayCard({
   /** Opens the game's detail panel; a card with nowhere to open one leaves it out. */
   onOpen?: (id: number) => void;
   onPlayerMenu: PlayerMenuOpener;
+  /**
+   * `wide` is the Live tab's grid. `stacked` is the same card for a column a
+   * third as wide, the side panel of a private conversation (#448): the
+   * title and the way in on top, the preview beside the facts, the lineup
+   * one team under the other.
+   */
+  layout?: "wide" | "stacked";
 }) {
   const { t } = useTranslation();
   const vault = useAppStore((state) => state.state.maps.vault);
@@ -188,7 +196,7 @@ export const LiveReplayCard = memo(function LiveReplayCard({
 
   return (
     <article
-      className="replay-card live-replay-card surface-panel"
+      className={`replay-card live-replay-card surface-panel${layout === "stacked" ? " is-stacked" : ""}`}
       onClick={(event) => {
         if (opensDetail(event)) onOpen?.(game.id);
       }}
@@ -215,17 +223,22 @@ export const LiveReplayCard = memo(function LiveReplayCard({
           />
           <ReplayThumbGenerate mapName={game.map} />
         </span>
-        {/* The slot the vault card spends on review stars. A running game has
-            none and will have none while it is running, so it holds the one
-            fact only a live game has: how long it has been going. */}
-        <span className="live-replay-card-age muted">
-          <LiveReplayAge game={game} now={ageNow} />
-        </span>
+        {/* Everything known about the game, as one grid under the preview
+            (#434): how long it has been going used to sit on a line of its
+            own between the two, and the id on one under the grid, which read
+            as things that had fallen out of it. */}
         <div className="replay-meta-grid muted">
           <ReplayMetaFact
             icon="users"
             label={t("replays.card.players")}
             value={`${game.players} / ${game.maxPlayers}`}
+          />
+          {/* Beside the count, in the grid's wider column: "10 min ago" does
+              not fit the narrow one. */}
+          <ReplayMetaFact
+            icon="clock"
+            label={t("replays.column.started")}
+            value={liveReplayAgeLabel(game, ageNow, t)}
           />
           {/* Only what is known (#434): an unrated lobby's "N/A" and a vanilla
               game's "0 sim mods" were a third of the grid on most cards and
@@ -247,9 +260,8 @@ export const LiveReplayCard = memo(function LiveReplayCard({
             label={t("replays.live.gameType")}
             value={prettyGameType(game.gameType)}
           />
-          {/* The id and what the game is running, in the grid rather than in
-              the footer: both are facts about the game, like the four above
-              them, and the footer is a line of text. */}
+          {/* What the game is running, in the grid rather than in a footer:
+              a fact about the game, like the ones above it. */}
           {simMods.length > 0 && (
             <ReplayMetaFact
               icon="mods"
@@ -258,39 +270,44 @@ export const LiveReplayCard = memo(function LiveReplayCard({
               detail={simMods.join(", ")}
             />
           )}
-          {/* Last, so it can take the grid's whole width: an eight-digit id
-              did not fit the narrow column and was cut to "#27904..." (#434). */}
+          {/* Who hosts it, a fact about the game like the others, so in the
+              grid rather than in a footer of its own, where it hung in the
+              middle of the card under the lineup (#434). Last, so it can take
+              the grid's whole width. */}
           <ReplayMetaFact
-            icon="replays"
-            label={t("replays.detail.replayIdLabel")}
-            value={`#${game.id}`}
+            icon="crown"
+            label={t("replays.column.host")}
+            value={game.host}
           />
         </div>
       </div>
       <div className="replay-card-right">
-        <div className="replay-card-header">
-          <span className="replay-card-title" title={title.full} aria-label={title.full}>
-            {title.display}
-          </span>
-          <span className="replay-card-submap muted">
-            {t("replays.card.onMap", {
-              map: mapSize ? `${presentation.displayName || game.map} (${mapSize})` : presentation.displayName || game.map,
-            })}
-          </span>
+        {/* The vault card's first row (#434): the title and, at the end of the
+            map line, the id, with the way in in the top-right corner beside
+            them. The id used to close the fact grid and the button a footer
+            of its own, which is where the two cards differed. */}
+        <div className="replay-card-top">
+          <div className="replay-card-header">
+            <span className="replay-card-title" title={title.full} aria-label={title.full}>
+              {title.display}
+            </span>
+            <span className="replay-card-submap muted">
+              {t("replays.card.onMap", {
+                map: mapSize ? `${presentation.displayName || game.map} (${mapSize})` : presentation.displayName || game.map,
+              })}
+              <span className="replay-card-id"> · #{game.id}</span>
+            </span>
+          </div>
+          <div className="replay-card-corner live-replay-card-corner">
+            <LiveWatchButton
+              busy={busy}
+              game={game}
+              tracking={tracking}
+              waitSeconds={waitSeconds}
+            />
+          </div>
         </div>
         <ReplayCardRoster teams={teams} interactive onPlayerMenu={onPlayerMenu} />
-        {/* Who hosts it, and the one thing to do with it. The featured mod and
-            the sim mods used to close this line and are in the fact grid on
-            the left, where the rest of what the game *is* lives. */}
-        <div className="replay-card-footer live-replay-card-footer">
-          <span className="muted">{t("lobby.details.host", { name: game.host })}</span>
-          <LiveWatchButton
-            busy={busy}
-            game={game}
-            tracking={tracking}
-            waitSeconds={waitSeconds}
-          />
-        </div>
       </div>
     </article>
   );

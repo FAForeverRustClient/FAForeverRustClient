@@ -577,6 +577,12 @@ export const en = {
   "settings.general.rememberTypedEntries.label": "Suggest what you typed before",
   "settings.general.rememberTypedEntries.hint":
     "Lets the window offer entries you have typed into a field before, such as the host dialog's game title. Off by default: the client already puts your last title back in that field.",
+  "settings.general.filterMemory.label": "Remember filters",
+  "settings.general.filterMemory.hint":
+    "How long searches and filters stay set, in every list of the client. Sort orders and columns are always kept.",
+  "settings.general.filterMemory.never": "Never",
+  "settings.general.filterMemory.session": "Until the client closes",
+  "settings.general.filterMemory.restart": "Also after a restart",
   "settings.general.language.label": "Language",
   "settings.general.language.hint":
     "Applies immediately. Untranslated text stays in English.",
@@ -1246,8 +1252,6 @@ export const en = {
   "replays.live.hideUnrankedHint": "Hides games the client can tell will rate nobody: an unranked map or an unranked sim mod. Lobby settings are not visible to any client.",
   "replays.live.friendsOnly": "Games with friends",
 
-  "replays.live.rememberHint": "Off, the filters are cleared every time the client starts.",
-  "replays.live.remember": "Keep filters after a restart",
   // Advanced vault filters.
   "replays.filters.dateFloor": "A filtered search with no start date only looks back three months. Set \"Played after\" to search further back.",
   "replays.filters.dateFloorWithPlayer": "A filtered search with no start date only looks back six months. Set \"Played after\" to search further back.",
@@ -1924,7 +1928,7 @@ export const en = {
   "maps.view.unranked": "Unranked",
   "maps.view.sort.name": "Name",
   "maps.view.sort.size": "Largest",
-  "maps.view.sort.installed": "Recently installed",
+  "maps.view.sort.downloaded": "Recently downloaded",
   "maps.view.sort.players": "Players",
   "maps.view.preset.custom": "Custom",
   "maps.view.preset.builtin": "Built-in",

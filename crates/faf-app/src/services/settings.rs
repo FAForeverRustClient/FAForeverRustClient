@@ -71,12 +71,12 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         SettingsCommand::Load => {
             let mut settings = ctx.ports.settings.load().await.normalized();
-            // The live replay filters last one session unless the player asked
-            // for them to be kept (#447). Only in state: the file is written
-            // over with the cleared filters on the next save anyway.
-            let live_filters = &mut settings.browsing.live_replay_filters;
-            if !live_filters.remember {
-                *live_filters = Default::default();
+            // Filters outlive a restart only when the player asked for that
+            // (#447); otherwise every list starts unfiltered. Only in state:
+            // the file is written over with the cleared filters on the next
+            // save anyway.
+            if settings.general.filter_memory != domain::FilterMemory::Restart {
+                settings.browsing = settings.browsing.without_filters();
             }
             let discovered = ctx.ports.process.discover_install_paths();
             // Where FAF's copy of the game goes when there is no copy yet.

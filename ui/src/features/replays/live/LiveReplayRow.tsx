@@ -105,14 +105,19 @@ export function LivePlayerName({ name, onMenu }: { name: string; onMenu: PlayerM
 
 export function LiveReplayAge({ game, now }: { game: Game; now: number }) {
   const { t } = useTranslation();
+  return <small>{liveReplayAgeLabel(game, now, t)}</small>;
+}
+
+/** How long ago a running game started, as `LiveReplayAge` says it. */
+export function liveReplayAgeLabel(game: Game, now: number, t: ReturnType<typeof useTranslation>["t"]): string {
   const started = gameStartedAt(game);
-  if (!started) return <small>{t("replays.live.startUnavailable")}</small>;
+  if (!started) return t("replays.live.startUnavailable");
   const elapsed = Math.max(0, (now - started.getTime()) / 1000);
   // A live game is always "some time ago", so the zero case reads as `0m` in
   // the same phrase rather than as its own wording.
   const zero = t("replays.card.ago", { duration: zeroMinutes() });
   const relative = formatRelativeDuration(elapsed, { nowLabel: zero });
-  return <small>{relative === zero ? relative : t("replays.card.ago", { duration: relative })}</small>;
+  return relative === zero ? relative : t("replays.card.ago", { duration: relative });
 }
 
 /** Width of the delay menu, mirrored from `.live-delay-menu` in the stylesheet. */

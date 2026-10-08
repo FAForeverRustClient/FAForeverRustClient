@@ -18,6 +18,12 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { DateInput } from "../../design-system/DateInput";
 import { plainError } from "../../shared/plainError";
 import { leaderboardLabel } from "../../shared/playerRatings";
+import {
+  filterMemoryNow,
+  isFilterRecord,
+  rememberedFilter,
+  useRememberFilter,
+} from "../../shared/filterMemory";
 
 /**
  * The columns beside the boards.
@@ -57,6 +63,37 @@ function searchFieldsKey(query: RatingQuery): string {
     query.updatedBefore,
     query.pageSize,
   ]);
+}
+
+/** Where the board's filters are remembered (#447), and where they start. */
+const RATING_FILTERS = "leaderboard.rating";
+type RatingFilters = Pick<RatingQuery, "player" | "activeOnly" | "updatedAfter" | "updatedBefore">;
+const NO_RATING_FILTERS: RatingFilters = {
+  player: "",
+  activeOnly: true,
+  updatedAfter: null,
+  updatedBefore: null,
+};
+
+function ratingFiltersOf(query: RatingQuery): RatingFilters {
+  return {
+    player: query.player,
+    activeOnly: query.activeOnly,
+    updatedAfter: query.updatedAfter,
+    updatedBefore: query.updatedBefore,
+  };
+}
+
+/** A remembered copy, field by field, so a stray key never reaches a query. */
+function keptRatingFilters(value: unknown): RatingFilters | null {
+  if (!isFilterRecord(value)) return null;
+  const day = (field: unknown) => (typeof field === "string" ? field : null);
+  return {
+    player: typeof value.player === "string" ? value.player : "",
+    activeOnly: typeof value.activeOnly === "boolean" ? value.activeOnly : true,
+    updatedAfter: day(value.updatedAfter),
+    updatedBefore: day(value.updatedBefore),
+  };
 }
 
 function load(query: RatingQuery) {
@@ -118,8 +155,27 @@ export function RatingLeaderboardPanel() {
     if (state.catalogStatus.type !== "ready" || state.ratingsStatus.type !== "idle") return;
     const preferred = state.ratingLeaderboards.find((board) => board.technicalName === state.ratingQuery.leaderboard)
       ?? state.ratingLeaderboards[0];
-    if (preferred) void load({ ...state.ratingQuery, leaderboard: preferred.technicalName, page: 1 });
+    // The first load of a session starts from the filters left before a
+    // restart, when the filter setting keeps them that long (#447).
+    const kept = filterMemoryNow() === "restart"
+      ? keptRatingFilters(rememberedFilter<unknown>(RATING_FILTERS, null))
+      : null;
+    if (preferred) void load({ ...state.ratingQuery, ...kept, leaderboard: preferred.technicalName, page: 1 });
   }, [state.catalogStatus.type, state.ratingLeaderboards, state.ratingQuery, state.ratingsStatus.type]);
+
+  // With filters never remembered (#447), a visit after the first starts from
+  // the unfiltered board again. The board it is ranked by and the page length
+  // are not filters.
+  useEffect(() => {
+    const current = useAppStore.getState().state.leaderboard;
+    if (filterMemoryNow() !== "never" || current.ratingsStatus.type === "idle") return;
+    const filters = ratingFiltersOf(current.ratingQuery);
+    if (JSON.stringify(filters) === JSON.stringify(NO_RATING_FILTERS)) return;
+    void load({ ...current.ratingQuery, ...NO_RATING_FILTERS, page: 1 });
+  }, []);
+
+  const executedFilters = useMemo(() => ratingFiltersOf(state.ratingQuery), [state.ratingQuery]);
+  useRememberFilter(RATING_FILTERS, executedFilters);
 
   // A player no longer on the page is no longer selected.
   useEffect(() => {

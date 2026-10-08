@@ -21,6 +21,7 @@ import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
 import { playersByNickname } from "../../../store/reducer";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { useRememberedFilter } from "../../../shared/filterMemory";
 import {
   USER_CATEGORY_LABELS,
   USER_CATEGORY_ORDER,
@@ -104,7 +105,8 @@ export const UserList = memo(function UserList({
   menuTarget,
 }: Props) {
   const { t } = useTranslation();
-  const [filter, setFilter] = useState("");
+  // Remembered as the filter setting says (#447).
+  const [filter, setFilter] = useRememberedFilter("chat.users", "", (value) => typeof value === "string");
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(600);
   const [itemHeight, setItemHeight] = useState(FALLBACK_ITEM_HEIGHT);

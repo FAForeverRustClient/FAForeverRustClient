@@ -20,6 +20,15 @@ import { Icon } from "../../../design-system/Icon";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { plainError } from "../../../shared/plainError";
+import {
+  filterMemoryNow,
+  isFilterRecord,
+  rememberedFilter,
+  useRememberFilter,
+} from "../../../shared/filterMemory";
+
+/** Where the vault's search is remembered (#447). */
+const ONLINE_REPLAY_FILTERS = "replays.online";
 
 /**
  * The selector's answer when nothing has been resolved yet. A literal `{}` in
@@ -111,9 +120,18 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
   useEffect(() => {
     const state = useAppStore.getState().state;
     const playerToSearch = self || state.settings.browsing.replayVaultPlayer;
+    const memory = filterMemoryNow();
     if (!runRequestedSearch() && !handedOver.current) {
       const status = state.replays.vaultStatus.type;
-      if (status === "idle") {
+      // The search left before a restart, when the filter setting keeps
+      // filters that long (#447). Otherwise the landing search below.
+      const kept = status === "idle" && memory === "restart"
+        ? rememberedFilter<ReplayQuery | null>(ONLINE_REPLAY_FILTERS, null, isFilterRecord)
+        : null;
+      if (kept) {
+        refreshed.current = true;
+        searchVault(kept);
+      } else if (status === "idle") {
         if (playerToSearch) {
           // The landing search is this visit's fresh one, so it counts as the
           // re-run. Unarmed, the first search of a session (the vault player
@@ -132,7 +150,12 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
         // and pressing Search by hand to see it is not something a reader
         // should have to know to do. A search already in flight is left to
         // finish, and a failed one gets another try on the way back in.
-        searchVault(state.replays.vaultQuery);
+        //
+        // With filters never remembered (#447) that is the landing search
+        // instead, at the page length in effect, which is not a filter.
+        searchVault(memory === "never" && playerToSearch
+          ? { ...personalReplayQuery(playerToSearch, isoDaysAgo(365)), pageSize: state.replays.vaultQuery.pageSize }
+          : state.replays.vaultQuery);
       }
     }
     // The two dropdowns' contents. Both are cheap and cached in state, so
@@ -140,6 +163,9 @@ export function OnlineReplayView({ busy }: { busy: boolean }) {
     if (state.replays.featuredMods.length === 0) loadFeaturedMods();
     loadLeaderboards();
   }, [self, browsing.replayVaultPlayer, runRequestedSearch]);
+
+  // The search on screen, for the next visit or the next start (#447).
+  useRememberFilter(ONLINE_REPLAY_FILTERS, query);
 
   // And for the request that arrives while this tab is already open.
   useEffect(() => subscribeReplaySearch(() => { runRequestedSearch(); }), [runRequestedSearch]);

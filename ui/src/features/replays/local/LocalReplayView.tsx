@@ -35,6 +35,7 @@ import "./local-replays.css";
 import "../online-replays.css";
 import { t, type MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { isFilterRecord, useRememberedFilter } from "../../../shared/filterMemory";
 
 /// A hundred rows a page, which is what the archive's owner asked for and what
 /// the Java client's local section offers. Nothing is fetched per row: the
@@ -180,7 +181,13 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   // client has not read -- the `unread` tail beyond the detail limit, a file
   // too damaged to name its players -- because a replay with no roster matches
   // nobody. "My replays" is still one click away, and now says so when it is on.
-  const [query, setQuery] = useState<LocalReplayQuery>(EMPTY_LOCAL_REPLAY_QUERY);
+  //
+  // Remembered as the filter setting says (#447), like every list's filters.
+  const [query, setQuery] = useRememberedFilter<LocalReplayQuery>(
+    "replays.local",
+    EMPTY_LOCAL_REPLAY_QUERY,
+    isFilterRecord,
+  );
   const [page, setPage] = useState(1);
   const [watched, setWatched] = useState<Set<string>>(() =>
     loadStoredSet(LOCAL_WATCHED_STORAGE_KEY, (value): value is string => typeof value === "string"),
@@ -188,7 +195,7 @@ export function LocalReplayView({ busy }: { busy: boolean }) {
   // "Where do I find the ones I marked?" The mark is per install and lives in
   // this browser's storage, so no query can carry it; it narrows the result of
   // one instead.
-  const [watchedOnly, setWatchedOnly] = useState(false);
+  const [watchedOnly, setWatchedOnly] = useRememberedFilter("replays.local.watched", false, (value) => typeof value === "boolean");
   const [openReplay, setOpenReplay] = useState<LocalReplay | null>(null);
   const [pendingDelete, setPendingDelete] = useState<LocalReplay | null>(null);
   const note = loadStatusNote(localStatus, t("replays.local.scanning"), t("replays.local.scanFailed"));

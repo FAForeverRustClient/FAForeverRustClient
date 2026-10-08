@@ -584,6 +584,17 @@ export type BrowsingPreferences = {
 	 *  is one-time and the old keys can be removed on a later confirmed load.
 	 */
 	legacyStorageMigrated: boolean,
+	/**
+	 *  The filters of the lists that keep theirs in the webview, by list, each
+	 *  one a JSON document only that list reads (#447).
+	 *
+	 *  Only written while `GeneralPreferences::filter_memory` is `Restart`,
+	 *  and emptied at startup otherwise. The lists whose filters were stored
+	 *  before this existed keep their own fields above; this is for the rest,
+	 *  so a new list does not need a new field and a new binding to be
+	 *  remembered across a restart.
+	 */
+	rememberedFilters: { [key in string]: string },
 };
 
 /**
@@ -620,6 +631,7 @@ export type BrowsingPreferencesPatch = {
 	replayChatChannel?: string,
 	replayChatTransfers?: ReplayChatTransfers,
 	legacyStorageMigrated?: boolean,
+	rememberedFilters?: { [key in string]: string },
 	customGamesBrowser?: CustomGameBrowserPreferencesPatch,
 	liveReplayFilters?: LiveReplayFiltersPatch,
 	hostGame?: HostGamePreferencesPatch,
@@ -2512,6 +2524,26 @@ export type FfaReport = {
 };
 
 /**
+ *  How long a filter outlives the moment it was set (#447).
+ *
+ *  What counts as a filter is anything that narrows a list: a search, a
+ *  "hide" or "only" switch, a picker, a vault preset, a rule. How a list is
+ *  sorted and how its columns are laid out are not filters and are always
+ *  kept.
+ */
+export type FilterMemory =
+/**  Every list starts unfiltered whenever it is opened. */
+"never" |
+/**
+ *  Filters survive leaving a tab and coming back, and are cleared when the
+ *  client starts. The default, because a search typed yesterday that
+ *  still hid games after a restart was reported as a bug (#447).
+ */
+"session" |
+/**  Filters survive a restart. */
+"restart";
+
+/**
  *  The shape of the competition, changed after the event was created.
  *
  *  A narrower set than the service's `edit_format` accepts. The best-of plan
@@ -2989,6 +3021,16 @@ export type GeneralPreferences = {
 	 *  rotating titles is served by it.
 	 */
 	rememberTypedEntries?: boolean,
+	/**
+	 *  How long the filters of every list in the client are remembered (#447).
+	 *
+	 *  One setting for all of them, not a switch per tab: the thread asked
+	 *  for exactly these three answers to one question, and a filter that
+	 *  behaves differently from the one in the next tab reads as a bug either
+	 *  way. `default` so a settings file written before this existed reads as
+	 *  the default rather than failing.
+	 */
+	filterMemory?: FilterMemory,
 };
 
 /**  A change to [`GeneralPreferences`]; see `preference_patch!`. */
@@ -2996,6 +3038,7 @@ export type GeneralPreferencesPatch = {
 	startPage?: Tab,
 	autoLogin?: boolean,
 	rememberTypedEntries?: boolean,
+	filterMemory?: FilterMemory,
 };
 
 /**
@@ -3887,13 +3930,6 @@ export type LiveReplayFilters = {
 	 */
 	hideUnranked?: boolean,
 	friendsOnly: boolean,
-	/**
-	 *  Keep these filters when the client restarts (#447). Off unless asked
-	 *  for: a search typed yesterday that still hid games after a restart
-	 *  read as a bug, so by default the filters last one session. `default`
-	 *  for the same reason as `hide_unranked`.
-	 */
-	remember?: boolean,
 };
 
 /**  A change to [`LiveReplayFilters`]. */
@@ -3907,7 +3943,6 @@ export type LiveReplayFiltersPatch = {
 	hideSinglePlayer?: boolean,
 	hideUnranked?: boolean,
 	friendsOnly?: boolean,
-	remember?: boolean,
 };
 
 /**

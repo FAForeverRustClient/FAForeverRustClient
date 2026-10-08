@@ -11,6 +11,7 @@ import { LeaderboardTable } from "./LeaderboardTable";
 import { PlayerDetailsPanel } from "./PlayerDetailsPanel";
 import { useTranslation } from "../../i18n/useTranslation";
 import { leaderboardLabel } from "../../shared/playerRatings";
+import { useRememberedFilter } from "../../shared/filterMemory";
 import { divisionLabel, isGrandmaster, seasonLabel, tierLabel } from "../../shared/leagueNames";
 
 /**
@@ -366,7 +367,13 @@ export function LeagueLeaderboardPanel() {
   const { t } = useTranslation();
   const state = useAppStore((store) => store.state.leaderboard);
   const player = useAppStore((store) => store.state.auth.player);
-  const [search, setSearch] = useState("");
+  // Remembered as the filter setting says (#447). The division is not: it
+  // belongs to one season's tiers and starts over with each season shown.
+  const [search, setSearch] = useRememberedFilter(
+    "leaderboard.league.search",
+    "",
+    (value) => typeof value === "string",
+  );
   const [division, setDivision] = useState("all");
   const [subdivision, setSubdivision] = useState("all");
   const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
