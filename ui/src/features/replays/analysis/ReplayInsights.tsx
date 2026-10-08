@@ -18,6 +18,7 @@ import { useId, useMemo, useState } from "react";
 import { Icon } from "../../../design-system/Icon";
 import { MultiSelect } from "../../../design-system/MultiSelect";
 import { SectionTabs, sectionPanelProps } from "../../../design-system/SectionTabs";
+import { StatusNotice } from "../../../design-system/StatusNotice";
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { useAppStore } from "../../../store/store";
 import type {
@@ -36,6 +37,7 @@ import { gameOptionLabel } from "./gameOptionLabels";
 import { ReplayHeatmap, type HeatmapMapAction } from "./ReplayHeatmap";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { PlayerName } from "../../../shared/components/nameColors";
+import { plainError } from "../../../shared/plainError";
 import { formatDecimal, type MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { isObserverTeam } from "../ReplayRoster";
@@ -199,6 +201,7 @@ export function ReplayInsights({
   mapAction,
   loading,
   error,
+  onRetry,
   onClose,
 }: {
   /**
@@ -231,6 +234,8 @@ export function ReplayInsights({
   mapAction?: HeatmapMapAction;
   loading: boolean;
   error: string;
+  /** Ask again for whichever of the two reads is missing, after one failed. */
+  onRetry?: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -349,10 +354,22 @@ export function ReplayInsights({
   // A tab that needs the stream says so itself rather than leaving the reader
   // in front of an empty panel.
   const waitingForAnalysis = ANALYSIS_TABS.has(tab) && !analysis;
+  // A failed read, plainly, with the reader's own words on hover: they are
+  // the file system's or the HTTP client's, half of them in the system's
+  // language.
+  const failure = (reason: string) => (
+    <StatusNotice
+      tone="error"
+      action={onRetry ? { label: t("common.retry"), onClick: onRetry } : undefined}
+      detail={reason}
+    >
+      {plainError(reason)}
+    </StatusNotice>
+  );
   const analysisNotice = waitingForAnalysis
     ? (
       analysisError
-        ? <p className="replay-download-error surface-error">{analysisError}</p>
+        ? failure(analysisError)
         : (
           <p className="replay-insights-loading muted">
             <Icon name="refresh" size={15} className="spin" />
@@ -402,7 +419,7 @@ export function ReplayInsights({
               in each of them would say four different things are loading. */}
           {!details && (
             error
-              ? <p className="replay-download-error surface-error">{error}</p>
+              ? failure(error)
               : (
                 <p className="replay-insights-loading muted">
                   <Icon name="refresh" size={15} className="spin" />

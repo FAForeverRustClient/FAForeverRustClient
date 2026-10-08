@@ -235,8 +235,7 @@
 }
 
 .player-card-loading,
-.player-card-empty,
-.player-card-error {
+.player-card-empty {
   display: grid;
   flex: 1;
   place-content: center;
@@ -245,8 +244,10 @@
   text-align: center;
 }
 
-.player-card-error {
-  color: var(--color-error);
+/* A profile that could not be loaded has no tabs under it, so the notice sits
+   where they would start, in line with the header above it. */
+.status-notice.player-card-failure {
+  margin: var(--space-4);
 }
 
 .player-card-former-name {
@@ -258,7 +259,7 @@
 
 .player-card-warnings {
   padding: var(--space-3);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .player-card-warnings summary {
@@ -815,12 +816,12 @@
 /* Net change over the dragged stretch is the one number here that has a
    direction, so it is the one that earns a status colour. */
 .player-rating-selection .is-gain {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   font-variant-numeric: tabular-nums;
 }
 
 .player-rating-selection .is-loss {
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1058,7 +1059,7 @@
 }
 
 .player-achievement-body header span {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-size: 11px;
   white-space: nowrap;
 }
@@ -1218,7 +1219,7 @@
   display: grid;
   place-items: center;
   margin-left: calc(var(--space-1) - var(--space-2));
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   line-height: 0;
 }
 
@@ -1538,10 +1539,6 @@
   font-size: 12px;
 }
 
-.clan-banner.is-error {
-  color: var(--color-error);
-}
-
 .clan-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 90px;
@@ -1689,10 +1686,53 @@
   text-align: left;
 }
 
+/* First, so the shared rule above gives it the slack. `max-width: 0`, as the
+   Maps tab's name cell has, so a long name is cut short inside that room
+   instead of widening the table past the card. */
 .player-results-map {
-  max-width: 260px;
+  max-width: 0;
+  overflow: hidden;
+}
+
+/* The picture and the name on one line; the name gives way, the picture
+   does not. */
+.player-results-map-cell {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.player-results-map-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The chat tab's small map picture (`chat-game-map`), at the same size, so a
+   game reads the same in both places. */
+.player-results-map-thumb {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs, 2px);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--color-border);
+  object-fit: cover;
+}
+
+img.player-results-map-thumb {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.player-results-map-thumb-empty {
+  color: var(--color-subtle);
 }
 
 .player-results-outcome {
@@ -1701,11 +1741,11 @@
 }
 
 .player-results-outcome.is-win {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .player-results-outcome.is-loss {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .player-results-outcome.is-draw {
@@ -1725,7 +1765,15 @@
 .player-results-replay:hover,
 .player-results-replay:focus-visible {
   color: var(--color-text);
-  outline: none;
+}
+
+/* The ring every other control in the client shows. Taking it away left a
+   keyboard user tabbing down fifty replay links with only a colour change,
+   one the hover state shares, to say which one they were on. */
+.player-results-replay:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* The recent-games note with its "load everything" button (issue 440). */

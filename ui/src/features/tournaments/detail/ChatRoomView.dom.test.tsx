@@ -4,11 +4,13 @@
 // tournament service pushes nothing. Mounted with the event's real command
 // groups (`createTourneyActions`) and the IPC boundary mocked, so what is
 // checked is the command that leaves the client: one every five seconds, not
-// restarted by a redraw, and none once the room is gone.
+// restarted by a redraw, and none once the room is gone. A room that could
+// not be read says so plainly, with Retry sending that same read.
 
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatPost } from "../../../ipc/bindings";
+import { en } from "../../../i18n/catalog/en";
 import { clearSentCommands, sentCommands } from "../../../testing/mounted";
 import { tourney } from "../fixtures";
 import { createTourneyActions } from "../tourneyActions";
@@ -85,5 +87,30 @@ describe("ChatRoomView polling, mounted", () => {
     unmount();
     advance(30_000);
     expect(refreshes()).toHaveLength(1);
+  });
+});
+
+describe("ChatRoomView failure, mounted", () => {
+  it("says a room that could not be read plainly, keeps the reason on hover, and reads it again from Retry", () => {
+    const reason = "error sending request for url (https://tourney.faforever.com/api/chat/global)";
+    render(
+      <ChatRoomView
+        event={event}
+        roomId="global"
+        posts={[]}
+        status={{ type: "failed", payload: { reason, kind: "offline" } }}
+        busy={false}
+        onPost={actions.chat.post}
+        chat={actions.chat}
+      />,
+    );
+    clearSentCommands();
+
+    const alert = screen.getByRole("alert");
+    expect(within(alert).getByText(en["errors.cause.offline"]).getAttribute("title")).toBe(reason);
+    fireEvent.click(within(alert).getByRole("button", { name: en["common.retry"] }));
+    expect(refreshes()).toEqual([
+      { kind: "Tourney", command: { type: "refreshChat", payload: { tournamentId: "e1a2b", roomId: "global" } } },
+    ]);
   });
 });

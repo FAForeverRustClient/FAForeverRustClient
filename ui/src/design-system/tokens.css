@@ -42,9 +42,21 @@
   --color-ok: #70b98a;
   --color-warn: #d6a35d;
   --color-error: #e06c75;
+  /* The same three for text and icons: a label in a status colour, such as a
+     result reading Victory or Defeat. Separate because the colours above are
+     also fills, behind white labels and as outlines, and a colour dark or
+     light enough to read as small text on a theme's surfaces is not always
+     the one that fill wants. Here they are the same; a theme sets its own
+     where its fill colour falls short of 4.5:1 as text. */
+  --color-ok-text: #70b98a;
+  --color-warn-text: #d6a35d;
+  --color-error-text: #e06c75;
   --color-faction-uef: #4b9de8;
   --color-faction-aeon: #62ad72;
-  --color-faction-cybran: #dc6464;
+  /* A shade lighter than it was (#dc6464): faction names are printed in these,
+     and Cybran was 4.2:1 on a raised surface. Each one clears 4.5:1 on every
+     surface of its theme; `tokens.contrast.test.ts` holds every theme to it. */
+  --color-faction-cybran: #df7171;
   --color-faction-seraphim: #d5ad45;
   --color-league-bronze: #bf8056;
   --color-league-silver: #b6bec7;
@@ -195,6 +207,18 @@
   --color-ok: #3f8f5d;
   --color-warn: #a66d21;
   --color-error: #c24d57;
+  /* Taken down, hue kept, until each clears 4.5:1 as text on the raised
+     surface: Victory was 3.5:1 there and Defeat 4.1:1. */
+  --color-ok-text: #35784e;
+  --color-warn-text: #93601d;
+  --color-error-text: #bb404a;
+  /* The four faction hues kept, each taken down until it clears 4.5:1 on the
+     raised surface (and so 5.2 or more on a plain one). The dark theme's were
+     2.0 to 3.5:1 here, and faction names are printed in them. */
+  --color-faction-uef: #356fa5;
+  --color-faction-aeon: #44774f;
+  --color-faction-cybran: #ad4e4e;
+  --color-faction-seraphim: #81692a;
 
   /* Darker nicks so generated hues stay legible on a white surface. */
   --chat-nick-saturation: 55%;
@@ -211,11 +235,18 @@
   --color-border: rgba(255, 255, 255, 0.10);
   --color-border-strong: rgba(255, 255, 255, 0.20);
   --color-text: #e8eaf0;
-  --color-muted: #9aa3b2;
-  --color-subtle: #727b8b;
+  /* Lifted, hue kept, to the default theme's contrast on its own raised
+     surface: muted 5.7:1, subtle 4.6:1 (they were 3.8 and 2.2), so headings'
+     captions and the metadata under a name read as clearly here as there,
+     and one level stays a step below the other. */
+  --color-muted: #c3c9d1;
+  --color-subtle: #afb5be;
   --color-surface-hover: #474e60;
   --color-accent: #3d9bfd;
-  --color-accent-contrast: #ffffff;
+  /* Dark on the accent rather than white: white on this blue is 2.9:1, too
+     faint for a primary button's label. This is 6.5:1. The accent itself stays
+     as bright as it is, because links and focus rings sit on the dark surfaces. */
+  --color-accent-contrast: #0b1220;
   --color-accent-glow: rgba(61, 155, 253, 0.30);
   /* A lighter tint of this theme's blue rather than the accent itself: the
      accent is 3.9:1 on these surfaces, and the queue name above the rating is
@@ -224,6 +255,18 @@
   --color-ok: #4caf50;
   --color-warn: #ff9800;
   --color-error: #f44336;
+  /* Lifted towards white, hue kept, until each clears 4.5:1 as text on the
+     raised surface. The fills keep the Java client's own colours; as text
+     Defeat was 2.6:1 there and Victory 3.4:1. */
+  --color-ok-text: #7ac57d;
+  --color-warn-text: #ff9e0f;
+  --color-error-text: #f99b94;
+  /* Lifted towards white until each clears 4.5:1 on this theme's raised
+     surface, which is lighter than the default theme's: Cybran was 2.8:1. */
+  --color-faction-uef: #80baef;
+  --color-faction-aeon: #88c194;
+  --color-faction-cybran: #eaa1a1;
+  --color-faction-seraphim: #d6af4b;
 
   --radius-md: 6px;
 
@@ -244,17 +287,30 @@
   --color-border: rgba(255, 255, 255, 0.09);
   --color-border-strong: rgba(255, 255, 255, 0.18);
   --color-text: #dcdcdc;
-  --color-muted: #9a9a9a;
-  --color-subtle: #767676;
+  /* Lifted for the Java theme's reason: they were 3.5 and 2.1:1 on the
+     raised surface. */
+  --color-muted: #c7c7c7;
+  --color-subtle: #b3b3b3;
   --color-surface-hover: #4c4c51;
   --color-accent: #1ba39c;
-  --color-accent-contrast: #ffffff;
+  /* Dark on the accent for the Java theme's reason: white on this teal is
+     3.1:1, this is 5.5:1. */
+  --color-accent-contrast: #0a1f1e;
   --color-accent-glow: rgba(27, 163, 156, 0.30);
   /* Lifted off the accent for the same reason as the Java theme's. */
   --color-rating: #45d2ca;
   --color-ok: #5fb35f;
   --color-warn: #d8a200;
   --color-error: #d65454;
+  /* Lifted for the Java theme's reason: Defeat was 2.4:1 as text here. */
+  --color-ok-text: #80c380;
+  --color-warn-text: #e2aa00;
+  --color-error-text: #e8a0a0;
+  /* Lifted for the Java theme's reason. */
+  --color-faction-uef: #7eb9ef;
+  --color-faction-aeon: #86c092;
+  --color-faction-cybran: #e9a0a0;
+  --color-faction-seraphim: #d5ae47;
 
   --radius-md: 2px;
   /* This theme is the square one, so its capsules are not capsules. */

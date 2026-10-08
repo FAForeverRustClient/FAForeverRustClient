@@ -59,9 +59,12 @@ use crate::infra::jsonapi::{
 };
 use crate::infra::review_totals::{self, ReviewTotal, Subject};
 use crate::infra::vault_install::{
-    archive_root_name, bounded_body, install_archive, validate_url, MAX_DOWNLOAD_BYTES,
+    archive_root_name, bounded_body_with_progress, install_archive, validate_url, CallOff,
+    MAX_DOWNLOAD_BYTES,
 };
-use crate::ports::{ModPrepFailure, ModSearchPage, ModsPort};
+use crate::ports::{
+    ModPrepFailure, ModSearchPage, ModsPort, VaultInstallProgress, VaultInstallStep,
+};
 
 /// Mods per vault page fetched in [`ModsClient::list_vault`]: mirrors
 /// `infra::maps`'s identical pagination constants.
@@ -107,6 +110,17 @@ impl ModsClient {
 
     /// Fetch a mod version's zip, with the vault's origin and size envelope.
     async fn download_mod_archive(&self, uid: &str, download_url: &str) -> Result<Vec<u8>, String> {
+        self.download_mod_archive_reporting(uid, download_url, &|_| {})
+            .await
+    }
+
+    /// [`Self::download_mod_archive`], reporting the bytes as they arrive.
+    async fn download_mod_archive_reporting(
+        &self,
+        uid: &str,
+        download_url: &str,
+        progress: &(dyn Fn(VaultInstallStep) + Sync),
+    ) -> Result<Vec<u8>, String> {
         validate_url(download_url, &self.config.content_base, "mods")?;
         let resp = self
             .http
@@ -119,39 +133,128 @@ impl ModsClient {
         if !status.is_success() {
             return Err(format!("could not download mod {uid}: {status}"));
         }
-        bounded_body(resp, &format!("mod {uid}"), MAX_DOWNLOAD_BYTES).await
+        bounded_body_with_progress(
+            resp,
+            &format!("mod {uid}"),
+            MAX_DOWNLOAD_BYTES,
+            &|received_bytes, total_bytes| {
+                progress(VaultInstallStep::Downloading {
+                    received_bytes,
+                    total_bytes,
+                })
+            },
+        )
+        .await
     }
 
     /// Extract a fetched archive into the mods folder, refusing one whose
     /// `mod_info.lua` does not carry the uid that was asked for.
     async fn extract_mod_archive(&self, uid: &str, bytes: Vec<u8>) -> Result<(), String> {
-        let dest = mods_dir();
-        tokio::fs::create_dir_all(&dest)
-            .await
-            .map_err(|e| format!("could not create mods folder: {e}"))?;
+        extract_mod_archive_into(&mods_dir(), uid, bytes, None).await
+    }
+}
 
-        let expected_uid = uid.to_owned();
-        tokio::task::spawn_blocking(move || {
-            install_archive(&bytes, &dest, None, |staged_root| {
-                let info_path = staged_root.join("mod_info.lua");
-                let contents = std::fs::read_to_string(&info_path)
-                    .map_err(|error| format!("could not read {}: {error}", info_path.display()))?;
-                let info = parse_mod_info(&contents)
-                    .ok_or_else(|| "downloaded mod has no valid mod_info.lua".to_string())?;
-                if info.uid != expected_uid {
-                    return Err(format!(
-                        "downloaded mod uid {:?} does not match expected uid {:?}",
-                        info.uid, expected_uid
-                    ));
-                }
-                Ok(())
-            })
-        })
+/// Extract a fetched archive into `dest`, refusing one whose `mod_info.lua`
+/// does not carry the uid that was asked for, or, with a [`CallOff`], one
+/// whose install was called off while it unpacked (see [`CallOff`]).
+async fn extract_mod_archive_into(
+    dest: &std::path::Path,
+    uid: &str,
+    bytes: Vec<u8>,
+    call_off: Option<CallOff>,
+) -> Result<(), String> {
+    let dest = dest.to_path_buf();
+    tokio::fs::create_dir_all(&dest)
         .await
-        .map_err(|e| format!("extraction task panicked: {e}"))??;
-        Ok(())
+        .map_err(|e| format!("could not create mods folder: {e}"))?;
+
+    let expected_uid = uid.to_owned();
+    tokio::task::spawn_blocking(move || {
+        install_archive(&bytes, &dest, None, |staged_root| {
+            let info_path = staged_root.join("mod_info.lua");
+            let contents = std::fs::read_to_string(&info_path)
+                .map_err(|error| format!("could not read {}: {error}", info_path.display()))?;
+            let info = parse_mod_info(&contents)
+                .ok_or_else(|| "downloaded mod has no valid mod_info.lua".to_string())?;
+            if info.uid != expected_uid {
+                return Err(format!(
+                    "downloaded mod uid {:?} does not match expected uid {:?}",
+                    info.uid, expected_uid
+                ));
+            }
+            match &call_off {
+                Some(call_off) => call_off.refuse_if_called_off(),
+                None => Ok(()),
+            }
+        })
+    })
+    .await
+    .map_err(|e| format!("extraction task panicked: {e}"))??;
+    Ok(())
+}
+
+/// Delete one installed mod's folder and scrub its uid out of `game.prefs`.
+/// The body of `ModsPort::uninstall_mod`, apart from the rescan.
+async fn remove_installed_mod(dir: &std::path::Path, folder_name: &str) -> Result<(), String> {
+    let target = safe_mod_target(dir, folder_name)?;
+
+    // Read the uid before deleting so we can also scrub it from
+    // game.prefs: an uninstalled mod can't stay "enabled".
+    let uid = tokio::fs::read_to_string(target.join("mod_info.lua"))
+        .await
+        .ok()
+        .and_then(|contents| parse_mod_info(&contents))
+        .map(|info| info.uid);
+
+    if target.exists() {
+        tokio::fs::remove_dir_all(&target)
+            .await
+            .map_err(|e| format!("could not remove {}: {e}", target.display()))?;
     }
 
+    if let Some(uid) = uid {
+        let mut uids = read_active_mod_uids().await;
+        uids.retain(|u| u != &uid);
+        write_active_mod_uids_to_disk(&uids).await?;
+    }
+    Ok(())
+}
+
+/// Put the downloaded version of `uid` in place of the one in `folder_name`,
+/// switching it on again if the one it replaces was on.
+///
+/// Called on a task of its own by `update_mod_reporting`, so that a caller
+/// that stops waiting cannot stop it between the removal and the unpacking:
+/// that would leave neither version installed.
+async fn replace_installed_mod(
+    uid: String,
+    folder_name: String,
+    bytes: Vec<u8>,
+) -> Result<Vec<InstalledMod>, String> {
+    let dir = mods_dir();
+    // Whether the version being replaced was switched on, read before the
+    // uninstall scrubs its uid out of `game.prefs`. A new version is a new
+    // uid, so the flag cannot simply be left in place.
+    let was_enabled = list_installed_dir(&dir)
+        .await?
+        .into_iter()
+        .find(|installed| installed.folder_name.eq_ignore_ascii_case(&folder_name))
+        .is_some_and(|installed| installed.enabled);
+
+    remove_installed_mod(&dir, &folder_name).await?;
+    extract_mod_archive_into(&dir, &uid, bytes, None).await?;
+
+    if was_enabled {
+        let mut active = read_active_mod_uids().await;
+        if !active.contains(&uid) {
+            active.push(uid);
+        }
+        write_active_mod_uids_to_disk(&active).await?;
+    }
+    list_installed_dir(&dir).await
+}
+
+impl ModsClient {
     /// Where to download the version a game names, and which version it is.
     ///
     /// The version rides along because the same record already carries it, and
@@ -382,9 +485,54 @@ impl ModsPort for ModsClient {
         uid: String,
         download_url: String,
     ) -> Result<Vec<InstalledMod>, String> {
-        let bytes = self.download_mod_archive(&uid, &download_url).await?;
-        self.extract_mod_archive(&uid, bytes).await?;
-        list_installed_dir(&mods_dir()).await
+        self.install_mod_reporting(
+            uid,
+            download_url,
+            std::sync::Arc::new(|_| {}),
+            tokio_util::sync::CancellationToken::new(),
+        )
+        .await?
+        .ok_or_else(|| "the install was called off".to_string())
+    }
+
+    async fn install_mod_reporting(
+        &self,
+        uid: String,
+        download_url: String,
+        progress: VaultInstallProgress,
+        called_off: tokio_util::sync::CancellationToken,
+    ) -> Result<Option<Vec<InstalledMod>>, String> {
+        // Nothing is written before the archive is whole: stopped at once.
+        let downloading = self.download_mod_archive_reporting(&uid, &download_url, &*progress);
+        let bytes = tokio::select! {
+            bytes = downloading => bytes?,
+            () = called_off.cancelled() => return Ok(None),
+        };
+        progress(VaultInstallStep::Unpacking);
+        // Asked before the rename, so an install called off while it unpacks
+        // on the blocking pool leaves the mods folder as it was. Its answer
+        // is waited for, since only it knows whether the call-off was in
+        // time; the listing after a rename is not raced against it, which
+        // used to report a mod already in place as called off.
+        let dir = mods_dir();
+        let call_off = CallOff::default();
+        let armed = call_off.arm();
+        let extracting = extract_mod_archive_into(&dir, &uid, bytes, Some(call_off.clone()));
+        tokio::pin!(extracting);
+        let extracted = tokio::select! {
+            extracted = &mut extracting => extracted,
+            () = called_off.cancelled() => {
+                call_off.call_off();
+                extracting.await
+            }
+        };
+        armed.disarm();
+        match extracted {
+            Ok(()) => {}
+            Err(_) if call_off.is_called_off() => return Ok(None),
+            Err(error) => return Err(error),
+        }
+        list_installed_dir(&dir).await.map(Some)
     }
 
     async fn update_mod(
@@ -393,58 +541,53 @@ impl ModsPort for ModsClient {
         folder_name: String,
         download_url: String,
     ) -> Result<Vec<InstalledMod>, String> {
+        self.update_mod_reporting(
+            uid,
+            folder_name,
+            download_url,
+            std::sync::Arc::new(|_| {}),
+            tokio_util::sync::CancellationToken::new(),
+        )
+        .await?
+        .ok_or_else(|| "the update was called off".to_string())
+    }
+
+    async fn update_mod_reporting(
+        &self,
+        uid: String,
+        folder_name: String,
+        download_url: String,
+        progress: VaultInstallProgress,
+        called_off: tokio_util::sync::CancellationToken,
+    ) -> Result<Option<Vec<InstalledMod>>, String> {
         // Fetched before anything is deleted. An update that fails on a flaky
         // connection has to leave the installed copy alone: the whole reason
         // this exists is that doing it by hand meant uninstalling first and
-        // discovering the download problem with nothing left on disk.
-        let bytes = self.download_mod_archive(&uid, &download_url).await?;
-
-        // Whether the version being replaced was switched on, read before the
-        // uninstall scrubs its uid out of `game.prefs`. A new version is a new
-        // uid, so the flag cannot simply be left in place.
-        let was_enabled = list_installed_dir(&mods_dir())
-            .await?
-            .into_iter()
-            .find(|installed| installed.folder_name.eq_ignore_ascii_case(&folder_name))
-            .is_some_and(|installed| installed.enabled);
-
-        self.uninstall_mod(folder_name).await?;
-        self.extract_mod_archive(&uid, bytes).await?;
-
-        if was_enabled {
-            let mut active = read_active_mod_uids().await;
-            if !active.contains(&uid) {
-                active.push(uid);
-            }
-            write_active_mod_uids_to_disk(&active).await?;
+        // discovering the download problem with nothing left on disk. It is
+        // also the only part that can be called off.
+        let downloading = self.download_mod_archive_reporting(&uid, &download_url, &*progress);
+        let bytes = tokio::select! {
+            bytes = downloading => bytes?,
+            () = called_off.cancelled() => return Ok(None),
+        };
+        // The last look, and the point of no return: past it the old version
+        // goes and the new one comes, whatever is asked meanwhile.
+        if called_off.is_cancelled() {
+            return Ok(None);
         }
-        list_installed_dir(&mods_dir()).await
+        progress(VaultInstallStep::Unpacking);
+
+        // On a task of its own, so that even a caller that stops waiting
+        // cannot stop it between the removal and the unpacking.
+        tokio::spawn(replace_installed_mod(uid, folder_name, bytes))
+            .await
+            .map_err(|e| format!("mod update task failed: {e}"))?
+            .map(Some)
     }
 
     async fn uninstall_mod(&self, folder_name: String) -> Result<Vec<InstalledMod>, String> {
         let dir = mods_dir();
-        let target = safe_mod_target(&dir, &folder_name)?;
-
-        // Read the uid before deleting so we can also scrub it from
-        // game.prefs: an uninstalled mod can't stay "enabled".
-        let uid = tokio::fs::read_to_string(target.join("mod_info.lua"))
-            .await
-            .ok()
-            .and_then(|contents| parse_mod_info(&contents))
-            .map(|info| info.uid);
-
-        if target.exists() {
-            tokio::fs::remove_dir_all(&target)
-                .await
-                .map_err(|e| format!("could not remove {}: {e}", target.display()))?;
-        }
-
-        if let Some(uid) = uid {
-            let mut uids = read_active_mod_uids().await;
-            uids.retain(|u| u != &uid);
-            write_active_mod_uids_to_disk(&uids).await?;
-        }
-
+        remove_installed_mod(&dir, &folder_name).await?;
         list_installed_dir(&dir).await
     }
 
@@ -471,6 +614,22 @@ impl ModsPort for ModsClient {
         mods: &BTreeMap<String, String>,
         replace_conflicts: bool,
     ) -> Result<(), ModPrepFailure> {
+        // Nobody holds this token, so the preparation goes to the end.
+        self.ensure_game_mods_cancellable(
+            mods,
+            replace_conflicts,
+            tokio_util::sync::CancellationToken::new(),
+        )
+        .await
+    }
+
+    async fn ensure_game_mods_cancellable(
+        &self,
+        mods: &BTreeMap<String, String>,
+        replace_conflicts: bool,
+        called_off: tokio_util::sync::CancellationToken,
+    ) -> Result<(), ModPrepFailure> {
+        let stopped = || ModPrepFailure::Failed("the mod preparation was called off".to_string());
         if mods.is_empty() {
             return Ok(());
         }
@@ -495,17 +654,27 @@ impl ModsPort for ModsClient {
         // destructive step waits for an answer.
         let mut conflicts: Vec<ModVersionConflict> = Vec::new();
         for (uid, name) in mods {
+            // Between two mods: every one before this point is installed
+            // whole, and none after it has been touched.
+            if called_off.is_cancelled() {
+                return Err(stopped());
+            }
             if installed.iter().any(|candidate| candidate.uid == *uid) {
                 continue;
             }
-            let required = self
-                .required_mod_version(uid)
-                .await
-                .map_err(ModPrepFailure::Failed)?;
-            let bytes = self
-                .download_mod_archive(uid, &required.download_url)
-                .await
-                .map_err(ModPrepFailure::Failed)?;
+            // The lookup and the download write nothing, so a call-off stops
+            // them where they are.
+            let fetched = tokio::select! {
+                fetched = async {
+                    let required = self.required_mod_version(uid).await?;
+                    let bytes = self
+                        .download_mod_archive(uid, &required.download_url)
+                        .await?;
+                    Ok::<_, String>((required, bytes))
+                } => fetched,
+                () = called_off.cancelled() => return Err(stopped()),
+            };
+            let (required, bytes) = fetched.map_err(ModPrepFailure::Failed)?;
             let root = archive_root_name(&bytes).map_err(ModPrepFailure::Failed)?;
 
             let target = safe_mod_target(&dest, &root).map_err(ModPrepFailure::Failed)?;
@@ -546,6 +715,12 @@ impl ModsPort for ModsClient {
                 .map_err(ModPrepFailure::Failed)?;
         }
 
+        // Called off is called off, conflicts or not: nobody is waiting for
+        // the prompt. Nor are the mods turned on for a game that is not
+        // going to be played.
+        if called_off.is_cancelled() {
+            return Err(stopped());
+        }
         if !conflicts.is_empty() {
             return Err(ModPrepFailure::Conflicts(conflicts));
         }
@@ -595,6 +770,14 @@ pub(crate) async fn list_installed_dir(dir: &Path) -> Result<Vec<InstalledMod>, 
     {
         let path = entry.path();
         if !is_directory(&path).await {
+            continue;
+        }
+        // An install's private staging folder (`.faf-install-…`) holds the
+        // mod it is unpacking one level down, which the wrapper walk below
+        // would list as a second copy of the mod while it unpacks, or for
+        // good after a client killed mid-install. No mod folder this client
+        // installs starts with a dot.
+        if entry.file_name().to_string_lossy().starts_with('.') {
             continue;
         }
         if path.join("mod_info.lua").is_file() {
@@ -1795,6 +1978,24 @@ ui_only = true
         assert!(!installed[0].enabled); // no game.prefs override in this test env
 
         let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
+    /// An install's private staging folder holds the mod it is unpacking one
+    /// level down, which the wrapper walk would list as a second copy of it.
+    #[tokio::test]
+    async fn an_install_staging_folder_is_not_listed_as_a_mod() {
+        let dir = tempfile::tempdir().unwrap();
+        let staged = dir
+            .path()
+            .join(".faf-install-0123456789abcdef")
+            .join("total_mayhem");
+        tokio::fs::create_dir_all(&staged).await.unwrap();
+        tokio::fs::write(staged.join("mod_info.lua"), SAMPLE_MOD_INFO)
+            .await
+            .unwrap();
+
+        let installed = list_installed_dir(dir.path()).await.expect("should list");
+        assert!(installed.is_empty(), "{installed:?}");
     }
 
     #[tokio::test]

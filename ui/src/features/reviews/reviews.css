@@ -157,7 +157,7 @@
 }
 
 .reviews-submit.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 /* ── Everyone else ───────────────────────────────────────────────────────── */

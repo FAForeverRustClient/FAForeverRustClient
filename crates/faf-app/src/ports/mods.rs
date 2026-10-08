@@ -15,6 +15,8 @@ use faf_domain::state::{
     InstalledMod, ModDownloadSize, ModDownloadTarget, ModVersionConflict, VaultMod,
 };
 
+use super::maps::VaultInstallProgress;
+
 /// One page of a mod vault search. Mirrors `MapSearchPage`.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ModSearchPage {
@@ -72,6 +74,50 @@ pub trait ModsPort: Send + Sync {
         download_url: String,
     ) -> Result<Vec<InstalledMod>, String>;
 
+    /// [`Self::install_mod`], reporting each step to `progress`, and stopping
+    /// when `called_off` is cancelled while it still can.
+    ///
+    /// The same contract as `MapsPort::install_map_reporting`: `Ok(None)`
+    /// only when the mods folder was left as it was, and the installed list
+    /// whenever the mod is in place, a call-off that came too late included.
+    /// Defaults to the plain install, which cannot be called off.
+    async fn install_mod_reporting(
+        &self,
+        uid: String,
+        download_url: String,
+        progress: VaultInstallProgress,
+        called_off: tokio_util::sync::CancellationToken,
+    ) -> Result<Option<Vec<InstalledMod>>, String> {
+        let _ = (progress, called_off);
+        self.install_mod(uid, download_url).await.map(Some)
+    }
+
+    /// [`Self::update_mod`], reporting each step to `progress`, and stopping
+    /// when `called_off` is cancelled while it still can.
+    ///
+    /// Not cancelled by dropping the future, because an update has a point
+    /// of no return: once the download is whole, the old
+    /// version is removed and the new one unpacked, and stopping in between
+    /// would leave neither. So the update looks at `called_off` itself: while
+    /// the download runs, and once more before the removal. `Ok(None)` means
+    /// it was called off there, with the installed version untouched; past
+    /// that point the call-off is too late and the update ends as it would
+    /// have. `VaultInstallStep::Unpacking` marks the point. Defaults to the
+    /// plain update, which cannot be called off.
+    async fn update_mod_reporting(
+        &self,
+        uid: String,
+        folder_name: String,
+        download_url: String,
+        progress: VaultInstallProgress,
+        called_off: tokio_util::sync::CancellationToken,
+    ) -> Result<Option<Vec<InstalledMod>>, String> {
+        let _ = (progress, called_off);
+        self.update_mod(uid, folder_name, download_url)
+            .await
+            .map(Some)
+    }
+
     /// Delete a mod folder and remove its uid from `game.prefs`'s active
     /// set if present. Returns the refreshed installed list.
     async fn uninstall_mod(&self, folder_name: String) -> Result<Vec<InstalledMod>, String>;
@@ -100,6 +146,26 @@ pub trait ModsPort: Send + Sync {
         mods: &BTreeMap<String, String>,
         replace_conflicts: bool,
     ) -> Result<(), ModPrepFailure>;
+
+    /// [`Self::ensure_game_mods`], stopping once `called_off` is cancelled
+    /// where that leaves only whole mods behind: before a mod is looked up,
+    /// while it downloads, and before the active set is written. An approved
+    /// replacement that has begun is finished, as an update is (see
+    /// [`Self::update_mod_reporting`]): stopping between the removal of the
+    /// old version and the unpacking of the new would leave neither. A run
+    /// that stopped answers `Failed`, never `Ok`, since the game's mods are
+    /// not all there.
+    ///
+    /// Defaults to [`Self::ensure_game_mods`], which runs to the end.
+    async fn ensure_game_mods_cancellable(
+        &self,
+        mods: &BTreeMap<String, String>,
+        replace_conflicts: bool,
+        called_off: tokio_util::sync::CancellationToken,
+    ) -> Result<(), ModPrepFailure> {
+        let _ = called_off;
+        self.ensure_game_mods(mods, replace_conflicts).await
+    }
 }
 
 /// Why simulation-mod preparation stopped.

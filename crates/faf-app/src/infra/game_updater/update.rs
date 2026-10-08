@@ -9,6 +9,7 @@ use std::path::Path;
 
 use serde::Deserialize;
 use serde_json::Value;
+use tokio_util::sync::CancellationToken;
 
 use crate::infra::vault_install::bounded_body_to_file;
 use crate::ports::{PreparationPhase, PreparationStep};
@@ -16,7 +17,10 @@ use crate::ports::{PreparationPhase, PreparationStep};
 use super::cache::{save_cache_manifest_entry, CacheManifestEntry, CachedFileInfo};
 use super::content_store::{self, replace_with_copy, ContentStore};
 use super::install::{finish_install, patch_exe_version};
-use super::{lease_install, off_runtime, off_runtime_leased, safe_join_file, InstallLease};
+use super::{
+    lease_install, off_runtime, off_runtime_leased, safe_join_file, unless_called_off,
+    InstallLease, CALLED_OFF,
+};
 
 /// One file from `GET /featuredMods/{mod_id}/files/{version}`. `group` is the
 /// subdirectory under the target install root (`bin`, `gamedata`, …).
@@ -146,6 +150,10 @@ pub(super) async fn ensure_game_version_leased(
     // pair. This used to ask for the overlay at the engine's number and put
     // the latest `faf` under it. The cache entry records the base, so
     // staging puts the same one back next time.
+    //
+    // No token: a replay's preparation is called off by dropping it (see
+    // `infra::replay`), which every write here survives through its lease.
+    let never = CancellationToken::new();
     let overlay = !BASE_FEATURED_MODS.contains(&featured_mod);
     let mut base = None;
     if overlay {
@@ -163,6 +171,7 @@ pub(super) async fn ensure_game_version_leased(
                 progress,
                 None,
                 lease,
+                &never,
             )
             .await?,
         );
@@ -185,6 +194,7 @@ pub(super) async fn ensure_game_version_leased(
         progress,
         base.map(|base| base.version),
         lease,
+        &never,
     )
     .await?;
 
@@ -227,6 +237,12 @@ pub(super) const BASE_FEATURED_MODS: [&str; 4] = ["faf", "ladder1v1", "fafbeta",
 ///   chain the two updates in exactly this order.
 ///
 /// `progress` is called with a user-facing line and measured file progress.
+///
+/// Stops once `called_off` is cancelled, wherever that leaves every file
+/// whole: see [`update_outdated`]. A stopped run does not finish the install
+/// (no executable stamp for this run, no `fa_path.lua`, no cache entry), so
+/// nothing claims a release it did not complete; the files it did bring up to
+/// date stay, and the next run's checksum pass starts from them.
 #[allow(clippy::too_many_arguments)]
 pub async fn ensure_latest_game_version(
     http: &reqwest::Client,
@@ -238,8 +254,12 @@ pub async fn ensure_latest_game_version(
     exe_name: &str,
     cache_rolling_branches: bool,
     progress: &(dyn Fn(PreparationStep) + Sync),
+    called_off: &CancellationToken,
 ) -> Result<i32, String> {
-    let lease = lease_install(target_dir).await;
+    // Waited for unless the run is called off first: the install can be held
+    // by a run that is itself finishing its last file.
+    let lease =
+        unless_called_off(called_off, async { Ok(lease_install(target_dir).await) }).await?;
     ensure_latest_game_version_leased(
         http,
         token,
@@ -251,6 +271,7 @@ pub async fn ensure_latest_game_version(
         cache_rolling_branches,
         progress,
         &lease,
+        called_off,
     )
     .await
 }
@@ -268,6 +289,7 @@ pub(super) async fn ensure_latest_game_version_leased(
     cache_rolling_branches: bool,
     progress: &(dyn Fn(PreparationStep) + Sync),
     lease: &InstallLease,
+    called_off: &CancellationToken,
 ) -> Result<i32, String> {
     let mut base = None;
     if !BASE_FEATURED_MODS.contains(&featured_mod) {
@@ -285,6 +307,7 @@ pub(super) async fn ensure_latest_game_version_leased(
                 progress,
                 None,
                 lease,
+                called_off,
             )
             .await?,
         );
@@ -303,6 +326,7 @@ pub(super) async fn ensure_latest_game_version_leased(
         progress,
         base.map(|base| base.version),
         lease,
+        called_off,
     )
     .await?;
 
@@ -318,6 +342,48 @@ pub(super) async fn ensure_latest_game_version_leased(
 
     finish_install(target_dir, featured_mod, engine_version)?;
     Ok(engine_version)
+}
+
+/// One release of a featured mod as the API lists it: the number it resolves
+/// to and the files that make it up.
+pub(super) struct Release {
+    pub(super) version: i32,
+    /// Each file as `(group, name, md5)`.
+    pub(super) files: Vec<(String, String, String)>,
+}
+
+/// Which release `latest` is for `featured_mod` right now, asked of the API
+/// without installing anything.
+///
+/// For a replay that names no overlay revision: only the API can say what the
+/// latest one is, and knowing it is what lets the cache be used when it holds
+/// that release already. The list is kept for a few minutes (see
+/// [`fetch_file_list`]), so installing the same release straight after does
+/// not ask for it again.
+pub(super) async fn latest_release(
+    http: &reqwest::Client,
+    token: &str,
+    api_base: &str,
+    featured_mod: &str,
+    exe_name: &str,
+    progress: &(dyn Fn(PreparationStep) + Sync),
+) -> Result<Release, String> {
+    progress(PreparationStep::indeterminate(
+        PreparationPhase::Asking,
+        format!("Asking the API which release of {featured_mod} is the latest…"),
+    ));
+    let mod_id = fetch_mod_id(http, token, api_base, featured_mod).await?;
+    let files = fetch_file_list(http, token, api_base, &mod_id, featured_mod, None).await?;
+    let version = effective_version(&files, exe_name).ok_or_else(|| {
+        format!("the API did not say which version '{featured_mod}' is currently on")
+    })?;
+    Ok(Release {
+        version,
+        files: files
+            .into_iter()
+            .map(|file| (file.group, file.name, file.md5))
+            .collect(),
+    })
 }
 
 /// What one [`install_featured_mod`] pass put on disk.
@@ -403,7 +469,13 @@ async fn install_featured_mod(
     progress: &(dyn Fn(PreparationStep) + Sync),
     base_version: Option<i32>,
     lease: &InstallLease,
+    called_off: &CancellationToken,
 ) -> Result<InstalledMod, String> {
+    // Before anything is asked: an overlay's `faf` underneath may have just
+    // finished when the run was called off, and the overlay is not started.
+    if called_off.is_cancelled() {
+        return Err(CALLED_OFF.to_string());
+    }
     // `Updater.run` sets "Requesting files from API..." before anything else
     // happens, for the same reason it is here: two API round trips on a slow
     // connection is long enough for an unlabelled dialog to read as a hang.
@@ -411,8 +483,11 @@ async fn install_featured_mod(
         PreparationPhase::Asking,
         format!("Asking the API which files {featured_mod} is made of…"),
     ));
-    let mod_id = fetch_mod_id(http, token, api_base, featured_mod).await?;
-    let files = fetch_file_list(http, token, api_base, &mod_id, featured_mod, version).await?;
+    let files = unless_called_off(called_off, async {
+        let mod_id = fetch_mod_id(http, token, api_base, featured_mod).await?;
+        fetch_file_list(http, token, api_base, &mod_id, featured_mod, version).await
+    })
+    .await?;
 
     // Requested version wins; `latest` resolves from the list itself. Falling
     // back to 0 would silently mis-stamp the executable, so an unresolvable
@@ -437,7 +512,15 @@ async fn install_featured_mod(
     // however long it took to read a few hundred files. And it cannot say what
     // is about to be downloaded, because it only discovers the next outdated
     // file after finishing the previous one.
-    let outdated = checksum_pass(target_dir, &files, featured_mod, resolved, progress).await;
+    let outdated = checksum_pass(
+        target_dir,
+        &files,
+        featured_mod,
+        resolved,
+        progress,
+        called_off,
+    )
+    .await?;
 
     if outdated.is_empty() {
         // `on_mod_progress` in the Python dialog, for `ProgressInfo(0, 0, "")`.
@@ -455,22 +538,19 @@ async fn install_featured_mod(
             0,
             pending,
         ));
-        for (done, file) in outdated.iter().enumerate() {
-            update_file(
-                http,
-                api_base,
-                cache_dir,
-                target_dir,
-                file,
-                featured_mod,
-                resolved,
-                done,
-                pending,
-                progress,
-                lease,
-            )
-            .await?;
-        }
+        update_outdated(
+            http,
+            api_base,
+            cache_dir,
+            target_dir,
+            &outdated,
+            featured_mod,
+            resolved,
+            progress,
+            lease,
+            called_off,
+        )
+        .await?;
     }
 
     let shipped_exe = files
@@ -768,16 +848,23 @@ async fn fetch_file_list(
 /// A file whose checksum cannot be read at all -- missing, unreadable, the
 /// wrong length -- counts as outdated and is left to [`update_file`], which is
 /// where a bad checksum from the API becomes an error.
+///
+/// Stops before the next file once `called_off` is cancelled: the pass only
+/// reads, so there is nothing to finish.
 async fn checksum_pass<'a>(
     target_dir: &Path,
     files: &'a [FeaturedModFile],
     featured_mod: &str,
     resolved: i32,
     progress: &(dyn Fn(PreparationStep) + Sync),
-) -> Vec<&'a FeaturedModFile> {
+    called_off: &CancellationToken,
+) -> Result<Vec<&'a FeaturedModFile>, String> {
     let total = files.len();
     let mut outdated = Vec::new();
     for (index, file) in files.iter().enumerate() {
+        if called_off.is_cancelled() {
+            return Err(CALLED_OFF.to_string());
+        }
         progress(PreparationStep::counted(
             PreparationPhase::Verifying,
             format!(
@@ -792,7 +879,53 @@ async fn checksum_pass<'a>(
             outdated.push(file);
         }
     }
-    outdated
+    Ok(outdated)
+}
+
+/// Fetch every file the checksum pass rejected, one at a time, and stop
+/// between two of them once `called_off` is cancelled.
+///
+/// Between two files is where stopping costs nothing: every file before that
+/// point is the new one and every file after it the old one, each of them
+/// whole, because a file reaches the install in one step (see
+/// [`update_file`]). The next run's checksum pass finds the ones still out of
+/// date and fetches only those. A download still in flight is dropped as well,
+/// by [`update_file`] itself, since nothing of it has been written yet.
+#[allow(clippy::too_many_arguments)]
+async fn update_outdated(
+    http: &reqwest::Client,
+    api_base: &str,
+    cache_dir: &Path,
+    target_dir: &Path,
+    outdated: &[&FeaturedModFile],
+    featured_mod: &str,
+    resolved: i32,
+    progress: &(dyn Fn(PreparationStep) + Sync),
+    lease: &InstallLease,
+    called_off: &CancellationToken,
+) -> Result<(), String> {
+    let pending = outdated.len();
+    for (done, file) in outdated.iter().enumerate() {
+        if called_off.is_cancelled() {
+            return Err(CALLED_OFF.to_string());
+        }
+        update_file(
+            http,
+            api_base,
+            cache_dir,
+            target_dir,
+            file,
+            featured_mod,
+            resolved,
+            done,
+            pending,
+            progress,
+            lease,
+            called_off,
+        )
+        .await?;
+    }
+    Ok(())
 }
 
 /// Whether the file on disk already is the one the API listed.
@@ -895,6 +1028,7 @@ async fn update_file(
     total: usize,
     progress: &(dyn Fn(PreparationStep) + Sync),
     lease: &InstallLease,
+    called_off: &CancellationToken,
 ) -> Result<(), String> {
     let target_path = safe_join_file(target_dir, &file.group, &file.name)?;
     if !is_allowed_download_host(&file.cacheable_url, api_base) {
@@ -961,25 +1095,6 @@ async fn update_file(
         return Ok(());
     }
 
-    // The hmac fields are an HTTP header, not a query param, despite the
-    // field name: mirrors `BaseDownload.prepare_request` in the Python
-    // client's `downloadManager/__init__.py`: `setRawHeader(hmac_parameter,
-    // hmac_token)`. A custom User-Agent is set there too; some CDN configs
-    // gate on it, so we send the same one.
-    let resp = http
-        .get(&file.cacheable_url)
-        .header(&file.hmac_parameter, &file.hmac_token)
-        .header(reqwest::header::USER_AGENT, "FAF Client")
-        .send()
-        .await
-        .map_err(|e| format!("could not download {}: {e}", file.name))?;
-    if !resp.status().is_success() {
-        return Err(format!(
-            "could not download {}: {}",
-            file.name,
-            resp.status()
-        ));
-    }
     // Byte progress while the file is in flight, which is the Python dialog's
     // `on_download_progress`: without it a single large file is one unmoving
     // line for however long the CDN takes.
@@ -988,38 +1103,65 @@ async fn update_file(
     // chunk would put thousands of snapshots through the bus to redraw the
     // same bar.
     let last_percent = std::sync::atomic::AtomicU8::new(u8::MAX);
-    // To a file, not into memory: see `MAX_FEATURED_FILE_BYTES`.
-    let downloaded = bounded_body_to_file(
-        resp,
-        &file.name,
-        MAX_FEATURED_FILE_BYTES,
-        &|received, declared| {
-            let Some(size) = declared.filter(|size| *size > 0) else {
-                return;
-            };
-            let percent = ((received.min(size) * 100) / size) as u8;
-            if last_percent.swap(percent, std::sync::atomic::Ordering::Relaxed) == percent {
-                return;
-            }
-            progress(PreparationStep::counted(
-                PreparationPhase::Downloading,
-                format!(
-                    "{detail}: {:.1} MB of {:.1} MB",
-                    received as f64 / (1024.0 * 1024.0),
-                    size as f64 / (1024.0 * 1024.0)
-                ),
-                done * 100 + percent as usize,
-                total * 100,
+    // The download and its checksum write nothing but a temporary file, which
+    // goes with its handle, so a call-off stops them where they are: a file of
+    // hundreds of megabytes is not waited out for a run nobody wants. Past
+    // this point the file goes into the store and the install whole.
+    let downloaded = unless_called_off(called_off, async {
+        // The hmac fields are an HTTP header, not a query param, despite the
+        // field name: mirrors `BaseDownload.prepare_request` in the Python
+        // client's `downloadManager/__init__.py`: `setRawHeader(hmac_parameter,
+        // hmac_token)`. A custom User-Agent is set there too; some CDN configs
+        // gate on it, so we send the same one.
+        let resp = http
+            .get(&file.cacheable_url)
+            .header(&file.hmac_parameter, &file.hmac_token)
+            .header(reqwest::header::USER_AGENT, "FAF Client")
+            .send()
+            .await
+            .map_err(|e| format!("could not download {}: {e}", file.name))?;
+        if !resp.status().is_success() {
+            return Err(format!(
+                "could not download {}: {}",
+                file.name,
+                resp.status()
             ));
-        },
-    )
+        }
+        // To a file, not into memory: see `MAX_FEATURED_FILE_BYTES`.
+        let downloaded = bounded_body_to_file(
+            resp,
+            &file.name,
+            MAX_FEATURED_FILE_BYTES,
+            &|received, declared| {
+                let Some(size) = declared.filter(|size| *size > 0) else {
+                    return;
+                };
+                let percent = ((received.min(size) * 100) / size) as u8;
+                if last_percent.swap(percent, std::sync::atomic::Ordering::Relaxed) == percent {
+                    return;
+                }
+                progress(PreparationStep::counted(
+                    PreparationPhase::Downloading,
+                    format!(
+                        "{detail}: {:.1} MB of {:.1} MB",
+                        received as f64 / (1024.0 * 1024.0),
+                        size as f64 / (1024.0 * 1024.0)
+                    ),
+                    done * 100 + percent as usize,
+                    total * 100,
+                ));
+            },
+        )
+        .await?;
+        if !file_md5(downloaded.path())
+            .await
+            .is_some_and(|md5| md5.eq_ignore_ascii_case(&file.md5))
+        {
+            return Err(format!("downloaded {} failed its checksum", file.name));
+        }
+        Ok(downloaded)
+    })
     .await?;
-    if !file_md5(downloaded.path())
-        .await
-        .is_some_and(|md5| md5.eq_ignore_ascii_case(&file.md5))
-    {
-        return Err(format!("downloaded {} failed its checksum", file.name));
-    }
 
     // Into the store first (whole, under its checksum), then from the store
     // into the install, replacing the target for the reason given above.
@@ -1178,10 +1320,16 @@ mod tests {
         );
 
         let seen = std::sync::Mutex::new(Vec::new());
-        let outdated = checksum_pass(dir.path(), &files, "faf", 3836, &|step| {
-            seen.lock().unwrap().push(step);
-        })
-        .await;
+        let outdated = checksum_pass(
+            dir.path(),
+            &files,
+            "faf",
+            3836,
+            &|step| seen.lock().unwrap().push(step),
+            &CancellationToken::new(),
+        )
+        .await
+        .unwrap();
 
         assert!(outdated.is_empty(), "everything on disk is current");
         let seen = seen.into_inner().unwrap();
@@ -1218,7 +1366,16 @@ mod tests {
             hmac_parameter: "verify".into(),
         });
 
-        let outdated = checksum_pass(dir.path(), &files, "faf", 3836, &|_| {}).await;
+        let outdated = checksum_pass(
+            dir.path(),
+            &files,
+            "faf",
+            3836,
+            &|_| {},
+            &CancellationToken::new(),
+        )
+        .await
+        .unwrap();
 
         let names: Vec<&str> = outdated.iter().map(|file| file.name.as_str()).collect();
         assert_eq!(
@@ -1354,6 +1511,7 @@ mod tests {
             1,
             &|_| {},
             &crate::infra::game_updater::lease_install(&target).await,
+            &CancellationToken::new(),
         )
         .await
         .unwrap();
@@ -1367,6 +1525,67 @@ mod tests {
             b"units for build 3837",
             "the store entry must keep the bytes its checksum names"
         );
+    }
+
+    /// A join called off while its update is part-way through the files. The
+    /// file loop used to run to the end of the list, holding the install, so
+    /// the next join's update waited behind it unnarrated. It stops between
+    /// two files now: the file it was on is finished, whole, and the next one
+    /// is never started.
+    #[tokio::test]
+    async fn the_file_loop_stops_between_two_files_once_called_off() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let target = temp.path().join("game");
+        // Served from the store, so no network: the file loop alone is tested.
+        let names = ["units.nx2", "lua.nx2", "env.nx2"];
+        let files: Vec<FeaturedModFile> = names
+            .iter()
+            .map(|name| FeaturedModFile {
+                group: "gamedata".into(),
+                name: (*name).into(),
+                md5: put_in_store(&cache, "gamedata", format!("{name} for 3838").as_bytes()),
+                version: Some(3838),
+                cacheable_url: format!("https://content.faforever.com/faf/updaterNew/{name}"),
+                hmac_token: "tok".into(),
+                hmac_parameter: "verify".into(),
+            })
+            .collect();
+        let outdated: Vec<&FeaturedModFile> = files.iter().collect();
+
+        // Called off the moment the first file has been written, which is
+        // while the loop is still on it.
+        let called_off = CancellationToken::new();
+        let stopped = update_outdated(
+            &reqwest::Client::new(),
+            "https://api.faforever.com",
+            &cache,
+            &target,
+            &outdated,
+            "faf",
+            3838,
+            &|step| {
+                if step.progress == Some(33) {
+                    called_off.cancel();
+                }
+            },
+            &crate::infra::game_updater::lease_install(&target).await,
+            &called_off,
+        )
+        .await;
+
+        assert_eq!(stopped, Err(CALLED_OFF.to_string()));
+        assert_eq!(
+            std::fs::read(target.join("gamedata").join("units.nx2")).unwrap(),
+            b"units.nx2 for 3838",
+            "the file the loop was on is finished, and stays updated"
+        );
+        for name in ["lua.nx2", "env.nx2"] {
+            assert!(
+                !target.join("gamedata").join(name).exists(),
+                "{name} was written after the update was called off"
+            );
+        }
     }
 
     /// The download path's half of a cancelled launch: its write into the
@@ -1412,6 +1631,7 @@ mod tests {
                     1,
                     &|_| {},
                     &lease,
+                    &CancellationToken::new(),
                 )
                 .await
             })

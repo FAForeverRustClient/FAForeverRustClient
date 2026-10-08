@@ -22,9 +22,11 @@ import {
 // modal on this branch, so `openUpload` is no longer called from here.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { Pagination } from "../../design-system/Pagination";
-import type { InstalledMap, MapsSection, MapVaultQuery, VaultMap } from "../../ipc/bindings";
+import type { GeneratorStatus, InstalledMap, MapsSection, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
+import { GeneratorFailure } from "../../shared/components/GeneratorFailure";
 import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
+import { plainError } from "../../shared/plainError";
 import { toggleFavoriteMap } from "../../shared/favoriteMaps";
 import { isWithinNumberRange } from "../../shared/filterRanges";
 import { installNote, kilometres, kilometresLabel } from "../../shared/mapPresentation";
@@ -35,6 +37,7 @@ import { findVaultMapByFolder, isOfficialMap, mapInstalled, sizeLabel } from "..
 import { MapCard, MapDetailPanel, MapHideDialog, MapRating, MapUninstallDialog } from "./MapVaultComponents";
 import { MapPreviewDialog } from "../../shared/components/MapPreviewZoom";
 import { GeneratorProgress, stillRunning } from "./GeneratorProgress";
+import { commandOfCurrentRun, startRun } from "./generatorCommands";
 import { DEFAULT_VAULT_PAGE_SIZE } from "../../shared/browsingPreferences";
 import { useGridPageSize } from "../../shared/hooks/useGridPageSize";
 import "./maps.css";
@@ -600,8 +603,15 @@ function VaultView({ busy }: { busy: boolean }) {
       <FailureNotice status={installStatus} message={installNote(installStatus)} />
       {installedStatus.type === "failed" && <p className="vault-note muted">{t("maps.view.detectionUnavailable")}</p>}
       {/* The refusal an author meets when they try to undo a hide: FAF allows
-          only a map administrator to do that, so the reason has to be read. */}
-      {visibilityStatus.type === "failed" && <p className="vault-note is-warn">{visibilityStatus.payload.reason}</p>}
+          only a map administrator to do that, so the reason has to be read.
+          That one is the client's own sentence and passes through as it is;
+          what `plainError` rewords is a transport failure, with the original
+          on hover. No Retry: the refusal would only be repeated, and Hide or
+          Unhide is still on the map's panel for any other cause. */}
+      <FailureNotice
+        status={visibilityStatus}
+        message={visibilityStatus.type === "failed" ? plainError(visibilityStatus.payload.reason) : null}
+      />
       {outcome.kind === "noMatch" ? (
         // An empty "my maps" is the ordinary state for most players rather
         // than a failed search, so it says so instead of suggesting the
@@ -1134,7 +1144,6 @@ export function MapsView() {
   const { t } = useTranslation();
   const subView = useAppStore((state) => state.state.nav.mapsSection);
   const installStatus = useAppStore((state) => state.state.maps.installStatus);
-  const generatorStatus = useAppStore((state) => state.state.mapGenerator.status);
   const busy = installStatus.type === "installing";
   const { Component } = SUB_VIEWS[subView];
 
@@ -1160,12 +1169,37 @@ export function MapsView() {
       <div {...sectionPanelProps("maps-section", subView)}>
         <Component busy={busy} />
       </div>
-      {/* The generator is started from the host dialog now, but this is still
-          where its output lands, and a run is slow enough that the user will
-          have walked away from the dialog long before it finishes. */}
-      {stillRunning(generatorStatus) && (
-        <div className="maps-generator-status surface"><GeneratorProgress /></div>
-      )}
+      <GeneratorStatusLine />
     </div>
+  );
+}
+
+/**
+ * The generator's run, below the lists.
+ *
+ * The generator is started from the host dialog now, but this is still where
+ * its output lands, and a run is slow enough that the user will have walked
+ * away from the dialog long before it finishes. A run that failed after the
+ * dialog was closed used to leave nothing here at all, because the line was
+ * only drawn while a run was busy; the failure stays now until it is
+ * dismissed or the next run begins, with Retry when the run was sent from
+ * this client and nothing has begun since (see `commandOfCurrentRun`).
+ */
+function GeneratorStatusLine() {
+  const status = useAppStore((state) => state.state.mapGenerator.status);
+  // The failure the reader dismissed, by identity: the status keeps the same
+  // object until the next run, and that run's failure is a new one.
+  const [dismissed, setDismissed] = useState<GeneratorStatus | null>(null);
+  if (stillRunning(status)) {
+    return <div className="maps-generator-status surface"><GeneratorProgress /></div>;
+  }
+  if (status.type !== "failed" || status === dismissed) return null;
+  const command = commandOfCurrentRun();
+  return (
+    <GeneratorFailure
+      reason={status.payload.reason}
+      onRetry={command ? () => startRun(command) : undefined}
+      onDismiss={() => setDismissed(status)}
+    />
   );
 }

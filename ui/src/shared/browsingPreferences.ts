@@ -120,9 +120,10 @@ export const MAX_BROWSER_COLUMNS = 6;
  *
  * There is no ceiling, and this is as close to no floor as the stored format
  * allows: a column is dragged to whatever width somebody wants, including
- * none. One rather than zero because zero already means "no width stored, use
- * the designed one", so a column dragged shut has to stay distinguishable from
- * one nobody has touched.
+ * none, unless its list gives it a floor on screen (a column of buttons, say;
+ * see `fitColumns`). One rather than zero because zero already means "no
+ * width stored, use the designed one", so a column dragged shut has to stay
+ * distinguishable from one nobody has touched.
  *
  * No counterpart in `faf_domain` any more, unlike the bounds below. A `u32`
  * that is not zero is already at least one, so the backend has nothing left to

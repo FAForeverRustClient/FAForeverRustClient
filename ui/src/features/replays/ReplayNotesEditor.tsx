@@ -4,14 +4,15 @@
 // Kept on this machine with the player notes: a personal index to find games
 // by ("Lots finals"), not a review, and nothing another player sees. Keyed by
 // the game id, so the note written from the Online tab is on the downloaded
-// file in the Local tab too. A file with no game id gets no button, since a
-// note on it could never be found again.
+// file in the Local tab too. A file whose header names no game (a skirmish,
+// an old recording) is keyed by its path instead, however that path is
+// spelt; only a replay with neither has nothing to keep a note on.
 //
 // Drawn over the replay panel, as `ReplayInsights` is, and one layer of the
 // overlay stack while open: one press of Escape closes the notes and leaves
 // the replay open.
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useOverlayLayer } from "../../design-system/useOverlayLayer";
@@ -26,22 +27,31 @@ import { useAppStore } from "../../store/store";
 import "./replays.css";
 
 /** Whether this replay carries a note, for the button's "on" state. */
-export function useHasReplayNote(replayId: number): boolean {
-  return useAppStore((state) => noteForReplay(state.state.settings.social.replayNotes, replayId) !== null);
+export function useHasReplayNote(replayId: number, localPath?: string | null): boolean {
+  return useAppStore(
+    (state) => noteForReplay(state.state.settings.social.replayNotes, replayId, localPath) !== null,
+  );
 }
 
 export function ReplayNotesDialog({
   replayId,
+  localPath,
   title,
   onClose,
 }: {
   replayId: number;
+  /**
+   * The file the panel is open on. What the note is kept on when the replay
+   * has no game id; a game's note is the game's whichever file is open.
+   */
+  localPath?: string | null;
   /** The replay's own title, so the overlay says which game it annotates. */
   title: string;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const note = useAppStore((state) => noteForReplay(state.state.settings.social.replayNotes, replayId));
+  const headingId = useId();
+  const note = useAppStore((state) => noteForReplay(state.state.settings.social.replayNotes, replayId, localPath));
   const [comment, setComment] = useState(note?.comment ?? "");
   const [tags, setTags] = useState((note?.tags ?? []).join(", "));
 
@@ -50,7 +60,10 @@ export function ReplayNotesDialog({
   const save = (nextComment: string, nextTags: string[]) => {
     ipc.send({
       kind: "Settings",
-      command: { type: "setReplayNote", payload: { replayId, comment: nextComment, tags: nextTags } },
+      command: {
+        type: "setReplayNote",
+        payload: { replayId, localPath: localPath ?? null, comment: nextComment, tags: nextTags },
+      },
     });
     onClose();
   };
@@ -61,12 +74,12 @@ export function ReplayNotesDialog({
       <div
         className="replay-notes surface-panel"
         role="dialog"
-        aria-labelledby={`replay-notes-${replayId}`}
+        aria-labelledby={headingId}
         onClick={(event) => event.stopPropagation()}
       >
         <header className="replay-notes-head">
           <div>
-            <h3 id={`replay-notes-${replayId}`}>{t("replays.notes.title")}</h3>
+            <h3 id={headingId}>{t("replays.notes.title")}</h3>
             <span className="muted" title={title}>{title}</span>
           </div>
           <button

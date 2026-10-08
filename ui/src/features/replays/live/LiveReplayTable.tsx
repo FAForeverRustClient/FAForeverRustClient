@@ -53,11 +53,22 @@ const DEFAULT_COLUMN_PX = [120, 110, 260, 84, 84, 150, 130, 128];
 /**
  * The game column, which is the flexible one.
  *
- * A lobby title is what gets cut off, so it is what a wide window is spent on.
- * The number above is its floor rather than its width: on screen the column is
- * whatever the table has left after the other seven.
+ * A lobby title is what gets cut off, so it is what a wide window is spent on:
+ * on screen the column is whatever the table has left after the other seven,
+ * and a table a little too narrow takes from it first. The number above is
+ * where that stops and every column narrows in proportion instead.
  */
 const FLEXIBLE_COLUMN = 2;
+
+/**
+ * The narrowest each column is drawn, in the same order. The Watch column
+ * holds the "Ready in" button of a game still inside its delay, 92 pixels at
+ * the least, and the cell's padding: squeezed in proportion with the rest it
+ * was cut off at the table's edge in the default 1100 pixel window. The map
+ * keeps its 44 pixel thumbnail, the game the start of a title, and the others
+ * a figure or the start of a name.
+ */
+const COLUMN_FLOOR_PX = [60, 56, 120, 48, 48, 64, 56, 108];
 
 /** What each designed column sorts by, where it sorts at all. */
 const COLUMN_SORTS: (LiveSortKey | null)[] = [null, "started", "title", "players", "rating", "host", "mods", null];
@@ -94,6 +105,7 @@ export function LiveReplayTable(props: Props) {
     orderField: "liveReplayOrder",
     defaults: DEFAULT_COLUMN_PX,
     flexible: FLEXIBLE_COLUMN,
+    floors: COLUMN_FLOOR_PX,
     headerRef,
   });
   const { order, moving, widths: columns } = list;

@@ -96,7 +96,21 @@ export function MultiSelect({
         : t("designSystem.multiSelect.count", { count: selected.length });
 
   return (
-    <div className={layout === "inline" ? "multi-select is-inline" : "multi-select"} ref={rootRef}>
+    <div
+      className={layout === "inline" ? "multi-select is-inline" : "multi-select"}
+      ref={rootRef}
+      // Focus moving on to another control closes the list, as it does for
+      // `Select`. Left open, the list stayed the top of the overlay stack
+      // after Tab had moved past it, so the next Escape, pressed on some other
+      // control, closed this list instead of whatever that control sat in and
+      // pulled focus back to the trigger. Only a move onto another element
+      // counts: a press on a part of the popover that cannot take focus blurs
+      // with no `relatedTarget`, and a press outside is handled above.
+      onBlur={(event) => {
+        const next = event.relatedTarget;
+        if (open && next && !rootRef.current?.contains(next)) setOpen(false);
+      }}
+    >
       <span className="search-panel-label">{label}</span>
       <button
         ref={triggerRef}

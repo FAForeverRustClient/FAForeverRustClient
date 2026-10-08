@@ -83,6 +83,16 @@
   text-align: right;
 }
 
+/* How many more tasks run behind the one shown, named in its tooltip. Beside
+   the percentage rather than in its place, now that the first task can have
+   a number of its own. */
+.client-status-task-more {
+  flex: none;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
 /* The one control a task offers in the bar, e.g. stopping a matchmaker
    search: a quiet icon that shows itself as a button on hover, rather than a
    bordered box that outweighed the line it belongs to. Still a real button,
@@ -292,19 +302,19 @@ html[data-reduced-motion="true"] .client-status-progress[data-indeterminate="tru
 
 /* The same tinted-badge pattern the vault uses for a state worth a colour. */
 .client-status-state[data-status="connected"] {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-ok) 25%, transparent);
 }
 
 .client-status-state[data-status="connecting"] {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-warn) 25%, transparent);
 }
 
 .client-status-state[data-status="disconnected"] {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background: color-mix(in srgb, var(--color-error) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-error) 25%, transparent);
 }

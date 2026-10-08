@@ -18,8 +18,78 @@
 use std::ffi::OsString;
 use std::io::Write as _;
 use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use futures_util::StreamExt as _;
+
+/// Whether the install a blocking worker is finishing was called off.
+///
+/// Dropping a port's future, one way work is called off, stops every await
+/// in it. It does not stop work already handed to the blocking pool: an
+/// archive being unpacked there is unpacked to the end, and before this an
+/// install called off part-way still renamed its map or mod into place,
+/// where nothing on screen expected it. So the async half holds an [`Armed`]
+/// guard while it waits, or raises the flag itself ([`Self::call_off`]) when
+/// it keeps waiting for the answer, and the worker asks before its rename
+/// (see [`Self::refuse_if_called_off`]): a call-off that has landed by then
+/// leaves the destination as it found it, and the staging folder is removed
+/// as on any other failure.
+///
+/// One window stays open: a call-off that lands between the question and the
+/// rename itself is too late, and the item is installed. The rename is a
+/// single system call, so that window is the width of one, and a caller that
+/// waits for the worker's answer learns that it was too late.
+#[derive(Clone, Default)]
+pub struct CallOff(Arc<AtomicBool>);
+
+impl CallOff {
+    /// The guard the waiting half holds. Dropped before [`Armed::disarm`],
+    /// which is what dropping the future that owns it does, it calls the
+    /// install off.
+    pub fn arm(&self) -> Armed {
+        Armed(Some(self.0.clone()))
+    }
+
+    pub fn is_called_off(&self) -> bool {
+        self.0.load(Ordering::Acquire)
+    }
+
+    /// Call the install off without giving up on it: for a caller that keeps
+    /// waiting for the worker's answer, which then says whether the call-off
+    /// was in time.
+    pub fn call_off(&self) {
+        self.0.store(true, Ordering::Release);
+    }
+
+    /// The question asked before the rename, shaped as the validation hook
+    /// [`install_archive`] takes.
+    pub fn refuse_if_called_off(&self) -> Result<(), String> {
+        if self.is_called_off() {
+            Err("the install was called off".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+/// See [`CallOff::arm`].
+pub struct Armed(Option<Arc<AtomicBool>>);
+
+impl Armed {
+    /// The install was waited for to the end: nothing to call off.
+    pub fn disarm(mut self) {
+        self.0 = None;
+    }
+}
+
+impl Drop for Armed {
+    fn drop(&mut self) {
+        if let Some(flag) = self.0.take() {
+            flag.store(true, Ordering::Release);
+        }
+    }
+}
 
 /// Generous enough for large content packages, bounded enough that a broken
 /// or hostile server cannot consume all process memory.
@@ -839,6 +909,33 @@ mod tests {
         assert!(!target.exists());
         let entries = std::fs::read_dir(&root).unwrap().count();
         assert_eq!(entries, 0, "no staging folder is left behind");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// The waiting half dropped before the worker's rename: the worker's
+    /// question answers "called off", and nothing is installed or left in
+    /// staging. Disarmed, the same install goes through.
+    #[test]
+    fn an_install_called_off_before_its_rename_leaves_nothing_behind() {
+        let root = temp_dir("called-off");
+        let bytes = zip(&[("wanted.v0001/scenario.lua", b"-- a map")]);
+
+        let call_off = CallOff::default();
+        drop(call_off.arm());
+        let refused = install_archive(&bytes, &root, Some("wanted.v0001"), |_| {
+            call_off.refuse_if_called_off()
+        });
+        assert!(refused.is_err());
+        let entries = std::fs::read_dir(&root).unwrap().count();
+        assert_eq!(entries, 0, "neither the map nor its staging folder stays");
+
+        let kept = CallOff::default();
+        kept.arm().disarm();
+        install_archive(&bytes, &root, Some("wanted.v0001"), |_| {
+            kept.refuse_if_called_off()
+        })
+        .expect("an install waited for to the end goes through");
+        assert!(root.join("wanted.v0001").join("scenario.lua").is_file());
         std::fs::remove_dir_all(root).unwrap();
     }
 

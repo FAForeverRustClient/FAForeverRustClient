@@ -217,13 +217,13 @@
 }
 
 .links-origin-official {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-ok) 35%, transparent);
 }
 
 .links-origin-community {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   background: color-mix(in srgb, var(--color-warn) 12%, transparent);
   border-color: color-mix(in srgb, var(--color-warn) 35%, transparent);
 }
@@ -231,13 +231,13 @@
 /* A pressed filter chip takes the colour of what it filters to, so the page
    answers "what am I looking at" without reading the label. */
 .links-filter-official.is-on {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 14%, transparent);
   border-color: color-mix(in srgb, var(--color-ok) 40%, transparent);
 }
 
 .links-filter-community.is-on {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   background: color-mix(in srgb, var(--color-warn) 14%, transparent);
   border-color: color-mix(in srgb, var(--color-warn) 40%, transparent);
 }

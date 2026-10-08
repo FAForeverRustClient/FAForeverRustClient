@@ -21,7 +21,7 @@ import { Modal } from "../../design-system/Modal";
 import type { UploadKind, UploadsState } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
-import { isUploadBusy } from "../../store/reducers/uploads";
+import { isUploadBusy, isUploadCancellable } from "../../store/reducers/uploads";
 import { useAppStore } from "../../store/store";
 import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import { formatBytes } from "../../shared/format/formatBytes";
@@ -111,6 +111,7 @@ const close = () => ipc.send({ kind: "Uploads", command: { type: "close" } });
 const setRanked = (ranked: boolean) =>
   ipc.send({ kind: "Uploads", command: { type: "setRanked", payload: { ranked } } });
 const start = () => ipc.send({ kind: "Uploads", command: { type: "start" } });
+const cancelPublish = () => ipc.send({ kind: "Uploads", command: { type: "cancel" } });
 
 function statusLine(status: UploadsState["status"]): string | null {
   switch (status.type) {
@@ -186,6 +187,7 @@ export function UploadDialog() {
 
   const isMap = request.kind === "map";
   const busy = isUploadBusy(status);
+  const cancellable = isUploadCancellable(status);
   const done = status.type === "succeeded";
   const line = statusLine(status);
   const percent = percentOf(status);
@@ -371,14 +373,20 @@ export function UploadDialog() {
       )}
 
       <div className="upload-actions">
-        {/* "Hide" while publishing, because that is all it can do: the
-            archive is already with the server, which finishes it. It said
+        {/* "Hide" while publishing, because that is all it does: it said
             "Cancel", and authors believed their upload had been stopped. The
             status bar keeps the progress, and a notification brings the
-            result. */}
+            result. Stopping is the separate button after it. */}
         <Button onClick={close} title={busy ? t("uploads.hideHint") : undefined}>
           {t(done ? "uploads.close" : busy ? "uploads.hide" : "uploads.cancel")}
         </Button>
+        {/* A real stop, beside Hide, for as long as there is one: while the
+            archive is packed or its bytes are still going out. Once the last
+            byte is sent the vault decides, and the button goes rather than
+            claim a stop that could not happen. */}
+        {cancellable && (
+          <Button onClick={cancelPublish}>{t("uploads.stopPublishing")}</Button>
+        )}
         {!done && (
           <Button
             variant="primary"

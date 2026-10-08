@@ -102,7 +102,7 @@
 }
 
 .chat-user-menu-item.is-danger {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* An account entry while an offline player's account is being looked up:

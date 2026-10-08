@@ -63,6 +63,10 @@ struct HelperFixture {
     review_summaries: Vec<ReviewSummaryCase>,
     upload_busy: Vec<UploadBusyCase>,
     player_note_lookups: Vec<PlayerNoteLookupCase>,
+    replay_read_keys: Vec<ReplayReadKeyCase>,
+    replay_note_lookups: Vec<ReplayNoteLookupCase>,
+    replay_details_kept: ReplayDetailsKeptFixture,
+    replay_lookups_kept: ReplayLookupsKeptFixture,
     galactic_war_actions: Vec<GalacticWarActionCase>,
     tourney_rules: Vec<TourneyRuleCase>,
     tourney_open_events: Vec<TourneyOpenEventCase>,
@@ -166,6 +170,84 @@ struct PlayerNoteLookupCase {
     notes: Vec<PlayerNote>,
     player_id: i32,
     expected: String,
+}
+
+/// The name a replay detail or analysis read goes by.
+///
+/// The panel works the key out on its own to find its answer among the ones
+/// the backend keyed, so a twin that spells it differently finds nothing, and
+/// the panel waits on "reading" for an answer that has already arrived.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReplayReadKeyCase {
+    uid: i32,
+    local_path: Option<String>,
+    expected: String,
+}
+
+/// Which note a replay panel or list row finds for one replay.
+///
+/// The UI looks a note up on its own, by game id or else by file, so a twin
+/// that normalises the path differently shows an empty note on a file that
+/// has one, and writes a second note beside it.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReplayNoteLookupCase {
+    notes: Vec<ReplayNote>,
+    replay_id: i32,
+    local_path: Option<String>,
+    /// The comment of the note found, empty for none.
+    expected: String,
+}
+
+/// The cap on stored replay details, past where a scenario case could reach.
+///
+/// A case records the whole slice after every step, and showing the cap at
+/// work takes more answers than the cap: that many full slices would be most
+/// of the fixture. So this records only the answers, by key, and what is
+/// kept after the last one. The frontend stores the same answers through its
+/// reducer and compares.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReplayDetailsKeptFixture {
+    kept: usize,
+    /// The read keys answered, in order. All with the same details.
+    stored: Vec<String>,
+    details: ReplayDetails,
+    /// `replay_details_order` after the last answer.
+    expected_order: Vec<String>,
+    /// The keys of `replay_details` after the last answer, sorted.
+    expected_keys: Vec<String>,
+}
+
+/// The caps on vault lookups and resolved maps, past where a scenario case
+/// could reach, for the reason [`ReplayDetailsKeptFixture`] gives.
+///
+/// The events run from the default replay slice: a vault page goes on screen,
+/// its maps are resolved first, and more games than either cap holds are
+/// resolved and looked up after it, one of the oldest lookups asked again on
+/// the way. Recorded as the ranges of game ids each step names rather than as
+/// the events, which would be thousands of them: the frontend builds the same
+/// events from the ranges and compares what is kept.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReplayLookupsKeptFixture {
+    online_lookups_kept: usize,
+    resolved_maps_kept: usize,
+    /// The vault page put on screen first (`VaultLoaded`).
+    page: Vec<VaultReplay>,
+    /// Inclusive ranges of game ids, one `MapsResolved` each, every game's map
+    /// named `map_<uid>`.
+    resolved: Vec<[i32; 2]>,
+    /// Inclusive ranges of game ids, each game claimed (`OnlineLookupStarted`)
+    /// and then answered as missing (`OnlineLookupFinished` without a replay).
+    looked_up: Vec<[i32; 2]>,
+    /// `resolved_maps_order` after the last step. `resolved_maps` holds
+    /// exactly these games.
+    expected_resolved_order: Vec<i32>,
+    /// `online_lookups_order` after the last step. `online_lookups` holds
+    /// exactly these games.
+    expected_lookup_order: Vec<i32>,
 }
 
 /// What the Galactic War panel derives from its slice.
@@ -3127,6 +3209,179 @@ fn tourney_map_match_fixture() -> TourneyMapMatchFixture {
     TourneyMapMatchFixture { vault, cases }
 }
 
+fn replay_note_lookup_cases() -> Vec<ReplayNoteLookupCase> {
+    // Written the way the panel writes them, so they are held the way the
+    // reducers hold them: lookups normalise only the path asked about.
+    let mut social = SocialPreferences::default();
+    social.set_replay_note(42, None, "Lots finals".into(), vec!["casts".into()]);
+    social.set_replay_note(
+        0,
+        Some("C:\\Replays\\Skirmish.fafreplay"),
+        "vs two hard AIs".into(),
+        Vec::new(),
+    );
+    social.set_replay_note(
+        -1,
+        Some("/home/ada/Replays/Zed.fafreplay"),
+        "on Linux".into(),
+        Vec::new(),
+    );
+    let notes = social.replay_notes;
+    [
+        // A game, whichever copy of it is open.
+        (42, None),
+        (42, Some("C:\\Replays\\Skirmish.fafreplay")),
+        (7, None),
+        // A file without a game id, however its path is written.
+        (0, Some("C:\\Replays\\Skirmish.fafreplay")),
+        (0, Some("c:/replays/./skirmish.fafreplay/")),
+        (-1, Some("C:/Replays/old/../Skirmish.fafreplay")),
+        (0, Some("/home/ada/Replays//Zed.fafreplay")),
+        // A POSIX path is case-sensitive, so this is another file.
+        (0, Some("/home/ada/replays/zed.fafreplay")),
+        // Another file, and nothing to find a note on at all.
+        (0, Some("C:/Replays/Other.fafreplay")),
+        (0, None),
+        (0, Some("")),
+    ]
+    .into_iter()
+    .map(|(replay_id, local_path)| ReplayNoteLookupCase {
+        expected: SocialPreferences {
+            player_notes: Vec::new(),
+            replay_notes: notes.clone(),
+        }
+        .replay_note_for(replay_id, local_path)
+        .map_or_else(String::new, |note| note.comment.clone()),
+        notes: notes.clone(),
+        replay_id,
+        local_path: local_path.map(String::from),
+    })
+    .collect()
+}
+
+fn replay_details_kept_fixture() -> ReplayDetailsKeptFixture {
+    let kept = REPLAY_DETAILS_KEPT as i32;
+    // Enough answers to fill the map, one of the oldest answered again, and a
+    // few more past the cap: the oldest go, the one answered again stays.
+    let stored: Vec<String> = (1..=kept)
+        .chain([4])
+        .chain(kept + 1..=kept + 3)
+        .map(|uid| replay_read_key(uid, None))
+        .chain([replay_read_key(0, Some("C:\\Replays\\Skirmish.fafreplay"))])
+        .collect();
+    let details = ReplayDetails {
+        sim_seconds: 60,
+        ..ReplayDetails::default()
+    };
+    let mut state = ReplayState::default();
+    for key in &stored {
+        faf_domain::state::replays::reduce(
+            &mut state,
+            &ReplayEvent::DetailsLoaded {
+                key: key.clone(),
+                details: details.clone(),
+            },
+        );
+    }
+    let mut expected_keys: Vec<String> = state.replay_details.keys().cloned().collect();
+    expected_keys.sort();
+    ReplayDetailsKeptFixture {
+        kept: REPLAY_DETAILS_KEPT,
+        stored,
+        details,
+        expected_order: state.replay_details_order,
+        expected_keys,
+    }
+}
+
+fn replay_lookups_kept_fixture() -> ReplayLookupsKeptFixture {
+    let row = |uid: i32| VaultReplay {
+        uid,
+        title: format!("game {uid}"),
+        map: String::new(),
+        map_thumbnail_url: String::new(),
+        mod_name: "coop".into(),
+        start_time: String::new(),
+        end_time: "2026-01-01T00:20:00Z".into(),
+        replay_available: true,
+        duration_seconds: None,
+        game_duration_seconds: None,
+        teams: Vec::new(),
+        average_rating: None,
+        quality: None,
+        reviews_average: None,
+        reviews_count: None,
+        game_version: None,
+        validity: String::new(),
+        victory_condition: String::new(),
+    };
+    let page: Vec<VaultReplay> = (1..=5).map(row).collect();
+    // The page first, then batches the size the vault page asks in, past the
+    // cap. The page's games are the oldest stored and must all stay.
+    let kept_maps = RESOLVED_MAPS_KEPT as i32;
+    let mut resolved = vec![[1, 5]];
+    let mut start = 101;
+    while start <= 100 + kept_maps + 60 {
+        resolved.push([start, (start + 49).min(100 + kept_maps + 60)]);
+        start += 50;
+    }
+    // Lookups past the cap, with one of the oldest asked again partway, so
+    // it is stored last and outlives the games around it.
+    let kept_lookups = ONLINE_LOOKUPS_KEPT as i32;
+    let looked_up = vec![
+        [1, kept_lookups / 2],
+        [2, 2],
+        [kept_lookups / 2 + 1, kept_lookups + 40],
+    ];
+
+    let mut state = ReplayState::default();
+    let mut apply = |event: ReplayEvent| faf_domain::state::replays::reduce(&mut state, &event);
+    apply(ReplayEvent::VaultLoaded {
+        replays: page.clone(),
+        query: Box::default(),
+        has_more: false,
+        total_pages: None,
+        total_records: None,
+    });
+    for [first, last] in &resolved {
+        apply(ReplayEvent::MapsResolved {
+            maps: (*first..=*last)
+                .map(|uid| ResolvedReplayMap {
+                    uid,
+                    map: format!("map_{uid}"),
+                })
+                .collect(),
+        });
+    }
+    for [first, last] in &looked_up {
+        for uid in *first..=*last {
+            apply(ReplayEvent::OnlineLookupStarted { uid });
+            apply(ReplayEvent::OnlineLookupFinished { uid, replay: None });
+        }
+    }
+
+    // What the frontend checks besides the order: the maps hold exactly the
+    // games listed.
+    let mut listed = state.resolved_maps_order.clone();
+    listed.sort_unstable();
+    let mut held: Vec<i32> = state.resolved_maps.keys().copied().collect();
+    held.sort_unstable();
+    assert_eq!(listed, held);
+    assert!((1..=5).all(|uid| state.resolved_maps.contains_key(&uid)));
+    assert_eq!(state.online_lookups.len(), state.online_lookups_order.len());
+    assert!(state.online_lookups.contains_key(&2));
+
+    ReplayLookupsKeptFixture {
+        online_lookups_kept: ONLINE_LOOKUPS_KEPT,
+        resolved_maps_kept: RESOLVED_MAPS_KEPT,
+        page,
+        resolved,
+        looked_up,
+        expected_resolved_order: state.resolved_maps_order,
+        expected_lookup_order: state.online_lookups_order,
+    }
+}
+
 fn helper_fixture() -> HelperFixture {
     let review_sets = vec![
         Vec::new(),
@@ -3266,6 +3521,55 @@ fn helper_fixture() -> HelperFixture {
                 player_id,
             })
             .collect(),
+        replay_read_keys: [
+            // A vault replay, and a downloaded copy of it: the same game.
+            (4242, None),
+            (4242, Some("C:/replays/4242.fafreplay")),
+            // Files whose header names no game: only the path tells them apart.
+            (0, Some("C:/replays/skirmish-a.fafreplay")),
+            (0, Some("C:/replays/skirmish-b.fafreplay")),
+            (-1, Some("D:\\Games\\old.scfareplay")),
+            // Nothing to tell it apart by at all.
+            (0, None),
+            (0, Some("")),
+            // One file, however its path is written: the slash, the case of a
+            // Windows path, `.` and `..`, doubled and trailing separators.
+            (0, Some("C:\\Replays\\Skirmish-A.fafreplay")),
+            (0, Some("C:/Replays//old/../Skirmish-A.fafreplay")),
+            (0, Some("c:\\replays\\.\\skirmish-a.fafreplay\\")),
+            // A UNC share folds case and keeps its two leading slashes.
+            (0, Some("\\\\NAS\\Replays\\\\Game.fafreplay")),
+            (0, Some("//nas/replays/game.fafreplay")),
+            // A POSIX path keeps its case, and `..` stops at the root.
+            (0, Some("/home/Ada/Replays/./Game.fafreplay")),
+            (0, Some("/home/ada/replays/game.fafreplay")),
+            (0, Some("/../../home/ada/x.fafreplay/")),
+            // A relative path keeps the `..` it cannot resolve, and one that
+            // resolves to nothing is `.`.
+            (0, Some("../replays/../../x.fafreplay")),
+            (0, Some("replays/..")),
+            (0, Some("./")),
+            // A drive followed by a relative path, and the drive's root.
+            (0, Some("D:Replays\\..\\..\\x.fafreplay")),
+            (0, Some("C:\\")),
+            (0, Some("C:")),
+            // Letters outside ASCII fold the same way in both twins, the
+            // Greek capital sigma included, whose lowercase depends on
+            // whether a letter follows it.
+            (0, Some("C:\\Users\\JÖRG\\ΣΑΣ\\Ärger ΣΑΣ.fafreplay")),
+            // A game id still wins over any spelling of its file.
+            (77, Some("C:\\Replays\\..\\77.fafreplay")),
+        ]
+        .into_iter()
+        .map(|(uid, local_path)| ReplayReadKeyCase {
+            uid,
+            expected: replay_read_key(uid, local_path),
+            local_path: local_path.map(String::from),
+        })
+        .collect(),
+        replay_note_lookups: replay_note_lookup_cases(),
+        replay_details_kept: replay_details_kept_fixture(),
+        replay_lookups_kept: replay_lookups_kept_fixture(),
         galactic_war_actions: galactic_war_states
             .into_iter()
             .map(|state| GalacticWarActionCase {
@@ -3461,6 +3765,18 @@ fn vault_replay(uid: i32) -> VaultReplay {
     }
 }
 
+/// One line of a connectivity check, as an event.
+fn connectivity_step(id: &str, outcome: CheckOutcome, finding: CheckFinding) -> AppEvent {
+    ConnectivityEvent::StepReported {
+        step: CheckStep {
+            id: id.into(),
+            outcome,
+            finding,
+        },
+    }
+    .into()
+}
+
 /// One live broadcast, for the streams cases.
 fn live_stream(id: &str) -> LiveStream {
     LiveStream {
@@ -3512,6 +3828,172 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        // ── connectivity: the check and the live relay view ───────────────
+        case(
+            "a connectivity check reports its lines, replaces a relay line and finishes",
+            vec![
+                ConnectivityEvent::CheckStarted {
+                    started_at: "2026-10-08T18:00:00+00:00".into(),
+                }
+                .into(),
+                connectivity_step(
+                    "selection",
+                    CheckOutcome::Info,
+                    CheckFinding::AdapterSelection {
+                        join: IceAdapter::Dynamic,
+                        host: IceAdapter::Java,
+                        forced: None,
+                    },
+                ),
+                connectivity_step(
+                    "javaRuntime",
+                    CheckOutcome::Pass,
+                    CheckFinding::JavaRuntime {
+                        path: "/opt/jre/bin/java".into(),
+                        version: Some("25.0.3".into()),
+                    },
+                ),
+                connectivity_step(
+                    "relayList",
+                    CheckOutcome::Pass,
+                    CheckFinding::RelayList {
+                        count: 3,
+                        regions: vec!["Europe".into(), "North America".into()],
+                    },
+                ),
+                connectivity_step(
+                    "relayAddresses",
+                    CheckOutcome::Info,
+                    CheckFinding::RelayAddresses {
+                        game_id: 4242,
+                        count: 1,
+                    },
+                ),
+                connectivity_step(
+                    "server:0",
+                    CheckOutcome::Running,
+                    CheckFinding::ServerProbing {
+                        url: "stun:eu.relay.example.org".into(),
+                        transport: faf_domain::protocol::stun::IceTransport::Udp,
+                    },
+                ),
+                // The same line again, answered: it replaces itself in place.
+                connectivity_step(
+                    "server:0",
+                    CheckOutcome::Pass,
+                    CheckFinding::ServerReachable {
+                        url: "stun:eu.relay.example.org".into(),
+                        transport: faf_domain::protocol::stun::IceTransport::Udp,
+                        round_trip_ms: 23,
+                        public_address: Some("203.0.113.7:51234".into()),
+                    },
+                ),
+                connectivity_step(
+                    "reachability",
+                    CheckOutcome::Pass,
+                    CheckFinding::Reachability {
+                        answered: 1,
+                        total: 1,
+                        udp_blocked: false,
+                    },
+                ),
+                connectivity_step(
+                    "adapterLog",
+                    CheckOutcome::Info,
+                    CheckFinding::AdapterLog {
+                        file_name: "ice-adapter.log".into(),
+                        modified_at: "2026-10-08T17:59:00+00:00".into(),
+                        tail: "INFO connected".into(),
+                        truncated: true,
+                    },
+                ),
+                ConnectivityEvent::CheckFinished {
+                    verdict: CheckOutcome::Pass,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "a connectivity line outside a run is dropped, and a new run starts empty",
+            vec![
+                connectivity_step("early", CheckOutcome::Fail, CheckFinding::JavaAdapterMissing),
+                ConnectivityEvent::CheckStarted {
+                    started_at: "2026-10-08T18:00:00+00:00".into(),
+                }
+                .into(),
+                connectivity_step(
+                    "relayAddresses",
+                    CheckOutcome::Warn,
+                    CheckFinding::NoRelayAddresses,
+                ),
+                connectivity_step(
+                    "server:1",
+                    CheckOutcome::Warn,
+                    CheckFinding::ServerUnreachable {
+                        url: "turn:us.relay.example.org?transport=tcp".into(),
+                        transport: faf_domain::protocol::stun::IceTransport::Tcp,
+                        failure: ProbeFailure::Timeout { waited_ms: 3000 },
+                    },
+                ),
+                ConnectivityEvent::CheckFinished {
+                    verdict: CheckOutcome::Warn,
+                }
+                .into(),
+                connectivity_step("late", CheckOutcome::Fail, CheckFinding::NoAdapterLog),
+                ConnectivityEvent::CheckStarted {
+                    started_at: "2026-10-08T18:05:00+00:00".into(),
+                }
+                .into(),
+                connectivity_step(
+                    "pioneerAdapter",
+                    CheckOutcome::Fail,
+                    CheckFinding::PioneerAdapterMissing { required: true },
+                ),
+                ConnectivityEvent::CheckFinished {
+                    verdict: CheckOutcome::Fail,
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "the live relay view follows what the adapter says",
+            vec![
+                ConnectivityEvent::RelayStatusUpdated {
+                    status: RelayStatus::Live {
+                        snapshot: RelaySnapshot {
+                            adapter_version: "3.3.9".into(),
+                            game_state: "Lobby".into(),
+                            game_connected: true,
+                            peers: vec![RelayPeer {
+                                player_id: 436001,
+                                login: "Critren".into(),
+                                state: "connected".into(),
+                                connected: true,
+                                local_candidate: "srflx".into(),
+                                remote_candidate: "relay".into(),
+                            }],
+                        },
+                    },
+                }
+                .into(),
+                ConnectivityEvent::RelayStatusUpdated {
+                    status: RelayStatus::Unavailable {
+                        reason: "the adapter did not answer `status` within 3 seconds".into(),
+                    },
+                }
+                .into(),
+                ConnectivityEvent::RelayStatusUpdated {
+                    status: RelayStatus::Unsupported {
+                        adapter: IceAdapter::Go,
+                    },
+                }
+                .into(),
+                ConnectivityEvent::RelayStatusUpdated {
+                    status: RelayStatus::Idle,
+                }
+                .into(),
+            ],
+        ),
         // ── player card: per-map record ──────────────────────────────────
         case(
             "map statistics load, and a second player's scan replaces the first",
@@ -3542,6 +4024,7 @@ fn cases() -> Vec<Case> {
                             played_at: "2026-01-04T20:00:00Z".into(),
                             queue: "global".into(),
                             map: "Setons Clutch".into(),
+                            map_folder: "scmp_009.v0003".into(),
                             generated: false,
                             outcome: "loss".into(),
                             rating_change_hundredths: Some(-1114),
@@ -4578,10 +5061,19 @@ fn cases() -> Vec<Case> {
                     total_bytes: 4096,
                 }
                 .into(),
+                // Called off part-way: the offer comes back, not a failure.
+                ClientUpdateEvent::DownloadCancelled.into(),
+                ClientUpdateEvent::DownloadProgressed {
+                    received_bytes: 2048,
+                    total_bytes: 4096,
+                }
+                .into(),
                 ClientUpdateEvent::Downloaded {
                     path: "/cache/updates/faf-client-0.3.0.exe".into(),
                 }
                 .into(),
+                // Too late: the installer is whole and stays ready.
+                ClientUpdateEvent::DownloadCancelled.into(),
                 ClientUpdateEvent::Installing.into(),
                 ClientUpdateEvent::Dismissed {
                     version: "0.3.0".into(),
@@ -5965,10 +6457,14 @@ fn cases() -> Vec<Case> {
         case(
             "one replay analysis is held at a time",
             vec![
-                ReplayEvent::AnalysisLoading { uid: 11 }.into(),
+                ReplayEvent::AnalysisLoading {
+                    key: replay_read_key(11, None),
+                }
+                .into(),
                 ReplayEvent::AnalysisLoaded {
                     analysis: faf_domain::state::ReplayAnalysis {
                         uid: 11,
+                        key: replay_read_key(11, None),
                         ticks: 3_000,
                         game_version: "Supreme Commander v1.50.3839".into(),
                         activity: vec![faf_domain::state::ReplayActivity {
@@ -5982,10 +6478,37 @@ fn cases() -> Vec<Case> {
                 .into(),
                 // Another replay's panel opens: the orders of the last one
                 // are megabytes that describe a game nobody is looking at.
-                ReplayEvent::AnalysisLoading { uid: 12 }.into(),
+                ReplayEvent::AnalysisLoading {
+                    key: replay_read_key(12, None),
+                }
+                .into(),
                 ReplayEvent::AnalysisFailed {
-                    uid: 12,
+                    key: replay_read_key(12, None),
                     reason: "the replay file could not be read".into(),
+                }
+                .into(),
+            ],
+        ),
+        // Closing a panel calls its reads off. Its loading lines go, so the
+        // next panel on the same replay asks again; another replay's read in
+        // flight keeps its own; nothing is recorded as a failure.
+        case(
+            "closing a replay panel calls off only that replay's reads",
+            vec![
+                ReplayEvent::DetailsLoading {
+                    key: replay_read_key(31, None),
+                }
+                .into(),
+                ReplayEvent::AnalysisLoading {
+                    key: replay_read_key(31, None),
+                }
+                .into(),
+                ReplayEvent::ReadsCancelled {
+                    key: replay_read_key(32, None),
+                }
+                .into(),
+                ReplayEvent::ReadsCancelled {
+                    key: replay_read_key(31, None),
                 }
                 .into(),
             ],
@@ -5994,12 +6517,19 @@ fn cases() -> Vec<Case> {
             "a late replay analysis never replaces the newer request's answer",
             vec![
                 // Two panels opened in turn, both reads running at once.
-                ReplayEvent::AnalysisLoading { uid: 21 }.into(),
-                ReplayEvent::AnalysisLoading { uid: 22 }.into(),
+                ReplayEvent::AnalysisLoading {
+                    key: replay_read_key(21, None),
+                }
+                .into(),
+                ReplayEvent::AnalysisLoading {
+                    key: replay_read_key(22, None),
+                }
+                .into(),
                 // The older answer landing first does not take the slot.
                 ReplayEvent::AnalysisLoaded {
                     analysis: faf_domain::state::ReplayAnalysis {
                         uid: 21,
+                        key: replay_read_key(21, None),
                         ticks: 1_000,
                         ..Default::default()
                     },
@@ -6008,6 +6538,7 @@ fn cases() -> Vec<Case> {
                 ReplayEvent::AnalysisLoaded {
                     analysis: faf_domain::state::ReplayAnalysis {
                         uid: 22,
+                        key: replay_read_key(22, None),
                         ticks: 2_000,
                         ..Default::default()
                     },
@@ -6017,20 +6548,96 @@ fn cases() -> Vec<Case> {
                 ReplayEvent::AnalysisLoaded {
                     analysis: faf_domain::state::ReplayAnalysis {
                         uid: 21,
+                        key: replay_read_key(21, None),
                         ticks: 1_000,
                         ..Default::default()
                     },
                 }
                 .into(),
                 ReplayEvent::AnalysisFailed {
-                    uid: 21,
+                    key: replay_read_key(21, None),
                     reason: "late".into(),
                 }
                 .into(),
-                // The newest request's own failure carries its uid.
-                ReplayEvent::AnalysisLoading { uid: 23 }.into(),
+                // The newest request's own failure carries its key.
+                ReplayEvent::AnalysisLoading {
+                    key: replay_read_key(23, None),
+                }
+                .into(),
                 ReplayEvent::AnalysisFailed {
-                    uid: 23,
+                    key: replay_read_key(23, None),
+                    reason: "the replay body is truncated".into(),
+                }
+                .into(),
+            ],
+        ),
+        case(
+            "two replay files without a game id keep their own reads",
+            vec![
+                // Both files are uid 0, so only their paths tell them apart.
+                ReplayEvent::DetailsLoading {
+                    key: replay_read_key(0, Some("C:/replays/a.fafreplay")),
+                }
+                .into(),
+                ReplayEvent::AnalysisLoading {
+                    key: replay_read_key(0, Some("C:/replays/a.fafreplay")),
+                }
+                .into(),
+                ReplayEvent::DetailsLoaded {
+                    key: replay_read_key(0, Some("C:/replays/a.fafreplay")),
+                    details: ReplayDetails {
+                        sim_seconds: 600,
+                        ..ReplayDetails::default()
+                    },
+                }
+                .into(),
+                ReplayEvent::AnalysisLoaded {
+                    analysis: faf_domain::state::ReplayAnalysis {
+                        key: replay_read_key(0, Some("C:/replays/a.fafreplay")),
+                        ticks: 6_000,
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                // The second file's panel: A's analysis is not B's, so the
+                // slot empties and B's own reads are what land in it.
+                ReplayEvent::DetailsLoading {
+                    key: replay_read_key(0, Some("C:/replays/b.fafreplay")),
+                }
+                .into(),
+                ReplayEvent::AnalysisLoading {
+                    key: replay_read_key(0, Some("C:/replays/b.fafreplay")),
+                }
+                .into(),
+                // A answering again late lands nowhere B can see it.
+                ReplayEvent::AnalysisLoaded {
+                    analysis: faf_domain::state::ReplayAnalysis {
+                        key: replay_read_key(0, Some("C:/replays/a.fafreplay")),
+                        ticks: 6_000,
+                        ..Default::default()
+                    },
+                }
+                .into(),
+                ReplayEvent::DetailsFailed {
+                    key: replay_read_key(0, Some("C:/replays/a.fafreplay")),
+                    reason: "late".into(),
+                }
+                .into(),
+                ReplayEvent::AnalysisFailed {
+                    key: replay_read_key(0, Some("C:/replays/a.fafreplay")),
+                    reason: "late".into(),
+                }
+                .into(),
+                ReplayEvent::DetailsLoaded {
+                    key: replay_read_key(0, Some("C:/replays/b.fafreplay")),
+                    details: ReplayDetails {
+                        sim_seconds: 1_200,
+                        ..ReplayDetails::default()
+                    },
+                }
+                .into(),
+                ReplayEvent::AnalysisFailed {
+                    key: replay_read_key(0, Some("C:/replays/b.fafreplay")),
                     reason: "the replay body is truncated".into(),
                 }
                 .into(),
@@ -6329,6 +6936,17 @@ fn cases() -> Vec<Case> {
                 }
                 .into(),
                 ReplayEvent::VaultDownloadStarted { uid: 42 }.into(),
+                ReplayEvent::VaultDownloadProgressed {
+                    uid: 42,
+                    progress: Some(40),
+                }
+                .into(),
+                // A step for another replay is not this download's.
+                ReplayEvent::VaultDownloadProgressed {
+                    uid: 41,
+                    progress: Some(90),
+                }
+                .into(),
                 ReplayEvent::VaultDownloaded {
                     uid: 42,
                     replay: local_replay(42),
@@ -6340,31 +6958,29 @@ fn cases() -> Vec<Case> {
                     reason: "not uploaded yet".into(),
                 }
                 .into(),
-                // Watching a vault replay downloads it as part of playback, so
-                // the download ends at `Playing` or `Failed` and never at
-                // `VaultDownloaded`. Both reducers have to drop the transient
-                // indicator there. Only the TypeScript one did not, and nothing
-                // caught it because this pairing was not in the fixture: the
-                // status bar showed "Downloading <uid>" for the rest of the
-                // session after every watched replay.
+                // A watch ending, whichever way, leaves a library download
+                // running beside it alone. A watch used to mark its own
+                // download here, and these three endings cleared that, and a
+                // real library download with it; a watch's download is a step
+                // of its launch now (`ReplayEvent::Preparing`).
                 ReplayEvent::VaultDownloadStarted { uid: 44 }.into(),
+                ReplayEvent::Connecting.into(),
                 ReplayEvent::Playing {
-                    uid: Some(44),
+                    uid: Some(7),
                     warning: None,
                 }
                 .into(),
-                ReplayEvent::VaultDownloadStarted { uid: 45 }.into(),
+                ReplayEvent::Connecting.into(),
                 ReplayEvent::Failed {
                     reason: "could not update game to version 3701".into(),
                 }
                 .into(),
-                // The third way that download can end: the user calls the
-                // launch off while it is still running. Same hole as the two
-                // above, found the same way -- the overlay's Cancel stopped the
-                // launch and left "Downloading <uid>" in the status bar, which
-                // reads as a download that was not cancelled.
-                ReplayEvent::VaultDownloadStarted { uid: 46 }.into(),
+                ReplayEvent::Connecting.into(),
                 ReplayEvent::Closed.into(),
+                // Called off from the status bar: back to idle, no failure. A
+                // cancel for another replay changes nothing.
+                ReplayEvent::VaultDownloadCancelled { uid: 45 }.into(),
+                ReplayEvent::VaultDownloadCancelled { uid: 44 }.into(),
             ],
         ),
         // The three answers a local replay's rating lookup can get. All three
@@ -6390,6 +7006,42 @@ fn cases() -> Vec<Case> {
                 ReplayEvent::OnlineLookupFailed {
                     uid: 53,
                     reason: "offline".into(),
+                }
+                .into(),
+            ],
+        ),
+        // The order the caps evict by: an entry claimed, answered, or resolved
+        // again moves to the newest place, so an answer that arrives after
+        // another game was claimed is stored after it. The caps themselves
+        // are in `replay_lookups_kept`, past where a case can reach.
+        case(
+            "lookups and maps answered again are stored last",
+            vec![
+                ReplayEvent::OnlineLookupStarted { uid: 61 }.into(),
+                ReplayEvent::OnlineLookupStarted { uid: 62 }.into(),
+                ReplayEvent::OnlineLookupFinished {
+                    uid: 61,
+                    replay: None,
+                }
+                .into(),
+                ReplayEvent::MapsResolved {
+                    maps: vec![
+                        ResolvedReplayMap {
+                            uid: 71,
+                            map: "SCCA_Coop_A01.v0012".into(),
+                        },
+                        ResolvedReplayMap {
+                            uid: 72,
+                            map: String::new(),
+                        },
+                    ],
+                }
+                .into(),
+                ReplayEvent::MapsResolved {
+                    maps: vec![ResolvedReplayMap {
+                        uid: 71,
+                        map: "SCCA_Coop_A01.v0013".into(),
+                    }],
                 }
                 .into(),
             ],
@@ -6608,26 +7260,63 @@ fn cases() -> Vec<Case> {
                         ],
                         // Both reducers tidy these the same way: tags trimmed,
                         // folded and deduplicated, the later note for a replay
-                        // winning, and an empty one dropped.
+                        // winning, and an empty one dropped. A file without a
+                        // game id is keyed by its normalised path, so two
+                        // spellings of one file are one note, games sort
+                        // before files, and a game note never keeps a path.
                         replay_notes: vec![
                             ReplayNote {
                                 replay_id: 9,
+                                path: None,
                                 comment: " first ".into(),
                                 tags: vec!["old".into()],
                             },
                             ReplayNote {
+                                replay_id: 0,
+                                path: Some("C:\\Replays\\Skirmish.fafreplay".into()),
+                                comment: "vs AI".into(),
+                                tags: Vec::new(),
+                            },
+                            ReplayNote {
                                 replay_id: 12,
+                                path: None,
                                 comment: String::new(),
                                 tags: vec![" Lots  finals ".into(), "LOTS FINALS".into(), " ".into()],
                             },
                             ReplayNote {
                                 replay_id: 9,
+                                path: None,
                                 comment: "  Comeback  ".into(),
                                 tags: Vec::new(),
                             },
                             ReplayNote {
                                 replay_id: 30,
+                                path: None,
                                 comment: " ".into(),
+                                tags: Vec::new(),
+                            },
+                            ReplayNote {
+                                replay_id: -2,
+                                path: Some("/home/ada/Replays/Zed.fafreplay".into()),
+                                comment: String::new(),
+                                tags: vec!["practice".into()],
+                            },
+                            ReplayNote {
+                                replay_id: 0,
+                                path: Some("c:/replays/./skirmish.fafreplay".into()),
+                                comment: "vs two hard AIs".into(),
+                                tags: Vec::new(),
+                            },
+                            ReplayNote {
+                                replay_id: 44,
+                                path: Some("C:/Replays/44.fafreplay".into()),
+                                comment: "a game's".into(),
+                                tags: Vec::new(),
+                            },
+                            ReplayNote {
+                                replay_id: 0,
+                                path: None,
+                                comment: "nowhere to keep it".into(),
                                 tags: Vec::new(),
                             },
                         ],
@@ -7177,7 +7866,70 @@ fn transition_cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        // The status bar's bar for a map install: it follows the download of
+        // the map it names, sweeps again while the archive unpacks, ignores a
+        // step or a cancel for another folder, and a cancel is not a failure.
+        case(
+            "a map install reports its download and is called off without a failure",
+            vec![
+                MapsEvent::InstallProgressed {
+                    folder_name: "setons_clutch.v0003".into(),
+                    progress: Some(12),
+                }
+                .into(),
+                MapsEvent::Installing {
+                    folder_name: "setons_clutch.v0003".into(),
+                }
+                .into(),
+                MapsEvent::InstallProgressed {
+                    folder_name: "setons_clutch.v0003".into(),
+                    progress: Some(64),
+                }
+                .into(),
+                MapsEvent::InstallProgressed {
+                    folder_name: "another.v0001".into(),
+                    progress: Some(99),
+                }
+                .into(),
+                MapsEvent::InstallCancelled {
+                    folder_name: "another.v0001".into(),
+                }
+                .into(),
+                MapsEvent::InstallProgressed {
+                    folder_name: "setons_clutch.v0003".into(),
+                    progress: None,
+                }
+                .into(),
+                MapsEvent::InstallCancelled {
+                    folder_name: "setons_clutch.v0003".into(),
+                }
+                .into(),
+            ],
+        ),
         // ── mods ─────────────────────────────────────────────────────────
+        case(
+            "a mod install reports its download and is called off without a failure",
+            vec![
+                ModsEvent::Installing { uid: "BBB".into() }.into(),
+                ModsEvent::InstallProgressed {
+                    uid: "BBB".into(),
+                    progress: Some(30),
+                }
+                .into(),
+                ModsEvent::InstallProgressed {
+                    uid: "CCC".into(),
+                    progress: Some(90),
+                }
+                .into(),
+                ModsEvent::InstallCancelled { uid: "CCC".into() }.into(),
+                ModsEvent::InstallCancelled { uid: "BBB".into() }.into(),
+                ModsEvent::InstallProgressed {
+                    uid: "BBB".into(),
+                    progress: Some(50),
+                }
+                .into(),
+            ],
+        ),
         case(
             "the mod catalogue loads, and a failed reload keeps it beside the browsed page",
             vec![
@@ -7279,11 +8031,17 @@ fn transition_cases() -> Vec<Case> {
         case(
             "replay details answer out of order and keep the newest request loading",
             vec![
-                ReplayEvent::DetailsLoading { uid: 11 }.into(),
-                ReplayEvent::DetailsLoading { uid: 12 }.into(),
+                ReplayEvent::DetailsLoading {
+                    key: replay_read_key(11, None),
+                }
+                .into(),
+                ReplayEvent::DetailsLoading {
+                    key: replay_read_key(12, None),
+                }
+                .into(),
                 // The earlier answer is stored, but 12 is still the one asked.
                 ReplayEvent::DetailsLoaded {
-                    uid: 11,
+                    key: replay_read_key(11, None),
                     details: ReplayDetails {
                         sim_seconds: 1_200,
                         game_version: Some(3_810),
@@ -7292,32 +8050,38 @@ fn transition_cases() -> Vec<Case> {
                 }
                 .into(),
                 ReplayEvent::DetailsFailed {
-                    uid: 12,
+                    key: replay_read_key(12, None),
                     reason: "the replay body is truncated".into(),
                 }
                 .into(),
                 // A failure for something no longer asked about keeps the
                 // newer request's spinner, and is not shown as its failure.
-                ReplayEvent::DetailsLoading { uid: 13 }.into(),
+                ReplayEvent::DetailsLoading {
+                    key: replay_read_key(13, None),
+                }
+                .into(),
                 ReplayEvent::DetailsFailed {
-                    uid: 12,
+                    key: replay_read_key(12, None),
                     reason: "late".into(),
                 }
                 .into(),
                 ReplayEvent::DetailsLoaded {
-                    uid: 13,
+                    key: replay_read_key(13, None),
                     details: ReplayDetails::default(),
                 }
                 .into(),
                 // 14 fails; 11 answering again afterwards keeps 14's failure.
-                ReplayEvent::DetailsLoading { uid: 14 }.into(),
+                ReplayEvent::DetailsLoading {
+                    key: replay_read_key(14, None),
+                }
+                .into(),
                 ReplayEvent::DetailsFailed {
-                    uid: 14,
+                    key: replay_read_key(14, None),
                     reason: "not uploaded yet".into(),
                 }
                 .into(),
                 ReplayEvent::DetailsLoaded {
-                    uid: 11,
+                    key: replay_read_key(11, None),
                     details: ReplayDetails::default(),
                 }
                 .into(),
@@ -7447,6 +8211,7 @@ fn transition_cases() -> Vec<Case> {
                         offenders: vec!["Bob".into()],
                         game_id: None,
                         description: "Abusive chat".into(),
+                        attached_log: Some("===== GAME LOG EXCERPT =====".into()),
                         moderator: String::new(),
                         moderator_notice: String::new(),
                         status: "OPEN".into(),
@@ -7462,6 +8227,57 @@ fn transition_cases() -> Vec<Case> {
                 ReportingEvent::HistoryLoading.into(),
                 ReportingEvent::HistoryFailed {
                     reason: "offline".into(),
+                }
+                .into(),
+                ReportingEvent::Closed.into(),
+            ],
+        ),
+        case(
+            "a game log is prepared, replaced and taken off a report, and the next report starts without it",
+            vec![
+                ReportingEvent::Opened {
+                    player_id: 7,
+                    login: "Bob".into(),
+                }
+                .into(),
+                ReportingEvent::LogPreparing { game_id: Some(42) }.into(),
+                ReportingEvent::LogPrepared {
+                    excerpt: report_log_excerpt(Some(42), Some(42)),
+                }
+                .into(),
+                // The game id changed while ticked: a new read replaces the
+                // excerpt that was shown, whatever it answers.
+                ReportingEvent::LogPreparing { game_id: Some(43) }.into(),
+                ReportingEvent::LogUnavailable { game_id: Some(43) }.into(),
+                ReportingEvent::LogPreparing { game_id: None }.into(),
+                ReportingEvent::LogFailed {
+                    game_id: None,
+                    reason: "access denied".into(),
+                }
+                .into(),
+                ReportingEvent::LogPrepared {
+                    excerpt: report_log_excerpt(None, Some(41)),
+                }
+                .into(),
+                // A refused submission leaves the excerpt for the retry.
+                ReportingEvent::Submitting.into(),
+                ReportingEvent::Failed {
+                    reason: "the game id does not exist".into(),
+                }
+                .into(),
+                ReportingEvent::LogDetached.into(),
+                ReportingEvent::LogPrepared {
+                    excerpt: report_log_excerpt(None, Some(41)),
+                }
+                .into(),
+                // Opening another report drops it: it was read for this one.
+                ReportingEvent::Opened {
+                    player_id: 9,
+                    login: "Cid".into(),
+                }
+                .into(),
+                ReportingEvent::LogPrepared {
+                    excerpt: report_log_excerpt(Some(42), Some(42)),
                 }
                 .into(),
                 ReportingEvent::Closed.into(),
@@ -8181,6 +8997,24 @@ fn review_target(id: i32, name: &str) -> ReviewTarget {
     }
 }
 
+fn report_log_excerpt(
+    requested_game_id: Option<i32>,
+    log_game_id: Option<i32>,
+) -> ReportLogExcerpt {
+    ReportLogExcerpt {
+        requested_game_id,
+        log_game_id,
+        file_name: "game-42-1700000000-1.log".into(),
+        block: "===== GAME LOG EXCERPT (attached by the reporter's client) =====\n\
+                warning: Desync detected\n\
+                ===== END OF GAME LOG EXCERPT ====="
+            .into(),
+        total_lines: 5321,
+        kept_lines: 52,
+        redactions: 3,
+    }
+}
+
 fn notification(id: &str, kind: NotificationKind) -> ClientNotification {
     ClientNotification {
         id: id.into(),
@@ -8796,6 +9630,11 @@ const EVENT_ENUM_SOURCES: &[(&str, &str, &str)] = &[
         "ClientUpdate",
         "ClientUpdateEvent",
         include_str!("../src/state/client_update.rs"),
+    ),
+    (
+        "Connectivity",
+        "ConnectivityEvent",
+        include_str!("../src/state/connectivity.rs"),
     ),
     ("Coop", "CoopEvent", include_str!("../src/state/coop.rs")),
     (

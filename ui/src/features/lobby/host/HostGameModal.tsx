@@ -204,7 +204,7 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   };
 
   return (
-    <Modal className="host-game-modal" onClose={close}>
+    <Modal className="host-game-modal" onClose={close} ariaLabel={t("lobby.host.titleCustom")}>
       <div className="play-dialog-head">
         <div>
           <h2>{t("lobby.host.titleCustom")}</h2>

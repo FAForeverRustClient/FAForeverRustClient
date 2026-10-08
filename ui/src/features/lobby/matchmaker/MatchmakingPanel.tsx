@@ -19,6 +19,7 @@ import { playersInRatingRange } from "./queueRatingRange";
 import { secondsUntil } from "./queuePopClock";
 import { playersInGames } from "./partyReadiness";
 import "./matchmaker.css";
+import type { PlayModePanelProps } from "../PlayModeTabs";
 import { t } from "../../../i18n";
 import { useLocale } from "../../../i18n/useTranslation";
 
@@ -59,7 +60,18 @@ function MatchmakerSearchSummary({
   return <span>{t("lobby.matchmaker.cancelled")}</span>;
 }
 
-export function MatchmakingPanel({ queues, matchmaking, party }: { queues: MatchmakerQueue[]; matchmaking: MatchmakingState; party: PartyState }) {
+export function MatchmakingPanel({
+  queues,
+  matchmaking,
+  party,
+  panelProps,
+}: {
+  queues: MatchmakerQueue[];
+  matchmaking: MatchmakingState;
+  party: PartyState;
+  /** Makes this the panel of the Play tab's Matchmaking mode tab. */
+  panelProps?: PlayModePanelProps;
+}) {
   useLocale();
   const maps = useAppStore((state) => state.state.maps);
   const social = useAppStore((state) => state.state.social);
@@ -279,7 +291,14 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
   };
 
   if (queues.length === 0) {
-    return <EmptyState icon="users" title={t("lobby.matchmaker.loading")} hint={t("lobby.matchmaker.loadingHint")} />;
+    // A plain block around the state, so the mode tab still has its panel
+    // while the queues load: the state sits at the top of the Play view and
+    // sizes itself, so the box around it changes nothing on screen.
+    return (
+      <div {...panelProps}>
+        <EmptyState icon="users" title={t("lobby.matchmaker.loading")} hint={t("lobby.matchmaker.loadingHint")} />
+      </div>
+    );
   }
 
   const canSearch = !partyNeedsLeader && compatibleQueues.length > 0 && !searchLocked && membersInGame.length === 0;
@@ -287,6 +306,7 @@ export function MatchmakingPanel({ queues, matchmaking, party }: { queues: Match
 
   return (
     <div
+      {...panelProps}
       className="matchmaking-layout"
       style={{ "--party-chat-width": `${chatWidth}px` } as CSSProperties}
     >

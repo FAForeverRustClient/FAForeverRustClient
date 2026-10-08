@@ -5,6 +5,8 @@
 //! place and makes a service context field explain whether work is single-flight,
 //! latest-response-wins, or serialized.
 
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -137,13 +139,15 @@ const OPERATION_CANCELLED: u64 = 1;
 /// own id, the work checks that id against the current one at each boundary,
 /// and a cleanup can only release the slot it took itself.
 ///
-/// Still a check at boundaries rather than a token that aborts mid-work: the
-/// work in question is the file loop inside the updater, and stopping that
-/// mid-write is how a corrupt entry gets into the content store. Preparation
-/// therefore finishes the step it is on and is no longer narrated, which is
-/// the difference between this and clearing the join state on its own (the
-/// note on `DeclineModReplacement`): the state and the work agree about
-/// whether the join is still happening.
+/// The boundaries check the id. The work between them is reached through the
+/// operation's token ([`Self::called_off`]), raised the moment the operation
+/// is called off or superseded: the updater takes it and stops where stopping
+/// leaves nothing half written, between two files or while one is still
+/// downloading. It never aborts a write, which is how a corrupt entry would
+/// get into the content store. Either way the state and the work agree about
+/// whether the join is still happening, which is the difference between this
+/// and clearing the join state on its own (the note on
+/// `DeclineModReplacement`).
 #[derive(Debug, Default)]
 pub struct LobbyOperations {
     /// Source of ids. Starts at one, so zero always means "none".
@@ -152,6 +156,13 @@ pub struct LobbyOperations {
     /// [`OPERATION_CANCELLED`] set once it is called off. One word, so that
     /// "is this mine and still wanted" is a single load.
     current: AtomicU64,
+    /// The current operation's token, raised when it is called off and when
+    /// another operation supersedes it.
+    ///
+    /// `current` is written only under this lock, so the flag and the token
+    /// never disagree: a token handed out for a live operation is raised by
+    /// whatever ends that operation.
+    called_off: std::sync::Mutex<tokio_util::sync::CancellationToken>,
     /// Which join holds the join slot, and which called-off join the server
     /// may still answer.
     ///
@@ -206,8 +217,18 @@ impl LobbyOperations {
         LobbyOperation(self.issued.fetch_add(1, Ordering::AcqRel).wrapping_add(1))
     }
 
+    fn token(&self) -> std::sync::MutexGuard<'_, tokio_util::sync::CancellationToken> {
+        self.called_off
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// Make `operation` current. The one it replaces is superseded, which
+    /// calls its work off as surely as a cancel does.
     fn make_current(&self, operation: LobbyOperation) {
+        let mut token = self.token();
         self.current.store(operation.0 << 1, Ordering::Release);
+        std::mem::take(&mut *token).cancel();
     }
 
     /// Start an operation that does not take the join slot (a host request,
@@ -266,7 +287,26 @@ impl LobbyOperations {
 
     /// Call off the current operation, whichever it is.
     pub fn cancel(&self) {
+        let token = self.token();
         self.current.fetch_or(OPERATION_CANCELLED, Ordering::AcqRel);
+        token.cancel();
+    }
+
+    /// The token raised when the work running here is called off, by the same
+    /// rule as [`Self::is_cancelled`]: inside [`Self::run`], the operation it
+    /// runs as; outside one, the current operation.
+    ///
+    /// For work that stops part-way by itself rather than at the launcher's
+    /// boundaries, the updater's file loop above all. Work that was called
+    /// off before it asked is handed a token raised already.
+    pub fn called_off(&self) -> tokio_util::sync::CancellationToken {
+        let token = self.token();
+        if self.is_cancelled() {
+            let raised = tokio_util::sync::CancellationToken::new();
+            raised.cancel();
+            return raised;
+        }
+        token.clone()
     }
 
     /// Whether `operation` is still the current one and nobody called it off.
@@ -460,6 +500,136 @@ impl LatestRequest {
 
     pub fn is_current(&self, generation: u64) -> bool {
         self.0.load(Ordering::Acquire) == generation
+    }
+}
+
+/// Answer ordering for reads that overlap on purpose: no answer may replace a
+/// newer one about the same thing, and none is dropped only because another
+/// read started.
+///
+/// [`LatestRequest`] keeps the answer to the request made last and drops the
+/// rest, which suits a selection: once another event is open, the one before
+/// it is worth nothing. It does not suit reads that are all equally wanted and
+/// differ only in age, like a chat room's poll and the re-read after a post.
+/// Under a generation, polls sent faster than the server answers would never
+/// land at all, and a poll that does not take one lands whenever it arrives,
+/// over a newer answer.
+///
+/// So every read takes a ticket when it asks, and its answer lands unless an
+/// answer from a later ticket, for the same key, has landed already. Answers
+/// only move forward. A read that asks after a write has returned takes a
+/// later ticket than every read sent before it, so a write's own re-read is
+/// never replaced by one of those.
+#[derive(Debug)]
+pub struct NewestAnswer<K> {
+    next: AtomicU64,
+    landed: std::sync::Mutex<HashMap<K, u64>>,
+}
+
+impl<K> Default for NewestAnswer<K> {
+    fn default() -> Self {
+        Self {
+            next: AtomicU64::new(0),
+            landed: std::sync::Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+impl<K: Eq + Hash> NewestAnswer<K> {
+    /// The ticket of a read that is about to ask. Take it immediately before
+    /// the request, not when the command arrives: what orders two answers is
+    /// what the server knew when each was asked.
+    pub fn ticket(&self) -> u64 {
+        self.next.fetch_add(1, Ordering::AcqRel).wrapping_add(1)
+    }
+
+    /// Land the answer of the read holding `ticket` for `key`: run `emit` and
+    /// record the ticket, unless a later ticket's answer has landed for `key`.
+    ///
+    /// `emit` says whether it emitted anything. Only then is the ticket
+    /// recorded, so an answer the caller chose to drop does not keep an older
+    /// one out. It runs under the lock: two answers checked one after the other
+    /// but emitted the other way round is the very overtaking this prevents.
+    /// `emit` must not call back into this value.
+    pub fn land(&self, key: K, ticket: u64, emit: impl FnOnce() -> bool) -> bool {
+        let mut landed = self
+            .landed
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if landed.get(&key).is_some_and(|newest| *newest >= ticket) {
+            return false;
+        }
+        if !emit() {
+            return false;
+        }
+        landed.insert(key, ticket);
+        true
+    }
+}
+
+/// Background work a cancel command can reach: what is running, under which
+/// key, and the token that calls each one off.
+///
+/// The service races the work against [`CancelTicket::called_off`], so a
+/// cancel drops the port's future (or, where the port takes the token, raises
+/// it), and settles under its own ticket afterwards. Each run has its own
+/// ticket, so a run that settles late can only forget itself, never a newer
+/// run of the same key, and a cancel aimed at one key never stops another.
+#[derive(Debug)]
+pub struct Cancellable<K> {
+    next: AtomicU64,
+    running: std::sync::Mutex<Vec<(u64, K, tokio_util::sync::CancellationToken)>>,
+}
+
+impl<K> Default for Cancellable<K> {
+    fn default() -> Self {
+        Self {
+            next: AtomicU64::new(0),
+            running: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+}
+
+/// One run registered with a [`Cancellable`].
+#[derive(Debug)]
+pub struct CancelTicket {
+    id: u64,
+    pub called_off: tokio_util::sync::CancellationToken,
+}
+
+impl<K> Cancellable<K> {
+    fn running(
+        &self,
+    ) -> std::sync::MutexGuard<'_, Vec<(u64, K, tokio_util::sync::CancellationToken)>> {
+        self.running
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// Register a run under `key`, so a cancel for that key reaches it.
+    pub fn begin(&self, key: K) -> CancelTicket {
+        let id = self.next.fetch_add(1, Ordering::AcqRel);
+        let called_off = tokio_util::sync::CancellationToken::new();
+        self.running().push((id, key, called_off.clone()));
+        CancelTicket { id, called_off }
+    }
+
+    /// The run holding `ticket` has settled: a cancel no longer reaches it.
+    pub fn end(&self, ticket: &CancelTicket) {
+        self.running().retain(|(id, _, _)| *id != ticket.id);
+    }
+
+    /// Call off every run whose key `matches`, and say whether there was one.
+    pub fn cancel(&self, matches: impl Fn(&K) -> bool) -> bool {
+        let running = self.running();
+        let mut any = false;
+        for (_, key, called_off) in running.iter() {
+            if matches(key) {
+                called_off.cancel();
+                any = true;
+            }
+        }
+        any
     }
 }
 
@@ -702,6 +872,47 @@ mod tests {
         assert!(!operations.take_called_off_launch(1));
     }
 
+    /// The token reaches the work at once, whichever way its operation ends:
+    /// called off, or superseded by the next one. Work that asks for its token
+    /// after it was called off is handed one raised already.
+    #[tokio::test]
+    async fn an_operations_token_is_raised_when_it_is_called_off_or_superseded() {
+        let operations = LobbyOperations::default();
+        let join = operations.try_begin_join(1).expect("the slot is free");
+        let joining = operations
+            .run(join, async { operations.called_off() })
+            .await;
+        assert!(!joining.is_cancelled());
+        operations.cancel();
+        assert!(joining.is_cancelled(), "a cancel did not reach the work");
+        assert!(
+            operations
+                .run(join, async { operations.called_off() })
+                .await
+                .is_cancelled(),
+            "work called off before it asked was handed a live token"
+        );
+
+        operations.call_off_join();
+        let host = operations.begin();
+        let hosting = operations
+            .run(host, async { operations.called_off() })
+            .await;
+        assert!(
+            !hosting.is_cancelled(),
+            "the next operation began called off"
+        );
+        let launch = operations.begin();
+        assert!(
+            hosting.is_cancelled(),
+            "a superseded operation's work was not called off"
+        );
+        assert!(!operations
+            .run(launch, async { operations.called_off() })
+            .await
+            .is_cancelled());
+    }
+
     /// The launcher's `clear` inside a named operation must not supersede the
     /// operation that is about to check it.
     #[tokio::test]
@@ -729,6 +940,77 @@ mod tests {
         assert!(requests.is_current(second));
         requests.invalidate();
         assert!(!shared.is_current(second));
+    }
+
+    /// Answers arriving in any order: one older than an answer already landed
+    /// for its key is dropped, one newer lands, and keys do not hold each
+    /// other up.
+    #[test]
+    fn a_newest_answer_is_never_replaced_by_an_older_one_for_the_same_key() {
+        let answers = NewestAnswer::default();
+        let (older, newer) = (answers.ticket(), answers.ticket());
+        let elsewhere = answers.ticket();
+        let mut shown = Vec::new();
+
+        assert!(answers.land("room", newer, || {
+            shown.push("newer");
+            true
+        }));
+        assert!(!answers.land("room", older, || {
+            shown.push("older");
+            true
+        }));
+        // Another key's answer is its own, however old its ticket.
+        assert!(answers.land("other room", older, || true));
+        assert!(answers.land("other room", elsewhere, || true));
+        assert_eq!(shown, ["newer"]);
+
+        // An answer the caller declined does not count as landed, so it keeps
+        // nothing out.
+        let declined = answers.ticket();
+        let after = answers.ticket();
+        assert!(!answers.land("third", after, || false));
+        assert!(answers.land("third", declined, || true));
+    }
+
+    /// The reason it is not a generation: a read that started while another
+    /// was out still lands if it is the newest to arrive, and the older one
+    /// lands too when it is first.
+    #[test]
+    fn starting_a_read_drops_nothing_that_is_still_newest_to_arrive() {
+        let answers = NewestAnswer::default();
+        let first = answers.ticket();
+        let second = answers.ticket();
+        assert!(answers.land((), first, || true), "first to arrive lands");
+        assert!(answers.land((), second, || true), "and the newer after it");
+    }
+
+    /// A cancel reaches the runs of its key and no other, and a run that has
+    /// settled is out of reach: a late cancel cannot stop the next run of the
+    /// same key, which holds a ticket of its own.
+    #[test]
+    fn a_cancel_reaches_only_the_running_work_of_its_key() {
+        let work = Cancellable::default();
+        let first = work.begin("a.v0001");
+        let other = work.begin("b.v0001");
+
+        assert!(work.cancel(|key| *key == "a.v0001"));
+        assert!(first.called_off.is_cancelled());
+        assert!(!other.called_off.is_cancelled());
+
+        work.end(&first);
+        let next = work.begin("a.v0001");
+        work.end(&first);
+        assert!(!next.called_off.is_cancelled());
+        assert!(
+            work.cancel(|key| *key == "a.v0001"),
+            "the late end of the first left the second registered"
+        );
+        assert!(next.called_off.is_cancelled());
+
+        work.end(&next);
+        work.end(&other);
+        assert!(!work.cancel(|_| true), "nothing is running");
     }
 
     #[tokio::test]

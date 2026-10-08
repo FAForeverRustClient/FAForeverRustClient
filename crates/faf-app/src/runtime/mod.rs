@@ -23,8 +23,8 @@ mod policies;
 pub(crate) use command_policy::{end_turn, expect_admitted, Key};
 use command_policy::{CommandAdmission, Lane};
 pub use policies::{
-    AutoReconnect, LatestRequest, LoadedFromDisk, LobbyOperation, LobbyOperations, RunningGame,
-    SerialMutation, SingleFlight,
+    AutoReconnect, CancelTicket, Cancellable, LatestRequest, LoadedFromDisk, LobbyOperation,
+    LobbyOperations, NewestAnswer, RunningGame, SerialMutation, SingleFlight,
 };
 
 /// Context handed to every service: shared dependencies plus one operational
@@ -60,6 +60,7 @@ pub struct ServiceCtx {
     pub maps: services::maps::MapsContext,
     pub mods: services::mods::ModsContext,
     pub clan: services::clan::ClanContext,
+    pub client_update: services::client_update::ClientUpdateContext,
 }
 
 /// The sink a service emits events into.
@@ -244,7 +245,8 @@ enum PairHalf {
 /// names what both halves act on, so only a release of the same thing counts.
 fn pair_of(command: &AppCommand) -> Option<PairHalf> {
     use faf_domain::state::{
-        AuthCommand, ChatCommand, GuidesCommand, LobbyCommand, MapGeneratorCommand, ReplayCommand,
+        replay_read_key, AuthCommand, ChatCommand, ClientUpdateCommand, GuidesCommand,
+        LobbyCommand, MapGeneratorCommand, MapsCommand, ModsCommand, ReplayCommand, UploadsCommand,
     };
     let start = |key: &str| Some(PairHalf::Start(key.to_owned()));
     let release = |key: &str| Some(PairHalf::Release(key.to_owned()));
@@ -285,6 +287,41 @@ fn pair_of(command: &AppCommand) -> Option<PairHalf> {
         AppCommand::Replays(ReplayCommand::CancelWatch) => release("replay-watch"),
         AppCommand::Replays(ReplayCommand::TrackLive { .. }) => start("live-tracking"),
         AppCommand::Replays(ReplayCommand::CancelLiveTracking) => release("live-tracking"),
+        // The background work the status bar can stop. Each key names the one
+        // item, so calling off one map's install never drops another's.
+        AppCommand::Replays(ReplayCommand::DownloadVault { uid }) => {
+            start(&format!("replay-download:{uid}"))
+        }
+        AppCommand::Replays(ReplayCommand::CancelDownload { uid }) => {
+            release(&format!("replay-download:{uid}"))
+        }
+        AppCommand::Replays(
+            ReplayCommand::LoadDetails { uid, local_path }
+            | ReplayCommand::LoadAnalysis { uid, local_path },
+        ) => start(&format!(
+            "replay-read:{}",
+            replay_read_key(*uid, local_path.as_deref())
+        )),
+        AppCommand::Replays(ReplayCommand::CancelReads { uid, local_path }) => release(&format!(
+            "replay-read:{}",
+            replay_read_key(*uid, local_path.as_deref())
+        )),
+        AppCommand::Maps(MapsCommand::InstallMap { folder_name, .. }) => {
+            start(&format!("map-install:{}", folder_name.to_ascii_lowercase()))
+        }
+        AppCommand::Maps(MapsCommand::CancelInstall { folder_name }) => {
+            release(&format!("map-install:{}", folder_name.to_ascii_lowercase()))
+        }
+        AppCommand::Mods(
+            ModsCommand::InstallMod { uid, .. } | ModsCommand::UpdateMod { uid, .. },
+        ) => start(&format!("mod-install:{uid}")),
+        AppCommand::Mods(ModsCommand::CancelInstall { uid }) => {
+            release(&format!("mod-install:{uid}"))
+        }
+        AppCommand::Uploads(UploadsCommand::Start) => start("upload"),
+        AppCommand::Uploads(UploadsCommand::Cancel) => release("upload"),
+        AppCommand::ClientUpdate(ClientUpdateCommand::Download) => start("client-download"),
+        AppCommand::ClientUpdate(ClientUpdateCommand::CancelDownload) => release("client-download"),
         _ => None,
     }
 }
@@ -371,6 +408,7 @@ impl App {
             maps: services::maps::MapsContext::default(),
             mods: services::mods::ModsContext::default(),
             clan: services::clan::ClanContext::default(),
+            client_update: services::client_update::ClientUpdateContext::default(),
         };
 
         let app = Self {
@@ -870,6 +908,7 @@ async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
         AppCommand::Social(c) => services::social::handle(c, ctx, sink).await,
         AppCommand::Streams(c) => services::streams::handle(c, ctx, sink).await,
         AppCommand::Settings(c) => services::settings::handle(c, ctx, sink).await,
+        AppCommand::Connectivity(c) => services::connectivity::handle(c, ctx, sink).await,
     }
 }
 

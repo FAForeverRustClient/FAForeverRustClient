@@ -124,8 +124,13 @@ async fn downloading_a_vault_replay_does_not_launch_it_and_updates_the_library()
     );
 }
 
+/// Watching a vault replay downloads it as the first step of its launch,
+/// which the launch narrates (`ReplayEvent::Preparing`, from the playback
+/// port). It does not mark the library download's status: that used to be
+/// set here and cleared when the watch ended, which also ended a real
+/// download into the library running beside it.
 #[tokio::test]
-async fn watching_a_vault_replay_reports_its_download_in_the_replay_lifecycle() {
+async fn watching_a_vault_replay_does_not_pass_for_a_library_download() {
     let watched = Arc::new(Mutex::new(Vec::new()));
     let ports = Ports {
         replay_playback: Arc::new(DownloadReplay {
@@ -145,10 +150,6 @@ async fn watching_a_vault_replay_reports_its_download_in_the_replay_lifecycle() 
     assert!(matches!(
         events.recv().await.unwrap(),
         AppEvent::Replays(ReplayEvent::Connecting)
-    ));
-    assert!(matches!(
-        events.recv().await.unwrap(),
-        AppEvent::Replays(ReplayEvent::VaultDownloadStarted { uid: 27456965 })
     ));
     assert!(matches!(
         events.recv().await.unwrap(),

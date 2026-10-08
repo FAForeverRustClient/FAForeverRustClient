@@ -194,7 +194,7 @@
 .install-banner-icon {
   flex: none;
   display: inline-flex;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .install-banner-copy {

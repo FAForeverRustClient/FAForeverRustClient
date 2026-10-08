@@ -32,6 +32,7 @@ import { useAppStore } from "../../../store/store";
 import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
 import { ReplayMapThumb } from "../ReplayCard";
 import { MapPreviewFrame } from "../../../shared/components/MapPreviewZoom";
+import { GeneratorFailure } from "../../../shared/components/GeneratorFailure";
 import { isObserverTeam, playerCount, ReplayDetailRoster } from "../ReplayRoster";
 import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
 import { liveReplayTeams } from "./LiveReplayCards";
@@ -424,9 +425,10 @@ export function LiveReplayDetail({
         </div>
       )}
       {mapGen.status.type === "failed" && (
-        <p className="replay-download-error surface-error">
-          {t("replays.detail.generationFailed", { error: mapGen.status.payload.reason })}
-        </p>
+        <GeneratorFailure
+          reason={mapGen.status.payload.reason}
+          onRetry={mapGen.canGenerate ? mapGen.generate : undefined}
+        />
       )}
     </Modal>
   );

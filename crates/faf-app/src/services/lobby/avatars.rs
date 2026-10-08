@@ -94,14 +94,24 @@ pub(super) fn select_avatar(ctx: &ServiceCtx, out: &EventSink, url: Option<Strin
 
 /// Record `url` (empty for no avatar) as the newest avatar choice, and save it
 /// when that changed anything.
+///
+/// Read and written under the settings merge lock, like every other write of
+/// a settings field from outside the settings service: two avatar choices in
+/// quick succession could otherwise each build on the history before either.
 pub(super) async fn remember_own_avatar(ctx: &ServiceCtx, out: &EventSink, url: &str) {
-    let history = out.with_state(|state| state.settings.avatar_history.clone());
-    let next = remember_avatar(&history, url);
-    if next == history {
-        return;
+    let changed = ctx.settings.merge_and_emit(out, |settings| {
+        let next = remember_avatar(&settings.avatar_history, url);
+        if next == settings.avatar_history {
+            return (None, false);
+        }
+        (
+            Some(SettingsEvent::AvatarHistoryChanged { history: next }),
+            true,
+        )
+    });
+    if changed {
+        crate::services::settings::persist(ctx, out).await;
     }
-    out.emit(SettingsEvent::AvatarHistoryChanged { history: next });
-    crate::services::settings::persist(ctx, out).await;
 }
 
 /// Put the previous avatar back when the one chosen last has stopped being

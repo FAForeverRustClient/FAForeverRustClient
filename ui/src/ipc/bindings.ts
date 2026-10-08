@@ -79,9 +79,9 @@ export type AdminArticle = {
 	updatedAt: number | null,
 };
 
-export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand };
+export type AppCommand = { kind: "Session"; command: SessionCommand } | { kind: "Auth"; command: AuthCommand } | { kind: "Nav"; command: NavCommand } | { kind: "Notifications"; command: NotificationCommand } | { kind: "Chat"; command: ChatCommand } | { kind: "Clan"; command: ClanCommand } | { kind: "Coop"; command: CoopCommand } | { kind: "Lobby"; command: LobbyCommand } | { kind: "Replays"; command: ReplayCommand } | { kind: "Maps"; command: MapsCommand } | { kind: "MapGenerator"; command: MapGeneratorCommand } | { kind: "Mods"; command: ModsCommand } | { kind: "Leaderboard"; command: LeaderboardCommand } | { kind: "PlayerCard"; command: PlayerCardCommand } | { kind: "Reporting"; command: ReportingCommand } | { kind: "Reviews"; command: ReviewsCommand } | { kind: "Social"; command: SocialCommand } | { kind: "Streams"; command: StreamsCommand } | { kind: "Tourney"; command: TourneyCommand } | { kind: "Training"; command: TrainingCommand } | { kind: "Tutorials"; command: TutorialsCommand } | { kind: "Changelog"; command: ChangelogCommand } | { kind: "Events"; command: EventsCommand } | { kind: "Uploads"; command: UploadsCommand } | { kind: "GalacticWar"; command: GalacticWarCommand } | { kind: "Guides"; command: GuidesCommand } | { kind: "ClientUpdate"; command: ClientUpdateCommand } | { kind: "Settings"; command: SettingsCommand } | { kind: "Connectivity"; command: ConnectivityCommand };
 
-export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent };
+export type AppEvent = { kind: "Session"; event: SessionEvent } | { kind: "Auth"; event: AuthEvent } | { kind: "Nav"; event: NavEvent } | { kind: "Notifications"; event: NotificationEvent } | { kind: "Chat"; event: ChatEvent } | { kind: "Clan"; event: ClanEvent } | { kind: "Coop"; event: CoopEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Reporting"; event: ReportingEvent } | { kind: "Reviews"; event: ReviewsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Streams"; event: StreamsEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "Tutorials"; event: TutorialsEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "GalacticWar"; event: GalacticWarEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Install"; event: InstallEvent } | { kind: "Settings"; event: SettingsEvent } | { kind: "Connectivity"; event: ConnectivityEvent };
 
 /**  The complete client state. One field per domain slice. */
 export type AppState = {
@@ -114,6 +114,7 @@ export type AppState = {
 	clientUpdate: ClientUpdateState,
 	settings: SettingsState,
 	changelog: ChangelogState,
+	connectivity: ConnectivityState,
 };
 
 export type AppearancePreferences = {
@@ -1365,6 +1366,155 @@ export type ChatUser = {
 };
 
 /**
+ *  What one line of the check found.
+ *
+ *  Data rather than a sentence, so the frontend phrases it in the reader's
+ *  language; reasons that come from the operating system or a server stay as
+ *  the text they arrived as.
+ */
+export type CheckFinding =
+/**
+ *  The adapters games start on: joining, hosting, and the development
+ *  override (`FAF_ICE_ADAPTER_KIND`) when one is set, since it wins over
+ *  both preferences.
+ */
+{ type: "adapterSelection"; payload: {
+	join: IceAdapter,
+	host: IceAdapter,
+	forced: IceAdapter | null,
+} } |
+/**
+ *  The Java runtime the Java adapter is started with, and the version it
+ *  reported. `version` is `None` when it ran but said nothing readable.
+ */
+{ type: "javaRuntime"; payload: {
+	path: string,
+	version: string | null,
+} } |
+/**  A runtime that is older than the adapter's class files require. */
+{ type: "javaRuntimeTooOld"; payload: {
+	path: string,
+	version: string,
+	required: number,
+} } |
+/**  No runtime could be started. */
+{ type: "javaRuntimeMissing"; payload: {
+	path: string,
+	reason: string,
+} } |
+/**  The Java adapter's jar. */
+{ type: "javaAdapter"; payload: {
+	path: string,
+} } | { type: "javaAdapterMissing" } |
+/**  The Pioneer (Go) adapter's executable. */
+{ type: "pioneerAdapter"; payload: {
+	path: string,
+} } |
+/**
+ *  `required` when a selected adapter is Pioneer; otherwise only Dynamic
+ *  would start it, and only for a lobby whose host is on Pioneer.
+ */
+{ type: "pioneerAdapterMissing"; payload: {
+	required: boolean,
+} } |
+/**  `GET /ice/server`: the relays the FAF API says are active, and where. */
+{ type: "relayList"; payload: {
+	count: number,
+	regions: string[],
+} } |
+/**  The relay list needs a FAF sign-in. */
+{ type: "relayListNeedsSignIn" } | { type: "relayListUnavailable"; payload: {
+	reason: string,
+} } |
+/**
+ *  The addresses tested below, and the game whose relay session they came
+ *  from: the API hands relay addresses out per game only.
+ */
+{ type: "relayAddresses"; payload: {
+	gameId: number,
+	count: number,
+} } |
+/**
+ *  No game has been started this session, so there are no addresses to
+ *  test. Said as a line of its own because it is a limit of the check,
+ *  not a fault of the network.
+ */
+{ type: "noRelayAddresses" } |
+/**  The session of the last game could not be fetched again. */
+{ type: "relayAddressesUnavailable"; payload: {
+	gameId: number,
+	reason: string,
+} } |
+/**  One relay URL, being asked. */
+{ type: "serverProbing"; payload: {
+	url: string,
+	transport: IceTransport,
+} } |
+/**
+ *  One relay URL that answered: a STUN binding over UDP, or an accepted
+ *  TCP connection. `public_address` is where the relay saw the request
+ *  come from, which only a STUN answer says.
+ */
+{ type: "serverReachable"; payload: {
+	url: string,
+	transport: IceTransport,
+	roundTripMs: number,
+	publicAddress: string | null,
+} } | { type: "serverUnreachable"; payload: {
+	url: string,
+	transport: IceTransport,
+	failure: ProbeFailure,
+} } |
+/**  A URL the check cannot read, so it was not asked. */
+{ type: "serverUnreadable"; payload: {
+	url: string,
+} } |
+/**
+ *  How many of the relay URLs answered. `udp_blocked` is the pattern a
+ *  firewall that drops UDP leaves: no UDP probe answered while a TCP one
+ *  did. Games need UDP, so it is worth naming.
+ */
+{ type: "reachability"; payload: {
+	answered: number,
+	total: number,
+	udpBlocked: boolean,
+} } |
+/**  The tail of the newest adapter log. `modified_at` is RFC 3339. */
+{ type: "adapterLog"; payload: {
+	fileName: string,
+	modifiedAt: string,
+	tail: string,
+	truncated: boolean,
+} } | { type: "noAdapterLog" };
+
+/**  How one line of the check came out. */
+export type CheckOutcome =
+/**  Still being found out. */
+"running" |
+/**
+ *  A fact worth a line, neither good nor bad: which adapter is selected,
+ *  where the addresses came from.
+ */
+"info" | "pass" |
+/**  Works, but not everywhere or not for everything. */
+"warn" | "fail";
+
+/**  Where the check is. */
+export type CheckStatus = { type: "idle" } | { type: "running" } |
+/**  Done, with the worst outcome among its lines. */
+{ type: "finished"; payload: {
+	verdict: CheckOutcome,
+} };
+
+/**  One line of the check. */
+export type CheckStep = {
+	/**  Stable within one run, so a line reported again replaces itself. */
+	id: string,
+	outcome: CheckOutcome,
+	finding: CheckFinding,
+};
+
+/**
  *  Which mutation is in flight, so the view can name what it is waiting for
  *  and disable the right control rather than all of them.
  */
@@ -1573,6 +1723,12 @@ export type ClientUpdateCommand =
 /**  Fetch the installer for the release already in state. */
 { type: "download" } |
 /**
+ *  Stop the installer download that is running. The partial file is
+ *  deleted, so the next `Download` starts from nothing rather than from
+ *  half an installer. Does nothing once the installer is whole.
+ */
+{ type: "cancelDownload" } |
+/**
  *  Start the downloaded installer.
  *
  *  The client does **not** exit itself. On Windows an installer cannot
@@ -1604,7 +1760,13 @@ export type ClientUpdateEvent =
 } } | { type: "downloadProgressed"; payload: {
 	receivedBytes: number,
 	totalBytes: number,
-} } | { type: "downloaded"; payload: {
+} } |
+/**
+ *  The download was called off before the installer was written. The
+ *  release is still on offer, so the status goes back to `Available`
+ *  rather than to a failure: nothing went wrong.
+ */
+{ type: "downloadCancelled" } | { type: "downloaded"; payload: {
 	path: string,
 } } | { type: "installing" } | { type: "failed"; payload: {
 	reason: string,
@@ -1681,6 +1843,40 @@ export type Competition = "team" | "freeForAll";
 /**  Connection state of the backend session. */
 export type ConnectionStatus = "disconnected" | "connecting" | "connected";
 
+export type ConnectivityCheck = {
+	status: CheckStatus,
+	/**  The lines of the current or last run, in the order they were reached. */
+	steps: CheckStep[],
+	/**  When the current or last run started, RFC 3339. Empty before the first. */
+	startedAt: string,
+};
+
+export type ConnectivityCommand =
+/**
+ *  Run the whole check. Single-flight: a second press while one runs is
+ *  dropped, since it would only ask the same relays again.
+ */
+{ type: "runCheck" } |
+/**
+ *  Ask the running adapter for its peers once. Sent on a timer by the
+ *  Connectivity settings page while a game runs and the page is open.
+ */
+{ type: "refreshRelayStatus" };
+
+export type ConnectivityEvent =
+/**  A run began: the previous run's lines are dropped. */
+{ type: "checkStarted"; payload: {
+	startedAt: string,
+} } |
+/**  One line, new or replacing the line with the same id. */
+{ type: "stepReported"; payload: {
+	step: CheckStep,
+} } | { type: "checkFinished"; payload: {
+	verdict: CheckOutcome,
+} } | { type: "relayStatusUpdated"; payload: {
+	status: RelayStatus,
+} };
+
 /**
  *  Two choices, because joining and hosting are different questions.
  *
@@ -1712,6 +1908,11 @@ export type ConnectivityPreferencesPatch = {
 	adapter?: IceAdapter,
 	hostAdapter?: IceAdapter,
 	selectionVersion?: number,
+};
+
+export type ConnectivityState = {
+	check: ConnectivityCheck,
+	relay: RelayStatus,
 };
 
 /**  Which parts of the console the server lets this account use. */
@@ -3552,6 +3753,14 @@ export type IceAdapter =
  */
 "go";
 
+/**  How a relay URL is reached. */
+export type IceTransport = "udp" | "tcp" |
+/**
+ *  `stuns:` and `turns:`: TCP with TLS on top. The check opens the TCP
+ *  connection and stops there.
+ */
+"tls";
+
 /**
  *  One group table of an imported event (`importedGroups`), as its source
  *  ranked it: wins, then game difference, then name.
@@ -4556,6 +4765,13 @@ export type MapGeneratorState = {
 /**  Status of an install/uninstall action for one map folder. */
 export type MapInstallStatus = { type: "idle" } | { type: "installing"; payload: {
 	folderName: string,
+	/**
+	 *  How much of the archive has arrived, in percent, while the server
+	 *  said how big it is. `None` before the first byte, for a server that
+	 *  sent no length, while the archive is unpacked, and for an
+	 *  uninstall: a bar that sweeps rather than one that claims a number.
+	 */
+	progress: number | null,
 } } | { type: "failed"; payload: {
 	reason: string,
 } };
@@ -4747,6 +4963,20 @@ export type MapsCommand =
 	folderName: string,
 	downloadUrl: string,
 } } |
+/**
+ *  Call off the install of `folder_name` while it is still running.
+ *
+ *  A map can be half a gigabyte, and until this the only way to stop one
+ *  was to close the client. The download stops where it is and its file
+ *  is deleted; an archive already being unpacked is unpacked into a
+ *  private folder that is removed instead of renamed into place, so the
+ *  maps folder is left as it was either way. Does nothing once the
+ *  install has finished, or for an uninstall, which is not stopped
+ *  half-way on purpose: a half-deleted map is worse than either.
+ */
+{ type: "cancelInstall"; payload: {
+	folderName: string,
+} } |
 /**  Delete a map folder (mirrors `MapsManagerDialog::delete_map`). */
 { type: "uninstallMap"; payload: {
 	folderName: string,
@@ -4810,6 +5040,14 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } |
 	folderName: string,
 } } |
 /**
+ *  How far the install of `folder_name` has got; see
+ *  [`MapInstallStatus::Installing`]. Lands only on the install it names.
+ */
+{ type: "installProgressed"; payload: {
+	folderName: string,
+	progress: number | null,
+} } |
+/**
  *  Install succeeded: carries the freshly-scanned installed list so the
  *  UI doesn't need a separate `LoadInstalled` round-trip (mirrors the
  *  Python client's `MapsManagerDialog` re-scanning after every change).
@@ -4818,6 +5056,14 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } |
 	installed: InstalledMap[],
 } } | { type: "installFailed"; payload: {
 	reason: string,
+} } |
+/**
+ *  The install of `folder_name` was called off: back to idle, and not a
+ *  failure, because nothing went wrong. Nothing of the map is left on
+ *  disk, so the installed list does not change.
+ */
+{ type: "installCancelled"; payload: {
+	folderName: string,
 } } | { type: "uninstalled"; payload: {
 	installed: InstalledMap[],
 } } | { type: "uninstallFailed"; payload: {
@@ -5188,6 +5434,12 @@ export type ModDownloadTarget = {
  */
 export type ModInstallStatus = { type: "idle" } | { type: "installing"; payload: {
 	uid: string,
+	/**
+	 *  The download's share in percent, while the server says how big
+	 *  the archive is; `None` otherwise, while it is unpacked, and for an
+	 *  uninstall. See [`crate::state::MapInstallStatus::Installing`].
+	 */
+	progress: number | null,
 } } | { type: "failed"; payload: {
 	reason: string,
 } };
@@ -5331,7 +5583,17 @@ export type ModerationReportSummary = {
 	createTime: string,
 	offenders: string[],
 	gameId: number | null,
+	/**
+	 *  The reporter's own words, without a game log excerpt the client
+	 *  appended (see [`crate::protocol::report_log`]).
+	 */
 	description: string,
+	/**
+	 *  The game log excerpt this client appended to the description, when it
+	 *  did. Split off so the history can fold it away instead of showing a
+	 *  hundred lines of engine trace in every card.
+	 */
+	attachedLog: string | null,
 	moderator: string,
 	moderatorNotice: string,
 	status: string,
@@ -5394,6 +5656,20 @@ export type ModsCommand =
 	folderName: string,
 	downloadUrl: string,
 } } |
+/**
+ *  Call off the install or update of `uid` while it is still running.
+ *
+ *  The same promise as `MapsCommand::CancelInstall`: the download stops
+ *  and its bytes are dropped, and an install already unpacking is unpacked
+ *  into a private folder that is removed instead of renamed into place.
+ *  An update is the exception once its download is whole: from there it
+ *  removes the old version and puts the new one in, and stopping between
+ *  the two would leave neither, so a call-off that late is ignored and
+ *  the update ends as it would have.
+ */
+{ type: "cancelInstall"; payload: {
+	uid: string,
+} } |
 /**  Delete a mod folder (mirrors `MapsCommand::UninstallMap`). */
 { type: "uninstallMod"; payload: {
 	folderName: string,
@@ -5438,6 +5714,14 @@ export type ModsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } | 
 	uid: string,
 } } |
 /**
+ *  How far the install or update of `uid` has got. Lands only on the
+ *  install it names (mirrors `MapsEvent::InstallProgressed`).
+ */
+{ type: "installProgressed"; payload: {
+	uid: string,
+	progress: number | null,
+} } |
+/**
  *  Install succeeded: carries the freshly-scanned installed list so
  *  the UI doesn't need a separate `LoadInstalled` round-trip (mirrors
  *  `MapsEvent::Installed`).
@@ -5446,6 +5730,10 @@ export type ModsEvent = { type: "vaultLoading" } | { type: "vaultSearching" } | 
 	installed: InstalledMod[],
 } } | { type: "installFailed"; payload: {
 	reason: string,
+} } |
+/**  The install of `uid` was called off: back to idle, not a failure. */
+{ type: "installCancelled"; payload: {
+	uid: string,
 } } | { type: "uninstalled"; payload: {
 	installed: InstalledMod[],
 } } | { type: "uninstallFailed"; payload: {
@@ -6463,6 +6751,12 @@ export type PlayerGameResult = {
 	queue: string,
 	/**  Empty for a generated map, like [`PlayerMapStat::map`]. */
 	map: string,
+	/**
+	 *  The map version's folder, for the map's picture: the display name
+	 *  above is for reading, and the previews are filed by folder. Empty for
+	 *  a generated map and for a game the API named no map version for.
+	 */
+	mapFolder: string,
 	generated: boolean,
 	/**  `win`, `loss` or `draw`. Games with no known outcome are not listed. */
 	outcome: string,
@@ -6880,6 +7174,28 @@ export type Prize = {
 	amountCents: number,
 };
 
+/**  Why a relay did not answer. */
+export type ProbeFailure =
+/**
+ *  Nothing came back in the time allowed. On UDP this is what a firewall
+ *  dropping the traffic looks like.
+ */
+{ type: "timeout"; payload: {
+	waitedMs: number,
+} } |
+/**  The relay's name does not resolve. */
+{ type: "unknownHost" } |
+/**  The relay's TCP port refused the connection. */
+{ type: "refused" } |
+/**  Something answered, but not with a STUN success. */
+{ type: "badAnswer"; payload: {
+	reason: string,
+} } |
+/**  Anything else the operating system reported, as it reported it. */
+{ type: "network"; payload: {
+	reason: string,
+} };
+
 /**
  *  A tournament whose result feeds entrants into another one.
  *
@@ -7116,6 +7432,54 @@ export type RejectReason = "duplicate" | "incorrectInformation" | "poorQuality" 
  */
 export type Relation = "friend" | "foe";
 
+/**  One peer the Java adapter is connecting to or connected with. */
+export type RelayPeer = {
+	playerId: number,
+	login: string,
+	/**
+	 *  The adapter's own word for the ICE state: `new`, `gathering`,
+	 *  `awaitingCandidates`, `checking`, `connected`, `completed`,
+	 *  `disconnected`.
+	 */
+	state: string,
+	connected: boolean,
+	/**
+	 *  The candidate types the pair settled on (`host`, `srflx`, `prflx`,
+	 *  `relay`), empty until it has. `relay` on either side means the traffic
+	 *  goes through a FAF relay rather than directly.
+	 */
+	localCandidate: string,
+	remoteCandidate: string,
+};
+
+/**  The Java adapter's answer to its `status` call. */
+export type RelaySnapshot = {
+	adapterVersion: string,
+	/**
+	 *  The game's GPGNet state as the adapter last heard it: `Idle`,
+	 *  `Lobby`, `Launching`, `Ended`.
+	 */
+	gameState: string,
+	/**  Whether the game is connected to the adapter's GPGNet port. */
+	gameConnected: boolean,
+	peers: RelayPeer[],
+};
+
+/**  The running adapter's view of its peers. */
+export type RelayStatus =
+/**  No adapter is running, or nobody has asked yet. */
+{ type: "idle" } |
+/**  The running adapter has no status call. Pioneer has none. */
+{ type: "unsupported"; payload: {
+	adapter: IceAdapter,
+} } |
+/**  The adapter did not answer its status call. */
+{ type: "unavailable"; payload: {
+	reason: string,
+} } | { type: "live"; payload: {
+	snapshot: RelaySnapshot,
+} };
+
 /**  One entrant whose FAF name has changed since they entered. */
 export type Rename = {
 	playerId: string,
@@ -7184,11 +7548,18 @@ export type ReplayActivity = {
 
 /**  Everything the analysis panel draws, from one read of one replay file. */
 export type ReplayAnalysis = {
-	/**
-	 *  The game this describes, so a late answer for one replay is not drawn
-	 *  over another.
-	 */
+	/**  The game this describes, 0 for a file whose header names none. */
 	uid: number,
+	/**
+	 *  The read this answers, as [`replay_read_key`] names it, so a late
+	 *  answer for one replay is not drawn over another. Two files without a
+	 *  game id are both uid 0 and only this tells them apart.
+	 *
+	 *  Filled in by the replay service from the request, not by whatever
+	 *  walked the file: the walk knows the bytes, not which path the panel
+	 *  asked about.
+	 */
+	key: string,
 	/**  Simulation ticks the stream covers. Ten to the second. */
 	ticks: number,
 	/**  The engine build the game ran on, as the file's first line spells it. */
@@ -7307,8 +7678,20 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
 	uid: number,
 } } |
 /**
+ *  Call off the download of `uid` into the library while it runs.
+ *
+ *  The transfer stops where it is, and a file being written when the call
+ *  arrives is written to a temporary name that is deleted rather than
+ *  published, so the library never holds part of a replay. Does nothing
+ *  once the file is in place.
+ */
+{ type: "cancelDownload"; payload: {
+	uid: number,
+} } |
+/**
  *  Load the deferred game options, in-game chat, and FAF version from a
- *  replay body.
+ *  replay body. The answer is keyed by [`replay_read_key`] of these two
+ *  fields, which the panel works out the same way to find it.
  */
 { type: "loadDetails"; payload: {
 	uid: number,
@@ -7320,9 +7703,23 @@ export type ReplayCommand = { type: "watchLive"; payload: LiveReplayTarget } | {
  *
  *  Separate from [`Self::LoadDetails`] because it is the expensive half.
  *  The options and the chat are what somebody opening the panel is usually
- *  after, and they arrive while this is still walking.
+ *  after, and they arrive while this is still walking. Keyed the same way.
  */
 { type: "loadAnalysis"; payload: {
+	uid: number,
+	localPath?: string | null,
+} } |
+/**
+ *  The detail panel that asked for this replay's details and analysis was
+ *  closed: call off whichever of the two reads is still running for it.
+ *
+ *  Either can be the whole replay fetched from the vault and then walked
+ *  command by command, and the answer would only land in a panel nobody
+ *  has open. Keyed the way the reads are, so it never stops a read for
+ *  another replay. Ends with [`ReplayEvent::ReadsCancelled`] when a read
+ *  was running.
+ */
+{ type: "cancelReads"; payload: {
 	uid: number,
 	localPath?: string | null,
 } } |
@@ -7444,6 +7841,8 @@ export type ReplayDetails = {
  */
 export type ReplayDownloadStatus = { type: "idle" } | { type: "downloading"; payload: {
 	uid: number,
+	/**  Percent received, when the server said how big the file is. */
+	progress: number | null,
 } } | { type: "downloaded"; payload: {
 	uid: number,
 	path: string,
@@ -7506,29 +7905,59 @@ export type ReplayEvent = { type: "connecting" } |
 	path: string,
 } } | { type: "vaultDownloadStarted"; payload: {
 	uid: number,
+} } |
+/**  How much of replay `uid` has arrived. Lands only on that download. */
+{ type: "vaultDownloadProgressed"; payload: {
+	uid: number,
+	progress: number | null,
 } } | { type: "vaultDownloaded"; payload: {
 	uid: number,
 	replay: LocalReplay,
 } } | { type: "vaultDownloadFailed"; payload: {
 	uid: number,
 	reason: string,
+} } |
+/**
+ *  The download of `uid` was called off before the file was written: back
+ *  to idle, and not a failure.
+ */
+{ type: "vaultDownloadCancelled"; payload: {
+	uid: number,
 } } | { type: "localLoadFailed"; payload: {
 	reason: string,
-} } | { type: "detailsLoading"; payload: {
-	uid: number,
+} } |
+/**
+ *  A details read has begun. This and the five details and analysis
+ *  events after it name their read by [`replay_read_key`], not by game id:
+ *  two files without a game id are both uid 0, and only the key tells
+ *  their answers apart.
+ */
+{ type: "detailsLoading"; payload: {
+	key: string,
 } } | { type: "detailsLoaded"; payload: {
-	uid: number,
+	key: string,
 	details: ReplayDetails,
 } } | { type: "detailsFailed"; payload: {
-	uid: number,
+	key: string,
 	reason: string,
 } } | { type: "analysisLoading"; payload: {
-	uid: number,
-} } | { type: "analysisLoaded"; payload: {
+	key: string,
+} } |
+/**  Carries its key in [`ReplayAnalysis::key`]. */
+{ type: "analysisLoaded"; payload: {
 	analysis: ReplayAnalysis,
 } } | { type: "analysisFailed"; payload: {
-	uid: number,
+	key: string,
 	reason: string,
+} } |
+/**
+ *  The panel that asked for `key`'s details and analysis was closed, and
+ *  the reads still running for it were called off. Neither will answer,
+ *  so neither is still loading: the next panel opened on the same replay
+ *  asks again instead of waiting for an answer that is not coming.
+ */
+{ type: "readsCancelled"; payload: {
+	key: string,
 } } |
 /**  The vault is being asked about one game id (see [`OnlineLookup`]). */
 { type: "onlineLookupStarted"; payload: {
@@ -7560,11 +7989,22 @@ export type ReplayGameOption = {
  *  A private, local comment and set of tags on one replay (#324).
  *
  *  Keyed by the game id, which the vault and a downloaded file share, so a
- *  note written on the Online tab is there on the Local tab too. Nothing here
- *  leaves this machine: it is a personal index ("Lots finals"), not a review.
+ *  note written on the Online tab is there on the Local tab too. A file whose
+ *  header names no game (a skirmish, an old recording) has no id to key by,
+ *  so its note is keyed by the file instead: `replay_id` is 0 and `path` says
+ *  which file. Nothing here leaves this machine: it is a personal index ("Lots
+ *  finals"), not a review.
  */
 export type ReplayNote = {
 	replayId: number,
+	/**
+	 *  The file the note is on, for a replay without a game id, as
+	 *  [`normalize_replay_path`] spells it so that every way of writing the
+	 *  path finds it. `None` for a game, which its id names wherever its file
+	 *  is. Defaulted, so the notes in a settings file from before this field
+	 *  load as the game notes they are.
+	 */
+	path?: string | null,
 	comment: string,
 	tags: string[],
 };
@@ -7796,7 +8236,7 @@ export type ReplayQuery = {
 };
 
 /**
- *  Why reading one replay file failed, and which replay it was.
+ *  Why reading one replay file failed, and which read it was.
  *
  *  The detail panel reads the details and the analysis on demand, and a reader
  *  who opens one replay and then another has two reads in flight at once. A
@@ -7804,7 +8244,8 @@ export type ReplayQuery = {
  *  showed the first one's failure as its own.
  */
 export type ReplayReadError = {
-	uid: number,
+	/**  The read that failed, as [`replay_read_key`] names it. */
+	key: string,
 	reason: string,
 };
 
@@ -7889,16 +8330,29 @@ export type ReplayState = {
 	local: LocalReplay[],
 	localStatus: VaultStatus,
 	/**
-	 *  Deferred replay metadata keyed by replay uid. Details are loaded only
-	 *  when requested because parsing the command stream can be expensive.
+	 *  Deferred replay metadata keyed by [`replay_read_key`]: the game id, or
+	 *  the file for a replay without one. Details are loaded only when
+	 *  requested because parsing the command stream can be expensive.
+	 *
+	 *  At most [`REPLAY_DETAILS_KEPT`] of them, the ones stored last; see
+	 *  [`Self::replay_details_order`].
 	 */
-	replayDetails?: { [key in number]: ReplayDetails },
+	replayDetails?: { [key in string]: ReplayDetails },
 	/**
-	 *  The replay whose details were asked for last, while that read runs.
-	 *  Only its failure is recorded: an older read still finishing describes a
-	 *  panel nobody is looking at.
+	 *  The keys of [`Self::replay_details`], oldest stored first, so the
+	 *  oldest is the one that goes when the map is full.
+	 *
+	 *  A list beside the map rather than an ordered map in its place: the
+	 *  panel looks its own entry up by key, and a JSON object is what lets it
+	 *  do that without a search.
 	 */
-	detailsLoading?: number | null,
+	replayDetailsOrder?: string[],
+	/**
+	 *  The read whose details were asked for last, while it runs. Only its
+	 *  failure is recorded: an older read still finishing describes a panel
+	 *  nobody is looking at.
+	 */
+	detailsLoading?: string | null,
 	detailsError?: ReplayReadError | null,
 	/**
 	 *  The analysed replay, and only the one asked for last.
@@ -7911,21 +8365,35 @@ export type ReplayState = {
 	 *  stranger's analysis and sit on "reading" with nothing left coming.
 	 */
 	analysis?: ReplayAnalysis | null,
-	/**  The replay whose analysis was asked for last, while that read runs. */
-	analysisLoading?: number | null,
+	/**  The read whose analysis was asked for last, while it runs. */
+	analysisLoading?: string | null,
 	analysisError?: ReplayReadError | null,
 	/**
 	 *  Vault answers for single game ids, keyed by that id. Filled by
 	 *  [`ReplayCommand::LookUpOnline`] on behalf of local replays; see
 	 *  [`OnlineLookup`].
+	 *
+	 *  At most [`ONLINE_LOOKUPS_KEPT`] of them, the ones stored last; see
+	 *  [`Self::online_lookups_order`].
 	 */
 	onlineLookups?: { [key in number]: OnlineLookup },
+	/**
+	 *  The keys of [`Self::online_lookups`], oldest stored first, so the
+	 *  oldest is the one that goes when the map is full. A list beside the
+	 *  map for the reason [`Self::replay_details_order`] is one.
+	 */
+	onlineLookupsOrder?: number[],
 	/**
 	 *  Map folders read out of the replay files themselves, keyed by game id.
 	 *  An empty value means the file was read and named no map, so the view
 	 *  stops asking. See [`ReplayCommand::ResolveMaps`].
+	 *
+	 *  At most [`RESOLVED_MAPS_KEPT`] of them, never one of the vault page on
+	 *  screen; see [`Self::resolved_maps_order`].
 	 */
 	resolvedMaps?: { [key in number]: string },
+	/**  The keys of [`Self::resolved_maps`], oldest stored first. */
+	resolvedMapsOrder?: number[],
 	/**
 	 *  The signed-in player's latest matchmaker games, newest first (#301).
 	 *
@@ -7992,6 +8460,54 @@ export type ReportHistoryStatus = { type: "idle" } | { type: "loading" } | { typ
 	reason: string,
 } };
 
+/**  Whether the report will carry a game log excerpt, and how far along it is. */
+export type ReportLogAttachment =
+/**  Nothing attached: the default, and what unticking the box returns to. */
+{ type: "off" } | { type: "preparing"; payload: {
+	gameId: number | null,
+} } | { type: "ready"; payload: {
+	excerpt: ReportLogExcerpt,
+} } |
+/**  The client keeps no log of any online game. */
+{ type: "unavailable"; payload: {
+	gameId: number | null,
+} } | { type: "failed"; payload: {
+	gameId: number | null,
+	reason: string,
+} };
+
+/**
+ *  A game log excerpt prepared for a report, shown to the user before it is
+ *  sent (see [`crate::protocol::report_log`] for why it is text at all).
+ */
+export type ReportLogExcerpt = {
+	/**
+	 *  The game id the dialog asked for, `None` when it named none. A
+	 *  submission attaches the excerpt only for that same game id, so a log
+	 *  read for one game cannot ride along with a report about another.
+	 */
+	requestedGameId: number | null,
+	/**
+	 *  The game the log belongs to, read from its file name. It differs from
+	 *  `requested_game_id` when no log of that game is kept and the most
+	 *  recent one was taken instead, which the dialog says.
+	 */
+	logGameId: number | null,
+	/**  The log's file name, for the preview. Never a path. */
+	fileName: string,
+	/**
+	 *  Exactly the text the report will carry, header and footer included.
+	 *  The preview shows this string and the submission appends this string,
+	 *  so what the user read is what the moderators get.
+	 */
+	block: string,
+	/**  Lines in the log, and how many of them the excerpt kept. */
+	totalLines: number,
+	keptLines: number,
+	/**  How many paths, names and addresses were replaced in what is kept. */
+	redactions: number,
+};
+
 export type ReportStatus = { type: "idle" } | { type: "submitting" } | { type: "submitted" } | { type: "failed"; payload: {
 	reason: string,
 } };
@@ -8010,12 +8526,29 @@ export type ReportingCommand = { type: "open"; payload: {
  */
 { type: "openByLogin"; payload: {
 	login: string,
-} } | { type: "close" } | { type: "loadHistory" } | { type: "submit"; payload: {
+} } | { type: "close" } | { type: "loadHistory" } |
+/**
+ *  Read the game log of `game_id`, or the most recent one when none is
+ *  kept for it, and prepare the excerpt the report would carry, so the
+ *  user can read it before deciding to send it. Sent again when the game
+ *  id changes while the box is ticked.
+ */
+{ type: "attachLog"; payload: {
+	gameId: number | null,
+} } |
+/**  Take the excerpt off the report again. */
+{ type: "detachLog" } | { type: "submit"; payload: {
 	playerId: number,
 	login: string,
 	description: string,
 	gameId: number | null,
 	incidentTime: string,
+	/**
+	 *  Append the prepared excerpt the user was shown. Only an excerpt
+	 *  that is ready and was prepared for this `game_id` is attached; the
+	 *  submission refuses rather than read the log again unseen.
+	 */
+	attachLog: boolean,
 } };
 
 export type ReportingEvent = { type: "opened"; payload: {
@@ -8027,7 +8560,16 @@ export type ReportingEvent = { type: "opened"; payload: {
 	reports: ModerationReportSummary[],
 } } | { type: "historyFailed"; payload: {
 	reason: string,
-} };
+} } | { type: "logPreparing"; payload: {
+	gameId: number | null,
+} } | { type: "logPrepared"; payload: {
+	excerpt: ReportLogExcerpt,
+} } | { type: "logUnavailable"; payload: {
+	gameId: number | null,
+} } | { type: "logFailed"; payload: {
+	gameId: number | null,
+	reason: string,
+} } | { type: "logDetached" };
 
 export type ReportingState = {
 	open: boolean,
@@ -8036,6 +8578,7 @@ export type ReportingState = {
 	status: ReportStatus,
 	history: ModerationReportSummary[],
 	historyStatus: ReportHistoryStatus,
+	logAttachment: ReportLogAttachment,
 };
 
 export type RequestFailureKind =
@@ -8400,6 +8943,11 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 /**  Write or clear the private note and tags on one replay (#324). */
 { type: "setReplayNote"; payload: {
 	replayId: number,
+	/**
+	 *  The file, for a replay whose header names no game: the note is
+	 *  kept on that instead. Ignored when `replay_id` names a game.
+	 */
+	localPath?: string | null,
 	comment: string,
 	tags: string[],
 } } |
@@ -12074,7 +12622,16 @@ export type UploadsCommand = { type: "open"; payload: {
 	ranked: boolean,
 } } |
 /**  Publish whatever the dialog currently describes. */
-{ type: "start" };
+{ type: "start" } |
+/**
+ *  Stop the publish that is running, while the archive is being packed or
+ *  sent. The request is dropped mid-transfer, so the vault never receives
+ *  a whole archive, and the temporary archive is deleted. Once every byte
+ *  is sent the server decides on its own, and this does nothing: calling
+ *  it off then could only claim a stop that did not happen. Ends with the
+ *  status back at `Idle`.
+ */
+{ type: "cancel" };
 
 export type UploadsEvent = { type: "opened"; payload: {
 	request: UploadRequest,

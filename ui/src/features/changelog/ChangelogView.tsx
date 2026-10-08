@@ -16,11 +16,13 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { Button } from "../../design-system/Button";
 import { EmptyState } from "../../design-system/EmptyState";
 import { Icon } from "../../design-system/Icon";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useRememberedFilter } from "../../shared/filterMemory";
+import { plainError } from "../../shared/plainError";
 import { formatDate } from "../../shared/format/dates";
 import { FeaturedModIcon } from "../../shared/components/FeaturedModIcon";
 import type {
@@ -396,7 +398,13 @@ export function ChangelogView() {
         <EmptyState
           icon="changelog"
           title={t("changelog.failed.title")}
-          hint={changelog.status.payload.reason}
+          // Plainly, with the system's own wording kept on hover for a bug
+          // report: the raw reason was an HTTP client's English.
+          hint={
+            <span title={changelog.status.payload.reason}>
+              {plainError(changelog.status.payload.reason)}
+            </span>
+          }
         >
           <Button
             variant="primary"
@@ -594,13 +602,13 @@ export function ChangelogView() {
               )}
 
               {changelog.entryStatus.type === "failed" && !entry && selected && (
-                <div className="changelog-note-failed" role="alert">
-                  <p>{changelog.entryStatus.payload.reason}</p>
-                  <Button onClick={() => select(selected.id)}>
-                    <Icon name="refresh" size={13} />
-                    <span>{t("changelog.retry")}</span>
-                  </Button>
-                </div>
+                <StatusNotice
+                  tone="error"
+                  action={{ label: t("changelog.retry"), onClick: () => select(selected.id) }}
+                  detail={changelog.entryStatus.payload.reason}
+                >
+                  {plainError(changelog.entryStatus.payload.reason)}
+                </StatusNotice>
               )}
 
               {!selected && changelog.status.type === "ready" && (

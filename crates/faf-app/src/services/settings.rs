@@ -39,7 +39,7 @@ pub struct SettingsContext {
     /// on their own tasks, so two patches could both read the group before
     /// either emitted, and the second would carry the first's field back to
     /// its old value. Synchronous: nothing in between awaits.
-    merge: std::sync::Mutex<()>,
+    merge: SettingsMerge,
     /// Added sounds whose removal is under way. A notifications change that
     /// would newly choose one is refused, so a dropdown that still lists it
     /// cannot leave a saved setting naming a file about to be deleted.
@@ -64,6 +64,52 @@ impl SettingsContext {
     /// with a settings command's.
     pub fn write_order(&self) -> SerialMutation {
         self.persist.clone()
+    }
+
+    /// Read a settings group, change it and emit it, under the same lock the
+    /// settings commands merge under, for a service that writes a group of its
+    /// own (event reminders, chat read markers, the host form, vetoes).
+    ///
+    /// Without it such a service read the group, and a `Patch*` of the same
+    /// group could land before it emitted: its emit then carried the old value
+    /// of whatever the patch had just changed back into state. The
+    /// architecture check refuses a settings event emitted any other way from
+    /// outside this service.
+    pub fn merge_and_emit<E: Into<Option<SettingsEvent>>, R>(
+        &self,
+        out: &EventSink,
+        change: impl FnOnce(&faf_domain::state::SettingsState) -> (E, R),
+    ) -> R {
+        self.merge.merge_and_emit(out, change)
+    }
+
+    /// The same lock, for a service writing settings from a spawned task that
+    /// cannot borrow this context. See [`Self::write_order`] for its twin.
+    pub fn merger(&self) -> SettingsMerge {
+        self.merge.clone()
+    }
+}
+
+/// The lock every settings group is read, changed and emitted under, cloneable
+/// so a spawned task can hold it. See [`SettingsContext::merge_and_emit`].
+#[derive(Clone, Default)]
+pub struct SettingsMerge(std::sync::Arc<std::sync::Mutex<()>>);
+
+impl SettingsMerge {
+    pub fn merge_and_emit<E: Into<Option<SettingsEvent>>, R>(
+        &self,
+        out: &EventSink,
+        change: impl FnOnce(&faf_domain::state::SettingsState) -> (E, R),
+    ) -> R {
+        let _merging = self
+            .0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let (event, result) = out.with_state(|state| change(&state.settings));
+        if let Some(event) = event.into() {
+            out.emit(event);
+        }
+        result
     }
 }
 
@@ -265,12 +311,13 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         SettingsCommand::SetReplayNote {
             replay_id,
+            local_path,
             comment,
             tags,
         } => {
             merge(ctx, out, |settings| {
                 let mut preferences = settings.social.clone();
-                preferences.set_replay_note(replay_id, comment, tags);
+                preferences.set_replay_note(replay_id, local_path.as_deref(), comment, tags);
                 (SettingsEvent::SocialChanged { preferences }, ())
             });
             persist(ctx, out).await;
@@ -465,16 +512,7 @@ fn merge<E: Into<Option<SettingsEvent>>, R>(
     out: &EventSink,
     change: impl FnOnce(&faf_domain::state::SettingsState) -> (E, R),
 ) -> R {
-    let _merging = ctx
-        .settings
-        .merge
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let (event, result) = out.with_state(|state| change(&state.settings));
-    if let Some(event) = event.into() {
-        out.emit(event);
-    }
-    result
+    ctx.settings.merge_and_emit(out, change)
 }
 
 /// Write the whole settings document back, once there is one to write.

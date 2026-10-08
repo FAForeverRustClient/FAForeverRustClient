@@ -9,7 +9,7 @@
 // replaces whatever the Replays tab was showing. Drawn as a table like the
 // live-replay one, with the same draggable, remembered column widths.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
@@ -55,6 +55,14 @@ function signed(change: number): string {
 }
 
 /**
+ * Asks for the list again. The same command on the tab's first visit and on
+ * Retry, so a retried load is answered exactly like the first one.
+ */
+function loadRecentGames() {
+  ipc.send({ kind: "Replays", command: { type: "loadRecentMatchmaker" } });
+}
+
+/**
  * The designed widths, in the order the columns are drawn: the map picture,
  * the map, the mode, the other team, when, the result, the rating change and
  * the two replay buttons. The map column is the flexible one and takes what
@@ -62,6 +70,24 @@ function signed(change: number): string {
  */
 const DEFAULT_COLUMN_PX = [64, 220, 70, 220, 110, 96, 80, 150];
 const FLEXIBLE_COLUMN = 1;
+
+/**
+ * The narrowest each column is drawn, in the same order. The map and the
+ * opponents are what tell one game from another, so they keep a readable
+ * name: cut to "Set..." and "Op..." at 1280 pixels with the party chat open,
+ * as they were, a list of five games read as five copies of one. The room
+ * comes from the replay column, which narrower than its designed width draws
+ * Watch and the vault button as two 28 pixel icon buttons (see
+ * `compactActions`) rather than keeping Watch's label at the names' expense.
+ * The picture keeps its 44 pixel thumbnail, the result a whole "Victory", the
+ * mode and the rating change ("+18" in tabular figures) their few characters,
+ * the time its first ones. Together these fit that 1280 pixel window, where
+ * the table has about 478 pixels.
+ */
+const COLUMN_FLOOR_PX = [60, 88, 36, 80, 40, 56, 42, 76];
+
+/** The replay buttons' column, in designed order. */
+const REPLAY_COLUMN = 7;
 
 export function MatchmakerRecentGames({ playerName, vault }: { playerName: string; vault: VaultMap[] }) {
   const { t } = useTranslation();
@@ -76,15 +102,29 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
     orderField: "matchmakerRecentOrder",
     defaults: DEFAULT_COLUMN_PX,
     flexible: FLEXIBLE_COLUMN,
+    floors: COLUMN_FLOOR_PX,
     headerRef,
   });
   const { order, moving, widths: columns } = list;
-  const { openPlayerMenu, playerMenu } = usePlayerMenu();
+  // Watch keeps its label only at the replay column's designed width, which
+  // is what its longer translations were sized for. Narrower, whether the
+  // window squeezed it or a divider did, both buttons are icons, and Watch's
+  // name stays in its tooltip and for a screen reader.
+  const compactActions = columns.drawn[REPLAY_COLUMN] < DEFAULT_COLUMN_PX[REPLAY_COLUMN];
+  const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
+  // The game whose row the player menu was opened from. The menu does not
+  // print the name it is about and opens under the pointer, which has left the
+  // row by then, so the row stays looking hovered and the name it was opened
+  // on stays marked, as the chat roster does. Kept per game rather than per
+  // name: the same opponent can be in several rows, and only one of them is
+  // the row the menu came from.
+  const [menuGame, setMenuGame] = useState<number | null>(null);
+  const menuGameOpen = playerMenuTarget === null ? null : menuGame;
 
   // Once per visit to the tab, and again for another account.
   useEffect(() => {
     if (!playerName) return;
-    ipc.send({ kind: "Replays", command: { type: "loadRecentMatchmaker" } });
+    loadRecentGames();
   }, [playerName]);
 
   const openReplay = (uid: number) => {
@@ -154,9 +194,18 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
         aria-labelledby="matchmaker-recent-title"
       >
         <h2 id="matchmaker-recent-title">{t("lobby.matchmaker.recent.title")}</h2>
-        <p className="muted matchmaker-recent-state" role={status.type === "failed" ? "alert" : undefined}>
+        {/* The state is what gives way on a narrow line, so the whole of it,
+            the failure's reason included, is on hover. */}
+        <p
+          className="muted matchmaker-recent-state"
+          role={status.type === "failed" ? "alert" : undefined}
+          title={state}
+        >
           {state}
         </p>
+        {/* Next to the failure it answers. Without it the only way to ask
+            again was to leave the tab and come back. */}
+        {status.type === "failed" && <Button onClick={loadRecentGames}>{t("common.retry")}</Button>}
         {profileLink}
       </section>
     );
@@ -175,8 +224,17 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
         {profileLink}
       </div>
 
+      {/* A reload that failed after an earlier one listed games, such as on a
+          later visit to the tab: the store keeps the old list, and this card
+          says why it is not showing it, with the same way to ask again as the
+          slim line. */}
       {status.type === "failed" ? (
-        <p className="muted matchmaker-recent-state">{t("lobby.matchmaker.recent.failed", { reason: status.payload.reason })}</p>
+        <div className="matchmaker-recent-failed">
+          <p className="muted matchmaker-recent-state" role="alert">
+            {t("lobby.matchmaker.recent.failed", { reason: status.payload.reason })}
+          </p>
+          <Button onClick={loadRecentGames}>{t("common.retry")}</Button>
+        </div>
       ) : (
         <div className="matchmaker-recent-table-wrap">
           <table className="matchmaker-recent-table" ref={columns.containerRef}>
@@ -236,9 +294,20 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
                         reader's friend, foe and custom colours, and the
                         same right-click menu as a replay lineup. */}
                     {side.opponents.map((name, index) => (
-                      <span key={name} onContextMenu={(event) => openPlayerMenu(name, event)}>
+                      <span
+                        key={name}
+                        onContextMenu={(event) => {
+                          setMenuGame(game.uid);
+                          openPlayerMenu(name, event);
+                        }}
+                      >
                         {index > 0 && ", "}
-                        <PlayerName name={name} />
+                        <PlayerName
+                          name={name}
+                          className={menuGameOpen === game.uid && playerMenuTarget === name
+                            ? "matchmaker-recent-opponent is-menu-open"
+                            : "matchmaker-recent-opponent"}
+                        />
                       </span>
                     ))}
                   </td>,
@@ -250,13 +319,15 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
                     {change === null ? "" : signed(change)}
                   </td>,
                   <td key={7} className="matchmaker-recent-replay">
-                    <span className="matchmaker-recent-actions">
+                    <span className={`matchmaker-recent-actions${compactActions ? " is-compact" : ""}`}>
                       <Button
                         disabled={!game.replayAvailable}
+                        aria-label={compactActions ? t("lobby.matchmaker.recent.watch") : undefined}
                         title={game.replayAvailable ? t("lobby.matchmaker.recent.watchHint") : t("lobby.matchmaker.recent.notYetAvailable")}
                         onClick={() => ipc.send({ kind: "Replays", command: { type: "watchVault", payload: { uid: game.uid } } })}
                       >
-                        <Icon name="play" size={13} /> {t("lobby.matchmaker.recent.watch")}
+                        <Icon name="play" size={13} />
+                        {!compactActions && <> {t("lobby.matchmaker.recent.watch")}</>}
                       </Button>
                       {/* Icon only, so it needs words on hover as well as
                           for a screen reader (issue 361). */}
@@ -271,7 +342,10 @@ export function MatchmakerRecentGames({ playerName, vault }: { playerName: strin
                   </td>,
                 ];
                 return (
-                  <tr key={game.uid} className="matchmaker-recent-row">
+                  <tr
+                    key={game.uid}
+                    className={menuGameOpen === game.uid ? "matchmaker-recent-row is-menu-open" : "matchmaker-recent-row"}
+                  >
                     {order.map((column) => cells[column])}
                   </tr>
                 );

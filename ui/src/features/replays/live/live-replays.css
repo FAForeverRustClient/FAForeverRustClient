@@ -131,7 +131,15 @@
   overflow-x: hidden;
 }
 
-/* As wide as the space it has, every column on screen (issue 341). */
+/* Sideways only once every column is at its floor and the floors are wider
+   than the panel (`useColumnWidths` marks the table): Watch then stays
+   reachable rather than cut off at the edge. */
+.live-replay-table-wrap:has(> [data-columns-overflow]) {
+  overflow-x: auto;
+}
+
+/* As wide as the space it has, every column on screen (issue 341), and no
+   column narrower than its floor. */
 .live-replay-table {
   width: 100%;
   border-collapse: collapse;

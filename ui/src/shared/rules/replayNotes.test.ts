@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   allReplayTags,
+  gameReplayNotes,
   hasAnyTag,
   normalizeReplayNotes,
   noteForReplay,
@@ -18,8 +19,24 @@ describe("replay notes", () => {
       { replayId: 30, comment: " ", tags: [] },
       { replayId: 0, comment: "no game", tags: [] },
     ])).toEqual([
-      { replayId: 9, comment: "Comeback", tags: [] },
-      { replayId: 12, comment: "", tags: ["Lots finals"] },
+      { replayId: 9, path: null, comment: "Comeback", tags: [] },
+      { replayId: 12, path: null, comment: "", tags: ["Lots finals"] },
+    ]);
+  });
+
+  it("keeps a note on a file without a game id under its normalised path", () => {
+    expect(normalizeReplayNotes([
+      { replayId: 0, path: "C:\\Replays\\Skirmish.fafreplay", comment: "first", tags: [] },
+      { replayId: 12, path: "C:/Replays/12.fafreplay", comment: "a game", tags: [] },
+      { replayId: -1, path: "c:/replays/./skirmish.fafreplay", comment: " again ", tags: [] },
+      { replayId: 0, path: "/home/ada/Zed.fafreplay", comment: "", tags: ["ai"] },
+      { replayId: 0, path: "", comment: "nowhere", tags: [] },
+    ])).toEqual([
+      // Games first, and a game's note never keeps a path.
+      { replayId: 12, path: null, comment: "a game", tags: [] },
+      // Then files by path; one file written two ways is one note, the later winning.
+      { replayId: 0, path: "/home/ada/Zed.fafreplay", comment: "", tags: ["ai"] },
+      { replayId: 0, path: "c:/replays/skirmish.fafreplay", comment: "again", tags: [] },
     ]);
   });
 
@@ -35,9 +52,19 @@ describe("replay notes", () => {
     expect(replayNoteMatches(null, " ")).toBe(true);
   });
 
-  it("has nothing to say about a replay without a game id", () => {
-    expect(noteForReplay([{ replayId: 5, comment: "x", tags: [] }], null)).toBeNull();
-    expect(noteForReplay([{ replayId: 5, comment: "x", tags: [] }], 5)?.comment).toBe("x");
+  it("finds a game's note by its id and a file's by its path", () => {
+    const notes = [
+      { replayId: 5, path: null, comment: "x", tags: [] },
+      { replayId: 0, path: "c:/replays/skirmish.fafreplay", comment: "file", tags: [] },
+    ];
+    expect(noteForReplay(notes, 5)?.comment).toBe("x");
+    expect(noteForReplay(notes, 5, "D:/elsewhere/5.fafreplay")?.comment).toBe("x");
+    expect(noteForReplay(notes, 0, "C:\\Replays\\Skirmish.fafreplay")?.comment).toBe("file");
+    expect(noteForReplay(notes, null, "C:/Replays/old/../Skirmish.fafreplay")?.comment).toBe("file");
+    // Neither a game nor a file: nothing a note could be on.
+    expect(noteForReplay(notes, null)).toBeNull();
+    expect(noteForReplay(notes, 0, "")).toBeNull();
+    expect(noteForReplay(notes, 0, "C:/Replays/Other.fafreplay")).toBeNull();
   });
 });
 
@@ -57,5 +84,12 @@ describe("filtering by tag", () => {
     expect(replayIdsTagged(notes, [])).toEqual([]);
     expect(hasAnyTag(null, ["casts"])).toBe(false);
     expect(hasAnyTag(null, [])).toBe(true);
+  });
+
+  it("asks the vault for no game on behalf of a file without one", () => {
+    const withFile = [...notes, { replayId: 0, path: "c:/replays/skirmish.fafreplay", comment: "", tags: ["ai", "casts"] }];
+    expect(replayIdsTagged(withFile, ["ai"])).toEqual([]);
+    expect(replayIdsTagged(withFile, ["casts"])).toEqual(["3"]);
+    expect(allReplayTags(gameReplayNotes(withFile))).toEqual(["casts", "Lots finals"]);
   });
 });

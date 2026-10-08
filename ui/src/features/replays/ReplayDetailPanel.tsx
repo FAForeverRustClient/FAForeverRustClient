@@ -9,9 +9,11 @@
 
 import { useState } from "react";
 import { Modal } from "../../design-system/Modal";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import { useOverlayLayer } from "../../design-system/useOverlayLayer";
 import type { VaultReplay } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
+import { plainError } from "../../shared/plainError";
 import { useGameRating } from "./useGameRating";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { ReplayInsights } from "./analysis/ReplayInsights";
@@ -75,7 +77,11 @@ export function ReplayDetailPanel({
 }) {
   const { t } = useTranslation();
   const isLocal = source === "local";
-  const resources = useReplayDetailResources({ replay, initialLocalPath, isLocal });
+  // The rail's button both asks for the file to be read and opens the panel
+  // that shows what was in it, so its own open state is separate from whether
+  // the details have arrived.
+  const [showInsights, setShowInsights] = useState(false);
+  const resources = useReplayDetailResources({ replay, initialLocalPath, isLocal, showingInsights: showInsights });
   const { localMatch, onlineLookup, detailTeams, localPath, details, isLoadingDetails, detailsError, analysis } =
     resources;
   const map = useReplayMapPreparation({ replay, localMatch });
@@ -84,10 +90,6 @@ export function ReplayDetailPanel({
   const [copiedMapName, setCopiedMapName] = useState(false);
   /// Whether the map preview has been opened out of the rail.
   const [enlarged, setEnlarged] = useState(false);
-  // The rail's button both asks for the file to be read and opens the panel
-  // that shows what was in it, so its own open state is separate from whether
-  // the details have arrived.
-  const [showInsights, setShowInsights] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
   const totalPlayers = playerCount(detailTeams);
@@ -157,9 +159,21 @@ export function ReplayDetailPanel({
         status={map.mapGenStatus}
         running={map.isGeneratingThisMap}
         progress={map.generatorProgress}
+        // The thumbnail's own generate action: there while this map is not on
+        // disk and has a seed to build from, which is when trying again can
+        // do anything.
+        onRetry={
+          map.thumbGenerateAction && !map.thumbGenerateAction.disabled ? map.thumbGenerateAction.run : undefined
+        }
       />
       {downloadState === "failed" && (
-        <p className="replay-download-error surface-error">{t("replays.detail.downloadFailed", { error: downloadError })}</p>
+        <StatusNotice
+          tone="error"
+          action={onDownload ? { label: t("common.retry"), onClick: onDownload } : undefined}
+          detail={downloadError}
+        >
+          {t("replays.detail.downloadFailed", { error: plainError(downloadError) })}
+        </StatusNotice>
       )}
 
       <ReplayDetailFacts
@@ -213,7 +227,12 @@ export function ReplayDetailPanel({
           downloaded, and the panel says so while it is, where a button that
           waited for the answer looked like it had done nothing. */}
       {showNotes && (
-        <ReplayNotesDialog replayId={replay.uid} title={cardTitle} onClose={() => setShowNotes(false)} />
+        <ReplayNotesDialog
+          replayId={replay.uid}
+          localPath={localPath}
+          title={cardTitle}
+          onClose={() => setShowNotes(false)}
+        />
       )}
       {showInsights && (
         <ReplayInsights
@@ -227,11 +246,18 @@ export function ReplayDetailPanel({
           mapAction={map.heatmapMapAction}
           loading={isLoadingDetails}
           error={detailsError ?? ""}
+          onRetry={resources.requestInsights}
           onClose={() => setShowInsights(false)}
         />
       )}
       {detailsError && (
-        <p className="replay-download-error surface-error">{detailsError}</p>
+        <StatusNotice
+          tone="error"
+          action={{ label: t("common.retry"), onClick: resources.requestInsights }}
+          detail={detailsError}
+        >
+          {plainError(detailsError)}
+        </StatusNotice>
       )}
     </Modal>
   );

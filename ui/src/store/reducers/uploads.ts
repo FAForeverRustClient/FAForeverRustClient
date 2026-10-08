@@ -7,6 +7,17 @@ export function isUploadBusy(status: UploadsState["status"]): boolean {
   return status.type === "compressing" || status.type === "uploading" || status.type === "finishing";
 }
 
+/**
+ * Twin of `UploadStatus::is_cancellable`: a publish can be called off while it
+ * is packed and while bytes are still going out, and not once the server could
+ * have all of them.
+ */
+export function isUploadCancellable(status: UploadsState["status"]): boolean {
+  if (status.type === "compressing") return true;
+  if (status.type !== "uploading") return false;
+  return status.payload.sentBytes < status.payload.totalBytes || status.payload.totalBytes === 0;
+}
+
 export function reduceUploads(state: UploadsState, event: UploadsEvent): UploadsState {
   switch (event.type) {
     case "opened":

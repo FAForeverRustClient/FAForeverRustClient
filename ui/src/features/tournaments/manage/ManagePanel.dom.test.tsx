@@ -117,7 +117,11 @@ describe("ManagePanel organiser writes, mounted", () => {
     expect(screen.getByRole("button", { name: "Mark as abandoned" }).hasAttribute("disabled")).toBe(true);
 
     failed(action, "Need at least two entrants to form teams");
-    expect(screen.getByText("Need at least two entrants to form teams")).toBeDefined();
+    // The service's own sentence, finished with a full stop by `plainError`,
+    // and exactly as it was sent on hover.
+    expect(screen.getByText("Need at least two entrants to form teams.").getAttribute("title")).toBe(
+      "Need at least two entrants to form teams",
+    );
     expect(formTeams.hasAttribute("disabled")).toBe(false);
 
     // The retry: starting it takes the old refusal down, and the reload's
@@ -125,7 +129,7 @@ describe("ManagePanel organiser writes, mounted", () => {
     await user.click(formTeams);
     expect(sent("advance")).toHaveLength(2);
     started(action);
-    expect(screen.queryByText("Need at least two entrants to form teams")).toBeNull();
+    expect(screen.queryByText("Need at least two entrants to form teams.")).toBeNull();
     succeeded(action, { ...signups, status: "drafted", teamCount: 2 });
     expect(screen.queryByRole("button", { name: "Close signups and form teams" })).toBeNull();
     expect(screen.getByRole("button", { name: "Draw the bracket" }).hasAttribute("disabled")).toBe(false);
@@ -149,7 +153,7 @@ describe("ManagePanel organiser writes, mounted", () => {
     expect(screen.getByRole("button", { name: "Decline" }).hasAttribute("disabled")).toBe(true);
 
     failed(action, "This player is banned from the event");
-    expect(screen.getByText("This player is banned from the event")).toBeDefined();
+    expect(screen.getByText("This player is banned from the event.")).toBeDefined();
     // The row is still waiting and still answerable.
     expect(approve.hasAttribute("disabled")).toBe(false);
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(1);
@@ -188,7 +192,7 @@ describe("ManagePanel organiser writes, mounted", () => {
     }
 
     failed(action, "Pool A has no maps yet");
-    expect(screen.getByText("Pool A has no maps yet")).toBeDefined();
+    expect(screen.getByText("Pool A has no maps yet.")).toBeDefined();
     expect(screen.queryAllByRole("button", { name: "Pool A", pressed: true })).toHaveLength(0);
     expect(rounds[0].hasAttribute("disabled")).toBe(false);
 
@@ -224,7 +228,7 @@ describe("ManagePanel organiser writes, mounted", () => {
     started(action);
     expect(picker.hasAttribute("disabled")).toBe(true);
     failed(action, "Only the series owner can add editions");
-    expect(screen.getByText("Only the series owner can add editions")).toBeDefined();
+    expect(screen.getByText("Only the series owner can add editions.")).toBeDefined();
     expect(picker.hasAttribute("disabled")).toBe(false);
     expect((picker as HTMLSelectElement).value).toBe("");
 
@@ -232,7 +236,7 @@ describe("ManagePanel organiser writes, mounted", () => {
     started(action);
     succeeded(action, { ...signups, seriesId: "s1", seriesName: "Spring Series" });
     expect((picker as HTMLSelectElement).value).toBe("s1");
-    expect(screen.queryByText("Only the series owner can add editions")).toBeNull();
+    expect(screen.queryByText("Only the series owner can add editions.")).toBeNull();
   });
 
   it("sends a second advance on a double click: the tab does not guard a write before the service starts it", async () => {

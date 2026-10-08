@@ -30,17 +30,8 @@
 
 /* Surface treatment comes from `.surface` / `.surface-error` in
    design-system/patterns.css; only layout is local. */
-.tournaments-state,
-.tournaments-error {
+.tournaments-state {
   padding: var(--space-4);
-}
-
-.tournaments-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
 }
 
 /* The Java client's split pane: list left, detail right. Collapses to a single
@@ -162,11 +153,11 @@
 }
 
 .tournament-badge.is-signup {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .tournament-badge.is-running {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 /* Surface treatment comes from `.surface-panel`. */
@@ -294,7 +285,7 @@
 
 .tournament-match-side.is-winner {
   font-weight: 600;
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .tournament-match-score {
@@ -1188,7 +1179,7 @@
 
 .tournament-hidden-mark {
   font-size: 12px;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   white-space: nowrap;
 }
 
@@ -1227,7 +1218,7 @@
    than after the service has turned the form away. */
 .tournament-refusal {
   margin: 0;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: 13px;
 }
 
@@ -1281,7 +1272,7 @@
 
 .tournament-chat-tool.is-danger:hover,
 .tournament-chat-tool.is-danger:focus-visible {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .tournament-chat-tool:disabled {
@@ -1400,7 +1391,7 @@
 
 .tournament-chat-bell {
   display: inline-flex;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 /* Picking maps out of the vault.
@@ -1941,12 +1932,12 @@
 .tournament-prize {
   font-size: 22px;
   font-weight: 700;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-setup-headline {
   margin: 0;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-size: 12px;
 }
 
@@ -2069,7 +2060,7 @@
   border: 0;
   background: none;
   padding: 0;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font: inherit;
   cursor: pointer;
   text-align: left;
@@ -2139,7 +2130,7 @@
   align-self: end;
   padding-bottom: var(--space-2);
   font-weight: 700;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 /* -- The section body -----------------------------------------------------
@@ -2359,7 +2350,7 @@
 
 .tournament-round-pool-toggle.is-open {
   border-color: var(--color-warn);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 /* The pool is an overlay now (`.tournament-pool-modal`), so there is no panel
@@ -2423,7 +2414,7 @@
 }
 
 .tournament-tag.is-official {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 /* The row's two marks, side by side. */
@@ -2571,7 +2562,7 @@
 /* The step that can be worked on. */
 .tournament-flow-step.is-open::before {
   border-color: var(--color-warn);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 /* -- The match, as a bracket draws one ------------------------------------
@@ -2837,7 +2828,7 @@
 .tournament-pool-tag.is-add:hover:not(:disabled),
 .tournament-pool-tag.is-add:focus-visible {
   border-color: var(--color-warn);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-combine-modal {
@@ -3040,7 +3031,7 @@
 }
 
 .tournament-swiss-side.is-winner {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .tournament-swiss-match.is-done .tournament-swiss-side:not(.is-winner) {
@@ -3106,7 +3097,7 @@
 }
 
 .tournament-veto-abtag.is-b {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-veto-turn.is-ban,
@@ -3167,7 +3158,7 @@
 
 .tournament-veto-confirm {
   font-weight: 600;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-veto-map img.is-dim,
@@ -3256,21 +3247,21 @@
 }
 
 .tournament-veto-act.is-ban {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .tournament-veto-act.is-pick {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .tournament-veto-act.is-decider {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 /* A match whose vetoes wait on this account. */
 .tournament-round-pool-toggle.is-due {
   border-color: var(--color-warn);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-round-pool-toggle .tournament-badge {
@@ -3382,7 +3373,7 @@
   align-items: center;
   gap: var(--space-1);
   font-weight: 700;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-turn-dot {
@@ -3610,7 +3601,7 @@
 }
 
 .tournament-mt-team.is-winner {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   font-weight: 600;
 }
 
@@ -3640,15 +3631,15 @@
 }
 
 .tournament-mt-state.is-vetoes {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-mt-state.is-live {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .tournament-mt-state.is-done {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 /* The details overlay of one match. */
@@ -3880,7 +3871,7 @@
 .tournament-pool-card-warn {
   margin: 0;
   font-size: 12px;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-pool-card-assign,
@@ -3890,7 +3881,7 @@
 }
 
 .tournament-pool-card-assign {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-mapdb-grid {
@@ -3966,7 +3957,7 @@
 .tournament-mapdb-used {
   margin: 0;
   font-size: 11px;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-mapdb-used.muted {
@@ -3974,7 +3965,7 @@
 }
 
 .tournament-badge.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .tournament-map-lightbox {
@@ -4028,7 +4019,7 @@
   padding: 0 var(--space-2);
   border: 1px solid var(--color-warn);
   border-radius: var(--radius-sm);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-weight: 600;
 }
 
@@ -4078,7 +4069,7 @@
 /* The server's own lines (dice rolls, organiser pings), drawn as the Chat tab
    draws its info lines. */
 .tournament-chat-post.is-system .tournament-chat-text {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-style: italic;
 }
 
@@ -4154,7 +4145,7 @@ button.tournament-chat-author:hover {
   padding: 0 3px;
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-weight: 600;
 }
 
@@ -4288,7 +4279,7 @@ button.tournament-chat-author:hover {
 
 .tournament-chat-action.is-danger:hover,
 .tournament-chat-action.is-danger:focus-visible {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* The popup's shorter log. */
@@ -4669,7 +4660,7 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-warning {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-team-seed {
@@ -4678,11 +4669,11 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-team-count.is-ok {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .tournament-team-count.is-over {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .tournament-free-agents-head {
@@ -4745,19 +4736,19 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-pill.is-signup {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   border-color: var(--color-ok);
 }
 
 .tournament-pill.is-running,
 .tournament-pill.is-draft,
 .tournament-pill.is-drafted {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   border-color: var(--color-warn);
 }
 
 .tournament-pill.is-abandoned {
-  color: var(--color-error);
+  color: var(--color-error-text);
   border-color: var(--color-error);
 }
 
@@ -4849,12 +4840,12 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-countdown.is-close {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   border-color: var(--color-warn);
 }
 
 .tournament-row-prize {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   font-weight: 600;
 }
 
@@ -5178,7 +5169,7 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-toggle.is-on {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   border-color: var(--color-warn);
   background: var(--color-surface-raised);
 }
@@ -5208,7 +5199,7 @@ button.tournament-chat-author:hover {
 
 .tournament-hotkey.is-arming {
   border-color: var(--color-warn);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 /* A chat pinned beside the sections. */
@@ -5301,7 +5292,7 @@ button.tournament-chat-author:hover {
 
 .tournament-pin.is-on {
   border-color: var(--color-warn);
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-chat-open {
@@ -5354,7 +5345,7 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-picks-callout.is-urgent strong {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .tournament-picks-rows,
@@ -5561,11 +5552,11 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-veto-act.is-ban {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .tournament-veto-act.is-pick {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .tournament-team-link {
@@ -5584,7 +5575,7 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-standdown.is-off {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   border-color: var(--color-warn);
 }
 
@@ -5674,7 +5665,7 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-series-name.is-amber {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-series-name.is-blue {
@@ -5682,11 +5673,11 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-series-name.is-green {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .tournament-series-name.is-red {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .tournament-series-name.is-purple {
@@ -5708,7 +5699,7 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-colour-swatch.is-amber {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
 }
 
 .tournament-colour-swatch.is-blue {
@@ -5716,11 +5707,11 @@ button.tournament-chat-author:hover {
 }
 
 .tournament-colour-swatch.is-green {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .tournament-colour-swatch.is-red {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .tournament-colour-swatch.is-purple {

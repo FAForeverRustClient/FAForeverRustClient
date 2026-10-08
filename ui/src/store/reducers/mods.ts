@@ -36,8 +36,25 @@ export function reduceMods(state: ModsState, event: ModsEvent): ModsState {
     case "installing":
       return {
         ...state,
-        installStatus: { type: "installing", payload: { uid: event.payload.uid } },
+        installStatus: { type: "installing", payload: { uid: event.payload.uid, progress: null } },
       };
+    // Both only for the install they name, as in `faf_domain::state::mods`.
+    case "installProgressed":
+      return state.installStatus.type === "installing"
+        && state.installStatus.payload.uid === event.payload.uid
+        ? {
+          ...state,
+          installStatus: {
+            type: "installing",
+            payload: { uid: event.payload.uid, progress: event.payload.progress },
+          },
+        }
+        : state;
+    case "installCancelled":
+      return state.installStatus.type === "installing"
+        && state.installStatus.payload.uid === event.payload.uid
+        ? { ...state, installStatus: { type: "idle" } }
+        : state;
     case "installed":
       return {
         ...state,

@@ -550,7 +550,7 @@
 }
 
 .leaderboard-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .leaderboard-season-toolbar {
@@ -663,7 +663,7 @@
 }
 
 .leaderboard-active {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .leaderboard-overview-grid {

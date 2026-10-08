@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import type { CopySource, Tourney, TourneyDraft, TourneyLoadStatus, TourneyPreset } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { plainError } from "../../../shared/plainError";
 import { draftOf } from "./TournamentForm";
 
 /**
@@ -114,8 +115,12 @@ export function CreateStarters(props: CreateStartersProps) {
               {t("tournaments.create.fill")}
             </Button>
           </div>
+          {/* Plainly, with the service's own words on hover; Fill, just
+              above, is the way to ask again. */}
           {templateStatus.type === "failed" && asked !== null && (
-            <p className="tournament-refusal">{templateStatus.payload.reason}</p>
+            <p className="tournament-refusal" title={templateStatus.payload.reason}>
+              {plainError(templateStatus.payload.reason)}
+            </p>
           )}
           {filledFrom !== null && <p className="muted">{t("tournaments.create.filled", { name: filledFrom })}</p>}
         </fieldset>

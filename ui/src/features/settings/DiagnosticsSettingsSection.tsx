@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import { native, type LogIssue, type LogKind, type LogPreview } from "../../ipc/native";
 import { openExternalUrl } from "../../shared/externalLinks";
+import { plainError } from "../../shared/plainError";
 
 /**
  * Where an issue's "More information" goes, empty when there is nothing useful
@@ -20,19 +22,27 @@ const LOG_ISSUE_HELP: Record<LogIssue, string> = {
 import { SettingRow } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
+/**
+ * What the last press left to say: that there are no logs yet, or that the
+ * shell refused, with its reason and the press to repeat.
+ */
+type Outcome = { kind: "noLogs" } | { kind: "failed"; reason: string; retry: () => void };
+
 export function DiagnosticsSettingsSection() {
   const { t } = useTranslation();
   const [preview, setPreview] = useState<LogPreview | null>(null);
-  const [error, setError] = useState("");
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
   const openFolder = (kind: LogKind) => {
-    setError("");
-    void native.openLogFolder(kind).catch((reason) => setError(String(reason)));
+    setOutcome(null);
+    void native.openLogFolder(kind).catch((reason) =>
+      setOutcome({ kind: "failed", reason: String(reason), retry: () => openFolder(kind) }));
   };
   const viewLatest = (kind: LogKind) => {
-    setError("");
+    setOutcome(null);
     void native.readLatestLog(kind)
-      .then((result) => result ? setPreview(result) : setError(t("settings.diagnostics.noLogs")))
-      .catch((reason) => setError(String(reason)));
+      .then((result) => result ? setPreview(result) : setOutcome({ kind: "noLogs" }))
+      .catch((reason) =>
+        setOutcome({ kind: "failed", reason: String(reason), retry: () => viewLatest(kind) }));
   };
 
   return (
@@ -49,7 +59,21 @@ export function DiagnosticsSettingsSection() {
           <Button onClick={() => openFolder("client")}>{t("settings.diagnostics.openFolder")}</Button>
         </div>
       </SettingRow>
-      {error && <p className="settings-inline-error" role="alert">{error}</p>}
+      {outcome?.kind === "noLogs" && (
+        <p className="settings-inline-error" role="alert">{t("settings.diagnostics.noLogs")}</p>
+      )}
+      {/* The shell's reason in a plain sentence, its own words ("could not
+          read latest log: ...") on hover, and the same press again. */}
+      {outcome?.kind === "failed" && (
+        <StatusNotice
+          tone="error"
+          className="settings-inline-notice"
+          action={{ label: t("common.retry"), onClick: outcome.retry }}
+          detail={outcome.reason}
+        >
+          {plainError(outcome.reason)}
+        </StatusNotice>
+      )}
       {preview && (
         <Modal className="diagnostic-log-modal" onClose={() => setPreview(null)}>
           <h2>{preview.fileName}</h2>

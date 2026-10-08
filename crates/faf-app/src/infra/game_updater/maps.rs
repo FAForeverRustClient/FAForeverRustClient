@@ -12,6 +12,7 @@ use crate::infra::vault_install::{
 use crate::ports::{PreparationPhase, PreparationStep};
 
 use super::install::documents_vault_dir;
+use super::{lease_dirs, off_runtime, unless_called_off, InstallLease, CALLED_OFF};
 
 /// The two directories FA's replay-mode init scripts may search for maps:
 /// the user's real vault ([`documents_vault_dir`], honored by
@@ -115,18 +116,36 @@ pub async fn ensure_map_available(
 /// already put the player in a game on this map: launching without it is a
 /// guaranteed failure to load. Base-game maps (`scmp_009`) are not vault maps
 /// and return `Ok` untouched.
+///
+/// Stops once `called_off` is cancelled, answering `Err`: before the map is
+/// looked for, or while it downloads. An archive already being unpacked is
+/// finished by its worker under the map's lease (see [`stage_map`]), so the
+/// map is whole or absent either way.
 pub async fn ensure_live_map(
     http: &reqwest::Client,
     content_base: &str,
     maps_dir: &Path,
     map_folder: &str,
     progress: &(dyn Fn(PreparationStep) + Sync),
+    called_off: &tokio_util::sync::CancellationToken,
 ) -> Result<(), String> {
-    let dirs = live_map_dirs(
-        maps_dir,
-        documents_vault_dir().map(|dir| dir.join("maps")),
-        map_folder,
-    );
+    if called_off.is_cancelled() {
+        return Err(CALLED_OFF.to_string());
+    }
+    // On the blocking pool, like `map_folder_in_any`: the look reads the
+    // whole maps folder when the exact name is not there, which is a few
+    // thousand entries on a well-used install, and finding the Documents
+    // folder asks the file system too. A matchmaker search looks once per
+    // pool map, so on the async runtime this was a stall per map.
+    let (maps_dir, folder) = (maps_dir.to_path_buf(), map_folder.to_string());
+    let dirs = off_runtime(move || {
+        live_map_dirs(
+            &maps_dir,
+            documents_vault_dir().map(|dir| dir.join("maps")),
+            &folder,
+        )
+    })
+    .await?;
     if dirs.is_empty() {
         return Ok(());
     }
@@ -134,7 +153,9 @@ pub async fn ensure_live_map(
         PreparationPhase::Map,
         format!("Downloading map {map_folder}…"),
     ));
-    stage_map(http, content_base, &dirs, map_folder).await
+    // Dropping the staging is safe at every await in it: that is how a
+    // replay's preparation has always been called off.
+    unless_called_off(called_off, stage_map(http, content_base, &dirs, map_folder)).await
 }
 
 /// The live destinations still missing `map_folder`.
@@ -164,6 +185,8 @@ fn live_map_dirs(maps_dir: &Path, vault_maps: Option<PathBuf>, map_folder: &str)
 /// (#283). The exact name is tried first; the directory is only read when it
 /// is not there.
 fn has_map_folder(dir: &Path, map_folder: &str) -> bool {
+    #[cfg(test)]
+    super::test_support::probe::looked_in(dir);
     if dir.join(map_folder).is_dir() {
         return true;
     }
@@ -197,8 +220,76 @@ fn vault_map_url(content_base: &str, map_folder: &str) -> String {
     )
 }
 
+/// Hold `map_folder` in each of `dirs` against every other writer of it: a
+/// replay or a live game staging the map (here), and the map vault's own
+/// install (`infra::maps`).
+///
+/// Taken before the writer looks for the map and kept until its extraction
+/// has returned, the way an install pass holds its directory (see
+/// `InstallLease`), so two writers of one map take turns and the second finds
+/// the first one's map in place. The key is the map's own folder, not the maps
+/// folder or the install around it, so a game install and the staging of
+/// another map never wait on it. Lower-cased, because a map folder is the same
+/// map in any letter case (see [`has_map_folder`]).
+pub(in crate::infra) async fn lease_map_folder(
+    dirs: &[PathBuf],
+    map_folder: &str,
+) -> Vec<InstallLease> {
+    let key_name = map_folder.to_ascii_lowercase();
+    lease_dirs(dirs.iter().map(|dir| dir.join(&key_name))).await
+}
+
+/// Whether any of `dirs` holds `map_folder`, looked for on the blocking pool:
+/// a maps folder of a few thousand entries is read whole when the exact name
+/// is not there.
+pub(in crate::infra) async fn map_folder_in_any(dirs: &[PathBuf], map_folder: &str) -> bool {
+    let (dirs, map_folder) = (dirs.to_vec(), map_folder.to_string());
+    off_runtime(move || dirs.iter().any(|dir| has_map_folder(dir, &map_folder)))
+        .await
+        .unwrap_or(false)
+}
+
+/// Unpack `map_folder` into each of `dirs` with `unpack`, on the blocking
+/// pool, keeping `leases` until the last one has returned, even after the
+/// caller has stopped waiting.
+///
+/// A directory that holds the map by the time its turn comes is left as it is
+/// rather than failed with "already installed": the map is what was wanted,
+/// whoever put it there. Under the lease that is only a writer that takes
+/// none, such as the user copying the map in by hand.
+pub(in crate::infra) async fn unpack_map_leased(
+    leases: Vec<InstallLease>,
+    dirs: Vec<PathBuf>,
+    map_folder: String,
+    unpack: impl Fn(&Path) -> Result<(), String> + Send + 'static,
+) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || -> Result<(), String> {
+        let _leases = leases;
+        for dir in &dirs {
+            #[cfg(test)]
+            super::test_support::probe::writing(&dir.join(&map_folder));
+            if has_map_folder(dir, &map_folder) {
+                continue;
+            }
+            unpack(dir)?;
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("map extraction task failed: {e}"))?
+}
+
 /// Download `map_folder` from the vault CDN and extract it into every
 /// directory in `dirs`, unless it is already present in one of them.
+///
+/// Holds the map's folder from before it looks for the map until the
+/// extraction has returned (see [`lease_map_folder`]). Dropping a preparation
+/// does not stop an extraction already handed to the blocking pool, and the
+/// next preparation of the same replay used to find the map still missing,
+/// download it again and extract it beside the first, one of the two then
+/// failing on the folder the other had just put in place. Now the next one
+/// waits, and finds the map there. So does a vault install of the same map,
+/// in either order.
 async fn stage_map(
     http: &reqwest::Client,
     content_base: &str,
@@ -210,11 +301,8 @@ async fn stage_map(
         return Ok(()); // base/official map: ships with FA, not the vault
     }
 
-    let search_dirs = dirs.to_vec();
-    if search_dirs
-        .iter()
-        .any(|dir| has_map_folder(dir, map_folder))
-    {
+    let leases = lease_map_folder(dirs, map_folder).await;
+    if map_folder_in_any(dirs, map_folder).await {
         return Ok(()); // already somewhere FA will find it
     }
 
@@ -241,15 +329,10 @@ async fn stage_map(
     }
     let bytes = bounded_body(resp, &format!("map {map_folder}"), MAX_DOWNLOAD_BYTES).await?;
     let expected_folder = map_folder.to_string();
-
-    tokio::task::spawn_blocking(move || -> Result<(), String> {
-        for dir in &search_dirs {
-            install_archive(&bytes, dir, Some(&expected_folder), |_| Ok(()))?;
-        }
-        Ok(())
+    unpack_map_leased(leases, dirs.to_vec(), map_folder.to_string(), move |dir| {
+        install_archive(&bytes, dir, Some(&expected_folder), |_| Ok(())).map(drop)
     })
     .await
-    .map_err(|e| format!("map extraction task failed: {e}"))?
 }
 
 #[cfg(test)]
@@ -357,6 +440,7 @@ mod tests {
             std::path::Path::new("definitely/not/here"),
             "scmp_009",
             &|_| {},
+            &tokio_util::sync::CancellationToken::new(),
         )
         .await;
         assert!(result.is_ok(), "{result:?}");
@@ -447,6 +531,396 @@ mod tests {
         assert_eq!(
             vault_map_url("https://content.faforever.com", "Phenom Spartiate v2"),
             "https://content.faforever.com/maps/phenom spartiate v2.zip"
+        );
+    }
+
+    /// A replay preparation called off while its map is being extracted on
+    /// the blocking pool. Dropping the preparation does not stop the
+    /// extraction, and the next preparation of the same replay used to find
+    /// the map still missing, download it again and extract it beside the
+    /// first. It has to wait for the extraction instead, and then find the map
+    /// in place.
+    #[tokio::test]
+    async fn a_cancelled_map_staging_holds_the_map_until_its_extraction_has_finished() {
+        use crate::infra::game_updater::test_support::probe::{self, Event};
+        use crate::infra::game_updater::test_support::FakeServer;
+
+        const MAP: &str = "adaptive_gadostb.v0002";
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+        let server =
+            FakeServer::start(vec![(format!("/maps/{MAP}.zip"), build_map_zip(MAP))]).await;
+
+        let (mut events, release) = probe::watch(&maps);
+        let stage = || {
+            let (base, maps) = (server.base.clone(), maps.clone());
+            tokio::spawn(async move {
+                // No proxy: a developer's `HTTP_PROXY` must not route a
+                // loopback test.
+                let http = reqwest::Client::builder().no_proxy().build().unwrap();
+                stage_map(&http, &base, &[maps], MAP).await
+            })
+        };
+
+        // The first staging reaches its extraction, which is held there
+        // part-way, and is then called off.
+        let cancelled = stage();
+        assert_eq!(events.recv().await, Some(Event::Writing));
+        cancelled.abort();
+        assert!(cancelled.await.unwrap_err().is_cancelled());
+
+        // The replacement waits for the map instead of fetching it again.
+        let replacement = stage();
+        assert_eq!(
+            events.recv().await,
+            Some(Event::WaitingForInstall),
+            "the next staging went ahead while the cancelled one's extraction \
+             was still writing the map"
+        );
+
+        // Once that extraction has finished, the map is there, and the
+        // replacement takes it as it is.
+        release.send(()).unwrap();
+        assert_eq!(replacement.await.unwrap(), Ok(()));
+        assert_eq!(
+            std::fs::read(maps.join(MAP).join(format!("{MAP}.scmap"))).unwrap(),
+            b"fake map bytes"
+        );
+        assert_eq!(
+            server.requests(),
+            [format!("/maps/{MAP}.zip")],
+            "the map is downloaded once"
+        );
+    }
+
+    /// A loopback client: a developer's `HTTP_PROXY` must not route a loopback
+    /// test.
+    fn loopback() -> reqwest::Client {
+        reqwest::Client::builder().no_proxy().build().unwrap()
+    }
+
+    const VAULT_MAP: &str = "adaptive_gadostb.v0002";
+
+    /// The next thing a watched pass reported. The timeout is a safety net,
+    /// not an ordering: without it a writer that never waits would hang the
+    /// test instead of failing it.
+    async fn next_event(
+        events: &mut tokio::sync::mpsc::UnboundedReceiver<
+            crate::infra::game_updater::test_support::probe::Event,
+        >,
+    ) -> Option<crate::infra::game_updater::test_support::probe::Event> {
+        tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
+            .await
+            .ok()
+            .flatten()
+    }
+
+    /// The vault's Install pressed for a map a replay is staging, in either
+    /// order. The two used to race: both found the map missing, both
+    /// downloaded it, and the second extraction failed with "already
+    /// installed" on the folder the first had just put in place.
+    async fn vault_install_beside_staging(staging_first: bool) {
+        use crate::infra::game_updater::test_support::probe::{self, Event};
+        use crate::infra::game_updater::test_support::FakeServer;
+
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+        let archive = format!("/maps/{VAULT_MAP}.zip");
+        let server = FakeServer::start(vec![(archive.clone(), build_map_zip(VAULT_MAP))]).await;
+        let (mut events, release) = probe::watch(&maps);
+
+        let stage = || {
+            let (base, maps) = (server.base.clone(), maps.clone());
+            tokio::spawn(async move { stage_map(&loopback(), &base, &[maps], VAULT_MAP).await })
+        };
+        let install = || {
+            let (base, maps) = (server.base.clone(), maps.clone());
+            tokio::spawn(async move {
+                let url = format!("{base}/maps/{VAULT_MAP}.zip");
+                crate::infra::maps::install_vault_map(
+                    &loopback(),
+                    &base,
+                    &maps,
+                    VAULT_MAP,
+                    &url,
+                    &|_| {},
+                    &tokio_util::sync::CancellationToken::new(),
+                )
+                .await
+            })
+        };
+
+        // The first reaches its extraction and is held there.
+        let (staging, installing) = if staging_first {
+            let staging = stage();
+            assert_eq!(next_event(&mut events).await, Some(Event::Writing));
+            (staging, install())
+        } else {
+            let installing = install();
+            assert_eq!(next_event(&mut events).await, Some(Event::Writing));
+            (stage(), installing)
+        };
+        assert_eq!(
+            next_event(&mut events).await,
+            Some(Event::WaitingForInstall),
+            "the second writer of the map went ahead while the first was still writing it"
+        );
+
+        release.send(()).unwrap();
+        assert_eq!(staging.await.unwrap(), Ok(()));
+        let installed = installing
+            .await
+            .unwrap()
+            .expect("the vault install takes a map already in place as installed")
+            .expect("nothing called the install off");
+        assert!(
+            installed
+                .iter()
+                .any(|map| map.folder_name.eq_ignore_ascii_case(VAULT_MAP)),
+            "{installed:?}"
+        );
+        assert_eq!(
+            std::fs::read(maps.join(VAULT_MAP).join(format!("{VAULT_MAP}.scmap"))).unwrap(),
+            b"fake map bytes"
+        );
+        assert_eq!(server.requests(), [archive], "the map is downloaded once");
+    }
+
+    #[tokio::test]
+    async fn a_vault_install_waits_for_a_replay_staging_the_same_map() {
+        vault_install_beside_staging(true).await;
+    }
+
+    #[tokio::test]
+    async fn a_replay_staging_waits_for_a_vault_install_of_the_same_map() {
+        vault_install_beside_staging(false).await;
+    }
+
+    /// A writer that takes no lease (the user copying the map in by hand)
+    /// puts the folder in place between the staging's look and its
+    /// extraction. The map is there, which is what the staging was for, so it
+    /// is not a failure.
+    #[tokio::test]
+    async fn a_map_folder_that_appears_during_staging_is_taken_as_staged() {
+        use crate::infra::game_updater::test_support::probe::{self, Event};
+        use crate::infra::game_updater::test_support::FakeServer;
+
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+        let server = FakeServer::start(vec![(
+            format!("/maps/{VAULT_MAP}.zip"),
+            build_map_zip(VAULT_MAP),
+        )])
+        .await;
+        let (mut events, release) = probe::watch(&maps);
+        let staging = {
+            let (base, maps) = (server.base.clone(), maps.clone());
+            tokio::spawn(async move { stage_map(&loopback(), &base, &[maps], VAULT_MAP).await })
+        };
+        assert_eq!(next_event(&mut events).await, Some(Event::Writing));
+
+        let by_hand = maps.join(VAULT_MAP);
+        std::fs::create_dir_all(&by_hand).unwrap();
+        release.send(()).unwrap();
+
+        assert_eq!(staging.await.unwrap(), Ok(()));
+        assert!(
+            !by_hand.join(format!("{VAULT_MAP}.scmap")).exists(),
+            "the folder put there by hand was written into"
+        );
+    }
+
+    /// A vault install called off while its archive is being unpacked on the
+    /// blocking pool. The worker cannot be stopped, and it used to rename the
+    /// map into place regardless, so a map the user had called off turned up
+    /// installed. It is unpacked into staging and cleared away instead, and
+    /// the map's folder is free again once that worker has returned.
+    #[tokio::test]
+    async fn a_vault_install_called_off_while_unpacking_leaves_no_map_behind() {
+        use crate::infra::game_updater::test_support::probe::{self, Event};
+        use crate::infra::game_updater::test_support::FakeServer;
+
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+        let archive = format!("/maps/{VAULT_MAP}.zip");
+        let server = FakeServer::start(vec![(archive.clone(), build_map_zip(VAULT_MAP))]).await;
+        let (mut events, release) = probe::watch(&maps);
+        let install = || {
+            let (base, maps) = (server.base.clone(), maps.clone());
+            tokio::spawn(async move {
+                let url = format!("{base}/maps/{VAULT_MAP}.zip");
+                crate::infra::maps::install_vault_map(
+                    &loopback(),
+                    &base,
+                    &maps,
+                    VAULT_MAP,
+                    &url,
+                    &|_| {},
+                    &tokio_util::sync::CancellationToken::new(),
+                )
+                .await
+            })
+        };
+
+        // Dropped, as a caller that stops waiting altogether drops it.
+        let called_off = install();
+        assert_eq!(next_event(&mut events).await, Some(Event::Writing));
+        called_off.abort();
+        assert!(called_off.await.unwrap_err().is_cancelled());
+        release.send(()).unwrap();
+
+        // Taking the folder waits for the worker that still holds it.
+        drop(lease_map_folder(std::slice::from_ref(&maps), VAULT_MAP).await);
+        let left: Vec<String> = std::fs::read_dir(&maps)
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert!(
+            left.is_empty(),
+            "a called-off install left {left:?} in the maps folder"
+        );
+
+        // Nothing stands in the way of installing it after all.
+        let installed = install()
+            .await
+            .unwrap()
+            .expect("a fresh install works")
+            .expect("nothing called it off");
+        assert!(installed
+            .iter()
+            .any(|map| map.folder_name.eq_ignore_ascii_case(VAULT_MAP)));
+        assert_eq!(server.requests(), [archive.clone(), archive]);
+    }
+
+    /// The vault's own cancel: the install is told through its token while
+    /// its archive unpacks, waits for the worker's answer instead of giving
+    /// up on it, and says it was called off only because the worker left
+    /// nothing behind. The map's folder is free by the time it answers.
+    #[tokio::test]
+    async fn a_vault_install_called_off_by_its_token_while_unpacking_answers_none() {
+        use crate::infra::game_updater::test_support::probe::{self, Event};
+        use crate::infra::game_updater::test_support::FakeServer;
+
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+        let archive = format!("/maps/{VAULT_MAP}.zip");
+        let server = FakeServer::start(vec![(archive.clone(), build_map_zip(VAULT_MAP))]).await;
+        let (mut events, release) = probe::watch(&maps);
+        let called_off = tokio_util::sync::CancellationToken::new();
+        let installing = {
+            let (base, maps, called_off) = (server.base.clone(), maps.clone(), called_off.clone());
+            tokio::spawn(async move {
+                let url = format!("{base}/maps/{VAULT_MAP}.zip");
+                crate::infra::maps::install_vault_map(
+                    &loopback(),
+                    &base,
+                    &maps,
+                    VAULT_MAP,
+                    &url,
+                    &|_| {},
+                    &called_off,
+                )
+                .await
+            })
+        };
+        assert_eq!(next_event(&mut events).await, Some(Event::Writing));
+        called_off.cancel();
+        release.send(()).unwrap();
+
+        assert_eq!(installing.await.unwrap(), Ok(None));
+        let left: Vec<String> = std::fs::read_dir(&maps)
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert!(
+            left.is_empty(),
+            "a called-off install left {left:?} in the maps folder"
+        );
+        // Answered after the worker returned, so the folder is free at once.
+        assert!(tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            lease_map_folder(std::slice::from_ref(&maps), VAULT_MAP)
+        )
+        .await
+        .is_ok());
+    }
+
+    /// The vault's Uninstall pressed while a replay stages the same map. It
+    /// took no lease, so it found the map not there yet, did nothing, and the
+    /// staging then put it in place: an uninstall that left the map
+    /// installed. It waits for the staging now, and removes what it finds.
+    #[tokio::test]
+    async fn an_uninstall_waits_for_a_staging_of_the_same_map() {
+        use crate::infra::game_updater::test_support::probe::{self, Event};
+        use crate::infra::game_updater::test_support::FakeServer;
+
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+        let server = FakeServer::start(vec![(
+            format!("/maps/{VAULT_MAP}.zip"),
+            build_map_zip(VAULT_MAP),
+        )])
+        .await;
+        let (mut events, release) = probe::watch(&maps);
+        let staging = {
+            let (base, maps) = (server.base.clone(), maps.clone());
+            tokio::spawn(async move { stage_map(&loopback(), &base, &[maps], VAULT_MAP).await })
+        };
+        assert_eq!(next_event(&mut events).await, Some(Event::Writing));
+
+        let uninstall = {
+            let maps = maps.clone();
+            tokio::spawn(
+                async move { crate::infra::maps::uninstall_vault_map(&maps, VAULT_MAP).await },
+            )
+        };
+        assert_eq!(
+            next_event(&mut events).await,
+            Some(Event::WaitingForInstall),
+            "the uninstall went ahead while the staging was still writing the map"
+        );
+
+        release.send(()).unwrap();
+        assert_eq!(staging.await.unwrap(), Ok(()));
+        let installed = uninstall.await.unwrap().expect("the uninstall finishes");
+        assert!(installed.is_empty(), "{installed:?}");
+        assert!(!maps.join(VAULT_MAP).exists(), "the map is still installed");
+    }
+
+    /// Looking for a live game's map reads the whole maps folder when the
+    /// exact name is not there, and it did that on the thread driving the
+    /// async runtime, once per pool map for a matchmaker search. It happens
+    /// on the blocking pool.
+    #[tokio::test]
+    async fn a_live_maps_presence_check_runs_off_the_async_runtime() {
+        use crate::infra::game_updater::test_support::probe;
+
+        let temp = tempfile::tempdir().unwrap();
+        let maps = temp.path().join("maps");
+        std::fs::create_dir_all(&maps).unwrap();
+        probe::watch_looking(&maps);
+        // A current-thread runtime: everything async in this test runs here.
+        let runtime_thread = std::thread::current().id();
+
+        // A base-game map: looked for, and then never fetched.
+        ensure_live_map(
+            &loopback(),
+            "http://127.0.0.1:1",
+            &maps,
+            "scmp_009",
+            &|_| {},
+            &tokio_util::sync::CancellationToken::new(),
+        )
+        .await
+        .expect("a base-game map needs nothing");
+
+        let threads = probe::looked_on(&maps);
+        assert!(!threads.is_empty(), "the maps folder was never looked in");
+        assert!(
+            threads.iter().all(|thread| *thread != runtime_thread),
+            "the maps folder was read on the async runtime's own thread"
         );
     }
 

@@ -127,9 +127,116 @@
   margin-top: var(--space-3);
 }
 
+/* The game log opt-in: a quiet block under the game fields, since most
+   reports are not about a game and leave it unticked. */
+.report-attach {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.report-attach-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-attach-toggle input {
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.report-attach-toggle input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.report-attach-hint {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.report-attach > .status-notice { margin: 0; }
+
+.report-attach-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.report-attach-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.report-attach-summary > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.report-attach-summary span {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.report-attach-warning {
+  margin: 0;
+  color: var(--color-warn-text);
+  line-height: 1.5;
+}
+
+/* The exact text that will be sent, kept as the moderators will read it:
+   monospace, lines unwrapped, scrolled inside its own box so the dialog's
+   buttons stay in reach. */
+.report-attach-excerpt {
+  max-height: 240px;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow: auto;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.report-attach-excerpt:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.report-history-log {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.report-history-log .report-attach-excerpt { align-self: stretch; }
+
 .report-error {
   margin: var(--space-3) 0 0;
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .report-success {
@@ -137,7 +244,7 @@
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-4);
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);

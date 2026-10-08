@@ -10,6 +10,7 @@ import { formatDecimal } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { formatDate, formatTime } from "../../shared/format/dates";
 import { formatDuration } from "../../shared/format/durations";
+import { GeneratorFailure } from "../../shared/components/GeneratorFailure";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import type { mapSize } from "../../shared/mapPresentation";
 import { openReviews } from "../../shared/openReviews";
@@ -26,12 +27,14 @@ export function ReplayGenerationNotice({
   status,
   running,
   progress,
+  onRetry,
 }: {
   status: GeneratorStatus;
   running: boolean;
   progress: GeneratorProgress | null;
+  /** Generate this replay's map again; absent where there is nothing to run. */
+  onRetry?: () => void;
 }) {
-  const { t } = useTranslation();
   return (
     <>
       {running && progress && (
@@ -57,11 +60,7 @@ export function ReplayGenerationNotice({
           )}
         </div>
       )}
-      {status.type === "failed" && (
-        <p className="replay-download-error surface-error">
-          {t("replays.detail.generationFailed", { error: status.payload.reason })}
-        </p>
-      )}
+      {status.type === "failed" && <GeneratorFailure reason={status.payload.reason} onRetry={onRetry} />}
     </>
   );
 }
@@ -272,7 +271,7 @@ export function ReplayDetailToolbar({
   isLoadingDetails: boolean;
 }) {
   const { t } = useTranslation();
-  const hasNote = useHasReplayNote(replay.uid);
+  const hasNote = useHasReplayNote(replay.uid, localPath);
   return (
     <div className="replay-detail-toolbar">
       {onDownload && (
@@ -334,8 +333,9 @@ export function ReplayDetailToolbar({
       )}
       {/* The reader's own comment and tags (#324), in an overlay: most
           replays have none. Lit when there is a note, so a tagged game
-          says so before it is opened. */}
-      {replay.uid > 0 && (
+          says so before it is opened. A file without a game id keeps its
+          note on its path, so only a replay with neither goes without. */}
+      {(replay.uid > 0 || Boolean(localPath)) && (
         <Button
           className={hasNote ? "replay-detail-tool is-on" : "replay-detail-tool"}
           aria-haspopup="dialog"

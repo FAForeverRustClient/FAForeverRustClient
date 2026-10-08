@@ -23,6 +23,7 @@ import { Modal } from "../../design-system/Modal";
 import { Button } from "../../design-system/Button";
 import { ipc } from "../../ipc/client";
 import { openHttpsUrl, optionalHttpsUrl } from "../../shared/externalLinks";
+import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
 import { updatePercent, updateRequiredRelease } from "../../store/reducers/clientUpdate";
 import { formatSize } from "./UpdateBanner";
@@ -118,6 +119,9 @@ export function UpdateGateDialog({ release, status, currentVersion, onDefer }: D
             : "update-gate-status"
         }
         role="status"
+        // The updater's own words on hover, for a bug report; the line
+        // itself says them plainly.
+        title={status.type === "failed" ? status.payload.reason : undefined}
       >
         {describe(status, t)}
       </p>
@@ -184,7 +188,7 @@ function describe(
     case "installing":
       return t("updates.required.closeToFinish");
     case "failed":
-      return status.payload.reason;
+      return plainError(status.payload.reason);
     default:
       return t("updates.installerReady");
   }

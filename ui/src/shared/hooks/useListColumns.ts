@@ -48,6 +48,9 @@ function saveBrowsing(patch: Partial<BrowsingPreferences>): void {
  * @param flexible the designed column that takes the space the others leave
  * @param headerRef the header row; see `useColumnOrder` for what it must hold
  * @param layout a CSS grid list, or a real table with a colgroup
+ * @param floors the narrowest each designed column is drawn: see
+ *   `useColumnWidths`. A column of buttons needs one, or a narrow window
+ *   squeezes its buttons out of the list.
  */
 export function useListColumns({
   widthsField,
@@ -56,7 +59,7 @@ export function useListColumns({
   flexible,
   headerRef,
   layout = "table",
-  flexibleFloor = 80,
+  floors,
 }: {
   widthsField: NumberListField;
   orderField: NumberListField;
@@ -64,7 +67,7 @@ export function useListColumns({
   flexible: number;
   headerRef: RefObject<HTMLElement | null>;
   layout?: "grid" | "table";
-  flexibleFloor?: number;
+  floors?: readonly number[];
 }): ListColumns {
   const stored = useAppStore((state) => state.state.settings.browsing[orderField]);
   const columnOrder = useColumnOrder(
@@ -79,7 +82,7 @@ export function useListColumns({
   const orderKey = columnOrder.order.join(",");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const order = useMemo(() => columnOrder.order, [orderKey]);
-  const widths = useColumnWidths(widthsField, defaults, flexible, layout, flexibleFloor, order);
+  const widths = useColumnWidths(widthsField, defaults, flexible, { layout, floors, order });
   return {
     order,
     moving: columnOrder.moving,

@@ -40,8 +40,10 @@ use crate::infra::http::{
 };
 use crate::infra::jsonapi::api_error_detail;
 use crate::infra::session::TokenStore;
+use crate::infra::vault_install::CallOff;
 use crate::infra::{cache_dir, env_or};
 use crate::ports::UploadsPort;
+use tokio_util::sync::CancellationToken;
 
 /// Refuse anything larger than this before contacting the server.
 ///
@@ -67,6 +69,10 @@ pub struct UploadsClient {
     config: UploadsConfig,
     tokens: TokenStore,
     http: reqwest::Client,
+    /// The running publish's call-off, raised by `cancel_publish`. Replaced
+    /// by every publish, so a cancel meant for an earlier one cannot stop the
+    /// next.
+    publishing: std::sync::Mutex<Option<CancellationToken>>,
 }
 
 impl UploadsClient {
@@ -77,6 +83,7 @@ impl UploadsClient {
             // Not the shared client: see `upload_http_client` for why an
             // upload cannot use its read timeout.
             http: super::http::upload_http_client(),
+            publishing: std::sync::Mutex::new(None),
         }
     }
 
@@ -110,12 +117,21 @@ impl UploadsPort for UploadsClient {
         let config = self.config.clone();
         let tokens = self.tokens.clone();
         let http = self.http.clone();
+        // Replaces the last publish's call-off, which is long finished: the
+        // command policy runs one publish at a time.
+        let called_off = CancellationToken::new();
+        *self
+            .publishing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(called_off.clone());
 
         tokio::spawn(async move {
-            let outcome = run(&config, &tokens, &http, &request, &tx).await;
+            let outcome = run(&config, &tokens, &http, &request, &tx, &called_off).await;
             let _ = tx
                 .send(match outcome {
-                    Ok(()) => UploadStatus::Succeeded,
+                    Ok(RunEnd::Published) => UploadStatus::Succeeded,
+                    // Nothing was published, and nothing failed.
+                    Ok(RunEnd::CalledOff) => UploadStatus::Idle,
                     Err(reason) => UploadStatus::Failed { reason },
                 })
                 .await;
@@ -123,25 +139,101 @@ impl UploadsPort for UploadsClient {
 
         rx
     }
+
+    fn cancel_publish(&self) {
+        if let Some(publishing) = self
+            .publishing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+        {
+            publishing.cancel();
+        }
+    }
 }
 
+/// How a publish that did not fail ended.
+#[derive(Debug, PartialEq, Eq)]
+enum RunEnd {
+    Published,
+    /// `cancel_publish` landed while the vault could not have the archive
+    /// yet. Nothing was published, and the temporary archive is gone.
+    CalledOff,
+}
+
+/// A temporary archive, deleted when this goes out of scope, which includes a
+/// publish called off part-way through being sent.
+///
+/// Rust opens files with delete sharing on Windows too, so the deletion goes
+/// through even while the request that was reading the file is still being
+/// torn down.
+struct TemporaryArchive(PathBuf);
+
+impl Drop for TemporaryArchive {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
+/// Zip the folder and send it, unless `called_off` is cancelled first.
+///
+/// A call-off stops the run while the archive is packed (see `zip_folder`)
+/// and while its bytes are still going out: the request is dropped in the
+/// middle of its body, which the server discards. `committed` is raised once
+/// the server could have the whole archive, the last byte of a map taken by
+/// the transport or a mod's storage upload about to be confirmed, and from
+/// there a call-off is ignored: stopping could no longer keep the archive out
+/// of the vault, only stop the client hearing whether it got in.
+///
+/// One window stays: a map's last bytes are handed to the socket on the HTTP
+/// connection's own task, so a call-off can see `committed` still down while
+/// they are on their way. The server then holds a body whose request was torn
+/// down, which it discards.
 async fn run(
     config: &UploadsConfig,
     tokens: &TokenStore,
     http: &reqwest::Client,
     request: &UploadRequest,
     tx: &mpsc::Sender<UploadStatus>,
-) -> Result<(), String> {
+    called_off: &CancellationToken,
+) -> Result<RunEnd, String> {
     let token = tokens.get().ok_or_else(|| "not logged in".to_string())?;
 
     let source = source_folder(request)?;
-    let archive = zip_folder(&source, request.kind, rename(request), tx).await?;
-
+    let zipped = tokio::select! {
+        zipped = zip_folder(&source, request.kind, rename(request), tx) => zipped?,
+        () = called_off.cancelled() => return Ok(RunEnd::CalledOff),
+    };
     // Always remove the temporary archive, however this ends: both reference
-    // clients delete it in a `finally`.
-    let result = send(config, http, &token, request, &archive, tx).await;
-    let _ = tokio::fs::remove_file(&archive).await;
-    result
+    // clients delete it in a `finally`, and a publish called off is one more
+    // way to end.
+    let archive = TemporaryArchive(zipped);
+
+    let committed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let sending = send(config, http, &token, request, &archive.0, tx, &committed);
+    // `sending` is dropped inside, before `archive` goes at the end of this
+    // scope: the request lets go of the file before the file is deleted.
+    send_unless_called_off(sending, &committed, called_off).await
+}
+
+/// Drive `sending` to its end, unless `called_off` is cancelled while
+/// `committed` is still down: then drop it there, which tears the request
+/// down mid-body, and say so.
+async fn send_unless_called_off(
+    sending: impl std::future::Future<Output = Result<(), String>>,
+    committed: &std::sync::atomic::AtomicBool,
+    called_off: &CancellationToken,
+) -> Result<RunEnd, String> {
+    tokio::pin!(sending);
+    tokio::select! {
+        result = &mut sending => return result.map(|()| RunEnd::Published),
+        () = called_off.cancelled() => {}
+    }
+    if committed.load(std::sync::atomic::Ordering::SeqCst) {
+        // Too late to keep it out of the vault: see it through.
+        return sending.await.map(|()| RunEnd::Published);
+    }
+    Ok(RunEnd::CalledOff)
 }
 
 /// The `.scmap` inside the folder being published, read into a data URL.
@@ -427,8 +519,15 @@ async fn zip_folder(
     // `zip` is synchronous and this walks a whole directory, so progress comes
     // back over the same channel from the blocking thread.
     let progress = tx.clone();
+    // The packing cannot be stopped once it is on the blocking pool, so a
+    // publish called off meanwhile (this future dropped) leaves the archive to
+    // the worker, which deletes it when it is done. It deletes one it failed
+    // to finish as well: that used to stay in the cache, under a name only
+    // this process would ever overwrite.
+    let call_off = CallOff::default();
+    let armed = call_off.arm();
     tokio::task::spawn_blocking(move || {
-        write_archive(&source, &output, rename.as_ref(), &|done| {
+        let written = write_archive(&source, &output, rename.as_ref(), &|done| {
             // `try_send` rather than `blocking_send`: a full channel means the
             // UI is already a few frames behind, and dropping an intermediate
             // percentage is better than stalling the compression to deliver it.
@@ -436,10 +535,15 @@ async fn zip_folder(
                 done_bytes: clamp_bytes(done),
                 total_bytes,
             });
-        })
+        });
+        if written.is_err() || call_off.is_called_off() {
+            let _ = std::fs::remove_file(&output);
+        }
+        written
     })
     .await
     .map_err(|error| format!("compression task failed: {error}"))??;
+    armed.disarm();
 
     let size = tokio::fs::metadata(&target)
         .await
@@ -566,6 +670,7 @@ async fn send(
     request: &UploadRequest,
     archive: &Path,
     tx: &mpsc::Sender<UploadStatus>,
+    committed: &std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
     let total_bytes = tokio::fs::metadata(archive)
         .await
@@ -581,9 +686,21 @@ async fn send(
 
     match request.kind {
         UploadKind::Map => {
-            upload_map(config, http, token, request, archive, total_bytes, tx).await?
+            upload_map(
+                config,
+                http,
+                token,
+                request,
+                archive,
+                total_bytes,
+                tx,
+                committed,
+            )
+            .await?
         }
-        UploadKind::Mod => upload_mod(config, http, token, archive, total_bytes, tx).await?,
+        UploadKind::Mod => {
+            upload_mod(config, http, token, archive, total_bytes, tx, committed).await?
+        }
     }
 
     let _ = tx
@@ -609,16 +726,27 @@ fn clamp(bytes: u64) -> u32 {
 ///
 /// Each chunk the transport takes is reported to `watch`, which is what lets
 /// a stalled upload be told apart from a slow one.
+///
+/// `committed`, when given, is raised with the last byte: from there the
+/// server can have the whole archive, and a publish is no longer called off
+/// (see `run`).
 fn counting_body(
     file: tokio::fs::File,
     total_bytes: u64,
     tx: mpsc::Sender<UploadStatus>,
     watch: UploadWatch,
+    committed: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
 ) -> reqwest::Body {
     use futures_util::StreamExt as _;
 
-    if total_bytes == 0 {
+    let body_sent = move |watch: &UploadWatch| {
+        if let Some(committed) = &committed {
+            committed.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
         watch.body_sent();
+    };
+    if total_bytes == 0 {
+        body_sent(&watch);
     }
     let mut sent = 0_u64;
     let stream = counting_stream(file, total_bytes, tx).inspect(move |chunk| {
@@ -629,7 +757,7 @@ fn counting_body(
         // length the transport need not poll past the last byte, and the
         // server's processing time must not count as a stall.
         if sent >= total_bytes {
-            watch.body_sent();
+            body_sent(&watch);
         } else {
             watch.progressed();
         }
@@ -695,6 +823,7 @@ fn counting_stream(
 /// `application/octet-stream`, and the request is then refused before the
 /// handler runs, with `Content-Type 'application/octet-stream' is not
 /// supported`.
+#[allow(clippy::too_many_arguments)]
 async fn upload_map(
     config: &UploadsConfig,
     http: &reqwest::Client,
@@ -703,6 +832,7 @@ async fn upload_map(
     archive: &Path,
     total_bytes: u64,
     tx: &mpsc::Sender<UploadStatus>,
+    committed: &std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
     let file = tokio::fs::File::open(archive)
         .await
@@ -710,9 +840,17 @@ async fn upload_map(
 
     // The length is declared so the whole multipart body gets a
     // `Content-Length`: the vault's gateway will not take a chunked upload.
+    // The last byte of it commits the publish: the map is one request, and
+    // the server takes it as soon as it has all of it.
     let watch = UploadWatch::new();
     let part = reqwest::multipart::Part::stream_with_length(
-        counting_body(file, total_bytes, tx.clone(), watch.clone()),
+        counting_body(
+            file,
+            total_bytes,
+            tx.clone(),
+            watch.clone(),
+            Some(committed.clone()),
+        ),
         total_bytes,
     )
     // The server reads the extension off this name and only accepts `.zip`.
@@ -754,6 +892,7 @@ async fn upload_mod(
     archive: &Path,
     total_bytes: u64,
     tx: &mpsc::Sender<UploadStatus>,
+    committed: &std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
     // 1. Ask FAF where to put it.
     let response = http
@@ -796,7 +935,16 @@ async fn upload_mod(
             // Set by hand because the body is a stream: object storage rejects
             // a chunked PUT, and the signature covers the declared length.
             .header(reqwest::header::CONTENT_LENGTH, total_bytes)
-            .body(counting_body(file, total_bytes, tx.clone(), watch.clone()))
+            // Not the commitment: an archive in storage that FAF was never
+            // told about is not published, so the storage upload can still
+            // be called off after its last byte.
+            .body(counting_body(
+                file,
+                total_bytes,
+                tx.clone(),
+                watch.clone(),
+                None,
+            ))
             .send()
             .await
             .map_err(|error| {
@@ -813,7 +961,8 @@ async fn upload_mod(
         .map_err(|stalled| stalled.to_string())??;
 
     // 3. Tell FAF it landed. Until this, the upload does not exist as far as
-    //    the vault is concerned.
+    //    the vault is concerned, and from here a call-off is too late.
+    committed.store(true, std::sync::atomic::Ordering::SeqCst);
     let _ = tx.send(UploadStatus::Finishing).await;
     let completed = http
         .post(format!("{}/mods/upload/complete", config.api_base))
@@ -1402,6 +1551,72 @@ version = 3
         (root, archive)
     }
 
+    /// Raised when the future holding it is dropped.
+    struct DroppedFlag(std::sync::Arc<std::sync::atomic::AtomicBool>);
+
+    impl Drop for DroppedFlag {
+        fn drop(&mut self) {
+            self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+
+    /// A publish called off while its bytes are still moving: the request is
+    /// dropped where it is, and the run says it was called off rather than
+    /// that it failed.
+    #[tokio::test]
+    async fn a_publish_called_off_before_its_last_byte_is_dropped() {
+        let called_off = CancellationToken::new();
+        let committed = std::sync::atomic::AtomicBool::new(false);
+        let dropped = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = DroppedFlag(dropped.clone());
+        let sending = async move {
+            let _flag = flag;
+            std::future::pending::<Result<(), String>>().await
+        };
+
+        called_off.cancel();
+        // The timeout is a safety net, not an ordering: a call-off that is
+        // not heeded leaves the request waiting forever.
+        let end = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            send_unless_called_off(sending, &committed, &called_off),
+        )
+        .await
+        .expect("the called-off publish never stopped");
+
+        assert_eq!(end, Ok(RunEnd::CalledOff));
+        assert!(
+            dropped.load(std::sync::atomic::Ordering::SeqCst),
+            "the request is torn down"
+        );
+    }
+
+    /// Called off once the server could have the whole archive: stopping
+    /// would only stop the client hearing whether it got in, so the run is
+    /// seen through and reports what happened.
+    #[tokio::test]
+    async fn a_publish_called_off_after_its_commitment_is_seen_through() {
+        let called_off = CancellationToken::new();
+        let committed = std::sync::atomic::AtomicBool::new(true);
+        let (answer, answered) = tokio::sync::oneshot::channel::<()>();
+        let sending = async move {
+            let _ = answered.await;
+            Ok(())
+        };
+
+        called_off.cancel();
+        // The answer arrives only after the call-off has been looked at.
+        let (end, ()) = tokio::join!(
+            send_unless_called_off(sending, &committed, &called_off),
+            async move {
+                tokio::task::yield_now().await;
+                let _ = answer.send(());
+            }
+        );
+
+        assert_eq!(end, Ok(RunEnd::Published));
+    }
+
     #[tokio::test]
     async fn the_metadata_part_is_typed_as_json() {
         // Without this the vault answers "Content-Type 'application/octet-stream'
@@ -1431,6 +1646,7 @@ version = 3
                 &archive,
                 total,
                 &tx,
+                &std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             ),
         )
         .await

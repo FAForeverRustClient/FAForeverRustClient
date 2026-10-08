@@ -7,9 +7,10 @@
 
 use faf_domain::state::{ModListStatus, ModsCommand, ModsEvent};
 
-use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
+use crate::runtime::{Cancellable, EventSink, LatestRequest, ServiceCtx};
 
-/// The mod vault's request generation. Owned by this service.
+/// The mod vault's request generation and the install in flight. Owned by
+/// this service.
 #[derive(Default)]
 pub struct ModsContext {
     /// Only the newest vault search may land, for the same reason as the map
@@ -17,6 +18,20 @@ pub struct ModsContext {
     /// otherwise replace its page with results for filters no longer on
     /// screen.
     search_generation: LatestRequest,
+    /// The install or update running, by uid, so `CancelInstall` can reach
+    /// it. One at most: they are serial on `Key::ModFiles`.
+    installs: Cancellable<String>,
+}
+
+/// Report a mod install's steps as `InstallProgressed` for `uid`.
+fn install_progress(out: &EventSink, uid: &str) -> crate::ports::VaultInstallProgress {
+    let (sink, uid) = (out.clone(), uid.to_string());
+    crate::services::vault_install_progress(move |progress| {
+        sink.emit(ModsEvent::InstallProgressed {
+            uid: uid.clone(),
+            progress,
+        })
+    })
 }
 
 pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
@@ -85,9 +100,38 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         ModsCommand::InstallMod { uid, download_url } => {
             crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);
+            // The same as a map's: a second press waits for the first and
+            // finds the mod installed, where it used to download it again
+            // and then fail with "already installed".
+            let installed = out.with_state(|state| {
+                state
+                    .mods
+                    .installed
+                    .iter()
+                    .any(|installed| installed.uid.eq_ignore_ascii_case(&uid))
+            });
+            if installed {
+                return;
+            }
+            // Reachable before it is on screen; see the map vault's install.
+            let ticket = ctx.mods.installs.begin(uid.clone());
             out.emit(ModsEvent::Installing { uid: uid.clone() });
-            match ctx.ports.mods.install_mod(uid, download_url).await {
-                Ok(installed) => out.emit(ModsEvent::Installed { installed }),
+            // The port takes the token and its answer is the truth, as for a
+            // map: see `ModsPort::install_mod_reporting`.
+            let result = ctx
+                .ports
+                .mods
+                .install_mod_reporting(
+                    uid.clone(),
+                    download_url,
+                    install_progress(out, &uid),
+                    ticket.called_off.clone(),
+                )
+                .await;
+            ctx.mods.installs.end(&ticket);
+            match result {
+                Ok(None) => out.emit(ModsEvent::InstallCancelled { uid }),
+                Ok(Some(installed)) => out.emit(ModsEvent::Installed { installed }),
                 Err(reason) => out.emit(ModsEvent::InstallFailed { reason }),
             }
         }
@@ -97,18 +141,34 @@ pub async fn handle(cmd: ModsCommand, ctx: &ServiceCtx, out: &EventSink) {
             download_url,
         } => {
             crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);
+            let ticket = ctx.mods.installs.begin(uid.clone());
             // The same status an install shows: from the user's side this *is*
             // an install, and the row it belongs to is named by the new uid.
             out.emit(ModsEvent::Installing { uid: uid.clone() });
-            match ctx
+            // The port takes the token, as for an install, because only the
+            // port knows when the old version starts going (see
+            // `ModsPort::update_mod_reporting`). Its answer is the truth
+            // either way, a call-off that came too late included.
+            let result = ctx
                 .ports
                 .mods
-                .update_mod(uid, folder_name, download_url)
-                .await
-            {
-                Ok(installed) => out.emit(ModsEvent::Installed { installed }),
+                .update_mod_reporting(
+                    uid.clone(),
+                    folder_name,
+                    download_url,
+                    install_progress(out, &uid),
+                    ticket.called_off.clone(),
+                )
+                .await;
+            ctx.mods.installs.end(&ticket);
+            match result {
+                Ok(None) => out.emit(ModsEvent::InstallCancelled { uid }),
+                Ok(Some(installed)) => out.emit(ModsEvent::Installed { installed }),
                 Err(reason) => out.emit(ModsEvent::InstallFailed { reason }),
             }
+        }
+        ModsCommand::CancelInstall { uid } => {
+            ctx.mods.installs.cancel(|running| *running == uid);
         }
         ModsCommand::UninstallMod { folder_name, uid } => {
             crate::runtime::expect_admitted(crate::runtime::Key::ModFiles);

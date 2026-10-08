@@ -1052,7 +1052,7 @@ html[data-background="custom"] .training-collection-head {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   font-size: 11px;
 }
 
@@ -1881,7 +1881,7 @@ html[data-background="custom"] .training-collection-head {
 }
 
 .training-detail-reviewed {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   letter-spacing: normal;
   text-transform: none;
   font-size: 12px;
@@ -3076,7 +3076,7 @@ div.training-detail-guide-problem p {
   align-items: center;
   gap: 4px;
   margin: 0;
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   font-size: 12px;
 }
 
@@ -3386,7 +3386,7 @@ div.training-detail-guide-problem p {
 
 .training-form-problem {
   margin: 0;
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-size: 12px;
 }
 

@@ -139,7 +139,7 @@ describe("VetoesPanel map ban, mounted", () => {
         payload: { failure: { action, reason: "It is not your turn to ban", kind: "rejected" } },
       },
     });
-    expect(screen.getByText("It is not your turn to ban")).toBeDefined();
+    expect(screen.getByText("It is not your turn to ban.")).toBeDefined();
     expect(screen.getByText("Your turn.")).toBeDefined();
     expect(screen.getByRole("button", { name: "Arctic Refuge" }).hasAttribute("disabled")).toBe(false);
     expect(screen.getByRole("button", { name: "Canis River" }).hasAttribute("disabled")).toBe(false);

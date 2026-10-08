@@ -648,7 +648,7 @@ button.vault-input {
 }
 
 .replay-stars {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   font-size: 12px;
 }
 
@@ -952,12 +952,12 @@ button.vault-input {
 }
 
 .replay-availability.ready {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 10%, transparent);
 }
 
 .replay-availability.pending {
-  color: var(--color-warn);
+  color: var(--color-warn-text);
   background: color-mix(in srgb, var(--color-warn) 10%, transparent);
 }
 
@@ -1088,11 +1088,6 @@ button.vault-input {
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.5;
-}
-
-.replay-download-error {
-  margin: var(--space-3) 0 0;
-  padding: var(--space-2) var(--space-3);
 }
 
 /* Label over value, separated by hairlines rather than boxed: eight short
@@ -1354,13 +1349,13 @@ button.vault-input {
 }
 
 .replay-team-outcome.victory {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
   background: color-mix(in srgb, var(--color-ok) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-ok) 25%, transparent);
 }
 
 .replay-team-outcome.defeat {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background: color-mix(in srgb, var(--color-error) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-error) 25%, transparent);
 }
@@ -1446,11 +1441,11 @@ button.vault-input {
 }
 
 .replay-player-rating-change.positive {
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 .replay-player-rating-change.negative {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .replay-player-rating-change.zero {

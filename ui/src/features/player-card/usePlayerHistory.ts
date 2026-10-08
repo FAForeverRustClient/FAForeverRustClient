@@ -7,7 +7,7 @@
 // same history three times. So a scan is asked for only when what the state
 // holds belongs to somebody else, or the last attempt failed.
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 
@@ -27,6 +27,17 @@ let requestedFor: number | null = null;
  */
 let fullFor: number | null = null;
 
+/**
+ * Ask for `playerId`'s scan: the whole history once it was asked for, the
+ * recent games otherwise. The one place both kinds are sent from, so the
+ * first load, a retry and "load all" can never disagree about which it is.
+ */
+function requestScan(playerId: number) {
+  requestedFor = playerId;
+  const full = fullFor === playerId;
+  ipc.send({ kind: "PlayerCard", command: { type: "loadMapStats", payload: full ? { playerId, full } : { playerId } } });
+}
+
 export function usePlayerHistory(playerId: number) {
   const stats = useAppStore((state) => state.state.playerCard.mapStats);
   const status = useAppStore((state) => state.state.playerCard.mapStatsStatus);
@@ -42,16 +53,19 @@ export function usePlayerHistory(playerId: number) {
       && (card.mapStatsStatus === "loading"
         || (card.mapStatsStatus === "ready" && card.mapStats?.playerId === playerId));
     if (held) return;
-    requestedFor = playerId;
-    const full = fullFor === playerId;
-    ipc.send({ kind: "PlayerCard", command: { type: "loadMapStats", payload: full ? { playerId, full } : { playerId } } });
+    requestScan(playerId);
   }, [playerId]);
 
   const loadFull = () => {
     fullFor = playerId;
-    requestedFor = playerId;
-    ipc.send({ kind: "PlayerCard", command: { type: "loadMapStats", payload: { playerId, full: true } } });
+    requestScan(playerId);
   };
+
+  // The same scan again, on purpose, the whole history if that is what failed.
+  // Reopening the tab also retries, but a failed view that only says what went
+  // wrong leaves the reader to find that out; the tabs offer this beside the
+  // error instead.
+  const retry = useCallback(() => requestScan(playerId), [playerId]);
 
   return {
     stats: stats?.playerId === playerId ? stats : null,
@@ -60,5 +74,6 @@ export function usePlayerHistory(playerId: number) {
     /** Whether what is on screen is the whole history as far as it was asked. */
     full: fullFor === playerId,
     loadFull,
+    retry,
   };
 }

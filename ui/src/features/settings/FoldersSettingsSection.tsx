@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Button } from "../../design-system/Button";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import { FOLDER_GROUPS, openFolderEntry, type FolderEntry } from "../../shared/gameFolders";
+import { plainError } from "../../shared/plainError";
 import { SettingRow } from "./SettingControls";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -14,12 +16,13 @@ import { useTranslation } from "../../i18n/useTranslation";
  */
 export function FoldersSettingsSection() {
   const { t } = useTranslation();
-  const [error, setError] = useState("");
+  // The folder that would not open, and the shell's reason why.
+  const [failure, setFailure] = useState<{ entry: FolderEntry; reason: string } | null>(null);
 
   const clientFolders = FOLDER_GROUPS.find((group) => group.id === "client")?.entries ?? [];
   const open = (entry: FolderEntry) => {
-    setError("");
-    void openFolderEntry(entry).catch((reason) => setError(String(reason)));
+    setFailure(null);
+    void openFolderEntry(entry).catch((reason) => setFailure({ entry, reason: String(reason) }));
   };
 
   return (
@@ -33,7 +36,18 @@ export function FoldersSettingsSection() {
           ))}
         </div>
       </SettingRow>
-      {error && <p className="settings-inline-error" role="alert">{error}</p>}
+      {/* Plainly, with the shell's own words ("could not open C:\...\maps:
+          ...") on hover, and Retry opening the same folder. */}
+      {failure && (
+        <StatusNotice
+          tone="error"
+          className="settings-inline-notice"
+          action={{ label: t("common.retry"), onClick: () => open(failure.entry) }}
+          detail={failure.reason}
+        >
+          {plainError(failure.reason)}
+        </StatusNotice>
+      )}
     </>
   );
 }

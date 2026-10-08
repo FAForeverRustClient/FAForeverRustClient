@@ -17,6 +17,7 @@ use faf_domain::state::{
     SettingsCommand, UpdatePreferences,
 };
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// What the stub was asked to do, in order.
 #[derive(Debug, Default)]
@@ -40,7 +41,11 @@ impl ClientUpdatePort for StubUpdates {
         self.latest.clone()
     }
 
-    async fn download(&self, release: ClientRelease) -> mpsc::Receiver<DownloadProgress> {
+    async fn download(
+        &self,
+        release: ClientRelease,
+        _called_off: CancellationToken,
+    ) -> mpsc::Receiver<DownloadProgress> {
         self.calls.lock().unwrap().downloaded.push(release.version);
         let (tx, rx) = mpsc::channel(8);
         let outcome = self.download.clone();
@@ -70,7 +75,11 @@ impl ClientUpdatePort for ForbiddenUpdates {
     async fn latest(&self, _channel: ReleaseChannel) -> Result<Option<ClientRelease>, String> {
         panic!("no check should have been made");
     }
-    async fn download(&self, _release: ClientRelease) -> mpsc::Receiver<DownloadProgress> {
+    async fn download(
+        &self,
+        _release: ClientRelease,
+        _called_off: CancellationToken,
+    ) -> mpsc::Receiver<DownloadProgress> {
         panic!("no download should have been started");
     }
     async fn install(&self, path: String) -> Result<(), String> {

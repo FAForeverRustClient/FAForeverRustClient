@@ -97,12 +97,13 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                                 reason: reason.clone(),
                             },
                         });
-                        services::notifications::add(
+                        services::notifications::add_failure(
                             out,
-                            NotificationKind::Error,
+                            services::notifications::Text::new(
+                                "notifications.msg.mapOptionsRejected",
+                            ),
                             "Those options will not generate",
                             reason,
-                            None,
                         );
                         return;
                     }
@@ -138,8 +139,9 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             // Written through to the settings file, not just to the in-memory
             // slice: "save settings" that lasts until the next restart is
             // indistinguishable from a button that does nothing.
-            out.emit(SettingsEvent::MapGeneratorChanged {
-                preferences: Box::new(options.clone()),
+            let preferences = Box::new(options.clone());
+            ctx.settings.merge_and_emit(out, |_| {
+                (SettingsEvent::MapGeneratorChanged { preferences }, ())
             });
             out.emit(MapGeneratorEvent::OptionsChanged { options });
             services::settings::persist(ctx, out).await;
@@ -159,9 +161,15 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                     out.emit(MapGeneratorEvent::NamePredicted {
                         map_name: String::new(),
                     });
-                    services::notifications::add(
+                    // Not a failure reason: a fact about the release, worded
+                    // here and in the catalogue, with the version it needs.
+                    services::notifications::add_text(
                         out,
                         NotificationKind::Error,
+                        services::notifications::Text::new(
+                            "notifications.msg.generatorCannotParse",
+                        )
+                        .with("version", map_generator::MIN_PARSE_VERSION),
                         "This generator cannot resolve a name",
                         format!(
                             "Working the map name out from the options needs generator {} or newer. Generating still works.",
@@ -178,12 +186,11 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                     out.emit(MapGeneratorEvent::NamePredicted {
                         map_name: String::new(),
                     });
-                    services::notifications::add(
+                    services::notifications::add_failure(
                         out,
-                        NotificationKind::Error,
+                        services::notifications::Text::new("notifications.msg.mapOptionsRejected"),
                         "Those options will not generate",
                         reason,
-                        None,
                     );
                 }
             }
@@ -224,12 +231,11 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
         MapGeneratorCommand::LoadHelp { version } => {
             match ctx.ports.map_generator.help(version).await {
                 Ok(text) => out.emit(MapGeneratorEvent::HelpLoaded { text }),
-                Err(reason) => services::notifications::add(
+                Err(reason) => services::notifications::add_failure(
                     out,
-                    NotificationKind::Error,
+                    services::notifications::Text::new("notifications.msg.generatorHelpFailed"),
                     "Could not read the generator help",
                     reason,
-                    None,
                 ),
             }
         }
@@ -258,8 +264,9 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                     out.emit(MapGeneratorEvent::OptionsChanged {
                         options: options.clone(),
                     });
-                    out.emit(SettingsEvent::MapGeneratorChanged {
-                        preferences: Box::new(options),
+                    let preferences = Box::new(options);
+                    ctx.settings.merge_and_emit(out, |_| {
+                        (SettingsEvent::MapGeneratorChanged { preferences }, ())
                     });
                     services::settings::persist(ctx, out).await;
                     reload_presets(ctx, out).await;
@@ -271,12 +278,13 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                     });
                 }
                 Err(reason) => {
-                    services::notifications::add(
+                    services::notifications::add_failure(
                         out,
-                        NotificationKind::Error,
+                        services::notifications::Text::new(
+                            "notifications.msg.generatorPresetSaveFailed",
+                        ),
                         "Could not save the preset",
                         reason,
-                        None,
                     );
                     out.emit(MapGeneratorEvent::PresetSaveFinished {
                         request_id,
@@ -288,12 +296,13 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
         MapGeneratorCommand::LoadPresets => reload_presets(ctx, out).await,
         MapGeneratorCommand::DeletePreset { name } => {
             if let Err(reason) = ctx.ports.map_generator.delete_preset(&name).await {
-                services::notifications::add(
+                services::notifications::add_failure(
                     out,
-                    NotificationKind::Error,
+                    services::notifications::Text::new(
+                        "notifications.msg.generatorPresetDeleteFailed",
+                    ),
                     "Could not delete the preset",
                     reason,
-                    None,
                 );
             }
             reload_presets(ctx, out).await;
@@ -332,15 +341,13 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
                     );
                     refresh_installed_maps(ctx, out).await;
                 }
-                Err(reason) => services::notifications::add_text(
+                Err(reason) => services::notifications::add_failure(
                     out,
-                    NotificationKind::Error,
                     services::notifications::Text::new(
                         "notifications.msg.generatedMapsRemoveFailed",
                     ),
                     "Could not remove generated maps",
                     reason,
-                    None,
                 ),
             }
         }
@@ -388,13 +395,11 @@ async fn drain(
                     },
                 );
             }
-            GeneratorStatus::Failed { reason } => services::notifications::add_text(
+            GeneratorStatus::Failed { reason } => services::notifications::add_failure(
                 out,
-                NotificationKind::Error,
                 services::notifications::Text::new("notifications.msg.mapGenerationFailed"),
                 "Map generation failed",
                 reason.clone(),
-                None,
             ),
             // A cancellation is the user's own doing; telling them about it
             // would be reporting their own click back to them.
@@ -425,9 +430,13 @@ pub(crate) async fn record_generated_maps(maps: &[String], ctx: &ServiceCtx, out
         return;
     }
     if out.with_state(|state| state.settings.game.keep_generated_maps) {
-        let before = out.with_state(|state| state.settings.kept_generated_maps.clone());
-        out.emit(SettingsEvent::KeptGeneratedMaps {
-            map_names: maps.to_vec(),
+        let before = ctx.settings.merge_and_emit(out, |settings| {
+            (
+                SettingsEvent::KeptGeneratedMaps {
+                    map_names: maps.to_vec(),
+                },
+                settings.kept_generated_maps.clone(),
+            )
         });
         let after = out.with_state(|state| state.settings.kept_generated_maps.clone());
         // The keep list is capped, and a name that falls off it is a map
@@ -549,12 +558,11 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
                 Some(version)
             }
             Err(reason) => {
-                services::notifications::add(
+                services::notifications::add_failure(
                     out,
-                    NotificationKind::Error,
+                    services::notifications::Text::new("notifications.msg.generatorUnavailable"),
                     "Could not find a usable map generator",
                     reason,
-                    None,
                 );
                 None
             }
@@ -599,12 +607,11 @@ async fn load_options(explicit_version: Option<String>, ctx: &ServiceCtx, out: &
         }
     }
     if let Some(reason) = failure {
-        services::notifications::add(
+        services::notifications::add_failure(
             out,
-            NotificationKind::Error,
+            services::notifications::Text::new("notifications.msg.generatorOptionsFailed"),
             "Could not read the map generator options",
             reason,
-            None,
         );
     }
 }

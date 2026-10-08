@@ -17,6 +17,17 @@
 //! for a word that is no longer typed). The tests that matter most are the ones
 //! the reducer cannot screen: an older answer about the *same* event, room or
 //! word, and refusals, which name nothing the reducer could compare.
+//!
+//! The reads of one replay file's details and analysis are screened by the
+//! reducer, by the key the service names each read with. The tests for them
+//! pin that key end to end for two files without a game id, which used to
+//! share one. An analysis is also called off by the service once a newer one
+//! is asked for, since only the newest is kept.
+//!
+//! Tournament chat reads overlap on purpose (a poll every few seconds, a
+//! re-read after every post), so they are not ordered by a generation but by
+//! the answer: none may replace a newer answer about the same room. The tests
+//! for them hold an older read while a newer one lands.
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
@@ -27,16 +38,17 @@ use std::time::Duration;
 use async_trait::async_trait;
 use faf_app::infra::{fake_ports, FakePlayerCard, FakeReplay, FakeTourney};
 use faf_app::ports::{
-    PlayerCardPort, ReplayLibraryPort, ReplayVaultPort, RequestError, TourneyChatPort,
-    TourneyReadPort, VaultSearchResult,
+    PlayerCardPort, ReplayDetailsPort, ReplayLibraryPort, ReplayVaultPort, RequestError,
+    TourneyChatPort, TourneyReadPort, VaultSearchResult,
 };
 use faf_app::{App, Ports};
 use faf_domain::state::{
-    ChatPost, ChatRoom, CopySource, EntrantRatings, LocalReplay, LocalReplayStatus,
-    MatchmakerPlayerProfile, PlayerCardProfile, PlayerLeaguePlacement, PlayerMapStats,
-    PlayerSummary, RatingCheck, RatingHistoryPage, RatingHistoryQuery, RenameCheck, ReplayCommand,
-    ReplayQuery, SeriesDetail, Tourney, TourneyLoadStatus, TourneyPreset, TourneyRead,
-    TourneySeries, VaultReplay, VaultStatus,
+    replay_read_key, ChatPost, ChatRoom, CopySource, EntrantRatings, LocalReplay,
+    LocalReplayStatus, MatchmakerPlayerProfile, PlayerCardProfile, PlayerLeaguePlacement,
+    PlayerMapStats, PlayerSummary, RatingCheck, RatingHistoryPage, RatingHistoryQuery, RenameCheck,
+    ReplayAnalysis, ReplayCommand, ReplayDetails, ReplayQuery, SeriesDetail, Tourney,
+    TourneyLoadStatus, TourneyPreset, TourneyRead, TourneySeries, TourneyWrite, VaultReplay,
+    VaultStatus,
 };
 use faf_domain::AppCommand;
 use tokio::sync::Semaphore;
@@ -440,6 +452,267 @@ async fn a_scan_from_before_a_delete_never_restores_the_deleted_replay() {
 #[tokio::test]
 async fn a_scan_refused_after_a_delete_never_fails_the_listing() {
     listing_after_delete(true).await;
+}
+
+// ── Replay file reads ──────────────────────────────────────────────────────
+
+/// Two files from the replay folder whose headers name no game: both are uid 0
+/// to everything that reads them, and only their paths tell them apart.
+const SKIRMISH_A: &str = "C:/replays/skirmish-a.fafreplay";
+const SKIRMISH_B: &str = "C:/replays/skirmish-b.fafreplay";
+
+fn details_key(path: &str) -> String {
+    format!("details:{path}")
+}
+
+fn analysis_key(path: &str) -> String {
+    format!("analysis:{path}")
+}
+
+/// Reads of replay files, held by the path they were asked about. Each answer
+/// says which file it was read from, so a test can tell whose answer landed:
+/// the details name the file among their mods, the analysis as its version.
+///
+/// It also keeps which analyses were asked for, and which were dropped before
+/// they answered, which is how the service calls a read off.
+#[derive(Default)]
+struct GatedReader {
+    gates: Gates,
+    analyses_asked: Mutex<Vec<String>>,
+    analyses_dropped: Mutex<Vec<String>>,
+}
+
+impl GatedReader {
+    fn analyses_asked(&self) -> Vec<String> {
+        self.analyses_asked.lock().expect("reader poisoned").clone()
+    }
+
+    fn analyses_dropped(&self) -> Vec<String> {
+        self.analyses_dropped
+            .lock()
+            .expect("reader poisoned")
+            .clone()
+    }
+}
+
+/// Records its path as dropped unless the read it belongs to answered first.
+struct Unanswered<'a> {
+    path: String,
+    dropped: &'a Mutex<Vec<String>>,
+    answered: bool,
+}
+
+impl Drop for Unanswered<'_> {
+    fn drop(&mut self) {
+        if !self.answered {
+            self.dropped
+                .lock()
+                .expect("reader poisoned")
+                .push(self.path.clone());
+        }
+    }
+}
+
+fn read_path(local_path: Option<PathBuf>) -> String {
+    local_path
+        .expect("a file without a game id is read by its path")
+        .to_string_lossy()
+        .into_owned()
+}
+
+#[async_trait]
+impl ReplayDetailsPort for GatedReader {
+    async fn load_details(
+        &self,
+        _uid: i32,
+        local_path: Option<PathBuf>,
+    ) -> Result<ReplayDetails, String> {
+        let path = read_path(local_path);
+        if self.gates.pass(&details_key(&path)).await == Answer::Refused {
+            return Err(format!("{path} is truncated"));
+        }
+        Ok(ReplayDetails {
+            sim_mods: vec![path],
+            ..ReplayDetails::default()
+        })
+    }
+
+    async fn load_analysis(
+        &self,
+        uid: i32,
+        local_path: Option<PathBuf>,
+    ) -> Result<ReplayAnalysis, String> {
+        let path = read_path(local_path);
+        self.analyses_asked
+            .lock()
+            .expect("reader poisoned")
+            .push(path.clone());
+        let mut unanswered = Unanswered {
+            path: path.clone(),
+            dropped: &self.analyses_dropped,
+            answered: false,
+        };
+        let answer = self.gates.pass(&analysis_key(&path)).await;
+        unanswered.answered = true;
+        if answer == Answer::Refused {
+            return Err(format!("{path} is truncated"));
+        }
+        // What a real reader knows: the game id it was asked about and what
+        // is in the file. Which read this answers is the service's to say.
+        Ok(ReplayAnalysis {
+            uid,
+            game_version: path,
+            ..ReplayAnalysis::default()
+        })
+    }
+}
+
+fn load_details(path: &str) -> ReplayCommand {
+    ReplayCommand::LoadDetails {
+        uid: 0,
+        local_path: Some(path.into()),
+    }
+}
+
+fn load_analysis(path: &str) -> ReplayCommand {
+    ReplayCommand::LoadAnalysis {
+        uid: 0,
+        local_path: Some(path.into()),
+    }
+}
+
+/// File A's reads are held, file B is opened and answered, then A answers.
+async fn file_read_overtaken(refuse: bool) {
+    let reader = Arc::new(GatedReader::default());
+    let app = start(Ports {
+        replay_details: reader.clone(),
+        ..fake_ports()
+    });
+    reader.gates.hold(&details_key(SKIRMISH_A), refuse);
+    reader.gates.hold(&analysis_key(SKIRMISH_A), refuse);
+
+    let details_a = spawn_command(&app, load_details(SKIRMISH_A));
+    let analysis_a = spawn_command(&app, load_analysis(SKIRMISH_A));
+    reader.gates.wait_entered(&details_key(SKIRMISH_A)).await;
+    reader.gates.wait_entered(&analysis_key(SKIRMISH_A)).await;
+    run(&app, load_details(SKIRMISH_B)).await;
+    run(&app, load_analysis(SKIRMISH_B)).await;
+    reader.gates.release(&details_key(SKIRMISH_A));
+    reader.gates.release(&analysis_key(SKIRMISH_A));
+    finish(details_a).await;
+    finish(analysis_a).await;
+
+    let replays = app.snapshot().replays;
+    let read_a = replay_read_key(0, Some(SKIRMISH_A));
+    let read_b = replay_read_key(0, Some(SKIRMISH_B));
+    let analysis = replays.analysis.expect("B's analysis is held");
+    assert_eq!(analysis.key, read_b);
+    assert_eq!(
+        analysis.game_version, SKIRMISH_B,
+        "A's analysis replaced B's"
+    );
+    assert_eq!(
+        replays
+            .replay_details
+            .get(&read_b)
+            .map(|details| details.sim_mods.clone()),
+        Some(vec![SKIRMISH_B.to_string()]),
+        "A's details were stored as B's"
+    );
+    // A's answer is A's own to keep, under A's own key.
+    let details_of_a = replays
+        .replay_details
+        .get(&read_a)
+        .map(|details| details.sim_mods.clone());
+    if refuse {
+        assert_eq!(details_of_a, None);
+    } else {
+        assert_eq!(details_of_a, Some(vec![SKIRMISH_A.to_string()]));
+    }
+    assert_eq!(replays.details_loading, None);
+    assert_eq!(replays.analysis_loading, None);
+    assert_eq!(replays.details_error, None, "A's failure was shown as B's");
+    assert_eq!(replays.analysis_error, None, "A's failure was shown as B's");
+    assert_nothing_announced(&app);
+}
+
+/// A answers late: it is stored as A's and replaces nothing of B's.
+#[tokio::test]
+async fn a_late_read_of_one_file_without_a_game_id_never_lands_as_another() {
+    file_read_overtaken(false).await;
+}
+
+/// A is refused late: B's panel shows no failure.
+#[tokio::test]
+async fn a_late_read_failure_of_one_file_without_a_game_id_is_not_another_files() {
+    file_read_overtaken(true).await;
+}
+
+/// A's analysis is being read when B's panel asks for its own. Only B's
+/// answer can land, so A's read is called off rather than read to its end:
+/// its port call is dropped, and A's command finishes without A's gate ever
+/// being opened.
+#[tokio::test]
+async fn a_superseded_analysis_is_called_off_rather_than_read_to_the_end() {
+    let reader = Arc::new(GatedReader::default());
+    let app = start(Ports {
+        replay_details: reader.clone(),
+        ..fake_ports()
+    });
+    reader.gates.hold(&analysis_key(SKIRMISH_A), false);
+
+    let superseded = spawn_command(&app, load_analysis(SKIRMISH_A));
+    reader.gates.wait_entered(&analysis_key(SKIRMISH_A)).await;
+    run(&app, load_analysis(SKIRMISH_B)).await;
+    // Never released: A has to stop on its own.
+    finish(superseded).await;
+
+    assert_eq!(
+        reader.analyses_dropped(),
+        [SKIRMISH_A],
+        "A's read was not called off"
+    );
+    let replays = app.snapshot().replays;
+    let analysis = replays.analysis.expect("B's analysis is held");
+    assert_eq!(analysis.key, replay_read_key(0, Some(SKIRMISH_B)));
+    assert_eq!(analysis.game_version, SKIRMISH_B);
+    assert_eq!(replays.analysis_loading, None);
+    assert_eq!(replays.analysis_error, None);
+    assert_nothing_announced(&app);
+}
+
+/// The same panel asks again while its analysis is being read (opened twice,
+/// or remounted). That is the read already running, so it is kept rather
+/// than thrown away and started over.
+#[tokio::test]
+async fn asking_again_for_the_analysis_being_read_keeps_that_read() {
+    let reader = Arc::new(GatedReader::default());
+    let app = start(Ports {
+        replay_details: reader.clone(),
+        ..fake_ports()
+    });
+    reader.gates.hold(&analysis_key(SKIRMISH_A), false);
+
+    let first = spawn_command(&app, load_analysis(SKIRMISH_A));
+    reader.gates.wait_entered(&analysis_key(SKIRMISH_A)).await;
+    run(&app, load_analysis(SKIRMISH_A)).await;
+    assert_eq!(
+        reader.analyses_asked(),
+        [SKIRMISH_A],
+        "the repeat started a second read"
+    );
+    assert_eq!(
+        app.snapshot().replays.analysis_loading,
+        Some(replay_read_key(0, Some(SKIRMISH_A)))
+    );
+    reader.gates.release(&analysis_key(SKIRMISH_A));
+    finish(first).await;
+
+    assert!(reader.analyses_dropped().is_empty());
+    let replays = app.snapshot().replays;
+    let analysis = replays.analysis.expect("A's analysis is held");
+    assert_eq!(analysis.key, replay_read_key(0, Some(SKIRMISH_A)));
+    assert_eq!(replays.analysis_loading, None);
 }
 
 // ── Tournament detail ──────────────────────────────────────────────────────
@@ -918,6 +1191,9 @@ fn chat_key(room_id: &str) -> String {
     format!("chat:{room_id}")
 }
 
+/// The room list is one read, whichever room is open.
+const ROOMS_KEY: &str = "rooms";
+
 /// The one post a room read answers with, named after its room and whether the
 /// read was the newest.
 fn post_id(room_id: &str, answer: Answer) -> String {
@@ -929,7 +1205,8 @@ fn post_id(room_id: &str, answer: Answer) -> String {
     format!("{room_id}/{age}")
 }
 
-/// The offline tournament chat, with room reads held by room.
+/// The offline tournament chat, with room reads held by room and the room list
+/// by [`ROOMS_KEY`]. A held room list says it is stale in every room's name.
 struct GatedChat {
     inner: FakeTourney,
     gates: Gates,
@@ -958,11 +1235,21 @@ impl TourneyChatPort for GatedChat {
         }])
     }
 
-    // Everything else is the ordinary offline service.
     async fn chat_rooms(&self, tournament_id: &str) -> Result<Vec<ChatRoom>, RequestError> {
-        self.inner.chat_rooms(tournament_id).await
+        let answer = self.gates.pass(ROOMS_KEY).await;
+        if answer == Answer::Refused {
+            return Err(RequestError::rejected("The chat is closed."));
+        }
+        let mut rooms = self.inner.chat_rooms(tournament_id).await?;
+        if answer == Answer::Stale {
+            for room in &mut rooms {
+                room.name.push_str(STALE_MARK);
+            }
+        }
+        Ok(rooms)
     }
 
+    // Everything else is the ordinary offline service.
     async fn chat_post(
         &self,
         tournament_id: &str,
@@ -1107,4 +1394,133 @@ async fn an_older_read_of_the_same_room_never_replaces_the_newer_posts() {
 #[tokio::test]
 async fn an_older_refusal_of_the_same_room_never_fails_the_newer_read() {
     room_overtaken_by_itself(true).await;
+}
+
+fn post_in(room_id: &str) -> TourneyWrite {
+    TourneyWrite::PostChat {
+        tournament_id: RUNNING.into(),
+        room_id: room_id.into(),
+        body: "gg".into(),
+        reply_to: None,
+    }
+}
+
+fn poll(room_id: &str) -> TourneyRead {
+    TourneyRead::RefreshChat {
+        tournament_id: RUNNING.into(),
+        room_id: room_id.into(),
+    }
+}
+
+/// The room's poll goes out, the reader posts, and the post's own re-read
+/// answers before the poll does. The poll asked before the post existed, so
+/// its answer is the older one, and landing last it hid the new post until
+/// the next poll five seconds later.
+#[tokio::test]
+async fn a_poll_sent_before_a_post_never_hides_the_post() {
+    let (app, gates, room, _) = with_gated_chat().await;
+    run(&app, open_room(&room)).await;
+    gates.hold(&chat_key(&room), false);
+
+    let older = spawn_command(&app, poll(&room));
+    gates.wait_entered(&chat_key(&room)).await;
+    // The post's re-read is the next read of the room, so it answers at once.
+    run(&app, post_in(&room)).await;
+    assert_current_room(&app, &room);
+    gates.release(&chat_key(&room));
+    finish(older).await;
+
+    assert_current_room(&app, &room);
+    assert_nothing_announced(&app);
+}
+
+/// The same for the pinned room: its read goes out when it is pinned, the
+/// reader posts into it from the popup, and the pin's read answers last.
+#[tokio::test]
+async fn a_pinned_rooms_first_read_never_hides_a_post_made_after_it() {
+    let (app, gates, open, pinned) = with_gated_chat().await;
+    run(&app, open_room(&open)).await;
+    gates.hold(&chat_key(&pinned), false);
+
+    let older = spawn_command(
+        &app,
+        TourneyRead::PinRoom {
+            tournament_id: RUNNING.into(),
+            room_id: Some(pinned.clone()),
+        },
+    );
+    gates.wait_entered(&chat_key(&pinned)).await;
+    run(&app, post_in(&pinned)).await;
+    gates.release(&chat_key(&pinned));
+    finish(older).await;
+
+    let tourney = app.snapshot().tourney;
+    assert_eq!(tourney.pinned_room_id.as_deref(), Some(pinned.as_str()));
+    assert_eq!(
+        tourney
+            .pinned_posts
+            .iter()
+            .map(|post| post.id.clone())
+            .collect::<Vec<_>>(),
+        [post_id(&pinned, Answer::Fresh)],
+        "the pin's older read replaced the post's re-read"
+    );
+    // The open room is another room, and its posts are its own.
+    assert_eq!(
+        tourney
+            .chat_posts
+            .iter()
+            .map(|post| post.id.clone())
+            .collect::<Vec<_>>(),
+        [post_id(&open, Answer::Fresh)]
+    );
+    assert_nothing_announced(&app);
+}
+
+/// The room list read when the chat tab opens (`LoadChat`) goes out, the
+/// reader posts, and the post's own re-read of the list answers first. The
+/// older list must not bring back the counts and marks from before the post.
+#[tokio::test]
+async fn a_room_list_read_before_a_post_never_replaces_the_list_read_after_it() {
+    let (app, gates, room, _) = with_gated_chat().await;
+    run(&app, open_room(&room)).await;
+    gates.hold(ROOMS_KEY, false);
+
+    let older = spawn_command(
+        &app,
+        TourneyRead::LoadChat {
+            tournament_id: RUNNING.into(),
+        },
+    );
+    gates.wait_entered(ROOMS_KEY).await;
+    run(&app, post_in(&room)).await;
+    gates.release(ROOMS_KEY);
+    finish(older).await;
+
+    let rooms = app.snapshot().tourney.chat_rooms;
+    assert!(!rooms.is_empty());
+    assert!(
+        rooms
+            .iter()
+            .all(|listed| !listed.name.ends_with(STALE_MARK)),
+        "the room list from before the post replaced the one read after it"
+    );
+}
+
+/// The open room's own read and its poll overlap the other way: the poll
+/// asks second and answers first. The open read is the older one then, and
+/// its refusal must not fail a room the poll has just shown.
+#[tokio::test]
+async fn an_open_rooms_late_refusal_never_fails_a_newer_poll_of_it() {
+    let (app, gates, room, _) = with_gated_chat().await;
+    gates.hold(&chat_key(&room), true);
+
+    let older = spawn_command(&app, open_room(&room));
+    gates.wait_entered(&chat_key(&room)).await;
+    run(&app, poll(&room)).await;
+    gates.release(&chat_key(&room));
+    finish(older).await;
+
+    assert_current_room(&app, &room);
+    assert_nothing_announced(&app);
 }

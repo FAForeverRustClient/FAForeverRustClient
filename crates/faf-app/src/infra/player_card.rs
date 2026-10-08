@@ -741,7 +741,9 @@ impl PlayerCardClient {
                 "result,score,team,scoreTime,player,ratingChanges",
             )
             .append_pair("fields[player]", "login")
-            .append_pair("fields[mapVersion]", "map")
+            // The folder as well as the map: it is what the results list
+            // draws each game's map picture from, the way chat does.
+            .append_pair("fields[mapVersion]", "map,folderName")
             .append_pair("fields[map]", "displayName")
             .append_pair(
                 "fields[leaderboardRatingJournal]",
@@ -772,14 +774,17 @@ fn parse_history_games(document: &JsonApiDoc, player_id: i32) -> Vec<PlayedGame>
         .data
         .iter()
         .map(|game| {
-            let map = rel_one(game, "mapVersion")
-                .and_then(|key| included.get(&key))
+            let version = rel_one(game, "mapVersion").and_then(|key| included.get(&key));
+            let map = version
                 .and_then(|version| rel_one(version, "map"))
                 .and_then(|key| included.get(&key))
                 .and_then(|map| map.attributes.get("displayName"))
                 .and_then(Value::as_str)
                 .unwrap_or_default()
                 .to_string();
+            let map_folder = version
+                .map(|version| value_string(&version.attributes, "folderName"))
+                .unwrap_or_default();
 
             let stats: Vec<&Resource> = rel_many(game, "playerStats")
                 .iter()
@@ -834,6 +839,7 @@ fn parse_history_games(document: &JsonApiDoc, player_id: i32) -> Vec<PlayedGame>
             PlayedGame {
                 game_id,
                 map,
+                map_folder,
                 outcome: outcome_for(&rows, player_id),
                 rating_moved: moved_a_rating(&rows, player_id),
                 ladder,
@@ -2253,7 +2259,7 @@ mod map_stats_tests {
                 stats_row(9, 7, "DEFEAT", 2, 1, None),
                 stats_row(10, 8, "VICTORY", 3, 8, None),
 
-                { "type": "mapVersion", "id": "10", "attributes": {},
+                { "type": "mapVersion", "id": "10", "attributes": { "folderName": "scmp_009.v0003" },
                   "relationships": { "map": { "data": { "type": "map", "id": "20" } } } },
                 { "type": "mapVersion", "id": "11", "attributes": {},
                   "relationships": { "map": { "data": { "type": "map", "id": "21" } } } },
@@ -2283,16 +2289,22 @@ mod map_stats_tests {
         assert_eq!(games.len(), 5);
 
         assert_eq!(games[0].map, "Setons Clutch");
+        assert_eq!(games[0].map_folder, "scmp_009.v0003");
         assert_eq!(games[0].outcome, Outcome::Win);
         assert!(games[0].rating_moved);
         assert_eq!(games[0].played_at, "2026-01-04T20:00:00Z");
 
         assert_eq!(games[1].map, "Dual Gap");
+        assert_eq!(
+            games[1].map_folder, "",
+            "a version that states no folder leaves the picture to the placeholder"
+        );
         assert_eq!(games[1].outcome, Outcome::Loss);
 
         // The API names no map version for a generated map, so the game
         // survives without a name, which the fold then reads as generated.
         assert_eq!(games[3].map, "");
+        assert_eq!(games[3].map_folder, "");
     }
 
     /// The rule that most changes a record, and the one the client did not

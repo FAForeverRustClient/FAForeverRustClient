@@ -18,6 +18,9 @@ pub(super) struct Background<'a> {
     /// A party member's featured-mod update when its leader starts a search.
     /// See `LobbyUpdate::Matchmaking`.
     pub(super) warm_up: Option<BoxFuture<'a, ()>>,
+    /// Calls that update off when dropped: when the leader stops the search,
+    /// and with the loop when the connection ends.
+    pub(super) warm_up_called_off: Option<tokio_util::sync::DropGuard>,
 }
 
 /// The game being launched or played, as far as the lobby loop is concerned.

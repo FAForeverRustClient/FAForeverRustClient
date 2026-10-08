@@ -64,13 +64,16 @@ const INITIAL: AppState = {
     local: [],
     localStatus: { type: "idle" },
     replayDetails: {},
+    replayDetailsOrder: [],
     detailsLoading: null,
     detailsError: null,
     analysis: null,
     analysisLoading: null,
     analysisError: null,
     onlineLookups: {},
+    onlineLookupsOrder: [],
     resolvedMaps: {},
+    resolvedMapsOrder: [],
     recentMatchmaker: [],
     recentMatchmakerStatus: { type: "idle" },
   },
@@ -239,6 +242,7 @@ const INITIAL: AppState = {
     status: { type: "idle" },
     history: [],
     historyStatus: { type: "idle" },
+    logAttachment: { type: "off" },
   },
   reviews: {
     target: null,
@@ -423,6 +427,10 @@ const INITIAL: AppState = {
     selected: "",
     entries: {},
     entryStatus: { type: "idle" },
+  },
+  connectivity: {
+    check: { status: { type: "idle" }, steps: [], startedAt: "" },
+    relay: { type: "idle" },
   },
   settings: {
     // Mirrors `impl Default for GeneratorOptions`, like the working copy above.

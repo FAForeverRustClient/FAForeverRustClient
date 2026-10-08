@@ -497,9 +497,16 @@ pub struct ReplayPlayerStats {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReplayAnalysis {
-    /// The game this describes, so a late answer for one replay is not drawn
-    /// over another.
+    /// The game this describes, 0 for a file whose header names none.
     pub uid: i32,
+    /// The read this answers, as [`replay_read_key`] names it, so a late
+    /// answer for one replay is not drawn over another. Two files without a
+    /// game id are both uid 0 and only this tells them apart.
+    ///
+    /// Filled in by the replay service from the request, not by whatever
+    /// walked the file: the walk knows the bytes, not which path the panel
+    /// asked about.
+    pub key: String,
     /// Simulation ticks the stream covers. Ten to the second.
     pub ticks: u32,
     /// The engine build the game ran on, as the file's first line spells it.
@@ -703,6 +710,8 @@ pub enum ReplayDownloadStatus {
     Idle,
     Downloading {
         uid: i32,
+        /// Percent received, when the server said how big the file is.
+        progress: Option<u8>,
     },
     Downloaded {
         uid: i32,
@@ -714,7 +723,107 @@ pub enum ReplayDownloadStatus {
     },
 }
 
-/// Why reading one replay file failed, and which replay it was.
+/// Which replay a read of its details or analysis is about.
+///
+/// The detail panel asks for these on demand and the answers come back later,
+/// so every answer and every failure names the read it belongs to, and the
+/// panel shows only its own. The game id used to be that name on its own, and
+/// a file whose header carries no game id is uid 0: every such file shared one
+/// name, so the second one opened showed the first one's analysis and never
+/// asked for its own.
+///
+/// - A replay with a game id is named by it, `uid:123`, wherever its file
+///   came from. The vault's copy and a downloaded or recorded copy of the same
+///   game are the same game, and reading either says the same thing about it.
+/// - A replay without one is named by its file, `path:` and the path as
+///   [`normalize_replay_path`] spells it. One file reached two ways (the
+///   library's scan, a file handed to the client, a path written with the
+///   other slash) is one read, not two. The panel and the service both work
+///   the key out with this function or its twin, so they still agree on it.
+/// - With neither, `uid:0`: there is nothing else to tell it apart by.
+///
+/// A string rather than a struct because it keys [`ReplayState::replay_details`],
+/// and a JSON object key has to be one. The frontend twin is `replayReadKey`
+/// in `ui/src/shared/rules/replayReadKey.ts`, held to this one by the
+/// conformance fixture.
+pub fn replay_read_key(uid: i32, local_path: Option<&str>) -> String {
+    match local_path {
+        Some(path) if uid <= 0 && !path.is_empty() => {
+            format!("path:{}", normalize_replay_path(path))
+        }
+        _ => format!("uid:{uid}"),
+    }
+}
+
+/// One spelling for every way of writing the same replay file's path, worked
+/// out from the text alone.
+///
+/// The same file arrives spelt differently depending on who names it: the
+/// library's own scan, a file the shell hands the client, a path somebody
+/// typed. Keyed as given, each spelling was a read of its own, so one file was
+/// read twice, and a note written on it under one spelling was missing under
+/// the other.
+///
+/// Separators become `/`, repeated ones collapse, `.` segments go, `..` takes
+/// the segment before it, and a trailing separator is dropped. A path that
+/// looks like a Windows one, with a drive letter (`C:`) or a UNC `//` prefix,
+/// is also lowercased, because Windows does not tell `Replays` from
+/// `replays`; any other path keeps its case, because Linux does.
+///
+/// Lexical only, and pure: this never asks the filesystem, so a symbolic link
+/// and its target stay two spellings. `..` cannot climb above the root of an
+/// absolute path and is kept at the start of a relative one, and a relative
+/// path that resolves to nothing is `.`, so a path that is not empty never
+/// normalises to an empty one. The frontend twin is `normalizeReplayPath` in
+/// `ui/src/shared/rules/replayReadKey.ts`.
+pub fn normalize_replay_path(path: &str) -> String {
+    let unified = path.replace('\\', "/");
+    let bytes = unified.as_bytes();
+    // What comes before the first segment, and whether case is to be folded.
+    let (prefix, rest, windows) = if let Some(rest) = unified.strip_prefix("//") {
+        ("//", rest, true)
+    } else if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
+        (&unified[..2], &unified[2..], true)
+    } else {
+        ("", unified.as_str(), false)
+    };
+    // A UNC path is always absolute. A drive letter may be followed by a
+    // relative path (`C:replays`), which is relative to that drive.
+    let rooted = prefix == "//" || rest.starts_with('/');
+
+    let mut segments: Vec<&str> = Vec::new();
+    for segment in rest.split('/') {
+        match segment {
+            "" | "." => {}
+            ".." => match segments.last() {
+                Some(last) if *last != ".." => {
+                    segments.pop();
+                }
+                // Above the root is still the root; above where a relative
+                // path starts is somewhere this cannot name, so it stays.
+                _ if rooted => {}
+                _ => segments.push(".."),
+            },
+            _ => segments.push(segment),
+        }
+    }
+
+    let mut normalized = String::from(prefix);
+    if rooted && prefix != "//" {
+        normalized.push('/');
+    }
+    normalized.push_str(&segments.join("/"));
+    if normalized.is_empty() {
+        normalized.push('.');
+    }
+    if windows {
+        normalized.to_lowercase()
+    } else {
+        normalized
+    }
+}
+
+/// Why reading one replay file failed, and which read it was.
 ///
 /// The detail panel reads the details and the analysis on demand, and a reader
 /// who opens one replay and then another has two reads in flight at once. A
@@ -723,7 +832,8 @@ pub enum ReplayDownloadStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReplayReadError {
-    pub uid: i32,
+    /// The read that failed, as [`replay_read_key`] names it.
+    pub key: String,
     pub reason: String,
 }
 
@@ -788,15 +898,27 @@ pub struct ReplayState {
     pub featured_mods: Vec<String>,
     pub local: Vec<LocalReplay>,
     pub local_status: VaultStatus,
-    /// Deferred replay metadata keyed by replay uid. Details are loaded only
-    /// when requested because parsing the command stream can be expensive.
+    /// Deferred replay metadata keyed by [`replay_read_key`]: the game id, or
+    /// the file for a replay without one. Details are loaded only when
+    /// requested because parsing the command stream can be expensive.
+    ///
+    /// At most [`REPLAY_DETAILS_KEPT`] of them, the ones stored last; see
+    /// [`Self::replay_details_order`].
     #[serde(default)]
-    pub replay_details: std::collections::HashMap<i32, ReplayDetails>,
-    /// The replay whose details were asked for last, while that read runs.
-    /// Only its failure is recorded: an older read still finishing describes a
-    /// panel nobody is looking at.
+    pub replay_details: std::collections::HashMap<String, ReplayDetails>,
+    /// The keys of [`Self::replay_details`], oldest stored first, so the
+    /// oldest is the one that goes when the map is full.
+    ///
+    /// A list beside the map rather than an ordered map in its place: the
+    /// panel looks its own entry up by key, and a JSON object is what lets it
+    /// do that without a search.
     #[serde(default)]
-    pub details_loading: Option<i32>,
+    pub replay_details_order: Vec<String>,
+    /// The read whose details were asked for last, while it runs. Only its
+    /// failure is recorded: an older read still finishing describes a panel
+    /// nobody is looking at.
+    #[serde(default)]
+    pub details_loading: Option<String>,
     #[serde(default)]
     pub details_error: Option<ReplayReadError>,
     /// The analysed replay, and only the one asked for last.
@@ -809,21 +931,35 @@ pub struct ReplayState {
     /// stranger's analysis and sit on "reading" with nothing left coming.
     #[serde(default)]
     pub analysis: Option<ReplayAnalysis>,
-    /// The replay whose analysis was asked for last, while that read runs.
+    /// The read whose analysis was asked for last, while it runs.
     #[serde(default)]
-    pub analysis_loading: Option<i32>,
+    pub analysis_loading: Option<String>,
     #[serde(default)]
     pub analysis_error: Option<ReplayReadError>,
     /// Vault answers for single game ids, keyed by that id. Filled by
     /// [`ReplayCommand::LookUpOnline`] on behalf of local replays; see
     /// [`OnlineLookup`].
+    ///
+    /// At most [`ONLINE_LOOKUPS_KEPT`] of them, the ones stored last; see
+    /// [`Self::online_lookups_order`].
     #[serde(default)]
     pub online_lookups: std::collections::HashMap<i32, OnlineLookup>,
+    /// The keys of [`Self::online_lookups`], oldest stored first, so the
+    /// oldest is the one that goes when the map is full. A list beside the
+    /// map for the reason [`Self::replay_details_order`] is one.
+    #[serde(default)]
+    pub online_lookups_order: Vec<i32>,
     /// Map folders read out of the replay files themselves, keyed by game id.
     /// An empty value means the file was read and named no map, so the view
     /// stops asking. See [`ReplayCommand::ResolveMaps`].
+    ///
+    /// At most [`RESOLVED_MAPS_KEPT`] of them, never one of the vault page on
+    /// screen; see [`Self::resolved_maps_order`].
     #[serde(default)]
     pub resolved_maps: std::collections::HashMap<i32, String>,
+    /// The keys of [`Self::resolved_maps`], oldest stored first.
+    #[serde(default)]
+    pub resolved_maps_order: Vec<i32>,
     /// The signed-in player's latest matchmaker games, newest first (#301).
     ///
     /// Its own list rather than a vault search, so showing it on the
@@ -905,6 +1041,11 @@ pub enum ReplayEvent {
     VaultDownloadStarted {
         uid: i32,
     },
+    /// How much of replay `uid` has arrived. Lands only on that download.
+    VaultDownloadProgressed {
+        uid: i32,
+        progress: Option<u8>,
+    },
     VaultDownloaded {
         uid: i32,
         replay: LocalReplay,
@@ -913,29 +1054,46 @@ pub enum ReplayEvent {
         uid: i32,
         reason: String,
     },
+    /// The download of `uid` was called off before the file was written: back
+    /// to idle, and not a failure.
+    VaultDownloadCancelled {
+        uid: i32,
+    },
     LocalLoadFailed {
         reason: String,
     },
+    /// A details read has begun. This and the five details and analysis
+    /// events after it name their read by [`replay_read_key`], not by game id:
+    /// two files without a game id are both uid 0, and only the key tells
+    /// their answers apart.
     DetailsLoading {
-        uid: i32,
+        key: String,
     },
     DetailsLoaded {
-        uid: i32,
+        key: String,
         details: ReplayDetails,
     },
     DetailsFailed {
-        uid: i32,
+        key: String,
         reason: String,
     },
     AnalysisLoading {
-        uid: i32,
+        key: String,
     },
+    /// Carries its key in [`ReplayAnalysis::key`].
     AnalysisLoaded {
         analysis: ReplayAnalysis,
     },
     AnalysisFailed {
-        uid: i32,
+        key: String,
         reason: String,
+    },
+    /// The panel that asked for `key`'s details and analysis was closed, and
+    /// the reads still running for it were called off. Neither will answer,
+    /// so neither is still loading: the next panel opened on the same replay
+    /// asks again instead of waiting for an answer that is not coming.
+    ReadsCancelled {
+        key: String,
     },
     /// The vault is being asked about one game id (see [`OnlineLookup`]).
     OnlineLookupStarted {
@@ -1004,8 +1162,18 @@ pub enum ReplayCommand {
     DownloadVault {
         uid: i32,
     },
+    /// Call off the download of `uid` into the library while it runs.
+    ///
+    /// The transfer stops where it is, and a file being written when the call
+    /// arrives is written to a temporary name that is deleted rather than
+    /// published, so the library never holds part of a replay. Does nothing
+    /// once the file is in place.
+    CancelDownload {
+        uid: i32,
+    },
     /// Load the deferred game options, in-game chat, and FAF version from a
-    /// replay body.
+    /// replay body. The answer is keyed by [`replay_read_key`] of these two
+    /// fields, which the panel works out the same way to find it.
     #[serde(rename_all = "camelCase")]
     LoadDetails {
         uid: i32,
@@ -1017,9 +1185,23 @@ pub enum ReplayCommand {
     ///
     /// Separate from [`Self::LoadDetails`] because it is the expensive half.
     /// The options and the chat are what somebody opening the panel is usually
-    /// after, and they arrive while this is still walking.
+    /// after, and they arrive while this is still walking. Keyed the same way.
     #[serde(rename_all = "camelCase")]
     LoadAnalysis {
+        uid: i32,
+        #[serde(default)]
+        local_path: Option<String>,
+    },
+    /// The detail panel that asked for this replay's details and analysis was
+    /// closed: call off whichever of the two reads is still running for it.
+    ///
+    /// Either can be the whole replay fetched from the vault and then walked
+    /// command by command, and the answer would only land in a panel nobody
+    /// has open. Keyed the way the reads are, so it never stops a read for
+    /// another replay. Ends with [`ReplayEvent::ReadsCancelled`] when a read
+    /// was running.
+    #[serde(rename_all = "camelCase")]
+    CancelReads {
         uid: i32,
         #[serde(default)]
         local_path: Option<String>,
@@ -1085,44 +1267,26 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
                 state.preparing = Some(step.clone());
             }
         }
+        // None of the three touches `download_status`. `WatchVault` used to
+        // mark its download there and these three cleared it again, which
+        // also cleared a download into the library running beside the watch.
+        // A watch's download is a step of its launch now, narrated through
+        // `preparing` like every other step, so the library download's status
+        // belongs to the library download alone.
         ReplayEvent::Playing { uid, warning } => {
             state.status = ReplayStatus::Playing { uid: *uid };
             state.last_warning = warning.clone();
             state.preparing = None;
-            // `WatchVault` downloads into the cache as part of the playback
-            // operation. Its successful completion has no LocalReplay record,
-            // so clear only the transient download indicator here. Explicit
-            // save-to-library downloads still finish through VaultDownloaded.
-            if matches!(
-                state.download_status,
-                ReplayDownloadStatus::Downloading { .. }
-            ) {
-                state.download_status = ReplayDownloadStatus::Idle;
-            }
         }
         ReplayEvent::Failed { reason } => {
             state.status = ReplayStatus::Failed {
                 reason: reason.clone(),
             };
             state.preparing = None;
-            if matches!(
-                state.download_status,
-                ReplayDownloadStatus::Downloading { .. }
-            ) {
-                state.download_status = ReplayDownloadStatus::Idle;
-            }
         }
         ReplayEvent::Closed => {
             state.status = ReplayStatus::Idle;
             state.preparing = None;
-            // A `WatchVault` called off part-way leaves its download showing in
-            // the shared status task otherwise, with nothing left to finish it.
-            if matches!(
-                state.download_status,
-                ReplayDownloadStatus::Downloading { .. }
-            ) {
-                state.download_status = ReplayDownloadStatus::Idle;
-            }
         }
         ReplayEvent::LiveTrackingScheduled { tracking } => {
             state.live_tracking = Some(tracking.clone());
@@ -1171,7 +1335,29 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
             state.local_status = VaultStatus::Ready;
         }
         ReplayEvent::VaultDownloadStarted { uid } => {
-            state.download_status = ReplayDownloadStatus::Downloading { uid: *uid };
+            state.download_status = ReplayDownloadStatus::Downloading {
+                uid: *uid,
+                progress: None,
+            };
+        }
+        ReplayEvent::VaultDownloadProgressed { uid, progress } => {
+            if let ReplayDownloadStatus::Downloading {
+                uid: downloading,
+                progress: shown,
+            } = &mut state.download_status
+            {
+                if downloading == uid {
+                    *shown = *progress;
+                }
+            }
+        }
+        ReplayEvent::VaultDownloadCancelled { uid } => {
+            if matches!(
+                state.download_status,
+                ReplayDownloadStatus::Downloading { uid: downloading, .. } if downloading == *uid
+            ) {
+                state.download_status = ReplayDownloadStatus::Idle;
+            }
         }
         ReplayEvent::VaultDownloaded { uid, replay } => {
             state.local.retain(|known| known.path != replay.path);
@@ -1192,84 +1378,89 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
                 reason: reason.clone(),
             }
         }
-        ReplayEvent::DetailsLoading { uid } => {
-            state.details_loading = Some(*uid);
+        ReplayEvent::DetailsLoading { key } => {
+            state.details_loading = Some(key.clone());
             state.details_error = None;
         }
-        ReplayEvent::DetailsLoaded { uid, details } => {
-            // Stored whoever asked: details are kept per replay, so a late
+        ReplayEvent::DetailsLoaded { key, details } => {
+            // Stored whoever asked: details are kept per read, so a late
             // answer fills in its own entry and cannot overwrite another's.
-            state.replay_details.insert(*uid, details.clone());
-            if state.details_loading == Some(*uid) {
+            store_replay_details(state, key, details);
+            if state.details_loading.as_ref() == Some(key) {
                 state.details_loading = None;
             }
             if state
                 .details_error
                 .as_ref()
-                .is_some_and(|error| error.uid == *uid)
+                .is_some_and(|error| error.key == *key)
             {
                 state.details_error = None;
             }
         }
-        ReplayEvent::DetailsFailed { uid, reason } => {
+        ReplayEvent::DetailsFailed { key, reason } => {
             // Only the newest request's failure is shown. A late one for a
             // replay no longer asked about would sit in the error slot of the
             // panel that is open, or push out that panel's own failure.
-            if state.details_loading == Some(*uid) {
+            if state.details_loading.as_ref() == Some(key) {
                 state.details_loading = None;
                 state.details_error = Some(ReplayReadError {
-                    uid: *uid,
+                    key: key.clone(),
                     reason: reason.clone(),
                 });
             }
         }
-        ReplayEvent::AnalysisLoading { uid } => {
-            state.analysis_loading = Some(*uid);
+        ReplayEvent::AnalysisLoading { key } => {
+            state.analysis_loading = Some(key.clone());
             state.analysis_error = None;
             // The panel being opened is not the one the held analysis is of.
-            if state.analysis.as_ref().is_some_and(|held| held.uid != *uid) {
+            if state.analysis.as_ref().is_some_and(|held| held.key != *key) {
                 state.analysis = None;
             }
         }
         ReplayEvent::AnalysisLoaded { analysis } => {
             // One analysis is held, so only the newest request's answer may
             // take the slot. An older read finishing last would replace it,
-            // and the open panel, seeing another replay's uid, would go back
-            // to "reading" with nothing more on the way.
-            if state.analysis_loading == Some(analysis.uid) {
+            // and the open panel, seeing another read's key, would go back to
+            // "reading" with nothing more on the way.
+            if state.analysis_loading.as_ref() == Some(&analysis.key) {
                 state.analysis_loading = None;
                 state.analysis = Some(analysis.clone());
                 state.analysis_error = None;
             }
         }
-        ReplayEvent::AnalysisFailed { uid, reason } => {
-            if state.analysis_loading == Some(*uid) {
+        ReplayEvent::AnalysisFailed { key, reason } => {
+            if state.analysis_loading.as_ref() == Some(key) {
                 state.analysis_loading = None;
                 state.analysis_error = Some(ReplayReadError {
-                    uid: *uid,
+                    key: key.clone(),
                     reason: reason.clone(),
                 });
             }
         }
-        ReplayEvent::OnlineLookupStarted { uid } => {
-            state.online_lookups.insert(*uid, OnlineLookup::Loading);
-        }
-        ReplayEvent::MapsResolved { maps } => {
-            for resolved in maps {
-                state
-                    .resolved_maps
-                    .insert(resolved.uid, resolved.map.clone());
+        ReplayEvent::ReadsCancelled { key } => {
+            // Only the reads of the panel that closed: another panel's read in
+            // flight keeps its loading line.
+            if state.details_loading.as_ref() == Some(key) {
+                state.details_loading = None;
+            }
+            if state.analysis_loading.as_ref() == Some(key) {
+                state.analysis_loading = None;
             }
         }
+        ReplayEvent::OnlineLookupStarted { uid } => {
+            store_online_lookup(state, *uid, OnlineLookup::Loading);
+        }
+        ReplayEvent::MapsResolved { maps } => store_resolved_maps(state, maps),
         ReplayEvent::OnlineLookupFinished { uid, replay } => {
             let outcome = match replay {
                 Some(replay) => OnlineLookup::Found(replay.clone()),
                 None => OnlineLookup::Missing,
             };
-            state.online_lookups.insert(*uid, outcome);
+            store_online_lookup(state, *uid, outcome);
         }
         ReplayEvent::OnlineLookupFailed { uid, reason } => {
-            state.online_lookups.insert(
+            store_online_lookup(
+                state,
                 *uid,
                 OnlineLookup::Failed {
                     reason: reason.clone(),
@@ -1277,6 +1468,110 @@ pub fn reduce(state: &mut ReplayState, event: &ReplayEvent) {
             );
         }
     }
+}
+
+/// How many replays' details [`ReplayState::replay_details`] keeps.
+///
+/// Every panel opened on a replay's insights adds an entry, and nothing else
+/// took one away, so a long session of browsing grew the state by one replay's
+/// options, chat and command counts per panel, all of it sent again with every
+/// full snapshot. Fifty is far more than anybody goes back and forth between,
+/// so a replay looked at again a little later is still there, while the state
+/// stays a bounded size. The panel that is open asks again if its own entry is
+/// ever the one that goes.
+pub const REPLAY_DETAILS_KEPT: usize = 50;
+
+/// Store one read's details as the newest, and drop the oldest past
+/// [`REPLAY_DETAILS_KEPT`]. A read answered again moves to the newest place
+/// rather than keeping the place of its first answer.
+fn store_replay_details(state: &mut ReplayState, key: &str, details: &ReplayDetails) {
+    state
+        .replay_details
+        .insert(key.to_string(), details.clone());
+    state.replay_details_order.retain(|stored| stored != key);
+    state.replay_details_order.push(key.to_string());
+    let overflow = state
+        .replay_details_order
+        .len()
+        .saturating_sub(REPLAY_DETAILS_KEPT);
+    for oldest in state.replay_details_order.drain(..overflow) {
+        state.replay_details.remove(&oldest);
+    }
+}
+
+/// How many games' vault lookups [`ReplayState::online_lookups`] keeps.
+///
+/// The live tab looks up every game card it shows, seventy-five more with
+/// each "show more", up to every game being played at once, which on the
+/// busiest evening is a few hundred; the replay panels add one each. Nothing
+/// took an entry away again, so a long session on the live tab grew the state
+/// by a vault row for every game started while it was open, all of it sent
+/// again with every full snapshot. A thousand is several times the largest
+/// list of cards the tab can show, so the entries of the cards on screen,
+/// which are the ones stored last, are not the ones that go. An entry that
+/// does go is only asked for again by a view that wants it and finds it
+/// missing.
+pub const ONLINE_LOOKUPS_KEPT: usize = 1000;
+
+/// How many games' maps [`ReplayState::resolved_maps`] keeps.
+///
+/// The vault page asks for the maps its listing lacks, a page at a time and
+/// at most a hundred and twenty per command, and asks again for any of its
+/// games it finds missing. Five hundred is several pages back, and the games
+/// of the page on screen are never the ones that go, so a full map cannot
+/// make the page ask again in a loop.
+pub const RESOLVED_MAPS_KEPT: usize = 500;
+
+/// Move `uid` to the newest end of `order`, adding it if it is not there.
+fn stored_last(order: &mut Vec<i32>, uid: i32) {
+    order.retain(|stored| *stored != uid);
+    order.push(uid);
+}
+
+/// Store one game's lookup as the newest, and drop the oldest past
+/// [`ONLINE_LOOKUPS_KEPT`]. A lookup answered again, or asked again, moves to
+/// the newest place, the way [`store_replay_details`] does.
+fn store_online_lookup(state: &mut ReplayState, uid: i32, lookup: OnlineLookup) {
+    state.online_lookups.insert(uid, lookup);
+    stored_last(&mut state.online_lookups_order, uid);
+    let overflow = state
+        .online_lookups_order
+        .len()
+        .saturating_sub(ONLINE_LOOKUPS_KEPT);
+    for oldest in state.online_lookups_order.drain(..overflow) {
+        state.online_lookups.remove(&oldest);
+    }
+}
+
+/// Store a batch of resolved maps as the newest, and drop the oldest past
+/// [`RESOLVED_MAPS_KEPT`], passing over the games of the vault page on
+/// screen: that page asks again for any of its games it finds missing, and
+/// one of them dropped here would come straight back and push out another.
+fn store_resolved_maps(state: &mut ReplayState, maps: &[ResolvedReplayMap]) {
+    for resolved in maps {
+        state
+            .resolved_maps
+            .insert(resolved.uid, resolved.map.clone());
+        stored_last(&mut state.resolved_maps_order, resolved.uid);
+    }
+    let mut overflow = state
+        .resolved_maps_order
+        .len()
+        .saturating_sub(RESOLVED_MAPS_KEPT);
+    if overflow == 0 {
+        return;
+    }
+    let on_page: std::collections::HashSet<i32> =
+        state.vault.iter().map(|replay| replay.uid).collect();
+    let resolved_maps = &mut state.resolved_maps;
+    state.resolved_maps_order.retain(|uid| {
+        if overflow == 0 || on_page.contains(uid) {
+            return true;
+        }
+        resolved_maps.remove(uid);
+        overflow -= 1;
+        false
+    });
 }
 
 #[cfg(test)]
@@ -1533,27 +1828,115 @@ mod tests {
         assert_eq!(s.last_warning, None);
     }
 
+    /// A watch ending, however it ends, leaves a library download alone: the
+    /// watch's own download is a step of its launch, not this status. The
+    /// three endings used to clear it, and with it a download into the
+    /// library that was running beside the watch.
     #[test]
-    fn playback_completion_clears_only_the_transient_watch_download() {
-        let mut s = ReplayState::default();
-        reduce(&mut s, &ReplayEvent::VaultDownloadStarted { uid: 42 });
-        reduce(
-            &mut s,
-            &ReplayEvent::Playing {
-                uid: Some(42),
+    fn a_watch_ending_leaves_a_library_download_running() {
+        for ending in [
+            ReplayEvent::Playing {
+                uid: Some(7),
                 warning: None,
             },
-        );
-        assert_eq!(s.download_status, ReplayDownloadStatus::Idle);
+            ReplayEvent::Failed {
+                reason: "no".into(),
+            },
+            ReplayEvent::Closed,
+        ] {
+            let mut s = ReplayState::default();
+            reduce(&mut s, &ReplayEvent::VaultDownloadStarted { uid: 42 });
+            reduce(&mut s, &ReplayEvent::Connecting);
+            reduce(&mut s, &ending);
+            assert_eq!(
+                s.download_status,
+                ReplayDownloadStatus::Downloading {
+                    uid: 42,
+                    progress: None
+                },
+                "{ending:?}"
+            );
+        }
 
-        // A completed save-to-library download is a separate terminal state
-        // and should remain available to the download button.
+        let mut s = ReplayState::default();
+        reduce(&mut s, &ReplayEvent::VaultDownloadStarted { uid: 42 });
         let replay = local_replay("42.fafreplay");
         reduce(&mut s, &ReplayEvent::VaultDownloaded { uid: 42, replay });
         assert!(matches!(
             s.download_status,
             ReplayDownloadStatus::Downloaded { uid: 42, .. }
         ));
+    }
+
+    /// The download's bar follows its own replay, and calling it off goes
+    /// back to idle without a failure; a cancel or a step for another replay
+    /// changes nothing.
+    #[test]
+    fn a_library_download_reports_progress_and_can_be_called_off() {
+        let mut s = ReplayState::default();
+        reduce(&mut s, &ReplayEvent::VaultDownloadStarted { uid: 42 });
+        reduce(
+            &mut s,
+            &ReplayEvent::VaultDownloadProgressed {
+                uid: 42,
+                progress: Some(55),
+            },
+        );
+        reduce(
+            &mut s,
+            &ReplayEvent::VaultDownloadProgressed {
+                uid: 43,
+                progress: Some(99),
+            },
+        );
+        reduce(&mut s, &ReplayEvent::VaultDownloadCancelled { uid: 43 });
+        assert_eq!(
+            s.download_status,
+            ReplayDownloadStatus::Downloading {
+                uid: 42,
+                progress: Some(55)
+            }
+        );
+        reduce(&mut s, &ReplayEvent::VaultDownloadCancelled { uid: 42 });
+        assert_eq!(s.download_status, ReplayDownloadStatus::Idle);
+    }
+
+    /// Closing the panel calls its reads off, and only its own: another
+    /// replay's read in flight keeps loading.
+    #[test]
+    fn calling_a_panels_reads_off_clears_only_its_loading_lines() {
+        let mut s = ReplayState::default();
+        reduce(
+            &mut s,
+            &ReplayEvent::DetailsLoading {
+                key: "uid:1".into(),
+            },
+        );
+        reduce(
+            &mut s,
+            &ReplayEvent::AnalysisLoading {
+                key: "uid:1".into(),
+            },
+        );
+        reduce(
+            &mut s,
+            &ReplayEvent::ReadsCancelled {
+                key: "uid:2".into(),
+            },
+        );
+        assert_eq!(s.details_loading.as_deref(), Some("uid:1"));
+        assert_eq!(s.analysis_loading.as_deref(), Some("uid:1"));
+
+        reduce(
+            &mut s,
+            &ReplayEvent::ReadsCancelled {
+                key: "uid:1".into(),
+            },
+        );
+        assert_eq!(s.details_loading, None);
+        assert_eq!(s.analysis_loading, None);
+        assert_eq!(s.details_error, None, "a call-off is not a failure");
+        assert_eq!(s.analysis_error, None);
     }
 
     #[test]
@@ -1761,7 +2144,10 @@ mod tests {
         reduce(&mut state, &ReplayEvent::VaultDownloadStarted { uid: 42 });
         assert_eq!(
             state.download_status,
-            ReplayDownloadStatus::Downloading { uid: 42 }
+            ReplayDownloadStatus::Downloading {
+                uid: 42,
+                progress: None
+            }
         );
 
         let mut replay = local_replay("42.fafreplay");
@@ -1825,12 +2211,245 @@ mod tests {
         );
     }
 
-    fn analysis(uid: i32) -> ReplayAnalysis {
+    /// The read of a vault replay, which its game id names.
+    fn game(uid: i32) -> String {
+        replay_read_key(uid, None)
+    }
+
+    /// The read of a file whose header names no game, which only its path
+    /// tells apart from every other such file.
+    fn file(path: &str) -> String {
+        replay_read_key(0, Some(path))
+    }
+
+    const FILE_A: &str = "C:/replays/skirmish-a.fafreplay";
+    const FILE_B: &str = "C:/replays/skirmish-b.fafreplay";
+
+    fn analysis(key: &str) -> ReplayAnalysis {
         ReplayAnalysis {
-            uid,
+            key: key.into(),
             ticks: 3_000,
             ..Default::default()
         }
+    }
+
+    fn analysis_loading(key: &str) -> ReplayEvent {
+        ReplayEvent::AnalysisLoading { key: key.into() }
+    }
+
+    fn analysis_loaded(key: &str) -> ReplayEvent {
+        ReplayEvent::AnalysisLoaded {
+            analysis: analysis(key),
+        }
+    }
+
+    fn analysis_failed(key: &str, reason: &str) -> ReplayEvent {
+        ReplayEvent::AnalysisFailed {
+            key: key.into(),
+            reason: reason.into(),
+        }
+    }
+
+    fn details_loading(key: &str) -> ReplayEvent {
+        ReplayEvent::DetailsLoading { key: key.into() }
+    }
+
+    fn details_loaded(key: &str, details: ReplayDetails) -> ReplayEvent {
+        ReplayEvent::DetailsLoaded {
+            key: key.into(),
+            details,
+        }
+    }
+
+    fn details_failed(key: &str, reason: &str) -> ReplayEvent {
+        ReplayEvent::DetailsFailed {
+            key: key.into(),
+            reason: reason.into(),
+        }
+    }
+
+    fn read_error(key: &str, reason: &str) -> Option<ReplayReadError> {
+        Some(ReplayReadError {
+            key: key.into(),
+            reason: reason.into(),
+        })
+    }
+
+    #[test]
+    fn a_read_is_named_by_its_game_id_or_else_by_its_file() {
+        assert_eq!(replay_read_key(123, None), "uid:123");
+        // A downloaded or recorded copy of a vault game is that game: the
+        // online panel and the local one share what reading it says.
+        assert_eq!(
+            replay_read_key(123, Some("C:/replays/123.fafreplay")),
+            "uid:123"
+        );
+        // Without a game id the file is all there is to tell two apart by.
+        assert_eq!(
+            replay_read_key(0, Some(FILE_A)),
+            "path:c:/replays/skirmish-a.fafreplay"
+        );
+        assert_ne!(file(FILE_A), file(FILE_B));
+        assert_eq!(replay_read_key(-1, Some(FILE_A)), file(FILE_A));
+        // And with neither, there is nothing to name it by but the zero.
+        assert_eq!(replay_read_key(0, None), "uid:0");
+        assert_eq!(replay_read_key(0, Some("")), "uid:0");
+    }
+
+    #[test]
+    fn one_file_spelt_two_ways_is_one_read() {
+        // The library's scan, a file handed to the client by the shell and a
+        // path typed by hand all name this one file. Each used to be a read
+        // of its own, so the panel read the same file again.
+        for spelling in [
+            "C:\\Replays\\Skirmish-A.fafreplay",
+            "c:/replays/skirmish-a.fafreplay",
+            "C:/Replays//Skirmish-A.fafreplay",
+            "C:\\Replays\\.\\Skirmish-A.fafreplay",
+            "C:\\Replays\\old\\..\\Skirmish-A.fafreplay",
+            "C:/Replays/Skirmish-A.fafreplay/",
+        ] {
+            assert_eq!(
+                replay_read_key(0, Some(spelling)),
+                "path:c:/replays/skirmish-a.fafreplay",
+                "{spelling} is the same file"
+            );
+        }
+        // A UNC share is a Windows path too, and keeps its two leading slashes.
+        assert_eq!(
+            normalize_replay_path("\\\\NAS\\Replays\\\\Game.fafreplay"),
+            "//nas/replays/game.fafreplay"
+        );
+        // Any other path is case-sensitive, because its filesystem is.
+        assert_eq!(
+            normalize_replay_path("/home/ada/Replays/./old/../Game.fafreplay"),
+            "/home/ada/Replays/Game.fafreplay"
+        );
+        assert_ne!(
+            replay_read_key(0, Some("/home/ada/Game.fafreplay")),
+            replay_read_key(0, Some("/home/ada/game.fafreplay"))
+        );
+    }
+
+    #[test]
+    fn a_path_normalises_by_its_text_alone() {
+        // The root is as far up as `..` goes; a relative path keeps the ones
+        // it cannot resolve, and one that resolves to nothing is `.`.
+        assert_eq!(normalize_replay_path("/../a"), "/a");
+        assert_eq!(normalize_replay_path("C:\\..\\a"), "c:/a");
+        assert_eq!(normalize_replay_path("../a/./b/.."), "../a");
+        assert_eq!(normalize_replay_path("a/.."), ".");
+        assert_eq!(normalize_replay_path("/"), "/");
+        assert_eq!(normalize_replay_path("C:\\"), "c:/");
+        // A drive followed by a relative path stays relative to that drive.
+        assert_eq!(normalize_replay_path("D:Replays\\A"), "d:replays/a");
+        // Non-ASCII letters fold too, the way Windows compares them.
+        assert_eq!(
+            normalize_replay_path("C:\\Users\\JÖRG\\Ärger.fafreplay"),
+            "c:/users/jörg/ärger.fafreplay"
+        );
+        // Normalising twice changes nothing.
+        let once = normalize_replay_path("C:\\A\\..\\B\\\\c\\");
+        assert_eq!(normalize_replay_path(&once), once);
+    }
+
+    #[test]
+    fn two_files_without_a_game_id_each_keep_their_own_reads() {
+        // The reader opens one skirmish's insights, then another's. Both
+        // files are uid 0, and the second panel used to find the first one's
+        // analysis already "there" and never ask for its own.
+        let mut s = ReplayState::default();
+        let details_a = ReplayDetails {
+            sim_seconds: 600,
+            ..ReplayDetails::default()
+        };
+        let details_b = ReplayDetails {
+            sim_seconds: 1_200,
+            ..ReplayDetails::default()
+        };
+
+        reduce(&mut s, &details_loading(&file(FILE_A)));
+        reduce(&mut s, &analysis_loading(&file(FILE_A)));
+        reduce(&mut s, &details_loaded(&file(FILE_A), details_a.clone()));
+        reduce(&mut s, &analysis_loaded(&file(FILE_A)));
+        assert_eq!(s.analysis, Some(analysis(&file(FILE_A))));
+
+        // B's panel asks for its own reads, and A's analysis is not B's.
+        reduce(&mut s, &details_loading(&file(FILE_B)));
+        reduce(&mut s, &analysis_loading(&file(FILE_B)));
+        assert_eq!(s.analysis, None, "B's panel must not draw A's analysis");
+        assert_eq!(s.analysis_loading, Some(file(FILE_B)));
+        assert_eq!(s.details_loading, Some(file(FILE_B)));
+        assert_eq!(s.replay_details.get(&file(FILE_B)), None);
+
+        reduce(&mut s, &details_loaded(&file(FILE_B), details_b.clone()));
+        reduce(&mut s, &analysis_loaded(&file(FILE_B)));
+        assert_eq!(s.analysis, Some(analysis(&file(FILE_B))));
+        assert_eq!(s.replay_details.get(&file(FILE_A)), Some(&details_a));
+        assert_eq!(s.replay_details.get(&file(FILE_B)), Some(&details_b));
+        assert_eq!(s.details_loading, None);
+        assert_eq!(s.analysis_loading, None);
+    }
+
+    #[test]
+    fn a_late_answer_for_one_file_never_lands_for_another() {
+        // A is opened, then B before A has been walked. A answers last.
+        let mut s = ReplayState::default();
+        reduce(&mut s, &details_loading(&file(FILE_A)));
+        reduce(&mut s, &analysis_loading(&file(FILE_A)));
+        reduce(&mut s, &details_loading(&file(FILE_B)));
+        reduce(&mut s, &analysis_loading(&file(FILE_B)));
+
+        reduce(&mut s, &analysis_loaded(&file(FILE_A)));
+        assert_eq!(s.analysis, None, "A's analysis landed in B's slot");
+        assert_eq!(s.analysis_loading, Some(file(FILE_B)));
+
+        reduce(
+            &mut s,
+            &details_loaded(&file(FILE_A), ReplayDetails::default()),
+        );
+        assert_eq!(s.details_loading, Some(file(FILE_B)));
+        assert_eq!(s.replay_details.get(&file(FILE_B)), None);
+
+        // B's own answers still land once they come.
+        reduce(&mut s, &analysis_loaded(&file(FILE_B)));
+        assert_eq!(s.analysis, Some(analysis(&file(FILE_B))));
+        // And A's answering again afterwards does not replace them.
+        reduce(&mut s, &analysis_loaded(&file(FILE_A)));
+        assert_eq!(s.analysis, Some(analysis(&file(FILE_B))));
+    }
+
+    #[test]
+    fn read_failures_are_kept_per_file() {
+        let mut s = ReplayState::default();
+        reduce(&mut s, &details_loading(&file(FILE_A)));
+        reduce(&mut s, &analysis_loading(&file(FILE_A)));
+        reduce(&mut s, &details_loading(&file(FILE_B)));
+        reduce(&mut s, &analysis_loading(&file(FILE_B)));
+
+        // A's failures arrive while B is the one asked about: not B's.
+        reduce(&mut s, &details_failed(&file(FILE_A), "A is truncated"));
+        reduce(&mut s, &analysis_failed(&file(FILE_A), "A is truncated"));
+        assert_eq!(s.details_error, None);
+        assert_eq!(s.analysis_error, None);
+        assert_eq!(s.details_loading, Some(file(FILE_B)));
+        assert_eq!(s.analysis_loading, Some(file(FILE_B)));
+
+        // B's own failures carry B's key, so A's panel would not show them.
+        reduce(&mut s, &details_failed(&file(FILE_B), "B is truncated"));
+        reduce(&mut s, &analysis_failed(&file(FILE_B), "B is truncated"));
+        assert_eq!(s.details_error, read_error(&file(FILE_B), "B is truncated"));
+        assert_eq!(
+            s.analysis_error,
+            read_error(&file(FILE_B), "B is truncated")
+        );
+
+        // A answering late is stored under A and leaves B's failure alone.
+        reduce(
+            &mut s,
+            &details_loaded(&file(FILE_A), ReplayDetails::default()),
+        );
+        assert_eq!(s.details_error, read_error(&file(FILE_B), "B is truncated"));
     }
 
     #[test]
@@ -1838,26 +2457,16 @@ mod tests {
         // The reader opens replay 1, then replay 2 before 1 has been walked.
         // Both reads run at once and 2 is the shorter file.
         let mut s = ReplayState::default();
-        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 1 });
-        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 2 });
-        reduce(
-            &mut s,
-            &ReplayEvent::AnalysisLoaded {
-                analysis: analysis(2),
-            },
-        );
-        assert_eq!(s.analysis, Some(analysis(2)));
+        reduce(&mut s, &analysis_loading(&game(1)));
+        reduce(&mut s, &analysis_loading(&game(2)));
+        reduce(&mut s, &analysis_loaded(&game(2)));
+        assert_eq!(s.analysis, Some(analysis(&game(2))));
         assert_eq!(s.analysis_loading, None);
 
-        reduce(
-            &mut s,
-            &ReplayEvent::AnalysisLoaded {
-                analysis: analysis(1),
-            },
-        );
+        reduce(&mut s, &analysis_loaded(&game(1)));
         assert_eq!(
             s.analysis,
-            Some(analysis(2)),
+            Some(analysis(&game(2))),
             "replay 2's panel would reject 1's analysis and wait for nothing"
         );
         assert_eq!(s.analysis_loading, None);
@@ -1866,132 +2475,130 @@ mod tests {
     #[test]
     fn an_older_analysis_landing_first_leaves_the_newer_one_loading() {
         let mut s = ReplayState::default();
-        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 1 });
-        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 2 });
-        reduce(
-            &mut s,
-            &ReplayEvent::AnalysisLoaded {
-                analysis: analysis(1),
-            },
-        );
+        reduce(&mut s, &analysis_loading(&game(1)));
+        reduce(&mut s, &analysis_loading(&game(2)));
+        reduce(&mut s, &analysis_loaded(&game(1)));
         assert_eq!(s.analysis, None);
-        assert_eq!(s.analysis_loading, Some(2));
+        assert_eq!(s.analysis_loading, Some(game(2)));
 
-        reduce(
-            &mut s,
-            &ReplayEvent::AnalysisLoaded {
-                analysis: analysis(2),
-            },
-        );
-        assert_eq!(s.analysis, Some(analysis(2)));
+        reduce(&mut s, &analysis_loaded(&game(2)));
+        assert_eq!(s.analysis, Some(analysis(&game(2))));
         assert_eq!(s.analysis_loading, None);
     }
 
     #[test]
     fn a_late_analysis_failure_never_shows_for_the_newer_request() {
         let mut s = ReplayState::default();
-        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 1 });
-        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 2 });
+        reduce(&mut s, &analysis_loading(&game(1)));
+        reduce(&mut s, &analysis_loading(&game(2)));
+        reduce(&mut s, &analysis_loaded(&game(2)));
         reduce(
             &mut s,
-            &ReplayEvent::AnalysisLoaded {
-                analysis: analysis(2),
-            },
-        );
-        reduce(
-            &mut s,
-            &ReplayEvent::AnalysisFailed {
-                uid: 1,
-                reason: "the replay file could not be read".into(),
-            },
+            &analysis_failed(&game(1), "the replay file could not be read"),
         );
         assert_eq!(s.analysis_error, None);
-        assert_eq!(s.analysis, Some(analysis(2)));
+        assert_eq!(s.analysis, Some(analysis(&game(2))));
 
         // While 2 is still being walked, 1's failure is not 2's either.
-        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 1 });
-        reduce(&mut s, &ReplayEvent::AnalysisLoading { uid: 2 });
-        reduce(
-            &mut s,
-            &ReplayEvent::AnalysisFailed {
-                uid: 1,
-                reason: "late".into(),
-            },
-        );
+        reduce(&mut s, &analysis_loading(&game(1)));
+        reduce(&mut s, &analysis_loading(&game(2)));
+        reduce(&mut s, &analysis_failed(&game(1), "late"));
         assert_eq!(s.analysis_error, None);
-        assert_eq!(s.analysis_loading, Some(2));
+        assert_eq!(s.analysis_loading, Some(game(2)));
 
-        // The newest request's own failure is recorded, with its uid.
-        reduce(
-            &mut s,
-            &ReplayEvent::AnalysisFailed {
-                uid: 2,
-                reason: "truncated".into(),
-            },
-        );
-        assert_eq!(
-            s.analysis_error,
-            Some(ReplayReadError {
-                uid: 2,
-                reason: "truncated".into(),
-            })
-        );
+        // The newest request's own failure is recorded, with its key.
+        reduce(&mut s, &analysis_failed(&game(2), "truncated"));
+        assert_eq!(s.analysis_error, read_error(&game(2), "truncated"));
         assert_eq!(s.analysis_loading, None);
     }
 
     #[test]
     fn a_late_details_failure_never_shows_for_the_newer_request() {
         let mut s = ReplayState::default();
-        reduce(&mut s, &ReplayEvent::DetailsLoading { uid: 1 });
-        reduce(&mut s, &ReplayEvent::DetailsLoading { uid: 2 });
+        reduce(&mut s, &details_loading(&game(1)));
+        reduce(&mut s, &details_loading(&game(2)));
+        reduce(&mut s, &details_loaded(&game(2), ReplayDetails::default()));
         reduce(
             &mut s,
-            &ReplayEvent::DetailsLoaded {
-                uid: 2,
-                details: ReplayDetails::default(),
-            },
-        );
-        reduce(
-            &mut s,
-            &ReplayEvent::DetailsFailed {
-                uid: 1,
-                reason: "the replay body is truncated".into(),
-            },
+            &details_failed(&game(1), "the replay body is truncated"),
         );
         assert_eq!(s.details_error, None);
-        assert!(s.replay_details.contains_key(&2));
+        assert!(s.replay_details.contains_key(&game(2)));
         assert_eq!(s.details_loading, None);
     }
 
     #[test]
     fn a_late_details_answer_keeps_the_newer_requests_failure() {
-        // 2 failed; 1 finishing afterwards is stored under its own uid and
+        // 2 failed; 1 finishing afterwards is stored under its own key and
         // must not wipe the failure the open panel is showing.
         let mut s = ReplayState::default();
-        reduce(&mut s, &ReplayEvent::DetailsLoading { uid: 1 });
-        reduce(&mut s, &ReplayEvent::DetailsLoading { uid: 2 });
+        reduce(&mut s, &details_loading(&game(1)));
+        reduce(&mut s, &details_loading(&game(2)));
+        reduce(&mut s, &details_failed(&game(2), "not uploaded yet"));
+        reduce(&mut s, &details_loaded(&game(1), ReplayDetails::default()));
+        assert!(s.replay_details.contains_key(&game(1)));
+        assert_eq!(s.details_error, read_error(&game(2), "not uploaded yet"));
+    }
+
+    #[test]
+    fn only_the_most_recently_stored_details_are_kept() {
+        // A long session of opening panels: one entry per replay looked at,
+        // and nothing used to take one away again.
+        let mut s = ReplayState::default();
+        let total = REPLAY_DETAILS_KEPT as i32 + 5;
+        for uid in 1..=total {
+            reduce(
+                &mut s,
+                &details_loaded(&game(uid), ReplayDetails::default()),
+            );
+        }
+        assert_eq!(s.replay_details.len(), REPLAY_DETAILS_KEPT);
+        assert_eq!(s.replay_details_order.len(), REPLAY_DETAILS_KEPT);
+        for uid in 1..=5 {
+            assert!(
+                !s.replay_details.contains_key(&game(uid)),
+                "the oldest go first"
+            );
+        }
+        assert_eq!(s.replay_details_order.first(), Some(&game(6)));
+        assert_eq!(s.replay_details_order.last(), Some(&game(total)));
+        for key in &s.replay_details_order {
+            assert!(
+                s.replay_details.contains_key(key),
+                "{key} is listed and kept"
+            );
+        }
+    }
+
+    #[test]
+    fn details_answered_again_count_as_stored_last() {
+        // The panel on replay 1 asks again, and its answer is the newest, so
+        // it is not the entry the next one pushes out.
+        let mut s = ReplayState::default();
+        for uid in 1..=REPLAY_DETAILS_KEPT as i32 {
+            reduce(
+                &mut s,
+                &details_loaded(&game(uid), ReplayDetails::default()),
+            );
+        }
+        let fresh = ReplayDetails {
+            sim_seconds: 900,
+            ..ReplayDetails::default()
+        };
+        reduce(&mut s, &details_loaded(&game(1), fresh.clone()));
+        assert_eq!(s.replay_details_order.len(), REPLAY_DETAILS_KEPT);
+        assert_eq!(s.replay_details_order.last(), Some(&game(1)));
+
         reduce(
             &mut s,
-            &ReplayEvent::DetailsFailed {
-                uid: 2,
-                reason: "not uploaded yet".into(),
-            },
+            &details_loaded(&game(999), ReplayDetails::default()),
         );
-        reduce(
-            &mut s,
-            &ReplayEvent::DetailsLoaded {
-                uid: 1,
-                details: ReplayDetails::default(),
-            },
+        assert_eq!(s.replay_details.get(&game(1)), Some(&fresh));
+        assert!(
+            !s.replay_details.contains_key(&game(2)),
+            "2 is now the oldest"
         );
-        assert!(s.replay_details.contains_key(&1));
-        assert_eq!(
-            s.details_error,
-            Some(ReplayReadError {
-                uid: 2,
-                reason: "not uploaded yet".into(),
-            })
-        );
+        assert_eq!(s.replay_details.len(), REPLAY_DETAILS_KEPT);
     }
 
     #[test]
@@ -2042,5 +2649,148 @@ mod tests {
             }),
             "a lookup that never reached the server must not read as 'no such game'"
         );
+    }
+
+    fn found(uid: i32) -> ReplayEvent {
+        ReplayEvent::OnlineLookupFinished {
+            uid,
+            replay: Some(Box::new(vault_replay(uid))),
+        }
+    }
+
+    #[test]
+    fn only_the_most_recently_stored_lookups_are_kept() {
+        // A long session on the live tab: a lookup per game that started
+        // while it was open, and nothing used to take one away again.
+        let mut s = ReplayState::default();
+        let total = ONLINE_LOOKUPS_KEPT as i32 + 5;
+        for uid in 1..=total {
+            reduce(&mut s, &ReplayEvent::OnlineLookupStarted { uid });
+            reduce(&mut s, &found(uid));
+        }
+        assert_eq!(s.online_lookups.len(), ONLINE_LOOKUPS_KEPT);
+        assert_eq!(s.online_lookups_order.len(), ONLINE_LOOKUPS_KEPT);
+        for uid in 1..=5 {
+            assert!(!s.online_lookups.contains_key(&uid), "the oldest go first");
+        }
+        assert_eq!(s.online_lookups_order.first(), Some(&6));
+        assert_eq!(s.online_lookups_order.last(), Some(&total));
+        for uid in &s.online_lookups_order {
+            assert!(
+                s.online_lookups.contains_key(uid),
+                "{uid} is listed and kept"
+            );
+        }
+    }
+
+    #[test]
+    fn a_lookup_answered_again_counts_as_stored_last() {
+        // A panel that found its entry gone asks again, and the answer is the
+        // newest, so it is not the entry the next one pushes out.
+        let mut s = ReplayState::default();
+        for uid in 1..=ONLINE_LOOKUPS_KEPT as i32 {
+            reduce(&mut s, &found(uid));
+        }
+        reduce(
+            &mut s,
+            &ReplayEvent::OnlineLookupFailed {
+                uid: 1,
+                reason: "offline".into(),
+            },
+        );
+        assert_eq!(s.online_lookups_order.last(), Some(&1));
+        reduce(&mut s, &found(5_000));
+        assert!(s.online_lookups.contains_key(&1));
+        assert!(!s.online_lookups.contains_key(&2), "2 is now the oldest");
+        assert_eq!(s.online_lookups.len(), ONLINE_LOOKUPS_KEPT);
+    }
+
+    #[test]
+    fn the_largest_batch_of_cards_keeps_every_one_of_its_lookups() {
+        // The live tab claims a whole list of cards at once and answers it in
+        // pieces. With the store already full of older games, none of the
+        // list's own claims or answers may push out another of the list's.
+        let mut s = ReplayState::default();
+        for uid in 1..=ONLINE_LOOKUPS_KEPT as i32 {
+            reduce(&mut s, &found(uid));
+        }
+        let cards: Vec<i32> = (10_001..=10_400).collect();
+        for uid in &cards {
+            reduce(&mut s, &ReplayEvent::OnlineLookupStarted { uid: *uid });
+        }
+        for uid in &cards {
+            reduce(&mut s, &found(*uid));
+        }
+        for uid in &cards {
+            assert!(
+                matches!(s.online_lookups.get(uid), Some(OnlineLookup::Found(_))),
+                "card {uid} lost its lookup"
+            );
+        }
+        assert_eq!(s.online_lookups.len(), ONLINE_LOOKUPS_KEPT);
+    }
+
+    fn resolved(uids: impl IntoIterator<Item = i32>) -> ReplayEvent {
+        ReplayEvent::MapsResolved {
+            maps: uids
+                .into_iter()
+                .map(|uid| ResolvedReplayMap {
+                    uid,
+                    map: format!("map_{uid}"),
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn resolved_maps_keep_the_newest_and_never_the_page_on_screen() {
+        // The page on screen asked first, so its games are the oldest stored.
+        // Single games resolved for replays being prepared fill the rest. The
+        // page asks again for whatever it finds missing, so dropping one of
+        // its games would bring it straight back and push out the next.
+        let mut s = ReplayState {
+            vault: (1..=100).map(row).collect(),
+            ..ReplayState::default()
+        };
+        reduce(&mut s, &resolved(1..=100));
+        let others = RESOLVED_MAPS_KEPT as i32 + 20;
+        for uid in 1_001..=1_000 + others {
+            reduce(&mut s, &resolved([uid]));
+        }
+        assert_eq!(s.resolved_maps.len(), RESOLVED_MAPS_KEPT);
+        assert_eq!(s.resolved_maps_order.len(), RESOLVED_MAPS_KEPT);
+        for uid in 1..=100 {
+            assert_eq!(
+                s.resolved_maps.get(&uid).map(String::as_str),
+                Some(format!("map_{uid}").as_str()),
+                "game {uid} of the page on screen was dropped"
+            );
+        }
+        // What went is the oldest of the rest.
+        assert!(!s.resolved_maps.contains_key(&1_001));
+        assert!(s.resolved_maps.contains_key(&(1_000 + others)));
+        for uid in &s.resolved_maps_order {
+            assert!(
+                s.resolved_maps.contains_key(uid),
+                "{uid} is listed and kept"
+            );
+        }
+    }
+
+    #[test]
+    fn once_the_page_moves_on_its_games_age_out_like_any_other() {
+        let mut s = ReplayState {
+            vault: (1..=100).map(row).collect(),
+            ..ReplayState::default()
+        };
+        reduce(&mut s, &resolved(1..=100));
+        s.vault = (201..=300).map(row).collect();
+        reduce(&mut s, &resolved(201..=300));
+        for uid in 1_001..=1_000 + RESOLVED_MAPS_KEPT as i32 {
+            reduce(&mut s, &resolved([uid]));
+        }
+        assert!(!s.resolved_maps.contains_key(&1), "the page left goes");
+        assert!(s.resolved_maps.contains_key(&201), "the page shown stays");
+        assert_eq!(s.resolved_maps.len(), RESOLVED_MAPS_KEPT);
     }
 }

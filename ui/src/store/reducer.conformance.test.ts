@@ -28,6 +28,8 @@ import type {
   FormatDraft,
   PoolDraft,
   QualifierRule,
+  ReplayDetails,
+  ReplayEvent,
   Review,
   ReviewSummary,
   Tourney,
@@ -45,11 +47,14 @@ import type {
   TrainingResource,
   UploadsState,
   VaultMap,
+  VaultReplay,
 } from "../ipc/bindings";
 import type { BracketKind, FactionVetoConfig, MatchPlan, SwissCuts } from "../ipc/bindings";
 import fixture from "./__fixtures__/reducer-conformance.json";
 import { canLaunch, installTarget, updateAvailable } from "../shared/rules/galacticWarActions";
 import { noteForPlayer } from "../shared/rules/playerNotes";
+import { noteForReplay } from "../shared/rules/replayNotes";
+import { replayReadKey } from "../shared/rules/replayReadKey";
 import { contributionProblem, filterResources, reviewProblem } from "../shared/rules/trainingRules";
 import {
   bracketConfigOf,
@@ -133,6 +138,7 @@ import {
   wouldExceedCap,
 } from "../shared/rules/tourneyRules";
 import { applyEvent } from "./reducer";
+import { ONLINE_LOOKUPS_KEPT, REPLAY_DETAILS_KEPT, RESOLVED_MAPS_KEPT, reduceReplays } from "./reducers/replays";
 import { summarize } from "./reducers/reviews";
 import { isUploadBusy } from "./reducers/uploads";
 import { useAppStore } from "./store";
@@ -155,6 +161,29 @@ interface HelperFixture {
     playerId: number;
     expected: string;
   }>;
+  replayReadKeys: Array<{ uid: number; localPath: string | null; expected: string }>;
+  replayNoteLookups: Array<{
+    notes: AppState["settings"]["social"]["replayNotes"];
+    replayId: number;
+    localPath: string | null;
+    expected: string;
+  }>;
+  replayDetailsKept: {
+    kept: number;
+    stored: string[];
+    details: ReplayDetails;
+    expectedOrder: string[];
+    expectedKeys: string[];
+  };
+  replayLookupsKept: {
+    onlineLookupsKept: number;
+    resolvedMapsKept: number;
+    page: VaultReplay[];
+    resolved: Array<[number, number]>;
+    lookedUp: Array<[number, number]>;
+    expectedResolvedOrder: number[];
+    expectedLookupOrder: number[];
+  };
   galacticWarActions: Array<{
     state: GalacticWarState;
     installTarget: string;
@@ -443,6 +472,63 @@ describe("derived helper twins match Rust", () => {
 
   it.each(helpers.playerNoteLookups)("finds player note $playerId", ({ notes, playerId, expected }) => {
     expect(noteForPlayer(notes, playerId)).toBe(expected);
+  });
+
+  it.each(helpers.replayReadKeys)(
+    "names the replay read for uid $uid at $localPath",
+    ({ uid, localPath, expected }) => {
+      expect(replayReadKey(uid, localPath)).toBe(expected);
+    },
+  );
+
+  it.each(helpers.replayNoteLookups)(
+    "finds the replay note for $replayId at $localPath",
+    ({ notes, replayId, localPath, expected }) => {
+      expect(noteForReplay(notes, replayId, localPath)?.comment ?? "").toBe(expected);
+    },
+  );
+
+  it("keeps the same replay details past the cap", () => {
+    const { kept, stored, details, expectedOrder, expectedKeys } = helpers.replayDetailsKept;
+    expect(REPLAY_DETAILS_KEPT).toBe(kept);
+    const after = stored.reduce(
+      (replays, key) => reduceReplays(replays, { type: "detailsLoaded", payload: { key, details } }),
+      initial.replays,
+    );
+    expect(after.replayDetailsOrder).toEqual(expectedOrder);
+    expect(Object.keys(after.replayDetails ?? {}).sort()).toEqual(expectedKeys);
+  });
+
+  it("keeps the same vault lookups and resolved maps past their caps", () => {
+    const {
+      onlineLookupsKept, resolvedMapsKept, page, resolved, lookedUp, expectedResolvedOrder, expectedLookupOrder,
+    } = helpers.replayLookupsKept;
+    expect(ONLINE_LOOKUPS_KEPT).toBe(onlineLookupsKept);
+    expect(RESOLVED_MAPS_KEPT).toBe(resolvedMapsKept);
+    const uids = ([first, last]: [number, number]) =>
+      Array.from({ length: last - first + 1 }, (_, index) => first + index);
+    const events: ReplayEvent[] = [
+      {
+        type: "vaultLoaded",
+        payload: { replays: page, query: initial.replays.vaultQuery, hasMore: false, totalPages: null, totalRecords: null },
+      },
+      ...resolved.map((batch): ReplayEvent => ({
+        type: "mapsResolved",
+        payload: { maps: uids(batch).map((uid) => ({ uid, map: `map_${uid}` })) },
+      })),
+      ...lookedUp.flatMap(uids).flatMap((uid): ReplayEvent[] => [
+        { type: "onlineLookupStarted", payload: { uid } },
+        { type: "onlineLookupFinished", payload: { uid, replay: null } },
+      ]),
+    ];
+    const after = events.reduce(reduceReplays, initial.replays);
+    const byNumber = (left: number, right: number) => left - right;
+    expect(after.resolvedMapsOrder).toEqual(expectedResolvedOrder);
+    expect(Object.keys(after.resolvedMaps ?? {}).map(Number).sort(byNumber))
+      .toEqual([...expectedResolvedOrder].sort(byNumber));
+    expect(after.onlineLookupsOrder).toEqual(expectedLookupOrder);
+    expect(Object.keys(after.onlineLookups ?? {}).map(Number).sort(byNumber))
+      .toEqual([...expectedLookupOrder].sort(byNumber));
   });
 
   it.each(helpers.galacticWarActions)(

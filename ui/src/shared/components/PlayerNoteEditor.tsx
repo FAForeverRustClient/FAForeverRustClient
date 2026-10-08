@@ -3,6 +3,7 @@ import { Button } from "../../design-system/Button";
 import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
 import { PLAYER_NOTE_CHARACTER_LIMIT } from "../rules/playerNotes";
+import { plainError } from "../plainError";
 import { useTranslation } from "../../i18n/useTranslation";
 import "./player-note-editor.css";
 
@@ -69,7 +70,13 @@ export function PlayerNoteEditor({
           </Button>
         </div>
       </div>
-      {error && <p className="player-note-error" role="alert">{t("playerCard.note.saveFailed", { error })}</p>}
+      {/* Worded plainly, the bridge's own text on hover; Save is right
+          above to try again. */}
+      {error && (
+        <p className="player-note-error" role="alert" title={error}>
+          {t("playerCard.note.saveFailed", { error: plainError(error) })}
+        </p>
+      )}
     </form>
   );
 }
