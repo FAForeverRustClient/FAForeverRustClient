@@ -58,6 +58,7 @@ export const DEFAULT_LIVE_REPLAY_FILTERS: LiveReplayFilters = {
   hideSinglePlayer: false,
   hideUnranked: false,
   friendsOnly: false,
+  remember: false,
 };
 
 export const DEFAULT_HOST_GAME_PREFERENCES: HostGamePreferences = {

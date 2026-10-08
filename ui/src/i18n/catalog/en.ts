@@ -1239,9 +1239,11 @@ export const en = {
   "replays.live.hideModded": "Hide SIM-modded games",
   "replays.live.hideSinglePlayer": "Hide single-player games",
   "replays.live.hideUnranked": "Hide unranked",
-  "replays.live.hideUnrankedHint": "Hides games the client can tell will rate nobody: an unranked map, an unranked sim mod, or a free-for-all. Lobby settings are not visible to any client.",
+  "replays.live.hideUnrankedHint": "Hides games the client can tell will rate nobody: an unranked map or an unranked sim mod. Lobby settings are not visible to any client.",
   "replays.live.friendsOnly": "Games with friends",
 
+  "replays.live.rememberHint": "Off, the filters are cleared every time the client starts.",
+  "replays.live.remember": "Keep filters after a restart",
   // Advanced vault filters.
   "replays.filters.dateFloor": "A filtered search with no start date only looks back three months. Set \"Played after\" to search further back.",
   "replays.filters.dateFloorWithPlayer": "A filtered search with no start date only looks back six months. Set \"Played after\" to search further back.",

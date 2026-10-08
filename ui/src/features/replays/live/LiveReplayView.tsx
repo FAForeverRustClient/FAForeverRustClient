@@ -282,7 +282,8 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
         onClear={() => {
           setVisibleCount(LIVE_REPLAY_BATCH_SIZE);
           filtersDirty.current = true;
-          setFilters(DEFAULT_LIVE_FILTERS);
+          // Clearing the filters is not a change of mind about keeping them.
+          setFilters({ ...DEFAULT_LIVE_FILTERS, remember: filters.remember ?? false });
         }}
       />
       {filteredGames.length === 0 ? (

@@ -6695,6 +6695,7 @@ fn cases() -> Vec<Case> {
                             hide_single_player: false,
                             hide_unranked: true,
                             friends_only: true,
+                            remember: false,
                         },
                         host_game: HostGamePreferences {
                             title: " Friday game ".into(),

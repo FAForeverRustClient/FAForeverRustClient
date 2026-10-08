@@ -2083,10 +2083,10 @@ pub struct LiveReplayFilters {
     pub max_players: String,
     pub hide_modded: bool,
     pub hide_single_player: bool,
-    /// Hides the games the client can tell will rate nobody: an unranked map,
-    /// a sim mod that is not on the ranked list, or a free-for-all. Lobby
-    /// settings are not visible to any client, so this is the same question
-    /// the game browser's own "Hide unranked" asks, and the same answer.
+    /// Hides the games the client can tell will rate nobody: an unranked map
+    /// or a sim mod that is not on the ranked list. Lobby settings are not
+    /// visible to any client, so this is the same question the game browser's
+    /// own "Hide unranked" asks, and the same answer.
     ///
     /// `default` on this field alone rather than on the struct: a settings
     /// file written before this filter existed has every other key and not
@@ -2096,6 +2096,12 @@ pub struct LiveReplayFilters {
     #[serde(default)]
     pub hide_unranked: bool,
     pub friends_only: bool,
+    /// Keep these filters when the client restarts (#447). Off unless asked
+    /// for: a search typed yesterday that still hid games after a restart
+    /// read as a bug, so by default the filters last one session. `default`
+    /// for the same reason as `hide_unranked`.
+    #[serde(default)]
+    pub remember: bool,
 }
 
 /// Last successfully submitted custom-game form. Both reference clients retain
@@ -3228,6 +3234,7 @@ preference_patch! {
         hide_single_player: bool,
         hide_unranked: bool,
         friends_only: bool,
+        remember: bool,
     }
 }
 
@@ -4396,6 +4403,7 @@ mod tests {
                     hide_single_player: false,
                     hide_unranked: true,
                     friends_only: true,
+                    remember: false,
                 },
                 host_game: HostGamePreferences {
                     title: "  Friday night  ".into(),

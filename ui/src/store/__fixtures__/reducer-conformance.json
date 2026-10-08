@@ -1184,6 +1184,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -51137,6 +51138,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -51412,6 +51414,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -51696,6 +51699,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -51975,6 +51979,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -52254,6 +52259,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -52543,6 +52549,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -52838,6 +52845,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -53130,6 +53138,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -53430,6 +53439,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -53777,6 +53787,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -54100,6 +54111,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -54425,6 +54437,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -54746,6 +54759,7 @@
                     "hideSinglePlayer": false,
                     "hideUnranked": true,
                     "maxPlayers": "999",
+                    "remember": false,
                     "search": "  tournament  "
                   },
                   "liveReplayOrder": [],
@@ -54876,6 +54890,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": true,
                 "maxPlayers": "",
+                "remember": false,
                 "search": "tournament"
               },
               "liveReplayOrder": [],
@@ -67060,6 +67075,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -67344,6 +67360,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -67659,6 +67676,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -67960,6 +67978,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -68247,6 +68266,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -68526,6 +68546,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -68804,6 +68825,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -69110,6 +69132,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -69385,6 +69408,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -69672,6 +69696,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -69957,6 +69982,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -70236,6 +70262,7 @@
                       "hideSinglePlayer": false,
                       "hideUnranked": false,
                       "maxPlayers": "",
+                      "remember": false,
                       "search": ""
                     },
                     "liveReplayOrder": [],
@@ -70505,6 +70532,7 @@
                 "hideSinglePlayer": false,
                 "hideUnranked": false,
                 "maxPlayers": "",
+                "remember": false,
                 "search": ""
               },
               "liveReplayOrder": [],
@@ -109288,6 +109316,7 @@
           "hideSinglePlayer": false,
           "hideUnranked": false,
           "maxPlayers": "",
+          "remember": false,
           "search": ""
         },
         "liveReplayOrder": [],
