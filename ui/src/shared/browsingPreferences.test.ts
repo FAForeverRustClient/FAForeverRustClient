@@ -99,6 +99,8 @@ describe("browsing preferences", () => {
       coopBoardColumns: [],
       matchmakerRecentColumns: [],
       matchmakerRecentOrder: [],
+      matchmakerInviteColumns: [],
+      matchmakerInviteOrder: [],
       modVaultPreset: "  UI  ",
       modPresets: [
         { name: "  Replay watching  ", uids: ["  a  ", "A", "", "b"] },

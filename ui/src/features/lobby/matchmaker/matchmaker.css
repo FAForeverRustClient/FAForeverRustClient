@@ -1000,58 +1000,309 @@
 
 .matchmaker-party-chat .chat-compose button { padding-inline: 9px; }
 
-.matchmaker-invite-search {
-  margin-top: 18px;
-  background: var(--color-surface-raised);
+.modal-panel.matchmaker-invite-modal {
+  width: min(900px, calc(100vw - var(--space-4) - var(--space-4)));
+  max-height: calc(100vh - var(--space-4) - var(--space-4));
+  box-sizing: border-box;
 }
 
-.matchmaker-invite-search:focus-within {
-  border-color: var(--color-border-strong);
+.matchmaker-invite-filters {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
 }
 
-.matchmaker-invite-search input {
-  width: 100%;
-  min-height: 36px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  outline: 0;
-}
-
-.matchmaker-invite-list {
-  max-height: 420px;
-  margin-top: 10px;
-  overflow: auto;
-}
-
-.matchmaker-invite-row {
+/* Search, country and clan, then the toggle that opens the rating sliders. */
+.matchmaker-invite-filters .search-panel-primary {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
+  grid-template-columns: minmax(190px, 2fr) repeat(2, minmax(105px, 1fr)) auto;
+  align-items: end;
+}
+
+.matchmaker-invite-search {
+  max-width: none;
+}
+
+.matchmaker-invite-rating-filters {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.matchmaker-invite-rating-filters > .range-slider {
+  max-width: none;
+}
+
+/* The header box above, the rows' box below it taking the rest: only the
+   rows scroll. */
+.matchmaker-invite-list {
+  display: flex;
+  flex-direction: column;
+  height: clamp(160px, calc(100vh - 470px), 420px);
+  margin-top: var(--space-3);
+  overflow: hidden;
+}
+
+/* Both keep the scrollbar's room, so the header's columns stand exactly over
+   the rows' whether or not the rows overflow. The header never scrolls on its
+   own; the rows' box moves it sideways with them. */
+.matchmaker-invite-head {
+  flex: none;
+  overflow: hidden;
+  scrollbar-gutter: stable;
+  /* The header's colour (`list-head.css`) over the scrollbar's room too, so
+     the row does not stop short of the list's edge. */
+  background: var(--color-sidebar);
   border-bottom: 1px solid var(--color-border);
 }
 
-.matchmaker-invite-row:last-child {
+.matchmaker-invite-head .list-head > th {
   border-bottom: 0;
 }
 
-.matchmaker-invite-row > span:nth-child(2) {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
+.matchmaker-invite-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
 }
 
-.matchmaker-invite-row strong {
-  overflow: hidden;
+/* A table like the live replays' and the recent games': dragged widths in the
+   colgroup, columns that move, the shared header (`list-head.css`). One line
+   per player, 44px: room around the primary button, which needs 32. */
+.matchmaker-invite-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+/* Relative for the divider it holds; the header's own box keeps it in place. */
+.matchmaker-invite-table th {
+  position: relative;
+  height: 32px;
+  padding: 0 var(--space-2);
+  text-align: left;
+}
+
+/* Every header cell is a keyboard stop, so a column can be moved with Alt and
+   an arrow key. */
+.matchmaker-invite-table th:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.matchmaker-invite-table th button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  text-transform: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.matchmaker-invite-table th button:hover,
+.matchmaker-invite-table th button:focus-visible,
+.matchmaker-invite-table th[aria-sort]:not([aria-sort="none"]) button {
+  color: var(--color-text);
+  outline: none;
+}
+
+.matchmaker-invite-table th button span {
+  color: var(--color-subtle);
   font-size: 12px;
+}
+
+/* Two classes for the same reason as the other tables': `.resize-handle` sets
+   `position: relative`, and which single-class rule won depended on bundle
+   order. */
+.matchmaker-invite-table th > .matchmaker-invite-col-handle {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: -6px;
+  bottom: 0;
+  width: 12px;
+}
+
+.matchmaker-invite-table td {
+  height: 44px;
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.matchmaker-invite-row:hover td {
+  background: var(--color-surface-raised);
+}
+
+/* Avatar, flag and clan as one block, each in a slot of fixed width so the
+   three line up down the list whatever a player has. */
+.matchmaker-invite-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* A FAF avatar at its own 40x20. Without one the slot stays, as an empty box
+   rather than an initial. */
+.matchmaker-invite-identity .profile-avatar,
+.matchmaker-invite-avatar-empty {
+  display: block;
+  flex: none;
+  width: 40px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+}
+
+.matchmaker-invite-avatar-empty {
+  background: var(--color-surface-raised);
+}
+
+.matchmaker-invite-flag {
+  display: block;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.matchmaker-invite-clan {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-subtle);
   text-overflow: ellipsis;
 }
 
-.matchmaker-invite-row small {
-  color: var(--color-subtle);
+/* Pulled back by its own padding, so the name starts where its column's
+   label does. */
+.matchmaker-invite-name-button {
+  display: block;
+  max-width: calc(100% + var(--space-1));
+  min-width: 0;
+  margin-left: calc(-1 * var(--space-1));
+  padding: 0 var(--space-1);
+  line-height: 20px;
+  overflow: hidden;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  cursor: pointer;
+}
+
+.matchmaker-invite-name-button:hover,
+.matchmaker-invite-name-button:focus-visible,
+.matchmaker-invite-name-button.is-menu-open {
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+.matchmaker-invite-name-button:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+.matchmaker-invite-row strong {
+  display: block;
+  overflow: hidden;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A friend reads as one by the colour of the name, the colour the reader
+   chose for friends in chat. */
+.matchmaker-invite-row.is-friend strong {
+  color: var(--color-friend);
+}
+
+/* The ratings share the row's leftover width equally and stand in the middle
+   of their shares, so the gaps between them, the one after the names and the
+   one before the button are all the same. Centred, not start-aligned like the
+   other lists' columns: no divider sits between two ratings, so nothing is
+   dragged against these edges. */
+.matchmaker-invite-table td.matchmaker-invite-rating {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.matchmaker-invite-table th.matchmaker-invite-rating button {
+  justify-content: center;
+}
+
+/* The sort arrow after the label, mirrored by an invisible one before it, so
+   the label itself stands over the middle of the values and not half an arrow
+   to the left of it. */
+.matchmaker-invite-table th.matchmaker-invite-rating button::before {
+  content: "↕";
   font-size: 12px;
+  visibility: hidden;
+}
+
+.matchmaker-invite-table td.matchmaker-invite-rating.is-unknown {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+/* The button closes the row on the right, in a track of its own with no
+   padding at its start, so a track dragged down to its floor (the button and
+   the padding after it, see `useInviteButtonFit`) starts the button exactly on
+   the divider. Wider, by default, the button stays on the right and the
+   ratings sit centred between the names and it. */
+.matchmaker-invite-table td.matchmaker-invite-action {
+  overflow: visible;
+  padding-left: 0;
+  text-align: right;
+}
+
+/* All of them as wide as the widest label, set by the list once measured. */
+.matchmaker-invite-table td.matchmaker-invite-action > button {
+  min-width: var(--matchmaker-invite-button, 0);
+}
+
+/* The hidden copy of the widest button the track is measured against: laid
+   out, so it has a width, but out of the flow and never seen or reached. */
+.matchmaker-invite-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.matchmaker-invite-table td.play-empty {
+  height: auto;
+  padding: var(--space-4);
+  white-space: normal;
+  border-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .matchmaker-invite-filters .search-panel-primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .matchmaker-invite-search {
+    grid-column: 1 / -1;
+  }
+
+  .matchmaker-invite-rating-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .matchmaker-map-pool-head {

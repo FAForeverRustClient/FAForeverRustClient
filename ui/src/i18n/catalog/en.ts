@@ -763,9 +763,13 @@ export const en = {
 
   // Party.
   "lobby.party.invite.title": "Invite a player",
-  "lobby.party.invite.subtitle": "Friends are listed first. Search players the lobby has seen during this session.",
   "lobby.party.invite.placeholder": "Search player name",
   "lobby.party.invite.empty": "No matching players available.",
+  "lobby.party.invite.avatar": "Avatar",
+  "lobby.party.invite.country": "Country",
+  "lobby.party.invite.clan": "Clan",
+  "lobby.party.invite.clanNone": "No clan",
+  "lobby.party.invite.rating": "{queue} rating",
   "lobby.party.yours": "Your party",
   "lobby.party.openSlot": "Open slot",
   "lobby.party.leaderOnly": "Only the party leader can select queues or start a search.",

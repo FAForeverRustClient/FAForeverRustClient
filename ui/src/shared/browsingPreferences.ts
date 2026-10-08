@@ -180,6 +180,8 @@ export const DEFAULT_BROWSING_PREFERENCES: BrowsingPreferences = {
   coopBoardColumns: [],
   matchmakerRecentColumns: [],
   matchmakerRecentOrder: [],
+  matchmakerInviteColumns: [],
+  matchmakerInviteOrder: [],
   modPresets: [],
   leaderboardRatingColumns: [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
   leaderboardIncludeFormerNames: false,
@@ -249,6 +251,8 @@ export function normalizeBrowsingPreferences(
     coopBoardColumns: normalizeColumnWidths(preferences.coopBoardColumns),
     matchmakerRecentColumns: normalizeColumnWidths(preferences.matchmakerRecentColumns),
     matchmakerRecentOrder: normalizeTableOrder(preferences.matchmakerRecentOrder),
+    matchmakerInviteColumns: normalizeColumnWidths(preferences.matchmakerInviteColumns),
+    matchmakerInviteOrder: normalizeTableOrder(preferences.matchmakerInviteOrder),
     modPresets: normalizeModPresets(preferences.modPresets ?? []),
     leaderboardRatingColumns:
       selectedColumns.length > 0 ? [...selectedColumns] : [...DEFAULT_LEADERBOARD_RATING_COLUMNS],
